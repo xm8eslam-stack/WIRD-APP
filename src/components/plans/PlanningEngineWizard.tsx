@@ -26,6 +26,7 @@ interface PlanningEngineWizardProps {
   enginePlans: EngineGeneratedPlan[];
   onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
   onStartSession: (surahNumber: number, startAyah: number, endAyah: number) => void;
+  onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
 const WEEK_DAYS = [
@@ -41,12 +42,14 @@ const WEEK_DAYS = [
 export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   enginePlans,
   onUpdateEnginePlans,
-  onStartSession
+  onStartSession,
+  onToast
 }) => {
   const [selectedPlanId, setSelectedPlanId] = useState<string>(enginePlans[0]?.id || '');
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [scheduleViewMode, setScheduleViewMode] = useState<'daily' | 'weekly' | 'all'>('weekly');
   const [editingTask, setEditingTask] = useState<ScheduledDayPlan | null>(null);
+  const [showRecalculateConfirm, setShowRecalculateConfirm] = useState(false);
 
   // Active selected plan
   const activePlan = enginePlans.find(p => p.id === selectedPlanId) || enginePlans[0];
@@ -166,19 +169,22 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
     let updated: EngineGeneratedPlan;
     if (activePlan.isPaused) {
       updated = PlanLifecycle.resumePlan(activePlan);
+      if (onToast) onToast("تم استئناف الخطة بنجاح", "success");
     } else {
       updated = PlanLifecycle.pausePlan(activePlan);
+      if (onToast) onToast("تم إيقاف الخطة مؤقتاً", "info");
     }
     onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p));
   };
 
-  // Plan Recalculate
-  const handleRecalculate = () => {
+  // Plan Recalculate without window.alert/confirm
+  const handleConfirmRecalculate = () => {
     if (!activePlan) return;
-    if (confirm("هل تريد إعادة احتساب المهام المتبقية بناءً على التقدم الفعلي لليوم؟ سيتم الحفاظ الكامل على ما أنجزته.")) {
-      const updated = PlanLifecycle.recalculatePlan(activePlan);
-      onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p));
-      alert("تمت إعادة جدولة المهام القادمة بنجاح مع الاحتفاظ بكامل سجلاتك المكتملة.");
+    const updated = PlanLifecycle.recalculatePlan(activePlan);
+    onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p));
+    setShowRecalculateConfirm(false);
+    if (onToast) {
+      onToast("تمت إعادة جدولة المهام القادمة بنجاح مع الاحتفاظ بكامل سجلاتك المنجزة.", "success");
     }
   };
 
@@ -622,7 +628,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 </button>
 
                 <button
-                  onClick={handleRecalculate}
+                  onClick={() => setShowRecalculateConfirm(true)}
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
                   title="إعادة جدولة المهام القادمة بناءً على التقدم الفعلي"
                 >
@@ -817,6 +823,48 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                     </div>
                   );
                 })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-app Recalculate Confirmation Modal */}
+      {showRecalculateConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <RotateCcw className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                  إعادة جدولة المهام القادمة
+                </h3>
+                <p className="text-xs text-stone-500">
+                  خوارزمية إعادة الموازنة التلقائية
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/70 dark:border-stone-700/60">
+              سيقوم المحرك بإعادة توزيع المهام المتبقية بناءً على تاريخ اليوم ومعدل تقدمك، مع <strong>الحفاظ الكامل على جميع الأوراد المكتملة وسجل إنجازك دون أي مساس</strong>.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowRecalculateConfirm(false)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRecalculate}
+                className="px-5 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-xl shadow-xs transition-colors"
+              >
+                تأكيد إعادة الجدولة
+              </button>
             </div>
           </div>
         </div>

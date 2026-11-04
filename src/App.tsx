@@ -14,6 +14,7 @@ import { StorageService } from './services/storageService';
 import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
 import { EngineGeneratedPlan } from './services/planningEngine';
+import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTabId>('dashboard');
@@ -108,7 +109,17 @@ export default function App() {
     StorageService.saveTest(result);
   };
 
-  // Add verse to revision from test
+  // In-app Toast Notification state
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'info' | 'warn' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'info' | 'warn' | 'error' = 'success') => {
+    setToastMessage({ message, type });
+    setTimeout(() => {
+      setToastMessage(prev => prev?.message === message ? null : prev);
+    }, 4000);
+  };
+
+  // Add verse to revision from test with dual retention sync
   const handleAddVerseToRevision = (surahNumber: number, surahName: string, ayahNumber: number) => {
     const newItem: RevisionItem = {
       id: `rev-${Date.now()}`,
@@ -126,7 +137,17 @@ export default function App() {
     const updated = [newItem, ...revisionItems];
     setRevisionItems(updated);
     StorageService.saveRevisionItems(updated);
-    alert(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت.`);
+
+    // Synchronize directly with Retention Service
+    RetentionService.addOrIncrementWeakVerse(
+      surahNumber,
+      ayahNumber,
+      surahName,
+      `الآية رقم ${ayahNumber} من سورة ${surahName}`,
+      'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
+    );
+
+    showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
   };
 
   // Reset all data
@@ -194,6 +215,7 @@ export default function App() {
               enginePlans={enginePlans}
               onUpdateEnginePlans={handleUpdateEnginePlans}
               onStartSession={handleStartSession}
+              onToast={showToast}
             />
           )}
 
@@ -227,6 +249,7 @@ export default function App() {
               logs={logs}
               profile={profile}
               onStartSession={handleStartSession}
+              onToast={showToast}
               onRefreshData={() => {
                 setProfile(StorageService.getProfile());
                 setPlans(StorageService.getPlans());
@@ -251,10 +274,46 @@ export default function App() {
               profile={profile}
               onUpdateProfile={setProfile}
               onResetAllData={handleResetAllData}
+              onToast={showToast}
             />
           )}
         </main>
       </div>
+
+      {/* Floating Global Toast Notification */}
+      {toastMessage && (
+        <div 
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-6 z-50 max-w-md bg-stone-900/95 dark:bg-stone-800/95 text-white px-4 py-3 rounded-2xl shadow-xl border border-stone-700/80 backdrop-blur-md flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-4"
+        >
+          {toastMessage.type === 'success' && (
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          )}
+          {toastMessage.type === 'warn' && (
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+          )}
+          {(toastMessage.type === 'info' || !toastMessage.type) && (
+            <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center shrink-0">
+              <Info className="w-5 h-5" />
+            </div>
+          )}
+          <p className="text-xs font-medium leading-relaxed flex-1 text-right">
+            {toastMessage.message}
+          </p>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="p-1 text-stone-400 hover:text-white rounded-lg transition-colors"
+            aria-label="إغلاق التنبيه"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

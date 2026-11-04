@@ -20,28 +20,35 @@ interface SettingsViewProps {
   profile: UserProfile;
   onUpdateProfile: (profile: UserProfile) => void;
   onResetAllData: () => void;
+  onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   profile,
   onUpdateProfile,
-  onResetAllData
+  onResetAllData,
+  onToast
 }) => {
   const [formData, setFormData] = useState<UserProfile>(profile);
   const [isSaved, setIsSaved] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateProfile(formData);
     StorageService.saveProfile(formData);
     setIsSaved(true);
+    if (onToast) {
+      onToast("تم حفظ التعديلات وإعدادات الملف الشخصي بنجاح", "success");
+    }
     setTimeout(() => setIsSaved(false), 2500);
   };
 
-  const handleReset = () => {
-    if (confirm("هل أنت متأكد من رغبتك في إعادة ضبط المنصة للحالة الافتراضية؟ سيتم مسح بياناتك المسجلة محلياً.")) {
-      onResetAllData();
-      alert("تمت إعادة ضبط البيانات بنجاح.");
+  const handleConfirmReset = () => {
+    onResetAllData();
+    setShowResetConfirm(false);
+    if (onToast) {
+      onToast("تمت إعادة ضبط بيانات المنصة للحالة الافتراضية بنجاح", "info");
     }
   };
 
@@ -236,7 +243,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <button
             type="button"
-            onClick={handleReset}
+            onClick={() => setShowResetConfirm(true)}
             className="flex items-center gap-1.5 px-4 py-2.5 text-stone-500 hover:text-red-600 text-xs font-medium transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -244,6 +251,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
       </form>
+
+      {/* In-app Reset Confirmation Dialog */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                  تأكيد إعادة الضبط الافتراضي
+                </h3>
+                <p className="text-xs text-stone-500">
+                  هل أنت متأكد من رغبتك في مسح كافة السجلات المحلية؟
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed bg-[#faf8f5] dark:bg-stone-900/60 p-3 rounded-xl border border-stone-200/70 dark:border-stone-700/60">
+              سيتم إعادة تعيين إحصائيات الحفظ وخططك وسجلات المراجعة إلى بيانات وِرد الأولية. لن تتمكن من التراجع عن هذه الخطوة إلا إذا كان لديك ملف نسخة احتياطية.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+              >
+                إلغاء التراجع
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReset}
+                className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
+              >
+                تأكيد إعادة الضبط
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

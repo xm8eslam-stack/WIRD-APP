@@ -21,6 +21,7 @@ interface MemorizationPlansViewProps {
   enginePlans: EngineGeneratedPlan[];
   onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
   onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number) => void;
+  onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
 export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
@@ -28,10 +29,12 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   onUpdatePlans,
   enginePlans,
   onUpdateEnginePlans,
-  onStartSession
+  onStartSession,
+  onToast
 }) => {
   const [activeTab, setActiveTab] = useState<'engine' | 'presets' | 'diagnostics'>('engine');
   const [testResults, setTestResults] = useState<{ passed: number; failed: number; results: string[] } | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   // Toggle active plan in presets
   const handleToggleActive = (planId: string) => {
@@ -40,15 +43,21 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
       isActive: p.id === planId
     }));
     onUpdatePlans(updated);
+    if (onToast) {
+      onToast("تم تفعيل الخطة المحددة بنجاح", "success");
+    }
   };
 
-  const handleDeletePlan = (planId: string) => {
-    if (confirm("هل تريد حذف هذه الخطة من قائمتك؟")) {
-      const updated = plans.filter(p => p.id !== planId);
-      if (updated.length > 0 && !updated.some(p => p.isActive)) {
-        updated[0].isActive = true;
-      }
-      onUpdatePlans(updated);
+  const handleConfirmDelete = () => {
+    if (!planToDelete) return;
+    const updated = plans.filter(p => p.id !== planToDelete);
+    if (updated.length > 0 && !updated.some(p => p.isActive)) {
+      updated[0].isActive = true;
+    }
+    onUpdatePlans(updated);
+    setPlanToDelete(null);
+    if (onToast) {
+      onToast("تم حذف الخطة من قائمتك بنجاح", "info");
     }
   };
 
@@ -109,6 +118,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
           enginePlans={enginePlans}
           onUpdateEnginePlans={onUpdateEnginePlans}
           onStartSession={onStartSession}
+          onToast={onToast}
         />
       )}
 
@@ -156,7 +166,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                       </div>
 
                       <button
-                        onClick={() => handleDeletePlan(plan.id)}
+                        onClick={() => setPlanToDelete(plan.id)}
                         className="text-stone-400 hover:text-red-500 p-1 transition-colors"
                         title="حذف الخطة"
                       >
@@ -263,6 +273,48 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* In-app Plan Delete Confirmation Modal */}
+      {planToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                  تأكيد حذف الخطة
+                </h3>
+                <p className="text-xs text-stone-500">
+                  هل تريد إزالة هذه الخطة من قائمتك؟
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/70 dark:border-stone-700/60">
+              سيتم حذف بطاقة الخطة المحددة. لن يؤثر ذلك على سجلات الأوراد التي أنجزتها سابقاً.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPlanToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
+              >
+                تأكيد الحذف
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

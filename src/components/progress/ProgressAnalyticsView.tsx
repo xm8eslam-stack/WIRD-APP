@@ -28,6 +28,7 @@ interface ProgressAnalyticsViewProps {
   profile: UserProfile;
   onRefreshData: () => void;
   onStartSession?: (surahNumber: number, startAyah: number, endAyah: number) => void;
+  onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
 const STATUS_CONFIG: Record<PortionMemorizationStatus, { label: string; bg: string; border: string; text: string; dotColor: string }> = {
@@ -43,7 +44,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   logs,
   profile,
   onRefreshData,
-  onStartSession
+  onStartSession,
+  onToast
 }) => {
   const [mapMode, setMapMode] = useState<'juz' | 'pages'>('pages');
   const [selectedJuz, setSelectedJuz] = useState<number>(30); // Default Juz Amma
@@ -148,11 +150,15 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     reader.onload = (event) => {
       const content = event.target?.result as string;
       if (content && StorageService.importBackup(content)) {
-        alert("تم استعادة نسختك الاحتياطية بنجاح!");
+        if (onToast) {
+          onToast("تم استعادة نسختك الاحتياطية وسجلات الحفظ بنجاح!", "success");
+        }
         setPortions(RetentionService.getPortions());
         onRefreshData();
       } else {
-        alert("الملف غير صالح، يرجى اختيار ملف نسخة احتياطية سليم من منصة وِرد.");
+        if (onToast) {
+          onToast("الملف غير صالح، يرجى اختيار ملف نسخة احتياطية سليم بصيغة JSON من منصة وِرد.", "warn");
+        }
       }
     };
     reader.readAsText(file);
