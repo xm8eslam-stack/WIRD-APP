@@ -21,6 +21,7 @@ import {
 } from '../../types/quran';
 import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES } from '../../data/quranMeta';
 import { NavTabId } from '../layout/Sidebar';
+import { RetentionService } from '../../services/retentionService';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -41,9 +42,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const activePlan = plans.find(p => p.isActive) || plans[0];
 
-  // Calculate due revision items
+  // Calculate due revision items from both RetentionService and revisionItems
   const todayStr = new Date().toISOString().split('T')[0];
+  const queuePortions = RetentionService.getDailyRevisionQueue(todayStr);
+  const weakVerses = RetentionService.getWeakVerses();
   const dueRevisions = revisionItems.filter(item => item.nextDueDate <= todayStr);
+  const totalDueCount = Math.max(queuePortions.length, dueRevisions.length);
   const minorRevisions = dueRevisions.filter(i => i.type === 'minor');
   const majorRevisions = dueRevisions.filter(i => i.type === 'major');
 
@@ -93,7 +97,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 px-4 py-3 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 font-semibold text-xs md:text-sm rounded-xl border border-emerald-600/40 transition-colors"
             >
               <Repeat className="w-4 h-4" />
-              <span>المراجعة والتثبيت ({dueRevisions.length})</span>
+              <span>المراجعة والتثبيت ({totalDueCount})</span>
             </button>
           </div>
         </div>

@@ -11,7 +11,9 @@ import { ProgressAnalyticsView } from './components/progress/ProgressAnalyticsVi
 import { QuranAdvisorView } from './components/assistant/QuranAdvisorView';
 import { SettingsView } from './components/settings/SettingsView';
 import { StorageService } from './services/storageService';
+import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
+import { EngineGeneratedPlan } from './services/planningEngine';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTabId>('dashboard');
@@ -20,6 +22,7 @@ export default function App() {
   // App persistent state
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [plans, setPlans] = useState<MemorizationPlan[]>(() => StorageService.getPlans());
+  const [enginePlans, setEnginePlans] = useState<EngineGeneratedPlan[]>(() => StorageService.getEnginePlans());
   const [revisionItems, setRevisionItems] = useState<RevisionItem[]>(() => StorageService.getRevisionItems());
   const [logs, setLogs] = useState<DailyLog[]>(() => StorageService.getLogs());
 
@@ -47,7 +50,7 @@ export default function App() {
   const tabTitles: Record<NavTabId, string> = {
     dashboard: 'لوحة المتابعة اليومية',
     library: 'المصحف والمكتبة القرآنية',
-    plans: 'خطط حفظ القرآن الكريم',
+    plans: 'محرك وخطط حفظ القرآن الكريم',
     session: 'جلسة الحفظ اليومية التفاعلية',
     revision: 'مركز المراجعة والتثبيت (التكرار المتباعد)',
     tests: 'اختبارات الحفظ والتقييم',
@@ -88,10 +91,16 @@ export default function App() {
     setLogs(StorageService.getLogs());
   };
 
-  // Save plans
+  // Save preset plans
   const handleUpdatePlans = (newPlans: MemorizationPlan[]) => {
     setPlans(newPlans);
     StorageService.savePlans(newPlans);
+  };
+
+  // Save engine plans
+  const handleUpdateEnginePlans = (updatedEnginePlans: EngineGeneratedPlan[]) => {
+    setEnginePlans(updatedEnginePlans);
+    StorageService.saveEnginePlans(updatedEnginePlans);
   };
 
   // Test result saved
@@ -125,12 +134,14 @@ export default function App() {
     StorageService.resetAllData();
     setProfile(StorageService.getProfile());
     setPlans(StorageService.getPlans());
+    setEnginePlans(StorageService.getEnginePlans());
     setRevisionItems(StorageService.getRevisionItems());
     setLogs(StorageService.getLogs());
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
-  const dueRevisionCount = revisionItems.filter(i => i.nextDueDate <= todayStr).length;
+  const dueQueueCount = RetentionService.getDailyRevisionQueue(todayStr).length;
+  const dueRevisionCount = Math.max(dueQueueCount, revisionItems.filter(i => i.nextDueDate <= todayStr).length);
 
   return (
     <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
@@ -180,6 +191,8 @@ export default function App() {
             <MemorizationPlansView
               plans={plans}
               onUpdatePlans={handleUpdatePlans}
+              enginePlans={enginePlans}
+              onUpdateEnginePlans={handleUpdateEnginePlans}
               onStartSession={handleStartSession}
             />
           )}
@@ -197,10 +210,8 @@ export default function App() {
 
           {currentTab === 'revision' && (
             <RevisionCenterView
-              revisionItems={revisionItems}
               profile={profile}
-              onUpdateRevisionItems={handleUpdateRevisionItems}
-              onRecordRevisionComplete={handleRecordRevisionComplete}
+              onStartSession={handleStartSession}
             />
           )}
 
@@ -215,9 +226,11 @@ export default function App() {
             <ProgressAnalyticsView
               logs={logs}
               profile={profile}
+              onStartSession={handleStartSession}
               onRefreshData={() => {
                 setProfile(StorageService.getProfile());
                 setPlans(StorageService.getPlans());
+                setEnginePlans(StorageService.getEnginePlans());
                 setRevisionItems(StorageService.getRevisionItems());
                 setLogs(StorageService.getLogs());
               }}
@@ -226,6 +239,9 @@ export default function App() {
 
           {currentTab === 'advisor' && (
             <QuranAdvisorView
+              profile={profile}
+              plans={plans}
+              logs={logs}
               onStartSessionWithSurah={handleStartSession}
             />
           )}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Compass, 
   Sparkles, 
@@ -9,41 +9,197 @@ import {
   ArrowLeft,
   Calculator,
   ShieldCheck,
-  Send
+  Send,
+  Bot,
+  User,
+  AlertCircle,
+  TrendingUp,
+  Clock,
+  Layers,
+  Check,
+  RotateCcw,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
+import { UserProfile, MemorizationPlan, DailyLog, PortionStatusRecord, WeakVerseItem } from '../../types/quran';
+import { AdvisorService, AdvisorStatus } from '../../services/advisorService';
+import { RetentionService } from '../../services/retentionService';
 
 interface QuranAdvisorViewProps {
+  profile?: UserProfile;
+  plans?: MemorizationPlan[];
+  logs?: DailyLog[];
   onStartSessionWithSurah?: (surahNumber: number) => void;
 }
 
-export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = () => {
-  const [selectedTopic, setSelectedTopic] = useState<'methods' | 'calculator' | 'mutashabihat_rules' | 'qa'>('methods');
+export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
+  profile,
+  plans = [],
+  logs = [],
+  onStartSessionWithSurah
+}) => {
+  const [selectedTopic, setSelectedTopic] = useState<'ai_advisor' | 'methods' | 'mutashabihat_rules' | 'calculator'>('ai_advisor');
+  const [advisorStatus, setAdvisorStatus] = useState<AdvisorStatus | null>(null);
+  const [userQuery, setUserQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [targetAjza, setTargetAjza] = useState<number>(3);
   const [availableDailyMinutes, setAvailableDailyMinutes] = useState<number>(30);
-  const [userQuery, setUserQuery] = useState('');
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: 'user' | 'advisor'; text: string }>>([
+
+  const [chatMessages, setChatMessages] = useState<Array<{ 
+    sender: 'user' | 'advisor'; 
+    text: string; 
+    isFallback?: boolean;
+    timestamp?: string;
+  }>>([
     {
       sender: 'advisor',
-      text: 'مرحباً بك في المستشار القرآني لمنصة وِرد. يسعدني إرشادك لأفضل أساليب الحفظ والتثبيت وعلاج التفلت وتنظيم المراجعة المتباعدة. كيف يمكنني مساعدتك اليوم؟'
+      text: 'مرحباً بك في المستشار القرآني الذكي لمنصة وِرد. أنا هنا لمساعدتك على تحليل وتيرة حفظك، تشخيص أسباب التعثر، اقتراح التعديلات الواقعية لجدولك، وتحديد أولويات المراجعة العاجلة وفق منهجيات الحفّاظ المعتمدة.',
+      timestamp: 'الآن'
     }
   ]);
 
-  // Methodologies
+  // Check server AI status on mount
+  useEffect(() => {
+    AdvisorService.checkStatus().then(status => {
+      setAdvisorStatus(status);
+    });
+  }, []);
+
+  // Quick Action Buttons corresponding to the 8 required AI capabilities
+  const quickActions = [
+    {
+      id: 'analyze_history',
+      title: 'تحليل وتيرة الحفظ والمراجعة',
+      desc: 'فحص معدل الإنجاز والانتظام',
+      contextType: 'general',
+      prompt: 'قم بتحليل سجلي القرآني للأسبوع الماضي وحدد نمط الالتزام وأهم نقاط القوة والتحسين.'
+    },
+    {
+      id: 'missed_tasks',
+      title: 'كشف أسباب صعوبة الالتزام بالخطة',
+      desc: 'تشخيص أسباب التفويت والضغط',
+      contextType: 'workload',
+      prompt: 'ما هي الأسباب المحتملة لصعوبة الالتزام بالخطة، وكيف أتفادى تفويت المهام القرآنية؟'
+    },
+    {
+      id: 'workload_adjust',
+      title: 'اقتراح تعديل واقعي لحجم الحفظ',
+      desc: 'إعادة موازنة المقدار اليومي',
+      contextType: 'workload',
+      prompt: 'اقترح تعديلاً واقعياً ومتوازناً لمقدار الحفظ والمراجعة اليومي ليتناسب مع وقتي المتاح دون إرهاق.'
+    },
+    {
+      id: 'revision_priorities',
+      title: 'تحديد أولويات المراجعة والتثبيت',
+      desc: 'فرز المقاطع والآيات الأكثر حاجة',
+      contextType: 'priorities',
+      prompt: 'ما هي أولويات المراجعة العاجلة لمقاطعي المتتبعة اليوم بناءً على درجات الرسوخ وتكرار الأخطاء؟'
+    },
+    {
+      id: 'weekly_summary',
+      title: 'ملخص الإنجاز الأسبوعي',
+      desc: 'تقرير الدقائق والآيات والأوجه',
+      contextType: 'weekly_summary',
+      prompt: 'قدم لي ملخصاً إحصائياً دقيقاً لإنجازي الأسبوعي مع نصيحة منهجية للمرحلة القادمة.'
+    },
+    {
+      id: 'session_organizer',
+      title: 'تنظيم وتوزيع جلسة الحفظ (30 د)',
+      desc: 'هيكل الجلسة الذهبي (70/30)',
+      contextType: 'session',
+      prompt: 'كيف أنظم جلسة الحفظ اليومية في 30 دقيقة لتحقيق أقصى درجات الرسوخ ومنع التفلت؟'
+    }
+  ];
+
+  // Execute an AI Analysis or Quick Action
+  const handleRunQuickAction = async (action: typeof quickActions[0]) => {
+    if (isLoading) return;
+
+    const userMsg = action.prompt;
+    const newMsgs = [...chatMessages, { sender: 'user' as const, text: userMsg, timestamp: 'الآن' }];
+    setChatMessages(newMsgs);
+    setIsLoading(true);
+
+    const userProfile: UserProfile = profile || {
+      name: 'عبد الرحمن',
+      email: 'abdurrahman@example.com',
+      memorizationGoal: 'إتقان حفظ كتاب الله كاملاً',
+      preferredReciter: 'alafasy',
+      quranFontSize: 'lg',
+      audioAutoPlay: true,
+      repetitionTarget: 10,
+      theme: 'light',
+      streakDays: 14,
+      lastActiveDate: new Date().toISOString().split('T')[0]
+    };
+
+    const portions = RetentionService.getPortions();
+    const weakVerses = RetentionService.getWeakVerses();
+
+    const response = await AdvisorService.analyzeProgress(
+      action.contextType,
+      logs,
+      userProfile,
+      plans,
+      portions,
+      weakVerses,
+      userMsg
+    );
+
+    setIsLoading(false);
+    setChatMessages([
+      ...newMsgs,
+      {
+        sender: 'advisor',
+        text: response.text,
+        isFallback: response.isFallback,
+        timestamp: 'الآن'
+      }
+    ]);
+  };
+
+  // Submit custom user message
+  const handleSendCustomMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userQuery.trim() || isLoading) return;
+
+    const query = userQuery.trim();
+    setUserQuery('');
+
+    const newMsgs = [...chatMessages, { sender: 'user' as const, text: query, timestamp: 'الآن' }];
+    setChatMessages(newMsgs);
+    setIsLoading(true);
+
+    const response = await AdvisorService.sendChatMessage(query, chatMessages);
+
+    setIsLoading(false);
+    setChatMessages([
+      ...newMsgs,
+      {
+        sender: 'advisor',
+        text: response.text,
+        isFallback: response.isFallback,
+        timestamp: 'الآن'
+      }
+    ]);
+  };
+
+  // Classical Methodologies
   const methodologies = [
     {
       title: "طريقة التكرار الشنقيطية (سر الحفاظ الكبار)",
       description: "تقوم على قراءة الآية أو اللوح الواحد بصوت مسموع من 15 إلى 30 مرة متتالية حتى تنطبع في الذاكرة الصورية والسمعية، ثم عدم الانتقال للآية التالية إلا بعد ربطها بسابقتها.",
       tag: "الأعلى رسوخاً",
       tips: [
-        "اقرأ الآية الأولى 10 مرات نظراً من المصحف.",
-        "اقرأها 10 مرات غيباً.",
-        "انتقل للآية الثانية وكررها 10 مرات.",
-        "اربط الآيتين معاً واقرأهما 5 مرات متتابعة."
+        "اقرأ الآية الأولى 10 مرات نظراً من المصحف بتركيز تام.",
+        "اقرأها 10 مرات غيباً مع التثبت من كل حركة.",
+        "انتقل للآية التالية وكررها بنفس القدر.",
+        "اربط الآيتين معاً واقرأهما 5 مرات متتابعة قبل التجاوز."
       ]
     },
     {
       title: "قاعدة «المراجعة قبل الحفظ الجديد»",
-      description: "خطأ معظم من ينسى القرآن هو البدء بالحفظ الجديد وإهمال الماضي. اجعل أول نصف ساعة مخصصة للورد الماضي (المراجعة الصغرى) ثم ابدأ بجديدك.",
+      description: "خطأ معظم من ينسى القرآن هو البدء بالحفظ الجديد وإهمال الماضي. اجعل أول ثلثي الجلسة مخصصة لورد الماضي (المراجعة الصغرى والكبرى) ثم ابدأ بجديدك.",
       tag: "وقاية من النسيان",
       tips: [
         "خصص 70% من وقت جلستك للمراجعة والتثبيت.",
@@ -63,7 +219,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = () => {
     }
   ];
 
-  // Mutashabihat mnemonic rules
+  // Mutashabihat rules
   const mnemonicRules = [
     {
       rule: "قاعدة المجاورة والموافقة",
@@ -83,284 +239,307 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = () => {
     }
   ];
 
-  // Plan calculator result
-  const calculatedDays = Math.round((targetAjza * 20) / Math.max(1, availableDailyMinutes / 25));
-  const suggestedAyahsDaily = availableDailyMinutes >= 45 ? "صفحة كاملة (15 سطراً)" : availableDailyMinutes >= 25 ? "نصف صفحة (7-8 آيات)" : "3 - 5 آيات";
-
-  const handleSendChat = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userQuery.trim()) return;
-
-    const q = userQuery.trim();
-    const newMsgs = [...chatMessages, { sender: 'user' as const, text: q }];
-    setChatMessages(newMsgs);
-    setUserQuery('');
-
-    // Thoughtful rule-based instant Quranic advisor responses
-    setTimeout(() => {
-      let reply = "وفقك الله ونفع بك! لتثبيت هذا المقطع، نوصيك بتكراره غيباً 10 مرات في الصلاة المفروضة والسنن الرواتب، فما قُرئ به في الصلاة لا يضيع بإذن الله.";
-      
-      if (q.includes("نسيان") || q.includes("أنسى") || q.includes("تفلت")) {
-        reply = "تفلت القرآن طبيعي إن لم يتعاهده الحافظ؛ قال النبي ﷺ: «تعاهدوا هذا القرآن، فوالذي نفس محمد بيده لهو أشد تفلتاً من الإبل في عُقُلها». العلاج العملي: أوقف الحفظ الجديد لمدة 3 أيام، وكرس وقتك كاملاً لمركز المراجعة الصغرى حتى تعود الآيات طرية على لسانك.";
-      } else if (q.includes("وقت") || q.includes("مشغول") || q.includes("دوام")) {
-        reply = "أفضل الأوقات للحفظ السريع الراسخ هو بعد صلاة الفجر مباشرة (15 دقيقة فقط)، أو قبل النوم مباشرة حيث يقوم الدماغ بترسيخ آخر ما رآه وقرأه أثناء النوم. 3 آيات يومياً بعد الفجر تعني ختم القرآن كاملاً بتؤدة وإتقان.";
-      } else if (q.includes("أطفال") || q.includes("ابن") || q.includes("طفل")) {
-        reply = "مع الأطفال، اعتمد أسلوب «التكرار السمعي التنافسي» واستخدام أسلوب إخفاء الكلمات التفاعلي المتوفر في جلسة الحفظ بمنصة وِرد. كافئهم على كل 3 آيات متقنة واجعل وقت الجلسة خفيفاً لا يتجاوز 15 دقيقة.";
-      }
-
-      setChatMessages([...newMsgs, { sender: 'advisor' as const, text: reply }]);
-    }, 400);
-  };
-
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* 1. Header */}
+      {/* 1. Header & AI Availability Badge */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
-        <div>
-          <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-quran">
-            <Compass className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
-            المستشار القرآني لعلوم ومنهجيات الحفظ
-          </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            خلاصة تجارب كبار القراء وأئمة الإقراء في ضبط الحفظ ومحاربة التفلت وتيسير التكرار
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-quran">
+              <Compass className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
+              المستشار القرآني ومنهجيات الحفظ والتثبيت
+            </h2>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+              إرشاد ذكي مبني على بياناتك الفعلية وخلاصة تجارب أئمة الإقراء (الشناقطة، الشاطبي، ابن الجزري)
+            </p>
+          </div>
+
+          {/* AI Availability Badge */}
+          <div className="flex items-center gap-2">
+            {advisorStatus?.available ? (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 shadow-2xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>الذكاء الاصطناعي متاح (Gemini Free Tier)</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 shadow-2xs">
+                <Zap className="w-3.5 h-3.5 text-amber-600" />
+                <span>النمط الذاتي الحتمي (بدون استهلاك حصة)</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 bg-[#faf8f5] dark:bg-stone-900 p-1.5 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
-            onClick={() => setSelectedTopic('methods')}
-            className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-              selectedTopic === 'methods'
-                ? 'bg-white dark:bg-stone-800 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            onClick={() => setSelectedTopic('ai_advisor')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+              selectedTopic === 'ai_advisor'
+                ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            منهجيات الحفظ المعتمدة
+            <Bot className="w-4 h-4" />
+            <span>المستشار الذكي وتحليل وتيرة الحفظ</span>
           </button>
 
           <button
-            onClick={() => setSelectedTopic('calculator')}
-            className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-              selectedTopic === 'calculator'
-                ? 'bg-white dark:bg-stone-800 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            onClick={() => setSelectedTopic('methods')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+              selectedTopic === 'methods'
+                ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            محاكي الخطة الذكية
+            <BookOpen className="w-4 h-4" />
+            <span>منهجيات الحفظ المعتمدة</span>
           </button>
 
           <button
             onClick={() => setSelectedTopic('mutashabihat_rules')}
-            className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               selectedTopic === 'mutashabihat_rules'
-                ? 'bg-white dark:bg-stone-800 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+                ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            قواعد ضبط المتشابهات
+            <ShieldCheck className="w-4 h-4" />
+            <span>قواعد ضبط المتشابهات</span>
           </button>
 
           <button
-            onClick={() => setSelectedTopic('qa')}
-            className={`flex-1 py-2 px-3 rounded-lg transition-colors ${
-              selectedTopic === 'qa'
-                ? 'bg-white dark:bg-stone-800 text-emerald-800 dark:text-emerald-300 font-bold shadow-xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+            onClick={() => setSelectedTopic('calculator')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+              selectedTopic === 'calculator'
+                ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
+                : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
             }`}
           >
-            استشارة فورية
+            <Calculator className="w-4 h-4" />
+            <span>حاسبة التخطيط القرآني</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Topic: Methodologies */}
-      {selectedTopic === 'methods' && (
+      {/* VIEW 1: AI ADVISOR & CHAT WITH 8 CAPABILITIES */}
+      {selectedTopic === 'ai_advisor' && (
         <div className="space-y-4">
+          {/* Quick Action Capabilities Strip */}
+          <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-3">
+            <div className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-emerald-700" />
+                <span>تحليلات واستشارات سريعة بنقرة واحدة:</span>
+              </span>
+              <span className="text-[10px] text-stone-400">تستند حصرًا لبياناتك المحفوظة</span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+              {quickActions.map(action => (
+                <button
+                  key={action.id}
+                  onClick={() => handleRunQuickAction(action)}
+                  disabled={isLoading}
+                  className="p-3 bg-[#faf8f5] dark:bg-stone-900/80 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-right transition-all group disabled:opacity-50"
+                >
+                  <div className="font-bold text-xs text-stone-900 dark:text-stone-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-300">
+                    {action.title}
+                  </div>
+                  <div className="text-[10px] text-stone-400 mt-1">
+                    {action.desc}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Interactive Chat Window */}
+          <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs flex flex-col min-h-[420px] max-h-[580px]">
+            {/* Messages Thread */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1 pl-1">
+              {chatMessages.map((msg, idx) => {
+                const isUser = msg.sender === 'user';
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                      isUser 
+                        ? 'bg-emerald-700 text-white' 
+                        : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                    }`}>
+                      {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                    </div>
+
+                    <div className={`p-4 rounded-2xl max-w-[85%] text-xs leading-relaxed space-y-1.5 shadow-2xs ${
+                      isUser
+                        ? 'bg-emerald-800 text-white rounded-tl-xs font-medium'
+                        : 'bg-[#faf8f5] dark:bg-stone-900/90 border border-stone-200/80 dark:border-stone-700/80 text-stone-800 dark:text-stone-200 rounded-tr-xs'
+                    }`}>
+                      <div className="whitespace-pre-line leading-relaxed font-sans">
+                        {msg.text}
+                      </div>
+
+                      {!isUser && msg.isFallback && (
+                        <div className="text-[10px] text-stone-400 pt-1 border-t border-stone-200/50 dark:border-stone-700/50 flex items-center gap-1">
+                          <Check className="w-3 h-3 text-emerald-600" />
+                          <span>إرشاد مبني على الخوارزمية الحتمية المدمجة</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {isLoading && (
+                <div className="flex items-center gap-2 text-xs text-stone-400 py-2">
+                  <div className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
+                  <span>المستشار يحلل بيانات الحفظ والمراجعة...</span>
+                </div>
+              )}
+            </div>
+
+            {/* Input Form */}
+            <form onSubmit={handleSendCustomMessage} className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700 flex items-center gap-2">
+              <input
+                type="text"
+                value={userQuery}
+                onChange={e => setUserQuery(e.target.value)}
+                placeholder="اسأل المستشار القرآني عن طرائق الحفظ، ضبط المتشابهات، أو تنظيم وقتك..."
+                disabled={isLoading}
+                className="flex-1 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-700"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !userQuery.trim()}
+                className="p-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white rounded-xl transition-colors shadow-xs"
+                title="إرسال"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 2: METHODOLOGIES */}
+      {selectedTopic === 'methods' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {methodologies.map((m, idx) => (
-            <div
-              key={idx}
-              className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-base text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-500" />
-                  {m.title}
-                </h3>
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+            <div key={idx} className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs flex flex-col justify-between space-y-4">
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {m.tag}
                 </span>
+                <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 font-quran">
+                  {m.title}
+                </h3>
+                <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                  {m.description}
+                </p>
               </div>
 
-              <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                {m.description}
-              </p>
-
-              <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200/60 dark:border-stone-700/60 text-xs space-y-2">
-                <div className="font-semibold text-stone-800 dark:text-stone-200">
-                  خطوات التطبيق العملي:
-                </div>
-                <ul className="space-y-1.5 text-stone-600 dark:text-stone-400 text-[11px]">
-                  {m.tips.map((tip, tIdx) => (
-                    <li key={tIdx} className="flex items-start gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
-                      <span>{tip}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3 rounded-xl border border-stone-200/60 dark:border-stone-700/60 space-y-1.5 text-xs text-stone-700 dark:text-stone-300">
+                <div className="font-bold text-[11px] text-emerald-800 dark:text-emerald-400">خطوات التطبيق:</div>
+                {m.tips.map((tip, i) => (
+                  <div key={i} className="flex items-start gap-1.5 text-[11px]">
+                    <span className="text-emerald-700 font-bold">•</span>
+                    <span>{tip}</span>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* 3. Topic: Smart Plan Calculator */}
-      {selectedTopic === 'calculator' && (
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 md:p-8 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-6">
-          <div className="flex items-center gap-3">
-            <Calculator className="w-6 h-6 text-emerald-700" />
-            <div>
-              <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
-                حاسبة وقت الحفظ والتثبيت التقديرية
-              </h3>
-              <p className="text-xs text-stone-500">
-                احسب المدة الواقعية للوصول لهدفك مع مراعاة أيام المراجعة دون إجهاد
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-            <div>
-              <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-2">
-                كم جزءاً تريد حفظه وتثبيته؟
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="1"
-                  max="30"
-                  value={targetAjza}
-                  onChange={(e) => setTargetAjza(Number(e.target.value))}
-                  className="flex-1 accent-emerald-700"
-                />
-                <span className="font-bold font-mono text-base text-emerald-800 dark:text-emerald-300 w-16 text-center">
-                  {targetAjza} أجزاء
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-2">
-                الوقت المتاح لديك يومياً:
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="15"
-                  max="120"
-                  step="15"
-                  value={availableDailyMinutes}
-                  onChange={(e) => setAvailableDailyMinutes(Number(e.target.value))}
-                  className="flex-1 accent-emerald-700"
-                />
-                <span className="font-bold font-mono text-base text-stone-800 dark:text-stone-200 w-16 text-center">
-                  {availableDailyMinutes} دقيقة
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Calculator Output Card */}
-          <div className="bg-gradient-to-br from-emerald-900 to-emerald-950 text-white p-6 rounded-2xl space-y-4">
-            <div className="text-xs text-emerald-200 font-semibold flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-amber-300" />
-              <span>التوصية المنهجية لحفظك:</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-              <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-[11px] text-emerald-200">الورد اليومي المقترح</div>
-                <div className="text-sm font-bold text-amber-300 mt-1">{suggestedAyahsDaily}</div>
-              </div>
-
-              <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-[11px] text-emerald-200">المدة المتوقعة للختم</div>
-                <div className="text-lg font-bold font-mono text-white mt-1">~ {calculatedDays} يوماً</div>
-              </div>
-
-              <div className="bg-white/10 rounded-xl p-3">
-                <div className="text-[11px] text-emerald-200">توزيع الجلسة اليومية</div>
-                <div className="text-xs font-semibold text-emerald-100 mt-1">
-                  {Math.round(availableDailyMinutes * 0.4)}د مراجعة + {Math.round(availableDailyMinutes * 0.6)}د جديد
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Topic: Mutashabihat Rules */}
+      {/* VIEW 3: MUTASHABIHAT RULES */}
       {selectedTopic === 'mutashabihat_rules' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {mnemonicRules.map((rule, idx) => (
-            <div
-              key={idx}
-              className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-2"
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">
-                  {rule.rule}
-                </h4>
-              </div>
-              <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-                {rule.explanation}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* 5. Topic: Interactive Q&A */}
-      {selectedTopic === 'qa' && (
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
-          <div className="space-y-3 max-h-96 overflow-y-auto p-2">
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`flex gap-3 text-xs leading-relaxed ${
-                  msg.sender === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                <div
-                  className={`max-w-[80%] p-3.5 rounded-2xl ${
-                    msg.sender === 'user'
-                      ? 'bg-emerald-800 text-white rounded-br-xs'
-                      : 'bg-[#faf8f5] dark:bg-stone-900 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-700 rounded-bl-xs'
-                  }`}
-                >
-                  {msg.text}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {mnemonicRules.map((rule, idx) => (
+              <div key={idx} className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-amber-200/80 dark:border-amber-900/60 shadow-xs space-y-2">
+                <div className="font-bold text-sm text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>{rule.rule}</span>
                 </div>
+                <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                  {rule.explanation}
+                </p>
               </div>
             ))}
           </div>
+        </div>
+      )}
 
-          <form onSubmit={handleSendChat} className="flex items-center gap-2 pt-2 border-t border-stone-100 dark:border-stone-700">
-            <input
-              type="text"
-              value={userQuery}
-              onChange={(e) => setUserQuery(e.target.value)}
-              placeholder="اطرح استفسارك القرآني (مثال: كيف أثبت سورة البقرة؟ ما علاج النسيان؟)..."
-              className="flex-1 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
-            />
-            <button
-              type="submit"
-              className="p-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl transition-colors"
-              title="إرسال"
-            >
-              <Send className="w-4 h-4 rotate-180" />
-            </button>
-          </form>
+      {/* VIEW 4: CALCULATOR */}
+      {selectedTopic === 'calculator' && (
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-5">
+          <div>
+            <h3 className="font-bold text-base text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <Calculator className="w-5 h-5 text-emerald-700" />
+              <span>حاسبة التخطيط القرآني التقديرية</span>
+            </h3>
+            <p className="text-xs text-stone-500 mt-1">
+              احسب الزمن المتوقع لإتمام هدفك القرآني بحسب الوقت المتاح يومياً
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div>
+              <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                الهدف القرآني المراد حفظه:
+              </label>
+              <select
+                value={targetAjza}
+                onChange={e => setTargetAjza(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
+              >
+                <option value={1}>جزء واحد (20 صفحة)</option>
+                <option value={3}>3 أجزاء (60 صفحة)</option>
+                <option value={5}>5 أجزاء (100 صفحة)</option>
+                <option value={10}>10 أجزاء (200 صفحة)</option>
+                <option value={30}>القرآن كاملاً (604 صفحة)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                الوقت المتاح يومياً (دقائق):
+              </label>
+              <input
+                type="number"
+                min={15}
+                max={180}
+                value={availableDailyMinutes}
+                onChange={e => setAvailableDailyMinutes(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Result Card */}
+          <div className="p-4 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 space-y-2 text-xs">
+            <div className="font-bold text-emerald-900 dark:text-emerald-200">
+              الخلاصة التقديرية للحفظ المتزن:
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <span className="text-stone-500">المدة التقديرية: </span>
+                <span className="font-bold text-emerald-800 dark:text-emerald-300 font-mono">
+                  {Math.round((targetAjza * 20) / Math.max(0.5, availableDailyMinutes / 30))} يوماً
+                </span>
+              </div>
+              <div>
+                <span className="text-stone-500">المقدار اليومي المقترح: </span>
+                <span className="font-bold text-emerald-800 dark:text-emerald-300">
+                  {availableDailyMinutes >= 45 ? 'صفحة كاملة' : availableDailyMinutes >= 25 ? 'نصف صفحة' : '3-5 آيات'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

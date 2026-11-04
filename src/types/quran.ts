@@ -23,15 +23,53 @@ export interface Ayah {
   sajda?: boolean;
 }
 
-export type MemorizationStatus = 'not_started' | 'learning' | 'memorized' | 'needs_revision';
+export type PortionMemorizationStatus = 
+  | 'not_memorized' 
+  | 'currently_memorizing' 
+  | 'recently_memorized' 
+  | 'stable' 
+  | 'needs_revision' 
+  | 'weak';
 
-export interface AyahProgress {
+export type RevisionRating = 'successful' | 'difficult' | 'failed';
+
+export interface RevisionLogEntry {
+  id: string;
+  date: string;
+  rating: RevisionRating;
+  intervalDaysBefore: number;
+  intervalDaysAfter: number;
+  notes?: string;
+}
+
+export interface PortionStatusRecord {
+  id: string; // e.g. "portion-surah-67" or "portion-page-562"
+  type: 'surah' | 'page' | 'passage';
   surahNumber: number;
-  ayahNumber: number;
-  status: MemorizationStatus;
-  lastReviewed?: string;
+  surahName: string;
+  startAyah: number;
+  endAyah: number;
+  pageNumber?: number;
+  juzNumber?: number;
+  status: PortionMemorizationStatus;
+  lastReviewedDate?: string;
+  nextDueDate: string;
+  intervalDays: number;
+  easeFactor: number;
   repetitionCount: number;
-  retentionScore: number; // 1 to 5
+  mistakesCount: number;
+  history: RevisionLogEntry[];
+}
+
+export interface WeakVerseItem {
+  id: string;
+  surahNumber: number;
+  surahName: string;
+  ayahNumber: number;
+  text: string;
+  mistakeCount: number;
+  lastFailedDate: string;
+  notes?: string;
 }
 
 export interface MemorizationPlan {
@@ -83,7 +121,7 @@ export interface DailyLog {
 export interface TestResult {
   id: string;
   date: string;
-  type: 'complete_verse' | 'order_words' | 'mutashabihat' | 'surah_beginnings';
+  type: 'complete_verse' | 'order_words' | 'mutashabihat' | 'surah_beginnings' | 'random_recall' | 'bidirectional_recall';
   surahName: string;
   score: number;
   totalQuestions: number;

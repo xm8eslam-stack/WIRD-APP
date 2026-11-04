@@ -1,0 +1,192 @@
+import { DeterministicAdvisorEngine, PerformanceAnalysisReport } from './deterministicAdvisor';
+import { DailyLog, UserProfile, PortionStatusRecord, WeakVerseItem, MemorizationPlan } from '../types/quran';
+
+export interface AdvisorStatus {
+  available: boolean;
+  mode: 'gemini_free' | 'deterministic_fallback';
+  model: string;
+  message: string;
+}
+
+export interface AdvisorResponse {
+  success: boolean;
+  text: string;
+  isFallback: boolean;
+  code?: 'SUCCESS' | 'QUOTA_EXHAUSTED' | 'RATE_LIMITED' | 'KEY_MISSING' | 'FALLBACK_USED';
+  report?: PerformanceAnalysisReport;
+}
+
+export const AdvisorService = {
+  // Check AI availability from server
+  async checkStatus(): Promise<AdvisorStatus> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch('/api/advisor/status', {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.available) {
+          return {
+            available: true,
+            mode: 'gemini_free',
+            model: 'gemini-3.8-flash (Free Tier)',
+            message: 'مستشار الذكاء الاصطناعي متاح (Gemini Free Tier)'
+          };
+        }
+      }
+
+      return {
+        available: false,
+        mode: 'deterministic_fallback',
+        model: 'المحرك الذاتي الحتمي',
+        message: 'يعمل في النمط الذاتي الحتمي (بدون استهلاك رصيد أو مفاتيح)'
+      };
+    } catch {
+      // In offline or purely static deploy
+      return {
+        available: false,
+        mode: 'deterministic_fallback',
+        model: 'المحرك الذاتي الحتمي',
+        message: 'يعمل في النمط الذاتي الحتمي (بدون استهلاك رصيد أو مفاتيح)'
+      };
+    }
+  },
+
+  // Analyze progress and history
+  async analyzeProgress(
+    contextType: string,
+    logs: DailyLog[],
+    profile: UserProfile,
+    plans: MemorizationPlan[],
+    portions: PortionStatusRecord[],
+    weakVerses: WeakVerseItem[],
+    customQuery?: string
+  ): Promise<AdvisorResponse> {
+    // 1. Always generate deterministic report as baseline
+    const deterministicReport = DeterministicAdvisorEngine.analyzeHistory(logs, profile, portions, weakVerses);
+
+    // 2. Attempt server-side Gemini Free Tier call
+    try {
+      const activePlan = plans.find(p => p.isActive) || plans[0];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch('/api/advisor/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contextType,
+          query: customQuery,
+          userData: {
+            name: profile.name,
+            goal: profile.memorizationGoal,
+            activePlanTitle: activePlan?.title,
+            memorizedAyahsCount: portions.filter(p => p.status !== 'not_memorized').reduce((s, p) => s + (p.endAyah - p.startAyah + 1), 0),
+            weakVersesCount: weakVerses.length,
+            retentionScore: 88,
+            dueRevisionsCount: portions.filter(p => p.nextDueDate <= new Date().toISOString().split('T')[0]).length
+          }
+        })
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.text) {
+          return {
+            success: true,
+            text: data.text,
+            isFallback: false,
+            code: 'SUCCESS',
+            report: deterministicReport
+          };
+        }
+      }
+    } catch (e) {
+      console.info('Using deterministic advisor fallback:', e);
+    }
+
+    // 3. Fallback to deterministic report
+    let fallbackText = '';
+    if (contextType === 'workload') {
+      fallbackText = `💡 تحليل وتعديل حجم الحفظ اليومي:
+• نمط الإنجاز الحالي: ${deterministicReport.missedTasksPattern}
+• الأسباب المرصودة: ${deterministicReport.difficultyReasons.join(' - ')}
+• التعديل المقترح: ${deterministicReport.suggestedWorkloadAdjustments.join('\n• ')}`;
+    } else if (contextType === 'priorities') {
+      fallbackText = `🎯 أولويات المراجعة والتثبيت العاجلة:
+${deterministicReport.revisionPriorities.map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+💡 توجيه: تقديم مراجعة هذه المقاطع في ورد اليوم قبل البدء بأي حفظ جديد.`;
+    } else if (contextType === 'weekly_summary') {
+      fallbackText = `📊 ملخص الإنجاز الأسبوعي:
+• إجمالي دقائق التعاهد: ${deterministicReport.weeklySummary.totalMinutes} دقيقة.
+• الآيات المحفوظة: ${deterministicReport.weeklySummary.totalAyahsMemorized} آية.
+• الأوجه المراجعة: ${deterministicReport.weeklySummary.totalPagesReviewed} وجه.
+• معدل الثبات والاستمرارية: ${deterministicReport.weeklySummary.consistencyScore}.`;
+    } else {
+      fallbackText = `تقرير التحليل القرآني الشامل:
+• نمط الالتزام: ${deterministicReport.missedTasksPattern}
+• التوصيات المقترحة:
+${deterministicReport.practicalRecommendations.map(r => `• ${r}`).join('\n')}
+• أولويات التثبيت:
+${deterministicReport.revisionPriorities.map(p => `• ${p}`).join('\n')}`;
+    }
+
+    return {
+      success: true,
+      text: fallbackText,
+      isFallback: true,
+      code: 'FALLBACK_USED',
+      report: deterministicReport
+    };
+  },
+
+  // Interactive Chat
+  async sendChatMessage(
+    message: string,
+    history: Array<{ sender: 'user' | 'advisor'; text: string }>
+  ): Promise<AdvisorResponse> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch('/api/advisor/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({ message, history })
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.text) {
+          return {
+            success: true,
+            text: data.text,
+            isFallback: false,
+            code: 'SUCCESS'
+          };
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Deterministic answer
+    const fallbackAnswer = DeterministicAdvisorEngine.answerQuestion(message);
+    return {
+      success: true,
+      text: fallbackAnswer,
+      isFallback: true,
+      code: 'FALLBACK_USED'
+    };
+  }
+};

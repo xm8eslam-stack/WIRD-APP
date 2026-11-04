@@ -2,15 +2,16 @@ import {
   UserProfile, 
   MemorizationPlan, 
   RevisionItem, 
-  AyahProgress, 
   DailyLog, 
   TestResult 
 } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
+import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 
 const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
   PLANS: 'wird_plans',
+  ENGINE_PLANS: 'wird_engine_plans',
   PROGRESS: 'wird_progress',
   REVISION: 'wird_revision',
   LOGS: 'wird_logs',
@@ -123,9 +124,54 @@ const DEFAULT_LOGS: DailyLog[] = [
   { date: "2026-11-04", memorizedAyahsCount: 5, reviewedPagesCount: 3, minutesSpent: 25, completedTasks: ["حفظ سورة النبأ 36-40"] }
 ];
 
+function buildInitialEnginePlan(): EngineGeneratedPlan {
+  const plan = PlanningEngine.generatePlan({
+    title: "خطة إتقان سورة الملك (المنجية)",
+    startSurah: 67,
+    startAyah: 1,
+    endSurah: 67,
+    endAyah: 30,
+    startDate: "2026-11-01",
+    level: "intermediate",
+    dailyAvailableMinutes: 30,
+    dailyRevisionMinutes: 15,
+    paceType: "verses_per_day",
+    paceQuantity: 5,
+    activeDays: [0, 1, 2, 3, 4, 6], // Sun-Thu, Sat
+    restDays: [5], // Friday off
+    schedulePreference: "single_session",
+    existingMemorized: [
+      { surahNumber: 1, startAyah: 1, endAyah: 7 },
+      { surahNumber: 78, startAyah: 1, endAyah: 20 }
+    ]
+  });
+
+  // Mark first two days as completed for demo historical progress
+  if (plan.schedule[0]?.memorizationTask) {
+    plan.schedule[0].memorizationTask.completed = true;
+    plan.schedule[0].memorizationTask.completedAt = "2026-11-01T10:00:00Z";
+    plan.schedule[0].status = 'completed';
+  }
+  if (plan.schedule[1]?.memorizationTask) {
+    plan.schedule[1].memorizationTask.completed = true;
+    plan.schedule[1].memorizationTask.completedAt = "2026-11-02T10:00:00Z";
+    plan.schedule[1].status = 'completed';
+  }
+
+  plan.actualVsPlanned = {
+    plannedVersesToDate: 15,
+    actualVersesMemorized: 10,
+    varianceVerses: -5,
+    status: 'on_track'
+  };
+
+  return plan;
+}
+
 export const StorageService = {
   getProfile(): UserProfile {
     try {
+      if (typeof localStorage === 'undefined') return DEFAULT_PROFILE;
       const data = localStorage.getItem(STORAGE_KEYS.PROFILE);
       return data ? JSON.parse(data) : DEFAULT_PROFILE;
     } catch {
@@ -135,7 +181,9 @@ export const StorageService = {
 
   saveProfile(profile: UserProfile): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+      }
     } catch (e) {
       console.warn("Storage write failed", e);
     }
@@ -143,6 +191,7 @@ export const StorageService = {
 
   getPlans(): MemorizationPlan[] {
     try {
+      if (typeof localStorage === 'undefined') return PRESET_PLANS;
       const data = localStorage.getItem(STORAGE_KEYS.PLANS);
       return data ? JSON.parse(data) : PRESET_PLANS;
     } catch {
@@ -152,7 +201,34 @@ export const StorageService = {
 
   savePlans(plans: MemorizationPlan[]): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
+      }
+    } catch (e) {
+      console.warn("Storage write failed", e);
+    }
+  },
+
+  getEnginePlans(): EngineGeneratedPlan[] {
+    try {
+      if (typeof localStorage === 'undefined') return [buildInitialEnginePlan()];
+      const data = localStorage.getItem(STORAGE_KEYS.ENGINE_PLANS);
+      if (data) {
+        return JSON.parse(data);
+      }
+      const initial = [buildInitialEnginePlan()];
+      this.saveEnginePlans(initial);
+      return initial;
+    } catch {
+      return [buildInitialEnginePlan()];
+    }
+  },
+
+  saveEnginePlans(plans: EngineGeneratedPlan[]): void {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
+      }
     } catch (e) {
       console.warn("Storage write failed", e);
     }
@@ -160,6 +236,7 @@ export const StorageService = {
 
   getRevisionItems(): RevisionItem[] {
     try {
+      if (typeof localStorage === 'undefined') return DEFAULT_REVISION_ITEMS;
       const data = localStorage.getItem(STORAGE_KEYS.REVISION);
       return data ? JSON.parse(data) : DEFAULT_REVISION_ITEMS;
     } catch {
@@ -169,7 +246,9 @@ export const StorageService = {
 
   saveRevisionItems(items: RevisionItem[]): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
+      }
     } catch (e) {
       console.warn("Storage write failed", e);
     }
@@ -177,6 +256,7 @@ export const StorageService = {
 
   getLogs(): DailyLog[] {
     try {
+      if (typeof localStorage === 'undefined') return DEFAULT_LOGS;
       const data = localStorage.getItem(STORAGE_KEYS.LOGS);
       return data ? JSON.parse(data) : DEFAULT_LOGS;
     } catch {
@@ -186,7 +266,9 @@ export const StorageService = {
 
   saveLogs(logs: DailyLog[]): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
+      }
     } catch (e) {
       console.warn("Storage write failed", e);
     }
@@ -246,13 +328,16 @@ export const StorageService = {
 
   exportFullBackup(): string {
     const backup = {
-      version: 1,
+      version: 3,
       timestamp: new Date().toISOString(),
       profile: this.getProfile(),
       plans: this.getPlans(),
+      enginePlans: this.getEnginePlans(),
       revisionItems: this.getRevisionItems(),
       logs: this.getLogs(),
-      tests: this.getTests()
+      tests: this.getTests(),
+      portions: localStorage.getItem('wird_portions_status') ? JSON.parse(localStorage.getItem('wird_portions_status')!) : null,
+      weakVerses: localStorage.getItem('wird_weak_verses') ? JSON.parse(localStorage.getItem('wird_weak_verses')!) : null
     };
     return JSON.stringify(backup, null, 2);
   },
@@ -262,8 +347,11 @@ export const StorageService = {
       const parsed = JSON.parse(jsonString);
       if (parsed.profile) this.saveProfile(parsed.profile);
       if (parsed.plans) this.savePlans(parsed.plans);
+      if (parsed.enginePlans) this.saveEnginePlans(parsed.enginePlans);
       if (parsed.revisionItems) this.saveRevisionItems(parsed.revisionItems);
       if (parsed.logs) this.saveLogs(parsed.logs);
+      if (parsed.portions) localStorage.setItem('wird_portions_status', JSON.stringify(parsed.portions));
+      if (parsed.weakVerses) localStorage.setItem('wird_weak_verses', JSON.stringify(parsed.weakVerses));
       return true;
     } catch {
       return false;
@@ -273,9 +361,12 @@ export const StorageService = {
   resetAllData(): void {
     localStorage.removeItem(STORAGE_KEYS.PROFILE);
     localStorage.removeItem(STORAGE_KEYS.PLANS);
+    localStorage.removeItem(STORAGE_KEYS.ENGINE_PLANS);
     localStorage.removeItem(STORAGE_KEYS.PROGRESS);
     localStorage.removeItem(STORAGE_KEYS.REVISION);
     localStorage.removeItem(STORAGE_KEYS.LOGS);
     localStorage.removeItem(STORAGE_KEYS.TESTS);
+    localStorage.removeItem('wird_portions_status');
+    localStorage.removeItem('wird_weak_verses');
   }
 };
