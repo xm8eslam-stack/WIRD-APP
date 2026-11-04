@@ -1,0 +1,6 @@
+{
+  "name": "WIRD | وِرد - منصة حفظ ومراجعة القرآن الكريم",
+  "description": "منصة ذكية متكاملة لحفظ القرآن الكريم وتثبيته وتنظيم المراجعة اليومية والمتباعدة وفق أحدث المنهجيات",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,75 @@
+import { MemorizationPlan } from '../types/quran';
+
+export const PRESET_PLANS: MemorizationPlan[] = [
+  {
+    id: "plan-juz-amma",
+    title: "خطة إتقان جزء عمّ في 30 يوماً",
+    description: "خطة منهجية موجهة للمبتدئين والأطفال لإتقان الجزء الثلاثين بمعدل مدروس مع يومين مراجعة أسبوعياً.",
+    type: "juz",
+    targetJuz: [30],
+    totalUnits: 564, // total ayahs in Juz Amma
+    completedUnits: 142,
+    unitType: "ayah",
+    dailyTarget: 8,
+    memorizationDaysPerWeek: 5,
+    revisionDaysPerWeek: 2,
+    startDate: "2026-10-15",
+    targetEndDate: "2026-11-15",
+    isActive: true,
+    color: "#059669"
+  },
+  {
+    id: "plan-al-mulk",
+    title: "خطة سورة الملك (المنجية) في 10 أيام",
+    description: "حفظ وتثبيت سورة الملك (30 آية) بمعدل 3 آيات يومياً مع ربط يومي بالآيات السابقة وفهم المعاني.",
+    type: "surahs",
+    targetSurahs: [67],
+    totalUnits: 30,
+    completedUnits: 30,
+    unitType: "ayah",
+    dailyTarget: 3,
+    memorizationDaysPerWeek: 6,
+    revisionDaysPerWeek: 1,
+    startDate: "2026-10-01",
+    targetEndDate: "2026-10-11",
+    isActive: false,
+    color: "#b45309"
+  },
+  {
+    id: "plan-baqarah",
+    title: "خطة سورة البقرة في 90 يوماً",
+    description: "خطة لحفظ فسطاط القرآن (48 صفحة) بمعدل نصف صفحة يومياً مع نظام تثبيت متباعد لا تفلت معه الآيات.",
+    type: "surahs",
+    targetSurahs: [2],
+    startPage: 2,
+    endPage: 49,
+    totalUnits: 48,
+    completedUnits: 18,
+    unitType: "page",
+    dailyTarget: 1,
+    memorizationDaysPerWeek: 5,
+    revisionDaysPerWeek: 2,
+    startDate: "2026-09-01",
+    targetEndDate: "2026-12-01",
+    isActive: false,
+    color: "#047857"
+  },
+  {
+    id: "plan-three-years",
+    title: "خطة الحفظ المتأني للقرآن كاملاً (3 سنوات)",
+    description: "المنهج الذهبي المعتمد لدى كبار مشايخ الإقراء: صفحة واحدة يومياً طيلة 3 سنوات مع مراجعة الحزب الأسبوعي.",
+    type: "whole_quran",
+    startPage: 1,
+    endPage: 604,
+    totalUnits: 604,
+    completedUnits: 72,
+    unitType: "page",
+    dailyTarget: 1,
+    memorizationDaysPerWeek: 5,
+    revisionDaysPerWeek: 2,
+    startDate: "2026-01-01",
+    targetEndDate: "2028-12-31",
+    isActive: false,
+    color: "#0f766e"
+  }
+];

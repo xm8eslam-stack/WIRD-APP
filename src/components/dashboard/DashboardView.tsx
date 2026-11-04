@@ -1,0 +1,466 @@
+import React from 'react';
+import { 
+  Play, 
+  Repeat, 
+  CheckCircle, 
+  Sparkles, 
+  Flame, 
+  Calendar, 
+  ArrowLeft, 
+  BookOpen, 
+  Check, 
+  Compass,
+  Trophy,
+  Clock
+} from 'lucide-react';
+import { 
+  UserProfile, 
+  MemorizationPlan, 
+  RevisionItem, 
+  DailyLog 
+} from '../../types/quran';
+import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES } from '../../data/quranMeta';
+import { NavTabId } from '../layout/Sidebar';
+
+interface DashboardViewProps {
+  profile: UserProfile;
+  plans: MemorizationPlan[];
+  revisionItems: RevisionItem[];
+  logs: DailyLog[];
+  onNavigate: (tab: NavTabId) => void;
+  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number) => void;
+}
+
+export const DashboardView: React.FC<DashboardViewProps> = ({
+  profile,
+  plans,
+  revisionItems,
+  logs,
+  onNavigate,
+  onStartSession
+}) => {
+  const activePlan = plans.find(p => p.isActive) || plans[0];
+
+  // Calculate due revision items
+  const todayStr = new Date().toISOString().split('T')[0];
+  const dueRevisions = revisionItems.filter(item => item.nextDueDate <= todayStr);
+  const minorRevisions = dueRevisions.filter(i => i.type === 'minor');
+  const majorRevisions = dueRevisions.filter(i => i.type === 'major');
+
+  // Overall statistics
+  const totalMemorizedAyahs = 172;
+  const totalMemorizedPages = 14;
+  const versesPercentage = ((totalMemorizedAyahs / TOTAL_QURAN_VERSES) * 100).toFixed(1);
+  const pagesPercentage = ((totalMemorizedPages / TOTAL_QURAN_PAGES) * 100).toFixed(1);
+
+  // Weekly stats
+  const last7Logs = logs.slice(-7);
+  const totalWeeklyMinutes = last7Logs.reduce((acc, curr) => acc + curr.minutesSpent, 0);
+  const totalWeeklyAyahs = last7Logs.reduce((acc, curr) => acc + curr.memorizedAyahsCount, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* 1. Personalized Welcome & Daily Ayah Banner */}
+      <section className="bg-gradient-to-l from-emerald-950 via-emerald-900 to-emerald-800 text-white rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden border border-emerald-800/60">
+        {/* Subtle decorative radial atmosphere */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-radial from-amber-400/15 via-emerald-700/5 to-transparent rounded-full -translate-x-32 -translate-y-32 pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl text-right">
+            <div className="flex items-center gap-2 text-amber-300 text-xs font-semibold">
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>وِردك القرآني اليومي رِفعةٌ لدرجاتك في الجنة</span>
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran text-amber-50 leading-tight">
+              السلام عليكم ورحمة الله، {profile.name}
+            </h2>
+            <p className="text-emerald-100/90 text-sm md:text-base leading-relaxed font-quran pt-1">
+              «وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ» — استعن بالله وابدأ وِردك ليظل كتاب الله غضاً طرياً في صدرك.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              onClick={() => onStartSession(67, 1, 10)}
+              className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300"
+            >
+              <Play className="w-4 h-4 fill-emerald-950" />
+              <span>ابدأ ورد اليوم (سورة الملك)</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('revision')}
+              className="flex items-center gap-2 px-4 py-3 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 font-semibold text-xs md:text-sm rounded-xl border border-emerald-600/40 transition-colors"
+            >
+              <Repeat className="w-4 h-4" />
+              <span>المراجعة والتثبيت ({dueRevisions.length})</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Primary Focus: Clear Distinction Between New Memorization vs. Revision */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* NEW MEMORIZATION CARD (الحفظ الجديد) */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
+                    الحفظ الجديد (الورد اليومي)
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    الخطة النشطة: {activePlan?.title || "حفظ جزء عمّ"}
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-md border border-emerald-200/50 dark:border-emerald-800/40">
+                مستهدف اليوم
+              </span>
+            </div>
+
+            <div className="bg-[#fcfbf7] dark:bg-stone-900/60 rounded-xl p-4 border border-stone-200/70 dark:border-stone-700/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-stone-500 dark:text-stone-400">السورة والآيات:</div>
+                  <div className="text-lg font-bold text-emerald-900 dark:text-emerald-200 font-quran">
+                    سورة الملك • الآيات (1 - 10)
+                  </div>
+                </div>
+                <div className="text-left">
+                  <div className="text-xs text-stone-500 dark:text-stone-400">الكمية المقررة:</div>
+                  <div className="text-sm font-bold text-stone-800 dark:text-stone-200 font-mono tabular-nums">
+                    10 آيات (صفحة 562)
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-xs text-stone-700 dark:text-stone-300 font-quran text-base leading-loose bg-white dark:bg-stone-800 p-3.5 rounded-lg border border-stone-200/60 dark:border-stone-700/50 text-right">
+                «تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ۝ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ...»
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-stone-400" />
+                <span>المدة المتوقعة: <strong className="text-stone-800 dark:text-stone-200">20 دقيقة</strong></span>
+              </div>
+              <div>
+                <span>طريقة الحفظ: <strong className="text-emerald-700 dark:text-emerald-400">التكرار 10 مرات مع الإخفاء</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-5 mt-4 border-t border-stone-100 dark:border-stone-700">
+            <button
+              onClick={() => onStartSession(67, 1, 10)}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors"
+            >
+              <Play className="w-4 h-4 fill-white" />
+              <span>بدء جلسة الحفظ التفاعلية</span>
+            </button>
+          </div>
+        </div>
+
+        {/* REVISION CARD (المراجعة والتثبيت) */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center">
+                  <Repeat className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
+                    المراجعة والتثبيت (التكرار المتباعد)
+                  </h3>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    المراجعة الصغرى (الحديثة) والكبرى (التراكمية)
+                  </p>
+                </div>
+              </div>
+
+              <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-md border border-amber-200/50 dark:border-amber-800/40">
+                {dueRevisions.length} مهام مستحقة
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {dueRevisions.slice(0, 3).map((item) => (
+                <div 
+                  key={item.id}
+                  className="p-3.5 bg-[#faf8f5] dark:bg-stone-900/60 rounded-xl border border-stone-200/60 dark:border-stone-700/60 flex items-center justify-between text-xs"
+                >
+                  <div className="space-y-0.5 text-right">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-stone-900 dark:text-stone-100 text-sm font-quran">
+                        سورة {item.surahName}
+                      </span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                        item.type === 'minor' 
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' 
+                          : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                      }`}>
+                        {item.type === 'minor' ? 'مراجعة صغرى' : 'مراجعة كبرى'}
+                      </span>
+                    </div>
+                    <div className="text-stone-500 dark:text-stone-400">
+                      الآيات ({item.startAyah} - {item.endAyah}) {item.pageNumber && `· صفحة ${item.pageNumber}`}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigate('revision')}
+                    className="px-3.5 py-1.5 bg-stone-100 dark:bg-stone-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-stone-800 dark:text-stone-200 hover:text-emerald-900 dark:hover:text-emerald-300 rounded-lg font-semibold transition-colors"
+                  >
+                    مراجعة
+                  </button>
+                </div>
+              ))}
+
+              {dueRevisions.length === 0 && (
+                <div className="text-center py-6 text-stone-500 text-xs space-y-1">
+                  <Check className="w-6 h-6 text-emerald-600 mx-auto" />
+                  <p>أتممت جميع مهام المراجعة لليوم، بارك الله فيك!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between text-xs">
+            <span className="text-stone-500 dark:text-stone-400">
+              صغرى: {minorRevisions.length} · كبرى: {majorRevisions.length}
+            </span>
+            <button
+              onClick={() => onNavigate('revision')}
+              className="text-amber-700 dark:text-amber-400 font-bold hover:underline flex items-center gap-1"
+            >
+              <span>فتح مركز المراجعة الكامل</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Overall Quran Progress & Active Plan Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: Verses */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الآيات المحفوظة</div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
+              {totalMemorizedAyahs}
+            </span>
+            <span className="text-xs text-stone-400 tabular-nums font-mono">من {TOTAL_QURAN_VERSES}</span>
+          </div>
+          <div className="w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${versesPercentage}%` }} />
+          </div>
+          <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
+            {versesPercentage}% من مجموع آيات القرآن
+          </div>
+        </div>
+
+        {/* Metric 2: Pages */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المتقنة</div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
+              {totalMemorizedPages}
+            </span>
+            <span className="text-xs text-stone-400 tabular-nums font-mono">من {TOTAL_QURAN_PAGES} صفحة</span>
+          </div>
+          <div className="w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden">
+            <div className="bg-amber-600 h-full rounded-full" style={{ width: `${pagesPercentage}%` }} />
+          </div>
+          <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5 font-medium">
+            {pagesPercentage}% إنجاز المصحف الشريف
+          </div>
+        </div>
+
+        {/* Metric 3: Weekly Activity */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">نشاط هذا الأسبوع</div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
+              {totalWeeklyMinutes}
+            </span>
+            <span className="text-xs text-stone-400">دقيقة حفظ ومراجعة</span>
+          </div>
+          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-3 font-medium">
+            تم حفظ <strong className="text-emerald-700 dark:text-emerald-400">{totalWeeklyAyahs} آية</strong> جديدة
+          </div>
+        </div>
+
+        {/* Metric 4: Streak */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="text-xs text-stone-500 dark:text-stone-400 mb-1 flex items-center justify-between">
+              <span>سلسلة الالتزام</span>
+              <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+            </div>
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums font-mono">
+              {profile.streakDays} يوماً متواصلاً
+            </div>
+          </div>
+          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-2">
+            مستوى التثبيت الحالي: <strong className="text-emerald-700 dark:text-emerald-400">ممتاز (94%)</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Weekly Activity Chart & Quick Action Hub */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Weekly Chart */}
+        <div className="lg:col-span-2 bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">
+                سجل النشاط الأسبوعي (الدقائق والآيات)
+              </h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                انتظامك اليومي هو سر رسوخ المحفوظ في الصدر
+              </p>
+            </div>
+            <span className="text-xs text-stone-500 font-mono">آخر 7 أيام</span>
+          </div>
+
+          <div className="flex items-end justify-between gap-3 h-40 pt-4 border-b border-stone-100 dark:border-stone-700">
+            {last7Logs.map((log, idx) => {
+              const maxMinutes = 50;
+              const heightPercent = Math.min(100, Math.round((log.minutesSpent / maxMinutes) * 100));
+              const dayName = new Date(log.date).toLocaleDateString('ar-SA', { weekday: 'short' });
+
+              return (
+                <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
+                  {/* Tooltip on Hover */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 bg-stone-900 text-white text-[10px] py-1 px-2 rounded-md whitespace-nowrap pointer-events-none z-20 font-mono">
+                    {log.minutesSpent}د · {log.memorizedAyahsCount} آيات
+                  </div>
+
+                  <div className="text-[10px] text-stone-400 font-mono tabular-nums">
+                    {log.minutesSpent}د
+                  </div>
+                  <div className="w-full max-w-[32px] bg-stone-100 dark:bg-stone-700 rounded-t-lg overflow-hidden h-full flex items-end">
+                    <div 
+                      className="w-full bg-emerald-700 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-t-lg transition-all duration-300"
+                      style={{ height: `${heightPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-400">
+                    {dayName}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between pt-4 text-xs text-stone-500">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-xs bg-emerald-700 inline-block" />
+              <span>جلسات الحفظ والمراجعة (بالدقائق)</span>
+            </div>
+            <button
+              onClick={() => onNavigate('progress')}
+              className="text-emerald-700 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+            >
+              <span>عرض تفاصيل المصحف والتقارير</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Actions Hub */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100 mb-1">
+              إجراءات سريعة
+            </h3>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-4">
+              أدوات تفاعلية لدعم رحلة حفظك
+            </p>
+
+            <div className="space-y-2.5">
+              <button
+                onClick={() => onNavigate('tests')}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">اختبر حفظك الآن</div>
+                    <div className="text-[11px] text-stone-500">أكمل الآية، المتشابهات اللفظية</div>
+                  </div>
+                </div>
+                <ArrowLeft className="w-4 h-4 text-stone-400" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('library')}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">تصفح المصحف والمكتبة</div>
+                    <div className="text-[11px] text-stone-500">114 سورة مع الاستماع والتفسير</div>
+                  </div>
+                </div>
+                <ArrowLeft className="w-4 h-4 text-stone-400" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('plans')}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 flex items-center justify-center">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">إدارة خطط الحفظ</div>
+                    <div className="text-[11px] text-stone-500">إنشاء خطة مخصصة أو تفعيل نموذج</div>
+                  </div>
+                </div>
+                <ArrowLeft className="w-4 h-4 text-stone-400" />
+              </button>
+
+              <button
+                onClick={() => onNavigate('advisor')}
+                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 flex items-center justify-center">
+                    <Compass className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100">المستشار القرآني</div>
+                    <div className="text-[11px] text-stone-500">نصائح التثبيت وعلاج التفلت</div>
+                  </div>
+                </div>
+                <ArrowLeft className="w-4 h-4 text-stone-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-4 mt-3 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between text-xs text-stone-500">
+            <span className="flex items-center gap-1">
+              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+              <span>الهدف الشهري: ختم جزء عمّ</span>
+            </span>
+            <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">75%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

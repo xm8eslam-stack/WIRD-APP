@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  }
+
+  .font-quran {
+    font-family: 'Amiri', serif;
+  }
+
+  .font-sans-ui {
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 113, 108, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 113, 108, 0.4);
+}
+
+/* Islamic pattern background overlay helper */
+.bg-islamic-pattern {
+  background-color: #fdfbf7;
+  background-image: radial-gradient(#065f46 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #fdfbf7 0.75px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+}
+
+.dark .bg-islamic-pattern {
+  background-color: #0f172a;
+  background-image: radial-gradient(#10b981 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #0f172a 0.75px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+}
+
+/* Quran Ayah End Marker */
+.ayah-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.8rem;
+  height: 1.8rem;
+  margin: 0 0.35rem;
+  font-size: 0.85rem;
+  font-family: 'Amiri', serif;
+  color: #b45309;
+  border: 1.5px solid #d97706;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: rgba(251, 191, 36, 0.08);
+  font-feature-settings: "tnum";
+}
+
+.dark .ayah-number {
+  color: #fcd34d;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+}
