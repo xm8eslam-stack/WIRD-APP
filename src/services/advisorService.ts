@@ -70,49 +70,7 @@ export const AdvisorService = {
     // 1. Always generate deterministic report as baseline
     const deterministicReport = DeterministicAdvisorEngine.analyzeHistory(logs, profile, portions, weakVerses);
 
-    // 2. Attempt server-side Gemini Free Tier call
-    try {
-      const activePlan = plans.find(p => p.isActive) || plans[0];
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      const res = await fetch('/api/advisor/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contextType,
-          query: customQuery,
-          userData: {
-            name: profile.name,
-            goal: profile.memorizationGoal,
-            activePlanTitle: activePlan?.title,
-            memorizedAyahsCount: portions.filter(p => p.status !== 'not_memorized').reduce((s, p) => s + (p.endAyah - p.startAyah + 1), 0),
-            weakVersesCount: weakVerses.length,
-            retentionScore: 88,
-            dueRevisionsCount: portions.filter(p => p.nextDueDate <= new Date().toISOString().split('T')[0]).length
-          }
-        })
-      });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.text) {
-          return {
-            success: true,
-            text: data.text,
-            isFallback: false,
-            code: 'SUCCESS',
-            report: deterministicReport
-          };
-        }
-      }
-    } catch (e) {
-      console.info('Using deterministic advisor fallback:', e);
-    }
-
-    // 3. Fallback to deterministic report
+    // 2. Pre-generate deterministic fallback text
     let fallbackText = '';
     if (contextType === 'workload') {
       fallbackText = `💡 تحليل وتعديل حجم الحفظ اليومي:
@@ -137,6 +95,56 @@ ${deterministicReport.revisionPriorities.map((p, i) => `${i + 1}. ${p}`).join('\
 ${deterministicReport.practicalRecommendations.map(r => `• ${r}`).join('\n')}
 • أولويات التثبيت:
 ${deterministicReport.revisionPriorities.map(p => `• ${p}`).join('\n')}`;
+    }
+
+    // 3. Attempt server-side Gemini Free Tier call
+    try {
+      const activePlan = plans.find(p => p.isActive) || plans[0];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch('/api/advisor/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          contextType,
+          query: customQuery,
+          userData: {
+            goal: profile.memorizationGoal || 'حفظ القرآن الكريم',
+            activePlanTitle: activePlan?.title || 'خطة الحفظ',
+            memorizedAyahsCount: portions.filter(p => p.status !== 'not_memorized').reduce((s, p) => s + (p.endAyah - p.startAyah + 1), 0),
+            weakVersesCount: weakVerses.length,
+            retentionScore: deterministicReport.completionRate || 0,
+            dueRevisionsCount: portions.filter(p => p.nextDueDate <= new Date().toISOString().split('T')[0]).length
+          }
+        })
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.text) {
+          return {
+            success: true,
+            text: data.text,
+            isFallback: false,
+            code: 'SUCCESS',
+            report: deterministicReport
+          };
+        }
+        if (data.code === 'QUOTA_EXHAUSTED') {
+          return {
+            success: true,
+            text: fallbackText,
+            isFallback: true,
+            code: 'QUOTA_EXHAUSTED',
+            report: deterministicReport
+          };
+        }
+      }
+    } catch (e) {
+      console.info('Using deterministic advisor fallback:', e);
     }
 
     return {

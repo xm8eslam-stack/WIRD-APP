@@ -13,13 +13,14 @@ export interface SurahMeta {
 }
 
 export interface Ayah {
-  number: number; // overall number or numberInSurah
+  number: number; // overall number (1 to 6236)
   numberInSurah: number;
   surahNumber: number;
   text: string;
   words?: string[];
   juz: number;
   page: number;
+  hizbQuarter?: number;
   sajda?: boolean;
 }
 

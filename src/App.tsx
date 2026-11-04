@@ -2,19 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Header } from './components/layout/Header';
 import { Sidebar, NavTabId } from './components/layout/Sidebar';
 import { DashboardView } from './components/dashboard/DashboardView';
-import { QuranLibraryView } from './components/library/QuranLibraryView';
-import { MemorizationPlansView } from './components/plans/MemorizationPlansView';
-import { MemorizationSessionView } from './components/session/MemorizationSessionView';
-import { RevisionCenterView } from './components/revision/RevisionCenterView';
-import { MemorizationTestsView } from './components/tests/MemorizationTestsView';
-import { ProgressAnalyticsView } from './components/progress/ProgressAnalyticsView';
-import { QuranAdvisorView } from './components/assistant/QuranAdvisorView';
-import { SettingsView } from './components/settings/SettingsView';
 import { StorageService } from './services/storageService';
 import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
 import { EngineGeneratedPlan } from './services/planningEngine';
-import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
+
+// Lazy loaded views for optimal chunking and initial load performance
+const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
+const MemorizationPlansView = React.lazy(() => import('./components/plans/MemorizationPlansView').then(m => ({ default: m.MemorizationPlansView })));
+const MemorizationSessionView = React.lazy(() => import('./components/session/MemorizationSessionView').then(m => ({ default: m.MemorizationSessionView })));
+const RevisionCenterView = React.lazy(() => import('./components/revision/RevisionCenterView').then(m => ({ default: m.RevisionCenterView })));
+const MemorizationTestsView = React.lazy(() => import('./components/tests/MemorizationTestsView').then(m => ({ default: m.MemorizationTestsView })));
+const ProgressAnalyticsView = React.lazy(() => import('./components/progress/ProgressAnalyticsView').then(m => ({ default: m.ProgressAnalyticsView })));
+const QuranAdvisorView = React.lazy(() => import('./components/assistant/QuranAdvisorView').then(m => ({ default: m.QuranAdvisorView })));
+const SettingsView = React.lazy(() => import('./components/settings/SettingsView').then(m => ({ default: m.SettingsView })));
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTabId>('dashboard');
@@ -153,6 +155,7 @@ export default function App() {
   // Reset all data
   const handleResetAllData = () => {
     StorageService.resetAllData();
+    RetentionService.resetAll();
     setProfile(StorageService.getProfile());
     setPlans(StorageService.getPlans());
     setEnginePlans(StorageService.getEnginePlans());
@@ -188,95 +191,102 @@ export default function App() {
           onStartDailySession={() => handleStartSession(67, 1, 10)}
         />
 
-        {/* Content Viewport */}
+        {/* Content Viewport with Code Splitting Suspense */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
-          {currentTab === 'dashboard' && (
-            <DashboardView
-              profile={profile}
-              plans={plans}
-              revisionItems={revisionItems}
-              logs={logs}
-              onNavigate={setCurrentTab}
-              onStartSession={handleStartSession}
-            />
-          )}
+          <React.Suspense fallback={
+            <div className="flex flex-col items-center justify-center py-28 space-y-3 text-stone-400">
+              <Loader2 className="w-8 h-8 animate-spin text-emerald-700 dark:text-emerald-400" />
+              <p className="text-xs font-semibold">جارٍ فتح القسم القرآني...</p>
+            </div>
+          }>
+            {currentTab === 'dashboard' && (
+              <DashboardView
+                profile={profile}
+                plans={plans}
+                revisionItems={revisionItems}
+                logs={logs}
+                onNavigate={setCurrentTab}
+                onStartSession={handleStartSession}
+              />
+            )}
 
-          {currentTab === 'library' && (
-            <QuranLibraryView
-              onStartSession={handleStartSession}
-              preferredReciter={profile.preferredReciter}
-            />
-          )}
+            {currentTab === 'library' && (
+              <QuranLibraryView
+                onStartSession={handleStartSession}
+                preferredReciter={profile.preferredReciter}
+              />
+            )}
 
-          {currentTab === 'plans' && (
-            <MemorizationPlansView
-              plans={plans}
-              onUpdatePlans={handleUpdatePlans}
-              enginePlans={enginePlans}
-              onUpdateEnginePlans={handleUpdateEnginePlans}
-              onStartSession={handleStartSession}
-              onToast={showToast}
-            />
-          )}
+            {currentTab === 'plans' && (
+              <MemorizationPlansView
+                plans={plans}
+                onUpdatePlans={handleUpdatePlans}
+                enginePlans={enginePlans}
+                onUpdateEnginePlans={handleUpdateEnginePlans}
+                onStartSession={handleStartSession}
+                onToast={showToast}
+              />
+            )}
 
-          {currentTab === 'session' && (
-            <MemorizationSessionView
-              initialSurahNumber={sessionParams.surahNumber}
-              initialStartAyah={sessionParams.startAyah}
-              initialEndAyah={sessionParams.endAyah}
-              profile={profile}
-              onCompleteSession={handleCompleteSession}
-              onExit={() => setCurrentTab('dashboard')}
-            />
-          )}
+            {currentTab === 'session' && (
+              <MemorizationSessionView
+                initialSurahNumber={sessionParams.surahNumber}
+                initialStartAyah={sessionParams.startAyah}
+                initialEndAyah={sessionParams.endAyah}
+                profile={profile}
+                onCompleteSession={handleCompleteSession}
+                onExit={() => setCurrentTab('dashboard')}
+              />
+            )}
 
-          {currentTab === 'revision' && (
-            <RevisionCenterView
-              profile={profile}
-              onStartSession={handleStartSession}
-            />
-          )}
+            {currentTab === 'revision' && (
+              <RevisionCenterView
+                profile={profile}
+                onStartSession={handleStartSession}
+              />
+            )}
 
-          {currentTab === 'tests' && (
-            <MemorizationTestsView
-              onSaveTestResult={handleSaveTestResult}
-              onAddVerseToRevision={handleAddVerseToRevision}
-            />
-          )}
+            {currentTab === 'tests' && (
+              <MemorizationTestsView
+                onSaveTestResult={handleSaveTestResult}
+                onAddVerseToRevision={handleAddVerseToRevision}
+              />
+            )}
 
-          {currentTab === 'progress' && (
-            <ProgressAnalyticsView
-              logs={logs}
-              profile={profile}
-              onStartSession={handleStartSession}
-              onToast={showToast}
-              onRefreshData={() => {
-                setProfile(StorageService.getProfile());
-                setPlans(StorageService.getPlans());
-                setEnginePlans(StorageService.getEnginePlans());
-                setRevisionItems(StorageService.getRevisionItems());
-                setLogs(StorageService.getLogs());
-              }}
-            />
-          )}
+            {currentTab === 'progress' && (
+              <ProgressAnalyticsView
+                logs={logs}
+                profile={profile}
+                onStartSession={handleStartSession}
+                onToast={showToast}
+                onRefreshData={() => {
+                  setProfile(StorageService.getProfile());
+                  setPlans(StorageService.getPlans());
+                  setEnginePlans(StorageService.getEnginePlans());
+                  setRevisionItems(StorageService.getRevisionItems());
+                  setLogs(StorageService.getLogs());
+                }}
+              />
+            )}
 
-          {currentTab === 'advisor' && (
-            <QuranAdvisorView
-              profile={profile}
-              plans={plans}
-              logs={logs}
-              onStartSessionWithSurah={handleStartSession}
-            />
-          )}
+            {currentTab === 'advisor' && (
+              <QuranAdvisorView
+                profile={profile}
+                plans={plans}
+                logs={logs}
+                onStartSessionWithSurah={handleStartSession}
+              />
+            )}
 
-          {currentTab === 'settings' && (
-            <SettingsView
-              profile={profile}
-              onUpdateProfile={setProfile}
-              onResetAllData={handleResetAllData}
-              onToast={showToast}
-            />
-          )}
+            {currentTab === 'settings' && (
+              <SettingsView
+                profile={profile}
+                onUpdateProfile={setProfile}
+                onResetAllData={handleResetAllData}
+                onToast={showToast}
+              />
+            )}
+          </React.Suspense>
         </main>
       </div>
 

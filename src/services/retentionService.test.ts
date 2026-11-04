@@ -28,6 +28,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
 
   // 1. Initial Portion Status Verification
   runTest('RetentionService: Seed portions contain verified portions and valid statuses', () => {
+    RetentionService.loadDemoPortions();
     const portions = RetentionService.getPortions();
     assert(portions.length >= 5, `Expected at least 5 portions, got ${portions.length}`);
     const validStatuses: PortionMemorizationStatus[] = [

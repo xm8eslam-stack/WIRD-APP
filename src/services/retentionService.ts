@@ -272,7 +272,7 @@ let memoryPortions: PortionStatusRecord[] | null = null;
 let memoryWeakVerses: WeakVerseItem[] | null = null;
 
 export const RetentionService = {
-  // Get all tracked portions
+  // Get all tracked portions (Returns empty array for new users)
   getPortions(): PortionStatusRecord[] {
     try {
       if (typeof localStorage !== 'undefined') {
@@ -280,13 +280,12 @@ export const RetentionService = {
         if (data) {
           return JSON.parse(data);
         }
-        this.savePortions(DEFAULT_PORTIONS);
-        return DEFAULT_PORTIONS;
+        return [];
       }
-      if (!memoryPortions) memoryPortions = [...DEFAULT_PORTIONS];
+      if (!memoryPortions) memoryPortions = [];
       return memoryPortions;
     } catch {
-      return DEFAULT_PORTIONS;
+      return [];
     }
   },
 
@@ -516,7 +515,7 @@ export const RetentionService = {
     return weekOverview;
   },
 
-  // 3. Weak Verses List
+  // 3. Weak Verses List (Returns empty array for new users)
   getWeakVerses(): WeakVerseItem[] {
     try {
       if (typeof localStorage !== 'undefined') {
@@ -524,13 +523,12 @@ export const RetentionService = {
         if (data) {
           return JSON.parse(data);
         }
-        this.saveWeakVerses(DEFAULT_WEAK_VERSES);
-        return DEFAULT_WEAK_VERSES;
+        return [];
       }
-      if (!memoryWeakVerses) memoryWeakVerses = [...DEFAULT_WEAK_VERSES];
+      if (!memoryWeakVerses) memoryWeakVerses = [];
       return memoryWeakVerses;
     } catch {
-      return DEFAULT_WEAK_VERSES;
+      return [];
     }
   },
 
@@ -646,29 +644,46 @@ export const RetentionService = {
     const memorizedPortionsCount = portions.filter(p => p.status !== 'not_memorized').length;
     const averageEase = portions.length > 0 ? Number((totalEase / portions.length).toFixed(2)) : 2.5;
     
-    // Overall retention percentage
+    // Overall retention percentage calculated truthfully from real data
     const retentionScore = totalVerses > 0 
       ? Math.round((weightedRetentionPoints / totalVerses) * 100)
-      : 85;
+      : 0;
 
     const totalActive = memorizedPortionsCount || 1;
     const statusPercentages = {
-      stable: Math.round((breakdown.stable / totalActive) * 100),
-      recently_memorized: Math.round((breakdown.recently_memorized / totalActive) * 100),
-      needs_revision: Math.round((breakdown.needs_revision / totalActive) * 100),
-      weak: Math.round((breakdown.weak / totalActive) * 100),
-      currently_memorizing: Math.round((breakdown.currently_memorizing / totalActive) * 100)
+      stable: memorizedPortionsCount > 0 ? Math.round((breakdown.stable / totalActive) * 100) : 0,
+      recently_memorized: memorizedPortionsCount > 0 ? Math.round((breakdown.recently_memorized / totalActive) * 100) : 0,
+      needs_revision: memorizedPortionsCount > 0 ? Math.round((breakdown.needs_revision / totalActive) * 100) : 0,
+      weak: memorizedPortionsCount > 0 ? Math.round((breakdown.weak / totalActive) * 100) : 0,
+      currently_memorizing: memorizedPortionsCount > 0 ? Math.round((breakdown.currently_memorizing / totalActive) * 100) : 0
     };
 
     return {
       totalTrackedPortions: portions.length,
       totalMemorizedAyahs: totalVerses,
-      retentionScorePercentage: Math.min(100, Math.max(10, retentionScore)),
+      retentionScorePercentage: totalVerses > 0 ? Math.min(100, Math.max(0, retentionScore)) : 0,
       statusBreakdown: breakdown,
       statusPercentages,
       totalReviewsCompleted: history.length,
       weakVersesCount: weakVerses.length,
       averageEaseFactor: averageEase
     };
+  },
+
+  // Explicit demo loader for demo mode
+  loadDemoPortions(): void {
+    this.savePortions(DEFAULT_PORTIONS);
+    this.saveWeakVerses(DEFAULT_WEAK_VERSES);
+  },
+
+  // Complete reset
+  resetAll(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEYS.PORTIONS);
+      localStorage.removeItem(STORAGE_KEYS.WEAK_VERSES);
+    }
+    memoryPortions = [];
+    memoryWeakVerses = [];
   }
 };
+

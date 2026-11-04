@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Settings, 
   User, 
@@ -10,11 +10,17 @@ import {
   Save, 
   Check, 
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Download,
+  Upload,
+  FileText,
+  Database,
+  AlertTriangle
 } from 'lucide-react';
 import { UserProfile, ReciterId } from '../../types/quran';
 import { RECITERS } from '../../services/audioService';
 import { StorageService } from '../../services/storageService';
+import { RetentionService } from '../../services/retentionService';
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -32,6 +38,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [formData, setFormData] = useState<UserProfile>(profile);
   const [isSaved, setIsSaved] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showDemoConfirm, setShowDemoConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,10 +53,64 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleConfirmReset = () => {
+    StorageService.resetAllData();
+    RetentionService.resetAll();
     onResetAllData();
+    setFormData(StorageService.getProfile());
     setShowResetConfirm(false);
     if (onToast) {
-      onToast("تمت إعادة ضبط بيانات المنصة للحالة الافتراضية بنجاح", "info");
+      onToast("تمت إعادة ضبط بيانات المنصة ونقطة البداية الصفرية بنجاح", "info");
+    }
+  };
+
+  const handleExportBackup = () => {
+    const backupJson = StorageService.exportFullBackup();
+    const blob = new Blob([backupJson], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wird-quran-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    if (onToast) {
+      onToast("تم تصدير ملف النسخة الاحتياطية بنجاح (ملف نصي JSON غير مشفر)", "success");
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const result = StorageService.importBackup(content);
+      if (result.success) {
+        const updated = StorageService.getProfile();
+        setFormData(updated);
+        onUpdateProfile(updated);
+        if (onToast) {
+          onToast(result.message, "success");
+        }
+      } else {
+        if (onToast) {
+          onToast(`فشل استيراد النسخة: ${result.message}`, "error");
+        }
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleLoadDemoData = () => {
+    StorageService.loadDemoData();
+    RetentionService.loadDemoPortions();
+    const updated = StorageService.getProfile();
+    setFormData(updated);
+    onUpdateProfile(updated);
+    setShowDemoConfirm(false);
+    if (onToast) {
+      onToast("تم تحميل البيانات التجريبية بنجاح (سجلات استعراضية للملك والنبأ)", "info");
     }
   };
 
@@ -231,6 +293,79 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
+        {/* 5. Backup & Data Management Card */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">
+          <div className="flex items-center gap-2 font-bold text-sm text-stone-900 dark:text-stone-100 border-b border-stone-100 dark:border-stone-700 pb-3">
+            <Database className="w-4 h-4 text-emerald-700" />
+            <span>النسخ الاحتياطي واستعادة البيانات</span>
+          </div>
+
+          <p className="text-stone-600 dark:text-stone-400 leading-relaxed">
+            بياناتك محفوظة محلياً على هذا المتصفح. يمكنك تصدير نسخة احتياطية كاملة ونقلها إلى أي جهاز آخر أو استعادتها بأمان.
+          </p>
+
+          {/* Security Transparency Notice */}
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-[11px] leading-relaxed">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+            <span>
+              <strong>إشعار الشفافية والخصوصية:</strong> ملفات النسخ الاحتياطي نصية غير مشفرة بصيغة JSON صريحة. احتفظ بملفاتك المصدرة في مكان آمن لضمان خصوصيتك التامة.
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold border border-stone-300 dark:border-stone-700 transition-colors shadow-2xs"
+            >
+              <Download className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+              <span>تصدير نسخة احتياطية (JSON)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold border border-stone-300 dark:border-stone-700 transition-colors shadow-2xs"
+            >
+              <Upload className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+              <span>استيراد نسخة احتياطية</span>
+            </button>
+            <input 
+              ref={fileInputRef}
+              type="file" 
+              accept=".json,application/json" 
+              onChange={handleFileChange} 
+              className="hidden" 
+            />
+          </div>
+        </div>
+
+        {/* 6. Isolated Demo Mode Card */}
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-3 text-xs">
+          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-700 pb-3">
+            <div className="flex items-center gap-2 font-bold text-sm text-stone-900 dark:text-stone-100">
+              <Sparkles className="w-4 h-4 text-amber-600" />
+              <span>البيانات التجريبية الاستعراضية (Demo Mode)</span>
+            </div>
+            <span className="text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 font-bold px-2 py-0.5 rounded-md">
+              للمعاينة فقط
+            </span>
+          </div>
+
+          <p className="text-stone-600 dark:text-stone-400 leading-relaxed">
+            يبدأ المستخدمون الجدد افتراضياً بملف نظيف وسجلات فارغة بنسبة صفر%. إذا رغبت في معاينة التطبيق واختبار جميع الشاشات بمحتوى تجريبي لسورة الملك والنبأ، يمكنك تحميل الحزمة التجريبية هنا.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => setShowDemoConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-xl font-semibold border border-amber-300 dark:border-amber-800 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>تحميل بيانات تجريبية (Demo Data)</span>
+          </button>
+        </div>
+
         {/* Submit Actions */}
         <div className="flex items-center justify-between pt-2">
           <button
@@ -288,6 +423,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
               >
                 تأكيد إعادة الضبط
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In-app Demo Mode Confirmation Dialog */}
+      {showDemoConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                  تأكيد تفعيل البيانات التجريبية
+                </h3>
+                <p className="text-xs text-stone-500">
+                  تحميل بيانات استعراضية للملك والنبأ
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed bg-[#faf8f5] dark:bg-stone-900/60 p-3 rounded-xl border border-stone-200/70 dark:border-stone-700/60">
+              سيتم تحميل خطة وسجلات استعراضية ومقاطع مراجعة تجريبية لمساعدتك على فحص جميع ميزات التطبيق. يمكنك دائماً العودة إلى الحالة الصفرية بالضغط على "إعادة ضبط المصنع".
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDemoConfirm(false)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleLoadDemoData}
+                className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors"
+              >
+                تحميل البيانات الآن
               </button>
             </div>
           </div>

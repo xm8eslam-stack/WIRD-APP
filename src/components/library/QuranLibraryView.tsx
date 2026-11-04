@@ -12,7 +12,7 @@ import {
   Bookmark
 } from 'lucide-react';
 import { ALL_SURAHS, JUZ_NAMES } from '../../data/quranMeta';
-import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
+import { VERIFIED_AYAHS, QURAN_DATA_SOURCE_INFO } from '../../data/verifiedAyahs';
 import { SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
 
@@ -30,6 +30,10 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   const [revelationFilter, setRevelationFilter] = useState<'all' | 'مكية' | 'مدنية'>('all');
   const [selectedSurah, setSelectedSurah] = useState<SurahMeta>(ALL_SURAHS[66]); // Default to Al-Mulk (67)
   
+  // Font size adjustment for Quran text
+  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'huge'>('large');
+  const [verseFilter, setVerseFilter] = useState('');
+
   // Audio state
   const [activeReciter, setActiveReciter] = useState<ReciterId>(initialReciter || 'alafasy');
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
@@ -321,6 +325,61 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             </div>
           </div>
 
+          {/* Reading Controls Toolbar: Font size & Ayah search within Surah */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-stone-500 font-medium">حجم الخط:</span>
+              <div className="flex items-center bg-white dark:bg-stone-800 rounded-lg p-0.5 border border-stone-200 dark:border-stone-700">
+                <button
+                  type="button"
+                  onClick={() => setFontSize('normal')}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    fontSize === 'normal' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100'
+                  }`}
+                >
+                  أ- عادي
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFontSize('large')}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    fontSize === 'large' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100'
+                  }`}
+                >
+                  أ متوسط
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFontSize('huge')}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    fontSize === 'huge' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100'
+                  }`}
+                >
+                  أ+ كبير
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={verseFilter}
+                onChange={(e) => setVerseFilter(e.target.value)}
+                placeholder="تصفية برقم الآية أو كلمة..."
+                className="px-2.5 py-1 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg text-xs text-stone-800 dark:text-stone-200 focus:outline-none focus:border-emerald-600 w-40"
+              />
+              {verseFilter && (
+                <button
+                  type="button"
+                  onClick={() => setVerseFilter('')}
+                  className="text-stone-400 hover:text-stone-600 text-xs px-1"
+                >
+                  مسح
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Basmala Banner (For all surahs except At-Tawbah) */}
           {selectedSurah.number !== 9 && (
             <div className="text-center font-quran text-xl text-stone-700 dark:text-stone-300 py-2 border-y border-stone-100 dark:border-stone-700/60">
@@ -329,10 +388,28 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
           )}
 
           {/* Verses Container */}
-          <div className="space-y-4 max-h-[500px] overflow-y-auto pl-2">
-            {currentAyahs.length > 0 ? (
-              currentAyahs.map((ayah) => {
+          <div className="space-y-4 max-h-[520px] overflow-y-auto pl-2">
+            {(() => {
+              const displayedAyahs = currentAyahs.filter(ayah => {
+                if (!verseFilter.trim()) return true;
+                const filter = verseFilter.trim();
+                return String(ayah.numberInSurah) === filter || ayah.text.includes(filter);
+              });
+
+              if (displayedAyahs.length === 0) {
+                return (
+                  <div className="text-center py-8 text-stone-500 text-xs bg-stone-50 dark:bg-stone-900 rounded-xl border border-dashed border-stone-300">
+                    لا توجد آيات مطابقة للبحث في سورة {selectedSurah.name}.
+                  </div>
+                );
+              }
+
+              return displayedAyahs.map((ayah) => {
                 const isThisPlaying = playingAyah === ayah.numberInSurah && isPlaying;
+                const fontClass = 
+                  fontSize === 'normal' ? 'text-lg md:text-xl leading-relaxed' :
+                  fontSize === 'huge' ? 'text-2xl md:text-3xl leading-[2.4]' :
+                  'text-xl md:text-2xl leading-loose';
 
                 return (
                   <div
@@ -344,7 +421,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4 mb-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <button
                           onClick={() => handlePlayAyah(ayah.numberInSurah)}
                           className={`p-1.5 rounded-lg transition-colors ${
@@ -356,44 +433,68 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                         >
                           {isThisPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                         </button>
-                        <span className="text-xs text-stone-400 font-mono">
+                        
+                        <span className="text-xs font-bold text-stone-700 dark:text-stone-300 font-mono bg-stone-200/70 dark:bg-stone-700 px-2 py-0.5 rounded">
                           الآية {ayah.numberInSurah}
                         </span>
+
+                        <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                          ص {ayah.page} · ج {ayah.juz} {ayah.hizbQuarter && `· ربع ${ayah.hizbQuarter}`}
+                        </span>
+
+                        {ayah.sajda && (
+                          <span className="text-[10px] bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded font-bold border border-amber-300">
+                            سجدة تلاوة
+                          </span>
+                        )}
                       </div>
 
                       <button
                         onClick={() => onStartSession(selectedSurah.number, ayah.numberInSurah, ayah.numberInSurah)}
-                        className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline font-medium"
+                        className="text-[11px] text-emerald-700 dark:text-emerald-400 hover:underline font-medium shrink-0"
                       >
                         تدريب على هذه الآية
                       </button>
                     </div>
 
                     {/* Ayah Text in authentic Amiri Uthmanic font */}
-                    <p className="font-quran text-xl md:text-2xl text-stone-900 dark:text-stone-100 leading-loose text-right">
+                    <p className={`font-quran ${fontClass} text-stone-900 dark:text-stone-100 text-right`}>
                       {ayah.text}
                       <span className="ayah-number">{ayah.numberInSurah}</span>
                     </p>
                   </div>
                 );
-              })
-            ) : (
-              <div className="text-center py-10 bg-[#faf8f5] dark:bg-stone-900/40 rounded-xl border border-stone-200/70 dark:border-stone-700/60 space-y-3">
-                <BookOpen className="w-8 h-8 text-emerald-700 mx-auto opacity-70" />
-                <h4 className="font-bold text-stone-800 dark:text-stone-200 text-sm">
-                  سورة {selectedSurah.name} ({selectedSurah.versesCount} آية)
-                </h4>
-                <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
-                  السورة الشريفة تقع في الجزء {selectedSurah.juzStart} بين الصفحتين {selectedSurah.pageStart} و {selectedSurah.pageEnd}. يمكنك الاستماع لتلاوتها الشاملة عبر زر "استماع للسورة" أو البدء الفوري بحفظ مقاطعها في جلسة الحفظ التفاعلية.
-                </p>
-                <button
-                  onClick={() => onStartSession(selectedSurah.number, 1, Math.min(10, selectedSurah.versesCount))}
-                  className="px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
-                >
-                  بدء جلسة الحفظ لسورة {selectedSurah.name}
-                </button>
-              </div>
-            )}
+              });
+            })()}
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Verified Quran Source Attribution & Integrity Footer */}
+      <div className="bg-[#fcfaf7] dark:bg-stone-800/80 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700 text-xs text-stone-600 dark:text-stone-400 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center shrink-0 border border-emerald-200 dark:border-emerald-800">
+            <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400" />
+          </div>
+          <div>
+            <div className="font-bold text-stone-900 dark:text-stone-200 flex items-center gap-2">
+              <span>قاعدة البيانات القرآنية الموثقة — 114 سورة كاملة (6,236 آية)</span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 px-1.5 py-0.2 rounded font-mono">
+                Hafs 'an Asim
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              النص القرآني معتمد ومطابق لمصحف المدينة النبوية برواية حفص عن عاصم بالرسم العثماني وعلامات الوقف الموثقة.
+            </p>
+          </div>
+        </div>
+
+        <div className="text-right text-[11px] space-y-0.5 shrink-0">
+          <div className="text-stone-700 dark:text-stone-300">
+            المصدر: <span className="font-medium text-emerald-800 dark:text-emerald-400">{QURAN_DATA_SOURCE_INFO.provider}</span>
+          </div>
+          <div className="text-stone-400">
+            ترخيص {QURAN_DATA_SOURCE_INFO.license} · عمل محلي دون استدعاءات خارجية
           </div>
         </div>
       </div>

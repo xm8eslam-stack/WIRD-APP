@@ -3,37 +3,93 @@ import {
   MemorizationPlan, 
   RevisionItem, 
   DailyLog, 
-  TestResult 
+  TestResult,
+  PortionStatusRecord,
+  WeakVerseItem 
 } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
   PLANS: 'wird_plans',
   ENGINE_PLANS: 'wird_engine_plans',
   PROGRESS: 'wird_progress',
   REVISION: 'wird_revision',
   LOGS: 'wird_logs',
-  TESTS: 'wird_tests'
-};
+  TESTS: 'wird_tests',
+  PORTIONS: 'wird_portions_status',
+  WEAK_VERSES: 'wird_weak_verses'
+} as const;
 
-const DEFAULT_PROFILE: UserProfile = {
-  name: "عبد الرحمن",
-  email: "abdurrahman@example.com",
+// In-memory fallback for test / Node / SSR environments where localStorage is not defined
+const memoryStorage = new Map<string, string>();
+
+function getItem(key: string): string | null {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem(key);
+    }
+  } catch {
+    // ignore
+  }
+  return memoryStorage.get(key) || null;
+}
+
+function setItem(key: string, value: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(key, value);
+      return;
+    }
+  } catch {
+    // ignore
+  }
+  memoryStorage.set(key, value);
+}
+
+function removeItem(key: string): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore
+  }
+  memoryStorage.delete(key);
+}
+
+// 1. Clean Initial State for New Users (No fabricated identity, streaks, or fake progress)
+export const CLEAN_INITIAL_PROFILE: Readonly<UserProfile> = Object.freeze({
+  name: "طالب القرآن",
+  email: "",
+  memorizationGoal: "حفظ القرآن الكريم وتثبيته والعمل به",
+  preferredReciter: "alafasy",
+  quranFontSize: "lg",
+  audioAutoPlay: true,
+  repetitionTarget: 5,
+  theme: "light",
+  streakDays: 0,
+  lastActiveDate: ""
+});
+
+// 2. Demo Data (Strictly isolated for explicit Demo Mode only)
+export const DEMO_PROFILE: UserProfile = {
+  name: "عبد الرحمن (وضع تجريبي)",
+  email: "",
   memorizationGoal: "إتقان حفظ كتاب الله كاملاً مع التدبر والتثبيت المستمر",
   preferredReciter: "alafasy",
   quranFontSize: "lg",
   audioAutoPlay: true,
   repetitionTarget: 10,
   theme: "light",
-  streakDays: 14,
+  streakDays: 3,
   lastActiveDate: new Date().toISOString().split('T')[0]
 };
 
-const DEFAULT_REVISION_ITEMS: RevisionItem[] = [
+export const DEMO_REVISION_ITEMS: RevisionItem[] = [
   {
-    id: "rev-1",
+    id: "rev-demo-1",
     surahNumber: 67,
     surahName: "الملك",
     startAyah: 1,
@@ -42,14 +98,14 @@ const DEFAULT_REVISION_ITEMS: RevisionItem[] = [
     juzNumber: 29,
     type: "minor",
     lastReviewedDate: "2026-11-02",
-    nextDueDate: "2026-11-04",
+    nextDueDate: new Date().toISOString().split('T')[0],
     intervalDays: 2,
     easeFactor: 2.5,
     repetitionCount: 4,
     strength: "strong"
   },
   {
-    id: "rev-2",
+    id: "rev-demo-2",
     surahNumber: 67,
     surahName: "الملك",
     startAyah: 16,
@@ -58,75 +114,23 @@ const DEFAULT_REVISION_ITEMS: RevisionItem[] = [
     juzNumber: 29,
     type: "minor",
     lastReviewedDate: "2026-11-01",
-    nextDueDate: "2026-11-04",
+    nextDueDate: new Date().toISOString().split('T')[0],
     intervalDays: 3,
     easeFactor: 2.2,
     repetitionCount: 3,
     strength: "medium"
-  },
-  {
-    id: "rev-3",
-    surahNumber: 78,
-    surahName: "النبأ",
-    startAyah: 1,
-    endAyah: 20,
-    pageNumber: 582,
-    juzNumber: 30,
-    type: "major",
-    lastReviewedDate: "2026-10-28",
-    nextDueDate: "2026-11-04",
-    intervalDays: 7,
-    easeFactor: 2.6,
-    repetitionCount: 6,
-    strength: "strong"
-  },
-  {
-    id: "rev-4",
-    surahNumber: 18,
-    surahName: "الكهف",
-    startAyah: 1,
-    endAyah: 10,
-    pageNumber: 293,
-    juzNumber: 15,
-    type: "major",
-    lastReviewedDate: "2026-10-31",
-    nextDueDate: "2026-11-05",
-    intervalDays: 5,
-    easeFactor: 2.4,
-    repetitionCount: 5,
-    strength: "strong"
-  },
-  {
-    id: "rev-5",
-    surahNumber: 2,
-    surahName: "البقرة (آية الكرسي والخواتيم)",
-    startAyah: 255,
-    endAyah: 255,
-    pageNumber: 42,
-    juzNumber: 3,
-    type: "minor",
-    lastReviewedDate: "2026-10-25",
-    nextDueDate: "2026-11-04",
-    intervalDays: 1,
-    easeFactor: 1.8,
-    repetitionCount: 2,
-    strength: "weak"
   }
 ];
 
-const DEFAULT_LOGS: DailyLog[] = [
-  { date: "2026-10-29", memorizedAyahsCount: 6, reviewedPagesCount: 3, minutesSpent: 35, completedTasks: ["حفظ سورة النبأ 1-6", "مراجعة سورة الملك"] },
-  { date: "2026-10-30", memorizedAyahsCount: 6, reviewedPagesCount: 2, minutesSpent: 30, completedTasks: ["حفظ سورة النبأ 7-12"] },
-  { date: "2026-10-31", memorizedAyahsCount: 8, reviewedPagesCount: 4, minutesSpent: 45, completedTasks: ["حفظ سورة النبأ 13-20", "مراجعة الكهف"] },
-  { date: "2026-11-01", memorizedAyahsCount: 0, reviewedPagesCount: 5, minutesSpent: 40, completedTasks: ["يوم مراجعة أسبوعية وتثبيت"] },
-  { date: "2026-11-02", memorizedAyahsCount: 7, reviewedPagesCount: 2, minutesSpent: 35, completedTasks: ["حفظ سورة النبأ 21-27"] },
-  { date: "2026-11-03", memorizedAyahsCount: 8, reviewedPagesCount: 4, minutesSpent: 45, completedTasks: ["حفظ سورة النبأ 28-35", "مراجعة الملك"] },
-  { date: "2026-11-04", memorizedAyahsCount: 5, reviewedPagesCount: 3, minutesSpent: 25, completedTasks: ["حفظ سورة النبأ 36-40"] }
+export const DEMO_LOGS: DailyLog[] = [
+  { date: "2026-11-02", memorizedAyahsCount: 5, reviewedPagesCount: 2, minutesSpent: 30, completedTasks: ["حفظ سورة الملك 1-5"] },
+  { date: "2026-11-03", memorizedAyahsCount: 5, reviewedPagesCount: 2, minutesSpent: 30, completedTasks: ["حفظ سورة الملك 6-10"] },
+  { date: "2026-11-04", memorizedAyahsCount: 5, reviewedPagesCount: 2, minutesSpent: 25, completedTasks: ["حفظ سورة الملك 11-15"] }
 ];
 
-function buildInitialEnginePlan(): EngineGeneratedPlan {
+export function buildDemoEnginePlan(): EngineGeneratedPlan {
   const plan = PlanningEngine.generatePlan({
-    title: "خطة إتقان سورة الملك (المنجية)",
+    title: "خطة سورة الملك (بيانات تجريبية)",
     startSurah: 67,
     startAyah: 1,
     endSurah: 67,
@@ -137,146 +141,216 @@ function buildInitialEnginePlan(): EngineGeneratedPlan {
     dailyRevisionMinutes: 15,
     paceType: "verses_per_day",
     paceQuantity: 5,
-    activeDays: [0, 1, 2, 3, 4, 6], // Sun-Thu, Sat
-    restDays: [5], // Friday off
-    schedulePreference: "single_session",
-    existingMemorized: [
-      { surahNumber: 1, startAyah: 1, endAyah: 7 },
-      { surahNumber: 78, startAyah: 1, endAyah: 20 }
-    ]
+    activeDays: [0, 1, 2, 3, 4, 6],
+    restDays: [5],
+    schedulePreference: "single_session"
   });
 
-  // Mark first two days as completed for demo historical progress
   if (plan.schedule[0]?.memorizationTask) {
     plan.schedule[0].memorizationTask.completed = true;
     plan.schedule[0].memorizationTask.completedAt = "2026-11-01T10:00:00Z";
     plan.schedule[0].status = 'completed';
   }
-  if (plan.schedule[1]?.memorizationTask) {
-    plan.schedule[1].memorizationTask.completed = true;
-    plan.schedule[1].memorizationTask.completedAt = "2026-11-02T10:00:00Z";
-    plan.schedule[1].status = 'completed';
-  }
-
-  plan.actualVsPlanned = {
-    plannedVersesToDate: 15,
-    actualVersesMemorized: 10,
-    varianceVerses: -5,
-    status: 'on_track'
-  };
 
   return plan;
 }
 
+// 3. Mathematical Daily Streak Engine
+export function calculateActiveStreak(lastActiveDate: string, currentStreak: number, todayStr: string): number {
+  if (!lastActiveDate || currentStreak <= 0) return 0;
+  if (lastActiveDate === todayStr) return currentStreak;
+
+  const prev = new Date(lastActiveDate + 'T00:00:00Z').getTime();
+  const today = new Date(todayStr + 'T00:00:00Z').getTime();
+  const diffDays = Math.round((today - prev) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 1) {
+    return currentStreak;
+  } else if (diffDays > 1) {
+    return 0;
+  }
+  return currentStreak;
+}
+
+export function advanceStreakOnCompletion(
+  lastActiveDate: string,
+  currentStreak: number,
+  todayStr: string
+): { newStreak: number; newDate: string } {
+  if (lastActiveDate === todayStr) {
+    return { newStreak: Math.max(1, currentStreak), newDate: todayStr };
+  }
+
+  if (!lastActiveDate) {
+    return { newStreak: 1, newDate: todayStr };
+  }
+
+  const prev = new Date(lastActiveDate + 'T00:00:00Z').getTime();
+  const today = new Date(todayStr + 'T00:00:00Z').getTime();
+  const diffDays = Math.round((today - prev) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 1) {
+    return { newStreak: currentStreak + 1, newDate: todayStr };
+  } else {
+    return { newStreak: 1, newDate: todayStr };
+  }
+}
+
+// 4. Strict Backup Schema Validation
+export interface BackupPayload {
+  format: 'wird_backup';
+  version: number;
+  timestamp: string;
+  isEncrypted: boolean;
+  unencryptedWarning: string;
+  profile?: UserProfile;
+  plans?: MemorizationPlan[];
+  enginePlans?: EngineGeneratedPlan[];
+  revisionItems?: RevisionItem[];
+  logs?: DailyLog[];
+  tests?: TestResult[];
+  portions?: PortionStatusRecord[];
+  weakVerses?: WeakVerseItem[];
+}
+
+export function validateBackupPayload(payload: any): { valid: boolean; error?: string } {
+  if (!payload || typeof payload !== 'object') {
+    return { valid: false, error: 'الملف لا يحتوي على كائن JSON صالح' };
+  }
+
+  // Version check (Supported versions: 1, 2, 3)
+  if (typeof payload.version !== 'number' || payload.version < 1 || payload.version > 3) {
+    return { valid: false, error: `إصدار النسخة الاحتياطية (${payload.version}) غير مدعوم` };
+  }
+
+  // Profile validation if present
+  if (payload.profile !== undefined) {
+    if (typeof payload.profile !== 'object' || payload.profile === null) {
+      return { valid: false, error: 'بيانات الملف الشخصي (profile) غير صالحة' };
+    }
+    if (typeof payload.profile.name !== 'string' || !payload.profile.name.trim()) {
+      return { valid: false, error: 'اسم الحافظ في الملف الشخصي مفقود أو غير صالح' };
+    }
+    if (typeof payload.profile.streakDays !== 'number' || payload.profile.streakDays < 0) {
+      return { valid: false, error: 'قيمة سلسلة الأيام غير صالحة' };
+    }
+  }
+
+  // Array checks
+  const arrayFields = ['plans', 'enginePlans', 'revisionItems', 'logs', 'tests', 'portions', 'weakVerses'] as const;
+  for (const field of arrayFields) {
+    if (payload[field] !== undefined && !Array.isArray(payload[field])) {
+      return { valid: false, error: `الحقل ${field} يجب أن يكون مصفوفة صالحة` };
+    }
+  }
+
+  return { valid: true };
+}
+
 export const StorageService = {
+  // Profile
   getProfile(): UserProfile {
     try {
-      if (typeof localStorage === 'undefined') return DEFAULT_PROFILE;
-      const data = localStorage.getItem(STORAGE_KEYS.PROFILE);
-      return data ? JSON.parse(data) : DEFAULT_PROFILE;
+      const data = getItem(STORAGE_KEYS.PROFILE);
+      if (!data) return { ...CLEAN_INITIAL_PROFILE };
+      const parsed: UserProfile = JSON.parse(data);
+      
+      const todayStr = new Date().toISOString().split('T')[0];
+      const validStreak = calculateActiveStreak(parsed.lastActiveDate, parsed.streakDays, todayStr);
+      if (validStreak !== parsed.streakDays) {
+        parsed.streakDays = validStreak;
+        this.saveProfile(parsed);
+      }
+      return parsed;
     } catch {
-      return DEFAULT_PROFILE;
+      return { ...CLEAN_INITIAL_PROFILE };
     }
   },
 
   saveProfile(profile: UserProfile): void {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
-      }
+      setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   },
 
+  // Plans (Returns clean empty array by default)
   getPlans(): MemorizationPlan[] {
     try {
-      if (typeof localStorage === 'undefined') return PRESET_PLANS;
-      const data = localStorage.getItem(STORAGE_KEYS.PLANS);
-      return data ? JSON.parse(data) : PRESET_PLANS;
+      const data = getItem(STORAGE_KEYS.PLANS);
+      return data ? JSON.parse(data) : [];
     } catch {
-      return PRESET_PLANS;
+      return [];
     }
   },
 
   savePlans(plans: MemorizationPlan[]): void {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
-      }
+      setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   },
 
+  // Engine Plans (Returns clean empty array by default)
   getEnginePlans(): EngineGeneratedPlan[] {
     try {
-      if (typeof localStorage === 'undefined') return [buildInitialEnginePlan()];
-      const data = localStorage.getItem(STORAGE_KEYS.ENGINE_PLANS);
-      if (data) {
-        return JSON.parse(data);
-      }
-      const initial = [buildInitialEnginePlan()];
-      this.saveEnginePlans(initial);
-      return initial;
+      const data = getItem(STORAGE_KEYS.ENGINE_PLANS);
+      return data ? JSON.parse(data) : [];
     } catch {
-      return [buildInitialEnginePlan()];
+      return [];
     }
   },
 
   saveEnginePlans(plans: EngineGeneratedPlan[]): void {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
-      }
+      setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   },
 
+  // Revision Items (Returns clean empty array by default)
   getRevisionItems(): RevisionItem[] {
     try {
-      if (typeof localStorage === 'undefined') return DEFAULT_REVISION_ITEMS;
-      const data = localStorage.getItem(STORAGE_KEYS.REVISION);
-      return data ? JSON.parse(data) : DEFAULT_REVISION_ITEMS;
+      const data = getItem(STORAGE_KEYS.REVISION);
+      return data ? JSON.parse(data) : [];
     } catch {
-      return DEFAULT_REVISION_ITEMS;
+      return [];
     }
   },
 
   saveRevisionItems(items: RevisionItem[]): void {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
-      }
+      setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   },
 
+  // Logs (Returns clean empty array by default)
   getLogs(): DailyLog[] {
     try {
-      if (typeof localStorage === 'undefined') return DEFAULT_LOGS;
-      const data = localStorage.getItem(STORAGE_KEYS.LOGS);
-      return data ? JSON.parse(data) : DEFAULT_LOGS;
+      const data = getItem(STORAGE_KEYS.LOGS);
+      return data ? JSON.parse(data) : [];
     } catch {
-      return DEFAULT_LOGS;
+      return [];
     }
   },
 
   saveLogs(logs: DailyLog[]): void {
     try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
-      }
+      setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   },
 
+  // Tests
   getTests(): TestResult[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.TESTS);
+      const data = getItem(STORAGE_KEYS.TESTS);
       return data ? JSON.parse(data) : [];
     } catch {
       return [];
@@ -287,12 +361,13 @@ export const StorageService = {
     try {
       const current = this.getTests();
       current.unshift(test);
-      localStorage.setItem(STORAGE_KEYS.TESTS, JSON.stringify(current.slice(0, 50)));
+      setItem(STORAGE_KEYS.TESTS, JSON.stringify(current.slice(0, 50)));
     } catch (e) {
       console.warn("Storage write failed", e);
     }
   },
 
+  // Session Completion with True Streak Advancement
   recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): void {
     const today = new Date().toISOString().split('T')[0];
     const logs = this.getLogs();
@@ -317,56 +392,90 @@ export const StorageService = {
 
     this.saveLogs(logs);
 
-    // Update streak and profile
+    // Update streak truthfully
     const profile = this.getProfile();
-    if (profile.lastActiveDate !== today) {
-      profile.streakDays += 1;
-      profile.lastActiveDate = today;
-      this.saveProfile(profile);
-    }
+    const { newStreak, newDate } = advanceStreakOnCompletion(profile.lastActiveDate, profile.streakDays, today);
+    profile.streakDays = newStreak;
+    profile.lastActiveDate = newDate;
+    this.saveProfile(profile);
   },
 
+  // Explicit Demo Data Loader (for demo mode only)
+  loadDemoData(): void {
+    this.saveProfile(DEMO_PROFILE);
+    this.savePlans(PRESET_PLANS);
+    this.saveEnginePlans([buildDemoEnginePlan()]);
+    this.saveRevisionItems(DEMO_REVISION_ITEMS);
+    this.saveLogs(DEMO_LOGS);
+  },
+
+  // Export with Unencrypted Warning Label
   exportFullBackup(): string {
-    const backup = {
+    const backup: BackupPayload = {
+      format: 'wird_backup',
       version: 3,
       timestamp: new Date().toISOString(),
+      isEncrypted: false,
+      unencryptedWarning: "تنبيه أمني: هذا الملف نصي غير مشفر بصيغة JSON صريحة ويحتوي على سجلات الحفظ والإعدادات الشخصية. احتفظ به في مكان آمن.",
       profile: this.getProfile(),
       plans: this.getPlans(),
       enginePlans: this.getEnginePlans(),
       revisionItems: this.getRevisionItems(),
       logs: this.getLogs(),
       tests: this.getTests(),
-      portions: localStorage.getItem('wird_portions_status') ? JSON.parse(localStorage.getItem('wird_portions_status')!) : null,
-      weakVerses: localStorage.getItem('wird_weak_verses') ? JSON.parse(localStorage.getItem('wird_weak_verses')!) : null
+      portions: getItem(STORAGE_KEYS.PORTIONS) ? JSON.parse(getItem(STORAGE_KEYS.PORTIONS)!) : [],
+      weakVerses: getItem(STORAGE_KEYS.WEAK_VERSES) ? JSON.parse(getItem(STORAGE_KEYS.WEAK_VERSES)!) : []
     };
     return JSON.stringify(backup, null, 2);
   },
 
-  importBackup(jsonString: string): boolean {
+  // Atomic Import with Pre-Validation (Never partially overwrites on failure)
+  importBackup(jsonString: string): { success: boolean; message: string } {
+    let parsed: any;
     try {
-      const parsed = JSON.parse(jsonString);
+      parsed = JSON.parse(jsonString);
+    } catch {
+      return { success: false, message: 'صيغة الملف غير صالحة، يرجى التأكد من اختيار ملف JSON سليم.' };
+    }
+
+    const validation = validateBackupPayload(parsed);
+    if (!validation.valid) {
+      return { success: false, message: validation.error || 'فشل التحقق من بنية النسخة الاحتياطية' };
+    }
+
+    // Atomic write only after all validations pass
+    try {
       if (parsed.profile) this.saveProfile(parsed.profile);
       if (parsed.plans) this.savePlans(parsed.plans);
       if (parsed.enginePlans) this.saveEnginePlans(parsed.enginePlans);
       if (parsed.revisionItems) this.saveRevisionItems(parsed.revisionItems);
       if (parsed.logs) this.saveLogs(parsed.logs);
-      if (parsed.portions) localStorage.setItem('wird_portions_status', JSON.stringify(parsed.portions));
-      if (parsed.weakVerses) localStorage.setItem('wird_weak_verses', JSON.stringify(parsed.weakVerses));
-      return true;
-    } catch {
-      return false;
+      if (parsed.tests) {
+        setItem(STORAGE_KEYS.TESTS, JSON.stringify(parsed.tests));
+      }
+      if (parsed.portions) {
+        setItem(STORAGE_KEYS.PORTIONS, JSON.stringify(parsed.portions));
+      }
+      if (parsed.weakVerses) {
+        setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(parsed.weakVerses));
+      }
+      return { success: true, message: 'تم استيراد كافة البيانات بنجاح وبشكل متكامل.' };
+    } catch (e: any) {
+      return { success: false, message: `تعذر حفظ البيانات في الذاكرة المحلية: ${e?.message || 'خطأ غير متوقع'}` };
     }
   },
 
+  // Complete Clean Reset
   resetAllData(): void {
-    localStorage.removeItem(STORAGE_KEYS.PROFILE);
-    localStorage.removeItem(STORAGE_KEYS.PLANS);
-    localStorage.removeItem(STORAGE_KEYS.ENGINE_PLANS);
-    localStorage.removeItem(STORAGE_KEYS.PROGRESS);
-    localStorage.removeItem(STORAGE_KEYS.REVISION);
-    localStorage.removeItem(STORAGE_KEYS.LOGS);
-    localStorage.removeItem(STORAGE_KEYS.TESTS);
-    localStorage.removeItem('wird_portions_status');
-    localStorage.removeItem('wird_weak_verses');
+    removeItem(STORAGE_KEYS.PROFILE);
+    removeItem(STORAGE_KEYS.PLANS);
+    removeItem(STORAGE_KEYS.ENGINE_PLANS);
+    removeItem(STORAGE_KEYS.PROGRESS);
+    removeItem(STORAGE_KEYS.REVISION);
+    removeItem(STORAGE_KEYS.LOGS);
+    removeItem(STORAGE_KEYS.TESTS);
+    removeItem(STORAGE_KEYS.PORTIONS);
+    removeItem(STORAGE_KEYS.WEAK_VERSES);
+    memoryStorage.clear();
   }
 };

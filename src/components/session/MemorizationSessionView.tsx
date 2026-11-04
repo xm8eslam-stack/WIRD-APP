@@ -177,23 +177,42 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   if (!currentAyah) {
     return (
-      <div className="bg-white dark:bg-stone-800 rounded-2xl p-8 text-center space-y-4 border border-stone-200 dark:border-stone-700 max-w-lg mx-auto">
-        <BookOpen className="w-10 h-10 text-emerald-700 mx-auto opacity-70" />
-        <h3 className="font-bold text-stone-900 dark:text-stone-100 text-lg">
-          سورة {surahMeta.name}
-        </h3>
-        <p className="text-xs text-stone-500 leading-relaxed">
-          يمكنك بدء جلسة التدريب التفاعلي المباشر على سورة الملك أو سورة الفاتحة.
-        </p>
-        <button
-          onClick={() => {
-            setSurahNumber(67);
-            setCurrentAyahIndex(0);
-          }}
-          className="px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-900 transition-colors"
-        >
-          بدء جلسة سورة الملك (الآيات 1-10)
-        </button>
+      <div className="bg-white dark:bg-stone-800 rounded-3xl p-8 text-center space-y-5 border border-stone-200 dark:border-stone-700 max-w-lg mx-auto shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
+          <BookOpen className="w-7 h-7" />
+        </div>
+        <div className="space-y-2">
+          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-full">
+            تنبيه اكتمال التغطية النصية المحلية
+          </span>
+          <h3 className="font-bold text-stone-900 dark:text-stone-100 text-lg">
+            سورة {surahMeta.name} ({surahMeta.versesCount} آية)
+          </h3>
+          <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed max-w-md mx-auto">
+            النص القرآني العثماني المشكول لهذه السورة غير مضمن محلياً في الحزمة الأساسية (التطبيق يضمن نصوص السور الأساسية كالفاتحة والملك والكهف وقصار السور لتقليل حجم الحزمة وضمان الدقة). يمكنك التدرب على إحدى السور المعتمدة محلياً أو الاستماع لتلاوة سورة {surahMeta.name} في شاشة المصحف.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => {
+              setSurahNumber(67);
+              setCurrentAyahIndex(0);
+            }}
+            className="w-full sm:w-auto px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-900 transition-colors"
+          >
+            جلسة سورة الملك (الآيات 1-10)
+          </button>
+          <button
+            onClick={() => {
+              setSurahNumber(1);
+              setCurrentAyahIndex(0);
+            }}
+            className="w-full sm:w-auto px-5 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold transition-colors"
+          >
+            سورة الفاتحة (كاملة)
+          </button>
+        </div>
       </div>
     );
   }

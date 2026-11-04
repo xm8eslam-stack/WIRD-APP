@@ -103,24 +103,32 @@ app.post('/api/advisor/analyze', async (req: Request, res: Response): Promise<vo
     return;
   }
 
-  // Construct structured prompt grounded strictly in user data
+  // Construct structured prompt grounded strictly in anonymous learning metrics
   let userContextSummary = '';
-  if (userData) {
+  if (userData && typeof userData === 'object') {
+    const memorizedCount = Number(userData.memorizedAyahsCount) || 0;
+    const weakCount = Number(userData.weakVersesCount) || 0;
+    const retentionScore = Number(userData.retentionScore) || 0;
+    const dueCount = Number(userData.dueRevisionsCount) || 0;
+    const safeGoal = typeof userData.goal === 'string' ? userData.goal.slice(0, 80) : 'حفظ وإتقان القرآن';
+    const safePlan = typeof userData.activePlanTitle === 'string' ? userData.activePlanTitle.slice(0, 50) : 'خطة الحفظ الحالية';
+
     userContextSummary = `
-[بيانات المستخدم الحالية في تطبيق وِرد]:
-- الاسم والهدف: ${userData.name || 'عبد الرحمن'} (${userData.goal || 'حفظ وإتقان القرآن'})
-- خطة الحفظ النشطة: ${userData.activePlanTitle || 'سورة الملك'}
-- إجمالي المحفوظ: ${userData.memorizedAyahsCount || 0} آية
-- الآيات المتعثرة أو الملتبسة: ${userData.weakVersesCount || 0} آيات
-- مؤشر جودة الرسوخ: %${userData.retentionScore || 85}
-- المقاطع المستحقة للمراجعة اليوم: ${userData.dueRevisionsCount || 0} مقطع
+[المؤشرات الرقمية لتقدم الحافظ]:
+- الهدف القرآني: ${safeGoal}
+- الخطة الحالية: ${safePlan}
+- عدد الآيات المنجزة: ${memorizedCount} آية
+- الآيات المتعثرة الملتبسة: ${weakCount} آيات
+- مؤشر جودة الرسوخ: %${retentionScore}
+- المقاطع المستحقة للمراجعة اليوم: ${dueCount} مقطع
 `;
   }
 
+  const cleanQuery = typeof query === 'string' ? query.slice(0, 500) : '';
   const userPrompt = `
-نوع التحليل المطلوب: ${contextType || 'تحليل عام'}
+نوع التحليل المطلوب: ${contextType ? String(contextType).slice(0, 30) : 'تحليل عام'}
 ${userContextSummary}
-سؤال أو طلب المستخدم: ${query || 'حلل أدائي القرآني وقدم لي أهم 3 نصائح عملية ومحددة لتعزيز رسوخ الحفظ وتنظيم المراجعة.'}
+طلب أو استشارة الحافظ: ${cleanQuery || 'حلل أدائي القرآني وقدم لي أهم 3 نصائح عملية ومحددة لتعزيز رسوخ الحفظ وتنظيم المراجعة.'}
 `;
 
   try {
