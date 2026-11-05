@@ -335,7 +335,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="wird-session space-y-6 max-w-4xl mx-auto">
       {/* 1. Session Navigation & Progress Bar */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
         <button
