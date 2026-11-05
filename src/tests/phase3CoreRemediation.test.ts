@@ -28,6 +28,7 @@ import {
   migrateLegacyDataLosslessly,
   findNextUnmemorizedRange,
   calculateUniqueRetentionScore,
+  getPlanTargetSurahNumbers,
 } from '../services/unifiedPortionService';
 import { StorageService, STORAGE_KEYS } from '../services/storageService';
 import { RetentionService } from '../services/retentionService';
@@ -535,6 +536,9 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
         intervalDays: 5, easeFactor: 2.5, repetitionCount: 3
       }
     ];
+    const juzAmmaSurahs = getPlanTargetSurahNumbers({ targetJuz: [30] });
+    assert(juzAmmaSurahs[0] === 78 && juzAmmaSurahs[juzAmmaSurahs.length - 1] === 114, 'Juz Amma preset resolves to Surahs An-Naba through An-Nas');
+
     const nextGap = findNextUnmemorizedRange(trackedRanges, [67], 5);
     assert(nextGap?.surahNumber === 67 && nextGap.startAyah === 11 && nextGap.endAyah === 14, 'Plan starts at the first real unmemorized gap and stops before a saved range');
 
