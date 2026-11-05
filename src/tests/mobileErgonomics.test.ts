@@ -86,6 +86,15 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(styles.includes('min-height: 2.75rem;\n  touch-action: manipulation;'), 'Planning and revision actions must have touch-sized targets');
   });
 
+  test('Settings and theme changes are confirmed only after durable persistence', () => {
+    const settings = fs.readFileSync(path.resolve(process.cwd(), 'src/components/settings/SettingsView.tsx'), 'utf8');
+    const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf8');
+    assert(settings.includes('if (!StorageService.saveProfile(formData))'), 'Settings must stop before announcing success when profile persistence fails');
+    assert(settings.indexOf('if (!StorageService.saveProfile(formData))') < settings.indexOf('onUpdateProfile(formData)'), 'Parent profile state must update only after a successful durable write');
+    assert(app.includes('if (!StorageService.saveProfile(updated))'), 'Theme changes must handle durable write failure');
+    assert(app.includes('const saved = StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName)'), 'Standalone revision activity must verify log persistence');
+  });
+
   test('Preset plan progress is safe and accessible', () => {
     const plans = fs.readFileSync(path.resolve(process.cwd(), 'src/components/plans/MemorizationPlansView.tsx'), 'utf8');
     assert(plans.includes('totalUnits > 0'), 'Zero-unit plans must not produce NaN progress');
