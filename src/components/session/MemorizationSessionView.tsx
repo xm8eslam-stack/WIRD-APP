@@ -106,12 +106,17 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCompleted]);
 
-  // Reset revealed words when ayah or mask changes
+  // Reset per-ayah repetition and revealed words when moving to another ayah.
   useEffect(() => {
     setRevealedWordIndices(new Set());
     setRepeatCount(0);
     handleStopAudio();
-  }, [currentAyahIndex, maskLevel]);
+  }, [currentAyahIndex]);
+
+  // A masking-level change must not erase repetitions already completed.
+  useEffect(() => {
+    setRevealedWordIndices(new Set());
+  }, [maskLevel]);
 
   // Audio Playback
   const handleToggleAudio = () => {
@@ -179,7 +184,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
       onCompleteSession(
         mode === 'memorize' ? sessionAyahs.length : 0,
-        mode === 'review' ? Math.max(1, Math.ceil(sessionAyahs.length / 15)) : 0,
+        mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
         minutesSpent,
         `${mode === 'review' ? 'مراجعة' : 'إتمام حفظ'} سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`,
         mode
