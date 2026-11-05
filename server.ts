@@ -23,6 +23,11 @@ const rateLimitMap = new Map<string, RateLimitRecord>();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+  if (rateLimitMap.size > 1000) {
+    for (const [key, entry] of rateLimitMap.entries()) {
+      if (now >= entry.resetAt) rateLimitMap.delete(key);
+    }
+  }
   const record = rateLimitMap.get(ip);
   if (!record || now > record.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 });
