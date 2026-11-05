@@ -30,7 +30,7 @@ import {
 } from '../../types/quran';
 import { RetentionService, RetentionMetrics } from '../../services/retentionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
+import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
@@ -98,13 +98,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const revisionHistory = RetentionService.getRevisionHistory();
 
   // Handle rating a portion
-  const handleRatePortion = (rating: RevisionRating) => {
+  const handleRatePortion = async (rating: RevisionRating) => {
     if (!ratingPortion) return;
 
     let weakDetails = undefined;
     if (rating === 'failed' && weakAyahNum) {
-      const verifiedList = VERIFIED_AYAHS[ratingPortion.surahNumber] || [];
-      const foundAyah = verifiedList.find(a => a.numberInSurah === Number(weakAyahNum));
+      const foundAyah = await loadAyahByCoordinate(ratingPortion.surahNumber, Number(weakAyahNum)).catch(() => undefined);
       weakDetails = {
         ayahNumber: Number(weakAyahNum),
         text: foundAyah?.text || `الآية رقم ${weakAyahNum}`,
@@ -176,16 +175,15 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   };
 
   // Handle adding manual weak verse
-  const handleAddManualWeakVerse = (e: React.FormEvent) => {
+  const handleAddManualWeakVerse = async (e: React.FormEvent) => {
     e.preventDefault();
     const surah = ALL_SURAHS.find(s => s.number === weakSurahNum);
     if (!surah) return;
 
     let text = manualWeakText;
     if (!text) {
-      const verified = VERIFIED_AYAHS[weakSurahNum] || [];
-      const found = verified.find(a => a.numberInSurah === manualWeakAyahNum);
-      text = found ? found.text : `آية رقم ${manualWeakAyahNum}`;
+      const found = await loadAyahByCoordinate(weakSurahNum, manualWeakAyahNum).catch(() => undefined);
+      text = found?.text || `آية رقم ${manualWeakAyahNum}`;
     }
 
     RetentionService.addOrIncrementWeakVerse(
