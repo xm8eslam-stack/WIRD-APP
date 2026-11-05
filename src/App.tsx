@@ -286,7 +286,7 @@ export default function App() {
   const dueRevisionCount = RetentionService.getDailyRevisionQueueDetails(todayStr).totalDueCount;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
+    <div className="wird-app-shell min-h-screen flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}
@@ -298,7 +298,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+      <div className="wird-content-column flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Header */}
         <Header
           currentTab={currentTab}
@@ -346,7 +346,7 @@ export default function App() {
         )}
 
         {/* Content Viewport with Code Splitting Suspense */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="wird-main wird-content flex-1 w-full mx-auto">
           <React.Suspense fallback={
             <div className="flex flex-col items-center justify-center py-28 space-y-3 text-stone-400">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-700 dark:text-emerald-400" />
