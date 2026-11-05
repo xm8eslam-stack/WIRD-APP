@@ -317,6 +317,17 @@ const STATUS_SEVERITY_HIERARCHY: Record<PortionMemorizationStatus, number> = {
   not_memorized: 5
 };
 
+function getStableHistoryConflictSuffix(log: RevisionLogEntry): string {
+  const signature = JSON.stringify([
+    log.date, log.rating, log.intervalDaysBefore, log.intervalDaysAfter, log.notes || ''
+  ]);
+  let hash = 2166136261;
+  for (let index = 0; index < signature.length; index++) {
+    hash = Math.imul(hash ^ signature.charCodeAt(index), 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function mergePortionRecords(
   existing: WirdPortion,
   incoming: Partial<WirdPortion> & { notes?: string },
@@ -416,17 +427,18 @@ function mergePortionRecords(
 
         if (contentDiff) {
           // Preserve conflicting history entry under a modified ID so no log is lost!
-          const preservedLog = {
-            ...incLog,
-            id: `${incLog.id}_conflict_${Date.now()}`
-          };
-          existing.history!.push(preservedLog);
-          existing.conflictAudit!.push({
-            source: sourceName,
-            field: 'history',
-            value: `Conflicting history entry under ID '${incLog.id}' preserved as '${preservedLog.id}'`,
-            timestamp: new Date().toISOString()
-          });
+          const preservedId = `${incLog.id}_conflict_${getStableHistoryConflictSuffix(incLog)}`;
+          const alreadyPreserved = existing.history!.some(log => log.id === preservedId);
+          if (!alreadyPreserved) {
+            const preservedLog = { ...incLog, id: preservedId };
+            existing.history!.push(preservedLog);
+            existing.conflictAudit!.push({
+              source: sourceName,
+              field: 'history',
+              value: `Conflicting history entry under ID '${incLog.id}' preserved as '${preservedLog.id}'`,
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       } else {
         // Check exact content signature
