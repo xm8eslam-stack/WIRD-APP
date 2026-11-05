@@ -64,9 +64,9 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // Pre-cache only the active session's recitation files (bounded in the Service Worker).
   useEffect(() => {
-    if (!sessionAyahs.length || !('serviceWorker' in navigator)) return;
+    if (!sessionAyahs.length || currentAyahIndex % 10 !== 0 || !('serviceWorker' in navigator)) return;
     let cancelled = false;
-    const urls = sessionAyahs.slice(0, 20).map(ayah =>
+    const urls = sessionAyahs.slice(currentAyahIndex, currentAyahIndex + 20).map(ayah =>
       formatAyahAudioUrl(surahNumber, ayah.numberInSurah, profile.preferredReciter)
     );
     navigator.serviceWorker.ready
@@ -77,7 +77,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       })
       .catch(error => console.warn('[WIRD Session] Audio cache unavailable:', error));
     return () => { cancelled = true; };
-  }, [surahNumber, profile.preferredReciter, allSurahAyahs]);
+  }, [surahNumber, profile.preferredReciter, allSurahAyahs, currentAyahIndex, initialStartAyah, initialEndAyah]);
 
   const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex] || allSurahAyahs[0];
 
