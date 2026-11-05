@@ -94,6 +94,18 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(res.valid, 'Valid canonical portion should pass v4 validation');
   });
 
+  test('Version 4 rejects ayah coordinates beyond the selected Surah', () => {
+    const invalid = { ...SAMPLE_PORTION, id: 's1_a1_a8', surahNumber: 1, surahName: 'الفاتحة', startAyah: 1, endAyah: 8 };
+    const res = validateBackupPayload({ version: 4, unifiedPortions: [invalid] });
+    assert(!res.valid, 'Al-Fatihah ayah 8 must be rejected');
+  });
+
+  test('Version 4 rejects IDs that do not match their Quran coordinates', () => {
+    const invalid = { ...SAMPLE_PORTION, id: 's67_a2_a3' };
+    const res = validateBackupPayload({ version: 4, unifiedPortions: [invalid] });
+    assert(!res.valid, 'Canonical portion ID must match the Surah and ayah range');
+  });
+
   test('Version 4 rejects malformed canonical portion records', () => {
     const invalid = { ...SAMPLE_PORTION, status: 'invented-status' };
     const res = validateBackupPayload({ version: 4, unifiedPortions: [invalid] });
