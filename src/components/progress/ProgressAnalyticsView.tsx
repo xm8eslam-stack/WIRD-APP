@@ -22,6 +22,7 @@ import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, JUZ_NAMES, ALL_SURAHS } from '..
 import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord } from '../../types/quran';
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 
 interface ProgressAnalyticsViewProps {
   logs: DailyLog[];
@@ -114,8 +115,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         pageNumber,
         juzNumber: surah.juzStart,
         status: newStatus,
-        lastReviewedDate: new Date().toISOString().split('T')[0],
-        nextDueDate: new Date().toISOString().split('T')[0],
+        lastReviewedDate: getLocalDateString(),
+        nextDueDate: getLocalDateString(),
         intervalDays: newStatus === 'stable' ? 7 : 1,
         easeFactor: 2.5,
         repetitionCount: newStatus === 'stable' ? 3 : 1,
@@ -135,7 +136,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `wird_backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `wird_backup_${getLocalDateString()}.json`;
     a.click();
     setIsExportSuccess(true);
     setTimeout(() => setIsExportSuccess(false), 3000);
