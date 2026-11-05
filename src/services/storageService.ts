@@ -439,23 +439,8 @@ export const StorageService = {
         return false;
       }
 
-      // Complete Payload Deep Verification across all records and key fields
-      const isCompletePayloadValid = parsed.every((p: any, idx: number) => {
-        const orig = portions[idx];
-        return (
-          p.id === orig.id &&
-          p.surahNumber === orig.surahNumber &&
-          p.startAyah === orig.startAyah &&
-          p.endAyah === orig.endAyah &&
-          p.status === orig.status &&
-          p.nextDueDate === orig.nextDueDate &&
-          p.intervalDays === orig.intervalDays &&
-          p.easeFactor === orig.easeFactor &&
-          p.repetitionCount === orig.repetitionCount &&
-          (orig.lastReviewedDate === undefined || p.lastReviewedDate === orig.lastReviewedDate) &&
-          (orig.mistakesCount === undefined || p.mistakesCount === orig.mistakesCount)
-        );
-      });
+      // Verify the complete serialized payload, including nested history and metadata.
+      const isCompletePayloadValid = JSON.stringify(parsed) === serialized;
 
       if (!isCompletePayloadValid) {
         console.error('[WIRD Storage] Write verification failed: Complete payload content mismatch on readback');
