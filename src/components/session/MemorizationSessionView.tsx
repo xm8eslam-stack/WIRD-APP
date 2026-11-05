@@ -22,8 +22,9 @@ interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
   initialStartAyah?: number;
   initialEndAyah?: number;
+  mode?: 'memorize' | 'review';
   profile: UserProfile;
-  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => void;
+  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => void;
   onExit: () => void;
   onProgressChange?: (inProgress: boolean) => void;
 }
@@ -32,6 +33,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   initialSurahNumber = 67, // Default Al-Mulk
   initialStartAyah = 1,
   initialEndAyah = 5,
+  mode = 'memorize',
   profile,
   onCompleteSession,
   onExit,
@@ -98,11 +100,12 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
+    if (isCompleted || sessionAyahs.length === 0) return;
     const timer = setInterval(() => {
       setSecondsElapsed(prev => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isCompleted, sessionAyahs.length]);
 
   useEffect(() => {
     onProgressChange?.(repeatCount > 0 && !isCompleted);
@@ -193,10 +196,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       setIsCompleted(true);
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
       onCompleteSession(
-        sessionAyahs.length,
-        1,
+        mode === 'memorize' ? sessionAyahs.length : 0,
+        mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
         minutesSpent,
-        `إتمام حفظ سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`
+        `${mode === 'review' ? 'مراجعة' : 'إتمام حفظ'} سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`,
+        mode
       );
     }
   };
@@ -281,19 +285,19 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         <div className="space-y-2">
           <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-            مبارك الإنجاز القرآني
+            {mode === 'review' ? 'مبارك إتمام المراجعة' : 'مبارك الإنجاز القرآني'}
           </span>
           <h2 className="text-2xl font-bold font-quran text-stone-900 dark:text-stone-100">
-            أتممت وِرد الحفظ اليومي بنجاح!
+            {mode === 'review' ? 'أتممت جلسة المراجعة بنجاح!' : 'أتممت وِرد الحفظ اليومي بنجاح!'}
           </h2>
           <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
-            تم حفظ وتكرار وتثبيت الآيات المقررة لسورة {surahMeta.name}. ثبّت الله القرآن في قلبك ونفعك به في الدنيا والآخرة.
+            {mode === 'review' ? `تمت مراجعة الآيات المحددة من سورة ${surahMeta.name}.` : `تم حفظ وتكرار وتثبيت الآيات المقررة لسورة ${surahMeta.name}. ثبّت الله القرآن في قلبك ونفعك به في الدنيا والآخرة.`}
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3 p-4 bg-[#faf8f5] dark:bg-stone-900/60 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-xs">
           <div>
-            <div className="text-stone-400">الآيات المحفوظة</div>
+            <div className="text-stone-400">{mode === 'review' ? 'الآيات المراجعة' : 'الآيات المحفوظة'}</div>
             <div className="text-lg font-bold text-emerald-800 dark:text-emerald-300 font-mono">
               {sessionAyahs.length}
             </div>
@@ -308,7 +312,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             <div className="text-stone-400">سلسلة المواظبة</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono flex items-center justify-center gap-1">
               <Flame className="w-4 h-4 fill-amber-500" />
-              <span>{profile.streakDays + 1} يوم</span>
+              <span>{profile.streakDays} يوم</span>
             </div>
           </div>
         </div>
