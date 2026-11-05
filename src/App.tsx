@@ -140,8 +140,11 @@ export default function App() {
   const handleToggleTheme = () => {
     const newTheme: 'light' | 'dark' = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: newTheme };
+    if (!StorageService.saveProfile(updated)) {
+      showToast('تعذر حفظ تغيير المظهر في التخزين الدائم. حاول مرة أخرى بعد التحقق من مساحة المتصفح.', 'error');
+      return;
+    }
     setProfile(updated);
-    StorageService.saveProfile(updated);
   };
 
   // Synchronize route with URL hash & browser history
@@ -318,8 +321,13 @@ export default function App() {
   };
 
   const handleRecordRevisionComplete = (pagesCount: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    const saved = StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    if (!saved) {
+      showToast('تعذر حفظ سجل المراجعة أو تحديث سلسلة المواظبة. لم يتم تأكيد تسجيل النشاط.', 'error');
+      return;
+    }
     setLogs(StorageService.getLogs());
+    setProfile(StorageService.getProfile());
   };
 
   // Save preset plans
