@@ -75,6 +75,33 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
     assert(handlerContent.includes('500'), 'api/advisor.ts must enforce 500 char prompt limit');
   });
 
+  test('Advisor chat endpoint validates bounded, typed history', () => {
+    const handler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    const chatAlias = fs.readFileSync(path.resolve('./api/advisor/chat.ts'), 'utf8');
+    assert(handler.includes('history.length > 6'), 'Advisor history must be limited to six messages');
+    assert(handler.includes('item.text.length > 400'), 'Each history message must be limited to 400 characters');
+    assert(handler.includes('INVALID_HISTORY'), 'Malformed history must be rejected');
+    assert(handler.includes('safeHistory.map'), 'Only normalized safe history may reach the model prompt');
+    assert(chatAlias.includes("export { default } from '../advisor'"), 'Vercel chat route must resolve to the advisor handler');
+  });
+
+  test('Advisor system prompt rejects prompt injection and out-of-scope religious rulings', () => {
+    const handler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    assert(handler.includes('لا تصدر فتوى شرعية'), 'Advisor must not issue religious fatwas');
+    assert(handler.includes('بيانات غير موثوقة'), 'User prompts and chat history must be treated as untrusted data');
+    assert(!handler.includes("Access-Control-Allow-Credentials', 'true'"), 'Wildcard CORS must not be combined with credentials');
+  });
+
+  test('Advisor uses real profile data and deduplicated Quran progress metrics', () => {
+    const view = fs.readFileSync(path.resolve('./src/components/assistant/QuranAdvisorView.tsx'), 'utf8');
+    const service = fs.readFileSync(path.resolve('./src/services/advisorService.ts'), 'utf8');
+    assert(view.includes('profile || StorageService.getProfile()'), 'Advisor must use the real local profile when no prop is supplied');
+    assert(!view.includes('abdurrahman@example.com'), 'Advisor must not fabricate a profile identity');
+    assert(service.includes('calculateUniqueMemorizedAyahs(portions).uniqueCount'), 'Advisor must not double-count overlapping memorized ayahs');
+    assert(service.includes('calculateUniqueRetentionScore(portions)'), 'Advisor retention score must resolve overlapping ayahs conservatively');
+    assert(service.includes('getPrioritizedRevisionQueue(portions'), 'Advisor due count must use the canonical revision queue');
+  });
+
   return { passed, failed };
 }
 
