@@ -100,6 +100,25 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(!res.valid, 'Al-Fatihah ayah 8 must be rejected');
   });
 
+  test('Storage preserves an invalid canonical payload when no legacy recovery data exists', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const invalidPayload = JSON.stringify([{
+      ...SAMPLE_PORTION, id: 's1_a1_a8', surahNumber: 1, surahName: 'الفاتحة', startAyah: 1, endAyah: 8
+    }]);
+    try {
+      StorageService.restoreStorageSnapshot({
+        [`memory:${STORAGE_KEYS.SCHEMA_VERSION}`]: '2',
+        [`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`]: invalidPayload,
+        [`memory:${STORAGE_KEYS.PORTIONS}`]: '[]',
+        [`memory:${STORAGE_KEYS.REVISION}`]: '[]'
+      });
+      const report = StorageService.ensureDataMigrated();
+      assert(!report.success, 'Invalid canonical data without legacy recovery must not be reported as migrated');
+      const after = StorageService.getStorageSnapshot();
+      assert(after[`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`] === invalidPayload, 'Invalid payload must remain available for manual recovery');
+    } finally { StorageService.restoreStorageSnapshot(snapshot); }
+  });
+
   test('Storage refuses to persist invalid Quran coordinates', () => {
     const snapshot = StorageService.getStorageSnapshot();
     try {
