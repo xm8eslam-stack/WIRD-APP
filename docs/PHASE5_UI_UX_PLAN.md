@@ -71,7 +71,9 @@ These projects are references for product patterns and UX research, not permissi
 ## Current implementation snapshot
 
 - Branch: `feat/phase5-premium-ui-ux`
-- Base `main` SHA: `15ec5069b4850968588be2e4363fbd182bf2a8fc`.\n- PR #2: Draft — https://github.com/xm8eslam-stack/WIRD-APP/pull/2.\n- Last fully validated pre-formatting-doc head: `9df61b21ce2e5429452d555d20061ab597d5fdae` (Actions run #165 succeeded). Documentation line-break fixes were committed after that and require fresh CI.
+- Base `main` SHA: `15ec5069b4850968588be2e4363fbd182bf2a8fc`.
+- PR #2: Draft — https://github.com/xm8eslam-stack/WIRD-APP/pull/2.
+- Last fully validated pre-formatting-doc head: `9df61b21ce2e5429452d555d20061ab597d5fdae` (Actions run #165 succeeded). Documentation line-break fixes were committed after that and require fresh CI.
 - Implemented workstreams 5A–5D (first UI/UX pass):
   - Shared WIRD design tokens and global visual system in `src/index.css`.
   - Refined app shell and wider responsive content viewport.
