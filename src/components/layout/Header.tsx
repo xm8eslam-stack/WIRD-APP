@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Play, Moon, Sun, Menu, BookOpen, ChevronLeft } from 'lucide-react';
+import { Flame, Play, Moon, Sun, Menu, BookOpen, ChevronLeft, Download, Smartphone } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
 
 interface HeaderProps {
@@ -9,6 +9,9 @@ interface HeaderProps {
   onToggleTheme: () => void;
   onOpenMobileMenu: () => void;
   onStartDailySession: () => void;
+  pwaInstallPrompt?: any;
+  isStandalone?: boolean;
+  onInstallPwa?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,7 +19,10 @@ export const Header: React.FC<HeaderProps> = ({
   profile,
   onToggleTheme,
   onOpenMobileMenu,
-  onStartDailySession
+  onStartDailySession,
+  pwaInstallPrompt,
+  isStandalone,
+  onInstallPwa
 }) => {
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#faf8f5]/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
@@ -57,8 +63,20 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Zone 3: Actions (Theme Toggle + Start Session CTA) */}
+      {/* Zone 3: Actions (PWA Install + Theme Toggle + Start Session CTA) */}
       <div className="flex items-center gap-2.5 shrink-0">
+        {/* PWA Install Button when prompt available */}
+        {!isStandalone && (pwaInstallPrompt || onInstallPwa) && (
+          <button
+            onClick={onInstallPwa}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 dark:text-emerald-200 bg-emerald-100/80 dark:bg-emerald-950/80 border border-emerald-300/80 dark:border-emerald-800/80 rounded-lg hover:bg-emerald-200/80 transition-colors"
+            title="تثبيت التطبيق على الجهاز كبرنامج مستقل"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
+            <span>تثبيت التطبيق</span>
+          </button>
+        )}
+
         <button
           onClick={onToggleTheme}
           className="p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-emerald-700"

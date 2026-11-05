@@ -7,6 +7,7 @@ import { runCleanInitializationTests } from './cleanInitialization.test';
 import { runGeminiSecurityTests } from './geminiSecurity.test';
 import { runQuranIntegrityTests } from './quranContentIntegrity.test';
 import { runIndependentTanzilComparison, runNegativeComparisonTests } from './independentTanzilComparison';
+import { runPwaIntegrationTests } from './pwaIntegration.test';
 
 console.log('====================================================');
 console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
@@ -67,6 +68,9 @@ runSuite('Tanzil Comparison Detector Sensitivity (Negative Tests)', () => {
   const res = runNegativeComparisonTests();
   return { passed: res.passed, failed: res.failed };
 });
+
+// 11. PWA Compliance & Infrastructure Tests
+runSuite('PWA Compliance & Service Worker Infrastructure', runPwaIntegrationTests);
 
 console.log('\n====================================================');
 console.log(`FINAL RESULT: ${totalPassed} PASSED | ${totalFailed} FAILED`);

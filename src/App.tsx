@@ -40,6 +40,68 @@ export default function App() {
     endAyah: 10
   });
 
+  // PWA states
+  const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState<boolean>(false);
+  const [pwaUpdateRegistration, setPwaUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  // PWA event listeners & standalone detection
+  useEffect(() => {
+    // Check if running in standalone mode
+    if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+      setIsStandalone(true);
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setPwaInstallPrompt(e);
+    };
+
+    const handlePwaUpdate = (e: any) => {
+      if (e.detail?.registration) {
+        setPwaUpdateRegistration(e.detail.registration);
+      }
+    };
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('wird-pwa-update-available', handlePwaUpdate);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('wird-pwa-update-available', handlePwaUpdate);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleTriggerPwaInstall = () => {
+    if (pwaInstallPrompt) {
+      pwaInstallPrompt.prompt();
+      pwaInstallPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('[WIRD PWA] User accepted PWA installation prompt');
+        }
+        setPwaInstallPrompt(null);
+      });
+    } else {
+      // iOS or prompt unavailable fallback toast
+      showToast('لتثبيت تطبيق وِرد على آيفون/آيباد: اضغط زر "مشاركة" (Share) ثم اختر "إضافة إلى الشاشة الرئيسية"', 'info');
+    }
+  };
+
+  const handleApplyPwaUpdate = () => {
+    if (pwaUpdateRegistration && pwaUpdateRegistration.waiting) {
+      pwaUpdateRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    window.location.reload();
+  };
+
   // Apply theme to document element
   useEffect(() => {
     if (profile.theme === 'dark') {
@@ -189,7 +251,43 @@ export default function App() {
           onToggleTheme={handleToggleTheme}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onStartDailySession={() => handleStartSession(67, 1, 10)}
+          pwaInstallPrompt={pwaInstallPrompt}
+          isStandalone={isStandalone}
+          onInstallPwa={handleTriggerPwaInstall}
         />
+
+        {/* PWA Update Ready Banner */}
+        {pwaUpdateRegistration && (
+          <div className="bg-emerald-900 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-4 text-xs font-medium border-b border-emerald-700">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span>يتوفر تحديث جديد لتطبيق وِرد!</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleApplyPwaUpdate}
+                className="px-3 py-1 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold rounded-lg transition-colors"
+              >
+                تحديث الآن
+              </button>
+              <button
+                onClick={() => setPwaUpdateRegistration(null)}
+                className="p-1 hover:bg-emerald-800 rounded text-emerald-200"
+                aria-label="تأجيل التحديث"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Offline Network Warning Banner */}
+        {!isOnline && (
+          <div className="bg-stone-800 text-stone-200 px-4 py-1.5 flex items-center justify-center gap-2 text-xs border-b border-stone-700">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+            <span>أنت تعمل حالياً بدون اتصال بالإنترنت. جميع ميزات المصحف والحفظ والمراجعة والاختبارات تعمل بكفاءة من الذاكرة المحلية.</span>
+          </div>
+        )}
 
         {/* Content Viewport with Code Splitting Suspense */}
         <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
