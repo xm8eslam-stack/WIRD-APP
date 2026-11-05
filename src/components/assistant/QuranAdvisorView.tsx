@@ -24,7 +24,7 @@ import {
 import { UserProfile, MemorizationPlan, DailyLog, PortionStatusRecord, WeakVerseItem } from '../../types/quran';
 import { AdvisorService, AdvisorStatus } from '../../services/advisorService';
 import { RetentionService } from '../../services/retentionService';
-import { getLocalDateString } from '../../services/unifiedPortionService';
+import { StorageService } from '../../services/storageService';
 
 interface QuranAdvisorViewProps {
   profile?: UserProfile;
@@ -121,18 +121,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
     setChatMessages(newMsgs);
     setIsLoading(true);
 
-    const userProfile: UserProfile = profile || {
-      name: 'عبد الرحمن',
-      email: 'abdurrahman@example.com',
-      memorizationGoal: 'إتقان حفظ كتاب الله كاملاً',
-      preferredReciter: 'alafasy',
-      quranFontSize: 'lg',
-      audioAutoPlay: true,
-      repetitionTarget: 10,
-      theme: 'light',
-      streakDays: 14,
-      lastActiveDate: getLocalDateString()
-    };
+    const userProfile: UserProfile = profile || StorageService.getProfile();
 
     const portions = RetentionService.getPortions();
     const weakVerses = RetentionService.getWeakVerses();
