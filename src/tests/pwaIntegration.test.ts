@@ -66,7 +66,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
   test('Memorization sessions request caching only for their active verse range', () => {
     const sessionContent = fs.readFileSync(path.resolve('./src/components/session/MemorizationSessionView.tsx'), 'utf8');
     assert(sessionContent.includes("type: 'WIRD_CACHE_SESSION_AUDIO'"), 'Session must request its audio cache');
-    assert(sessionContent.includes('sessionAyahs.slice(0, 20)'), 'Session must bound the number of audio URLs sent');
+    assert(sessionContent.includes('sessionAyahs.slice(currentAyahIndex, currentAyahIndex + 20)'), 'Session must bound the number of audio URLs sent');
   });
 
   // 3. HTML integration
