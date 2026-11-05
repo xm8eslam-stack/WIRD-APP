@@ -265,8 +265,14 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         )}
 
         {/* Navigation Tabs (5 Views) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
+        <div role="tablist" aria-label="أقسام مركز المراجعة" className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-daily-queue"
+            aria-selected={activeTab === 'daily_queue'}
+            aria-controls="revision-panel-daily-queue"
+            tabIndex={activeTab === 'daily_queue' ? 0 : -1}
             onClick={() => setActiveTab('daily_queue')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'daily_queue'
@@ -286,6 +292,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-weekly-overview"
+            aria-selected={activeTab === 'weekly_overview'}
+            aria-controls="revision-panel-weekly-overview"
+            tabIndex={activeTab === 'weekly_overview' ? 0 : -1}
             onClick={() => setActiveTab('weekly_overview')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'weekly_overview'
@@ -298,6 +310,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-weak-verses"
+            aria-selected={activeTab === 'weak_verses'}
+            aria-controls="revision-panel-weak-verses"
+            tabIndex={activeTab === 'weak_verses' ? 0 : -1}
             onClick={() => setActiveTab('weak_verses')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'weak_verses'
@@ -313,6 +331,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-history"
+            aria-selected={activeTab === 'history'}
+            aria-controls="revision-panel-history"
+            tabIndex={activeTab === 'history' ? 0 : -1}
             onClick={() => setActiveTab('history')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'history'
@@ -328,6 +352,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-retention-dashboard"
+            aria-selected={activeTab === 'retention_dashboard'}
+            aria-controls="revision-panel-retention-dashboard"
+            tabIndex={activeTab === 'retention_dashboard' ? 0 : -1}
             onClick={() => setActiveTab('retention_dashboard')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'retention_dashboard'
@@ -346,7 +376,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
       {/* VIEW 1: DAILY REVISION QUEUE */}
       {activeTab === 'daily_queue' && (
-        <div className="space-y-4">
+        <div id="revision-panel-daily-queue" role="tabpanel" aria-labelledby="revision-tab-daily-queue" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-stone-500">
             <span>المقاطع المستحقة للمراجعة اليوم (مرتبة حسب الأولوية والحاجة للتثبيت):</span>
             <span>إجمالي المقاطع المستحقة: <strong className="text-stone-800 dark:text-stone-200">{dailyQueue.length}</strong></span>
@@ -474,11 +505,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* VIEW 2: WEEKLY REVISION OVERVIEW */}
       {activeTab === 'weekly_overview' && (
-        <div className="space-y-4">
+        <div id="revision-panel-weekly-overview" role="tabpanel" aria-labelledby="revision-tab-weekly-overview" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-4">
           <div className="text-xs text-stone-500">
             توزيع المقاطع المجدولة للأيام السبعة القادمة حسب خوارزمية التكرار المتباعد:
           </div>
@@ -548,11 +581,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             ))}
           </div>
         </div>
+        </div>
       )}
 
       {/* VIEW 3: WEAK-VERSES LIST */}
       {activeTab === 'weak_verses' && (
-        <div className="space-y-4">
+        <div id="revision-panel-weak-verses" role="tabpanel" aria-labelledby="revision-tab-weak-verses" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 absolute right-3 top-3 text-stone-400" />
@@ -642,11 +677,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* VIEW 4: REVISION HISTORY */}
       {activeTab === 'history' && (
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
+        <div id="revision-panel-history" role="tabpanel" aria-labelledby="revision-tab-history" tabIndex={0} className="focus-visible:outline-none">
+          <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <History className="w-4 h-4 text-emerald-700" />
@@ -704,11 +741,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* VIEW 5: RETENTION DASHBOARD */}
       {activeTab === 'retention_dashboard' && (
-        <div className="space-y-6">
+        <div id="revision-panel-retention-dashboard" role="tabpanel" aria-labelledby="revision-tab-retention-dashboard" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-6">
           {/* Key Metric Gauges */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-1">
@@ -827,6 +866,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </p>
             </div>
           </div>
+        </div>
         </div>
       )}
 
