@@ -551,3 +551,20 @@
   .wird-surah-option { min-height: 4.35rem; padding: .7rem !important; }
   .wird-quran-reading-text { line-height: 2.3 !important; }
 }
+
+/* Memorization workspace 5D — clear step state and thumb-sized reveal controls. */
+.wird-session-progress [aria-current="step"] {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 2px;
+  transform: scale(1.2);
+}
+.wird-session button[aria-label^="كشف الكلمة"] {
+  min-height: 2.75rem;
+  min-width: 2.25rem;
+  margin-inline: .08rem;
+  touch-action: manipulation;
+}
+.wird-session button[aria-label^="كشف الكلمة"]:focus-visible {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 3px;
+}
