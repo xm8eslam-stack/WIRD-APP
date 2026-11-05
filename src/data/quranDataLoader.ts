@@ -32,5 +32,5 @@ export async function loadAyahByCoordinate(surahNumber: number, ayahNumber: numb
 }
 
 export function getAyahWords(text: string): string[] {
-  return text.split(/\\s+/).filter(word => word.trim().length > 0 && !['ۚ', 'ۖ', 'ۗ', 'ۛ'].includes(word));
+  return text.split(/\s+/).filter(word => word.trim().length > 0 && !['ۚ', 'ۖ', 'ۗ', 'ۛ'].includes(word));
 }
