@@ -133,8 +133,8 @@
 - GitHub cannot prove Google AI Studio's UI has synchronized the latest main commit.
 
 ### Additional confirmed architectural/security findings
-- `RetentionService` weak-verse records use a separate localStorage path; centralize before sync.
-- Existing localStorage keys are global rather than UID-scoped; account switching on one browser is a high-priority isolation risk.
+- Authenticated local data is now UID-scoped; AuthGate prepares the scope before App mount and asks once whether legacy device data should be imported or kept as guest data.
+- Weak-verse records now use the central StorageService adapter. Resetting one account removes only that account's keys.
 - `server.ts` and Vercel `api/advisor.ts` are separate implementations and their request/history handling is not fully aligned.
 - Advisor rate limits remain process-local/in-memory; pruning prevents unbounded map growth but does not create a distributed rate limiter.
 - `vercel.json` currently has rewrites but no explicit security response headers.
@@ -158,3 +158,27 @@
 5. Test two accounts on two devices, then deploy rules only after explicit live-project review.
 6. Align Express/Vercel advisor validation and assess distributed rate limiting/security headers.
 7. Re-run Vercel deployment after the quota resets; verify the actual production URL separately.
+
+
+## 9. UID-scoped local persistence — implemented on main
+
+- Main implementation commit before this checkpoint update: `7bd80ab6e066aa716b33275f1a309e9e8e9f94d7`.
+- `StorageService` now namespaces authenticated keys under `wird_scope_v1:user:{uid}:`; guest mode uses the separate legacy/guest key space.
+- The first authenticated account sees a one-time ownership choice if legacy data exists:
+  - **Import:** copy and verify every legacy value in the UID namespace before removing the old source keys.
+  - **Keep as guest:** leave the old data in guest storage and start the account with a clean profile.
+- A device-level owner marker prevents later accounts from silently claiming the legacy dataset.
+- `AuthGate` blocks app mount until the selected UID/guest scope is ready; migration failure shows a retry/error state.
+- Weak-verse records now use `StorageService.getRawItem/setRawItem/removeRawItem`; the duplicate direct localStorage path was removed.
+- Backup snapshots, restores, and reset operations now operate only on the active scope; resetting account B must not clear account A.
+- Added `src/services/storageScope.test.ts` and registered it in `src/tests/runAllTests.ts`. Coverage includes legacy import, keep-as-guest, cross-account profile/weak-verse isolation, account reset isolation, and returning to guest mode.
+- GitHub Actions run `42105220329` passed all steps on main SHA `7bd80ab6e066aa716b33275f1a309e9e8e9f94d7`: Bun frozen lockfile, npm audit, automated tests, TypeScript, production build, and server smoke test.
+- Follow-up documentation commits update `FIRESTORE_SYNC_DESIGN.md` and `SECURITY_AUDIT.md` to mark local isolation and weak-verse centralization as implemented.
+- This is local account isolation only. Firestore, Security Rules, outbox, remote listeners, and cross-device synchronization are still not implemented.
+
+### Next exact implementation batch
+1. Add Firestore Emulator configuration and UID-only Security Rules.
+2. Add Emulator integration tests for unauthenticated, unverified, cross-UID, malformed, oversized, and allowed owner operations.
+3. Implement the cloud data adapter only after the rule tests pass.
+4. Add an idempotent per-UID offline outbox and real-time collection listeners.
+5. Verify two accounts on two browsers/devices; do not claim sync until server acknowledgement and cross-device visibility are observed.
