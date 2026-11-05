@@ -556,15 +556,17 @@ export const RetentionService = {
     }
   },
 
-  saveWeakVerses(items: WeakVerseItem[]): void {
+  saveWeakVerses(items: WeakVerseItem[]): boolean {
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
       } else {
         memoryWeakVerses = items;
       }
+      return true;
     } catch (e) {
       console.warn('Failed to save weak verses', e);
+      return false;
     }
   },
 
@@ -598,13 +600,13 @@ export const RetentionService = {
       });
     }
 
-    this.saveWeakVerses(items);
+    if (!this.saveWeakVerses(items)) throw new Error('تعذر حفظ سجل الآيات المتعثرة في التخزين الدائم.');
     return items;
   },
 
   resolveWeakVerse(id: string): WeakVerseItem[] {
     const items = this.getWeakVerses().filter(i => i.id !== id);
-    this.saveWeakVerses(items);
+    if (!this.saveWeakVerses(items)) throw new Error('تعذر حفظ تحديث الآيات المتعثرة في التخزين الدائم.');
     return items;
   },
 
