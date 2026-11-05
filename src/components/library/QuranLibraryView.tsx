@@ -381,7 +381,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
           </div>
 
           {/* Basmala Banner (For all surahs except At-Tawbah) */}
-          {selectedSurah.number !== 9 && (
+          {selectedSurah.number !== 9 && selectedSurah.number !== 1 && (
             <div className="text-center font-quran text-xl text-stone-700 dark:text-stone-300 py-2 border-y border-stone-100 dark:border-stone-700/60">
               بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
             </div>
