@@ -51,24 +51,6 @@ export function createCanonicalPortionId(surahNumber: number, startAyah: number,
   return `s${surahNumber}_a${startAyah}_a${endAyah}`;
 }
 
-// Map Ayah coordinates to Page numbers quickly
-const ayahPageCache = new Map<string, number>();
-
-function getAyahPage(surahNumber: number, ayahNumber: number): number {
-  const key = `${surahNumber}:${ayahNumber}`;
-  if (ayahPageCache.has(key)) return ayahPageCache.get(key)!;
-
-  const surah = VERIFIED_AYAHS[surahNumber];
-  if (surah) {
-    const found = surah.find(a => a.numberInSurah === ayahNumber);
-    if (found && found.page) {
-      ayahPageCache.set(key, found.page);
-      return found.page;
-    }
-  }
-  return 1;
-}
-
 /**
  * 3. Prevent duplicate Ayah counting when portions overlap.
  * Returns exact unique Ayah count and the Set of unique Ayah keys.
@@ -99,24 +81,32 @@ export function calculateUniqueMemorizedAyahs(portions: WirdPortion[]): {
 }
 
 /**
- * Calculate unique memorized pages using verified Quran page mappings.
- * Returns how many unique Mushaf pages (1 to 604) have their verses memorized.
+ * Calculate fully memorized Mushaf pages using verified ayah-to-page mappings.
+ * A page counts only when every canonical ayah printed on that page is memorized.
  */
 export function calculateUniqueMemorizedPages(portions: WirdPortion[]): number {
   const { ayahKeys } = calculateUniqueMemorizedAyahs(portions);
   if (ayahKeys.size === 0) return 0;
 
-  // Track distinct pages touched by memorized Ayahs
-  const pagesTouched = new Set<number>();
-  ayahKeys.forEach(key => {
-    const [s, a] = key.split(':').map(Number);
-    const page = getAyahPage(s, a);
-    if (page >= 1 && page <= 604) {
-      pagesTouched.add(page);
+  const pageAyahKeys = new Map<number, string[]>();
+  for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
+    const surahAyahs = VERIFIED_AYAHS[surahNumber] || [];
+    for (const ayah of surahAyahs) {
+      if (ayah.page < 1 || ayah.page > 604) continue;
+      const keys = pageAyahKeys.get(ayah.page) || [];
+      keys.push(`${surahNumber}:${ayah.numberInSurah}`);
+      pageAyahKeys.set(ayah.page, keys);
+    }
+  }
+
+  let fullyMemorizedPages = 0;
+  pageAyahKeys.forEach(keys => {
+    if (keys.length > 0 && keys.every(key => ayahKeys.has(key))) {
+      fullyMemorizedPages++;
     }
   });
 
-  return pagesTouched.size;
+  return fullyMemorizedPages;
 }
 
 /**
