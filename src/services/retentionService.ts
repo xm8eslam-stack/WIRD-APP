@@ -7,6 +7,7 @@ import {
   WirdPortion 
 } from '../types/quran';
 import { StorageService } from './storageService';
+import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { 
   calculateUniqueMemorizedAyahs, 
