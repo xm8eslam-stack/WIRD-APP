@@ -33,3 +33,5 @@ jobs:
         run: npm run lint
       - name: Production build (includes Quran chunk validation)
         run: npm run build
+      - name: Production server startup smoke test
+        run: npm run smoke:server
