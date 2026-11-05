@@ -23,6 +23,7 @@ import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord }
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
+import { getPageAyahSegments, getPageProgressStatus } from '../../services/pageProgressService';
 
 interface ProgressAnalyticsViewProps {
   logs: DailyLog[];
@@ -31,6 +32,14 @@ interface ProgressAnalyticsViewProps {
   onStartSession?: (surahNumber: number, startAyah: number, endAyah: number) => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
+
+
+type PageGridZoom = 'compact' | 'normal' | 'large';
+const PAGE_GRID_ZOOM_CLASSES: Record<PageGridZoom, string> = {
+  compact: 'grid-cols-5 sm:grid-cols-8 md:grid-cols-12 lg:grid-cols-16 xl:grid-cols-20',
+  normal: 'grid-cols-5 sm:grid-cols-7 md:grid-cols-10 lg:grid-cols-14 xl:grid-cols-18',
+  large: 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 xl:grid-cols-16'
+};
 
 const STATUS_CONFIG: Record<PortionMemorizationStatus, { label: string; bg: string; border: string; text: string; dotColor: string }> = {
   stable: { label: 'راسخ ومتقن', bg: 'bg-emerald-100 dark:bg-emerald-950/70', border: 'border-emerald-400 dark:border-emerald-700', text: 'text-emerald-900 dark:text-emerald-200', dotColor: 'bg-emerald-600' },
@@ -49,6 +58,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   onToast
 }) => {
   const [mapMode, setMapMode] = useState<'juz' | 'pages'>('pages');
+  const [pageGridZoom, setPageGridZoom] = useState<PageGridZoom>('normal');
   const [selectedJuz, setSelectedJuz] = useState<number>(30); // Default Juz Amma
   const [statusFilter, setStatusFilter] = useState<PortionMemorizationStatus | 'all'>('all');
   const [isExportSuccess, setIsExportSuccess] = useState(false);
@@ -60,67 +70,50 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     surah: typeof ALL_SURAHS[0];
     status: PortionMemorizationStatus;
     portionId?: string;
+    portionIds?: string[];
   } | null>(null);
 
   useEffect(() => {
     setPortions(RetentionService.getPortions());
   }, []);
 
-  // Map each of the 604 pages to its status based on tracked portions or default
-  const getPageStatus = (page: number): { status: PortionMemorizationStatus; surah: typeof ALL_SURAHS[0]; portionId?: string } => {
-    // Find surah on this page
-    const surah = ALL_SURAHS.find(s => page >= s.pageStart && page <= s.pageEnd) || ALL_SURAHS[0];
-    
-    // Check if we have a tracked portion for this surah or page
-    const matchingPortion = portions.find(p => {
-      if (p.pageNumber === page) return true;
-      if (p.surahNumber === surah.number && page >= surah.pageStart && page <= surah.pageEnd) return true;
-      return false;
-    });
-
-    if (matchingPortion) {
-      return { status: matchingPortion.status, surah, portionId: matchingPortion.id };
-    }
-
-    // Default heuristics based on seed user journey:
-    // Page 1 (Al-Fatihah) -> stable
-    if (page === 1) return { status: 'stable', surah };
-    // Pages 562-564 (Al-Mulk) -> recently_memorized
-    if (page >= 562 && page <= 564) return { status: 'recently_memorized', surah };
-    // Pages 582-583 (An-Naba) -> currently_memorizing
-    if (page >= 582 && page <= 583) return { status: 'currently_memorizing', surah };
-    // Pages 596-604 (Juz 30 short surahs) -> stable
-    if (page >= 596 && page <= 604) {
-      if (page === 603) return { status: 'weak', surah }; // Al-Kafirun weak
-      return { status: 'stable', surah };
-    }
-
-    return { status: 'not_memorized', surah };
-  };
+  // Page status is derived only from actual tracked ayah/page ranges.
+  const getPageStatus = (page: number) => getPageProgressStatus(page, portions);
 
   // Change page status
   const handleUpdatePageStatus = (pageNumber: number, newStatus: PortionMemorizationStatus) => {
-    const { surah, portionId } = getPageStatus(pageNumber);
+    const { portionIds } = getPageStatus(pageNumber);
 
-    if (portionId) {
-      RetentionService.updatePortionStatus(portionId, newStatus);
+    if (portionIds.length > 0) {
+      portionIds.forEach(id => RetentionService.updatePortionStatus(id, newStatus));
     } else {
-      // Add as new tracked portion
-      RetentionService.addPortion({
-        type: 'page',
-        surahNumber: surah.number,
-        surahName: surah.name,
-        startAyah: 1,
-        endAyah: surah.versesCount,
-        pageNumber,
-        juzNumber: surah.juzStart,
-        status: newStatus,
-        lastReviewedDate: getLocalDateString(),
-        nextDueDate: getLocalDateString(),
-        intervalDays: newStatus === 'stable' ? 7 : 1,
-        easeFactor: 2.5,
-        repetitionCount: newStatus === 'stable' ? 3 : 1,
-        mistakesCount: 0
+      const segments = getPageAyahSegments(pageNumber);
+      if (segments.length === 0) {
+        onToast?.('تعذر تحديد نطاق الآيات لهذه الصفحة؛ لم يتم تسجيل تقدم غير دقيق.', 'error');
+        return;
+      }
+
+      segments.forEach(segment => {
+        const segmentSurah = ALL_SURAHS.find(item => item.number === segment.surahNumber);
+        if (!segmentSurah) return;
+        RetentionService.addPortion({
+          type: 'page',
+          surahNumber: segment.surahNumber,
+          surahName: segmentSurah.name,
+          startAyah: segment.startAyah,
+          endAyah: segment.endAyah,
+          pageNumber,
+          pageStart: pageNumber,
+          pageEnd: pageNumber,
+          juzNumber: segmentSurah.juzStart,
+          status: newStatus,
+          lastReviewedDate: getLocalDateString(),
+          nextDueDate: getLocalDateString(),
+          intervalDays: newStatus === 'stable' ? 7 : 1,
+          easeFactor: 2.5,
+          repetitionCount: newStatus === 'stable' ? 3 : 1,
+          mistakesCount: 0
+        });
       });
     }
 
@@ -345,12 +338,19 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         {/* MAP VIEW: 604 PAGES GRID */}
         {mapMode === 'pages' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-stone-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-stone-500">
               <span>انقر على رقم أي صفحة للتعديل أو المراجعة:</span>
-              <span className="font-mono text-[11px]">مصحف المدينة المنورة (604 صفحة)</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[11px]">مصحف المدينة المنورة (604 صفحة)</span>
+                <div role="group" aria-label="تكبير خريطة الصفحات" className="inline-flex items-center gap-1 p-1 rounded-xl bg-stone-100 dark:bg-stone-800">
+                  <button type="button" aria-pressed={pageGridZoom === 'compact'} onClick={() => setPageGridZoom('compact')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أصغر</button>
+                  <button type="button" aria-pressed={pageGridZoom === 'normal'} onClick={() => setPageGridZoom('normal')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">متوسط</button>
+                  <button type="button" aria-pressed={pageGridZoom === 'large'} onClick={() => setPageGridZoom('large')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أكبر</button>
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-12 lg:grid-cols-16 xl:grid-cols-20 gap-2 max-h-[600px] overflow-y-auto overscroll-contain touch-pan-y p-2 bg-[#faf8f5] dark:bg-stone-900/50 rounded-2xl border border-stone-200/60 dark:border-stone-700/50">
+            <div className={`grid ${PAGE_GRID_ZOOM_CLASSES[pageGridZoom]} gap-2 max-h-[600px] overflow-y-auto overscroll-contain touch-pan-y p-2 bg-[#faf8f5] dark:bg-stone-900/50 rounded-2xl border border-stone-200/60 dark:border-stone-700/50">
               {Array.from({ length: 604 }, (_, i) => i + 1).map((pageNum) => {
                 const { status, surah, portionId } = getPageStatus(pageNum);
                 const cfg = STATUS_CONFIG[status];
@@ -359,8 +359,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                 return (
                   <button
                     key={pageNum}
-                    onClick={() => setInspectedPage({ pageNumber: pageNum, surah, status, portionId })}
-                    className={`aspect-square min-h-12 min-w-12 rounded-lg p-1.5 border text-center transition-all flex flex-col items-center justify-center relative group touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
+                    onClick={() => setInspectedPage({ pageNumber: pageNum, surah, status, portionId, portionIds })}
+                    className={`aspect-square ${pageGridZoom === 'large' ? 'min-h-14 min-w-14' : 'min-h-12 min-w-12'} rounded-lg p-1.5 border text-center transition-all flex flex-col items-center justify-center relative group touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                       matchesFilter ? 'opacity-100 hover:scale-110 z-10' : 'opacity-20 hover:opacity-100'
                     } ${cfg.bg} ${cfg.border} shadow-2xs cursor-pointer`}
                     title={`صفحة ${pageNum} - سورة ${surah.name} (${cfg.label})`}
