@@ -390,12 +390,12 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       const seedSnapshot: Record<string, string | null> = {
         [`memory:${STORAGE_KEYS.PORTIONS}`]: JSON.stringify([legacyPortion]),
         [`memory:${STORAGE_KEYS.SCHEMA_VERSION}`]: '2',
-        [`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`]: 'CORRUPTED_NON_JSON_DATA'
+        [`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`]: JSON.stringify([{ ...legacyPortion, id: 's112_a1_a99', endAyah: 99 }])
       };
       StorageService.restoreStorageSnapshot(seedSnapshot);
 
       const recovered = StorageService.getUnifiedPortions();
-      assert(recovered.length === 1, 'getUnifiedPortions recovers losslessly from legacy keys when v2 payload is corrupt');
+      assert(recovered.length === 1, 'getUnifiedPortions rejects valid-JSON payloads with invalid Quran coordinates and recovers from legacy keys');
       assert(recovered[0].id === 's112_a1_a4', 'Recovered portion has canonical ID s112_a1_a4');
     } finally {
       StorageService.restoreStorageSnapshot(snap);
