@@ -7,7 +7,7 @@ import {
   RevisionLogEntry 
 } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
+import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
 
 /**
  * ====================================================================
@@ -53,20 +53,17 @@ export function createCanonicalPortionId(surahNumber: number, startAyah: number,
 
 // Map Ayah coordinates to Page numbers quickly
 const ayahPageCache = new Map<string, number>();
-
-function getAyahPage(surahNumber: number, ayahNumber: number): number {
-  const key = `${surahNumber}:${ayahNumber}`;
-  if (ayahPageCache.has(key)) return ayahPageCache.get(key)!;
-
-  const surah = VERIFIED_AYAHS[surahNumber];
-  if (surah) {
-    const found = surah.find(a => a.numberInSurah === ayahNumber);
-    if (found && found.page) {
-      ayahPageCache.set(key, found.page);
-      return found.page;
+for (const [pageKey, segments] of Object.entries(QURAN_PAGE_INDEX)) {
+  const pageNumber = Number(pageKey);
+  for (const segment of segments) {
+    for (let ayahNumber = segment.startAyah; ayahNumber <= segment.endAyah; ayahNumber++) {
+      ayahPageCache.set(`${segment.surahNumber}:${ayahNumber}`, pageNumber);
     }
   }
-  return 1;
+}
+
+function getAyahPage(surahNumber: number, ayahNumber: number): number {
+  return ayahPageCache.get(`${surahNumber}:${ayahNumber}`) || 1;
 }
 
 /**
