@@ -8,7 +8,8 @@ import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } fro
 import { EngineGeneratedPlan } from './services/planningEngine';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { getLocalDateString } from './services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange } from './services/unifiedPortionService';
+import { ALL_SURAHS } from './data/quranMeta';
 import { getSessionCompletionMetrics } from './services/sessionCompletion';
 
 // Lazy loaded views for optimal chunking and initial load performance
@@ -191,6 +192,64 @@ export default function App() {
     });
   };
 
+  // Header shortcut follows the same source-of-truth order as the dashboard.
+  const handleStartDailySession = () => {
+    const currentPortions = RetentionService.getPortions();
+    const enginePlans = StorageService.getEnginePlans();
+    const activeEnginePlan = enginePlans.find(p => p.isActive && !p.isPaused)
+      || enginePlans.find(p => !p.isPaused);
+    const pendingEngineTask = activeEnginePlan?.schedule.find(day =>
+      day.memorizationTask && !day.memorizationTask.completed
+    )?.memorizationTask;
+
+    if (pendingEngineTask) {
+      handleStartSession(
+        pendingEngineTask.surahNumber,
+        pendingEngineTask.startAyah,
+        pendingEngineTask.endAyah,
+        'memorize'
+      );
+      return;
+    }
+
+    const activePreset = StorageService.getPlans().find(plan => plan.isActive);
+    if (activePreset?.targetSurahs?.length) {
+      const nextPresetRange = findNextUnmemorizedRange(
+        currentPortions,
+        activePreset.targetSurahs,
+        activePreset.dailyTarget || 7
+      );
+      if (nextPresetRange) {
+        handleStartSession(nextPresetRange.surahNumber, nextPresetRange.startAyah, nextPresetRange.endAyah, 'memorize');
+        return;
+      }
+    }
+
+    const duePortion = RetentionService.getDailyRevisionQueue()[0];
+    if (duePortion) {
+      handleStartSession(duePortion.surahNumber, duePortion.startAyah, duePortion.endAyah, 'review');
+      return;
+    }
+
+    const nextRange = findNextUnmemorizedRange(
+      currentPortions,
+      ALL_SURAHS.map(s => s.number),
+      activePreset?.dailyTarget || 7
+    );
+    if (nextRange) {
+      handleStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
+      return;
+    }
+
+    const firstMemorized = currentPortions.find(p => p.status !== 'not_memorized');
+    if (firstMemorized) {
+      handleStartSession(firstMemorized.surahNumber, firstMemorized.startAyah, firstMemorized.endAyah, 'review');
+      return;
+    }
+
+    handleStartSession(1, 1, 7, 'memorize');
+  };
+
   // Session complete callback
   const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
     const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
@@ -311,7 +370,7 @@ export default function App() {
           profile={profile}
           onToggleTheme={handleToggleTheme}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
-          onStartDailySession={() => handleStartSession(67, 1, 10)}
+          onStartDailySession={handleStartDailySession}
           pwaInstallPrompt={pwaInstallPrompt}
           isStandalone={isStandalone}
           onInstallPwa={handleTriggerPwaInstall}
