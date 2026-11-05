@@ -12,6 +12,8 @@ import {
 import { MemorizationPlan, PortionStatusRecord } from '../../types/quran';
 import { EngineGeneratedPlan } from '../../services/planningEngine';
 import { PlanningEngineWizard } from './PlanningEngineWizard';
+import { ALL_SURAHS } from '../../data/quranMeta';
+import { findNextUnmemorizedRange } from '../../services/unifiedPortionService';
 
 interface MemorizationPlansViewProps {
   plans: MemorizationPlan[];
@@ -19,7 +21,7 @@ interface MemorizationPlansViewProps {
   enginePlans: EngineGeneratedPlan[];
   memorizedPortions: PortionStatusRecord[];
   onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
-  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number) => void;
+  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number, mode?: 'memorize' | 'review') => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
@@ -34,6 +36,28 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'engine' | 'presets'>('engine');
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+
+  const handleStartPresetPlan = (plan: MemorizationPlan) => {
+    const targetSurahs = plan.targetSurahs?.length
+      ? plan.targetSurahs
+      : ALL_SURAHS.map(s => s.number);
+    const nextRange = findNextUnmemorizedRange(memorizedPortions, targetSurahs, plan.dailyTarget || 7);
+
+    if (nextRange) {
+      onStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
+      return;
+    }
+
+    const reviewTarget = memorizedPortions.find(p =>
+      targetSurahs.includes(p.surahNumber) && p.status !== 'not_memorized'
+    );
+    if (reviewTarget) {
+      onStartSession(reviewTarget.surahNumber, reviewTarget.startAyah, reviewTarget.endAyah, 'review');
+      return;
+    }
+
+    onToast?.('لا توجد مقاطع متاحة في هذه الخطة حالياً.', 'info');
+  };
 
   // Toggle active plan in presets
   const handleToggleActive = (planId: string) => {
@@ -192,7 +216,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                   <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-stone-100 dark:border-stone-700">
                     {plan.isActive ? (
                       <button
-                        onClick={() => onStartSession(plan.targetSurahs?.[0])}
+                        onClick={() => handleStartPresetPlan(plan)}
                         className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
