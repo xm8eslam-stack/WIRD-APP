@@ -150,35 +150,46 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     }
 
     const today = getLocalDateString();
-    segments.forEach(segment => {
-      const surah = ALL_SURAHS.find(s => s.number === segment.surahNumber)!;
-      const existing = currentPortions.find(p =>
-        p.surahNumber === segment.surahNumber &&
-        p.startAyah === segment.startAyah &&
-        p.endAyah === segment.endAyah
+    try {
+      segments.forEach(segment => {
+        const surah = ALL_SURAHS.find(s => s.number === segment.surahNumber)!;
+        const existing = currentPortions.find(p =>
+          p.surahNumber === segment.surahNumber &&
+          p.startAyah === segment.startAyah &&
+          p.endAyah === segment.endAyah
+        );
+  
+        if (existing) {
+          RetentionService.updatePortionStatus(existing.id, newStatus);
+        } else {
+          RetentionService.addPortion({
+            type: 'page',
+            surahNumber: segment.surahNumber,
+            surahName: surah.name,
+            startAyah: segment.startAyah,
+            endAyah: segment.endAyah,
+            pageNumber,
+            juzNumber: surah.juzStart,
+            status: newStatus,
+            lastReviewedDate: today,
+            nextDueDate: today,
+            intervalDays: newStatus === 'stable' ? 7 : 1,
+            easeFactor: 2.5,
+            repetitionCount: newStatus === 'stable' ? 3 : 1,
+            mistakesCount: 0
+          });
+        }
+      });
+    } catch (error) {
+      const rollbackSucceeded = RetentionService.savePortions(currentPortions);
+      onToast?.(
+        rollbackSucceeded
+          ? (error instanceof Error ? error.message : 'تعذر حفظ حالة الصفحة؛ تمت استعادة الحالة السابقة.')
+          : 'تعذر حفظ حالة الصفحة، كما لم نتمكن من تأكيد استعادة كل التغييرات. راجع بيانات الحفظ قبل المتابعة.',
+        'error'
       );
-
-      if (existing) {
-        RetentionService.updatePortionStatus(existing.id, newStatus);
-      } else {
-        RetentionService.addPortion({
-          type: 'page',
-          surahNumber: segment.surahNumber,
-          surahName: surah.name,
-          startAyah: segment.startAyah,
-          endAyah: segment.endAyah,
-          pageNumber,
-          juzNumber: surah.juzStart,
-          status: newStatus,
-          lastReviewedDate: today,
-          nextDueDate: today,
-          intervalDays: newStatus === 'stable' ? 7 : 1,
-          easeFactor: 2.5,
-          repetitionCount: newStatus === 'stable' ? 3 : 1,
-          mistakesCount: 0
-        });
-      }
-    });
+      return;
+    }
 
     setPortions(RetentionService.getPortions());
     setInspectedPage(null);
