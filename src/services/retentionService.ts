@@ -277,7 +277,7 @@ export interface RetentionMetrics {
 }
 
 // In-memory fallback for weak verses in server-side / test environments
-let memoryWeakVerses: WeakVerseItem[] | null = null;
+
 
 export const RetentionService = {
   // Get all tracked portions (Returns canonical WirdPortion array from StorageService)
@@ -536,33 +536,21 @@ export const RetentionService = {
     return weekOverview;
   },
 
-  // 3. Weak Verses List (Returns empty array for new users)
+  // 3. Weak Verses List — use the same UID-scoped storage adapter as all other progress.
   getWeakVerses(): WeakVerseItem[] {
     try {
-      if (typeof localStorage !== 'undefined') {
-        const data = localStorage.getItem(STORAGE_KEYS.WEAK_VERSES);
-        if (data) {
-          return JSON.parse(data);
-        }
-        return [];
-      }
-      if (!memoryWeakVerses) memoryWeakVerses = [];
-      return memoryWeakVerses;
+      const data = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+      if (!data) return [];
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
     }
   },
 
   saveWeakVerses(items: WeakVerseItem[]): void {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
-      } else {
-        memoryWeakVerses = items;
-      }
-    } catch (e) {
-      console.warn('Failed to save weak verses', e);
-    }
+    const saved = StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
+    if (!saved) console.warn('Failed to persist weak verses durably; the in-memory fallback remains available for this session.');
   },
 
   addOrIncrementWeakVerse(
@@ -707,10 +695,7 @@ export const RetentionService = {
 
   // Complete reset
   resetAll(): void {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEYS.WEAK_VERSES);
-    }
-    memoryWeakVerses = [];
+    StorageService.removeRawItem(STORAGE_KEYS.WEAK_VERSES);
   }
 };
 
