@@ -32,6 +32,18 @@ export async function runTafsirProxyTests(): Promise<{ passed: number; failed: n
     } finally { globalThis.fetch = originalFetch; }
   });
 
+  await test('Tafsir proxy rejects an ayah beyond the selected Surah verse count', async () => {
+    const originalFetch = globalThis.fetch;
+    let called = false;
+    globalThis.fetch = (async () => { called = true; throw new Error('Unexpected upstream call'); }) as typeof fetch;
+    const res = new MockResponse();
+    try {
+      await tafsirHandler({ method: 'GET', query: { surah: '1', ayah: '8' }, headers: { 'x-forwarded-for': '198.51.100.11' } }, res);
+      assert(res.statusCode === 400 && res.body?.error === 'INVALID_QURAN_COORDINATES', 'Al-Fatihah ayah 8 must be rejected');
+      assert(!called, 'Invalid Surah-specific coordinates must not reach upstream');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
   await test('Tafsir proxy forwards only the fixed book and caches successful responses', async () => {
     const originalFetch = globalThis.fetch;
     let requestedUrl = '';
