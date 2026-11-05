@@ -16,6 +16,7 @@ import { runTafsirServiceTests } from '../services/tafsirService.test';
 import { runTafsirProxyTests } from './tafsirProxy.test';
 import { runPageProgressServiceTests } from '../services/pageProgressService.test';
 import { runSessionCompletionTests } from './sessionCompletion.test';
+import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
@@ -82,6 +83,7 @@ async function main() {
     { name: 'Tafsir Serverless Proxy Security & Cache', runner: runTafsirProxyTests },
     { name: 'Truthful 604-Page Progress Mapping', runner: runPageProgressServiceTests },
     { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
+    { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
