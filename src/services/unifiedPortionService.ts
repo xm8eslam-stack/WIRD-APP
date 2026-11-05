@@ -81,6 +81,45 @@ export function calculateUniqueMemorizedAyahs(portions: WirdPortion[]): {
 }
 
 /**
+ * Calculate retention quality once per unique ayah, resolving overlapping
+ * records conservatively by keeping the weakest recorded status.
+ */
+export function calculateUniqueRetentionScore(portions: WirdPortion[]): number {
+  const statusPriority: Record<PortionMemorizationStatus, number> = {
+    weak: 0,
+    needs_revision: 1,
+    currently_memorizing: 2,
+    recently_memorized: 3,
+    stable: 4,
+    not_memorized: 5
+  };
+  const statusPoints: Record<PortionMemorizationStatus, number> = {
+    stable: 1,
+    recently_memorized: 0.8,
+    needs_revision: 0.5,
+    currently_memorizing: 0.4,
+    weak: 0.2,
+    not_memorized: 0
+  };
+  const uniqueStatuses = new Map<string, PortionMemorizationStatus>();
+
+  portions.forEach(portion => {
+    if (portion.status === 'not_memorized') return;
+    for (let ayah = Math.max(1, portion.startAyah); ayah <= portion.endAyah; ayah++) {
+      const key = `${portion.surahNumber}:${ayah}`;
+      const existing = uniqueStatuses.get(key);
+      if (!existing || statusPriority[portion.status] < statusPriority[existing]) {
+        uniqueStatuses.set(key, portion.status);
+      }
+    }
+  });
+
+  if (uniqueStatuses.size === 0) return 0;
+  const totalPoints = [...uniqueStatuses.values()].reduce((sum, status) => sum + statusPoints[status], 0);
+  return Math.round((totalPoints / uniqueStatuses.size) * 100);
+}
+
+/**
  * Calculate fully memorized Mushaf pages using verified ayah-to-page mappings.
  * A page counts only when every canonical ayah printed on that page is memorized.
  */
