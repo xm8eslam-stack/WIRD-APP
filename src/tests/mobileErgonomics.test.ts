@@ -13,6 +13,7 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
   const styles = fs.readFileSync(path.resolve(process.cwd(), 'src/index.css'), 'utf8');
   const library = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranLibraryView.tsx'), 'utf8');
   const dashboard = fs.readFileSync(path.resolve(process.cwd(), 'src/components/dashboard/DashboardView.tsx'), 'utf8');
+  const session = fs.readFileSync(path.resolve(process.cwd(), 'src/components/session/MemorizationSessionView.tsx'), 'utf8');
 
   test('604-page Mushaf map provides at least 48px mobile tap targets', () => {
     assert(progressView.includes('grid-cols-5 sm:grid-cols-8'), 'Mobile grid must use a low enough column count for 48px cells');
@@ -58,6 +59,15 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(library.includes('aria-pressed={isSelected}'), 'Selected Surah state must be announced');
     assert(!library.includes('onClick={() => {\n                  handleStopAudio();\n                  setSelectedSurah(surah);\n                }}'), 'The clickable Surah wrapper must not remain a non-semantic div');
     assert(library.includes('wird-quran-reading-text'), 'Quran reading typography must have a dedicated style hook');
+  });
+
+
+  test('Memorization reveal and step controls support keyboard and assistive technology', () => {
+    assert(session.includes('aria-label={`كشف الكلمة رقم ${idx + 1}'), 'Masked words must have descriptive reveal button names');
+    assert(session.includes('type="button"'), 'Word reveal controls must be real buttons');
+    assert(session.includes("['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON']"), 'Space-to-repeat must not hijack interactive controls');
+    assert(session.includes('role="list" aria-label="تقدم الآيات"'), 'Ayah progress must be exposed as a labeled list');
+    assert(session.includes("aria-current={idx === currentAyahIndex ? 'step' : undefined}"), 'The current ayah step must be announced');
   });
 
   return { passed, failed };
