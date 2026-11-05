@@ -1,22 +1,20 @@
 {
-  "verificationTimestamp": "2026-11-05T04:16:19.684Z",
+  "verificationTimestamp": "2026-11-05T04:22:21.084Z",
   "status": "VERIFIED_100_PERCENT",
-  "sourceInfo": {
-    "provider": "Tanzil Project (http://tanzil.net)",
+  "referenceSource": {
+    "provider": "Tanzil Project (http://tanzil.net via AlQuran Cloud)",
     "edition": "quran-uthmani",
     "narration": "حفص عن عاصم الكوفي",
-    "totalSurahs": 114,
-    "totalAyahs": 6236,
-    "totalPages": 604,
-    "totalJuz": 30,
     "license": "Creative Commons Attribution 3.0 Unported (CC BY 3.0)",
-    "verifiedDate": "2026-11-04"
+    "referenceFilePath": "./src/data/tanzilReferenceData.json",
+    "referenceFileChecksumSha256": "7d224a7fa5fb630915e75b92222f9263922d756028e0d572cf2249fc141d3e3a",
+    "referenceFileSizeBytes": 2903158
   },
   "comparisonMetrics": {
     "totalSurahsCompared": 114,
     "totalAyahsCompared": 6236,
-    "exactAyahMatchesCount": 6236,
-    "characterMismatchesCount": 0,
+    "exactCharacterMatchesCount": 6236,
+    "characterOrTextMismatchesCount": 0,
     "pageMappingMismatchesCount": 0,
     "juzMappingMismatchesCount": 0,
     "hizbQuarterMismatchesCount": 0,

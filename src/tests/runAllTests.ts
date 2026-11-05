@@ -6,6 +6,7 @@ import { runBackupTests } from './backupValidation.test';
 import { runCleanInitializationTests } from './cleanInitialization.test';
 import { runGeminiSecurityTests } from './geminiSecurity.test';
 import { runQuranIntegrityTests } from './quranContentIntegrity.test';
+import { runIndependentTanzilComparison } from './independentTanzilComparison';
 
 console.log('====================================================');
 console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
@@ -52,8 +53,14 @@ runSuite('Clean User Initialization & Zero Fake Progress (Phase 1)', runCleanIni
 // 7. Gemini Free Tier Security & Isolation
 runSuite('Gemini Free Tier Security, Rate Limits & Bundle Isolation (Phase 2)', runGeminiSecurityTests);
 
-// 8. Quran Data Integrity
-runSuite('Quran Data Integrity & Content Coverage (Phase 4)', runQuranIntegrityTests);
+// 8. Quran Data Structural Integrity
+runSuite('Quran Data Structural Integrity & Coverage', runQuranIntegrityTests);
+
+// 9. Independent Character-by-Character Tanzil Comparison
+runSuite('Independent Tanzil Character-by-Character Text & Metadata Verification', () => {
+  const res = runIndependentTanzilComparison();
+  return { passed: res.passed, failed: res.failed };
+});
 
 console.log('\n====================================================');
 console.log(`FINAL RESULT: ${totalPassed} PASSED | ${totalFailed} FAILED`);
