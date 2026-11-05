@@ -47,6 +47,16 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     assert(getPageProgressStatus(1, [partial]).status === 'currently_memorizing', 'Partial coverage must remain visibly incomplete');
   });
 
+  test('A weak tracked segment remains visibly weak when the rest of the page is untracked', () => {
+    const segment = getPageAyahSegments(1)[0];
+    const weakPartial = {
+      id: 'weak-partial-page', type: 'passage' as const, surahNumber: segment.surahNumber,
+      surahName: 'الفاتحة', startAyah: segment.startAyah, endAyah: segment.startAyah,
+      status: 'weak' as const, nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 1.3, repetitionCount: 0
+    } as PortionStatusRecord;
+    assert(getPageProgressStatus(1, [weakPartial]).status === 'weak', 'Partial coverage must not hide a weak tracked ayah');
+  });
+
   test('Page-specific portions affect only their recorded page', () => {
     const segments = getPageAyahSegments(562);
     const portions = segments.map((segment, index) => ({
