@@ -69,7 +69,7 @@ export function getPageProgressStatus(pageNumber: number, portions: PortionStatu
   const status: PortionMemorizationStatus = !anyCovered
     ? 'not_memorized'
     : !fullyCovered
-      ? 'currently_memorizing'
+      ? (worstStatus === 'weak' || worstStatus === 'needs_revision' ? worstStatus : 'currently_memorizing')
       : worstStatus;
 
   return {
