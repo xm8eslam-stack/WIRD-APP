@@ -236,6 +236,65 @@ export function calculateCanonicalSM2(
 }
 
 /**
+ * Find the next memorization range that is not already represented by a
+ * memorized portion. Existing in-progress portions are resumed before new gaps.
+ */
+export function findNextUnmemorizedRange(
+  portions: WirdPortion[],
+  surahNumbers: number[],
+  maxVerses: number
+): { surahNumber: number; startAyah: number; endAyah: number } | null {
+  const limit = Math.max(1, Math.floor(maxVerses || 1));
+  const targets = Array.from(new Set(surahNumbers)).filter(n => n >= 1 && n <= 114);
+
+  for (const surahNumber of targets) {
+    const surah = ALL_SURAHS.find(s => s.number === surahNumber);
+    if (!surah) continue;
+
+    const inProgress = portions
+      .filter(p => p.surahNumber === surahNumber && p.status === 'currently_memorizing')
+      .sort((a, b) => a.startAyah - b.startAyah)[0];
+    if (inProgress) {
+      return {
+        surahNumber,
+        startAyah: inProgress.startAyah,
+        endAyah: Math.min(inProgress.endAyah, inProgress.startAyah + limit - 1, surah.versesCount)
+      };
+    }
+
+    const memorized = portions.filter(p =>
+      p.surahNumber === surahNumber && p.status !== 'not_memorized'
+    );
+
+    let ayah = 1;
+    while (ayah <= surah.versesCount) {
+      const covered = memorized.some(p => p.startAyah <= ayah && p.endAyah >= ayah);
+      if (covered) {
+        ayah++;
+        continue;
+      }
+
+      const startAyah = ayah;
+      let count = 0;
+      while (ayah <= surah.versesCount && count < limit) {
+        const isCovered = memorized.some(p => p.startAyah <= ayah && p.endAyah >= ayah);
+        if (isCovered) break;
+        ayah++;
+        count++;
+      }
+
+      return {
+        surahNumber,
+        startAyah,
+        endAyah: ayah - 1
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * 8. Overdue queue prioritization, daily limits, grace period, and catch-up behavior.
  */
 export interface QueueOptions {
