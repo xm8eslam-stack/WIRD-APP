@@ -100,6 +100,17 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(!res.valid, 'Al-Fatihah ayah 8 must be rejected');
   });
 
+  test('Storage refuses to persist invalid Quran coordinates', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Valid canonical data should save before the negative check');
+      const invalid = { ...SAMPLE_PORTION, id: 's1_a1_a8', surahNumber: 1, surahName: 'الفاتحة', startAyah: 1, endAyah: 8 };
+      assert(!StorageService.saveUnifiedPortions([invalid]), 'Invalid Al-Fatihah ayah boundary must not be persisted');
+      assert(JSON.stringify(StorageService.getUnifiedPortions()) === JSON.stringify([SAMPLE_PORTION]), 'Rejected write must leave the previous valid data unchanged');
+    } finally { StorageService.restoreStorageSnapshot(snapshot); }
+  });
+
   test('Version 4 rejects IDs that do not match their Quran coordinates', () => {
     const invalid = { ...SAMPLE_PORTION, id: 's67_a2_a3' };
     const res = validateBackupPayload({ version: 4, unifiedPortions: [invalid] });
