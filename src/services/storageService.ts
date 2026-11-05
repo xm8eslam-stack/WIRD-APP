@@ -382,9 +382,10 @@ export const StorageService = {
         if (data) {
           try {
             const parsed = JSON.parse(data);
-            if (Array.isArray(parsed)) {
+            if (Array.isArray(parsed) && validateBackupPayload({ version: 4, unifiedPortions: parsed }).valid) {
               return parsed;
             }
+            console.warn('[WIRD Storage] Integrity Error: Unified portions failed canonical Quran and schema validation.');
           } catch {
             console.warn('[WIRD Storage] Integrity Error: Schema version is 2 but UNIFIED_PORTIONS payload is corrupt.');
           }
@@ -423,6 +424,11 @@ export const StorageService = {
 
   saveUnifiedPortions(portions: WirdPortion[]): boolean {
     try {
+      const validation = validateBackupPayload({ version: 4, unifiedPortions: portions });
+      if (!validation.valid) {
+        console.error('[WIRD Storage] Refusing to persist invalid canonical portions:', validation.error);
+        return false;
+      }
       const serialized = JSON.stringify(portions);
       
       // Attempt durable write
@@ -507,7 +513,7 @@ export const StorageService = {
       if (currentVersion === '2' && unifiedData) {
         try {
           const parsed = JSON.parse(unifiedData);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && validateBackupPayload({ version: 4, unifiedPortions: parsed }).valid) {
             return {
               success: true,
               legacyPortionsCount: 0,
