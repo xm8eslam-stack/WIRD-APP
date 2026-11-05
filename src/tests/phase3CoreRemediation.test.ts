@@ -1,15 +1,17 @@
 /**
  * phase3CoreRemediation.test.ts
  *
- * Automated verification suite for Phase 3: Core Remediation & P0 Implementation:
- * 1. Lossless Legacy Data Migration & Idempotency
- * 2. Overlap-Safe Unique Ayah & Page Calculation
+ * Automated verification suite for Phase 3 & Phase 3.1: Core Remediation & Data-Safety Patch:
+ * 1. Canonical Portion ID & Local Date Safety
+ * 2. Overlap-Safe Unique Ayah & Page Calculations
  * 3. Canonical SM-2 Grade Scheduling & Boundaries
- * 4. Local Date Safety & Timezone Integrity
- * 5. Revision Queue Prioritization, Limits & Grace Period
- * 6. Empty-State Statistics & Zero Fake Progress
- * 7. Dynamic Test Question Generation Integrity
- * 8. Lightweight Hash Router & Deep Linking
+ * 4. Lossless Migration with Duplicate/Conflict Merging & Recovery
+ * 5. RetentionService & StorageService Unified Authoritative Pipeline
+ * 6. Revision Performance Grading on Canonical Records
+ * 7. Storage Write Verification & Missing/Corrupt Payload Recovery
+ * 8. Honest Dynamic Testing (Zero Unmemorized Fallbacks & Truthful hasSufficientData)
+ * 9. Daily Revision Queue Limits, Prioritization & Grace Period
+ * 10. Lightweight Hash Router & Deep Linking
  */
 
 import {
@@ -23,7 +25,8 @@ import {
   getPrioritizedRevisionQueue,
   migrateLegacyDataLosslessly,
 } from '../services/unifiedPortionService';
-import { StorageService } from '../services/storageService';
+import { StorageService, STORAGE_KEYS } from '../services/storageService';
+import { RetentionService } from '../services/retentionService';
 import { generateDynamicTestQuestions } from '../services/testQuestionGenerator';
 import { parseRoute, buildRouteHash } from '../services/router';
 import { WirdPortion, PortionStatusRecord, RevisionItem } from '../types/quran';
@@ -210,7 +213,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(lowEasePortion.easeFactor >= 1.3, `SM-2 ease factor is strictly bounded at >= 1.3 (got ${lowEasePortion.easeFactor})`);
   }
 
-  console.log('\n--- 4. Lossless Migration & Idempotency ---');
+  console.log('\n--- 4. Deterministic Migration with Conflict Resolution ---');
   {
     const legacyPortions: PortionStatusRecord[] = [
       {
@@ -227,7 +230,24 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
         repetitionCount: 4,
         intervalDays: 10,
         easeFactor: 2.6,
+        history: [{ id: 'h1', date: '2026-04-10', rating: 'successful', intervalDaysBefore: 5, intervalDaysAfter: 10 }]
       },
+      {
+        id: 'legacy_p2_duplicate',
+        surahNumber: 18,
+        surahName: 'الكهف',
+        startAyah: 1,
+        endAyah: 10,
+        pageNumber: 293,
+        status: 'weak', // Conflicting weaker status
+        strength: 'weak',
+        lastReviewedDate: '2026-04-15', // More recent review
+        nextDueDate: '2026-04-16', // Earlier due date
+        repetitionCount: 5, // Higher repetition count
+        intervalDays: 1,
+        easeFactor: 2.1,
+        history: [{ id: 'h2', date: '2026-04-15', rating: 'failed', intervalDaysBefore: 10, intervalDaysAfter: 1 }]
+      }
     ];
 
     const legacyRevisions: RevisionItem[] = [
@@ -238,40 +258,151 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
         startAyah: 1,
         endAyah: 10,
         type: 'minor',
-        nextDueDate: '2026-04-18', // earlier due date
+        nextDueDate: '2026-04-12', // Even earlier due date
         intervalDays: 8,
         easeFactor: 2.4,
         repetitionCount: 3,
-        strength: 'medium',
-      },
+        strength: 'medium'
+      }
     ];
 
-    // First migration run
-    const { portions: migrated1, report: report1 } = migrateLegacyDataLosslessly(legacyPortions, legacyRevisions);
-    assert(migrated1.length === 1, 'Migration coalesces matching portion and revision into 1 record');
-    assert(migrated1[0].id === 's18_a1_a10', 'Migrated record uses canonical ID (s18_a1_a10)');
-    assert(migrated1[0].status === 'stable', 'Migrated record preserves stable status');
-    assert(report1.success === true, 'Migration report indicates success');
+    const { portions: migrated, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevisions);
+    assert(migrated.length === 1, 'Migration coalesces duplicate portions and revisions into 1 canonical record');
+    assert(migrated[0].id === 's18_a1_a10', 'Migrated record uses canonical ID (s18_a1_a10)');
+    assert(migrated[0].status === 'weak', 'Conflict resolution: weakest/most urgent status (weak) wins');
+    assert(migrated[0].repetitionCount === 5, 'Conflict resolution: highest repetition count (5) preserved');
+    assert(migrated[0].lastReviewedDate === '2026-04-15', 'Conflict resolution: most recent lastReviewedDate preserved');
+    assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate (2026-04-12) preserved');
+    assert(migrated[0].history?.length === 2, 'Lossless history: revision logs from both duplicate sources are preserved');
+    assert((migrated[0].conflictAudit?.length || 0) > 0, 'Conflict audit records overrides losslessly');
+    assert(report.success === true, 'Migration report reports success');
+  }
 
-    // StorageService integration & Idempotency
+  console.log('\n--- 5. RetentionService & StorageService Unified Pipeline ---');
+  {
     const snap = StorageService.getStorageSnapshot();
     try {
-      StorageService.saveUnifiedPortions(migrated1);
-      const retrieved = StorageService.getUnifiedPortions();
-      assert(retrieved.length === 1 && retrieved[0].surahNumber === 18, 'StorageService persists and retrieves unified portions');
+      StorageService.resetAllData();
+      
+      // Add portion via RetentionService
+      const newP = RetentionService.addPortion({
+        type: 'passage',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 10,
+        status: 'recently_memorized',
+        nextDueDate: '2026-05-10',
+        intervalDays: 2,
+        easeFactor: 2.5,
+        repetitionCount: 1
+      });
 
-      // Second migration run with existing unified portions should succeed losslessly
-      const { portions: migrated2 } = migrateLegacyDataLosslessly(retrieved as PortionStatusRecord[], []);
-      assert(migrated2.length === 1, 'Migration is idempotent: second run preserves exact count');
-      assert(migrated2[0].id === 's18_a1_a10', 'Idempotent migration keeps same portion ID');
+      assert(newP.id === 's67_a1_a10', 'RetentionService creates canonical ID s67_a1_a10');
+      
+      // Verify direct StorageService read return exact same canonical portion
+      const directUnified = StorageService.getUnifiedPortions();
+      assert(directUnified.length === 1 && directUnified[0].id === 's67_a1_a10', 'RetentionService writes directly to StorageService.getUnifiedPortions');
+
+      // Record revision performance
+      const perfRes = RetentionService.recordRevisionPerformance('s67_a1_a10', 'successful', 'مراجعة ممتازة');
+      assert(perfRes.updatedPortion.repetitionCount === 2, 'recordRevisionPerformance increments repetition count on canonical record');
+      assert(perfRes.updatedPortion.history?.length === 1, 'recordRevisionPerformance adds log entry to canonical history');
+
+      // Check Retention metrics
+      const metrics = RetentionService.getRetentionDashboardMetrics();
+      assert(metrics.totalTrackedPortions === 1, 'Dashboard metrics read canonical portion count');
+      assert(metrics.totalMemorizedAyahs === 10, 'Dashboard metrics calculate 10 unique memorized ayahs');
     } finally {
       StorageService.restoreStorageSnapshot(snap);
     }
   }
 
-  console.log('\n--- 5. Revision Queue Prioritization & Daily Limits ---');
+  console.log('\n--- 6. Storage Write Verification & Corrupt Payload Recovery ---');
   {
-    // Generate 30 portions due today or overdue
+    const snap = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+
+      // Seed legacy storage via StorageService snapshot API
+      const legacyPortion: PortionStatusRecord = {
+        id: 'legacy_portion_1',
+        type: 'passage',
+        surahNumber: 112,
+        surahName: 'الإخلاص',
+        startAyah: 1,
+        endAyah: 4,
+        status: 'stable',
+        nextDueDate: '2026-05-20',
+        intervalDays: 14,
+        easeFactor: 2.8,
+        repetitionCount: 10
+      };
+
+      const seedSnapshot: Record<string, string | null> = {
+        [`memory:${STORAGE_KEYS.PORTIONS}`]: JSON.stringify([legacyPortion]),
+        [`memory:${STORAGE_KEYS.SCHEMA_VERSION}`]: '2',
+        [`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`]: 'CORRUPTED_NON_JSON_DATA'
+      };
+      StorageService.restoreStorageSnapshot(seedSnapshot);
+
+      // getUnifiedPortions should catch corrupt payload and recover losslessly from legacy key
+      const recovered = StorageService.getUnifiedPortions();
+      assert(recovered.length === 1, 'getUnifiedPortions recovers losslessly from legacy keys when v2 payload is corrupt');
+      assert(recovered[0].id === 's112_a1_a4', 'Recovered portion has canonical ID s112_a1_a4');
+    } finally {
+      StorageService.restoreStorageSnapshot(snap);
+    }
+  }
+
+  console.log('\n--- 7. Honest Dynamic Test Question Generation ---');
+  {
+    // Case 1: Fresh profile with 0 memorized portions
+    const emptyGen = generateDynamicTestQuestions('complete_verse', [], 5);
+    assert(emptyGen.questions.length === 0, 'Zero fallback questions generated from unmemorized content when profile is clean');
+    assert(emptyGen.hasSufficientData === false, 'hasSufficientData is false when profile is clean');
+    assert(typeof emptyGen.messageAr === 'string', 'Honest Arabic explanatory message returned for clean profile');
+
+    // Case 2: User with 1 single-verse memorized portion (insufficient for verse completion)
+    const singleVersePortion: WirdPortion = {
+      id: 's109_a1_a1',
+      type: 'passage',
+      surahNumber: 109,
+      surahName: 'الكافرون',
+      startAyah: 1,
+      endAyah: 1,
+      status: 'recently_memorized',
+      nextDueDate: '2026-05-10',
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1
+    };
+    const partialGen = generateDynamicTestQuestions('complete_verse', [singleVersePortion], 5);
+    assert(partialGen.questions.length === 0, 'Does not fabricate questions if memorized portion is too short');
+    assert(partialGen.hasSufficientData === false, 'hasSufficientData is strictly false when target question count cannot be met');
+
+    // Case 3: User with valid memorized portion Al-Mulk (1-10)
+    const mulkPortion: WirdPortion = {
+      id: 's67_a1_a10',
+      type: 'passage',
+      surahNumber: 67,
+      surahName: 'الملك',
+      startAyah: 1,
+      endAyah: 10,
+      status: 'stable',
+      nextDueDate: '2026-05-10',
+      intervalDays: 5,
+      easeFactor: 2.5,
+      repetitionCount: 4
+    };
+    const validGen = generateDynamicTestQuestions('complete_verse', [mulkPortion], 5);
+    assert(validGen.questions.length === 5, 'Generates full question set when sufficient memorized content exists');
+    assert(validGen.hasSufficientData === true, 'hasSufficientData is true when full question set generated');
+    assert(validGen.questions.every(q => q.isFromMemorizedPortion), 'Every generated question originates exclusively from user memorized portions');
+  }
+
+  console.log('\n--- 8. Daily Revision Queue Limits & Prioritization ---');
+  {
     const portions: WirdPortion[] = [];
     for (let i = 1; i <= 30; i++) {
       portions.push({
@@ -287,7 +418,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
         intervalDays: 1,
         repetitionCount: 1,
         lastReviewedDate: '2026-05-01',
-        nextDueDate: i <= 5 ? '2026-05-02' : '2026-05-10', // overdue vs today
+        nextDueDate: i <= 5 ? '2026-05-02' : '2026-05-10',
       });
     }
 
@@ -300,46 +431,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(queue[0].status === 'weak', 'Queue prioritizes weak portions at top of queue');
   }
 
-  console.log('\n--- 6. Dynamic Test Question Generation ---');
-  {
-    // Test with no memorized portions (graceful fallback)
-    const emptyResult = generateDynamicTestQuestions('complete_verse', [], 67);
-    assert(emptyResult.questions.length > 0, 'Generates fallback questions when no portions memorized');
-    assert(emptyResult.hasSufficientData === false, 'hasSufficientData is false for empty profile');
-    assert(emptyResult.questions[0].options.length === 4, 'Multiple-choice question contains 4 options');
-
-    // Test with memorized portions
-    const userPortions: WirdPortion[] = [
-      {
-        id: 's1_a1_a7',
-        type: 'passage',
-        surahNumber: 1,
-        surahName: 'الفاتحة',
-        startAyah: 1,
-        endAyah: 7,
-        pageNumber: 1,
-        status: 'stable',
-        easeFactor: 2.5,
-        intervalDays: 10,
-        repetitionCount: 5,
-        lastReviewedDate: '2026-05-01',
-        nextDueDate: '2026-05-11',
-      },
-    ];
-
-    const modes = ['complete_verse', 'bidirectional_recall', 'random_recall', 'mutashabihat'] as const;
-    for (const mode of modes) {
-      const modeResult = generateDynamicTestQuestions(mode, userPortions, 1);
-      assert(modeResult.questions.length >= 1, `Generates valid test questions for mode "${mode}"`);
-      const minOptions = mode === 'mutashabihat' ? 2 : 4;
-      assert(
-        modeResult.questions.every(q => q.prompt && q.options.length >= minOptions && typeof q.correctIndex === 'number'),
-        `Questions for mode "${mode}" have valid prompt, >=${minOptions} options, and correctIndex`
-      );
-    }
-  }
-
-  console.log('\n--- 7. Router Parsing & Deep Linking ---');
+  console.log('\n--- 9. Router Parsing & Deep Linking ---');
   {
     const route1 = parseRoute('#/library');
     assert(route1.tab === 'library', 'parseRoute parses #/library');

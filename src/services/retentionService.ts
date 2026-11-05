@@ -13,11 +13,13 @@ import {
   calculateUniqueMemorizedAyahs, 
   calculateUniqueMemorizedPages, 
   getPrioritizedRevisionQueue, 
-  getLocalDateString 
+  getLocalDateString,
+  calculateCanonicalSM2,
+  createCanonicalPortionId,
+  addDaysToLocalDate
 } from './unifiedPortionService';
 
 const STORAGE_KEYS = {
-  PORTIONS: 'wird_portions_status',
   WEAK_VERSES: 'wird_weak_verses'
 };
 
@@ -275,39 +277,18 @@ export interface RetentionMetrics {
   averageEaseFactor: number;
 }
 
-// In-memory fallback for server-side / test / build environments where localStorage is not defined
-let memoryPortions: PortionStatusRecord[] | null = null;
+// In-memory fallback for weak verses in server-side / test environments
 let memoryWeakVerses: WeakVerseItem[] | null = null;
 
 export const RetentionService = {
-  // Get all tracked portions (Returns empty array for new users)
+  // Get all tracked portions (Returns canonical WirdPortion array from StorageService)
   getPortions(): PortionStatusRecord[] {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const data = localStorage.getItem(STORAGE_KEYS.PORTIONS);
-        if (data) {
-          return JSON.parse(data);
-        }
-        return [];
-      }
-      if (!memoryPortions) memoryPortions = [];
-      return memoryPortions;
-    } catch {
-      return [];
-    }
+    return StorageService.getUnifiedPortions() as PortionStatusRecord[];
   },
 
-  // Save portions
-  savePortions(portions: PortionStatusRecord[]): void {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(STORAGE_KEYS.PORTIONS, JSON.stringify(portions));
-      } else {
-        memoryPortions = portions;
-      }
-    } catch (e) {
-      console.warn('Failed to save portions', e);
-    }
+  // Save portions (Persists canonical WirdPortion to StorageService)
+  savePortions(portions: PortionStatusRecord[]): boolean {
+    return StorageService.saveUnifiedPortions(portions);
   },
 
   // Update a single portion's status directly
@@ -327,17 +308,97 @@ export const RetentionService = {
   // Add a new portion to track
   addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
     const portions = this.getPortions();
-    const newRecord: PortionStatusRecord = {
-      ...portion,
-      id: `portion-${portion.surahNumber}-${portion.startAyah}-${portion.endAyah}-${Date.now()}`,
-      history: []
-    };
-    const updated = [newRecord, ...portions];
-    this.savePortions(updated);
-    return newRecord;
+    const canonicalId = createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah);
+    const existingIndex = portions.findIndex(p => p.id === canonicalId || (p.surahNumber === portion.surahNumber && p.startAyah === portion.startAyah && p.endAyah === portion.endAyah));
+
+    let record: PortionStatusRecord;
+    if (existingIndex >= 0) {
+      record = {
+        ...portions[existingIndex],
+        ...portion,
+        id: canonicalId
+      };
+      portions[existingIndex] = record;
+    } else {
+      record = {
+        ...portion,
+        id: canonicalId,
+        history: [],
+        createdAt: new Date().toISOString()
+      };
+      portions.unshift(record);
+    }
+    this.savePortions(portions);
+    return record;
   },
 
-  // Record performance after a revision session
+  // Record memorization session completion into canonical portions
+  recordMemorizationCompletion(surahNumber: number, startAyah: number, endAyah: number): PortionStatusRecord {
+    const portions = this.getPortions();
+    const canonicalId = createCanonicalPortionId(surahNumber, startAyah, endAyah);
+    const today = getLocalDateString();
+    const tomorrow = addDaysToLocalDate(today, 1);
+    const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber);
+    const surahName = surahMeta?.name || `سورة ${surahNumber}`;
+
+    const existingIndex = portions.findIndex(p => 
+      p.id === canonicalId || 
+      (p.surahNumber === surahNumber && p.startAyah === startAyah && p.endAyah === endAyah)
+    );
+
+    let updatedPortion: PortionStatusRecord;
+    if (existingIndex >= 0) {
+      const existing = portions[existingIndex];
+      const newStatus = existing.status === 'not_memorized' || existing.status === 'currently_memorizing' 
+        ? 'recently_memorized' 
+        : existing.status;
+      updatedPortion = {
+        ...existing,
+        id: canonicalId,
+        status: newStatus,
+        lastReviewedDate: today,
+        nextDueDate: tomorrow,
+        repetitionCount: (existing.repetitionCount || 0) + 1,
+        intervalDays: Math.max(1, existing.intervalDays || 1),
+        easeFactor: existing.easeFactor || 2.5
+      };
+      portions[existingIndex] = updatedPortion;
+    } else {
+      updatedPortion = {
+        id: canonicalId,
+        type: 'passage',
+        surahNumber,
+        surahName,
+        startAyah,
+        endAyah,
+        pageNumber: surahMeta ? surahMeta.pageStart : 1,
+        status: 'recently_memorized',
+        lastReviewedDate: today,
+        nextDueDate: tomorrow,
+        intervalDays: 1,
+        easeFactor: 2.5,
+        repetitionCount: 1,
+        mistakesCount: 0,
+        history: [
+          {
+            id: `init-${Date.now()}`,
+            date: today,
+            rating: 'successful',
+            intervalDaysBefore: 0,
+            intervalDaysAfter: 1,
+            notes: 'إتمام جلسة الحفظ الأولى للمقطع'
+          }
+        ],
+        createdAt: new Date().toISOString()
+      };
+      portions.unshift(updatedPortion);
+    }
+
+    this.savePortions(portions);
+    return updatedPortion;
+  },
+
+  // Record performance after a revision session using canonical SM-2
   recordRevisionPerformance(
     portionId: string, 
     rating: RevisionRating, 
@@ -355,90 +416,54 @@ export const RetentionService = {
       throw new Error(`Portion with id ${portionId} not found`);
     }
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const prevInterval = Math.max(1, target.intervalDays || 1);
-    let newInterval = 1;
-    let newEaseFactor = target.easeFactor || 2.5;
-    let newStatus: PortionMemorizationStatus = target.status;
-    let mistakesCount = target.mistakesCount || 0;
-    let messageAr = '';
+    const todayStr = getLocalDateString();
+    
+    // Execute canonical SM-2 algorithm
+    const sm2Result = calculateCanonicalSM2(target, rating, {
+      customTodayStr: todayStr,
+      gracePeriodDays: 1
+    });
 
-    if (rating === 'successful') {
-      // Successful revision
-      newEaseFactor = Math.min(3.0, Number((newEaseFactor + 0.15).toFixed(2)));
-      
-      if (target.repetitionCount === 0) {
-        newInterval = 2;
-      } else if (target.repetitionCount === 1) {
-        newInterval = 4;
-      } else {
-        newInterval = Math.round(prevInterval * newEaseFactor);
-      }
-      
-      // If repetitions >= 3 and rating was successful, it becomes stable
-      if (target.repetitionCount >= 2) {
-        newStatus = 'stable';
-      } else {
-        newStatus = 'recently_memorized';
-      }
-      messageAr = `رسوخ ممتاز ومتقن! تمت مضاعفة الفاصل الزمني للمراجعة القادمة إلى ${newInterval} يوماً.`;
-
-    } else if (rating === 'difficult') {
-      // Difficult revision with hesitation
-      newEaseFactor = Math.max(1.3, Number((newEaseFactor - 0.05).toFixed(2)));
-      newInterval = Math.max(2, Math.round(prevInterval * 0.7));
-      newStatus = 'needs_revision';
-      messageAr = `مراجعة متوسطة مع تردد. تمت جدولة المراجعة بعد ${newInterval} أيام للتثبيت.`;
-
-    } else {
-      // Failed revision / forgetting
-      newEaseFactor = Math.max(1.3, Number((newEaseFactor - 0.25).toFixed(2)));
-      newInterval = 1; // reset to tomorrow
-      newStatus = 'weak';
-      mistakesCount += 1;
-      messageAr = `المقطع يتفلت ويحتاج عناية فائقة. تم تسجيله كـ "ضعيف" وجدولته للمراجعة غداً.`;
-
-      // Auto-track weak verse if specific ayah provided
-      if (weakAyahDetails) {
-        this.addOrIncrementWeakVerse(
-          target.surahNumber,
-          weakAyahDetails.ayahNumber,
-          target.surahName,
-          weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
-          weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
-        );
-      }
-    }
-
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + newInterval);
-    const nextDueDate = nextDate.toISOString().split('T')[0];
+    const mistakesCount = rating === 'failed' 
+      ? (target.mistakesCount || 0) + 1 
+      : (target.mistakesCount || 0);
 
     const logEntry: RevisionLogEntry = {
       id: `log-${Date.now()}`,
       date: todayStr,
       rating,
-      intervalDaysBefore: prevInterval,
-      intervalDaysAfter: newInterval,
+      intervalDaysBefore: target.intervalDays || 1,
+      intervalDaysAfter: sm2Result.intervalDays,
       notes: notes || undefined
     };
 
     const updatedPortion: PortionStatusRecord = {
       ...target,
-      status: newStatus,
+      status: sm2Result.status,
+      strength: sm2Result.strength,
       lastReviewedDate: todayStr,
-      nextDueDate,
-      intervalDays: newInterval,
-      easeFactor: newEaseFactor,
-      repetitionCount: target.repetitionCount + 1,
+      nextDueDate: sm2Result.nextDueDate,
+      intervalDays: sm2Result.intervalDays,
+      easeFactor: sm2Result.easeFactor,
+      repetitionCount: sm2Result.repetitionCount,
       mistakesCount,
       history: [logEntry, ...(target.history || [])]
     };
 
+    if (rating === 'failed' && weakAyahDetails) {
+      this.addOrIncrementWeakVerse(
+        target.surahNumber,
+        weakAyahDetails.ayahNumber,
+        target.surahName,
+        weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
+        weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
+      );
+    }
+
     const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
     this.savePortions(updatedList);
 
-    // Also record session completion in daily logs
+    // Record session completion in daily logs
     const versesCount = (target.endAyah - target.startAyah + 1) || 10;
     StorageService.recordSessionCompletion(
       0, 
@@ -449,41 +474,30 @@ export const RetentionService = {
 
     return {
       updatedPortion,
-      nextIntervalDays: newInterval,
-      nextDueDate,
-      messageAr
+      nextIntervalDays: sm2Result.intervalDays,
+      nextDueDate: sm2Result.nextDueDate,
+      messageAr: sm2Result.messageAr
     };
   },
 
-  // 1. Daily Revision Queue
+  // 1. Daily Revision Queue (Enforces canonical 20-item daily limit & grace period)
   getDailyRevisionQueue(dateStr?: string): PortionStatusRecord[] {
     const portions = this.getPortions();
-    const targetDate = dateStr || new Date().toISOString().split('T')[0];
+    const today = dateStr || getLocalDateString();
+    const queueResult = getPrioritizedRevisionQueue(portions, {
+      todayStr: today,
+      maxDailyLimit: 20
+    });
+    return queueResult.queue as PortionStatusRecord[];
+  },
 
-    // Filter items due today or overdue
-    const duePortions = portions.filter(p => p.nextDueDate <= targetDate && p.status !== 'not_memorized');
-
-    // Priority ordering:
-    // 1. 'weak' first (most vulnerable)
-    // 2. 'needs_revision' second
-    // 3. 'currently_memorizing' third
-    // 4. 'recently_memorized' fourth
-    // 5. 'stable' last
-    const priorityWeight: Record<PortionMemorizationStatus, number> = {
-      weak: 0,
-      needs_revision: 1,
-      currently_memorizing: 2,
-      recently_memorized: 3,
-      stable: 4,
-      not_memorized: 5
-    };
-
-    return duePortions.sort((a, b) => {
-      const weightA = priorityWeight[a.status];
-      const weightB = priorityWeight[b.status];
-      if (weightA !== weightB) return weightA - weightB;
-      // Secondary: lower ease factor first
-      return a.easeFactor - b.easeFactor;
+  // Full queue details including catch-up recommendation
+  getDailyRevisionQueueDetails(dateStr?: string) {
+    const portions = this.getPortions();
+    const today = dateStr || getLocalDateString();
+    return getPrioritizedRevisionQueue(portions, {
+      todayStr: today,
+      maxDailyLimit: 20
     });
   },
 
@@ -691,10 +705,8 @@ export const RetentionService = {
   // Complete reset
   resetAll(): void {
     if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(STORAGE_KEYS.PORTIONS);
       localStorage.removeItem(STORAGE_KEYS.WEAK_VERSES);
     }
-    memoryPortions = [];
     memoryWeakVerses = [];
   }
 };

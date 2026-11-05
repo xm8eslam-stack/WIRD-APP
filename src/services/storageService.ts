@@ -336,11 +336,39 @@ export const StorageService = {
   // Unified Portions (Canonical schema v2)
   getUnifiedPortions(): WirdPortion[] {
     try {
+      const version = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const data = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-      if (data) {
-        return JSON.parse(data);
+
+      if (version === '2') {
+        if (data) {
+          try {
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed)) {
+              return parsed;
+            }
+          } catch {
+            console.warn('[WIRD Storage] Integrity Error: Schema version is 2 but UNIFIED_PORTIONS payload is corrupt.');
+          }
+        } else {
+          console.warn('[WIRD Storage] Integrity Error: Schema version is 2 but UNIFIED_PORTIONS payload is missing.');
+        }
+
+        // Recoverable Integrity Error (Phase 3.1): Re-attempt recovery from preserved legacy keys
+        const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
+        const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
+        if (legacyPortionsRaw || legacyRevsRaw) {
+          console.info('[WIRD Storage] Attempting recovery from preserved legacy storage keys...');
+          const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
+          const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+          const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
+          if (report.success && this.saveUnifiedPortions(portions)) {
+            return portions;
+          }
+        }
+        return [];
       }
-      // If not yet migrated, attempt migration on read
+
+      // If schema version is not 2, run migration first
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
       if (legacyPortionsRaw || legacyRevsRaw) {
@@ -354,48 +382,81 @@ export const StorageService = {
     }
   },
 
-  saveUnifiedPortions(portions: WirdPortion[]): void {
+  saveUnifiedPortions(portions: WirdPortion[]): boolean {
     try {
-      setItem(STORAGE_KEYS.UNIFIED_PORTIONS, JSON.stringify(portions));
+      const serialized = JSON.stringify(portions);
+      setItem(STORAGE_KEYS.UNIFIED_PORTIONS, serialized);
+
+      // Verified Readback: Confirm actual persistence before updating schema version
+      const readback = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      if (!readback) {
+        console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS readback is null');
+        return false;
+      }
+      const parsed = JSON.parse(readback);
+      if (!Array.isArray(parsed) || parsed.length !== portions.length) {
+        console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS record count mismatch');
+        return false;
+      }
+
+      // Update schema version only after persistence is verified
       setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+
       // Keep legacy keys in sync for backward compatibility
-      setItem(STORAGE_KEYS.PORTIONS, JSON.stringify(portions));
-      const revItems: RevisionItem[] = portions
-        .filter(p => p.status !== 'not_memorized')
-        .map(p => ({
-          id: p.id,
-          surahNumber: p.surahNumber,
-          surahName: p.surahName,
-          startAyah: p.startAyah,
-          endAyah: p.endAyah,
-          pageNumber: p.pageNumber,
-          juzNumber: p.juzNumber,
-          type: p.revisionType || 'minor',
-          lastReviewedDate: p.lastReviewedDate,
-          nextDueDate: p.nextDueDate,
-          intervalDays: p.intervalDays,
-          easeFactor: p.easeFactor,
-          repetitionCount: p.repetitionCount,
-          strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium')
-        }));
-      setItem(STORAGE_KEYS.REVISION, JSON.stringify(revItems));
+      try {
+        setItem(STORAGE_KEYS.PORTIONS, serialized);
+        const revItems: RevisionItem[] = portions
+          .filter(p => p.status !== 'not_memorized')
+          .map(p => ({
+            id: p.id,
+            surahNumber: p.surahNumber,
+            surahName: p.surahName,
+            startAyah: p.startAyah,
+            endAyah: p.endAyah,
+            pageNumber: p.pageNumber,
+            juzNumber: p.juzNumber,
+            type: p.revisionType || 'minor',
+            lastReviewedDate: p.lastReviewedDate,
+            nextDueDate: p.nextDueDate,
+            intervalDays: p.intervalDays,
+            easeFactor: p.easeFactor,
+            repetitionCount: p.repetitionCount,
+            strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium')
+          }));
+        setItem(STORAGE_KEYS.REVISION, JSON.stringify(revItems));
+      } catch (e) {
+        console.warn('[WIRD Storage] Legacy backward-sync warning', e);
+      }
+
+      return true;
     } catch (e) {
-      console.warn("Storage write failed", e);
+      console.error("[WIRD Storage] saveUnifiedPortions write failed", e);
+      return false;
     }
   },
 
   ensureDataMigrated(): MigrationReport {
     try {
       const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
-      if (currentVersion === '2') {
-        const unified = this.getUnifiedPortions();
-        return {
-          success: true,
-          legacyPortionsCount: 0,
-          legacyRevisionCount: 0,
-          migratedPortionsCount: unified.length,
-          alreadyMigrated: true
-        };
+      const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+
+      if (currentVersion === '2' && unifiedData) {
+        try {
+          const parsed = JSON.parse(unifiedData);
+          if (Array.isArray(parsed)) {
+            return {
+              success: true,
+              legacyPortionsCount: 0,
+              legacyRevisionCount: 0,
+              migratedPortionsCount: parsed.length,
+              totalPreservedLogsCount: 0,
+              conflictAuditCount: 0,
+              alreadyMigrated: true
+            };
+          }
+        } catch {
+          // Corrupt payload, fall through to recovery
+        }
       }
 
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
@@ -405,9 +466,22 @@ export const StorageService = {
 
       const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
 
-      if (report.success) {
-        setItem(STORAGE_KEYS.UNIFIED_PORTIONS, JSON.stringify(portions));
-        setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      if (!report.success) {
+        return report;
+      }
+
+      const saved = this.saveUnifiedPortions(portions);
+      if (!saved) {
+        return {
+          success: false,
+          legacyPortionsCount: legacyPortions.length,
+          legacyRevisionCount: legacyRevs.length,
+          migratedPortionsCount: 0,
+          totalPreservedLogsCount: 0,
+          conflictAuditCount: 0,
+          alreadyMigrated: false,
+          error: 'فشل حفظ البيانات الموحدة في الذاكرة المحلية (قد تكون المساحة ممتلئة)'
+        };
       }
 
       return report;
@@ -417,6 +491,8 @@ export const StorageService = {
         legacyPortionsCount: 0,
         legacyRevisionCount: 0,
         migratedPortionsCount: 0,
+        totalPreservedLogsCount: 0,
+        conflictAuditCount: 0,
         alreadyMigrated: false,
         error: e?.message || 'Migration exception'
       };

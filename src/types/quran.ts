@@ -64,6 +64,7 @@ export interface WirdPortion {
   history?: RevisionLogEntry[];
   revisionType?: 'minor' | 'major';
   strength?: 'strong' | 'medium' | 'weak';
+  conflictAudit?: Array<{ source: string; field: string; value: any; timestamp?: string }>;
   createdAt?: string;
   updatedAt?: string;
 }

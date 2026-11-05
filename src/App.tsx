@@ -189,8 +189,16 @@ export default function App() {
   // Session complete callback
   const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => {
     StorageService.recordSessionCompletion(memorizedAyahs, reviewedPages, minutes, taskName);
+    if (sessionParams.surahNumber) {
+      RetentionService.recordMemorizationCompletion(
+        sessionParams.surahNumber,
+        sessionParams.startAyah,
+        sessionParams.endAyah
+      );
+    }
     setLogs(StorageService.getLogs());
     setProfile(StorageService.getProfile());
+    setRevisionItems(StorageService.getRevisionItems());
   };
 
   // Save revision rating or new items
@@ -231,24 +239,24 @@ export default function App() {
     }, 4000);
   };
 
-  // Add verse to revision from test with dual retention sync
+  // Add verse to revision from test with canonical retention sync
   const handleAddVerseToRevision = (surahNumber: number, surahName: string, ayahNumber: number) => {
-    const newItem: RevisionItem = {
-      id: `rev-${Date.now()}`,
+    RetentionService.addPortion({
+      type: 'passage',
       surahNumber,
       surahName,
       startAyah: ayahNumber,
       endAyah: ayahNumber,
-      type: 'minor',
+      status: 'weak',
       nextDueDate: new Date().toISOString().split('T')[0],
       intervalDays: 1,
       easeFactor: 2.0,
       repetitionCount: 1,
+      mistakesCount: 1,
       strength: 'weak'
-    };
-    const updated = [newItem, ...revisionItems];
-    setRevisionItems(updated);
-    StorageService.saveRevisionItems(updated);
+    });
+
+    setRevisionItems(StorageService.getRevisionItems());
 
     // Synchronize directly with Retention Service
     RetentionService.addOrIncrementWeakVerse(

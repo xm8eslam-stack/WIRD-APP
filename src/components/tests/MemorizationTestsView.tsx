@@ -240,8 +240,23 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
             </button>
           </div>
         </div>
+      ) : currentQuestions.length === 0 ? (
+        /* 3. Empty State Card when user has no memorized portions for test mode */
+        <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-8 border border-stone-200/80 dark:border-stone-700/80 text-center space-y-5 shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
+            <AlertTriangle className="w-7 h-7" />
+          </div>
+          <div className="space-y-2 max-w-md mx-auto">
+            <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+              لا تتوفر أسئلة مؤهلة من المحفوظ حالياً
+            </h3>
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+              {generationResult.messageAr || 'يرجى تسجيل مقاطع محفوظة أولاً في خطتك أو إتمام جلسة حفظ قبل إجراء الاختبارات المبنية على المحفوظ الفعلي.'}
+            </p>
+          </div>
+        </div>
       ) : (
-        /* 3. Question Card */
+        /* 4. Question Card */
         <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-6 md:p-8 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-6">
           <div className="flex items-center justify-between text-xs pb-3 border-b border-stone-100 dark:border-stone-700">
             <span className="font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950 px-2.5 py-1 rounded-md">
@@ -253,10 +268,10 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
           </div>
 
           {/* Insufficient data notification banner */}
-          {!generationResult.hasSufficientData && (
+          {(!generationResult.hasSufficientData || generationResult.messageAr) && (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>لم تسجل مقاطع محفوظة بعد في سجلك. يتم توليد هذا الاختبار استكشافياً لسورة {currentQ.surahName} لتقييم حفظك العام.</span>
+              <span>{generationResult.messageAr || 'ملاحظة: هذا الاختبار مستخرج من المقاطع المحفوظة في سجلك الفعلي.'}</span>
             </div>
           )}
 

@@ -298,15 +298,112 @@ export function getPrioritizedRevisionQueue(
 }
 
 /**
- * 9 & 10. Lossless, Idempotent, and Recoverable Migration
+ * 9 & 10. Lossless, Idempotent, and Validated Migration (Phase 3.1)
  */
 export interface MigrationReport {
   success: boolean;
   legacyPortionsCount: number;
   legacyRevisionCount: number;
   migratedPortionsCount: number;
+  totalPreservedLogsCount: number;
+  conflictAuditCount: number;
   alreadyMigrated: boolean;
   error?: string;
+}
+
+const STATUS_SEVERITY_HIERARCHY: Record<PortionMemorizationStatus, number> = {
+  weak: 0,
+  needs_revision: 1,
+  currently_memorizing: 2,
+  recently_memorized: 3,
+  stable: 4,
+  not_memorized: 5
+};
+
+function mergePortionRecords(
+  existing: WirdPortion,
+  incoming: Partial<WirdPortion> & { notes?: string },
+  sourceName: string
+): void {
+  if (!existing.conflictAudit) {
+    existing.conflictAudit = [];
+  }
+
+  // 1. Status: Weakest/most urgent state wins to prevent forgotten lapses
+  if (incoming.status) {
+    const existingRank = STATUS_SEVERITY_HIERARCHY[existing.status] ?? 3;
+    const incomingRank = STATUS_SEVERITY_HIERARCHY[incoming.status] ?? 3;
+    if (incomingRank < existingRank) {
+      if (existing.status !== incoming.status) {
+        existing.conflictAudit.push({
+          source: sourceName,
+          field: 'status',
+          value: `Overridden ${existing.status} with higher priority ${incoming.status}`,
+          timestamp: new Date().toISOString()
+        });
+      }
+      existing.status = incoming.status;
+    }
+  }
+
+  // 2. Repetition count: highest verified count
+  if (incoming.repetitionCount !== undefined) {
+    existing.repetitionCount = Math.max(existing.repetitionCount || 0, incoming.repetitionCount);
+  }
+
+  // 3. Interval: if weak, interval is 1; otherwise take maximum interval
+  if (existing.status === 'weak') {
+    existing.intervalDays = 1;
+  } else if (incoming.intervalDays !== undefined) {
+    existing.intervalDays = Math.max(existing.intervalDays || 1, incoming.intervalDays);
+  }
+
+  // 4. Ease Factor: preserve conservative factor (lower EF means safer, more frequent revision)
+  if (incoming.easeFactor !== undefined && incoming.easeFactor > 0) {
+    existing.easeFactor = Math.min(existing.easeFactor || 2.5, incoming.easeFactor);
+  }
+
+  // 5. Due date: earlier due date wins (ensures no overdue revision is missed)
+  if (incoming.nextDueDate) {
+    if (!existing.nextDueDate || incoming.nextDueDate < existing.nextDueDate) {
+      existing.nextDueDate = incoming.nextDueDate;
+    }
+  }
+
+  // 6. Last reviewed date: more recent date wins
+  if (incoming.lastReviewedDate) {
+    if (!existing.lastReviewedDate || incoming.lastReviewedDate > existing.lastReviewedDate) {
+      existing.lastReviewedDate = incoming.lastReviewedDate;
+    }
+  }
+
+  // 7. Mistakes count: accumulate or take maximum
+  if (incoming.mistakesCount !== undefined) {
+    existing.mistakesCount = Math.max(existing.mistakesCount || 0, incoming.mistakesCount);
+  }
+
+  // 8. History: lossless union of revision logs
+  if (Array.isArray(incoming.history) && incoming.history.length > 0) {
+    if (!existing.history) existing.history = [];
+    const seenLogKeys = new Set(existing.history.map(h => h.id || `${h.date}_${h.rating}_${h.intervalDaysAfter}`));
+    incoming.history.forEach(log => {
+      const key = log.id || `${log.date}_${log.rating}_${log.intervalDaysAfter}`;
+      if (!seenLogKeys.has(key)) {
+        existing.history!.push(log);
+        seenLogKeys.add(key);
+      }
+    });
+  }
+
+  // 9. Unreconciled notes or metadata
+  if (incoming.notes) {
+    existing.conflictAudit.push({
+      source: sourceName,
+      field: 'notes',
+      value: incoming.notes,
+      timestamp: new Date().toISOString()
+    });
+  }
 }
 
 export function migrateLegacyDataLosslessly(
@@ -315,68 +412,80 @@ export function migrateLegacyDataLosslessly(
 ): { portions: WirdPortion[]; report: MigrationReport } {
   try {
     const mergedMap = new Map<string, WirdPortion>();
+    let totalSourceLogs = 0;
+    const sourceCoordinateKeys = new Set<string>();
 
-    // 1. Ingest legacyPortions
-    legacyPortions.forEach(p => {
+    // 1. Deterministic Ingestion of legacyPortions (handles internal duplicates)
+    legacyPortions.forEach((p, idx) => {
       const canonicalId = p.id?.startsWith('s') && p.id.includes('_a') 
         ? p.id 
         : createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
 
-      const surahMeta = ALL_SURAHS.find(s => s.number === p.surahNumber);
-      const surahName = p.surahName || surahMeta?.name || `سورة ${p.surahNumber}`;
-      const page = p.pageNumber || (surahMeta ? surahMeta.pageStart : 1);
-      const juz = p.juzNumber || (surahMeta ? surahMeta.juzStart : 1);
+      const coordKey = `${p.surahNumber}:${p.startAyah}:${p.endAyah}`;
+      sourceCoordinateKeys.add(coordKey);
 
-      mergedMap.set(canonicalId, {
-        id: canonicalId,
-        type: p.type || 'passage',
-        surahNumber: p.surahNumber,
-        surahName,
-        startAyah: p.startAyah,
-        endAyah: p.endAyah,
-        pageNumber: page,
-        pageStart: p.pageStart || page,
-        pageEnd: p.pageEnd || page,
-        juzNumber: juz,
-        status: p.status || 'stable',
-        lastReviewedDate: p.lastReviewedDate,
-        nextDueDate: p.nextDueDate || getLocalDateString(),
-        intervalDays: p.intervalDays || 1,
-        easeFactor: p.easeFactor || 2.5,
-        repetitionCount: p.repetitionCount || 0,
-        mistakesCount: p.mistakesCount || 0,
-        history: Array.isArray(p.history) ? [...p.history] : [],
-        revisionType: p.revisionType || 'minor',
-        strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium')
-      });
+      if (Array.isArray(p.history)) {
+        totalSourceLogs += p.history.length;
+      }
+
+      const existing = mergedMap.get(canonicalId);
+      if (existing) {
+        // Merge duplicate within legacyPortions deterministically
+        mergePortionRecords(existing, p, `legacyPortions[${idx}]`);
+      } else {
+        const surahMeta = ALL_SURAHS.find(s => s.number === p.surahNumber);
+        const surahName = p.surahName || surahMeta?.name || `سورة ${p.surahNumber}`;
+        const page = p.pageNumber || (surahMeta ? surahMeta.pageStart : 1);
+        const juz = p.juzNumber || (surahMeta ? surahMeta.juzStart : 1);
+
+        mergedMap.set(canonicalId, {
+          id: canonicalId,
+          type: p.type || 'passage',
+          surahNumber: p.surahNumber,
+          surahName,
+          startAyah: p.startAyah,
+          endAyah: p.endAyah,
+          pageNumber: page,
+          pageStart: p.pageStart || page,
+          pageEnd: p.pageEnd || page,
+          juzNumber: juz,
+          status: p.status || 'stable',
+          lastReviewedDate: p.lastReviewedDate,
+          nextDueDate: p.nextDueDate || getLocalDateString(),
+          intervalDays: p.intervalDays || 1,
+          easeFactor: p.easeFactor || 2.5,
+          repetitionCount: p.repetitionCount || 0,
+          mistakesCount: p.mistakesCount || 0,
+          history: Array.isArray(p.history) ? [...p.history] : [],
+          revisionType: p.revisionType || 'minor',
+          strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium'),
+          conflictAudit: Array.isArray(p.conflictAudit) ? [...p.conflictAudit] : []
+        });
+      }
     });
 
-    // 2. Ingest legacyRevisionItems without losing review history or metadata
-    legacyRevisionItems.forEach(rev => {
+    // 2. Deterministic Ingestion of legacyRevisionItems
+    legacyRevisionItems.forEach((rev, idx) => {
       const canonicalId = createCanonicalPortionId(rev.surahNumber, rev.startAyah, rev.endAyah);
+      const coordKey = `${rev.surahNumber}:${rev.startAyah}:${rev.endAyah}`;
+      sourceCoordinateKeys.add(coordKey);
+
       const existing = mergedMap.get(canonicalId);
-
-      const surahMeta = ALL_SURAHS.find(s => s.number === rev.surahNumber);
-      const surahName = rev.surahName || surahMeta?.name || `سورة ${rev.surahNumber}`;
-
       if (existing) {
         // Merge without losing data
-        existing.repetitionCount = Math.max(existing.repetitionCount, rev.repetitionCount || 0);
-        existing.intervalDays = Math.max(existing.intervalDays, rev.intervalDays || 1);
-        existing.easeFactor = Math.max(existing.easeFactor, rev.easeFactor || 2.5);
-        if (rev.lastReviewedDate && (!existing.lastReviewedDate || rev.lastReviewedDate > existing.lastReviewedDate)) {
-          existing.lastReviewedDate = rev.lastReviewedDate;
-        }
-        if (rev.strength) {
-          existing.strength = rev.strength;
-          if (rev.strength === 'weak') existing.status = 'weak';
-          else if (rev.strength === 'strong' && existing.repetitionCount >= 3) existing.status = 'stable';
-        }
-        if (rev.type) {
-          existing.revisionType = rev.type;
-        }
+        mergePortionRecords(existing, {
+          repetitionCount: rev.repetitionCount,
+          intervalDays: rev.intervalDays,
+          easeFactor: rev.easeFactor,
+          lastReviewedDate: rev.lastReviewedDate,
+          nextDueDate: rev.nextDueDate,
+          revisionType: rev.type,
+          strength: rev.strength,
+          status: rev.strength === 'weak' ? 'weak' : undefined
+        }, `legacyRevisionItems[${idx}]`);
       } else {
-        // New portion from revision item
+        const surahMeta = ALL_SURAHS.find(s => s.number === rev.surahNumber);
+        const surahName = rev.surahName || surahMeta?.name || `سورة ${rev.surahNumber}`;
         const page = rev.pageNumber || (surahMeta ? surahMeta.pageStart : 1);
         const juz = rev.juzNumber || (surahMeta ? surahMeta.juzStart : 1);
         const status: PortionMemorizationStatus = rev.strength === 'weak' 
@@ -403,12 +512,42 @@ export function migrateLegacyDataLosslessly(
           mistakesCount: 0,
           history: [],
           revisionType: rev.type || 'minor',
-          strength: rev.strength || 'strong'
+          strength: rev.strength || 'strong',
+          conflictAudit: []
         });
       }
     });
 
     const portions = Array.from(mergedMap.values());
+
+    // 3. Post-Migration Integrity Validation
+    let totalPreservedLogs = 0;
+    let totalConflictAudits = 0;
+
+    for (const p of portions) {
+      // Validate schema invariants
+      if (!p.id || !p.surahNumber || p.startAyah <= 0 || p.endAyah < p.startAyah) {
+        throw new Error(`Invalid migrated portion geometry: ${JSON.stringify(p)}`);
+      }
+      if (p.easeFactor < 1.3) {
+        p.easeFactor = 1.3;
+      }
+      if (Array.isArray(p.history)) {
+        totalPreservedLogs += p.history.length;
+      }
+      if (Array.isArray(p.conflictAudit)) {
+        totalConflictAudits += p.conflictAudit.length;
+      }
+    }
+
+    // Ensure all source coordinate keys are preserved
+    for (const key of sourceCoordinateKeys) {
+      const [s, start, end] = key.split(':').map(Number);
+      const canonicalId = createCanonicalPortionId(s, start, end);
+      if (!mergedMap.has(canonicalId)) {
+        throw new Error(`Loss of source coordinate during migration: ${key}`);
+      }
+    }
 
     return {
       portions,
@@ -417,6 +556,8 @@ export function migrateLegacyDataLosslessly(
         legacyPortionsCount: legacyPortions.length,
         legacyRevisionCount: legacyRevisionItems.length,
         migratedPortionsCount: portions.length,
+        totalPreservedLogsCount: totalPreservedLogs,
+        conflictAuditCount: totalConflictAudits,
         alreadyMigrated: false
       }
     };
@@ -428,6 +569,8 @@ export function migrateLegacyDataLosslessly(
         legacyPortionsCount: legacyPortions.length,
         legacyRevisionCount: legacyRevisionItems.length,
         migratedPortionsCount: 0,
+        totalPreservedLogsCount: 0,
+        conflictAuditCount: 0,
         alreadyMigrated: false,
         error: err?.message || 'فشل في ترحيل البيانات القديمة'
       }
