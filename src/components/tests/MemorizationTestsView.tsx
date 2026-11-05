@@ -93,17 +93,22 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   const handleAddCurrentToWeakVerses = () => {
-    RetentionService.addOrIncrementWeakVerse(
-      currentQ.surahNumber,
-      currentQ.targetAyahNumber,
-      currentQ.surahName,
-      currentQ.options[currentQ.correctIndex],
-      `تعثر في اختبار: ${
-        selectedTestType === 'complete_verse' ? 'إكمال الآية التالية' :
-        selectedTestType === 'bidirectional_recall' ? 'الآية السابقة والتالية' :
-        selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
-      }`
-    );
+    try {
+      RetentionService.addOrIncrementWeakVerse(
+        currentQ.surahNumber,
+        currentQ.targetAyahNumber,
+        currentQ.surahName,
+        currentQ.options[currentQ.correctIndex],
+        `تعثر في اختبار: ${
+          selectedTestType === 'complete_verse' ? 'إكمال الآية التالية' :
+          selectedTestType === 'bidirectional_recall' ? 'الآية السابقة والتالية' :
+          selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
+        }`
+      );
+    } catch (error) {
+      setWeakVerseFeedback(error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المتشابهات.');
+      return;
+    }
     setWeakVerseFeedback(`تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} بنجاح في قائمة الآيات الملتبسة.`);
   };
 
