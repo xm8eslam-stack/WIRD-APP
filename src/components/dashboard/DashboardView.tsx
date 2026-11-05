@@ -24,7 +24,7 @@ import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
 import { StorageService } from '../../services/storageService';
 import { getAyahByCoordinate } from '../../data/verifiedAyahs';
-import { getLocalDateString } from '../../services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange } from '../../services/unifiedPortionService';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -32,7 +32,7 @@ interface DashboardViewProps {
   revisionItems: RevisionItem[];
   logs: DailyLog[];
   onNavigate: (tab: NavTabId) => void;
-  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number) => void;
+  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number, mode?: 'memorize' | 'review') => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -68,26 +68,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ? `جيد (${retentionScore}%)` 
     : `قيد البناء (${retentionScore}%)`;
 
-  // 2. Determine Primary Daily Task dynamically
+  // 2. Determine the next task from real plan and memorization data.
+  const trackedPortions = RetentionService.getPortions();
+
   function getFallbackDailyTask() {
     if (activePlan?.targetSurahs && activePlan.targetSurahs.length > 0) {
-      const sNum = activePlan.targetSurahs[0];
-      const sMeta = ALL_SURAHS.find(s => s.number === sNum);
-      const sAyah = 1;
-      const eAyah = Math.min(sMeta?.versesCount || 7, activePlan.dailyTarget || 7);
-      const previewAyah = getAyahByCoordinate(sNum, sAyah);
-      return {
-        surahNumber: sNum,
-        surahName: sMeta?.name || `سورة ${sNum}`,
-        startAyah: sAyah,
-        endAyah: eAyah,
-        versesCount: eAyah - sAyah + 1,
-        pageNumber: previewAyah?.page || sMeta?.pageStart || 1,
-        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
-        label: `الخطة النشطة: ${activePlan.title}`,
-        source: 'preset_plan' as const
-      };
+      const nextRange = findNextUnmemorizedRange(trackedPortions, activePlan.targetSurahs, activePlan.dailyTarget || 7);
+      if (nextRange) {
+        const sMeta = ALL_SURAHS.find(s => s.number === nextRange.surahNumber);
+        const previewAyah = getAyahByCoordinate(nextRange.surahNumber, nextRange.startAyah);
+        return {
+          surahNumber: nextRange.surahNumber,
+          surahName: sMeta?.name || `سورة ${nextRange.surahNumber}`,
+          startAyah: nextRange.startAyah,
+          endAyah: nextRange.endAyah,
+          versesCount: nextRange.endAyah - nextRange.startAyah + 1,
+          pageNumber: previewAyah?.page || sMeta?.pageStart || 1,
+          previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+          label: `الخطة النشطة: ${activePlan.title}`,
+          source: 'preset_plan' as const,
+          mode: 'memorize' as const
+        };
+      }
     }
+
     if (queuePortions.length > 0) {
       const top = queuePortions[0];
       const previewAyah = getAyahByCoordinate(top.surahNumber, top.startAyah);
@@ -100,26 +104,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         pageNumber: top.pageNumber || previewAyah?.page || 1,
         previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
         label: 'مراجعة مستحقة ذات أولوية',
-        source: 'revision' as const
+        source: 'revision' as const,
+        mode: 'review' as const
       };
     }
-    // Brand new user with no plan yet
-    const fatihaAyah = getAyahByCoordinate(1, 1);
+
+    const nextRange = findNextUnmemorizedRange(
+      trackedPortions,
+      ALL_SURAHS.map(s => s.number),
+      activePlan?.dailyTarget || 7
+    );
+    const selectedRange = nextRange || { surahNumber: 1, startAyah: 1, endAyah: 7 };
+    const sMeta = ALL_SURAHS.find(s => s.number === selectedRange.surahNumber) || ALL_SURAHS[0];
+    const previewAyah = getAyahByCoordinate(selectedRange.surahNumber, selectedRange.startAyah);
     return {
-      surahNumber: 1,
-      surahName: 'الفاتحة',
-      startAyah: 1,
-      endAyah: 7,
-      versesCount: 7,
-      pageNumber: 1,
-      previewText: fatihaAyah?.text ? `«${fatihaAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
-      label: 'البداية المباركة (فاتحة الكتاب)',
-      source: 'default' as const
+      surahNumber: selectedRange.surahNumber,
+      surahName: sMeta.name,
+      startAyah: selectedRange.startAyah,
+      endAyah: selectedRange.endAyah,
+      versesCount: selectedRange.endAyah - selectedRange.startAyah + 1,
+      pageNumber: previewAyah?.page || sMeta.pageStart,
+      previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+      label: nextRange ? 'المقطع التالي غير المسجل في محفوظك' : 'مراجعة المحفوظ',
+      source: 'default' as const,
+      mode: nextRange ? 'memorize' as const : 'review' as const
     };
   }
 
   const enginePlans = StorageService.getEnginePlans();
-  const activeEnginePlan = enginePlans[0];
+  const activeEnginePlan = enginePlans.find(p => p.isActive && !p.isPaused)
+    || enginePlans.find(p => !p.isPaused);
   let dailyTask: {
     surahNumber: number;
     surahName: string;
@@ -130,6 +144,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     previewText: string;
     label: string;
     source: 'engine_plan' | 'preset_plan' | 'revision' | 'default';
+    mode: 'memorize' | 'review';
   };
 
   if (activeEnginePlan?.schedule) {
@@ -147,7 +162,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         pageNumber: previewAyah?.page || 1,
         previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
         label: `خطة: ${activeEnginePlan.input.title}`,
-        source: 'engine_plan'
+        source: 'engine_plan',
+        mode: 'memorize'
       };
     } else {
       dailyTask = getFallbackDailyTask();
@@ -184,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
-              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah)}
+              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
               className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300"
             >
               <Play className="w-4 h-4 fill-emerald-950" />
