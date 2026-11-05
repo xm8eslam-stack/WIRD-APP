@@ -9,18 +9,25 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const storageScope = isGuest ? 'guest' : user && isEmailVerified ? `user:${user.uid}` : null;
   const [readyScope, setReadyScope] = useState<string | null>(null);
   const [scopeError, setScopeError] = useState(false);
+  const [legacyDecisionScope, setLegacyDecisionScope] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (!storageScope) {
       setReadyScope(null);
       setScopeError(false);
+      setLegacyDecisionScope(null);
       return;
     }
 
     setReadyScope(null);
     setScopeError(false);
+    setLegacyDecisionScope(null);
     try {
+      if (StorageService.needsLegacyDataDecision(storageScope)) {
+        setLegacyDecisionScope(storageScope);
+        return;
+      }
       const success = StorageService.setStorageScope(storageScope);
       if (success) setReadyScope(storageScope);
       else setScopeError(true);
@@ -28,6 +35,19 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
       setScopeError(true);
     }
   }, [storageScope, retryToken]);
+
+  const handleLegacyDataChoice = (choice: 'import' | 'keep-guest') => {
+    if (!legacyDecisionScope) return;
+    const success = StorageService.setStorageScope(legacyDecisionScope, choice);
+    if (success) {
+      setReadyScope(legacyDecisionScope);
+      setLegacyDecisionScope(null);
+      setScopeError(false);
+    } else {
+      setLegacyDecisionScope(null);
+      setScopeError(true);
+    }
+  };
 
   // 1. Loading state during auth initialization
   if (loading) {
@@ -47,6 +67,36 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   }
 
   // 2. Ensure local data is isolated/migrated before mounting the application.
+  // Existing unscoped data must be explicitly assigned to this account or kept in guest mode.
+  if (storageScope && legacyDecisionScope === storageScope) {
+    return (
+      <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 flex items-center justify-center p-4 dir-rtl font-cairo">
+        <div className="max-w-lg rounded-2xl border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 p-6 text-center shadow-sm">
+          <h2 className="text-lg font-bold text-stone-900 dark:text-white">بيانات محفوظة على هذا الجهاز</h2>
+          <p className="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300">
+            وجدنا تقدماً سابقاً محفوظاً قبل فصل بيانات الحسابات. هل تريد نقله إلى حسابك الحالي، أم بدء حساب فارغ مع الاحتفاظ بالبيانات السابقة في وضع الزائر؟ لن نحذف بياناتك دون اختيارك.
+          </p>
+          <div className="mt-5 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => handleLegacyDataChoice('import')}
+              className="rounded-xl bg-emerald-800 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+            >
+              نقل البيانات إلى حسابي
+            </button>
+            <button
+              type="button"
+              onClick={() => handleLegacyDataChoice('keep-guest')}
+              className="rounded-xl border border-stone-300 dark:border-stone-700 px-5 py-3 text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+            >
+              بدء حساب فارغ والاحتفاظ بها كضيف
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (storageScope && scopeError) {
     return (
       <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 flex items-center justify-center p-4 dir-rtl font-cairo">
