@@ -70,6 +70,21 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(session.includes("aria-current={idx === currentAyahIndex ? 'step' : undefined}"), 'The current ayah step must be announced');
   });
 
+  test('Phase 5E planning and forms share accessible visual hooks', () => {
+    const plans = fs.readFileSync(path.resolve(process.cwd(), 'src/components/plans/MemorizationPlansView.tsx'), 'utf8');
+    const planning = fs.readFileSync(path.resolve(process.cwd(), 'src/components/plans/PlanningEngineWizard.tsx'), 'utf8');
+    const revision = fs.readFileSync(path.resolve(process.cwd(), 'src/components/revision/RevisionCenterView.tsx'), 'utf8');
+    const settings = fs.readFileSync(path.resolve(process.cwd(), 'src/components/settings/SettingsView.tsx'), 'utf8');
+    const tests = fs.readFileSync(path.resolve(process.cwd(), 'src/components/tests/MemorizationTestsView.tsx'), 'utf8');
+    assert(plans.includes('wird-plans'), 'Plans must expose the shared design-system hook');
+    assert(planning.includes('wird-planning-wizard'), 'The planning wizard must expose its focused layout hook');
+    assert(revision.includes('wird-revision'), 'Revision must expose the shared design-system hook');
+    assert(settings.includes('wird-settings'), 'Settings must expose the shared design-system hook');
+    assert(tests.includes('wird-tests'), 'Memorization tests must expose the shared design-system hook');
+    assert(styles.includes('Phase 5E — consistent planning'), 'Phase 5E surfaces must use shared visual rules');
+    assert(styles.includes('min-height: 2.875rem'), 'Mobile form controls must remain comfortably touchable');
+  });
+
   return { passed, failed };
 }
 
