@@ -10,6 +10,7 @@ export interface PageAyahSegment {
 
 export interface PageProgressStatus {
   status: PortionMemorizationStatus;
+  isFullyCovered: boolean;
   surah: SurahMeta;
   surahs: SurahMeta[];
   portionId?: string;
@@ -32,7 +33,7 @@ export function getPageProgressStatus(pageNumber: number, portions: PortionStatu
   const surahNumbers = Array.from(new Set(segments.map(segment => segment.surahNumber)));
   const surahs = surahNumbers.map(number => ALL_SURAHS.find(item => item.number === number)).filter((item): item is SurahMeta => Boolean(item));
   const surah = surahs[0] || ALL_SURAHS[0];
-  if (segments.length === 0) return { status: 'not_memorized', surah, surahs: [], portionIds: [] };
+  if (segments.length === 0) return { status: 'not_memorized', isFullyCovered: false, surah, surahs: [], portionIds: [] };
 
   const bySurah = new Map<number, PortionStatusRecord[]>();
   portions.forEach(portion => {
@@ -74,6 +75,7 @@ export function getPageProgressStatus(pageNumber: number, portions: PortionStatu
 
   return {
     status,
+    isFullyCovered: anyCovered && fullyCovered,
     surah,
     surahs,
     portionId: exactPagePortions[0]?.id,
