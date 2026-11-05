@@ -1,6 +1,6 @@
 import { ALL_SURAHS } from '../data/quranMeta';
-import { MemorizationPlan, WirdPortion } from '../types/quran';
-import { EngineGeneratedPlan, ScheduledTaskUnit } from './planningEngine';
+import type { MemorizationPlan, WirdPortion } from '../types/quran';
+import type { EngineGeneratedPlan, ScheduledTaskUnit } from './planningEngine';
 import { findNextUnmemorizedRange } from './unifiedPortionService';
 
 export interface DailyMemorizationRange {
