@@ -247,7 +247,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
         {/* Global Action Feedback Alert */}
         {actionFeedback && (
-          <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-fade-in ${
+          <div role="status" aria-live="polite" aria-atomic="true" className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-fade-in ${
             actionFeedback.type === 'success' 
               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900 dark:text-emerald-200' 
               : actionFeedback.type === 'warn'
@@ -897,9 +897,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: RATE FAILED REVISION DETAILS */}
       {ratingPortion && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-modal-failed-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-modal-failed-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
               </h3>
               <button onClick={() => setRatingPortion(null)} className="text-stone-400 hover:text-stone-600">
@@ -964,9 +964,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD NEW PORTION */}
       {isAddPortionModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-modal-add-portion-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-modal-add-portion-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
               </h3>
               <button onClick={() => setIsAddPortionModalOpen(false)} className="text-stone-400 hover:text-stone-600">
@@ -1069,9 +1069,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD MANUAL WEAK VERSE */}
       {isAddWeakVerseModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-modal-add-weak-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-modal-add-weak-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
               </h3>
               <button onClick={() => setIsAddWeakVerseModalOpen(false)} className="text-stone-400 hover:text-stone-600">
