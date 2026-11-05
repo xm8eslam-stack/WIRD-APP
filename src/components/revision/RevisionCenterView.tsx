@@ -187,7 +187,15 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Handle resolving a weak verse
   const handleResolveWeakVerse = (id: string, ayahRef: string) => {
-    RetentionService.resolveWeakVerse(id);
+    try {
+      RetentionService.resolveWeakVerse(id);
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ تحديث الآيات المتعثرة.',
+        type: 'warn'
+      });
+      return;
+    }
     refreshAll();
     setActionFeedback({
       message: `تم تثبيت ${ayahRef} بنجاح وإزالتها من قائمة الآيات المتعثرة.`,
@@ -208,13 +216,21 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       text = found ? found.text : `آية رقم ${manualWeakAyahNum}`;
     }
 
-    RetentionService.addOrIncrementWeakVerse(
-      weakSurahNum,
-      manualWeakAyahNum,
-      surah.name,
-      text,
-      manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
-    );
+    try {
+      RetentionService.addOrIncrementWeakVerse(
+        weakSurahNum,
+        manualWeakAyahNum,
+        surah.name,
+        text,
+        manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
+      );
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة.',
+        type: 'warn'
+      });
+      return;
+    }
 
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');
