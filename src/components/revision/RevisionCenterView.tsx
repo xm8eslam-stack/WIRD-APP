@@ -92,7 +92,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     refreshAll();
   }, []);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const dailyQueue = RetentionService.getDailyRevisionQueue(todayStr);
   const weeklyOverview = RetentionService.getWeeklyRevisionOverview(todayStr);
   const revisionHistory = RetentionService.getRevisionHistory();
