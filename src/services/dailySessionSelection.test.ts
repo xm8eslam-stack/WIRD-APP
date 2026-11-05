@@ -3,8 +3,8 @@ import {
   getNextPresetMemorizationRange,
   isPresetAutoStartSupported
 } from './dailySessionSelection';
-import { EngineGeneratedPlan, ScheduledDayPlan, ScheduledTaskUnit } from './planningEngine';
-import { MemorizationPlan, WirdPortion } from '../types/quran';
+import type { EngineGeneratedPlan, ScheduledDayPlan, ScheduledTaskUnit } from './planningEngine';
+import type { MemorizationPlan, WirdPortion } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
 
 export function runDailySessionSelectionTests(): { passed: number; failed: number } {
