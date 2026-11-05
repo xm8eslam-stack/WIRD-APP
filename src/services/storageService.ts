@@ -400,6 +400,10 @@ export const StorageService = {
           console.info('[WIRD Storage] Attempting recovery from preserved legacy storage keys...');
           const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
           const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+          if (legacyPortions.length === 0 && legacyRevs.length === 0) {
+            console.error('[WIRD Storage] Recovery skipped: no non-empty legacy records exist; invalid canonical data was preserved.');
+            return [];
+          }
           const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
           if (report.success && this.saveUnifiedPortions(portions)) {
             return portions;
@@ -509,6 +513,7 @@ export const StorageService = {
     try {
       const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      const hasInvalidCanonicalPayload = currentVersion === '2' && Boolean(unifiedData);
 
       if (currentVersion === '2' && unifiedData) {
         try {
@@ -533,6 +538,19 @@ export const StorageService = {
       const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
       const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+
+      if (hasInvalidCanonicalPayload && legacyPortions.length === 0 && legacyRevs.length === 0) {
+        return {
+          success: false,
+          legacyPortionsCount: 0,
+          legacyRevisionCount: 0,
+          migratedPortionsCount: 0,
+          totalPreservedLogsCount: 0,
+          conflictAuditCount: 0,
+          alreadyMigrated: false,
+          error: 'البيانات الموحدة غير صالحة ولا توجد سجلات قديمة غير فارغة للاستعادة؛ تم الحفاظ على النسخة الحالية دون استبدالها.'
+        };
+      }
 
       const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
 
