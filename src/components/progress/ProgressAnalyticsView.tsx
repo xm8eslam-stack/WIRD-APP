@@ -314,7 +314,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-1">
           <div className="text-xs text-stone-500">معدل التثبيت العام</div>
           <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 font-mono tabular-nums">
-            %{totalMemorizedPagesCount > 0 ? Math.round(((pageStats.stable + pageStats.recently_memorized * 0.8) / totalMemorizedPagesCount) * 100)  : 0}
+            %{totalMemorizedPagesCount > 0 ? Math.round(((pageStats.stable + pageStats.recently_memorized * 0.8 + pageStats.needs_revision * 0.5 + pageStats.weak * 0.2) / totalMemorizedPagesCount) * 100) : 0}
           </div>
           <div className="text-[11px] text-stone-400">
             جودة الرسوخ التراكمية
@@ -446,7 +446,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
 
                 for (let p = juzStartPage; p <= juzEndPage; p++) {
                   const { status } = getPageStatus(p);
-                  if (status !== 'not_memorized') memorizedInJuz++;
+                  if (status !== 'not_memorized' && status !== 'currently_memorizing') memorizedInJuz++;
                 }
 
                 const totalInJuz = (juzEndPage - juzStartPage + 1);
