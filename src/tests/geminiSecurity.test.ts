@@ -82,6 +82,9 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
     assert(handler.includes('item.text.length > 400'), 'Each history message must be limited to 400 characters');
     assert(handler.includes('INVALID_HISTORY'), 'Malformed history must be rejected');
     assert(handler.includes('safeHistory.map'), 'Only normalized safe history may reach the model prompt');
+    const advisorService = fs.readFileSync(path.resolve('./src/services/advisorService.ts'), 'utf8');
+    assert(advisorService.includes('history.slice(-6)'), 'Client must retain only the latest six chat messages');
+    assert(advisorService.includes('item.text.slice(0, 400)'), 'Client must cap each history message before sending');
     assert(chatAlias.includes("export { default } from '../advisor'"), 'Vercel chat route must resolve to the advisor handler');
   });
 
