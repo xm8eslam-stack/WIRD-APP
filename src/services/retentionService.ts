@@ -8,7 +8,6 @@ import {
 } from '../types/quran';
 import { StorageService } from './storageService';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
 import { 
   calculateUniqueMemorizedAyahs, 
   calculateUniqueMemorizedPages, 
