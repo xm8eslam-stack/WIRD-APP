@@ -18,9 +18,15 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     const eagerFiles = [
       'src/App.tsx',
       'src/components/dashboard/DashboardView.tsx',
-      'src/services/retentionService.ts'
+      'src/services/retentionService.ts',
+      'src/services/unifiedPortionService.ts'
     ];
     eagerFiles.forEach(file => assert(!read(file).includes('verifiedAyahs'), file + ' must not import verifiedAyahs'));
+  });
+
+  test('Core portion services use the generated page index instead of the full Quran payload', () => {
+    const service = read('src/services/unifiedPortionService.ts');
+    assert(service.includes('quranPageIndex.generated') && !service.includes('verifiedAyahs'), 'Core page mapping must not import the full Quran text');
   });
 
   test('Library and memorization session load only the active Surah', () => {
