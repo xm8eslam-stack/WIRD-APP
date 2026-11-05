@@ -1,4 +1,5 @@
 import { DailyLog, UserProfile, PortionStatusRecord, WeakVerseItem } from '../types/quran';
+import { getLocalDateString, addDaysToLocalDate } from './unifiedPortionService';
 
 export interface PerformanceAnalysisReport {
   title: string;
@@ -25,22 +26,45 @@ export const DeterministicAdvisorEngine = {
     logs: DailyLog[], 
     profile: UserProfile, 
     portions: PortionStatusRecord[], 
-    weakVerses: WeakVerseItem[]
+    weakVerses: WeakVerseItem[],
+    options?: { todayStr?: string }
   ): PerformanceAnalysisReport {
-    const recentLogs = logs.slice(-7);
+    const todayStr = options?.todayStr || getLocalDateString();
+    const weekStartStr = addDaysToLocalDate(todayStr, -6);
+    const recentLogs = logs.filter(log => log.date >= weekStartStr && log.date <= todayStr);
     const totalMinutes = recentLogs.reduce((sum, l) => sum + (l.minutesSpent || 0), 0);
     const totalAyahs = recentLogs.reduce((sum, l) => sum + (l.memorizedAyahsCount || 0), 0);
     const totalPages = recentLogs.reduce((sum, l) => sum + (l.reviewedPagesCount || 0), 0);
 
-    const activeDaysCount = recentLogs.filter(l => (l.minutesSpent || 0) > 0).length;
+    const activeDaysCount = new Set(recentLogs.filter(l => (l.minutesSpent || 0) > 0).map(l => l.date)).size;
     const completionRate = Math.round((activeDaysCount / 7) * 100);
+    const daysAr = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const dayPerformance = new Map<number, { minutes: number; ayahs: number; pages: number }>();
+    recentLogs.forEach(log => {
+      const [year, month, day] = log.date.split('-').map(Number);
+      const weekday = new Date(year, month - 1, day).getDay();
+      const current = dayPerformance.get(weekday) || { minutes: 0, ayahs: 0, pages: 0 };
+      dayPerformance.set(weekday, {
+        minutes: current.minutes + (log.minutesSpent || 0),
+        ayahs: current.ayahs + (log.memorizedAyahsCount || 0),
+        pages: current.pages + (log.reviewedPagesCount || 0)
+      });
+    });
+    const bestDayEntry = [...dayPerformance.entries()].sort((a, b) =>
+      b[1].minutes - a[1].minutes || b[1].ayahs - a[1].ayahs || b[1].pages - a[1].pages
+    )[0];
+    const bestDay = bestDayEntry ? daysAr[bestDayEntry[0]] : 'لا توجد بيانات كافية';
 
     // Identify missed tasks patterns
     let missedPattern = 'الالتزام منتظم ومستقر في معظم الأيام.';
     const difficultyReasons: string[] = [];
     const workloadAdjustments: string[] = [];
 
-    if (completionRate < 50) {
+    if (recentLogs.length === 0) {
+      missedPattern = 'لم تُسجل جلسات خلال الأيام السبعة الأخيرة؛ لا توجد بيانات كافية للحكم على انتظامك بعد.';
+      difficultyReasons.push('لا توجد سجلات حديثة تسمح بتحديد سبب التعثر أو تقدير حجم الورد المناسب.');
+      workloadAdjustments.push('ابدأ بجلسة قصيرة وسجّل نشاطك لمدة أسبوع قبل تعديل مقدار الحفظ.');
+    } else if (completionRate < 50) {
       missedPattern = 'انقطاعات متكررة خلال الأسبوع (أقل من نصف الأيام المستهدفة)، مما يعرض المحفوظ القديم للتفلت السريع.';
       difficultyReasons.push('المقدار اليومي للحفظ الجديد قد يكون أكبر من الوقت الفعلي المتاح.');
       difficultyReasons.push('عدم تخصيص وقت ثابت ومرتبط بروتين يومي محدد (مثل ما بعد صلاة الفجر مباشرة).');
@@ -107,7 +131,7 @@ export const DeterministicAdvisorEngine = {
         totalAyahsMemorized: totalAyahs,
         totalPagesReviewed: totalPages,
         consistencyScore,
-        bestDay: 'الأحد والثلاثاء (أعلى إنجاز)'
+        bestDay
       },
       practicalRecommendations
     };
