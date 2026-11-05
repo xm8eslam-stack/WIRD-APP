@@ -68,7 +68,8 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
       setWeakVerseFeedback(null);
     } else {
       setIsFinished(true);
-      const finalScore = score + (selectedOption === currentQ.correctIndex ? 1 : 0);
+      // The selected answer already updated score in handleSelectOption.
+      const finalScore = score;
       onSaveTestResult({
         id: `test-${Date.now()}`,
         date: new Date().toISOString().split('T')[0],
