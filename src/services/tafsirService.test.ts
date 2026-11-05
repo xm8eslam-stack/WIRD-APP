@@ -21,7 +21,9 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
     try {
       let rejected = false;
       try { await getTafsirMuyassar(115, 1); } catch { rejected = true; }
-      assert(rejected && !called, 'Invalid Surah must reject without network access');
+      let invalidAyahRejected = false;
+      try { await getTafsirMuyassar(1, 8); } catch { invalidAyahRejected = true; }
+      assert(rejected && invalidAyahRejected && !called, 'Invalid Surah and out-of-range ayah must reject without network access');
     } finally { globalThis.fetch = originalFetch; }
   });
 
