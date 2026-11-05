@@ -76,7 +76,7 @@ Always fetch the current file versions before editing; paths above are not a gua
 - Vercel GitHub integration reported a **Ready Preview** for the PR feature branch before merge.
 - Vercel Production deployment for merge commit `bc368d6894afacf420529ca55c827a21cd695635` was rejected with `api-deployments-free-per-day` (retry in 24 hours). Production deployment is **not confirmed**.
 - Google AI Studio can now sync from `main`; the actual in-app sync must be confirmed by the user because this workspace cannot inspect the AI Studio UI.
-- For the current Phase 5 head `63d2b65068a730115b76669abbe04b798512cd91`, Vercel status is `failure`: `Deployment rate limited — retry in 24 hours`. No Phase 5 Preview is confirmed.
+- Vercel reported **Ready** for PR #2 at head `9df61b21ce2e5429452d555d20061ab597d5fdae`; Preview URL: https://wird-app-git-feat-phase5-premium-ui-ux-xm8eslam-9174s-projects.vercel.app. Re-check status for the latest documentation-only head. Production deployment after merge is not yet confirmed.
 - Do not claim production deployment success or tell the user to sync Phase 5 into Google AI Studio before merge.
 
 ## Known cautions / next investigations
