@@ -9,7 +9,7 @@ import {
   Layers,
   Check
 } from 'lucide-react';
-import { MemorizationPlan } from '../../types/quran';
+import { MemorizationPlan, PortionStatusRecord } from '../../types/quran';
 import { EngineGeneratedPlan } from '../../services/planningEngine';
 import { PlanningEngineWizard } from './PlanningEngineWizard';
 
@@ -17,6 +17,7 @@ interface MemorizationPlansViewProps {
   plans: MemorizationPlan[];
   onUpdatePlans: (plans: MemorizationPlan[]) => void;
   enginePlans: EngineGeneratedPlan[];
+  memorizedPortions: PortionStatusRecord[];
   onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
   onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number) => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
@@ -26,6 +27,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   plans,
   onUpdatePlans,
   enginePlans,
+  memorizedPortions,
   onUpdateEnginePlans,
   onStartSession,
   onToast
@@ -93,6 +95,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
       {activeTab === 'engine' && (
         <PlanningEngineWizard
           enginePlans={enginePlans}
+          memorizedPortions={memorizedPortions}
           onUpdateEnginePlans={onUpdateEnginePlans}
           onStartSession={onStartSession}
           onToast={onToast}
