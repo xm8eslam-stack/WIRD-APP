@@ -15,11 +15,12 @@
 
 ## Exact saved point
 
-- Feature branch HEAD when this checkpoint was written: `38764e713ce2527eac716a9246ad5a09d426f9c4`
+- Last code-change HEAD before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`
+- Checkpoint documentation commit: `85e618540cfe547b49cde302c550aa1d34c91e5e`
 - `main` base SHA observed during comparison: `862f6056ac5d54abf9f26249941ba994e74bf6a9`
-- Branch comparison: 119 commits ahead, 0 behind.
+- Branch comparison before the checkpoint-only documentation commit: 119 commits ahead, 0 behind; after it: 120 commits ahead, 0 behind.
 - Latest GitHub Actions run: #119 / run ID `42088152069`.
-- Latest verified CI commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`.
+- Latest verified CI code commit before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`.
 - CI result: **181 tests passed, 0 failed; TypeScript validation passed; Vite production build passed**.
 - Build log: `✓ built in 759ms`.
 - Note: checkpoint commit itself will create a new commit and trigger CI again. Re-check the new head's run before considering it verified.
