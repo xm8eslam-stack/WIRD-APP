@@ -13,7 +13,7 @@ export async function loadSurahVerses(surahNumber: number): Promise<Ayah[]> {
 
   const modulePath = './quran-surahs/' + surahNumber + '.json';
   const loader = surahModules[modulePath];
-  if (!loader) return [];
+  if (!loader) throw new Error('Missing local Quran chunk for Surah ' + surahNumber + '. Run the Quran chunk generator.');
 
   const pending = loader()
     .then(module => Array.isArray(module.default) ? module.default : [])
