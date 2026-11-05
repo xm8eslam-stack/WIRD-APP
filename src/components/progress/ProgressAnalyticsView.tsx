@@ -350,7 +350,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               <span className="font-mono text-[11px]">مصحف المدينة المنورة (604 صفحة)</span>
             </div>
 
-            <div className="grid grid-cols-8 sm:grid-cols-12 md:grid-cols-16 lg:grid-cols-20 gap-1.5 max-h-[500px] overflow-y-auto p-2 bg-[#faf8f5] dark:bg-stone-900/50 rounded-2xl border border-stone-200/60 dark:border-stone-700/50">
+            <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-12 lg:grid-cols-16 xl:grid-cols-20 gap-2 max-h-[600px] overflow-y-auto overscroll-contain touch-pan-y p-2 bg-[#faf8f5] dark:bg-stone-900/50 rounded-2xl border border-stone-200/60 dark:border-stone-700/50">
               {Array.from({ length: 604 }, (_, i) => i + 1).map((pageNum) => {
                 const { status, surah, portionId } = getPageStatus(pageNum);
                 const cfg = STATUS_CONFIG[status];
@@ -360,10 +360,11 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                   <button
                     key={pageNum}
                     onClick={() => setInspectedPage({ pageNumber: pageNum, surah, status, portionId })}
-                    className={`aspect-square rounded-md p-1 border text-center transition-all flex flex-col items-center justify-center relative group ${
+                    className={`aspect-square min-h-12 min-w-12 rounded-lg p-1.5 border text-center transition-all flex flex-col items-center justify-center relative group touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                       matchesFilter ? 'opacity-100 hover:scale-110 z-10' : 'opacity-20 hover:opacity-100'
                     } ${cfg.bg} ${cfg.border} shadow-2xs cursor-pointer`}
                     title={`صفحة ${pageNum} - سورة ${surah.name} (${cfg.label})`}
+                    aria-label={`صفحة ${pageNum} - سورة ${surah.name} - ${cfg.label}`}
                   >
                     <span className="text-[10px] font-mono font-bold leading-none text-stone-800 dark:text-stone-200">
                       {pageNum}
