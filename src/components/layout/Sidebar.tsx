@@ -60,25 +60,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'settings', label: 'الإعدادات والملف', icon: Settings },
   ];
 
+  const mobileNavItems = navItems.filter(item => ['dashboard', 'library', 'session', 'revision', 'progress'].includes(item.id));
+  const mobileLabels: Partial<Record<NavTabId, string>> = {
+    dashboard: 'الرئيسية',
+    library: 'المصحف',
+    session: 'الحفظ',
+    revision: 'المراجعة',
+    progress: 'التقدم'
+  };
+
   const handleSelect = (id: NavTabId) => {
     onSelectTab(id);
     onCloseMobile();
   };
 
   const sidebarContent = (
-    <aside className="w-64 bg-[#f8f6f0] dark:bg-stone-900 border-l border-stone-200/80 dark:border-stone-800 flex flex-col h-full select-none transition-colors">
+    <aside className="wird-sidebar w-64 flex flex-col h-full select-none transition-colors">
       {/* Brand Header */}
-      <div className="p-5 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between">
+      <div className="wird-sidebar-brand p-5 border-b flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-200 flex items-center justify-center font-bold text-xl shadow-xs border border-emerald-700 font-quran">
+          <div className="wird-brand-mark w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xl font-quran">
             وِ
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg text-emerald-950 dark:text-emerald-100 tracking-tight font-quran">
+              <span className="wird-brand-name font-extrabold text-lg tracking-tight font-quran">
                 وِرد
               </span>
-              <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 tracking-wider">
+              <span className="wird-brand-wordmark text-[10px] uppercase font-bold tracking-wider">
                 WIRD
               </span>
             </div>
@@ -100,7 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation Links */}
-      <nav aria-label="القائمة الجانبية" className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav aria-label="القائمة الجانبية" className="wird-sidebar-nav flex-1 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
@@ -109,7 +118,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => handleSelect(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all ${
+              aria-current={isActive ? 'page' : undefined}
+              className={`wird-nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all ${
                 isActive
                   ? 'bg-emerald-800 text-white shadow-xs'
                   : 'text-stone-700 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 hover:text-emerald-900 dark:hover:text-emerald-300'
@@ -136,15 +146,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* User Mini Profile Card */}
       <div className="p-3 border-t border-stone-200/80 dark:border-stone-800">
-        <div className="bg-stone-100/90 dark:bg-stone-800/80 rounded-xl p-3 flex items-center gap-3 border border-stone-200/60 dark:border-stone-700/60">
-          <div className="w-9 h-9 rounded-full bg-emerald-900 text-amber-200 flex items-center justify-center font-bold text-sm shrink-0 font-quran">
+        <div className="wird-sidebar-profile rounded-2xl p-3 flex items-center gap-3">
+          <div className="wird-profile-avatar w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 font-quran">
             {profile.name.charAt(0) || 'ق'}
           </div>
           <div className="min-w-0 flex-1 text-right">
-            <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+            <h4 className="wird-profile-name text-xs font-bold truncate">
               {profile.name}
             </h4>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+            <p className="wird-profile-caption text-[11px] truncate">
               {profile.memorizationGoal || 'طالب حفظ'}
             </p>
           </div>
@@ -172,6 +182,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       )}
+
+      <nav className="wird-mobile-dock md:hidden" aria-label="التنقل السريع">
+        {mobileNavItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = currentTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleSelect(item.id)}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={item.label}
+              className="wird-mobile-dock-item"
+            >
+              <span className="relative">
+                <Icon aria-hidden="true" />
+                {item.id === 'revision' && dueRevisionCount > 0 && (
+                  <span className="absolute -top-1.5 -left-2 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 font-bold">
+                    {dueRevisionCount > 99 ? '99+' : dueRevisionCount}
+                  </span>
+                )}
+              </span>
+              <span className="wird-mobile-dock-label">{mobileLabels[item.id]}</span>
+            </button>
+          );
+        })}
+      </nav>
     </>
   );
 };
