@@ -9,7 +9,7 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     catch (error: any) { failed++; console.error('  ❌ ' + name + ': ' + (error?.message || error)); }
   };
   const progressView = fs.readFileSync(path.resolve(process.cwd(), 'src/components/progress/ProgressAnalyticsView.tsx'), 'utf8');
-  const sidebar = fs.readFileSync(path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');
+  const sidebar = fs.readFileSync(path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');\n  const styles = fs.readFileSync(path.resolve(process.cwd(), 'src/index.css'), 'utf8');
 
   test('604-page Mushaf map provides at least 48px mobile tap targets', () => {
     assert(progressView.includes('grid-cols-5 sm:grid-cols-8'), 'Mobile grid must use a low enough column count for 48px cells');
@@ -29,10 +29,10 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(sidebar.includes("['dashboard', 'library', 'session', 'revision', 'progress']"), 'The dock must expose the five primary destinations');
     assert(sidebar.includes('aria-current={isActive ? \'page\' : undefined}'), 'The active destination must be announced to assistive technology');
     assert(sidebar.includes('aria-label="التنقل السريع"'), 'The dock must have a descriptive Arabic navigation label');
-    assert(sidebar.includes('dueRevisionCount > 0'), 'Due revisions must remain visible in the dock');
+    assert(sidebar.includes('dueRevisionCount > 0'), 'Due revisions must remain visible in the dock');\n    assert(styles.includes('min-height: 3.55rem'), 'Mobile dock controls must remain comfortably touchable');\n    assert(styles.includes('env(safe-area-inset-bottom)'), 'Mobile navigation must respect device safe areas');
   });
 
-  return { passed, failed };
+  test('WIRD visual system supports theme tokens and reduced-motion preferences', () => {\n    assert(styles.includes('--wird-canvas'), 'The visual system must define shared design tokens');\n    assert(styles.includes('.dark {'), 'Dark theme tokens must remain defined');\n    assert(styles.includes('@media (prefers-reduced-motion: reduce)'), 'Motion must respect reduced-motion preferences');\n    assert(styles.includes('.wird-main'), 'The responsive content container must be shared');\n  });\n\n  return { passed, failed };
 }
 
 function assert(condition: boolean, message: string): void {
