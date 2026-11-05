@@ -29,6 +29,7 @@ import { StorageService, STORAGE_KEYS } from '../services/storageService';
 import { RetentionService } from '../services/retentionService';
 import { generateDynamicTestQuestions } from '../services/testQuestionGenerator';
 import { parseRoute, buildRouteHash } from '../services/router';
+import { getSessionCompletionMetrics } from '../services/sessionCompletion';
 import { WirdPortion, PortionStatusRecord, RevisionItem } from '../types/quran';
 
 interface TestResult {
