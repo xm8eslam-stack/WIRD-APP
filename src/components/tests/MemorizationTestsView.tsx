@@ -68,7 +68,9 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
       setWeakVerseFeedback(null);
     } else {
       setIsFinished(true);
-      const finalScore = score + (selectedOption === currentQ.correctIndex ? 1 : 0);
+      // `score` already includes the last answer because the user selects it before pressing Next.
+      // Adding selectedOption again here would double-count a correct final answer.
+      const finalScore = score;
       onSaveTestResult({
         id: `test-${Date.now()}`,
         date: new Date().toISOString().split('T')[0],
