@@ -509,17 +509,16 @@ export const RetentionService = {
     portions: PortionStatusRecord[];
   }[] {
     const portions = this.getPortions();
-    const baseDate = startDateStr ? new Date(startDateStr) : new Date();
+    const baseDateStr = startDateStr || getLocalDateString();
     const daysAr = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
 
     const weekOverview = [];
 
     for (let i = 0; i < 7; i++) {
-      const d = new Date(baseDate);
-      d.setDate(d.getDate() + i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayName = daysAr[d.getDay()];
+      const dateStr = addDaysToLocalDate(baseDateStr, i);
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const dayName = daysAr[new Date(year, month - 1, day).getDay()];
 
       // For day 0 (today), include anything overdue as well
       const dayPortions = i === 0 
@@ -575,7 +574,7 @@ export const RetentionService = {
   ): WeakVerseItem[] {
     const items = this.getWeakVerses();
     const existingIndex = items.findIndex(i => i.surahNumber === surahNumber && i.ayahNumber === ayahNumber);
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
 
     if (existingIndex >= 0) {
       items[existingIndex].mistakeCount += 1;
