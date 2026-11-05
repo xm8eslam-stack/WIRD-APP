@@ -58,7 +58,7 @@ These projects are references for product patterns and UX research, not permissi
 ### 5E — Plans, revision, analytics, and settings
 - Unify cards, filters, tabs, forms, charts, legends, dialogs, and empty states.
 - Make the next useful action obvious while preserving current plan and retention calculations.
-- **Pending:** focused visual pass on plan wizard, revision queue, analytics charts, settings forms, and empty states.
+- **In progress:** first shared-surface and form-control styling pass is committed; detailed component-by-component review of plan wizard, revision queue, analytics charts, settings forms, and empty states remains.
 - Improve backup/import affordances without weakening validation or recovery behavior.
 
 ### 5F — Quality and release
@@ -73,7 +73,7 @@ These projects are references for product patterns and UX research, not permissi
 - Added a dedicated `wird-planning-wizard` layout hook without changing planning calculations or generated schedules.
 - Extended the shared visual system to planning, preset plans, revision, analytics, settings, and memorization-test surfaces.
 - Standardized nested surface borders/shadows, form control appearance, focus feedback, and mobile form-control sizing.
-- Added regression assertions for the 5E component hooks and responsive form styling.
+- Added regression assertions for the 5E component hooks, responsive form styling, and 44px action targets.
 - This is a first consistency pass, not final sign-off: inspect each view at mobile/tablet/desktop widths, verify long Arabic labels and dense analytics, and refine any component-specific exceptions.
 - No Quran text, audio, memorization algorithms, retention logic, plan generation, storage, authentication, or Firebase rules were changed.
 
@@ -82,7 +82,7 @@ These projects are references for product patterns and UX research, not permissi
 - Branch: `feat/phase5-premium-ui-ux`
 - Base `main` SHA: `15ec5069b4850968588be2e4363fbd182bf2a8fc`.
 - PR #2: Draft — https://github.com/xm8eslam-stack/WIRD-APP/pull/2.
-- Last fully validated pre-formatting-doc head: `9df61b21ce2e5429452d555d20061ab597d5fdae` (Actions run #165 succeeded). Documentation line-break fixes were committed after that and require fresh CI.
+- Last known successful Phase 5 Actions run: #176 (`42093117784`) on `162f1fb96748e08eb1485cf95a970f9dffcb7094`. The latest Phase 5E code head `a30056885c0c443b25a59c006bcee3c044e70f0d` has no completed Actions run surfaced yet; run #181 on the prior code head was cancelled.
 - Implemented workstreams 5A–5D (first UI/UX pass):
   - Shared WIRD design tokens and global visual system in `src/index.css`.
   - Refined app shell and wider responsive content viewport.
