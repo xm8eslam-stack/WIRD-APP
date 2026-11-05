@@ -403,7 +403,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                     type="button"
                     onClick={() => handleToggleWordReveal(idx)}
                     aria-label={`كشف الكلمة رقم ${idx + 1} من الآية ${currentAyah.numberInSurah}`}
-                    className="inline-block border-0 bg-transparent font-quran px-2.5 py-0.5 rounded-lg transition-all select-none bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500"
+                    className="inline-block font-quran px-2.5 py-0.5 rounded-lg transition-all select-none bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500"
                     title="اضغط لإظهار الكلمة للتسميع"
                   >
                     {word}
