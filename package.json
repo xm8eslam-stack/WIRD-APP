@@ -13,7 +13,9 @@
     "test": "tsx src/tests/runAllTests.ts",
     "quran:split": "node scripts/split-quran-data.mjs",
     "predev": "node scripts/split-quran-data.mjs",
-    "prebuild": "node scripts/split-quran-data.mjs"
+    "prebuild": "node scripts/split-quran-data.mjs",
+    "pretest": "node scripts/split-quran-data.mjs",
+    "prelint": "node scripts/split-quran-data.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
