@@ -3,6 +3,8 @@ name: WIRD Quality Gate
 on:
   push:
     branches: ['**']
+  pull_request:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
