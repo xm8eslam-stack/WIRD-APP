@@ -1,6 +1,7 @@
 import { RetentionService, DEFAULT_PORTIONS } from './retentionService';
 import { PortionMemorizationStatus, RevisionRating } from '../types/quran';
-import { createCanonicalPortionId } from './unifiedPortionService';
+import { createCanonicalPortionId, getLocalDateString } from './unifiedPortionService';
+import { StorageService } from './storageService';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -159,6 +160,27 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
       `Expected score 0-100%, got ${metrics.retentionScorePercentage}%`);
     assert(metrics.statusBreakdown.stable >= 0, 'Stable count should be non-negative');
     assert(metrics.totalTrackedPortions > 0, 'Should have tracked portions');
+  });
+
+  runTest('RetentionService: revision activity counts exact Mushaf pages, not verse-count estimates', () => {
+    const today = getLocalDateString();
+    const before = StorageService.getLogs().find(log => log.date === today)?.reviewedPagesCount || 0;
+    const portion = RetentionService.addPortion({
+      type: 'passage',
+      surahNumber: 2,
+      surahName: 'البقرة',
+      startAyah: 1,
+      endAyah: 20,
+      status: 'recently_memorized',
+      nextDueDate: today,
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1,
+      mistakesCount: 0
+    });
+    RetentionService.recordRevisionPerformance(portion.id, 'successful');
+    const after = StorageService.getLogs().find(log => log.date === today)?.reviewedPagesCount || 0;
+    assert(after - before === 3, 'Al-Baqarah 1-20 spans three canonical Mushaf pages and must add exactly three');
   });
 
   return { passed, failed, results };
