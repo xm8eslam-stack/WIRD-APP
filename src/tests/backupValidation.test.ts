@@ -87,7 +87,61 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(importRes.success === false, 'Import should fail for malformed plans');
   });
 
-  // 6. Exported backup contains unencrypted warning label
+  // 6. Successful import rebuilds the canonical v2 portion store
+  test('Successful backup import restores portions into the canonical store', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const payload = {
+        format: 'wird_backup',
+        version: 3,
+        timestamp: '2026-11-05T10:00:00Z',
+        isEncrypted: false,
+        unencryptedWarning: 'Warning',
+        profile: {
+          name: 'اختبار الاستيراد',
+          email: '',
+          memorizationGoal: 'حفظ القرآن',
+          preferredReciter: 'alafasy',
+          quranFontSize: 'lg',
+          audioAutoPlay: true,
+          repetitionTarget: 5,
+          theme: 'light',
+          streakDays: 0,
+          lastActiveDate: ''
+        },
+        plans: [],
+        enginePlans: [],
+        revisionItems: [],
+        logs: [],
+        tests: [],
+        portions: [{
+          id: 'legacy-test-portion',
+          type: 'passage',
+          surahNumber: 112,
+          surahName: 'الإخلاص',
+          startAyah: 1,
+          endAyah: 4,
+          status: 'stable',
+          nextDueDate: '2026-11-06',
+          intervalDays: 1,
+          easeFactor: 2.5,
+          repetitionCount: 1
+        }],
+        weakVerses: []
+      };
+
+      const result = StorageService.importBackup(JSON.stringify(payload));
+      assert(result.success, 'Valid backup import should report success');
+      const restored = StorageService.getUnifiedPortions();
+      assert(restored.length === 1, 'Imported portion is available from canonical v2 storage');
+      assert(restored[0].id === 's112_a1_a4', 'Imported portion receives its canonical coordinate ID');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  // 7. Exported backup contains unencrypted warning label
   test('Exported backup contains unencrypted warning label', () => {
     const exportedStr = StorageService.exportFullBackup();
     const parsed = JSON.parse(exportedStr);
