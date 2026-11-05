@@ -4,7 +4,8 @@ import {
   RevisionItem, 
   PortionMemorizationStatus, 
   RevisionRating,
-  RevisionLogEntry 
+  RevisionLogEntry,
+  MemorizationPlan
 } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
