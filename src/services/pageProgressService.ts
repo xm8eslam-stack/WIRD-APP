@@ -50,7 +50,7 @@ export function getPageProgressStatus(pageNumber: number, portions: PortionStatu
 
   let anyCovered = false;
   let fullyCovered = true;
-  let worstStatus: PortionMemorizationStatus = 'stable';
+  let worstStatus: PortionMemorizationStatus = 'not_memorized';
 
   for (const segment of segments) {
     const exactForSurah = exactPageBySurah.get(segment.surahNumber) || [];
