@@ -1,0 +1,151 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment
+} from '@firebase/rules-unit-testing';
+import {
+  deleteDoc,
+  doc,
+  getDoc,
+  setDoc
+} from 'firebase/firestore';
+
+const projectId = 'demo-wird-rules';
+const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
+const testEnv = await initializeTestEnvironment({
+  projectId,
+  firestore: { rules }
+});
+
+let passed = 0;
+let failed = 0;
+
+async function test(name: string, action: () => Promise<unknown>): Promise<void> {
+  try {
+    await action();
+    passed += 1;
+    console.log(`  ✅ ${name}`);
+  } catch (error) {
+    failed += 1;
+    console.error(`  ❌ ${name}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+const validEnvelope = {
+  schemaVersion: 1,
+  payload: { displayName: 'WIRD test profile' },
+  updatedAtMs: 1_799_000_000_000,
+  deviceId: 'test-device-01',
+  mutationId: 'mutation-test-0001'
+};
+
+try {
+  await testEnv.clearFirestore();
+
+  const alice = testEnv.authenticatedContext('alice', {
+    email: 'alice@example.com',
+    email_verified: true
+  }).firestore();
+  const bob = testEnv.authenticatedContext('bob', {
+    email: 'bob@example.com',
+    email_verified: true
+  }).firestore();
+  const unverified = testEnv.authenticatedContext('unverified', {
+    email: 'unverified@example.com',
+    email_verified: false
+  }).firestore();
+  const anonymous = testEnv.unauthenticatedContext().firestore();
+
+  const aliceProfile = doc(alice, 'users/alice/profile/main');
+  const alicePlan = doc(alice, 'users/alice/plans/plan-1');
+
+  await test('Verified owner can create and read a valid profile envelope', async () => {
+    await assertSucceeds(setDoc(aliceProfile, validEnvelope));
+    await assertSucceeds(getDoc(aliceProfile));
+  });
+
+  await test('Verified owner can write allowlisted plan documents', async () => {
+    await assertSucceeds(setDoc(alicePlan, {
+      ...validEnvelope,
+      payload: { title: 'Test plan', dailyTarget: 5 },
+      mutationId: 'mutation-plan-0001'
+    }));
+  });
+
+  await test('Unauthenticated users cannot read or write user documents', async () => {
+    await assertFails(getDoc(doc(anonymous, 'users/alice/profile/main')));
+    await assertFails(setDoc(doc(anonymous, 'users/anonymous/profile/main'), validEnvelope));
+  });
+
+  await test('Unverified users cannot read or write user documents', async () => {
+    await assertFails(getDoc(doc(unverified, 'users/unverified/profile/main')));
+    await assertFails(setDoc(doc(unverified, 'users/unverified/profile/main'), validEnvelope));
+  });
+
+  await test('A verified user cannot read or write another UID path', async () => {
+    await assertFails(getDoc(doc(bob, 'users/alice/profile/main')));
+    await assertFails(setDoc(doc(bob, 'users/alice/plans/foreign-plan'), validEnvelope));
+  });
+
+  await test('Unknown collections and nested subcollections are denied', async () => {
+    await assertFails(setDoc(doc(alice, 'users/alice/admin/secret'), validEnvelope));
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/plan-1/private/nested'), validEnvelope));
+  });
+
+  await test('Malformed envelopes and unexpected top-level fields are denied', async () => {
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/missing-mutation'), {
+      schemaVersion: 1,
+      payload: {},
+      updatedAtMs: 1_799_000_000_000,
+      deviceId: 'device-1'
+    }));
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/extra-field'), {
+      ...validEnvelope,
+      admin: true
+    }));
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/wrong-payload'), {
+      ...validEnvelope,
+      payload: 'not-a-map'
+    }));
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/wrong-version'), {
+      ...validEnvelope,
+      schemaVersion: 2
+    }));
+  });
+
+  await test('Oversized device and mutation identifiers are denied', async () => {
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/long-device'), {
+      ...validEnvelope,
+      deviceId: 'd'.repeat(129)
+    }));
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/long-mutation'), {
+      ...validEnvelope,
+      mutationId: 'm'.repeat(129)
+    }));
+  });
+
+  await test('Valid tombstones are accepted but physical deletes are denied', async () => {
+    const tombstone = doc(alice, 'users/alice/plans/deleted-plan');
+    await assertSucceeds(setDoc(tombstone, {
+      ...validEnvelope,
+      mutationId: 'mutation-tombstone-0001',
+      deletedAt: new Date('2026-11-05T00:00:00.000Z')
+    }));
+    await assertFails(deleteDoc(alicePlan));
+  });
+
+  await test('Invalid tombstone timestamps are denied', async () => {
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/bad-tombstone'), {
+      ...validEnvelope,
+      mutationId: 'mutation-bad-tombstone',
+      deletedAt: 'not-a-timestamp'
+    }));
+  });
+} finally {
+  await testEnv.cleanup();
+}
+
+console.log(`\nFirestore rules: ${passed} passed, ${failed} failed.`);
+if (failed > 0) process.exitCode = 1;
