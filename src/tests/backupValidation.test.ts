@@ -1,4 +1,4 @@
-import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE } from '../services/storageService';
+import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE, STORAGE_KEYS } from '../services/storageService';
 import { WirdPortion } from '../types/quran';
 
 const SAMPLE_PORTION: WirdPortion = {
