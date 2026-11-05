@@ -10,7 +10,7 @@
 
 - The app has Firebase Authentication and an email-verification gate.
 - There is currently no Firestore integration or deployed Firestore Security Rules in the repository; user progress remains local-browser data.
-- Global localStorage keys are not UID-scoped. This is the most important account-isolation prerequisite before enabling sync.
+- Authenticated local data is now UID-scoped, with an explicit first-account legacy-data ownership choice. This closes the previous local account-isolation gap but does not provide cloud sync.
 - The Vercel advisor API and Express server in `server.ts` are two separate implementations and are not behaviorally equivalent.
 - Advisor rate limits are in-memory and process-local. Pruning expired entries bounds memory but does not provide distributed abuse protection.
 - The public wildcard CORS endpoint no longer advertises credentialed cross-origin access.
@@ -23,7 +23,7 @@
 | ID | Severity | Finding | Status |
 |---|---|---|---|
 | SEC-01 | Critical prerequisite | No Firestore rules or UID-scoped cloud data model exists. Do not deploy client-side sync before rules and Emulator tests. | Open — design documented |
-| SEC-02 | High | Local persistence keys are global, not scoped to Firebase UID. Account switching on one browser can expose prior local progress. | Open — local-scope refactor required |
+| SEC-02 | High | Local persistence keys were global, not scoped to Firebase UID. | Fixed: UID namespaces + AuthGate scope gate + explicit legacy-data ownership choice + regression tests |
 | SEC-03 | High | Weak-verse persistence in `RetentionService` uses a separate localStorage path instead of the central StorageService adapter. | Open — centralize before sync |
 | SEC-04 | Medium | `server.ts` and `api/advisor.ts` duplicate advisor endpoint behavior. The Express chat path does not use the same bounded conversation-history validation as the Vercel route; keep both implementations aligned or extract one shared validator/handler. | Open |
 | SEC-05 | Medium | Advisor IP rate limits are in-memory and per process/serverless instance. They can reset across instances/restarts and are not a durable global abuse-control boundary. | Open — document limitation; consider App Check/edge limits |
