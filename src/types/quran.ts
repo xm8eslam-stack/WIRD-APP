@@ -43,14 +43,16 @@ export interface RevisionLogEntry {
   notes?: string;
 }
 
-export interface PortionStatusRecord {
-  id: string; // e.g. "portion-surah-67" or "portion-page-562"
-  type: 'surah' | 'page' | 'passage';
+export interface WirdPortion {
+  id: string; // Canonical: s{surah}_a{start}_a{end} or legacy portion ID
+  type?: 'surah' | 'page' | 'passage';
   surahNumber: number;
   surahName: string;
   startAyah: number;
   endAyah: number;
   pageNumber?: number;
+  pageStart?: number;
+  pageEnd?: number;
   juzNumber?: number;
   status: PortionMemorizationStatus;
   lastReviewedDate?: string;
@@ -58,9 +60,15 @@ export interface PortionStatusRecord {
   intervalDays: number;
   easeFactor: number;
   repetitionCount: number;
-  mistakesCount: number;
-  history: RevisionLogEntry[];
+  mistakesCount?: number;
+  history?: RevisionLogEntry[];
+  revisionType?: 'minor' | 'major';
+  strength?: 'strong' | 'medium' | 'weak';
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+export interface PortionStatusRecord extends WirdPortion {}
 
 export interface WeakVerseItem {
   id: string;

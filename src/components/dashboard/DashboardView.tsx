@@ -19,9 +19,11 @@ import {
   RevisionItem, 
   DailyLog 
 } from '../../types/quran';
-import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES } from '../../data/quranMeta';
+import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, ALL_SURAHS } from '../../data/quranMeta';
 import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
+import { StorageService } from '../../services/storageService';
+import { getAyahByCoordinate } from '../../data/verifiedAyahs';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -51,11 +53,106 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const minorRevisions = dueRevisions.filter(i => i.type === 'minor');
   const majorRevisions = dueRevisions.filter(i => i.type === 'major');
 
-  // Overall statistics
-  const totalMemorizedAyahs = 172;
-  const totalMemorizedPages = 14;
-  const versesPercentage = ((totalMemorizedAyahs / TOTAL_QURAN_VERSES) * 100).toFixed(1);
-  const pagesPercentage = ((totalMemorizedPages / TOTAL_QURAN_PAGES) * 100).toFixed(1);
+  // 1. Truthful overall statistics (computed from real memorized portions)
+  const retentionMetrics = RetentionService.getRetentionDashboardMetrics();
+  const totalMemorizedAyahs = retentionMetrics.totalMemorizedAyahs;
+  const totalMemorizedPages = retentionMetrics.totalMemorizedPages;
+  const versesPercentage = TOTAL_QURAN_VERSES > 0 ? ((totalMemorizedAyahs / TOTAL_QURAN_VERSES) * 100).toFixed(1) : '0.0';
+  const pagesPercentage = TOTAL_QURAN_PAGES > 0 ? ((totalMemorizedPages / TOTAL_QURAN_PAGES) * 100).toFixed(1) : '0.0';
+  const retentionScore = retentionMetrics.retentionScorePercentage;
+  const retentionStatusLabel = retentionScore >= 80 
+    ? `ممتاز (${retentionScore}%)` 
+    : retentionScore >= 50 
+    ? `جيد (${retentionScore}%)` 
+    : `قيد البناء (${retentionScore}%)`;
+
+  // 2. Determine Primary Daily Task dynamically
+  function getFallbackDailyTask() {
+    if (activePlan?.targetSurahs && activePlan.targetSurahs.length > 0) {
+      const sNum = activePlan.targetSurahs[0];
+      const sMeta = ALL_SURAHS.find(s => s.number === sNum);
+      const sAyah = 1;
+      const eAyah = Math.min(sMeta?.versesCount || 7, activePlan.dailyTarget || 7);
+      const previewAyah = getAyahByCoordinate(sNum, sAyah);
+      return {
+        surahNumber: sNum,
+        surahName: sMeta?.name || `سورة ${sNum}`,
+        startAyah: sAyah,
+        endAyah: eAyah,
+        versesCount: eAyah - sAyah + 1,
+        pageNumber: previewAyah?.page || sMeta?.pageStart || 1,
+        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        label: `الخطة النشطة: ${activePlan.title}`,
+        source: 'preset_plan' as const
+      };
+    }
+    if (queuePortions.length > 0) {
+      const top = queuePortions[0];
+      const previewAyah = getAyahByCoordinate(top.surahNumber, top.startAyah);
+      return {
+        surahNumber: top.surahNumber,
+        surahName: top.surahName,
+        startAyah: top.startAyah,
+        endAyah: top.endAyah,
+        versesCount: top.endAyah - top.startAyah + 1,
+        pageNumber: top.pageNumber || previewAyah?.page || 1,
+        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        label: 'مراجعة مستحقة ذات أولوية',
+        source: 'revision' as const
+      };
+    }
+    // Brand new user with no plan yet
+    const fatihaAyah = getAyahByCoordinate(1, 1);
+    return {
+      surahNumber: 1,
+      surahName: 'الفاتحة',
+      startAyah: 1,
+      endAyah: 7,
+      versesCount: 7,
+      pageNumber: 1,
+      previewText: fatihaAyah?.text ? `«${fatihaAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+      label: 'البداية المباركة (فاتحة الكتاب)',
+      source: 'default' as const
+    };
+  }
+
+  const enginePlans = StorageService.getEnginePlans();
+  const activeEnginePlan = enginePlans[0];
+  let dailyTask: {
+    surahNumber: number;
+    surahName: string;
+    startAyah: number;
+    endAyah: number;
+    versesCount: number;
+    pageNumber: number;
+    previewText: string;
+    label: string;
+    source: 'engine_plan' | 'preset_plan' | 'revision' | 'default';
+  };
+
+  if (activeEnginePlan?.schedule) {
+    const todaySchedule = activeEnginePlan.schedule.find(s => s.date === todayStr && s.memorizationTask && !s.memorizationTask.completed);
+    const nextPending = todaySchedule || activeEnginePlan.schedule.find(s => s.memorizationTask && !s.memorizationTask.completed);
+    if (nextPending?.memorizationTask) {
+      const task = nextPending.memorizationTask;
+      const previewAyah = getAyahByCoordinate(task.surahNumber, task.startAyah);
+      dailyTask = {
+        surahNumber: task.surahNumber,
+        surahName: task.surahName,
+        startAyah: task.startAyah,
+        endAyah: task.endAyah,
+        versesCount: task.versesCount,
+        pageNumber: previewAyah?.page || 1,
+        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        label: `خطة: ${activeEnginePlan.input.title}`,
+        source: 'engine_plan'
+      };
+    } else {
+      dailyTask = getFallbackDailyTask();
+    }
+  } else {
+    dailyTask = getFallbackDailyTask();
+  }
 
   // Weekly stats
   const last7Logs = logs.slice(-7);
@@ -85,11 +182,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
             <button
-              onClick={() => onStartSession(67, 1, 10)}
+              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah)}
               className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300"
             >
               <Play className="w-4 h-4 fill-emerald-950" />
-              <span>ابدأ ورد اليوم (سورة الملك)</span>
+              <span>ابدأ ورد اليوم (سورة {dailyTask.surahName})</span>
             </button>
 
             <button
@@ -118,7 +215,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     الحفظ الجديد (الورد اليومي)
                   </h3>
                   <p className="text-xs text-stone-500 dark:text-stone-400">
-                    الخطة النشطة: {activePlan?.title || "حفظ جزء عمّ"}
+                    {dailyTask.label}
                   </p>
                 </div>
               </div>
@@ -133,19 +230,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="text-xs text-stone-500 dark:text-stone-400">السورة والآيات:</div>
                   <div className="text-lg font-bold text-emerald-900 dark:text-emerald-200 font-quran">
-                    سورة الملك • الآيات (1 - 10)
+                    سورة {dailyTask.surahName} • الآيات ({dailyTask.startAyah} - {dailyTask.endAyah})
                   </div>
                 </div>
                 <div className="text-left">
                   <div className="text-xs text-stone-500 dark:text-stone-400">الكمية المقررة:</div>
                   <div className="text-sm font-bold text-stone-800 dark:text-stone-200 font-mono tabular-nums">
-                    10 آيات (صفحة 562)
+                    {dailyTask.versesCount} آيات (صفحة {dailyTask.pageNumber})
                   </div>
                 </div>
               </div>
 
               <div className="text-xs text-stone-700 dark:text-stone-300 font-quran text-base leading-loose bg-white dark:bg-stone-800 p-3.5 rounded-lg border border-stone-200/60 dark:border-stone-700/50 text-right">
-                «تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ ۝ الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ...»
+                {dailyTask.previewText}
               </div>
             </div>
 
@@ -160,13 +257,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="pt-5 mt-4 border-t border-stone-100 dark:border-stone-700">
+          <div className="pt-5 mt-4 border-t border-stone-100 dark:border-stone-700 flex flex-col sm:flex-row items-center gap-3">
             <button
-              onClick={() => onStartSession(67, 1, 10)}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors"
+              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah)}
+              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>بدء جلسة الحفظ التفاعلية</span>
+            </button>
+            <button
+              onClick={() => onNavigate('library')}
+              className="w-full sm:w-auto px-4 py-3 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 font-semibold text-xs md:text-sm rounded-xl transition-colors"
+              title="تصفح المصحف واختيار سورة أخرى يدوياً"
+            >
+              سورة أخرى
             </button>
           </div>
         </div>
@@ -313,7 +417,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
           <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-2">
-            مستوى التثبيت الحالي: <strong className="text-emerald-700 dark:text-emerald-400">ممتاز (94%)</strong>
+            مستوى التثبيت الحالي: <strong className="text-emerald-700 dark:text-emerald-400">{retentionStatusLabel}</strong>
           </div>
         </div>
       </div>

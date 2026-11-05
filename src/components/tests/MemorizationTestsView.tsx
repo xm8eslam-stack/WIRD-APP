@@ -14,9 +14,10 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { MUTASHABIHAT_DATA } from '../../data/mutashabihatData';
-import { TestResult } from '../../types/quran';
+import { TestResult, WirdPortion } from '../../types/quran';
 import { RetentionService } from '../../services/retentionService';
 import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
+import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
   onSaveTestResult: (result: TestResult) => void;
@@ -38,225 +39,15 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [weakVerseFeedback, setWeakVerseFeedback] = useState<string | null>(null);
+  const [sessionKey, setSessionKey] = useState(0);
 
-  // 1. Complete the Verse Questions (أكمل الآية التالية)
-  const completeVerseQuestions = [
-    {
-      surahName: "الملك",
-      surahNumber: 67,
-      prompt: "«تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ» — ما هي الآية التي تليها مباشرة؟",
-      options: [
-        "الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا ۚ وَهُوَ الْعَزِيزُ الْغَفُورُ",
-        "الَّذِي خَلَقَ سَبْعَ سَمَاوَاتٍ طِبَاقًا ۖ مَّا تَرَىٰ فِي خَلْقِ الرَّحْمَٰنِ مِن تَفَاوُتٍ",
-        "وَلَقَدْ زَيَّنَّا السَّمَاءَ الدُّنْيَا بِمَصَابِيحَ وَجَعَلْنَاهَا رُجُومًا لِّلشَّيَاطِينِ",
-        "هُوَ الَّذِي جَعَلَ لَكُمُ الْأَرْضَ ذَلُولًا فَامْشُوا فِي مَنَاكِبِهَا"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 2
-    },
-    {
-      surahName: "النبأ",
-      surahNumber: 78,
-      prompt: "«عَمَّ يَتَسَاءَلُونَ ۝ عَنِ النَّبَإِ الْعَظِيمِ» — الآية الثالثة هي:",
-      options: [
-        "كَلَّا سَيَعْلَمُونَ",
-        "الَّذِي هُمْ فِيهِ مُخْتَلِفُونَ",
-        "أَلَمْ نَجْعَلِ الْأَرْضَ مِهَادًا",
-        "ثُمَّ كَلَّا سَيَعْلَمُونَ"
-      ],
-      correctIndex: 1,
-      targetAyahNumber: 3
-    },
-    {
-      surahName: "الكهف",
-      surahNumber: 18,
-      prompt: "«الْحَمْدُ لِلَّهِ الَّذِي أَنزَلَ عَلَىٰ عَبْدِهِ الْكِتَابَ وَلَمْ يَجْعَل لَّهُ عِوَجًا» — ما الكلمة الأولى في الآية الثانية؟",
-      options: [
-        "قَيِّمًا لِّيُنذِرَ بَأْسًا شَدِيدًا مِّن لَّدُنْهُ",
-        "مَّاكِثِينَ فِيهِ أَبَدًا",
-        "إِنَّا جَعَلْنَا مَا عَلَى الْأَرْضِ زِينَةً لَّهَا",
-        "وَيُنذِرَ الَّذِينَ قَالُوا اتَّخَذَ اللَّهُ وَلَدًا"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 2
-    },
-    {
-      surahName: "الضحى",
-      surahNumber: 93,
-      prompt: "«مَا وَدَّعَكَ رَبُّكَ وَمَا قَلَىٰ» — الآية التي تليها مباشرة:",
-      options: [
-        "وَلَسَوْفَ يُعْطِيكَ رَبُّكَ فَتَرْضَىٰ",
-        "أَلَمْ يَجِدْكَ يَتِيمًا فَآوَىٰ",
-        "وَلَلْآخِرَةُ خَيْرٌ لَّكَ مِنَ الْأُولَىٰ",
-        "وَوَجَدَكَ ضَالًّا فَهَدَىٰ"
-      ],
-      correctIndex: 2,
-      targetAyahNumber: 4
-    },
-    {
-      surahName: "الشرح",
-      surahNumber: 94,
-      prompt: "«فَإِنَّ مَعَ الْعُسْرِ يُسْرًا» — ما هي الآية التي تليها مباشرة؟",
-      options: [
-        "إِنَّ مَعَ الْعُسْرِ يُسْرًا",
-        "فَإِذَا فَرَغْتَ فَانصَبْ",
-        "وَإِلَىٰ رَبِّكَ فَارْغَب",
-        "وَرَفَعْنَا لَكَ ذِكْرَكَ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 6
-    }
-  ];
+  // Load user portions and dynamically generate verified test questions
+  const portions = RetentionService.getPortions();
+  const generationResult = React.useMemo(() => {
+    return generateDynamicTestQuestions(selectedTestType, portions as WirdPortion[]);
+  }, [selectedTestType, sessionKey]);
 
-  // 2. Bidirectional Recall Questions (اختبار الآية السابقة والتالية)
-  const bidirectionalQuestions = [
-    {
-      surahName: "الملك",
-      surahNumber: 67,
-      prompt: "سورة الملك: «الَّذِي خَلَقَ الْمَوْتَ وَالْحَيَاةَ لِيَبْلُوَكُمْ أَيُّكُمْ أَحْسَنُ عَمَلًا» [الآية 2] ⟵ ما هي الآية السابقة لها مباشرة؟",
-      options: [
-        "تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ وَهُوَ عَلَىٰ كُلِّ شَيْءٍ قَدِيرٌ",
-        "الَّذِي خَلَقَ سَبْعَ سَمَاوَاتٍ طِبَاقًا",
-        "إِنَّ الَّذِينَ يَخْشَوْنَ رَبَّهُم بِالْغَيْبِ لَهُم مَّغْفِرَةٌ وَأَجْرٌ كَبِيرٌ",
-        "قُلْ هُوَ الرَّحْمَٰنُ آمَنَّا بِهِ وَعَلَيْهِ تَوَكَّلْنَا"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 1
-    },
-    {
-      surahName: "الفاتحة",
-      surahNumber: 1,
-      prompt: "سورة الفاتحة: «إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ» [الآية 5] ⟵ ما هي الآية السابقة لها مباشرة؟",
-      options: [
-        "مَالِكِ يَوْمِ الدِّينِ",
-        "الرَّحْمَٰنِ الرَّحِيمِ",
-        "الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ",
-        "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 4
-    },
-    {
-      surahName: "الفاتحة",
-      surahNumber: 1,
-      prompt: "سورة الفاتحة: «إِيَّاكَ نَعْبُدُ وَإِيَّاكَ نَسْتَعِينُ» [الآية 5] ⟶ ما هي الآية التالية لها مباشرة؟",
-      options: [
-        "اهْدِنَا الصِّرَاطَ الْمُسْتَقِيمَ",
-        "صِرَاطَ الَّذِينَ أَنْعَمْتَ عَلَيْهِمْ",
-        "مَالِكِ يَوْمِ الدِّينِ",
-        "الرَّحْمَٰنِ الرَّحِيمِ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 6
-    },
-    {
-      surahName: "النبأ",
-      surahNumber: 78,
-      prompt: "سورة النبأ: «وَالْجِبَالَ أَوْتَادًا» [الآية 7] ⟵ ما هي الآية السابقة لها مباشرة؟",
-      options: [
-        "أَلَمْ نَجْعَلِ الْأَرْضَ مِهَادًا",
-        "وَخَلَقْنَاكُمْ أَزْوَاجًا",
-        "وَجَعَلْنَا نَوْمَكُمْ سُبَاتًا",
-        "ثُمَّ كَلَّا سَيَعْلَمُونَ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 6
-    },
-    {
-      surahName: "الشرح",
-      surahNumber: 94,
-      prompt: "سورة الشرح: «فَإِذَا فَرَغْتَ فَانصَبْ» [الآية 7] ⟶ ما هي الآية التالية لها وخاتمة السورة؟",
-      options: [
-        "وَإِلَىٰ رَبِّكَ فَارْغَب",
-        "إِنَّ مَعَ الْعُسْرِ يُسْرًا",
-        "وَرَفَعْنَا لَكَ ذِكْرَكَ",
-        "وَالتِّينِ وَالزَّيْتُونِ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 8
-    }
-  ];
-
-  // 3. Random Recall from Memorized Portions (اختبار عشوائي من المحفوظ)
-  const randomRecallQuestions = [
-    {
-      surahName: "الملك",
-      surahNumber: 67,
-      prompt: "من محفوظك في سورة الملك: أين ورد قوله تعالى: «أَلَا يَعْلَمُ مَنْ خَلَقَ وَهُوَ اللَّطِيفُ الْخَبِيرُ»؟",
-      options: [
-        "عقب قوله تعالى: «وَأَسِرُّوا قَوْلَكُمْ أَوِ اجْهَرُوا بِهِ ۖ إِنَّهُ عَلِيمٌ بِذَاتِ الصُّدُورِ»",
-        "عقب قوله تعالى: «فَاعْتَرَفُوا بِذَنبِهِمْ فَسُحْقًا لِّأَصْحَابِ السَّعِيرِ»",
-        "في مطلع السورة الكريمة",
-        "في الآية الأخيرة من السورة"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 14
-    },
-    {
-      surahName: "النبأ",
-      surahNumber: 78,
-      prompt: "من محفوظك في سورة النبأ: ما هي الآية التي تعقب قوله تعالى: «وَجَعَلْنَا النَّهَارَ مَعَاشًا»؟",
-      options: [
-        "وَبَنَيْنَا فَوْقَكُمْ سَبْعًا شِدَادًا",
-        "وَجَعَلْنَا سِرَاجًا وَهَّاجًا",
-        "وَأَنزَلْنَا مِنَ الْمُعْصِرَاتِ مَاءً ثَجَّاجًا",
-        "وَجَعَلْنَا اللَّيْلَ لِبَاسًا"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 12
-    },
-    {
-      surahName: "الكهف",
-      surahNumber: 18,
-      prompt: "من محفوظك في سورة الكهف: ما نص الآية العاشرة التي دعا فيها الفتية ربهم؟",
-      options: [
-        "إِذْ أَوَى الْفِتْيَةُ إِلَى الْكَهْفِ فَقَالُوا رَبَّنَا آتِنَا مِن لَّدُنكَ رَحْمَةً وَهَيِّئْ لَنَا مِنْ أَمْرِنَا رَشَدًا",
-        "أَمْ حَسِبْتَ أَنَّ أَصْحَابَ الْكَهْفِ وَالرَّقِيمِ كَانُوا مِنْ آيَاتِنَا عَجَبًا",
-        "فَضَرَبْنَا عَلَىٰ آذَانِهِمْ فِي الْكَهْفِ سِنِينَ عَدَدًا",
-        "نَّحْنُ نَقُصُّ عَلَيْكَ نَبَأَهُم بِالْحَقِّ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 10
-    },
-    {
-      surahName: "التين",
-      surahNumber: 95,
-      prompt: "من محفوظك في سورة التين: ما هي الآية التي ختمت بها السورة الكريمة؟",
-      options: [
-        "أَلَيْسَ اللَّهُ بِأَحْكَمِ الْحَاكِمِينَ",
-        "فَمَا يُكَذِّبُكَ بَعْدُ بِالدِّينِ",
-        "إِلَّا الَّذِينَ آمَنُوا وَعَمِلُوا الصَّالِحَاتِ فَلَهُمْ أَجْرٌ غَيْرُ مَمْنُونٍ",
-        "ثُمَّ رَدَدْنَاهُ أَسْفَلَ سَافِلِينَ"
-      ],
-      correctIndex: 0,
-      targetAyahNumber: 8
-    }
-  ];
-
-  // 4. Mutashabihat Test Questions
-  const mutashabihatQuestions = MUTASHABIHAT_DATA.map((item) => ({
-    surahName: item.surah1.name,
-    surahNumber: item.surah1.surahNumber,
-    prompt: `في سورة ${item.surah1.name} (الآية ${item.surah1.ayahNumber}): كيف وردت صياغة الآية الكريمة دون لبس؟`,
-    options: [
-      item.surah1.text,
-      item.surah2.text
-    ],
-    correctIndex: 0,
-    distinctionRule: item.distinctionRule,
-    targetAyahNumber: item.surah1.ayahNumber
-  }));
-
-  const getQuestionPool = () => {
-    switch (selectedTestType) {
-      case 'complete_verse': return completeVerseQuestions;
-      case 'bidirectional_recall': return bidirectionalQuestions;
-      case 'random_recall': return randomRecallQuestions;
-      case 'mutashabihat': return mutashabihatQuestions;
-    }
-  };
-
-  const currentQuestions = getQuestionPool();
+  const currentQuestions = generationResult.questions;
   const currentQ = currentQuestions[currentQuestionIndex] || currentQuestions[0];
 
   const handleSelectOption = (index: number) => {
@@ -297,6 +88,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     setScore(0);
     setIsFinished(false);
     setWeakVerseFeedback(null);
+    setSessionKey(k => k + 1);
   };
 
   const handleAddCurrentToWeakVerses = () => {
@@ -459,6 +251,14 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               الدرجة الحالية: {score}
             </span>
           </div>
+
+          {/* Insufficient data notification banner */}
+          {!generationResult.hasSufficientData && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>لم تسجل مقاطع محفوظة بعد في سجلك. يتم توليد هذا الاختبار استكشافياً لسورة {currentQ.surahName} لتقييم حفظك العام.</span>
+            </div>
+          )}
 
           {/* Prompt */}
           <div className="space-y-3">

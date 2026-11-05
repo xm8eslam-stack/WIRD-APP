@@ -1,0 +1,332 @@
+import { WirdPortion } from '../types/quran';
+import { ALL_SURAHS } from '../data/quranMeta';
+import { VERIFIED_AYAHS, getAyahByCoordinate } from '../data/verifiedAyahs';
+import { MUTASHABIHAT_DATA } from '../data/mutashabihatData';
+
+export type TestMode = 'complete_verse' | 'bidirectional_recall' | 'random_recall' | 'mutashabihat';
+
+export interface GeneratedQuestion {
+  surahName: string;
+  surahNumber: number;
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  targetAyahNumber: number;
+  distinctionRule?: string;
+  isFromMemorizedPortion: boolean;
+}
+
+export interface QuestionGenerationResult {
+  questions: GeneratedQuestion[];
+  hasSufficientData: boolean;
+  memorizedPortionsCount: number;
+  messageAr?: string;
+}
+
+// Fisher-Yates shuffle
+function shuffleArray<T>(array: T[]): { shuffled: T[]; originalIndexMap: number[] } {
+  const items = [...array];
+  const originalIndices = items.map((_, i) => i);
+
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+    [originalIndices[i], originalIndices[j]] = [originalIndices[j], originalIndices[i]];
+  }
+
+  return { shuffled: items, originalIndexMap: originalIndices };
+}
+
+/**
+ * Generate 5 dynamic, verified questions for the specified test mode
+ */
+export function generateDynamicTestQuestions(
+  testType: TestMode,
+  portions: WirdPortion[] = [],
+  fallbackSurahNumber: number = 67
+): QuestionGenerationResult {
+  const safePortions = Array.isArray(portions) ? portions : [];
+  // Filter active memorized portions
+  const memorized = safePortions.filter(
+    p => p.status === 'stable' || p.status === 'recently_memorized' || p.status === 'needs_revision' || p.status === 'weak'
+  );
+
+  // If user has zero memorized portions, handle gracefully
+  if (memorized.length === 0 && testType !== 'mutashabihat') {
+    // Generate exploratory questions for fallback Surah
+    const fallbackQuestions = generateQuestionsForSurah(testType, fallbackSurahNumber, 5);
+    return {
+      questions: fallbackQuestions,
+      hasSufficientData: false,
+      memorizedPortionsCount: 0,
+      messageAr: 'لم تسجل مقاطع محفوظة بعد. يتم عرض اختبار استكشافي لهذه السورة حتى تبدأ خطتك الخاصة.'
+    };
+  }
+
+  switch (testType) {
+    case 'complete_verse': {
+      const questions: GeneratedQuestion[] = [];
+      const eligiblePortions = [...memorized].sort(() => 0.5 - Math.random());
+
+      for (const p of eligiblePortions) {
+        if (questions.length >= 5) break;
+        const surahVerses = VERIFIED_AYAHS[p.surahNumber];
+        if (!surahVerses || surahVerses.length < 2) continue;
+
+        // Pick an Ayah within portion where next Ayah exists
+        const minAyah = p.startAyah;
+        const maxAyah = Math.min(p.endAyah, surahVerses.length - 1);
+        if (minAyah > maxAyah) continue;
+
+        const targetN = Math.floor(Math.random() * (maxAyah - minAyah + 1)) + minAyah;
+        const currentAyah = getAyahByCoordinate(p.surahNumber, targetN);
+        const nextAyah = getAyahByCoordinate(p.surahNumber, targetN + 1);
+
+        if (!currentAyah || !nextAyah) continue;
+
+        // Generate 3 distractors from same or neighboring verses
+        const distractors: string[] = [];
+        const candidates = surahVerses.filter(a => a.numberInSurah !== targetN + 1 && a.numberInSurah !== targetN);
+        const shuffledCandidates = candidates.sort(() => 0.5 - Math.random());
+
+        for (const c of shuffledCandidates) {
+          if (distractors.length >= 3) break;
+          distractors.push(c.text);
+        }
+
+        // If not enough in same Surah, pull from another Surah
+        if (distractors.length < 3) {
+          const otherSurah = VERIFIED_AYAHS[p.surahNumber === 114 ? 113 : p.surahNumber + 1] || [];
+          for (const o of otherSurah) {
+            if (distractors.length >= 3) break;
+            distractors.push(o.text);
+          }
+        }
+
+        const rawOptions = [nextAyah.text, ...distractors];
+        const { shuffled, originalIndexMap } = shuffleArray(rawOptions);
+        const correctIndex = originalIndexMap.indexOf(0);
+
+        questions.push({
+          surahName: p.surahName,
+          surahNumber: p.surahNumber,
+          prompt: `في سورة ${p.surahName}: قال تعالى: «${currentAyah.text}» [الآية ${currentAyah.numberInSurah}] — ما هي الآية التي تليها مباشرة؟`,
+          options: shuffled,
+          correctIndex,
+          targetAyahNumber: nextAyah.numberInSurah,
+          isFromMemorizedPortion: true
+        });
+      }
+
+      if (questions.length < 5) {
+        // Complete with fallback questions if memorized portions were too short
+        const extra = generateQuestionsForSurah('complete_verse', fallbackSurahNumber, 5 - questions.length);
+        questions.push(...extra);
+      }
+
+      return {
+        questions: questions.slice(0, 5),
+        hasSufficientData: true,
+        memorizedPortionsCount: memorized.length
+      };
+    }
+
+    case 'bidirectional_recall': {
+      const questions: GeneratedQuestion[] = [];
+      const eligiblePortions = [...memorized].sort(() => 0.5 - Math.random());
+
+      for (const p of eligiblePortions) {
+        if (questions.length >= 5) break;
+        const surahVerses = VERIFIED_AYAHS[p.surahNumber];
+        if (!surahVerses || surahVerses.length < 3) continue;
+
+        const isPrevious = Math.random() > 0.5;
+        let targetN: number;
+        let expectedAyahNum: number;
+        let promptDirection: string;
+
+        if (isPrevious) {
+          // Needs previous ayah, so targetN must be > 1
+          const minA = Math.max(2, p.startAyah);
+          const maxA = p.endAyah;
+          if (minA > maxA) continue;
+          targetN = Math.floor(Math.random() * (maxA - minA + 1)) + minA;
+          expectedAyahNum = targetN - 1;
+          promptDirection = `⟵ ما هي الآية السابقة لها مباشرة؟`;
+        } else {
+          // Needs next ayah
+          const minA = p.startAyah;
+          const maxA = Math.min(p.endAyah, surahVerses.length - 1);
+          if (minA > maxA) continue;
+          targetN = Math.floor(Math.random() * (maxA - minA + 1)) + minA;
+          expectedAyahNum = targetN + 1;
+          promptDirection = `⟶ ما هي الآية التالية لها مباشرة؟`;
+        }
+
+        const centerAyah = getAyahByCoordinate(p.surahNumber, targetN);
+        const answerAyah = getAyahByCoordinate(p.surahNumber, expectedAyahNum);
+        if (!centerAyah || !answerAyah) continue;
+
+        // 3 distractors
+        const distractors: string[] = [];
+        const candidates = surahVerses.filter(a => a.numberInSurah !== expectedAyahNum && a.numberInSurah !== targetN);
+        const shuffledCandidates = candidates.sort(() => 0.5 - Math.random());
+
+        for (const c of shuffledCandidates) {
+          if (distractors.length >= 3) break;
+          distractors.push(c.text);
+        }
+
+        const rawOptions = [answerAyah.text, ...distractors];
+        const { shuffled, originalIndexMap } = shuffleArray(rawOptions);
+        const correctIndex = originalIndexMap.indexOf(0);
+
+        questions.push({
+          surahName: p.surahName,
+          surahNumber: p.surahNumber,
+          prompt: `في سورة ${p.surahName}: قال تعالى: «${centerAyah.text}» [الآية ${centerAyah.numberInSurah}] ${promptDirection}`,
+          options: shuffled,
+          correctIndex,
+          targetAyahNumber: expectedAyahNum,
+          isFromMemorizedPortion: true
+        });
+      }
+
+      if (questions.length < 5) {
+        const extra = generateQuestionsForSurah('bidirectional_recall', fallbackSurahNumber, 5 - questions.length);
+        questions.push(...extra);
+      }
+
+      return {
+        questions: questions.slice(0, 5),
+        hasSufficientData: true,
+        memorizedPortionsCount: memorized.length
+      };
+    }
+
+    case 'random_recall': {
+      const questions: GeneratedQuestion[] = [];
+      const eligiblePortions = [...memorized].sort(() => 0.5 - Math.random());
+
+      for (const p of eligiblePortions) {
+        if (questions.length >= 5) break;
+        const targetN = Math.floor(Math.random() * (p.endAyah - p.startAyah + 1)) + p.startAyah;
+        const ayah = getAyahByCoordinate(p.surahNumber, targetN);
+        if (!ayah) continue;
+
+        // Choose 3 distractor surahs
+        const otherSurahs = ALL_SURAHS.filter(s => s.number !== p.surahNumber);
+        const shuffledSurahs = otherSurahs.sort(() => 0.5 - Math.random()).slice(0, 3);
+
+        const correctLabel = `سورة ${p.surahName} (الآية ${ayah.numberInSurah})`;
+        const distractorLabels = shuffledSurahs.map(s => `سورة ${s.name} (الآية ${Math.min(ayah.numberInSurah, s.versesCount)})`);
+
+        const rawOptions = [correctLabel, ...distractorLabels];
+        const { shuffled, originalIndexMap } = shuffleArray(rawOptions);
+        const correctIndex = originalIndexMap.indexOf(0);
+
+        questions.push({
+          surahName: p.surahName,
+          surahNumber: p.surahNumber,
+          prompt: `من محفوظك: أين ورد قوله تعالى: «${ayah.text}»؟`,
+          options: shuffled,
+          correctIndex,
+          targetAyahNumber: ayah.numberInSurah,
+          isFromMemorizedPortion: true
+        });
+      }
+
+      if (questions.length < 5) {
+        const extra = generateQuestionsForSurah('random_recall', fallbackSurahNumber, 5 - questions.length);
+        questions.push(...extra);
+      }
+
+      return {
+        questions: questions.slice(0, 5),
+        hasSufficientData: true,
+        memorizedPortionsCount: memorized.length
+      };
+    }
+
+    case 'mutashabihat': {
+      // Prioritize mutashabihat items overlapping with memorized surahs
+      const memorizedSurahNumbers = new Set(memorized.map(p => p.surahNumber));
+      const prioritized = [...MUTASHABIHAT_DATA].sort((a, b) => {
+        const aHas = memorizedSurahNumbers.has(a.surah1.surahNumber) || memorizedSurahNumbers.has(a.surah2.surahNumber);
+        const bHas = memorizedSurahNumbers.has(b.surah1.surahNumber) || memorizedSurahNumbers.has(b.surah2.surahNumber);
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return 0;
+      });
+
+      const selectedItems = prioritized.slice(0, 5);
+      const questions: GeneratedQuestion[] = selectedItems.map(item => {
+        const rawOptions = [item.surah1.text, item.surah2.text];
+        const { shuffled, originalIndexMap } = shuffleArray(rawOptions);
+        const correctIndex = originalIndexMap.indexOf(0);
+
+        return {
+          surahName: item.surah1.name,
+          surahNumber: item.surah1.surahNumber,
+          prompt: `في سورة ${item.surah1.name} (الآية ${item.surah1.ayahNumber}): كيف وردت صياغة الآية الكريمة وضبط المتشابه بدقة؟`,
+          options: shuffled,
+          correctIndex,
+          distinctionRule: item.distinctionRule,
+          targetAyahNumber: item.surah1.ayahNumber,
+          isFromMemorizedPortion: memorizedSurahNumbers.has(item.surah1.surahNumber)
+        };
+      });
+
+      return {
+        questions,
+        hasSufficientData: true,
+        memorizedPortionsCount: memorized.length
+      };
+    }
+  }
+}
+
+/**
+ * Generate fallback questions for any chosen Surah
+ */
+export function generateQuestionsForSurah(
+  mode: TestMode,
+  surahNumber: number,
+  count: number = 5
+): GeneratedQuestion[] {
+  const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber) || ALL_SURAHS[66]; // 67 Al-Mulk
+  const verses = VERIFIED_AYAHS[surahMeta.number] || [];
+  if (verses.length === 0) return [];
+
+  const questions: GeneratedQuestion[] = [];
+  const maxStart = Math.max(1, verses.length - count);
+
+  for (let i = 0; i < count; i++) {
+    const targetN = ((i * 3) % (verses.length - 1)) + 1;
+    const currentAyah = verses[targetN - 1];
+    const nextAyah = verses[targetN] || verses[0];
+
+    // Distractors
+    const candidates = verses.filter(a => a.numberInSurah !== nextAyah.numberInSurah && a.numberInSurah !== currentAyah.numberInSurah);
+    const distractors = candidates.slice(0, 3).map(c => c.text);
+    while (distractors.length < 3) {
+      distractors.push(verses[(targetN + distractors.length + 2) % verses.length].text);
+    }
+
+    const rawOptions = [nextAyah.text, ...distractors];
+    const { shuffled, originalIndexMap } = shuffleArray(rawOptions);
+    const correctIndex = originalIndexMap.indexOf(0);
+
+    questions.push({
+      surahName: surahMeta.name,
+      surahNumber: surahMeta.number,
+      prompt: `في سورة ${surahMeta.name}: قال تعالى: «${currentAyah.text}» [الآية ${currentAyah.numberInSurah}] — ما هي الآية التالية لها مباشرة؟`,
+      options: shuffled,
+      correctIndex,
+      targetAyahNumber: nextAyah.numberInSurah,
+      isFromMemorizedPortion: false
+    });
+  }
+
+  return questions;
+}

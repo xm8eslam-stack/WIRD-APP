@@ -5,10 +5,12 @@ import {
   DailyLog, 
   TestResult,
   PortionStatusRecord,
-  WeakVerseItem 
+  WeakVerseItem,
+  WirdPortion 
 } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
+import { migrateLegacyDataLosslessly, MigrationReport } from './unifiedPortionService';
 
 export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
@@ -19,7 +21,9 @@ export const STORAGE_KEYS = {
   LOGS: 'wird_logs',
   TESTS: 'wird_tests',
   PORTIONS: 'wird_portions_status',
-  WEAK_VERSES: 'wird_weak_verses'
+  WEAK_VERSES: 'wird_weak_verses',
+  UNIFIED_PORTIONS: 'wird_portions_v2',
+  SCHEMA_VERSION: 'wird_data_schema_version'
 } as const;
 
 // In-memory fallback for test / Node / SSR environments where localStorage is not defined
@@ -329,6 +333,96 @@ export const StorageService = {
     }
   },
 
+  // Unified Portions (Canonical schema v2)
+  getUnifiedPortions(): WirdPortion[] {
+    try {
+      const data = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      if (data) {
+        return JSON.parse(data);
+      }
+      // If not yet migrated, attempt migration on read
+      const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
+      const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
+      if (legacyPortionsRaw || legacyRevsRaw) {
+        this.ensureDataMigrated();
+        const migrated = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+        if (migrated) return JSON.parse(migrated);
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveUnifiedPortions(portions: WirdPortion[]): void {
+    try {
+      setItem(STORAGE_KEYS.UNIFIED_PORTIONS, JSON.stringify(portions));
+      setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      // Keep legacy keys in sync for backward compatibility
+      setItem(STORAGE_KEYS.PORTIONS, JSON.stringify(portions));
+      const revItems: RevisionItem[] = portions
+        .filter(p => p.status !== 'not_memorized')
+        .map(p => ({
+          id: p.id,
+          surahNumber: p.surahNumber,
+          surahName: p.surahName,
+          startAyah: p.startAyah,
+          endAyah: p.endAyah,
+          pageNumber: p.pageNumber,
+          juzNumber: p.juzNumber,
+          type: p.revisionType || 'minor',
+          lastReviewedDate: p.lastReviewedDate,
+          nextDueDate: p.nextDueDate,
+          intervalDays: p.intervalDays,
+          easeFactor: p.easeFactor,
+          repetitionCount: p.repetitionCount,
+          strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium')
+        }));
+      setItem(STORAGE_KEYS.REVISION, JSON.stringify(revItems));
+    } catch (e) {
+      console.warn("Storage write failed", e);
+    }
+  },
+
+  ensureDataMigrated(): MigrationReport {
+    try {
+      const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+      if (currentVersion === '2') {
+        const unified = this.getUnifiedPortions();
+        return {
+          success: true,
+          legacyPortionsCount: 0,
+          legacyRevisionCount: 0,
+          migratedPortionsCount: unified.length,
+          alreadyMigrated: true
+        };
+      }
+
+      const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
+      const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
+      const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
+      const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+
+      const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
+
+      if (report.success) {
+        setItem(STORAGE_KEYS.UNIFIED_PORTIONS, JSON.stringify(portions));
+        setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      }
+
+      return report;
+    } catch (e: any) {
+      return {
+        success: false,
+        legacyPortionsCount: 0,
+        legacyRevisionCount: 0,
+        migratedPortionsCount: 0,
+        alreadyMigrated: false,
+        error: e?.message || 'Migration exception'
+      };
+    }
+  },
+
   // Logs (Returns clean empty array by default)
   getLogs(): DailyLog[] {
     try {
@@ -476,6 +570,8 @@ export const StorageService = {
     removeItem(STORAGE_KEYS.TESTS);
     removeItem(STORAGE_KEYS.PORTIONS);
     removeItem(STORAGE_KEYS.WEAK_VERSES);
+    removeItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+    removeItem(STORAGE_KEYS.SCHEMA_VERSION);
     memoryStorage.clear();
   },
 

@@ -25,6 +25,7 @@ interface MemorizationSessionViewProps {
   profile: UserProfile;
   onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => void;
   onExit: () => void;
+  onProgressChange?: (inProgress: boolean) => void;
 }
 
 export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = ({
@@ -33,7 +34,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   initialEndAyah = 5,
   profile,
   onCompleteSession,
-  onExit
+  onExit,
+  onProgressChange
 }) => {
   const [surahNumber, setSurahNumber] = useState(initialSurahNumber);
   const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
@@ -71,6 +73,10 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    onProgressChange?.(repeatCount > 0 && !isCompleted);
+  }, [repeatCount, isCompleted, onProgressChange]);
 
   // Keyboard shortcut: Spacebar to repeat
   useEffect(() => {

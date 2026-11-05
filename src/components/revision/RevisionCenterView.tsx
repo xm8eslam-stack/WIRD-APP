@@ -414,8 +414,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                       </div>
                       <div>
                         <div className="text-stone-400 text-[10px]">الأخطاء السابقة</div>
-                        <div className={`font-semibold font-mono ${item.mistakesCount > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                          {item.mistakesCount}
+                        <div className={`font-semibold font-mono ${(item.mistakesCount || 0) > 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                          {item.mistakesCount || 0}
                         </div>
                       </div>
                     </div>

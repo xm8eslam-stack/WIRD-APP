@@ -1,13 +1,20 @@
-import { 
+import {
   PortionStatusRecord, 
   PortionMemorizationStatus, 
   RevisionRating, 
   RevisionLogEntry, 
-  WeakVerseItem 
+  WeakVerseItem,
+  WirdPortion 
 } from '../types/quran';
 import { StorageService } from './storageService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
+import { 
+  calculateUniqueMemorizedAyahs, 
+  calculateUniqueMemorizedPages, 
+  getPrioritizedRevisionQueue, 
+  getLocalDateString 
+} from './unifiedPortionService';
 
 const STORAGE_KEYS = {
   PORTIONS: 'wird_portions_status',
@@ -246,6 +253,7 @@ export const DEFAULT_WEAK_VERSES: WeakVerseItem[] = [
 export interface RetentionMetrics {
   totalTrackedPortions: number;
   totalMemorizedAyahs: number;
+  totalMemorizedPages: number;
   retentionScorePercentage: number; // 0-100%
   statusBreakdown: {
     stable: number;
@@ -658,9 +666,13 @@ export const RetentionService = {
       currently_memorizing: memorizedPortionsCount > 0 ? Math.round((breakdown.currently_memorizing / totalActive) * 100) : 0
     };
 
+    const { uniqueCount: uniqueAyahsCount } = calculateUniqueMemorizedAyahs(portions as WirdPortion[]);
+    const uniquePagesCount = calculateUniqueMemorizedPages(portions as WirdPortion[]);
+
     return {
       totalTrackedPortions: portions.length,
-      totalMemorizedAyahs: totalVerses,
+      totalMemorizedAyahs: uniqueAyahsCount,
+      totalMemorizedPages: uniquePagesCount,
       retentionScorePercentage: totalVerses > 0 ? Math.min(100, Math.max(0, retentionScore)) : 0,
       statusBreakdown: breakdown,
       statusPercentages,

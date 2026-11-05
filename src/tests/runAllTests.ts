@@ -9,6 +9,7 @@ import { runQuranIntegrityTests } from './quranContentIntegrity.test';
 import { runIndependentTanzilComparison, runNegativeComparisonTests } from './independentTanzilComparison';
 import { runPwaIntegrationTests } from './pwaIntegration.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
+import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 
 export interface SuiteResult {
   passed: number;
@@ -65,6 +66,7 @@ async function main() {
     { name: 'Tanzil Comparison Detector Sensitivity (Negative Tests)', runner: () => runNegativeComparisonTests() },
     { name: 'PWA Compliance & Service Worker Infrastructure', runner: runPwaIntegrationTests },
     { name: 'Firebase Authentication Foundation & Data Preservation', runner: runFirebaseAuthTests },
+    { name: 'Phase 3 Core Remediation (Unified Portions, SM-2, Tests & Router)', runner: runPhase3CoreRemediationTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);

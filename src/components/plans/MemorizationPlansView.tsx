@@ -7,13 +7,11 @@ import {
   Trash2, 
   Play, 
   Layers,
-  Cpu,
   Check
 } from 'lucide-react';
 import { MemorizationPlan } from '../../types/quran';
 import { EngineGeneratedPlan } from '../../services/planningEngine';
 import { PlanningEngineWizard } from './PlanningEngineWizard';
-import { runAllPlanningEngineTests } from '../../services/planningEngine.test';
 
 interface MemorizationPlansViewProps {
   plans: MemorizationPlan[];
@@ -32,8 +30,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   onStartSession,
   onToast
 }) => {
-  const [activeTab, setActiveTab] = useState<'engine' | 'presets' | 'diagnostics'>('engine');
-  const [testResults, setTestResults] = useState<{ passed: number; failed: number; results: string[] } | null>(null);
+  const [activeTab, setActiveTab] = useState<'engine' | 'presets'>('engine');
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   // Toggle active plan in presets
@@ -59,11 +56,6 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     if (onToast) {
       onToast("تم حذف الخطة من قائمتك بنجاح", "info");
     }
-  };
-
-  const handleRunDiagnostics = () => {
-    const res = runAllPlanningEngineTests();
-    setTestResults(res);
   };
 
   return (
@@ -95,21 +87,6 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
             <span>النماذج والخطط المعتمدة ({plans.length})</span>
           </button>
         </div>
-
-        <button
-          onClick={() => {
-            setActiveTab('diagnostics');
-            handleRunDiagnostics();
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] transition-colors ${
-            activeTab === 'diagnostics'
-              ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 text-amber-900 dark:text-amber-200 font-bold'
-              : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400 hover:bg-stone-50'
-          }`}
-        >
-          <Cpu className="w-3.5 h-3.5" />
-          <span>فحص دقة الخوارزميات (Unit Tests)</span>
-        </button>
       </div>
 
       {/* TAB 1: Real Functional Planning Engine */}
@@ -231,48 +208,6 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* TAB 3: Unit Tests & Algorithmic Diagnostics */}
-      {activeTab === 'diagnostics' && (
-        <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-6 md:p-8 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-5 text-xs">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
-            <div>
-              <h3 className="font-bold text-base text-stone-900 dark:text-stone-100 flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-emerald-700" />
-                <span>فحص واختبار دقة محرك التخطيط القرآني (Algorithmic Unit Tests)</span>
-              </h3>
-              <p className="text-stone-500">
-                اختبارات حسابية حتمية لحساب الآيات، والجدولة، والتحقق من حدود الجهد الذهني، وإعادة الضبط
-              </p>
-            </div>
-
-            <button
-              onClick={handleRunDiagnostics}
-              className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold shadow-xs transition-colors"
-            >
-              إعادة تشغيل الاختبارات الآن
-            </button>
-          </div>
-
-          {testResults && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200">
-                <Check className="w-5 h-5 text-emerald-600" />
-                <div>
-                  <strong>تم اجتياز جميع الاختبارات: </strong>
-                  <span>{testResults.passed} اختبار ناجح · {testResults.failed} اختبار فاشل</span>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 font-mono text-[11px] bg-[#faf8f5] dark:bg-stone-900 p-4 rounded-xl border border-stone-200 dark:border-stone-700 max-h-80 overflow-y-auto">
-                {testResults.results.map((r, i) => (
-                  <div key={i} className="py-0.5">{r}</div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
