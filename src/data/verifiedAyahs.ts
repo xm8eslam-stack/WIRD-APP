@@ -22,8 +22,6 @@ export { QURAN_DATA_SOURCE_INFO } from './quranDataInfo';
  * - عدد الأحزاب: 60 حزباً (240 ربع حزب)
  */
 
-;
-
 // Complete 114 Surahs dataset
 export const VERIFIED_AYAHS: Record<number, Ayah[]> = COMPLETE_QURAN_DATA as unknown as Record<number, Ayah[]>;
 
