@@ -16,6 +16,11 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(progressView.includes('touch-manipulation'), 'Page buttons must use touch-friendly interaction');
     assert(progressView.includes('aria-label={`صفحة ${pageNum}'), 'Page buttons must expose descriptive accessible names');
     assert(progressView.includes('length: 604'), 'The full 604-page map must remain available');
+    assert(progressView.includes('PAGE_GRID_ZOOM_CLASSES'), 'The map must offer responsive zoom levels');
+    assert(progressView.includes("setPageGridZoom('large')"), 'Users must be able to enlarge page cells');
+    assert(progressView.includes('getPageAyahSegments'), 'Page edits must use exact Quran ayah boundaries');
+    assert(!progressView.includes('Default heuristics based on seed user journey'), 'The map must not fabricate memorization progress');
+    assert(!progressView.includes('endAyah: surah.versesCount'), 'Marking one page must not mark the entire Surah');
   });
 
   return { passed, failed };
