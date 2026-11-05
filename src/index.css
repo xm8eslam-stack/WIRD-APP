@@ -419,3 +419,74 @@
     transition-duration: .01ms !important;
   }
 }
+
+/* Dashboard 5B — clearer focus hierarchy and progress semantics. */
+.wird-focus-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 100%;
+  border-radius: 24px !important;
+  box-shadow: 0 12px 30px rgba(28, 54, 41, .055) !important;
+}
+.wird-focus-card::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 1.35rem;
+  bottom: 1.35rem;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--wird-gold), rgba(199, 163, 91, .12));
+}
+.wird-metric-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 9.25rem;
+  border-radius: 21px !important;
+  box-shadow: 0 8px 24px rgba(28, 54, 41, .045) !important;
+}
+.wird-metric-label {
+  min-height: 2rem;
+  font-weight: 700;
+  letter-spacing: .005em;
+}
+.wird-metric-icon {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: var(--wird-forest);
+  background: rgba(35, 103, 76, .085);
+  border: 1px solid rgba(35, 103, 76, .08);
+}
+.dark .wird-metric-icon {
+  color: #c5dfcf;
+  background: rgba(131, 182, 155, .1);
+  border-color: rgba(131, 182, 155, .12);
+}
+.wird-metric-card > .flex.items-baseline > span:first-child,
+.wird-metric-card > div > .text-2xl {
+  font-size: clamp(1.55rem, 2vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -.045em;
+}
+.wird-progress-track {
+  height: 7px !important;
+  border-radius: 999px !important;
+  background: rgba(113, 128, 120, .14) !important;
+}
+.wird-progress-track > div {
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #1d7655, #64a982) !important;
+  transition: width .55s cubic-bezier(.2,.7,.2,1);
+}
+.wird-progress-track[aria-label*="الصفحات"] > div {
+  background: linear-gradient(90deg, #a87c32, #d7b96f) !important;
+}
+@media (max-width: 639px) {
+  .wird-focus-card { padding: 1.1rem !important; border-radius: 21px !important; }
+  .wird-metric-card { min-height: 8.5rem; padding: 1rem !important; }
+  .wird-metric-card > .flex.items-baseline { align-items: flex-end; gap: .4rem; }
+}
