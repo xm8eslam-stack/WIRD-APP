@@ -167,6 +167,18 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     }
   };
 
+  // A deep-link or navigation change starts a fresh session with the requested mode and range.
+  useEffect(() => {
+    setSurahNumber(initialSurahNumber);
+    setCurrentAyahIndex(0);
+    setRepeatCount(0);
+    setRevealedWordIndices(new Set());
+    setSecondsElapsed(0);
+    setIsCompleted(false);
+    audioRef.current?.pause();
+    setIsPlaying(false);
+  }, [initialSurahNumber, initialStartAyah, initialEndAyah, mode]);
+
   // Word Masking Logic
   const words = currentAyah ? getAyahWords(currentAyah.text) : [];
   
@@ -326,7 +338,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             }}
             className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold"
           >
-            تكرار الجلسة للتثبيت
+            {mode === 'review' ? 'إعادة المراجعة' : 'تكرار الجلسة للتثبيت'}
           </button>
 
           <button
@@ -353,6 +365,9 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </button>
 
         <div className="flex items-center gap-3">
+          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${mode === 'review' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'}`}>
+            {mode === 'review' ? 'جلسة مراجعة' : 'جلسة حفظ'}
+          </span>
           <span className="font-bold text-sm text-stone-900 dark:text-stone-100 font-quran">
             سورة {surahMeta.name}
           </span>
