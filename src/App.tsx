@@ -37,10 +37,12 @@ export default function App() {
     surahNumber: number;
     startAyah: number;
     endAyah: number;
+    mode: 'memorize' | 'review';
   }>({
     surahNumber: initialRoute.surahNumber || 67,
     startAyah: initialRoute.startAyah || 1,
-    endAyah: initialRoute.endAyah || 10
+    endAyah: initialRoute.endAyah || 10,
+    mode: initialRoute.mode || 'memorize'
   });
 
   // Track if active session has progress for exit confirmation
@@ -158,7 +160,8 @@ export default function App() {
         setSessionParams(prev => ({
           surahNumber: route.surahNumber || prev.surahNumber,
           startAyah: route.startAyah || prev.startAyah,
-          endAyah: route.endAyah || prev.endAyah
+          endAyah: route.endAyah || prev.endAyah,
+          mode: route.mode || prev.mode
         }));
       }
     };
@@ -176,21 +179,21 @@ export default function App() {
   };
 
   // Start daily session handler with deep link URL
-  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10) => {
-    setSessionParams({ surahNumber, startAyah, endAyah });
+  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10, mode: 'memorize' | 'review' = 'memorize') => {
+    setSessionParams({ surahNumber, startAyah, endAyah, mode });
     navigateTo({
       tab: 'session',
       surahNumber,
       startAyah,
       endAyah,
-      mode: 'memorize'
+      mode
     });
   };
 
   // Session complete callback
-  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(memorizedAyahs, reviewedPages, minutes, taskName);
-    if (sessionParams.surahNumber) {
+  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
+    StorageService.recordSessionCompletion(mode === 'memorize' ? memorizedAyahs : 0, mode === 'review' ? Math.max(1, reviewedPages) : 0, minutes, taskName);
+    if (mode === 'memorize' && sessionParams.surahNumber) {
       RetentionService.recordMemorizationCompletion(
         sessionParams.surahNumber,
         sessionParams.startAyah,
@@ -387,6 +390,7 @@ export default function App() {
                 initialSurahNumber={sessionParams.surahNumber}
                 initialStartAyah={sessionParams.startAyah}
                 initialEndAyah={sessionParams.endAyah}
+                mode={sessionParams.mode}
                 profile={profile}
                 onCompleteSession={handleCompleteSession}
                 onExit={() => handleNavigate('dashboard')}
