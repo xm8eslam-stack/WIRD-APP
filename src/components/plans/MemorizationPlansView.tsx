@@ -59,7 +59,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="wird-plans space-y-6">
       {/* Top Segmented Control */}
       <div className="bg-white dark:bg-stone-800/90 p-2 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
         <div className="flex items-center gap-2">
