@@ -473,10 +473,10 @@ export const RetentionService = {
 
     // Record session completion in daily logs
     const versesCount = (target.endAyah - target.startAyah + 1) || 10;
-    StorageService.recordSessionCompletion(
-      0, 
-      Math.max(1, Math.round(versesCount / 15)), 
-      15, 
+    const sessionLogSaved = StorageService.recordSessionCompletion(
+      0,
+      Math.max(1, Math.round(versesCount / 15)),
+      15,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
 
@@ -484,7 +484,7 @@ export const RetentionService = {
       updatedPortion,
       nextIntervalDays: sm2Result.intervalDays,
       nextDueDate: sm2Result.nextDueDate,
-      messageAr: `${sm2Result.messageAr}${weakVerseWarning}`
+      messageAr: `${sm2Result.messageAr}${weakVerseWarning}${sessionLogSaved ? '' : ' تعذر حفظ سجل النشاط اليومي.'}`
     };
   },
 
