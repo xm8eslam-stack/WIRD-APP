@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 src/data/quran-surahs/
+src/data/quranPageIndex.generated.ts
