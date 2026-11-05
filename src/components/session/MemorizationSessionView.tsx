@@ -87,6 +87,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     setSurahNumber(initialSurahNumber);
     setSessionRange({ startAyah: initialStartAyah, endAyah: initialEndAyah });
     setCurrentAyahIndex(0);
+    setRepeatCount(0);
+    setRevealedWordIndices(new Set());
     setIsCompleted(false);
     completionReported.current = false;
     setSecondsElapsed(0);
@@ -312,6 +314,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               setIsCompleted(false);
               completionReported.current = false;
               setCurrentAyahIndex(0);
+              setRepeatCount(0);
+              setRevealedWordIndices(new Set());
               setSecondsElapsed(0);
             }}
             className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold"
