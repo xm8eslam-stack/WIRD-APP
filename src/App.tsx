@@ -9,6 +9,7 @@ import { EngineGeneratedPlan } from './services/planningEngine';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { getLocalDateString } from './services/unifiedPortionService';
+import { getSessionCompletionMetrics } from './services/sessionCompletion';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -192,8 +193,9 @@ export default function App() {
 
   // Session complete callback
   const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
-    StorageService.recordSessionCompletion(mode === 'memorize' ? memorizedAyahs : 0, mode === 'review' ? Math.max(1, reviewedPages) : 0, minutes, taskName);
-    if (mode === 'memorize' && sessionParams.surahNumber) {
+    const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
+    StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
       RetentionService.recordMemorizationCompletion(
         sessionParams.surahNumber,
         sessionParams.startAyah,
