@@ -21,9 +21,11 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { PlanningEngine, PlanGenerationInput, EngineGeneratedPlan, ScheduledDayPlan } from '../../services/planningEngine';
 import { PlanLifecycle } from '../../services/planLifecycle';
 import { QuranMath } from '../../services/quranMath';
+import { PortionStatusRecord } from '../../types/quran';
 
 interface PlanningEngineWizardProps {
   enginePlans: EngineGeneratedPlan[];
+  memorizedPortions: PortionStatusRecord[];
   onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
   onStartSession: (surahNumber: number, startAyah: number, endAyah: number) => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
@@ -41,6 +43,7 @@ const WEEK_DAYS = [
 
 export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   enginePlans,
+  memorizedPortions,
   onUpdateEnginePlans,
   onStartSession,
   onToast
@@ -72,7 +75,10 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const [schedulePref, setSchedulePref] = useState<'single_session' | 'morning_evening'>('single_session');
   
   // Selected existing memorized portions for major revision
-  const [selectedExistingSurahs, setSelectedExistingSurahs] = useState<number[]>([1, 78]);
+  const availableMemorizedSurahs = Array.from(new Set(memorizedPortions
+    .filter(p => ['stable', 'recently_memorized', 'needs_revision', 'weak'].includes(p.status))
+    .map(p => p.surahNumber))).sort((a, b) => a - b);
+  const [selectedExistingSurahs, setSelectedExistingSurahs] = useState<number[]>(() => availableMemorizedSurahs);
 
   // Max verses for current start & end surah
   const startSurahMeta = ALL_SURAHS.find(s => s.number === startSurah);
@@ -111,13 +117,25 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const handleGeneratePlan = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const existingPortions = selectedExistingSurahs.map(sNum => {
-      const s = ALL_SURAHS.find(item => item.number === sNum);
-      return {
-        surahNumber: sNum,
-        startAyah: 1,
-        endAyah: s ? s.versesCount : 10
-      };
+    const selectedRanges = memorizedPortions
+      .filter(p => selectedExistingSurahs.includes(p.surahNumber) &&
+        ['stable', 'recently_memorized', 'needs_revision', 'weak'].includes(p.status))
+      .sort((a, b) => a.surahNumber - b.surahNumber || a.startAyah - b.startAyah);
+
+    // Merge overlapping/adjacent saved ranges so the revision engine never
+    // schedules the same memorized ayah twice.
+    const existingPortions: Array<{ surahNumber: number; startAyah: number; endAyah: number }> = [];
+    selectedRanges.forEach(portion => {
+      const last = existingPortions[existingPortions.length - 1];
+      if (last && last.surahNumber === portion.surahNumber && portion.startAyah <= last.endAyah + 1) {
+        last.endAyah = Math.max(last.endAyah, portion.endAyah);
+      } else {
+        existingPortions.push({
+          surahNumber: portion.surahNumber,
+          startAyah: portion.startAyah,
+          endAyah: portion.endAyah
+        });
+      }
     });
 
     const input: PlanGenerationInput = {
@@ -513,8 +531,13 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
             <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
               أجزاء وسور محفوظة مسبقاً (لتضمينها تلقائياً في دورة المراجعة الكبرى):
             </label>
+            {availableMemorizedSurahs.length === 0 ? (
+              <p className="text-xs text-stone-500 bg-stone-50 dark:bg-stone-900 rounded-xl p-3">
+                لم تسجل مقاطع محفوظة بعد. ستظهر هنا تلقائياً المقاطع التي تسجلها في جلسات الحفظ.
+              </p>
+            ) : (
             <div className="flex flex-wrap gap-2">
-              {[1, 67, 78, 18, 36, 55, 56].map(sNum => {
+              {availableMemorizedSurahs.map(sNum => {
                 const s = ALL_SURAHS.find(item => item.number === sNum);
                 const isSelected = selectedExistingSurahs.includes(sNum);
                 return (
@@ -539,6 +562,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Feasibility & Advisory Gauge */}
