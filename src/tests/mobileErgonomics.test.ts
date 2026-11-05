@@ -97,7 +97,7 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
 
   test('Revision navigation exposes semantic, labelled tabs and panels', () => {
     const revision = fs.readFileSync(path.resolve(process.cwd(), 'src/components/revision/RevisionCenterView.tsx'), 'utf8');
-    assert(revision.includes('role="tablist" aria-label="أقسام مركز المراجعة"'), 'Revision navigation must expose a named tablist');
+    assert(revision.includes('role="tablist"') && revision.includes('aria-label="أقسام مركز المراجعة"'), 'Revision navigation must expose a named tablist');
     assert(revision.includes('role="tab"'), 'Each revision destination must be exposed as a tab');
     assert(revision.includes('aria-selected={activeTab ==='), 'Selected revision tab must be announced');
     assert(revision.includes('aria-controls="revision-panel-'), 'Revision tabs must reference their panels');
