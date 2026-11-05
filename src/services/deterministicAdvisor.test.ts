@@ -96,7 +96,7 @@ export function runAllAdvisorTests(): { passed: number; failed: number; results:
 
   // 1. History analysis calculates metrics correctly
   runTest('AdvisorEngine: History analysis correctly calculates completion rate and detects gaps', () => {
-    const report = DeterministicAdvisorEngine.analyzeHistory(dummyLogs, dummyProfile, dummyPortions, dummyWeakVerses);
+    const report = DeterministicAdvisorEngine.analyzeHistory(dummyLogs, dummyProfile, dummyPortions, dummyWeakVerses, { todayStr: '2026-11-03' });
     assert(report.completionRate > 0 && report.completionRate < 100, `Expected rate 0-100, got ${report.completionRate}`);
     assert(report.weeklySummary.totalMinutes === 170, `Expected 170 mins, got ${report.weeklySummary.totalMinutes}`);
     assert(report.weeklySummary.totalAyahsMemorized === 28, `Expected 28 ayahs, got ${report.weeklySummary.totalAyahsMemorized}`);
@@ -116,7 +116,20 @@ export function runAllAdvisorTests(): { passed: number; failed: number; results:
     assert(report.difficultyReasons.length > 0, 'Should provide difficulty reasons');
   });
 
-  // 4. Pedagogical questions answered safely
+  // 4. Empty history and best-day reporting remain truthful
+  runTest('AdvisorEngine: Does not invent missed days or a best day when history is empty', () => {
+    const report = DeterministicAdvisorEngine.analyzeHistory([], dummyProfile, [], [], { todayStr: '2026-11-03' });
+    assert(report.completionRate === 0, 'Empty history produces zero measured active days');
+    assert(report.missedTasksPattern.includes('لا توجد بيانات كافية'), 'Empty history is described as insufficient data, not repeated failure');
+    assert(report.weeklySummary.bestDay === 'لا توجد بيانات كافية', 'No best day is fabricated without logs');
+  });
+
+  runTest('AdvisorEngine: Reports the actual best day from recent activity', () => {
+    const report = DeterministicAdvisorEngine.analyzeHistory(dummyLogs, dummyProfile, dummyPortions, dummyWeakVerses, { todayStr: '2026-11-03' });
+    assert(report.weeklySummary.bestDay === 'الثلاثاء', 'The day with the highest recorded minutes is selected');
+  });
+
+  // 5. Pedagogical questions answered safely
   runTest('AdvisorEngine: Answers questions about memorization methods and rules without inventing verses', () => {
     const answerForForgetting = DeterministicAdvisorEngine.answerQuestion('أعاني من نسيان القرآن وتفلته بسرعة، فما العلاج؟');
     assert(answerForForgetting.includes('التكرار') || answerForForgetting.includes('المراجعة'), 'Should recommend spaced revision and repetition');
