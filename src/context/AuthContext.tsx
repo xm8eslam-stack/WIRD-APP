@@ -77,6 +77,28 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+export async function handleContinueAsGuest(
+  user: User | null,
+  setUser: (u: User | null) => void,
+  setIsGuest: (g: boolean) => void,
+  setAuthError: (e: string | null) => void
+): Promise<boolean> {
+  setAuthError(null);
+  const result = await executeGuestTransition(user, async () => {
+    await AuthService.logout();
+    setUser(null);
+  });
+  if (result.success) {
+    setIsGuest(true);
+    return true;
+  } else {
+    if (result.error) {
+      setAuthError(result.error);
+    }
+    return false;
+  }
+}
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -217,22 +239,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+
+
   const continueAsGuest = async (): Promise<boolean> => {
-    setAuthError(null);
-    const result = await executeGuestTransition(user, async () => {
-      await AuthService.logout();
-      setUser(null);
-    });
-    if (result.success) {
-      setIsGuest(true);
-      return true;
-    } else {
-      if (result.error) {
-        setAuthError(result.error);
-      }
-      return false;
-    }
+    return handleContinueAsGuest(user, setUser, setIsGuest, setAuthError);
   };
+
 
   const clearError = () => setAuthError(null);
 

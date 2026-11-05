@@ -10,10 +10,6 @@ import { runIndependentTanzilComparison, runNegativeComparisonTests } from './in
 import { runPwaIntegrationTests } from './pwaIntegration.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
 
-console.log('====================================================');
-console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
-console.log('====================================================\n');
-
 let totalPassed = 0;
 let totalFailed = 0;
 
@@ -25,7 +21,18 @@ async function runSuite(name: string, runner: () => { passed: number; failed: nu
   console.log(`  Summary: ${passed} Passed, ${failed} Failed`);
 }
 
+export function evaluateTestResults(passed: number, failed: number): number {
+  console.log('\n====================================================');
+  console.log(`FINAL RESULT: ${passed} PASSED | ${failed} FAILED`);
+  console.log('====================================================');
+  return failed > 0 ? 1 : 0;
+}
+
 async function main() {
+  console.log('====================================================');
+  console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
+  console.log('====================================================\n');
+
   // 1. Planning Engine
   await runSuite('Planning Engine Math & Task Distribution', () => {
     const res = runAllPlanningEngineTests();
@@ -77,18 +84,15 @@ async function main() {
   // 12. Firebase Authentication Foundation Tests
   await runSuite('Firebase Authentication Foundation & Data Preservation', runFirebaseAuthTests);
 
-  console.log('\n====================================================');
-  console.log(`FINAL RESULT: ${totalPassed} PASSED | ${totalFailed} FAILED`);
-  console.log('====================================================');
-
-  if (totalFailed > 0) {
-    process.exit(1);
-  } else {
-    process.exit(0);
-  }
+  const exitCode = evaluateTestResults(totalPassed, totalFailed);
+  process.exit(exitCode);
 }
 
-main().catch((err) => {
-  console.error('❌ Fatal error in test runner:', err);
-  process.exit(1);
-});
+if (typeof process !== 'undefined' && process.argv && (process.argv[1]?.includes('runAllTests') || process.argv[1]?.endsWith('tsx'))) {
+  // Only auto-run if this is the main entry point
+  // The second check covers some environments where the path might be slightly different
+  main().catch((err) => {
+    console.error('❌ Fatal error in test runner:', err);
+    process.exit(1);
+  });
+}
