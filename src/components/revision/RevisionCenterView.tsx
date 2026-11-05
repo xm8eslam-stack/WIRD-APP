@@ -29,6 +29,7 @@ import {
   UserProfile 
 } from '../../types/quran';
 import { RetentionService, RetentionMetrics } from '../../services/retentionService';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
 
@@ -92,8 +93,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     refreshAll();
   }, []);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const dailyQueue = RetentionService.getDailyRevisionQueue(todayStr);
+  const todayStr = getLocalDateString();
+  const queueDetails = RetentionService.getDailyRevisionQueueDetails(todayStr);
+  const dailyQueue = queueDetails.queue;
   const weeklyOverview = RetentionService.getWeeklyRevisionOverview(todayStr);
   const revisionHistory = RetentionService.getRevisionHistory();
 
@@ -283,7 +285,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 ? 'bg-emerald-700 text-white font-bold' 
                 : 'bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-400'
             }`}>
-              {dailyQueue.length}
+              {queueDetails.totalDueCount}
             </span>
           </button>
 
@@ -351,7 +353,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-stone-500">
             <span>المقاطع المستحقة للمراجعة اليوم (مرتبة حسب الأولوية والحاجة للتثبيت):</span>
-            <span>إجمالي المقاطع المستحقة: <strong className="text-stone-800 dark:text-stone-200">{dailyQueue.length}</strong></span>
+            <span>إجمالي المقاطع المستحقة: <strong className="text-stone-800 dark:text-stone-200">{queueDetails.totalDueCount}</strong></span>
           </div>
 
           {dailyQueue.length === 0 ? (
