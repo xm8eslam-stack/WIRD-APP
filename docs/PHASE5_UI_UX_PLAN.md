@@ -51,19 +51,22 @@ These projects are references for product patterns and UX research, not permissi
 
 ### 5D — Memorization and testing
 - Create a distraction-free recitation workspace with clearer progress, reveal controls, repetition, audio, and completion feedback.
-- Improve touch interactions and keyboard accessibility without changing memorization semantics.\n- **Initial 5D pass completed:** masked-word reveal controls are keyboard-operable buttons; Space-to-repeat no longer intercepts Space on buttons or form controls; ayah-step progress exposes accessible list/current-step semantics.
+- Improve touch interactions and keyboard accessibility without changing memorization semantics.
+- **Initial 5D pass completed:** masked-word reveal controls are keyboard-operable buttons; Space-to-repeat no longer intercepts Space on buttons or form controls; ayah-step progress exposes accessible list/current-step semantics.
 - Treat browser speech recognition as optional assistance, never a Tajweed certification or a replacement for a teacher.
 
 ### 5E — Plans, revision, analytics, and settings
 - Unify cards, filters, tabs, forms, charts, legends, dialogs, and empty states.
-- Make the next useful action obvious while preserving current plan and retention calculations.\n- **Pending:** focused visual pass on plan wizard, revision queue, analytics charts, settings forms, and empty states.
+- Make the next useful action obvious while preserving current plan and retention calculations.
+- **Pending:** focused visual pass on plan wizard, revision queue, analytics charts, settings forms, and empty states.
 - Improve backup/import affordances without weakening validation or recovery behavior.
 
 ### 5F — Quality and release
 - Test desktop/mobile layouts, RTL, keyboard navigation, reduced motion, dark mode, empty states, and offline states.
 - Run the full test suite, TypeScript validation, and Vite production build through GitHub Actions.
 - Inspect chunk sizes and lazy loading; do not add heavy UI dependencies.
-- Keep all work on this feature branch until review and CI pass; merge to main only after release checks.\n- Current blocker: Vercel status reports the Free-plan daily deployment limit; no new Preview is confirmed for the current Phase 5 head.
+- Keep all work on this feature branch until review and CI pass; merge to main only after release checks.
+- Current blocker: Vercel status reports the Free-plan daily deployment limit; no new Preview is confirmed for the current Phase 5 head.
 
 ## Current implementation snapshot
 
@@ -75,7 +78,12 @@ These projects are references for product patterns and UX research, not permissi
   - Premium forest-green/brass desktop sidebar and persistent mobile quick-navigation dock.
   - Responsive header with shorter mobile CTA and removal of the hard-coded Al-Mulk daily assignment label.
   - Consistent page wrappers for dashboard, library, plans, revision, progress, advisor, tests, settings, and memorization session.
-  - Added mobile-navigation, dashboard progress, Surah selection, and memorization control accessibility regression assertions.\n  - Dashboard focus cards and metric cards have clearer hierarchy; progress bars expose actual percentages to assistive technology.\n  - Removed the fixed 20-minute claim and made the repetition count reflect the configured profile target.\n  - Quran library has a dedicated reading surface, responsive Surah browser, refined ayah cards, and keyboard-operable Surah selection.\n  - Memorization session word reveal controls are buttons with descriptive labels; Space-to-repeat respects interactive focus.\n  - Open-source research includes the MIT-licensed Sakinah reference stylesheet; WIRD uses its own design tokens and implementation. No third-party code or Quran data was copied.
+  - Added mobile-navigation, dashboard progress, Surah selection, and memorization control accessibility regression assertions.
+  - Dashboard focus cards and metric cards have clearer hierarchy; progress bars expose actual percentages to assistive technology.
+  - Removed the fixed 20-minute claim and made the repetition count reflect the configured profile target.
+  - Quran library has a dedicated reading surface, responsive Surah browser, refined ayah cards, and keyboard-operable Surah selection.
+  - Memorization session word reveal controls are buttons with descriptive labels; Space-to-repeat respects interactive focus.
+  - Open-source research includes the MIT-licensed Sakinah reference stylesheet; WIRD uses its own design tokens and implementation. No third-party code or Quran data was copied.
 - No new runtime dependency has been added.
 - No Quran text, audio, Firebase rules, authentication, secrets, or data migration logic has been changed.
 
