@@ -261,7 +261,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     for (let index = 0; index < payload.unifiedPortions.length; index++) {
       const portion = payload.unifiedPortions[index];
       const surahMeta = portion && ALL_SURAHS.find(surah => surah.number === portion.surahNumber);
-      const validDate = typeof portion?.nextDueDate === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(portion.nextDueDate)
+      const validDate = typeof portion?.nextDueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(portion.nextDueDate)
         && (() => {
           const [year, month, day] = portion.nextDueDate.split('-').map(Number);
           const date = new Date(Date.UTC(year, month - 1, day));
