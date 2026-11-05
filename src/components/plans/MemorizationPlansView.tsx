@@ -12,7 +12,6 @@ import {
 import { MemorizationPlan, PortionStatusRecord } from '../../types/quran';
 import { EngineGeneratedPlan } from '../../services/planningEngine';
 import { PlanningEngineWizard } from './PlanningEngineWizard';
-import { ALL_SURAHS } from '../../data/quranMeta';
 import { findNextUnmemorizedRange, getPlanTargetSurahNumbers } from '../../services/unifiedPortionService';
 
 interface MemorizationPlansViewProps {
