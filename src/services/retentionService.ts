@@ -11,7 +11,8 @@ import { ALL_SURAHS } from '../data/quranMeta';
 import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
 import { 
   calculateUniqueMemorizedAyahs, 
-  calculateUniqueMemorizedPages, 
+  calculateUniqueMemorizedPages,
+  calculateUniqueRetentionScore,
   getPrioritizedRevisionQueue, 
   getLocalDateString,
   calculateCanonicalSM2,
@@ -641,8 +642,6 @@ export const RetentionService = {
       not_memorized: 0
     };
 
-    let totalVerses = 0;
-    let weightedRetentionPoints = 0;
     let totalEase = 0;
 
     portions.forEach(p => {
@@ -650,25 +649,14 @@ export const RetentionService = {
       const count = (p.endAyah - p.startAyah + 1) || 1;
       totalEase += p.easeFactor;
 
-      if (p.status !== 'not_memorized') {
-        totalVerses += count;
-
-        // Weighted points for retention quality
-        if (p.status === 'stable') weightedRetentionPoints += count * 1.0;
-        else if (p.status === 'recently_memorized') weightedRetentionPoints += count * 0.8;
-        else if (p.status === 'needs_revision') weightedRetentionPoints += count * 0.5;
-        else if (p.status === 'weak') weightedRetentionPoints += count * 0.2;
-        else if (p.status === 'currently_memorizing') weightedRetentionPoints += count * 0.4;
-      }
+      // Retention quality is calculated below once per unique ayah.
     });
 
     const memorizedPortionsCount = portions.filter(p => p.status !== 'not_memorized').length;
     const averageEase = portions.length > 0 ? Number((totalEase / portions.length).toFixed(2)) : 2.5;
     
-    // Overall retention percentage calculated truthfully from real data
-    const retentionScore = totalVerses > 0 
-      ? Math.round((weightedRetentionPoints / totalVerses) * 100)
-      : 0;
+    // Resolve overlapping portion records once per ayah, using the weakest status.
+    const retentionScore = calculateUniqueRetentionScore(portions as WirdPortion[]);
 
     const totalActive = memorizedPortionsCount || 1;
     const statusPercentages = {
@@ -686,7 +674,7 @@ export const RetentionService = {
       totalTrackedPortions: portions.length,
       totalMemorizedAyahs: uniqueAyahsCount,
       totalMemorizedPages: uniquePagesCount,
-      retentionScorePercentage: totalVerses > 0 ? Math.min(100, Math.max(0, retentionScore)) : 0,
+      retentionScorePercentage: uniqueAyahsCount > 0 ? Math.min(100, Math.max(0, retentionScore)) : 0,
       statusBreakdown: breakdown,
       statusPercentages,
       totalReviewsCompleted: history.length,
