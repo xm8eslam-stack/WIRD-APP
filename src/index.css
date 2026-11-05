@@ -602,6 +602,7 @@
 }
 :where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
   button {
+  min-height: 2.75rem;
   touch-action: manipulation;
 }
 .wird-planning-wizard > [class*="rounded-2xl"][class*="border"],
