@@ -267,7 +267,8 @@ export default function App() {
       }
     }
 
-    StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+    const sessionLogSaved = StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+    if (!sessionLogSaved) showToast('تم حفظ المقطع، لكن تعذر تحديث سجل النشاط وسلسلة المواظبة. تحقق من مساحة التخزين.', 'error');
     if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
       // Completing the exact task from an active engine plan must advance
       // that plan, otherwise the dashboard would keep serving the same range.
@@ -309,7 +310,8 @@ export default function App() {
   };
 
   const handleRecordRevisionComplete = (pagesCount: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    const saved = StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    if (!saved) showToast('تعذر حفظ سجل جلسة المراجعة وسلسلة المواظبة.', 'error');
     setLogs(StorageService.getLogs());
   };
 
