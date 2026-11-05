@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Play, 
   Repeat, 
@@ -23,7 +23,8 @@ import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, ALL_SURAHS } from '../../data/qu
 import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
 import { StorageService } from '../../services/storageService';
-import { getAyahByCoordinate } from '../../data/verifiedAyahs';
+import { loadAyahByCoordinate } from '../../data/quranDataLoader';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -42,10 +43,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onStartSession
 }) => {
+  const [dailyPreviewText, setDailyPreviewText] = useState('جارٍ تحميل نص الآية...');
   const activePlan = plans.find(p => p.isActive) || plans[0];
 
   // Calculate due revision items strictly from canonical RetentionService
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const queueDetails = RetentionService.getDailyRevisionQueueDetails(todayStr);
   const queuePortions = queueDetails.queue;
   const totalDueCount = queueDetails.totalDueCount;
@@ -74,36 +76,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const sMeta = ALL_SURAHS.find(s => s.number === sNum);
       const sAyah = 1;
       const eAyah = Math.min(sMeta?.versesCount || 7, activePlan.dailyTarget || 7);
-      const previewAyah = getAyahByCoordinate(sNum, sAyah);
       return {
         surahNumber: sNum,
         surahName: sMeta?.name || `سورة ${sNum}`,
         startAyah: sAyah,
         endAyah: eAyah,
         versesCount: eAyah - sAyah + 1,
-        pageNumber: previewAyah?.page || sMeta?.pageStart || 1,
-        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        pageNumber: sMeta?.pageStart || 1,
         label: `الخطة النشطة: ${activePlan.title}`,
         source: 'preset_plan' as const
       };
     }
     if (queuePortions.length > 0) {
       const top = queuePortions[0];
-      const previewAyah = getAyahByCoordinate(top.surahNumber, top.startAyah);
       return {
         surahNumber: top.surahNumber,
         surahName: top.surahName,
         startAyah: top.startAyah,
         endAyah: top.endAyah,
         versesCount: top.endAyah - top.startAyah + 1,
-        pageNumber: top.pageNumber || previewAyah?.page || 1,
-        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        pageNumber: top.pageNumber || ALL_SURAHS.find(s => s.number === top.surahNumber)?.pageStart || 1,
         label: 'مراجعة مستحقة ذات أولوية',
         source: 'revision' as const
       };
     }
     // Brand new user with no plan yet
-    const fatihaAyah = getAyahByCoordinate(1, 1);
     return {
       surahNumber: 1,
       surahName: 'الفاتحة',
@@ -111,7 +108,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       endAyah: 7,
       versesCount: 7,
       pageNumber: 1,
-      previewText: fatihaAyah?.text ? `«${fatihaAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
       label: 'البداية المباركة (فاتحة الكتاب)',
       source: 'default' as const
     };
@@ -126,7 +122,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     endAyah: number;
     versesCount: number;
     pageNumber: number;
-    previewText: string;
     label: string;
     source: 'engine_plan' | 'preset_plan' | 'revision' | 'default';
   };
@@ -136,15 +131,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const nextPending = todaySchedule || activeEnginePlan.schedule.find(s => s.memorizationTask && !s.memorizationTask.completed);
     if (nextPending?.memorizationTask) {
       const task = nextPending.memorizationTask;
-      const previewAyah = getAyahByCoordinate(task.surahNumber, task.startAyah);
       dailyTask = {
         surahNumber: task.surahNumber,
         surahName: task.surahName,
         startAyah: task.startAyah,
         endAyah: task.endAyah,
         versesCount: task.versesCount,
-        pageNumber: previewAyah?.page || 1,
-        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        pageNumber: ALL_SURAHS.find(s => s.number === task.surahNumber)?.pageStart || 1,
         label: `خطة: ${activeEnginePlan.input.title}`,
         source: 'engine_plan'
       };
@@ -154,6 +147,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   } else {
     dailyTask = getFallbackDailyTask();
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    setDailyPreviewText('جارٍ تحميل نص الآية...');
+    loadAyahByCoordinate(dailyTask.surahNumber, dailyTask.startAyah)
+      .then(ayah => {
+        if (cancelled) return;
+        setDailyPreviewText(ayah?.text ? '«' + ayah.text + '»' : 'تعذر تحميل معاينة الآية حالياً.');
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.warn('[WIRD Dashboard] Could not load ayah preview:', error);
+          setDailyPreviewText('تعذر تحميل معاينة الآية حالياً.');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [dailyTask.surahNumber, dailyTask.startAyah]);
 
   // Weekly stats
   const last7Logs = logs.slice(-7);
@@ -243,7 +253,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="text-xs text-stone-700 dark:text-stone-300 font-quran text-base leading-loose bg-white dark:bg-stone-800 p-3.5 rounded-lg border border-stone-200/60 dark:border-stone-700/50 text-right">
-                {dailyTask.previewText}
+                {dailyPreviewText}
               </div>
             </div>
 
@@ -377,7 +387,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Metric 2: Pages */}
         <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المتقنة</div>
+          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المحفوظة بالكامل</div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
               {totalMemorizedPages}

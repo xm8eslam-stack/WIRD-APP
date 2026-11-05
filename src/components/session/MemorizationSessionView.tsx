@@ -14,7 +14,7 @@ import {
   Award
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { VERIFIED_AYAHS, getAyahWords } from '../../data/verifiedAyahs';
+import { loadSurahVerses, getAyahWords } from '../../data/quranDataLoader';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
 
@@ -39,17 +39,47 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 }) => {
   const [surahNumber, setSurahNumber] = useState(initialSurahNumber);
   const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
+  const [allSurahAyahs, setAllSurahAyahs] = useState<Ayah[]>([]);
+  const [isLoadingAyahs, setIsLoadingAyahs] = useState(true);
+  const [loadRetry, setLoadRetry] = useState(0);
   
-  // Available ayahs for this surah
+  // Load only the active surah's verses into the memorization session.
   const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber) || ALL_SURAHS[66];
-  const allSurahAyahs = VERIFIED_AYAHS[surahNumber] || [];
+  useEffect(() => {
+    let cancelled = false;
+    setAllSurahAyahs([]);
+    setCurrentAyahIndex(0);
+    setIsLoadingAyahs(true);
+    loadSurahVerses(surahNumber)
+      .then(ayahs => { if (!cancelled) setAllSurahAyahs(ayahs); })
+      .catch(error => { if (!cancelled) console.error('[WIRD Session] Failed to load Surah ' + surahNumber, error); })
+      .finally(() => { if (!cancelled) setIsLoadingAyahs(false); });
+    return () => { cancelled = true; };
+  }, [surahNumber, loadRetry]);
   
   // Filter ayahs within selected range
-  const sessionAyahs = allSurahAyahs.length > 0 
+  const sessionAyahs = allSurahAyahs.length > 0
     ? allSurahAyahs.filter(a => a.numberInSurah >= initialStartAyah && a.numberInSurah <= (initialEndAyah || 10))
     : [];
 
-  const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex] || allSurahAyahs[0];
+  // Pre-cache only the active session's recitation files (bounded in the Service Worker).
+  useEffect(() => {
+    if (!sessionAyahs.length || currentAyahIndex % 10 !== 0 || !('serviceWorker' in navigator)) return;
+    let cancelled = false;
+    const urls = sessionAyahs.slice(currentAyahIndex, currentAyahIndex + 20).map(ayah =>
+      formatAyahAudioUrl(surahNumber, ayah.numberInSurah, profile.preferredReciter)
+    );
+    navigator.serviceWorker.ready
+      .then(registration => {
+        if (cancelled) return;
+        const worker = navigator.serviceWorker.controller || registration.active || registration.waiting;
+        worker?.postMessage({ type: 'WIRD_CACHE_SESSION_AUDIO', urls });
+      })
+      .catch(error => console.warn('[WIRD Session] Audio cache unavailable:', error));
+    return () => { cancelled = true; };
+  }, [surahNumber, profile.preferredReciter, allSurahAyahs, currentAyahIndex, initialStartAyah, initialEndAyah]);
+
+  const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex];
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -181,6 +211,16 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  if (isLoadingAyahs) {
+    return (
+      <div className="bg-white dark:bg-stone-800 rounded-3xl p-8 text-center space-y-3 border border-stone-200 dark:border-stone-700 max-w-lg mx-auto shadow-sm">
+        <BookOpen className="w-8 h-8 mx-auto text-emerald-700 animate-pulse" />
+        <p className="text-sm font-bold text-stone-700 dark:text-stone-200">جارٍ تحميل سورة {surahMeta.name}...</p>
+        <p className="text-xs text-stone-500">يتم تحميل نص السورة المطلوبة فقط.</p>
+      </div>
+    );
+  }
+
   if (!currentAyah) {
     return (
       <div className="bg-white dark:bg-stone-800 rounded-3xl p-8 text-center space-y-5 border border-stone-200 dark:border-stone-700 max-w-lg mx-auto shadow-sm">
@@ -189,17 +229,23 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
         <div className="space-y-2">
           <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-full">
-            تنبيه اكتمال التغطية النصية المحلية
+            تعذر تحميل النص القرآني
           </span>
           <h3 className="font-bold text-stone-900 dark:text-stone-100 text-lg">
             سورة {surahMeta.name} ({surahMeta.versesCount} آية)
           </h3>
           <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed max-w-md mx-auto">
-            النص القرآني العثماني المشكول لهذه السورة غير مضمن محلياً في الحزمة الأساسية (التطبيق يضمن نصوص السور الأساسية كالفاتحة والملك والكهف وقصار السور لتقليل حجم الحزمة وضمان الدقة). يمكنك التدرب على إحدى السور المعتمدة محلياً أو الاستماع لتلاوة سورة {surahMeta.name} في شاشة المصحف.
+            تعذر تحميل النص القرآني العثماني لهذه السورة من الملفات المحلية. تحقق من سلامة ملفات التطبيق ثم أعد المحاولة؛ لم يتم استبدال النص بأي مصدر غير موثوق.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setLoadRetry(value => value + 1)}
+            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 text-stone-950 rounded-xl text-xs font-bold shadow-xs hover:bg-amber-400 transition-colors"
+          >
+            إعادة تحميل النص
+          </button>
           <button
             onClick={() => {
               setSurahNumber(67);

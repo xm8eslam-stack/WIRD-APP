@@ -10,7 +10,12 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx src/tests/runAllTests.ts"
+    "test": "tsx src/tests/runAllTests.ts",
+    "quran:split": "node scripts/split-quran-data.mjs",
+    "predev": "node scripts/split-quran-data.mjs",
+    "prebuild": "node scripts/split-quran-data.mjs",
+    "pretest": "node scripts/split-quran-data.mjs",
+    "prelint": "node scripts/split-quran-data.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -30,7 +35,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.2",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",

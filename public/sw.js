@@ -1,4 +1,34 @@
-const CACHE_NAME = 'wird-app-v1';
+const CACHE_NAME = 'wird-app-v2';
+const AUDIO_CACHE_NAME = 'wird-app-audio-v1';
+const MAX_SESSION_AUDIO_PRELOAD = 20;
+const MAX_AUDIO_CACHE_ENTRIES = 40;
+
+async function trimAudioCache(cache) {
+  const keys = await cache.keys();
+  const overflow = keys.length - MAX_AUDIO_CACHE_ENTRIES;
+  for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
+}
+
+async function cacheSessionAudio(rawUrls) {
+  if (!Array.isArray(rawUrls)) return;
+  const cache = await caches.open(AUDIO_CACHE_NAME);
+  const urls = rawUrls.slice(0, MAX_SESSION_AUDIO_PRELOAD);
+  for (const rawUrl of urls) {
+    try {
+      const url = new URL(rawUrl);
+      if (url.protocol !== 'https:' || url.hostname !== 'everyayah.com' || !url.pathname.startsWith('/data/') || !url.pathname.endsWith('.mp3')) continue;
+      const request = new Request(url.href, { mode: 'no-cors', credentials: 'omit' });
+      if (await cache.match(request)) continue;
+      const response = await fetch(request);
+      if (response && (response.type === 'opaque' || response.status === 200)) {
+        await cache.put(request, response.clone());
+        await trimAudioCache(cache);
+      }
+    } catch (error) {
+      console.warn('[WIRD SW] Session audio pre-cache skipped:', error);
+    }
+  }
+}
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -24,7 +54,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME)
+          .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME)
           .map((name) => {
             console.log('[WIRD SW] Removing stale cache:', name);
             return caches.delete(name);
@@ -105,7 +135,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 3: Third-party static assets (Google Fonts)
+  // Strategy 3: Session audio cache (EveryAyah). Only URLs explicitly pre-cached
+  // by the active memorization session are stored; other audio remains stream-only.
+  if (url.hostname === 'everyayah.com' && url.pathname.startsWith('/data/') && url.pathname.endsWith('.mp3')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(AUDIO_CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      try { return await fetch(req); }
+      catch (error) {
+        console.warn('[WIRD SW] Session audio unavailable offline:', req.url, error);
+        return Response.error();
+      }
+    })());
+    return;
+  }
+
+  // Strategy 4: Third-party static assets (Google Fonts)
   if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
@@ -127,5 +173,9 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'WIRD_CACHE_SESSION_AUDIO') {
+    event.waitUntil(cacheSessionAudio(event.data.urls));
   }
 });

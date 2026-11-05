@@ -1,5 +1,6 @@
 import { Ayah } from '../types/quran';
 import COMPLETE_QURAN_DATA from './completeQuranData.json';
+export { QURAN_DATA_SOURCE_INFO } from './quranDataInfo';
 
 /**
  * ====================================================================
@@ -20,18 +21,6 @@ import COMPLETE_QURAN_DATA from './completeQuranData.json';
  * - عدد الأجزاء: 30 جزءاً
  * - عدد الأحزاب: 60 حزباً (240 ربع حزب)
  */
-
-export const QURAN_DATA_SOURCE_INFO = {
-  provider: "Tanzil Project (http://tanzil.net)",
-  edition: "quran-uthmani",
-  narration: "حفص عن عاصم الكوفي",
-  totalSurahs: 114,
-  totalAyahs: 6236,
-  totalPages: 604,
-  totalJuz: 30,
-  license: "Creative Commons Attribution 3.0 Unported (CC BY 3.0)",
-  verifiedDate: "2026-11-04"
-} as const;
 
 // Complete 114 Surahs dataset
 export const VERIFIED_AYAHS: Record<number, Ayah[]> = COMPLETE_QURAN_DATA as unknown as Record<number, Ayah[]>;

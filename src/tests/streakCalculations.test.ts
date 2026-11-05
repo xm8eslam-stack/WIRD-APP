@@ -1,4 +1,5 @@
 import { calculateActiveStreak, advanceStreakOnCompletion } from '../services/storageService';
+import { getLocalDateString } from '../services/unifiedPortionService';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -21,6 +22,11 @@ export function runStreakTests(): { passed: number; failed: number } {
     }
   }
 
+  // 0. Calendar dates must use the user's local timezone, not UTC date slicing.
+  test('Local date helper preserves the local calendar day around midnight', () => {
+    const justAfterLocalMidnight = new Date(2026, 10, 5, 0, 15, 0);
+    assert(getLocalDateString(justAfterLocalMidnight) === '2026-11-05', 'Local midnight must resolve to the local date');
+  });
   // 1. First ever session
   test('First ever session starts streak at 1', () => {
     const res = advanceStreakOnCompletion('', 0, '2026-11-04');

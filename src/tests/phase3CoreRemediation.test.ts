@@ -115,6 +115,8 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
     const uniquePages = calculateUniqueMemorizedPages(portionsOverlap);
     assert(uniquePages === 1, `Al-Fatihah resolves to exactly 1 page (got ${uniquePages})`);
+    const partialPagePortion: WirdPortion = { ...portionsOverlap[0], endAyah: 6, id: 's1_a1_a6' };
+    assert(calculateUniqueMemorizedPages([partialPagePortion]) === 0, 'A partially covered Mushaf page is not counted as completed');
 
     const portionsNonOverlap: WirdPortion[] = [
       ...portionsOverlap,
@@ -267,7 +269,31 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate preserved');
     assert(migrated[0].history?.length === 2, 'Lossless history: duplicate log ID with differing content is preserved with modified ID');
     assert((migrated[0].conflictAudit?.length || 0) >= 2, 'Metadata conflicts (type, surahName, status, history) logged to conflictAudit');
+    const migratedAgain = migrateLegacyDataLosslessly(legacyPortions, legacyRevisions);
+    const firstHistoryIds = migrated[0].history?.map(log => log.id).sort().join('|');
+    const repeatedHistoryIds = migratedAgain.portions[0].history?.map(log => log.id).sort().join('|');
+    assert(firstHistoryIds === repeatedHistoryIds, 'Conflicting history IDs remain deterministic across repeated migrations');
+
     assert(report.success === true, 'Migration report reports success');
+  }
+
+  console.log('\n--- 4A. Canonical ID Recovery from Untrusted Legacy IDs ---');
+  {
+    const mismatchedId = {
+      id: 's18_a2_a10',
+      surahNumber: 18,
+      surahName: 'الكهف',
+      startAyah: 1,
+      endAyah: 10,
+      status: 'stable' as const,
+      nextDueDate: '2026-05-10',
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1
+    } as PortionStatusRecord;
+    const normalized = migrateLegacyDataLosslessly([mismatchedId], []);
+    assert(normalized.report.success, 'Migration must recover valid coordinates despite a mismatched legacy ID');
+    assert(normalized.portions[0].id === 's18_a1_a10', 'Canonical ID must be derived from actual Surah and ayah coordinates');
   }
 
   console.log('\n--- 5. Verified Quran Coordinates Boundary Validation ---');
@@ -364,12 +390,12 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       const seedSnapshot: Record<string, string | null> = {
         [`memory:${STORAGE_KEYS.PORTIONS}`]: JSON.stringify([legacyPortion]),
         [`memory:${STORAGE_KEYS.SCHEMA_VERSION}`]: '2',
-        [`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`]: 'CORRUPTED_NON_JSON_DATA'
+        [`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`]: JSON.stringify([{ ...legacyPortion, id: 's112_a1_a99', endAyah: 99 }])
       };
       StorageService.restoreStorageSnapshot(seedSnapshot);
 
       const recovered = StorageService.getUnifiedPortions();
-      assert(recovered.length === 1, 'getUnifiedPortions recovers losslessly from legacy keys when v2 payload is corrupt');
+      assert(recovered.length === 1, 'getUnifiedPortions rejects valid-JSON payloads with invalid Quran coordinates and recovers from legacy keys');
       assert(recovered[0].id === 's112_a1_a4', 'Recovered portion has canonical ID s112_a1_a4');
     } finally {
       StorageService.restoreStorageSnapshot(snap);

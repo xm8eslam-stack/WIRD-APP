@@ -7,7 +7,7 @@ import {
   RevisionLogEntry 
 } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
+import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
 
 /**
  * ====================================================================
@@ -51,24 +51,6 @@ export function createCanonicalPortionId(surahNumber: number, startAyah: number,
   return `s${surahNumber}_a${startAyah}_a${endAyah}`;
 }
 
-// Map Ayah coordinates to Page numbers quickly
-const ayahPageCache = new Map<string, number>();
-
-function getAyahPage(surahNumber: number, ayahNumber: number): number {
-  const key = `${surahNumber}:${ayahNumber}`;
-  if (ayahPageCache.has(key)) return ayahPageCache.get(key)!;
-
-  const surah = VERIFIED_AYAHS[surahNumber];
-  if (surah) {
-    const found = surah.find(a => a.numberInSurah === ayahNumber);
-    if (found && found.page) {
-      ayahPageCache.set(key, found.page);
-      return found.page;
-    }
-  }
-  return 1;
-}
-
 /**
  * 3. Prevent duplicate Ayah counting when portions overlap.
  * Returns exact unique Ayah count and the Set of unique Ayah keys.
@@ -106,17 +88,19 @@ export function calculateUniqueMemorizedPages(portions: WirdPortion[]): number {
   const { ayahKeys } = calculateUniqueMemorizedAyahs(portions);
   if (ayahKeys.size === 0) return 0;
 
-  // Track distinct pages touched by memorized Ayahs
-  const pagesTouched = new Set<number>();
-  ayahKeys.forEach(key => {
-    const [s, a] = key.split(':').map(Number);
-    const page = getAyahPage(s, a);
-    if (page >= 1 && page <= 604) {
-      pagesTouched.add(page);
-    }
-  });
+  // Count only pages whose every ayah is covered by memorized portions.
+  let completedPages = 0;
+  for (const segments of Object.values(QURAN_PAGE_INDEX)) {
+    const isComplete = segments.every(segment => {
+      for (let ayahNumber = segment.startAyah; ayahNumber <= segment.endAyah; ayahNumber++) {
+        if (!ayahKeys.has(`${segment.surahNumber}:${ayahNumber}`)) return false;
+      }
+      return true;
+    });
+    if (isComplete) completedPages++;
+  }
 
-  return pagesTouched.size;
+  return completedPages;
 }
 
 /**
@@ -320,6 +304,17 @@ const STATUS_SEVERITY_HIERARCHY: Record<PortionMemorizationStatus, number> = {
   not_memorized: 5
 };
 
+function getStableHistoryConflictSuffix(log: RevisionLogEntry): string {
+  const signature = JSON.stringify([
+    log.date, log.rating, log.intervalDaysBefore, log.intervalDaysAfter, log.notes || ''
+  ]);
+  let hash = 2166136261;
+  for (let index = 0; index < signature.length; index++) {
+    hash = Math.imul(hash ^ signature.charCodeAt(index), 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 function mergePortionRecords(
   existing: WirdPortion,
   incoming: Partial<WirdPortion> & { notes?: string },
@@ -419,17 +414,18 @@ function mergePortionRecords(
 
         if (contentDiff) {
           // Preserve conflicting history entry under a modified ID so no log is lost!
-          const preservedLog = {
-            ...incLog,
-            id: `${incLog.id}_conflict_${Date.now()}`
-          };
-          existing.history!.push(preservedLog);
-          existing.conflictAudit!.push({
-            source: sourceName,
-            field: 'history',
-            value: `Conflicting history entry under ID '${incLog.id}' preserved as '${preservedLog.id}'`,
-            timestamp: new Date().toISOString()
-          });
+          const preservedId = `${incLog.id}_conflict_${getStableHistoryConflictSuffix(incLog)}`;
+          const alreadyPreserved = existing.history!.some(log => log.id === preservedId);
+          if (!alreadyPreserved) {
+            const preservedLog = { ...incLog, id: preservedId };
+            existing.history!.push(preservedLog);
+            existing.conflictAudit!.push({
+              source: sourceName,
+              field: 'history',
+              value: `Conflicting history entry under ID '${incLog.id}' preserved as '${preservedLog.id}'`,
+              timestamp: new Date().toISOString()
+            });
+          }
         }
       } else {
         // Check exact content signature
@@ -466,9 +462,7 @@ export function migrateLegacyDataLosslessly(
 
     // 1. Deterministic Ingestion of legacyPortions (handles internal duplicates)
     legacyPortions.forEach((p, idx) => {
-      const canonicalId = p.id?.startsWith('s') && p.id.includes('_a') 
-        ? p.id 
-        : createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
+      const canonicalId = createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
 
       const coordKey = `${p.surahNumber}:${p.startAyah}:${p.endAyah}`;
       sourceCoordinateKeys.add(coordKey);

@@ -12,8 +12,10 @@ import {
   Bookmark
 } from 'lucide-react';
 import { ALL_SURAHS, JUZ_NAMES } from '../../data/quranMeta';
-import { VERIFIED_AYAHS, QURAN_DATA_SOURCE_INFO } from '../../data/verifiedAyahs';
-import { SurahMeta, ReciterId } from '../../types/quran';
+import { QURAN_DATA_SOURCE_INFO } from '../../data/quranDataInfo';
+import { loadSurahVerses } from '../../data/quranDataLoader';
+import { TafsirSheet } from './TafsirSheet';
+import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
 
 interface QuranLibraryViewProps {
@@ -29,6 +31,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   const [selectedJuz, setSelectedJuz] = useState<number | 'all'>('all');
   const [revelationFilter, setRevelationFilter] = useState<'all' | 'مكية' | 'مدنية'>('all');
   const [selectedSurah, setSelectedSurah] = useState<SurahMeta>(ALL_SURAHS[66]); // Default to Al-Mulk (67)
+  const [currentAyahs, setCurrentAyahs] = useState<Ayah[]>([]);
+  const [isLoadingSurah, setIsLoadingSurah] = useState(true);
+  const [surahLoadError, setSurahLoadError] = useState(false);
+  const [loadRetry, setLoadRetry] = useState(0);
+  const [tafsirAyah, setTafsirAyah] = useState<Ayah | null>(null);
   
   // Font size adjustment for Quran text
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'huge'>('large');
@@ -53,8 +60,32 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     return matchesSearch && matchesJuz && matchesType;
   });
 
-  // Ayahs for current selected surah
-  const currentAyahs = VERIFIED_AYAHS[selectedSurah.number] || [];
+  // Load only the selected surah; never import the 2 MB complete dataset here.
+  useEffect(() => {
+    let cancelled = false;
+    setCurrentAyahs([]);
+    setIsLoadingSurah(true);
+    setSurahLoadError(false);
+    if (audioRef.current) audioRef.current.pause();
+    setIsPlaying(false);
+    setPlayingAyah(null);
+
+    loadSurahVerses(selectedSurah.number)
+      .then(ayahs => {
+        if (!cancelled) setCurrentAyahs(ayahs);
+      })
+      .catch(error => {
+        if (!cancelled) {
+          console.error('[WIRD Quran Library] Failed to load Surah ' + selectedSurah.number, error);
+          setSurahLoadError(true);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSurah(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedSurah.number, loadRetry]);
 
   // Audio play handler
   const handlePlayAyah = (ayahNumberInSurah: number) => {
@@ -396,6 +427,18 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                 return String(ayah.numberInSurah) === filter || ayah.text.includes(filter);
               });
 
+              if (isLoadingSurah) {
+                return <div className="text-center py-10 text-stone-500 text-xs">جارٍ تحميل آيات سورة {selectedSurah.name}...</div>;
+              }
+
+              if (surahLoadError) {
+                return (
+                  <div className="text-center py-8 text-rose-700 dark:text-rose-300 text-xs bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-200 dark:border-rose-800">
+                    تعذر تحميل نص السورة. <button type="button" onClick={() => setLoadRetry(value => value + 1)} className="font-bold underline">إعادة المحاولة</button>
+                  </div>
+                );
+              }
+
               if (displayedAyahs.length === 0) {
                 return (
                   <div className="text-center py-8 text-stone-500 text-xs bg-stone-50 dark:bg-stone-900 rounded-xl border border-dashed border-stone-300">
@@ -432,6 +475,15 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                           title="استمع للآية"
                         >
                           {isThisPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTafsirAyah(ayah)}
+                          title="اقرأ تفسير الآية"
+                          aria-label={`تفسير الآية ${ayah.numberInSurah} من سورة ${selectedSurah.name}`}
+                          className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors touch-manipulation"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
                         </button>
                         
                         <span className="text-xs font-bold text-stone-700 dark:text-stone-300 font-mono bg-stone-200/70 dark:bg-stone-700 px-2 py-0.5 rounded">
@@ -494,10 +546,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             المصدر: <span className="font-medium text-emerald-800 dark:text-emerald-400">{QURAN_DATA_SOURCE_INFO.provider}</span>
           </div>
           <div className="text-stone-400">
-            ترخيص {QURAN_DATA_SOURCE_INFO.license} · عمل محلي دون استدعاءات خارجية
+            ترخيص {QURAN_DATA_SOURCE_INFO.license} · نص القرآن محلي، والتفسير يُحمّل عند الطلب ويُحفظ محلياً
           </div>
         </div>
       </div>
+      <TafsirSheet ayah={tafsirAyah} onClose={() => setTafsirAyah(null)} />
     </div>
   );
 };

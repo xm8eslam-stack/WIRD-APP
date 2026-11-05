@@ -9,8 +9,9 @@ import {
   WirdPortion 
 } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
+import { ALL_SURAHS } from '../data/quranMeta';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
-import { migrateLegacyDataLosslessly, MigrationReport } from './unifiedPortionService';
+import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
 
 export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
@@ -93,7 +94,7 @@ export const DEMO_PROFILE: UserProfile = {
   repetitionTarget: 10,
   theme: "light",
   streakDays: 3,
-  lastActiveDate: new Date().toISOString().split('T')[0]
+  lastActiveDate: getLocalDateString()
 };
 
 export const DEMO_REVISION_ITEMS: RevisionItem[] = [
@@ -107,7 +108,7 @@ export const DEMO_REVISION_ITEMS: RevisionItem[] = [
     juzNumber: 29,
     type: "minor",
     lastReviewedDate: "2026-11-02",
-    nextDueDate: new Date().toISOString().split('T')[0],
+    nextDueDate: getLocalDateString(),
     intervalDays: 2,
     easeFactor: 2.5,
     repetitionCount: 4,
@@ -123,7 +124,7 @@ export const DEMO_REVISION_ITEMS: RevisionItem[] = [
     juzNumber: 29,
     type: "minor",
     lastReviewedDate: "2026-11-01",
-    nextDueDate: new Date().toISOString().split('T')[0],
+    nextDueDate: getLocalDateString(),
     intervalDays: 3,
     easeFactor: 2.2,
     repetitionCount: 3,
@@ -219,6 +220,7 @@ export interface BackupPayload {
   logs?: DailyLog[];
   tests?: TestResult[];
   portions?: PortionStatusRecord[];
+  unifiedPortions?: WirdPortion[];
   weakVerses?: WeakVerseItem[];
 }
 
@@ -227,8 +229,8 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     return { valid: false, error: 'الملف لا يحتوي على كائن JSON صالح' };
   }
 
-  // Version check (Supported versions: 1, 2, 3)
-  if (typeof payload.version !== 'number' || payload.version < 1 || payload.version > 3) {
+  // Version check (Supported versions: 1 through 4)
+  if (typeof payload.version !== 'number' || payload.version < 1 || payload.version > 4) {
     return { valid: false, error: `إصدار النسخة الاحتياطية (${payload.version}) غير مدعوم` };
   }
 
@@ -246,10 +248,42 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
   }
 
   // Array checks
-  const arrayFields = ['plans', 'enginePlans', 'revisionItems', 'logs', 'tests', 'portions', 'weakVerses'] as const;
+  const arrayFields = ['plans', 'enginePlans', 'revisionItems', 'logs', 'tests', 'portions', 'unifiedPortions', 'weakVerses'] as const;
   for (const field of arrayFields) {
     if (payload[field] !== undefined && !Array.isArray(payload[field])) {
       return { valid: false, error: `الحقل ${field} يجب أن يكون مصفوفة صالحة` };
+    }
+  }
+
+  if (payload.unifiedPortions !== undefined) {
+    const validStatuses = new Set(['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak']);
+    const validTypes = new Set(['passage', 'surah', 'page']);
+    for (let index = 0; index < payload.unifiedPortions.length; index++) {
+      const portion = payload.unifiedPortions[index];
+      const surahMeta = portion && ALL_SURAHS.find(surah => surah.number === portion.surahNumber);
+      const validDate = typeof portion?.nextDueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(portion.nextDueDate)
+        && (() => {
+          const [year, month, day] = portion.nextDueDate.split('-').map(Number);
+          const date = new Date(Date.UTC(year, month - 1, day));
+          return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === portion.nextDueDate;
+        })();
+      const valid = portion && typeof portion === 'object' && surahMeta &&
+        typeof portion.id === 'string' && portion.id === createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah) &&
+        validTypes.has(portion.type) &&
+        typeof portion.surahName === 'string' && portion.surahName.trim().length > 0 &&
+        Number.isInteger(portion.startAyah) && portion.startAyah >= 1 && portion.startAyah <= surahMeta.versesCount &&
+        Number.isInteger(portion.endAyah) && portion.endAyah >= portion.startAyah && portion.endAyah <= surahMeta.versesCount &&
+        validStatuses.has(portion.status) &&
+        validDate &&
+        Number.isInteger(portion.intervalDays) && portion.intervalDays >= 1 &&
+        Number.isFinite(portion.easeFactor) && portion.easeFactor >= 1.3 && portion.easeFactor <= 3 &&
+        Number.isInteger(portion.repetitionCount) && portion.repetitionCount >= 0 &&
+        (portion.pageNumber === undefined || (Number.isInteger(portion.pageNumber) && portion.pageNumber >= 1 && portion.pageNumber <= 604)) &&
+        (portion.pageStart === undefined || (Number.isInteger(portion.pageStart) && portion.pageStart >= 1 && portion.pageStart <= 604)) &&
+        (portion.pageEnd === undefined || (Number.isInteger(portion.pageEnd) && portion.pageEnd >= 1 && portion.pageEnd <= 604)) &&
+        (portion.juzNumber === undefined || (Number.isInteger(portion.juzNumber) && portion.juzNumber >= 1 && portion.juzNumber <= 30)) &&
+        (portion.history === undefined || Array.isArray(portion.history));
+      if (!valid) return { valid: false, error: 'بيانات المقطع الموحد رقم ' + (index + 1) + ' غير صالحة أو تتجاوز حدود السورة' };
     }
   }
 
@@ -264,7 +298,7 @@ export const StorageService = {
       if (!data) return { ...CLEAN_INITIAL_PROFILE };
       const parsed: UserProfile = JSON.parse(data);
       
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateString();
       const validStreak = calculateActiveStreak(parsed.lastActiveDate, parsed.streakDays, todayStr);
       if (validStreak !== parsed.streakDays) {
         parsed.streakDays = validStreak;
@@ -348,9 +382,10 @@ export const StorageService = {
         if (data) {
           try {
             const parsed = JSON.parse(data);
-            if (Array.isArray(parsed)) {
+            if (Array.isArray(parsed) && validateBackupPayload({ version: 4, unifiedPortions: parsed }).valid) {
               return parsed;
             }
+            console.warn('[WIRD Storage] Integrity Error: Unified portions failed canonical Quran and schema validation.');
           } catch {
             console.warn('[WIRD Storage] Integrity Error: Schema version is 2 but UNIFIED_PORTIONS payload is corrupt.');
           }
@@ -365,6 +400,10 @@ export const StorageService = {
           console.info('[WIRD Storage] Attempting recovery from preserved legacy storage keys...');
           const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
           const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+          if (legacyPortions.length === 0 && legacyRevs.length === 0) {
+            console.error('[WIRD Storage] Recovery skipped: no non-empty legacy records exist; invalid canonical data was preserved.');
+            return [];
+          }
           const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
           if (report.success && this.saveUnifiedPortions(portions)) {
             return portions;
@@ -389,6 +428,11 @@ export const StorageService = {
 
   saveUnifiedPortions(portions: WirdPortion[]): boolean {
     try {
+      const validation = validateBackupPayload({ version: 4, unifiedPortions: portions });
+      if (!validation.valid) {
+        console.error('[WIRD Storage] Refusing to persist invalid canonical portions:', validation.error);
+        return false;
+      }
       const serialized = JSON.stringify(portions);
       
       // Attempt durable write
@@ -418,23 +462,8 @@ export const StorageService = {
         return false;
       }
 
-      // Complete Payload Deep Verification across all records and key fields
-      const isCompletePayloadValid = parsed.every((p: any, idx: number) => {
-        const orig = portions[idx];
-        return (
-          p.id === orig.id &&
-          p.surahNumber === orig.surahNumber &&
-          p.startAyah === orig.startAyah &&
-          p.endAyah === orig.endAyah &&
-          p.status === orig.status &&
-          p.nextDueDate === orig.nextDueDate &&
-          p.intervalDays === orig.intervalDays &&
-          p.easeFactor === orig.easeFactor &&
-          p.repetitionCount === orig.repetitionCount &&
-          (orig.lastReviewedDate === undefined || p.lastReviewedDate === orig.lastReviewedDate) &&
-          (orig.mistakesCount === undefined || p.mistakesCount === orig.mistakesCount)
-        );
-      });
+      // Verify the complete serialized payload, including nested history and metadata.
+      const isCompletePayloadValid = JSON.stringify(parsed) === serialized;
 
       if (!isCompletePayloadValid) {
         console.error('[WIRD Storage] Write verification failed: Complete payload content mismatch on readback');
@@ -484,11 +513,12 @@ export const StorageService = {
     try {
       const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      const hasInvalidCanonicalPayload = currentVersion === '2' && Boolean(unifiedData);
 
       if (currentVersion === '2' && unifiedData) {
         try {
           const parsed = JSON.parse(unifiedData);
-          if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && validateBackupPayload({ version: 4, unifiedPortions: parsed }).valid) {
             return {
               success: true,
               legacyPortionsCount: 0,
@@ -508,6 +538,19 @@ export const StorageService = {
       const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
       const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+
+      if (hasInvalidCanonicalPayload && legacyPortions.length === 0 && legacyRevs.length === 0) {
+        return {
+          success: false,
+          legacyPortionsCount: 0,
+          legacyRevisionCount: 0,
+          migratedPortionsCount: 0,
+          totalPreservedLogsCount: 0,
+          conflictAuditCount: 0,
+          alreadyMigrated: false,
+          error: 'البيانات الموحدة غير صالحة ولا توجد سجلات قديمة غير فارغة للاستعادة؛ تم الحفاظ على النسخة الحالية دون استبدالها.'
+        };
+      }
 
       const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
 
@@ -584,7 +627,7 @@ export const StorageService = {
 
   // Session Completion with True Streak Advancement
   recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): void {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const logs = this.getLogs();
     const existingIndex = logs.findIndex(l => l.date === today);
 
@@ -626,9 +669,10 @@ export const StorageService = {
 
   // Export with Unencrypted Warning Label
   exportFullBackup(): string {
+    const canonicalPortions = this.getUnifiedPortions();
     const backup: BackupPayload = {
       format: 'wird_backup',
-      version: 3,
+      version: 4,
       timestamp: new Date().toISOString(),
       isEncrypted: false,
       unencryptedWarning: "تنبيه أمني: هذا الملف نصي غير مشفر بصيغة JSON صريحة ويحتوي على سجلات الحفظ والإعدادات الشخصية. احتفظ به في مكان آمن.",
@@ -638,7 +682,8 @@ export const StorageService = {
       revisionItems: this.getRevisionItems(),
       logs: this.getLogs(),
       tests: this.getTests(),
-      portions: getItem(STORAGE_KEYS.PORTIONS) ? JSON.parse(getItem(STORAGE_KEYS.PORTIONS)!) : [],
+      portions: canonicalPortions,
+      unifiedPortions: canonicalPortions,
       weakVerses: getItem(STORAGE_KEYS.WEAK_VERSES) ? JSON.parse(getItem(STORAGE_KEYS.WEAK_VERSES)!) : []
     };
     return JSON.stringify(backup, null, 2);
@@ -647,36 +692,40 @@ export const StorageService = {
   // Atomic Import with Pre-Validation (Never partially overwrites on failure)
   importBackup(jsonString: string): { success: boolean; message: string } {
     let parsed: any;
-    try {
-      parsed = JSON.parse(jsonString);
-    } catch {
-      return { success: false, message: 'صيغة الملف غير صالحة، يرجى التأكد من اختيار ملف JSON سليم.' };
-    }
+    try { parsed = JSON.parse(jsonString); }
+    catch { return { success: false, message: 'صيغة الملف غير صالحة، يرجى التأكد من اختيار ملف JSON سليم.' }; }
 
     const validation = validateBackupPayload(parsed);
-    if (!validation.valid) {
-      return { success: false, message: validation.error || 'فشل التحقق من بنية النسخة الاحتياطية' };
-    }
+    if (!validation.valid) return { success: false, message: validation.error || 'فشل التحقق من بنية النسخة الاحتياطية' };
 
-    // Atomic write only after all validations pass
+    const snapshot = this.getStorageSnapshot();
+    const writeAndVerify = (key: string, value: unknown): void => {
+      const serialized = JSON.stringify(value);
+      if (!setItem(key, serialized) || getItem(key) !== serialized) throw new Error('تعذر التحقق من حفظ الحقل ' + key);
+    };
+
     try {
-      if (parsed.profile) this.saveProfile(parsed.profile);
-      if (parsed.plans) this.savePlans(parsed.plans);
-      if (parsed.enginePlans) this.saveEnginePlans(parsed.enginePlans);
-      if (parsed.revisionItems) this.saveRevisionItems(parsed.revisionItems);
-      if (parsed.logs) this.saveLogs(parsed.logs);
-      if (parsed.tests) {
-        setItem(STORAGE_KEYS.TESTS, JSON.stringify(parsed.tests));
+      if (parsed.profile !== undefined) writeAndVerify(STORAGE_KEYS.PROFILE, parsed.profile);
+      if (parsed.plans !== undefined) writeAndVerify(STORAGE_KEYS.PLANS, parsed.plans);
+      if (parsed.enginePlans !== undefined) writeAndVerify(STORAGE_KEYS.ENGINE_PLANS, parsed.enginePlans);
+      if (parsed.revisionItems !== undefined) writeAndVerify(STORAGE_KEYS.REVISION, parsed.revisionItems);
+      if (parsed.logs !== undefined) writeAndVerify(STORAGE_KEYS.LOGS, parsed.logs);
+      if (parsed.tests !== undefined) writeAndVerify(STORAGE_KEYS.TESTS, parsed.tests);
+      if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
+
+      if (parsed.unifiedPortions !== undefined) {
+        if (!this.saveUnifiedPortions(parsed.unifiedPortions)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
+        if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(parsed.unifiedPortions)) throw new Error('فشل التحقق من استعادة المقاطع القرآنية الموحدة');
+      } else if (parsed.portions !== undefined || parsed.revisionItems !== undefined) {
+        const migration = migrateLegacyDataLosslessly(parsed.portions || [], parsed.revisionItems || []);
+        if (!migration.report.success || !this.saveUnifiedPortions(migration.portions)) throw new Error(migration.report.error || 'تعذر ترحيل المقاطع من النسخة الاحتياطية القديمة');
+        if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(migration.portions)) throw new Error('فشل التحقق من بيانات المقاطع بعد الترحيل');
       }
-      if (parsed.portions) {
-        setItem(STORAGE_KEYS.PORTIONS, JSON.stringify(parsed.portions));
-      }
-      if (parsed.weakVerses) {
-        setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(parsed.weakVerses));
-      }
-      return { success: true, message: 'تم استيراد كافة البيانات بنجاح وبشكل متكامل.' };
+
+      return { success: true, message: 'تم استيراد البيانات والتحقق من حفظها بنجاح.' };
     } catch (e: any) {
-      return { success: false, message: `تعذر حفظ البيانات في الذاكرة المحلية: ${e?.message || 'خطأ غير متوقع'}` };
+      this.restoreStorageSnapshot(snapshot);
+      return { success: false, message: 'تعذر إكمال الاستيراد؛ تمت محاولة استعادة البيانات السابقة: ' + (e?.message || 'خطأ غير متوقع') };
     }
   },
 
