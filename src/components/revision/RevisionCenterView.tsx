@@ -115,12 +115,21 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       };
     }
 
-    const result = RetentionService.recordRevisionPerformance(
-      targetPortion.id,
-      rating,
-      reviewNotes,
-      weakDetails
-    );
+    let result: ReturnType<typeof RetentionService.recordRevisionPerformance>;
+    try {
+      result = RetentionService.recordRevisionPerformance(
+        targetPortion.id,
+        rating,
+        reviewNotes,
+        weakDetails
+      );
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ تقييم المراجعة. لم نعرضه كعملية ناجحة.',
+        type: 'warn'
+      });
+      return;
+    }
 
     setActionFeedback({
       message: result.messageAr,
@@ -143,22 +152,30 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const surah = ALL_SURAHS.find(s => s.number === newSurahNum);
     if (!surah) return;
 
-    RetentionService.addPortion({
-      type: 'passage',
-      surahNumber: newSurahNum,
-      surahName: surah.name,
-      startAyah: newStartAyah,
-      endAyah: newEndAyah,
-      pageNumber: surah.pageStart,
-      juzNumber: surah.juzStart,
-      status: newStatus,
-      lastReviewedDate: todayStr,
-      nextDueDate: todayStr,
-      intervalDays: newStatus === 'stable' ? 7 : newStatus === 'weak' ? 1 : 2,
-      easeFactor: 2.5,
-      repetitionCount: newStatus === 'stable' ? 4 : 1,
-      mistakesCount: newStatus === 'weak' ? 2 : 0
-    });
+    try {
+      RetentionService.addPortion({
+        type: 'passage',
+        surahNumber: newSurahNum,
+        surahName: surah.name,
+        startAyah: newStartAyah,
+        endAyah: newEndAyah,
+        pageNumber: surah.pageStart,
+        juzNumber: surah.juzStart,
+        status: newStatus,
+        lastReviewedDate: todayStr,
+        nextDueDate: todayStr,
+        intervalDays: newStatus === 'stable' ? 7 : newStatus === 'weak' ? 1 : 2,
+        easeFactor: 2.5,
+        repetitionCount: newStatus === 'stable' ? 4 : 1,
+        mistakesCount: newStatus === 'weak' ? 2 : 0
+      });
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ المقطع الجديد.',
+        type: 'warn'
+      });
+      return;
+    }
 
     setIsAddPortionModalOpen(false);
     refreshAll();
