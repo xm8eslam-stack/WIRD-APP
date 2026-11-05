@@ -450,16 +450,6 @@ export const RetentionService = {
       history: [logEntry, ...(target.history || [])]
     };
 
-    if (rating === 'failed' && weakAyahDetails) {
-      this.addOrIncrementWeakVerse(
-        target.surahNumber,
-        weakAyahDetails.ayahNumber,
-        target.surahName,
-        weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
-        weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
-      );
-    }
-
     const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
     if (!this.savePortions(updatedList)) {
       throw new Error('تعذر حفظ تقييم المراجعة في التخزين الدائم؛ لم يتم تسجيل نجاح التقييم.');
