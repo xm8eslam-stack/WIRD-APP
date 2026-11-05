@@ -1,7 +1,35 @@
 # WIRD APP — Development Checkpoint
 
-> Last updated: 2026-11-05 — post-merge checkpoint
+> Last updated: 2026-11-05 — active Phase 5 continuation
 > Purpose: durable handoff marker. Read this file before continuing development.
+
+## Current continuation state — verified 2026-11-05
+
+- Repository: `xm8eslam-stack/WIRD-APP`; Google AI Studio remains connected to `main`.
+- Latest verified `main` SHA: `15ec5069b4850968588be2e4363fbd182bf2a8fc`. No Phase 5 changes have been merged into `main`.
+- Active branch: `feat/phase5-premium-ui-ux`; PR #2 is open, Draft, and unmerged.
+- Phase 5 branch head immediately before this checkpoint update: `a0e317ca9c29179f99d3b73f252ad9ee67903989`.
+- GitHub Actions run #192 (`42093904432`) completed **successfully** on `a0e317ca9c29179f99d3b73f252ad9ee67903989`: automated tests, TypeScript validation, and Vite production build passed.
+- Vercel status for this head is **rate limited** (`api-deployments-free-per-day`); no Ready Preview for this exact head is confirmed. A Ready Preview seen on an older head is not current validation.
+- All four repository branches were inspected:
+  - `main`: current integration branch for Google AI Studio.
+  - `feat/phase4-data-integrity-backup-v4`: Phase 4 already merged; branch is two commits behind `main`, with no unique commits to recover.
+  - `feat/phase5-premium-ui-ux`: 46 commits ahead of `main`, zero behind at the time of comparison; active UI/UX PR #2.
+  - `work/wird-audit-remediation`: head `1cb91ac12faa963b341a0f39682c42481a79ba4d`; 92 commits ahead and 124 behind `main`, no PR. **Do not merge this branch wholesale.** It contains candidate work for review/porting: review-vs-memorization session separation, actual Juz/page plan scope, session/revision persistence-failure handling, retention/progress metrics, advisor validation/chat routing, and compact Quran page-index performance work. Compare each candidate against current `main` before porting; some functionality overlaps Phase 4.
+- Durable save: all Phase 5 source changes are already committed on the feature branch; no working-tree state is being held only in this chat. The audit branch's commits are also preserved remotely on their original branch.
+
+### Exact continuation order
+1. Continue detailed UI review on `feat/phase5-premium-ui-ux`: plans/wizard, revision queue, analytics, settings, tests, and loading/empty/error states; verify RTL, dark mode, keyboard, reduced motion, and mobile/tablet/desktop behavior.
+2. Inspect each candidate fix on `work/wird-audit-remediation` against current `main`; port only genuinely missing, safe changes in small, separately described commits. Start with review/memorization mode isolation and session persistence correctness; do not copy stale files wholesale.
+3. Run GitHub Actions after every meaningful change and record the exact tested SHA.
+4. Re-check Vercel only when its daily deployment limit allows it; do not claim a current Preview until the exact latest head is Ready.
+5. Merge Phase 5 PR #2 into `main` only after final code review, green CI on the exact PR head, and a current Ready Preview/manual UI review. Do not force-push or overwrite `main`.
+6. After merge, verify `main` SHA and CI; only then tell the user to sync Google AI Studio.
+
+### Stop/resume marker
+**RESUME FROM:** Step 1 above — detailed Phase 5E component review. After that, return to the selective audit-branch recovery in Step 2. Before any context/tool limit, commit safe work to the active feature branch and update this file with the exact resulting HEAD, CI run/result, Vercel state, files changed, and the next numbered step.
+
+---
 
 ## Repository and branch rules
 
