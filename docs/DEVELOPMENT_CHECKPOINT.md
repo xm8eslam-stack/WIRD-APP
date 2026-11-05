@@ -16,7 +16,8 @@
 ## Exact saved point
 
 - Last code-change HEAD before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`
-- Checkpoint documentation commit: `85e618540cfe547b49cde302c550aa1d34c91e5e`
+- Initial checkpoint documentation commit: `85e618540cfe547b49cde302c550aa1d34c91e5e`
+- Latest checkpoint revision (clarified SHA labels): `e96a09d4bdde34f78a139320f2b36e6f407ac6cb`
 - `main` base SHA observed during comparison: `862f6056ac5d54abf9f26249941ba994e74bf6a9`
 - Branch comparison before the checkpoint-only documentation commit: 119 commits ahead, 0 behind; after it: 120 commits ahead, 0 behind.
 - Latest GitHub Actions run: #119 / run ID `42088152069`.
