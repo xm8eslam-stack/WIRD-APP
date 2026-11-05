@@ -9,7 +9,7 @@ import { EngineGeneratedPlan } from './services/planningEngine';
 import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { getLocalDateString, findNextUnmemorizedRange } from './services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange, getPlanTargetSurahNumbers } from './services/unifiedPortionService';
 import { ALL_SURAHS } from './data/quranMeta';
 import { getSessionCompletionMetrics } from './services/sessionCompletion';
 
@@ -214,10 +214,10 @@ export default function App() {
     }
 
     const activePreset = StorageService.getPlans().find(plan => plan.isActive);
-    if (activePreset?.targetSurahs?.length) {
+    if (activePreset) {
       const nextPresetRange = findNextUnmemorizedRange(
         currentPortions,
-        activePreset.targetSurahs,
+        getPlanTargetSurahNumbers(activePreset),
         activePreset.dailyTarget || 7
       );
       if (nextPresetRange) {
