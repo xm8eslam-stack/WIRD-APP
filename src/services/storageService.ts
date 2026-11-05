@@ -90,13 +90,13 @@ function hasLegacyStorageData(): boolean {
 }
 
 function needsLegacyDataDecision(scope: string): boolean {
-  return isUserStorageScope(scope.trim()) &&
+  return isUserStorageScope(scope) &&
     rawGetItem(STORAGE_OWNER_MARKER) === null &&
     hasLegacyStorageData();
 }
 
 function setStorageScope(scope: string, legacyChoice?: 'import' | 'keep-guest'): boolean {
-  const normalized = scope.trim();
+  const normalized = scope;
   if (normalized === 'legacy' || normalized === 'guest') {
     activeStorageScope = normalized;
     return true;
