@@ -54,7 +54,7 @@ export interface AuthContextType {
   checkVerificationStatus: () => Promise<boolean>;
   sendPasswordReset: (e: string) => Promise<void>;
   logout: () => Promise<void>;
-  continueAsGuest: () => void;
+  continueAsGuest: () => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -118,9 +118,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signUpWithEmail = async (e: string, p: string) => {
     setAuthError(null);
     try {
-      await AuthService.signUpWithEmail(e, p);
+      const res = await AuthService.signUpWithEmail(e, p);
       setIsGuest(false);
       removeStorageItem(GUEST_PREFERENCE_KEY);
+      if (!res.verificationSent && res.verificationError) {
+        setAuthError(`تم إنشاء الحساب بنجاح ولكن تعذر إرسال بريد التفعيل: ${res.verificationError}`);
+      }
     } catch (err) {
       const msg = mapAuthError(err);
       setAuthError(msg);
@@ -190,17 +193,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const continueAsGuest = () => {
+  const continueAsGuest = async (): Promise<boolean> => {
+    setAuthError(null);
+    // If a Firebase session is active (unverified or active user), sign out first
+    if (user || (auth && auth.currentUser)) {
+      try {
+        await AuthService.logout();
+        setUser(null);
+      } catch (err) {
+        const msg = mapAuthError(err);
+        setAuthError(msg);
+        return false; // Sign out failed, do NOT falsely enter guest mode
+      }
+    }
     setIsGuest(true);
     setStorageItem(GUEST_PREFERENCE_KEY, 'true');
-    setAuthError(null);
+    return true;
   };
 
   const clearError = () => setAuthError(null);
 
-  const isEmailVerified = Boolean(
-    user && (user.emailVerified || user.providerData.some(p => p.providerId === 'google.com'))
-  );
+  const isEmailVerified = Boolean(user?.emailVerified);
 
   return (
     <AuthContext.Provider

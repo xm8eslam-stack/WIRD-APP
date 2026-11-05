@@ -63,21 +63,25 @@ export const AuthService = {
     return result.user;
   },
 
-  async signUpWithEmail(email: string, password: string): Promise<User> {
+  async signUpWithEmail(email: string, password: string): Promise<{ user: User; verificationSent: boolean; verificationError?: string }> {
     if (!isFirebaseConfigured()) {
       throw new Error('auth/api-key-not-valid');
     }
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Send email verification immediately upon registration
+    let verificationSent = false;
+    let verificationError: string | undefined;
+    
     try {
       await sendEmailVerification(user);
-    } catch (err) {
+      verificationSent = true;
+    } catch (err: any) {
       console.warn('[WIRD Auth] Could not send initial verification email:', err);
+      verificationError = mapAuthError(err);
     }
     
-    return user;
+    return { user, verificationSent, verificationError };
   },
 
   async loginWithEmail(email: string, password: string): Promise<User> {

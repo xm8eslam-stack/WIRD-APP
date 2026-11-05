@@ -141,25 +141,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Shield className="w-4 h-4 text-emerald-700" />
             <span>حالة الهوية والحساب (Firebase Auth)</span>
           </div>
-          {user ? (
+          {isGuest || !user ? (
+            <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80">
+              نمط الزائر (بدون تسجيل)
+            </span>
+          ) : isEmailVerified ? (
             <span className="text-[11px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300/80">
-              حساب موثق
+              حساب موثق (مفعل)
             </span>
           ) : (
             <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80">
-              نمط الزائر (بدون تسجيل)
+              حساب غير مؤكد (بانتظار التفعيل)
             </span>
           )}
         </div>
 
-        {user ? (
+        {user && !isGuest ? (
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#faf8f5] dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
             <div className="space-y-1">
               <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-mono">
                 <span>{user.email || user.displayName || 'مستخدم مسجل'}</span>
-                {isEmailVerified && (
+                {isEmailVerified ? (
                   <span title="البريد الإلكتروني مفعل">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </span>
+                ) : (
+                  <span title="البريد الإلكتروني غير مؤكد بعد" className="text-amber-600 font-sans text-[11px] font-bold bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-md border border-amber-200">
+                    غير مؤكد
                   </span>
                 )}
               </div>

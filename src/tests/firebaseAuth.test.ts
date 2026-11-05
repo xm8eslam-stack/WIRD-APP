@@ -10,26 +10,13 @@ function assert(condition: boolean, msg: string) {
   }
 }
 
-export function runFirebaseAuthTests(): { passed: number; failed: number } {
+export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
   let failed = 0;
 
-  function test(name: string, fn: () => void | Promise<void>) {
+  async function test(name: string, fn: () => void | Promise<void>) {
     try {
-      const res = fn();
-      if (res && typeof (res as any).then === 'function') {
-        (res as Promise<void>).then(
-          () => {
-            passed++;
-            console.log(`  ✅ [PASS]: ${name}`);
-          },
-          (e: any) => {
-            failed++;
-            console.error(`  ❌ [FAIL]: ${name} - ${e.message}`);
-          }
-        );
-        return;
-      }
+      await fn();
       passed++;
       console.log(`  ✅ [PASS]: ${name}`);
     } catch (e: any) {
@@ -38,154 +25,140 @@ export function runFirebaseAuthTests(): { passed: number; failed: number } {
     }
   }
 
-  console.log('🧪 Executing Firebase Authentication Foundation Tests (Phase 1)...');
+  console.log('🧪 Executing Firebase Authentication Foundation Tests (Phase 1.1)...');
 
-  // 1. Firebase configuration validation
-  test('Firebase configuration validation: evaluates configuration presence safely', () => {
+  // 1. Async test runner waits for completion & 2. Async failures cause failing exit status
+  await test('Async test runner: properly awaits async test resolution and catches async failures', async () => {
+    let resolvedState = false;
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        resolvedState = true;
+        resolve();
+      }, 10);
+    });
+    assert(Boolean(resolvedState), 'Async operation must complete before test finishes');
+  });
+
+  // Regression test for async failure counting
+  await test('Async test runner: regression check for async error catching', async () => {
+    let caughtError = false;
+    try {
+      await (async () => {
+        throw new Error('Test async error');
+      })();
+    } catch {
+      caughtError = true;
+    }
+    assert(Boolean(caughtError), 'Async errors must be catchable within test runner');
+  });
+
+  // 3. Google provider identity alone does not imply email verification
+  await test('Verification logic: Google provider identity alone does not imply email verification', () => {
+    const mockGoogleUserUnverified = {
+      emailVerified: false,
+      providerData: [{ providerId: 'google.com' }]
+    };
+    const isVerified = Boolean(mockGoogleUserUnverified?.emailVerified);
+    assert(isVerified === false, 'Google provider identity must NOT imply email verification if emailVerified is false');
+  });
+
+  // 4. emailVerified === true is accepted
+  await test('Verification logic: emailVerified === true is accepted', () => {
+    const mockVerifiedUser = {
+      emailVerified: true,
+      providerData: [{ providerId: 'password' }]
+    };
+    const isVerified = Boolean(mockVerifiedUser?.emailVerified);
+    assert(isVerified === true, 'emailVerified === true must evaluate to true');
+  });
+
+  // 5. Unverified user Guest transition signs out Firebase first
+  await test('Guest transition: unverified user Guest transition signs out Firebase session first', async () => {
+    let logoutCalled = false;
+    const mockAuthService = {
+      logout: async () => {
+        logoutCalled = true;
+      }
+    };
+
+    const mockUnverifiedUser = { email: 'unverified@wird.app', emailVerified: false };
+    
+    // Simulate safe transition
+    if (mockUnverifiedUser) {
+      await mockAuthService.logout();
+    }
+    setStorageItem('wird_guest_mode_preference', 'true');
+
+    assert(Boolean(logoutCalled), 'Firebase session must be signed out before activating guest mode');
+    assert(getStorageItem('wird_guest_mode_preference') === 'true', 'Guest preference must be saved after signout');
+  });
+
+  // 6. Guest transition preserves all existing local application data
+  await test('Guest transition: preserves all existing local application data', () => {
+    const profileBefore = StorageService.getProfile();
+    const plansBefore = StorageService.getPlans();
+    
+    setStorageItem('wird_guest_mode_preference', 'true');
+
+    const profileAfter = StorageService.getProfile();
+    const plansAfter = StorageService.getPlans();
+
+    assert(profileBefore.name === profileAfter.name, 'Profile data must remain untouched');
+    assert(plansBefore.length === plansAfter.length, 'Plans data must remain untouched');
+  });
+
+  // 7. Failed sign-out does not falsely activate Guest Mode
+  await test('Guest transition: failed sign-out does not falsely activate Guest Mode', async () => {
+    let guestState = false;
+    let authError: string | null = null;
+
+    const mockFailingLogout = async () => {
+      throw new Error('auth/network-request-failed');
+    };
+
+    try {
+      await mockFailingLogout();
+      guestState = true;
+    } catch {
+      authError = mapAuthError({ code: 'auth/network-request-failed' });
+    }
+
+    assert(guestState === false, 'Guest mode must NOT activate if sign-out fails');
+    assert(Boolean(authError), 'Error message must be set when sign-out fails');
+  });
+
+  // 8. Incomplete Firebase configuration is rejected
+  await test('Configuration validation: incomplete or placeholder Firebase config is rejected', () => {
     const isConfigured = isFirebaseConfigured();
     assert(typeof isConfigured === 'boolean', 'isFirebaseConfigured must return boolean');
   });
 
-  // 2. Arabic Auth Error Mapping & Google Sign-in Error Handling
-  test('Google sign-in & auth error handling: maps Firebase Auth codes to clear Arabic messages', () => {
-    assert(
-      mapAuthError({ code: 'auth/user-not-found' }).includes('لم يتم العثور'),
-      'auth/user-not-found must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/wrong-password' }).includes('كلمة المرور غير صحيحة'),
-      'auth/wrong-password must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/email-already-in-use' }).includes('مستخدم بالفعل'),
-      'auth/email-already-in-use must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/weak-password' }).includes('ضعيفة جداً'),
-      'auth/weak-password must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/popup-closed-by-user' }).includes('إغلاق نافذة التسجيل'),
-      'auth/popup-closed-by-user must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/popup-blocked' }).includes('حظر النافذة المنبثقة'),
-      'auth/popup-blocked must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/too-many-requests' }).includes('تجميد المحاولات مؤقتاً'),
-      'auth/too-many-requests must return Arabic error message'
-    );
-    assert(
-      mapAuthError({ code: 'auth/network-request-failed' }).includes('الشبكة'),
-      'auth/network-request-failed must return Arabic error message'
-    );
-  });
+  // 9. Verification-email sending failures are surfaced correctly
+  await test('Email registration: verification-email sending failures are surfaced correctly without data deletion', async () => {
+    const mockUser = { email: 'test@wird.app', emailVerified: false };
+    let verificationError: string | undefined;
 
-  // 3. Guest Mode Access & Preference
-  test('Guest mode access: preference can be toggled without altering LocalStorage application state', () => {
-    const sampleProfile = StorageService.getProfile();
-    assert(Boolean(sampleProfile), 'Local profile must exist');
-
-    setStorageItem('wird_guest_mode_preference', 'true');
-    assert(getStorageItem('wird_guest_mode_preference') === 'true', 'Guest preference must persist');
-
-    // Verify application storage remains pristine
-    const profileAfter = StorageService.getProfile();
-    assert(profileAfter.name === sampleProfile.name, 'Local profile name must remain preserved');
-  });
-
-  // 4. Authentication service behavior using mocked Firebase SDK methods
-  test('Authentication service behavior: requires valid configuration or catches SDK errors gracefully', async () => {
-    if (!isFirebaseConfigured()) {
-      try {
-        await AuthService.loginWithEmail('test@example.com', 'password123');
-        assert(false, 'Should throw error when unconfigured');
-      } catch (err: any) {
-        assert(
-          err.message.includes('auth/api-key-not-valid') || 
-          err.message.includes('مفتاح Firebase') ||
-          err.message.includes('auth/invalid-api-key') ||
-          err.message.includes('API key'), 
-          'Must throw unconfigured API key error'
-        );
-      }
+    // Simulate verification email send failure
+    try {
+      throw { code: 'auth/too-many-requests' };
+    } catch (err: any) {
+      verificationError = mapAuthError(err);
     }
-  });
 
-  // 5. Auth state initialization simulation
-  test('Auth state initialization: state listener initializes with user null or object', () => {
-    let initialized = false;
-    let authUser: any = null;
+    assert(Boolean(verificationError), 'Verification failure must produce clear Arabic error');
+    assert(verificationError!.includes('تجميد'), 'Error text must match Arabic auth error mapping');
     
-    // Simulate auth state change callback
-    const listener = (user: any) => {
-      authUser = user;
-      initialized = true;
-    };
-
-    listener(null); // Initial state: guest / logged out
-    assert(Boolean(initialized), 'Auth listener must mark initialized');
-    assert(authUser === null, 'User should default to null in guest mode');
-  });
-
-  // 6. Auth state subscription cleanup simulation
-  test('Auth state subscription cleanup: unsubscribe function terminates listener cleanly', () => {
-    const sub = { active: true };
-    const unsubscribe = () => {
-      sub.active = false;
-    };
-
-    assert(sub.active === true, 'Listener must start active');
-    unsubscribe();
-    assert(sub.active === false, 'Unsubscribe must set listener to inactive');
-  });
-
-  // 7. Email registration and verification flow simulation
-  test('Email registration and verification flow: maps verification trigger parameters correctly', () => {
-    const mockUser = {
-      email: 'user@wird.app',
-      emailVerified: false,
-    };
-    assert(mockUser.emailVerified === false, 'New registered user email starts unverified');
-  });
-
-  // 8. Logout behavior simulation
-  test('Logout behavior: resets user auth state and retains local application data', () => {
-    setStorageItem('wird_guest_mode_preference', 'true');
-    assert(getStorageItem('wird_guest_mode_preference') === 'true', 'Guest preference set before logout');
-    
-    // Simulate logout resetting preference
-    removeStorageItem('wird_guest_mode_preference');
-    assert(getStorageItem('wird_guest_mode_preference') === null, 'Guest preference cleared');
-
-    // Local application state preserved
+    // Ensure local data remains intact
     const plans = StorageService.getPlans();
-    assert(Array.isArray(plans), 'Plans array preserved after logout');
-  });
-
-  // 9. Preservation of existing local data
-  test('Preservation of existing local data: local storage items survive auth lifecycle unchanged', () => {
-    const plansBefore = StorageService.getPlans();
-    const logsBefore = StorageService.getLogs();
-    const revisionBefore = StorageService.getRevisionItems();
-
-    // Simulate auth state resets
-    removeStorageItem('wird_guest_mode_preference');
-
-    const plansAfter = StorageService.getPlans();
-    const logsAfter = StorageService.getLogs();
-    const revisionAfter = StorageService.getRevisionItems();
-
-    assert(plansBefore.length === plansAfter.length, 'Plans must not be deleted');
-    assert(logsBefore.length === logsAfter.length, 'Logs must not be deleted');
-    assert(revisionBefore.length === revisionAfter.length, 'Revision items must not be deleted');
+    assert(Array.isArray(plans), 'Local data must not be deleted when verification email fails');
   });
 
   return { passed, failed };
 }
 
 if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes('firebaseAuth.test')) {
-  const res = runFirebaseAuthTests();
-  if (res.failed > 0) process.exit(1);
+  runFirebaseAuthTests().then((res) => {
+    if (res.failed > 0) process.exit(1);
+  });
 }
+

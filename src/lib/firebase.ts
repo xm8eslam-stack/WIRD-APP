@@ -12,12 +12,31 @@ function getEnvVar(key: string): string {
 }
 
 export function isFirebaseConfigured(): boolean {
-  const apiKey = getEnvVar('VITE_FIREBASE_API_KEY');
-  return Boolean(
-    apiKey && 
-    apiKey !== 'your-firebase-api-key' && 
-    apiKey !== 'AIzaSyPlaceholderApiKeyForTesting12345'
-  );
+  const keys = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID',
+    'VITE_FIREBASE_STORAGE_BUCKET',
+    'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    'VITE_FIREBASE_APP_ID'
+  ];
+
+  for (const key of keys) {
+    const val = getEnvVar(key);
+    if (!val || val.trim() === '') return false;
+    const lower = val.toLowerCase();
+    if (
+      lower.includes('placeholder') ||
+      lower.includes('your_') ||
+      lower.includes('your-') ||
+      val === '1234567890' ||
+      val === '1:1234567890:web:1234567890'
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 const firebaseConfig = {
