@@ -23,7 +23,7 @@ import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, ALL_SURAHS } from '../../data/qu
 import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
 import { StorageService } from '../../services/storageService';
-import { getAyahByCoordinate } from '../../data/verifiedAyahs';
+import { getPagesForAyahRange } from '../../data/quranPageMap';
 import { getLocalDateString, findNextUnmemorizedRange, getPlanTargetSurahNumbers } from '../../services/unifiedPortionService';
 
 interface DashboardViewProps {
@@ -78,15 +78,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const nextRange = findNextUnmemorizedRange(trackedPortions, activePlanSurahNumbers, activePlan?.dailyTarget || 7);
       if (nextRange) {
         const sMeta = ALL_SURAHS.find(s => s.number === nextRange.surahNumber);
-        const previewAyah = getAyahByCoordinate(nextRange.surahNumber, nextRange.startAyah);
         return {
           surahNumber: nextRange.surahNumber,
           surahName: sMeta?.name || `سورة ${nextRange.surahNumber}`,
           startAyah: nextRange.startAyah,
           endAyah: nextRange.endAyah,
           versesCount: nextRange.endAyah - nextRange.startAyah + 1,
-          pageNumber: previewAyah?.page || sMeta?.pageStart || 1,
-          previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+          pageNumber: getPagesForAyahRange(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah)[0] || sMeta?.pageStart || 1,
+          previewText: 'سيظهر النص القرآني العثماني للمقطع داخل جلسة الحفظ التفاعلية.',
           label: `الخطة النشطة: ${activePlan?.title || 'حفظ جديد'}`,
           source: 'preset_plan' as const,
           mode: 'memorize' as const
@@ -96,15 +95,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     if (queuePortions.length > 0) {
       const top = queuePortions[0];
-      const previewAyah = getAyahByCoordinate(top.surahNumber, top.startAyah);
       return {
         surahNumber: top.surahNumber,
         surahName: top.surahName,
         startAyah: top.startAyah,
         endAyah: top.endAyah,
         versesCount: top.endAyah - top.startAyah + 1,
-        pageNumber: top.pageNumber || previewAyah?.page || 1,
-        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        pageNumber: top.pageNumber || getPagesForAyahRange(top.surahNumber, top.startAyah, top.endAyah)[0] || 1,
+        previewText: 'سيظهر النص القرآني العثماني للمقطع داخل جلسة المراجعة التفاعلية.',
         label: 'مراجعة مستحقة ذات أولوية',
         source: 'revision' as const,
         mode: 'review' as const
@@ -118,15 +116,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
     const selectedRange = nextRange || { surahNumber: 1, startAyah: 1, endAyah: 7 };
     const sMeta = ALL_SURAHS.find(s => s.number === selectedRange.surahNumber) || ALL_SURAHS[0];
-    const previewAyah = getAyahByCoordinate(selectedRange.surahNumber, selectedRange.startAyah);
     return {
       surahNumber: selectedRange.surahNumber,
       surahName: sMeta.name,
       startAyah: selectedRange.startAyah,
       endAyah: selectedRange.endAyah,
       versesCount: selectedRange.endAyah - selectedRange.startAyah + 1,
-      pageNumber: previewAyah?.page || sMeta.pageStart,
-      previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+      pageNumber: getPagesForAyahRange(selectedRange.surahNumber, selectedRange.startAyah, selectedRange.endAyah)[0] || sMeta.pageStart,
+      previewText: 'سيظهر النص القرآني العثماني للمقطع داخل جلسة الحفظ التفاعلية.',
       label: nextRange ? 'المقطع التالي غير المسجل في محفوظك' : 'مراجعة المحفوظ',
       source: 'default' as const,
       mode: nextRange ? 'memorize' as const : 'review' as const
@@ -154,15 +151,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const nextPending = todaySchedule || activeEnginePlan.schedule.find(s => s.memorizationTask && !s.memorizationTask.completed);
     if (nextPending?.memorizationTask) {
       const task = nextPending.memorizationTask;
-      const previewAyah = getAyahByCoordinate(task.surahNumber, task.startAyah);
       dailyTask = {
         surahNumber: task.surahNumber,
         surahName: task.surahName,
         startAyah: task.startAyah,
         endAyah: task.endAyah,
         versesCount: task.versesCount,
-        pageNumber: previewAyah?.page || 1,
-        previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
+        pageNumber: getPagesForAyahRange(task.surahNumber, task.startAyah, task.endAyah)[0] || 1,
+        previewText: 'سيظهر النص القرآني العثماني للمقطع داخل جلسة الحفظ التفاعلية.',
         label: `خطة: ${activeEnginePlan.input.title}`,
         source: 'engine_plan',
         mode: 'memorize'
