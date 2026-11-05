@@ -110,7 +110,6 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         pageNumber,
         pageStart: pageNumber,
         pageEnd: pageNumber,
-        juzNumber: segmentSurah.juzStart,
         status: newStatus,
         lastReviewedDate: getLocalDateString(),
         nextDueDate: getLocalDateString(),
