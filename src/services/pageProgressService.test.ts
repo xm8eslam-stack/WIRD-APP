@@ -38,20 +38,22 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
   });
 
   test('Page-specific portions affect only their recorded page', () => {
-    const portion = {
-      id: 's67_a1_a10', type: 'page' as const, surahNumber: 67, surahName: 'الملك',
-      startAyah: 1, endAyah: 10, pageNumber: 562, pageStart: 562, pageEnd: 562,
+    const segments = getPageAyahSegments(562);
+    const portions = segments.map((segment, index) => ({
+      id: 'page-562-' + index, type: 'page' as const, surahNumber: segment.surahNumber, surahName: 'صفحة 562',
+      startAyah: segment.startAyah, endAyah: segment.endAyah, pageNumber: 562, pageStart: 562, pageEnd: 562,
       status: 'recently_memorized' as const, nextDueDate: '2026-11-06', intervalDays: 2, easeFactor: 2.5, repetitionCount: 1
-    } as PortionStatusRecord;
-    assert(getPageProgressStatus(562, [portion]).status === 'recently_memorized', 'Recorded page must show its status');
-    assert(getPageProgressStatus(563, [portion]).status === 'not_memorized', 'Adjacent page must remain unmemorized');
+    } as PortionStatusRecord));
+    assert(getPageProgressStatus(562, portions).status === 'recently_memorized', 'A fully tracked page must show its status');
+    assert(getPageProgressStatus(563, portions).status === 'not_memorized', 'Adjacent page must remain unmemorized');
   });
 
   test('Overlapping page records choose the least secure status and retain all IDs', () => {
-    const base = { surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5, pageNumber: 562, pageStart: 562, pageEnd: 562, nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5, repetitionCount: 1 };
+    const segment = getPageAyahSegments(1)[0];
+    const base = { surahNumber: segment.surahNumber, surahName: 'الفاتحة', startAyah: segment.startAyah, endAyah: segment.endAyah, pageNumber: 1, pageStart: 1, pageEnd: 1, type: 'page' as const, nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5, repetitionCount: 1 };
     const stable = { ...base, id: 'stable-page', status: 'stable' as const } as PortionStatusRecord;
     const weak = { ...base, id: 'weak-page', status: 'weak' as const } as PortionStatusRecord;
-    const result = getPageProgressStatus(562, [stable, weak]);
+    const result = getPageProgressStatus(1, [stable, weak]);
     assert(result.status === 'weak', 'Weak status must override a stronger overlapping status');
     assert(result.portionIds.length === 2, 'All overlapping page portions must be returned for coordinated updates');
   });
