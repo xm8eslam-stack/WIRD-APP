@@ -43,7 +43,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onStartSession
 }) => {
-  const activePlan = plans.find(p => p.isActive) || plans[0];
+  const activePlan = plans.find(p => p.isActive);
 
   // Calculate due revision items strictly from canonical RetentionService
   const todayStr = getLocalDateString();
