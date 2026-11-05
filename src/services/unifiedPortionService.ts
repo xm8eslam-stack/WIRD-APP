@@ -283,11 +283,14 @@ export function findNextUnmemorizedRange(
     const inProgress = portions
       .filter(p => p.surahNumber === surahNumber && p.status === 'currently_memorizing')
       .sort((a, b) => a.startAyah - b.startAyah)[0];
-    if (inProgress) {
+    if (inProgress && inProgress.startAyah >= 1 && inProgress.startAyah <= surah.versesCount) {
       return {
         surahNumber,
         startAyah: inProgress.startAyah,
-        endAyah: Math.min(inProgress.endAyah, inProgress.startAyah + limit - 1, surah.versesCount)
+        endAyah: Math.max(
+          inProgress.startAyah,
+          Math.min(inProgress.endAyah, inProgress.startAyah + limit - 1, surah.versesCount)
+        )
       };
     }
 
