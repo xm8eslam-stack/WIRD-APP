@@ -8,7 +8,7 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     try { fn(); passed++; console.log('  ✅ ' + name); }
     catch (error: any) { failed++; console.error('  ❌ ' + name + ': ' + (error?.message || error)); }
   };
-  const progressView = fs.readFileSync(path.resolve(process.cwd(), 'src/components/progress/ProgressAnalyticsView.tsx'), 'utf8');
+  const progressView = fs.readFileSync(path.resolve(process.cwd(), 'src/components/progress/ProgressAnalyticsView.tsx'), 'utf8');\n  const sidebar = fs.readFileSync(path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');
 
   test('604-page Mushaf map provides at least 48px mobile tap targets', () => {
     assert(progressView.includes('grid-cols-5 sm:grid-cols-8'), 'Mobile grid must use a low enough column count for 48px cells');
@@ -21,6 +21,14 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(progressView.includes('getPageAyahSegments'), 'Page edits must use exact Quran ayah boundaries');
     assert(!progressView.includes('Default heuristics based on seed user journey'), 'The map must not fabricate memorization progress');
     assert(!progressView.includes('endAyah: surah.versesCount'), 'Marking one page must not mark the entire Surah');
+  });
+
+  test('Mobile navigation dock exposes the five primary destinations accessibly', () => {
+    assert(sidebar.includes('wird-mobile-dock'), 'A persistent mobile quick-navigation dock must be present');
+    assert(sidebar.includes("['dashboard', 'library', 'session', 'revision', 'progress']"), 'The dock must expose the five primary destinations');
+    assert(sidebar.includes('aria-current={isActive ? \'page\' : undefined}'), 'The active destination must be announced to assistive technology');
+    assert(sidebar.includes('aria-label="التنقل السريع"'), 'The dock must have a descriptive Arabic navigation label');
+    assert(sidebar.includes('dueRevisionCount > 0'), 'Due revisions must remain visible in the dock');
   });
 
   return { passed, failed };
