@@ -16,13 +16,20 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     assert(segments[0].surahNumber === 1 && segments[0].startAyah === 1 && segments[0].endAyah === 7, 'Page 1 must map to Al-Fatihah 1-7');
   });
 
-  test('Generated page index covers every Mushaf page and supports multi-Surah boundaries', () => {
-    for (let page = 1; page <= 604; page++) assert(getPageAyahSegments(page).length > 0, 'Page ' + page + ' must have an ayah segment');
-    const hasMultiSurahPage = Array.from({ length: 604 }, (_, index) => index + 1).some(page => {
+  test('Generated page index covers every page and every ayah exactly once', () => {
+    const coordinates = new Set<string>();
+    for (let page = 1; page <= 604; page++) {
       const segments = getPageAyahSegments(page);
-      return new Set(segments.map(segment => segment.surahNumber)).size > 1;
-    });
-    assert(hasMultiSurahPage, 'Page index must preserve pages that cross Surah boundaries');
+      assert(segments.length > 0, 'Page ' + page + ' must have an ayah segment');
+      for (const segment of segments) {
+        for (let ayah = segment.startAyah; ayah <= segment.endAyah; ayah++) {
+          const key = segment.surahNumber + ':' + ayah;
+          assert(!coordinates.has(key), 'Ayah ' + key + ' must not be assigned to multiple pages');
+          coordinates.add(key);
+        }
+      }
+    }
+    assert(coordinates.size === 6236, 'Page index must account for all 6,236 ayahs');
   });
 
   test('Untracked pages remain not_memorized; no sample progress is fabricated', () => {
