@@ -14,6 +14,25 @@
 - Google AI Studio is connected to `main`; all PR #1 changes are now part of `main`.
 - Never force-push or overwrite `main`.
 
+## Latest continuation checkpoint — 2026-11-05
+
+- Active work branch: `feat/phase5-premium-ui-ux`.
+- Active PR: #2 — https://github.com/xm8eslam-stack/WIRD-APP/pull/2 (Draft; not merged).
+- Latest code/test commits before this documentation checkpoint:
+  - Design-system Phase 5E CSS: `28bb4ef9f3ce231977d0b6ea536f987a059f92d6`
+  - Planning workspace hook: `ba5379c8f30da2336d0c67211ec2eec70b9e3dd4`
+  - Phase 5E regression assertions / latest code head: `9e138a7351f6855ac27d8e044fd8a57a836288e3`
+- These new commits were created after the previously verified Actions run #176 at `162f1fb96748e08eb1485cf95a970f9dffcb7094`; a fresh Actions run for the new head must be checked before proceeding to merge.
+- Phase 5E first visual consistency pass is now recorded in `docs/PHASE5_UI_UX_PLAN.md`.
+- Vercel combined status at the previous head showed a deployment rate-limit failure; no Preview for the latest head is confirmed.
+- Branch audit:
+  - `main`: connected to Google AI Studio; do not force-push or overwrite.
+  - `feat/phase4-data-integrity-backup-v4`: already merged through PR #1 and is two commits behind current main.
+  - `feat/phase5-premium-ui-ux`: active Phase 5 branch; PR #2 Draft; 42 commits before the latest Phase 5E continuation.
+  - `work/wird-audit-remediation`: no PR found; diverged from main at common ancestor `862f6056ac5d54abf9f26249941ba994e74bf6a9`, with 92 commits unique to the work branch and 124 commits unique to main. Do not merge wholesale; inspect any candidate changes individually and port only verified missing work.
+- Next action: verify CI for `9e138a7351f6855ac27d8e044fd8a57a836288e3`, then continue detailed visual review of 5E on the active feature branch.
+- Save future work in small commits on the active feature branch and refresh this checkpoint before any tool/context limit. Do not merge to `main` until review, CI, and a current Vercel Preview are satisfactory.
+
 ## Exact saved point
 
 - Last code-change HEAD before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`
