@@ -248,6 +248,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                 setSessionRange({ startAyah: 1, endAyah: 7 });
                 setCurrentAyahIndex(0);
                 setIsCompleted(false);
+                completionReported.current = false;
               }}
               className="w-full sm:w-auto px-5 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold transition-colors"
             >
