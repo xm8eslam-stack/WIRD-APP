@@ -9,7 +9,7 @@ import { EngineGeneratedPlan } from './services/planningEngine';
 import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { getLocalDateString, findNextUnmemorizedRange, getPlanTargetSurahNumbers } from './services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange } from './services/unifiedPortionService';
 import { ALL_SURAHS } from './data/quranMeta';
 import { getSessionCompletionMetrics } from './services/sessionCompletion';
 
@@ -214,11 +214,17 @@ export default function App() {
     }
 
     const activePreset = StorageService.getPlans().find(plan => plan.isActive);
-    if (activePreset) {
+    // Only use scopes whose exact Surah boundaries are explicit. Juz/page/custom
+    // scopes need their own canonical ayah-range resolver before they can safely
+    // drive a session; do not silently widen them to an entire Surah.
+    const exactPresetSurahs = activePreset?.type === 'whole_quran'
+      ? ALL_SURAHS.map(surah => surah.number)
+      : activePreset?.targetSurahs;
+    if (activePreset && exactPresetSurahs && exactPresetSurahs.length > 0) {
       const nextPresetRange = findNextUnmemorizedRange(
         currentPortions,
-        getPlanTargetSurahNumbers(activePreset),
-        activePreset.dailyTarget || 7
+        exactPresetSurahs,
+        activePreset.unitType === 'ayah' ? (activePreset.dailyTarget || 7) : 7
       );
       if (nextPresetRange) {
         handleStartSession(nextPresetRange.surahNumber, nextPresetRange.startAyah, nextPresetRange.endAyah, 'memorize');
