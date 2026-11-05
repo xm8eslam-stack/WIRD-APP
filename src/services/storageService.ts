@@ -588,6 +588,7 @@ export const StorageService = {
   recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
     const today = getLocalDateString();
     const previousLogs = getItem(STORAGE_KEYS.LOGS);
+    const previousProfile = getItem(STORAGE_KEYS.PROFILE);
     const logs = this.getLogs();
     const existingIndex = logs.findIndex(l => l.date === today);
 
@@ -617,6 +618,8 @@ export const StorageService = {
     if (!this.saveProfile(profile)) {
       if (previousLogs === null) removeItem(STORAGE_KEYS.LOGS);
       else setItem(STORAGE_KEYS.LOGS, previousLogs);
+      if (previousProfile === null) removeItem(STORAGE_KEYS.PROFILE);
+      else setItem(STORAGE_KEYS.PROFILE, previousProfile);
       return false;
     }
 
