@@ -1,4 +1,39 @@
 # WIRD APP — Development Checkpoint
+## Current continuation state — updated 2026-11-05 19:48 UTC
+
+- Repository: `xm8eslam-stack/WIRD-APP`. Google AI Studio remains connected to `main`.
+- `main` remains untouched by Phase 5; latest verified base SHA: `15ec5069b4850968588be2e4363fbd182bf2a8fc`.
+- Active branch: `feat/phase5-premium-ui-ux`; PR #2 remains **open, Draft, unmerged**.
+- Latest implementation head before this checkpoint commit: `07553b0c22db7f5083ad7447ed182aa26acbf93c`.
+- GitHub Actions runs #237 (`42097009165`) and #238 (`42097021247`) both completed **successfully** on that exact implementation head. The quality gate passed automated tests, TypeScript validation, and the production build including Quran chunk validation.
+- An earlier run #229 failed only because a static test expected two JSX attributes on the same line; the assertion was corrected to test the attributes independently. The later exact-head runs above passed.
+- Phase 5 UI/UX work completed in this continuation:
+  - Revision center tabs now expose tablist/tab/tabpanel semantics, labelled panels, selected state, arrow/Home/End keyboard navigation, modal dialog semantics, and polite live feedback.
+  - Preset plan progress is clamped safely (including zero/invalid totals), exposed as an accessible progressbar, and plan delete controls have descriptive labels.
+  - Fixed a memorization test scoring defect that added the final correct answer twice to the persisted result.
+- Selected recovery from `work/wird-audit-remediation` has begun and is now integrated on this feature branch:
+  - Added mode-aware completion metrics; review sessions record reviewed pages but never increase memorized ayah totals or create a memorized portion.
+  - Revision Center launches its portions in review mode; session route/deep-link mode reaches the session UI and is reflected in completion messaging.
+  - Daily session selection now checks pending active engine-plan work, active preset scope, due revision queue, then the next uncovered range; it no longer always launches a fixed Al-Mulk range.
+  - Ported and tested canonical plan-scope resolution and next-unmemorized-range helpers into the current `unifiedPortionService`, without replacing the current Phase 4 generated page index or its validation.
+- New tests added: `src/tests/sessionCompletion.test.ts`, `src/tests/planRangeSelection.test.ts`; mobile UI regression coverage expanded in `src/tests/mobileErgonomics.test.ts`.
+- Files changed in this continuation: `src/App.tsx`, `src/components/revision/RevisionCenterView.tsx`, `src/components/plans/MemorizationPlansView.tsx`, `src/components/session/MemorizationSessionView.tsx`, `src/components/tests/MemorizationTestsView.tsx`, `src/services/sessionCompletion.ts`, `src/services/unifiedPortionService.ts`, `src/tests/sessionCompletion.test.ts`, `src/tests/planRangeSelection.test.ts`, `src/tests/runAllTests.ts`, `src/tests/mobileErgonomics.test.ts`, and this checkpoint.
+- `work/wird-audit-remediation` remains preserved on its original branch and has not been merged or rewritten. Its remaining candidates still require selective review.
+- Vercel Preview/Production for the latest head has not been verified in this continuation; previous deployment attempts were rate-limited by the free daily deployment quota. Do not claim deployment readiness.
+- No changes have been merged to `main`; Google AI Studio will not show this new work until a reviewed PR is merged.
+
+### Exact continuation order
+1. Review and selectively port storage-write reliability from `work/wird-audit-remediation`: durable-write return values, rollback-safe session completion, and explicit failures when retention/weak-verse writes fail. Preserve the current canonical Quran validation and generated page-index checks; do not copy the stale audit `storageService.ts` wholesale.
+2. Re-test session-mode isolation, plan-scope selection, persistence-failure rollback, and existing migration/backup suites.
+3. Continue the remaining Phase 5 UI review: planning wizard, analytics, settings, test flow, and responsive/keyboard/empty/error states.
+4. Review advisor validation/chat routing and remaining audit-branch candidates individually.
+5. Run GitHub Actions on the exact final PR head, verify current Vercel Preview when quota permits, and manually review the UI before considering PR #2 ready.
+6. Merge only after final review; verify `main` and CI, then synchronize Google AI Studio.
+
+### Stop/resume marker
+**RESUME FROM:** Step 1 — selective storage-write reliability recovery from `work/wird-audit-remediation`. First compare the current `storageService.ts` and `retentionService.ts` on this branch with the audit branch; preserve Phase 4 canonical validation. Commit safe changes to this feature branch, rerun CI, and update this marker before any tool/context limit.
+
+---
 
 > Last updated: 2026-11-05 — active Phase 5 continuation
 > Purpose: durable handoff marker. Read this file before continuing development.
