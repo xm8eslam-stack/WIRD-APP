@@ -10,7 +10,7 @@ import {
 } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
-import { migrateLegacyDataLosslessly, MigrationReport } from './unifiedPortionService';
+import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString } from './unifiedPortionService';
 
 export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
@@ -264,7 +264,7 @@ export const StorageService = {
       if (!data) return { ...CLEAN_INITIAL_PROFILE };
       const parsed: UserProfile = JSON.parse(data);
       
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalDateString();
       const validStreak = calculateActiveStreak(parsed.lastActiveDate, parsed.streakDays, todayStr);
       if (validStreak !== parsed.streakDays) {
         parsed.streakDays = validStreak;
@@ -584,7 +584,7 @@ export const StorageService = {
 
   // Session Completion with True Streak Advancement
   recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): void {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     const logs = this.getLogs();
     const existingIndex = logs.findIndex(l => l.date === today);
 
@@ -644,7 +644,8 @@ export const StorageService = {
     return JSON.stringify(backup, null, 2);
   },
 
-  // Atomic Import with Pre-Validation (Never partially overwrites on failure)
+  // Validate first, then persist with a snapshot-based rollback on any failed write.
+  // localStorage has no multi-key transaction API, so rollback is best-effort.
   importBackup(jsonString: string): { success: boolean; message: string } {
     let parsed: any;
     try {
@@ -658,25 +659,54 @@ export const StorageService = {
       return { success: false, message: validation.error || 'فشل التحقق من بنية النسخة الاحتياطية' };
     }
 
-    // Atomic write only after all validations pass
+    const keys = Object.values(STORAGE_KEYS);
+    const snapshot = new Map<string, string | null>(keys.map(key => [key, getItem(key)]));
+
     try {
-      if (parsed.profile) this.saveProfile(parsed.profile);
-      if (parsed.plans) this.savePlans(parsed.plans);
-      if (parsed.enginePlans) this.saveEnginePlans(parsed.enginePlans);
-      if (parsed.revisionItems) this.saveRevisionItems(parsed.revisionItems);
-      if (parsed.logs) this.saveLogs(parsed.logs);
-      if (parsed.tests) {
-        setItem(STORAGE_KEYS.TESTS, JSON.stringify(parsed.tests));
+      const writeJson = (key: string, value: unknown) => {
+        if (!setItem(key, JSON.stringify(value))) {
+          throw new Error(`تعذر حفظ الحقل ${key} في التخزين الدائم`);
+        }
+      };
+
+      if (parsed.profile !== undefined) writeJson(STORAGE_KEYS.PROFILE, parsed.profile);
+      if (parsed.plans !== undefined) writeJson(STORAGE_KEYS.PLANS, parsed.plans);
+      if (parsed.enginePlans !== undefined) writeJson(STORAGE_KEYS.ENGINE_PLANS, parsed.enginePlans);
+      if (parsed.logs !== undefined) writeJson(STORAGE_KEYS.LOGS, parsed.logs);
+      if (parsed.tests !== undefined) writeJson(STORAGE_KEYS.TESTS, parsed.tests);
+      if (parsed.weakVerses !== undefined) writeJson(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
+
+      // Convert imported legacy portions/revision rows into the canonical v2 source.
+      // This also refreshes the legacy compatibility keys from the canonical result.
+      if (parsed.portions !== undefined || parsed.revisionItems !== undefined) {
+        const migration = migrateLegacyDataLosslessly(parsed.portions || [], parsed.revisionItems || []);
+        if (!migration.report.success) {
+          throw new Error(migration.report.error || 'تعذر التحقق من مقاطع الحفظ المستوردة');
+        }
+        if (!this.saveUnifiedPortions(migration.portions)) {
+          throw new Error('فشل حفظ مقاطع الحفظ الموحدة أو التحقق من قراءتها بعد الاستيراد');
+        }
       }
-      if (parsed.portions) {
-        setItem(STORAGE_KEYS.PORTIONS, JSON.stringify(parsed.portions));
-      }
-      if (parsed.weakVerses) {
-        setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(parsed.weakVerses));
-      }
-      return { success: true, message: 'تم استيراد كافة البيانات بنجاح وبشكل متكامل.' };
+
+      return { success: true, message: 'تم التحقق من البيانات واستيرادها، مع تحديث سجل الحفظ الموحد.' };
     } catch (e: any) {
-      return { success: false, message: `تعذر حفظ البيانات في الذاكرة المحلية: ${e?.message || 'خطأ غير متوقع'}` };
+      let rollbackFailed = false;
+      for (const key of keys) {
+        const previous = snapshot.get(key) ?? null;
+        if (previous === null) {
+          removeItem(key);
+        } else if (!setItem(key, previous)) {
+          rollbackFailed = true;
+        }
+      }
+
+      const baseMessage = e?.message || 'خطأ غير متوقع';
+      return {
+        success: false,
+        message: rollbackFailed
+          ? `فشل الاستيراد (${baseMessage})، وتعذر تأكيد استعادة كل البيانات السابقة. أوقف استخدام التطبيق واحتفظ بملف النسخة الاحتياطية.`
+          : `فشل الاستيراد وتمت محاولة استعادة البيانات السابقة: ${baseMessage}`
+      };
     }
   },
 
