@@ -301,7 +301,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             <div className="text-stone-400">سلسلة المواظبة</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono flex items-center justify-center gap-1">
               <Flame className="w-4 h-4 fill-amber-500" />
-              <span>{profile.streakDays + 1} يوم</span>
+              <span>{profile.streakDays} يوم</span>
             </div>
           </div>
         </div>
