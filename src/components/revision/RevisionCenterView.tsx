@@ -29,6 +29,7 @@ import {
   UserProfile 
 } from '../../types/quran';
 import { RetentionService, RetentionMetrics } from '../../services/retentionService';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 
