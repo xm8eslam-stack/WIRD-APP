@@ -11,6 +11,8 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
   const progressView = fs.readFileSync(path.resolve(process.cwd(), 'src/components/progress/ProgressAnalyticsView.tsx'), 'utf8');
   const sidebar = fs.readFileSync(path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');
   const styles = fs.readFileSync(path.resolve(process.cwd(), 'src/index.css'), 'utf8');
+  const library = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranLibraryView.tsx'), 'utf8');
+  const dashboard = fs.readFileSync(path.resolve(process.cwd(), 'src/components/dashboard/DashboardView.tsx'), 'utf8');
 
   test('604-page Mushaf map provides at least 48px mobile tap targets', () => {
     assert(progressView.includes('grid-cols-5 sm:grid-cols-8'), 'Mobile grid must use a low enough column count for 48px cells');
@@ -40,6 +42,22 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(styles.includes('.dark {'), 'Dark theme tokens must remain defined');
     assert(styles.includes('@media (prefers-reduced-motion: reduce)'), 'Motion must respect reduced-motion preferences');
     assert(styles.includes('.wird-main'), 'The responsive content container must be shared');
+  });
+
+
+  test('Dashboard progress is accessible and uses real user settings', () => {
+    assert(dashboard.includes('role="progressbar"'), 'Dashboard progress indicators must expose progressbar semantics');
+    assert(dashboard.includes('aria-valuenow={Number(versesPercentage)}'), 'Ayah progress must expose its actual percentage');
+    assert(dashboard.includes('aria-valuenow={Number(pagesPercentage)}'), 'Full-page progress must expose its actual percentage');
+    assert(dashboard.includes('profile.repetitionTarget || 10'), 'The dashboard must reflect the configured repetition target');
+    assert(!dashboard.includes('20 دقيقة'), 'The dashboard must not promise a fixed duration unsupported by the plan');
+  });
+
+  test('Quran library Surah selection is keyboard-operable and semantically selected', () => {
+    assert(library.includes('wird-surah-select'), 'Surah selection must use a dedicated interactive control');
+    assert(library.includes('aria-pressed={isSelected}'), 'Selected Surah state must be announced');
+    assert(!library.includes('onClick={() => {\n                  handleStopAudio();\n                  setSelectedSurah(surah);\n                }}'), 'The clickable Surah wrapper must not remain a non-semantic div');
+    assert(library.includes('wird-quran-reading-text'), 'Quran reading typography must have a dedicated style hook');
   });
 
   return { passed, failed };
