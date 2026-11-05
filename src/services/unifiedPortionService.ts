@@ -4,7 +4,8 @@ import {
   RevisionItem, 
   PortionMemorizationStatus, 
   RevisionRating,
-  RevisionLogEntry 
+  RevisionLogEntry,
+  MemorizationPlan
 } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
@@ -78,6 +79,45 @@ export function calculateUniqueMemorizedAyahs(portions: WirdPortion[]): {
   });
 
   return { uniqueCount: keys.size, ayahKeys: keys };
+}
+
+/**
+ * Calculate retention quality once per unique ayah, resolving overlapping
+ * records conservatively by keeping the weakest recorded status.
+ */
+export function calculateUniqueRetentionScore(portions: WirdPortion[]): number {
+  const statusPriority: Record<PortionMemorizationStatus, number> = {
+    weak: 0,
+    needs_revision: 1,
+    currently_memorizing: 2,
+    recently_memorized: 3,
+    stable: 4,
+    not_memorized: 5
+  };
+  const statusPoints: Record<PortionMemorizationStatus, number> = {
+    stable: 1,
+    recently_memorized: 0.8,
+    needs_revision: 0.5,
+    currently_memorizing: 0.4,
+    weak: 0.2,
+    not_memorized: 0
+  };
+  const uniqueStatuses = new Map<string, PortionMemorizationStatus>();
+
+  portions.forEach(portion => {
+    if (portion.status === 'not_memorized') return;
+    for (let ayah = Math.max(1, portion.startAyah); ayah <= portion.endAyah; ayah++) {
+      const key = `${portion.surahNumber}:${ayah}`;
+      const existing = uniqueStatuses.get(key);
+      if (!existing || statusPriority[portion.status] < statusPriority[existing]) {
+        uniqueStatuses.set(key, portion.status);
+      }
+    }
+  });
+
+  if (uniqueStatuses.size === 0) return 0;
+  const totalPoints = [...uniqueStatuses.values()].reduce((sum, status) => sum + statusPoints[status], 0);
+  return Math.round((totalPoints / uniqueStatuses.size) * 100);
 }
 
 /**
@@ -217,6 +257,92 @@ export function calculateCanonicalSM2(
     strength,
     messageAr
   };
+}
+
+/**
+ * Resolve the Surahs covered by a preset plan from its explicit scope.
+ * Juz and page scopes use canonical Mushaf metadata rather than guessing a first Surah.
+ */
+export function getPlanTargetSurahNumbers(
+  plan: Pick<MemorizationPlan, 'targetSurahs' | 'targetJuz' | 'startPage' | 'endPage'>
+): number[] {
+  if (plan.targetSurahs && plan.targetSurahs.length > 0) {
+    return Array.from(new Set(plan.targetSurahs)).filter(number => number >= 1 && number <= 114);
+  }
+
+  if (plan.targetJuz && plan.targetJuz.length > 0) {
+    return ALL_SURAHS
+      .filter(surah => plan.targetJuz!.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
+      .map(surah => surah.number);
+  }
+
+  if (plan.startPage !== undefined && plan.endPage !== undefined) {
+    const startPage = Math.max(1, Math.min(604, plan.startPage));
+    const endPage = Math.max(startPage, Math.min(604, plan.endPage));
+    return ALL_SURAHS
+      .filter(surah => surah.pageStart <= endPage && surah.pageEnd >= startPage)
+      .map(surah => surah.number);
+  }
+
+  return ALL_SURAHS.map(surah => surah.number);
+}
+
+/**
+ * Find the next memorization range not already represented by a memorized portion.
+ * Existing in-progress portions are resumed before new gaps.
+ */
+export function findNextUnmemorizedRange(
+  portions: WirdPortion[],
+  surahNumbers: number[],
+  maxVerses: number
+): { surahNumber: number; startAyah: number; endAyah: number } | null {
+  const limit = Math.max(1, Math.floor(maxVerses || 1));
+  const targets = Array.from(new Set(surahNumbers)).filter(number => number >= 1 && number <= 114);
+
+  for (const surahNumber of targets) {
+    const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+    if (!surah) continue;
+
+    const inProgress = portions
+      .filter(portion => portion.surahNumber === surahNumber && portion.status === 'currently_memorizing')
+      .sort((a, b) => a.startAyah - b.startAyah)[0];
+    if (inProgress && inProgress.startAyah >= 1 && inProgress.startAyah <= surah.versesCount) {
+      return {
+        surahNumber,
+        startAyah: inProgress.startAyah,
+        endAyah: Math.max(
+          inProgress.startAyah,
+          Math.min(inProgress.endAyah, inProgress.startAyah + limit - 1, surah.versesCount)
+        )
+      };
+    }
+
+    const memorized = portions.filter(portion =>
+      portion.surahNumber === surahNumber && portion.status !== 'not_memorized'
+    );
+
+    let ayah = 1;
+    while (ayah <= surah.versesCount) {
+      const covered = memorized.some(portion => portion.startAyah <= ayah && portion.endAyah >= ayah);
+      if (covered) {
+        ayah++;
+        continue;
+      }
+
+      const startAyah = ayah;
+      let count = 0;
+      while (ayah <= surah.versesCount && count < limit) {
+        const isCovered = memorized.some(portion => portion.startAyah <= ayah && portion.endAyah >= ayah);
+        if (isCovered) break;
+        ayah++;
+        count++;
+      }
+
+      return { surahNumber, startAyah, endAyah: ayah - 1 };
+    }
+  }
+
+  return null;
 }
 
 /**

@@ -189,7 +189,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="wird-planning-wizard space-y-6">
       {/* 1. Header Toolbar & Goal Switcher */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

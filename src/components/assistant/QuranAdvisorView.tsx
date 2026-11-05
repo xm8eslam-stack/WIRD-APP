@@ -24,7 +24,7 @@ import {
 import { UserProfile, MemorizationPlan, DailyLog, PortionStatusRecord, WeakVerseItem } from '../../types/quran';
 import { AdvisorService, AdvisorStatus } from '../../services/advisorService';
 import { RetentionService } from '../../services/retentionService';
-import { getLocalDateString } from '../../services/unifiedPortionService';
+import { StorageService } from '../../services/storageService';
 
 interface QuranAdvisorViewProps {
   profile?: UserProfile;
@@ -121,18 +121,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
     setChatMessages(newMsgs);
     setIsLoading(true);
 
-    const userProfile: UserProfile = profile || {
-      name: 'عبد الرحمن',
-      email: 'abdurrahman@example.com',
-      memorizationGoal: 'إتقان حفظ كتاب الله كاملاً',
-      preferredReciter: 'alafasy',
-      quranFontSize: 'lg',
-      audioAutoPlay: true,
-      repetitionTarget: 10,
-      theme: 'light',
-      streakDays: 14,
-      lastActiveDate: getLocalDateString()
-    };
+    const userProfile: UserProfile = profile || StorageService.getProfile();
 
     const portions = RetentionService.getPortions();
     const weakVerses = RetentionService.getWeakVerses();
@@ -241,7 +230,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
   ];
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="wird-advisor space-y-6 max-w-4xl mx-auto">
       {/* 1. Header & AI Availability Badge */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

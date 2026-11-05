@@ -15,6 +15,10 @@ import { runMobileErgonomicsTests } from './mobileErgonomics.test';
 import { runTafsirServiceTests } from '../services/tafsirService.test';
 import { runTafsirProxyTests } from './tafsirProxy.test';
 import { runPageProgressServiceTests } from '../services/pageProgressService.test';
+import { runSessionCompletionTests } from './sessionCompletion.test';
+import { runPlanRangeSelectionTests } from './planRangeSelection.test';
+import { runStorageReliabilityTests } from './storageReliability.test';
+import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 
 export interface SuiteResult {
   passed: number;
@@ -77,6 +81,10 @@ async function main() {
     { name: 'Tafsir Muyassar API Validation & Cache', runner: runTafsirServiceTests },
     { name: 'Tafsir Serverless Proxy Security & Cache', runner: runTafsirProxyTests },
     { name: 'Truthful 604-Page Progress Mapping', runner: runPageProgressServiceTests },
+    { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
+    { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
+    { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
+    { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);

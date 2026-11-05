@@ -35,7 +35,7 @@ import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
-  onStartSession?: (surahNumber: number, startAyah: number, endAyah: number) => void;
+  onStartSession?: (surahNumber: number, startAyah: number, endAyah: number, mode?: 'memorize' | 'review') => void;
 }
 
 type RevisionTab = 'daily_queue' | 'weekly_overview' | 'weak_verses' | 'history' | 'retention_dashboard';
@@ -112,12 +112,21 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       };
     }
 
-    const result = RetentionService.recordRevisionPerformance(
-      ratingPortion.id,
-      rating,
-      reviewNotes,
-      weakDetails
-    );
+    let result;
+    try {
+      result = RetentionService.recordRevisionPerformance(
+        ratingPortion.id,
+        rating,
+        reviewNotes,
+        weakDetails
+      );
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ تقييم المراجعة. لم يتم تأكيد التغيير.',
+        type: 'warn'
+      });
+      return;
+    }
 
     setActionFeedback({
       message: result.messageAr,
@@ -140,22 +149,27 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const surah = ALL_SURAHS.find(s => s.number === newSurahNum);
     if (!surah) return;
 
-    RetentionService.addPortion({
-      type: 'passage',
-      surahNumber: newSurahNum,
-      surahName: surah.name,
-      startAyah: newStartAyah,
-      endAyah: newEndAyah,
-      pageNumber: surah.pageStart,
-      juzNumber: surah.juzStart,
-      status: newStatus,
-      lastReviewedDate: todayStr,
-      nextDueDate: todayStr,
-      intervalDays: newStatus === 'stable' ? 7 : newStatus === 'weak' ? 1 : 2,
-      easeFactor: 2.5,
-      repetitionCount: newStatus === 'stable' ? 4 : 1,
-      mistakesCount: newStatus === 'weak' ? 2 : 0
-    });
+    try {
+      RetentionService.addPortion({
+        type: 'passage',
+        surahNumber: newSurahNum,
+        surahName: surah.name,
+        startAyah: newStartAyah,
+        endAyah: newEndAyah,
+        pageNumber: surah.pageStart,
+        juzNumber: surah.juzStart,
+        status: newStatus,
+        lastReviewedDate: todayStr,
+        nextDueDate: todayStr,
+        intervalDays: newStatus === 'stable' ? 7 : newStatus === 'weak' ? 1 : 2,
+        easeFactor: 2.5,
+        repetitionCount: newStatus === 'stable' ? 4 : 1,
+        mistakesCount: newStatus === 'weak' ? 2 : 0
+      });
+    } catch (error) {
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ المقطع الجديد.', type: 'warn' });
+      return;
+    }
 
     setIsAddPortionModalOpen(false);
     refreshAll();
@@ -167,7 +181,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Handle resolving a weak verse
   const handleResolveWeakVerse = (id: string, ayahRef: string) => {
-    RetentionService.resolveWeakVerse(id);
+    try {
+      RetentionService.resolveWeakVerse(id);
+    } catch (error) {
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ تحديث الآيات المتعثرة.', type: 'warn' });
+      return;
+    }
     refreshAll();
     setActionFeedback({
       message: `تم تثبيت ${ayahRef} بنجاح وإزالتها من قائمة الآيات المتعثرة.`,
@@ -187,13 +206,18 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       text = found?.text || `آية رقم ${manualWeakAyahNum}`;
     }
 
-    RetentionService.addOrIncrementWeakVerse(
-      weakSurahNum,
-      manualWeakAyahNum,
-      surah.name,
-      text,
-      manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
-    );
+    try {
+      RetentionService.addOrIncrementWeakVerse(
+        weakSurahNum,
+        manualWeakAyahNum,
+        surah.name,
+        text,
+        manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
+      );
+    } catch (error) {
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة.', type: 'warn' });
+      return;
+    }
 
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');
@@ -212,7 +236,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="wird-revision space-y-6">
       {/* 1. Header Banner */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -247,7 +271,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
         {/* Global Action Feedback Alert */}
         {actionFeedback && (
-          <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-fade-in ${
+          <div role="status" aria-live="polite" aria-atomic="true" className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-fade-in ${
             actionFeedback.type === 'success' 
               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900 dark:text-emerald-200' 
               : actionFeedback.type === 'warn'
@@ -265,8 +289,38 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         )}
 
         {/* Navigation Tabs (5 Views) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
+        <div
+          role="tablist"
+          aria-label="أقسام مركز المراجعة"
+          onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
+            const tabOrder: RevisionTab[] = ['daily_queue', 'weekly_overview', 'weak_verses', 'history', 'retention_dashboard'];
+            const currentIndex = tabOrder.indexOf(activeTab);
+            let nextIndex = currentIndex;
+            if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabOrder.length;
+            else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+            else if (event.key === 'Home') nextIndex = 0;
+            else if (event.key === 'End') nextIndex = tabOrder.length - 1;
+            else return;
+            event.preventDefault();
+            const nextTab = tabOrder[nextIndex];
+            setActiveTab(nextTab);
+            const tabIds: Record<RevisionTab, string> = {
+              daily_queue: 'revision-tab-daily-queue',
+              weekly_overview: 'revision-tab-weekly-overview',
+              weak_verses: 'revision-tab-weak-verses',
+              history: 'revision-tab-history',
+              retention_dashboard: 'revision-tab-retention-dashboard'
+            };
+            event.currentTarget.querySelector<HTMLButtonElement>(`#${tabIds[nextTab]}`)?.focus();
+          }}
+          className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-daily-queue"
+            aria-selected={activeTab === 'daily_queue'}
+            aria-controls="revision-panel-daily-queue"
+            tabIndex={activeTab === 'daily_queue' ? 0 : -1}
             onClick={() => setActiveTab('daily_queue')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'daily_queue'
@@ -286,6 +340,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-weekly-overview"
+            aria-selected={activeTab === 'weekly_overview'}
+            aria-controls="revision-panel-weekly-overview"
+            tabIndex={activeTab === 'weekly_overview' ? 0 : -1}
             onClick={() => setActiveTab('weekly_overview')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'weekly_overview'
@@ -298,6 +358,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-weak-verses"
+            aria-selected={activeTab === 'weak_verses'}
+            aria-controls="revision-panel-weak-verses"
+            tabIndex={activeTab === 'weak_verses' ? 0 : -1}
             onClick={() => setActiveTab('weak_verses')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'weak_verses'
@@ -313,6 +379,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-history"
+            aria-selected={activeTab === 'history'}
+            aria-controls="revision-panel-history"
+            tabIndex={activeTab === 'history' ? 0 : -1}
             onClick={() => setActiveTab('history')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'history'
@@ -328,6 +400,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="revision-tab-retention-dashboard"
+            aria-selected={activeTab === 'retention_dashboard'}
+            aria-controls="revision-panel-retention-dashboard"
+            tabIndex={activeTab === 'retention_dashboard' ? 0 : -1}
             onClick={() => setActiveTab('retention_dashboard')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'retention_dashboard'
@@ -346,7 +424,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
       {/* VIEW 1: DAILY REVISION QUEUE */}
       {activeTab === 'daily_queue' && (
-        <div className="space-y-4">
+        <div id="revision-panel-daily-queue" role="tabpanel" aria-labelledby="revision-tab-daily-queue" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-stone-500">
             <span>المقاطع المستحقة للمراجعة اليوم (مرتبة حسب الأولوية والحاجة للتثبيت):</span>
             <span>إجمالي المقاطع المستحقة: <strong className="text-stone-800 dark:text-stone-200">{dailyQueue.length}</strong></span>
@@ -460,7 +539,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                       {/* Launch Interactive Recitation / Session button */}
                       {onStartSession && (
                         <button
-                          onClick={() => onStartSession(item.surahNumber, item.startAyah, item.endAyah)}
+                          onClick={() => onStartSession(item.surahNumber, item.startAyah, item.endAyah, 'review')}
                           className="w-full mt-2 py-1.5 px-3 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-[11px] font-semibold border border-stone-200 dark:border-stone-700 transition-colors flex items-center justify-center gap-1.5"
                         >
                           <Play className="w-3 h-3 text-emerald-700" />
@@ -474,11 +553,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* VIEW 2: WEEKLY REVISION OVERVIEW */}
       {activeTab === 'weekly_overview' && (
-        <div className="space-y-4">
+        <div id="revision-panel-weekly-overview" role="tabpanel" aria-labelledby="revision-tab-weekly-overview" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-4">
           <div className="text-xs text-stone-500">
             توزيع المقاطع المجدولة للأيام السبعة القادمة حسب خوارزمية التكرار المتباعد:
           </div>
@@ -548,11 +629,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             ))}
           </div>
         </div>
+        </div>
       )}
 
       {/* VIEW 3: WEAK-VERSES LIST */}
       {activeTab === 'weak_verses' && (
-        <div className="space-y-4">
+        <div id="revision-panel-weak-verses" role="tabpanel" aria-labelledby="revision-tab-weak-verses" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="relative flex-1 max-w-md">
               <Search className="w-4 h-4 absolute right-3 top-3 text-stone-400" />
@@ -630,7 +713,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                     {onStartSession && (
                       <button
-                        onClick={() => onStartSession(item.surahNumber, item.ayahNumber, item.ayahNumber)}
+                        onClick={() => onStartSession(item.surahNumber, item.ayahNumber, item.ayahNumber, 'review')}
                         className="py-1.5 px-3 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
                       >
                         تكرار وسماع
@@ -642,11 +725,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* VIEW 4: REVISION HISTORY */}
       {activeTab === 'history' && (
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
+        <div id="revision-panel-history" role="tabpanel" aria-labelledby="revision-tab-history" tabIndex={0} className="focus-visible:outline-none">
+          <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
               <History className="w-4 h-4 text-emerald-700" />
@@ -704,11 +789,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* VIEW 5: RETENTION DASHBOARD */}
       {activeTab === 'retention_dashboard' && (
-        <div className="space-y-6">
+        <div id="revision-panel-retention-dashboard" role="tabpanel" aria-labelledby="revision-tab-retention-dashboard" tabIndex={0} className="focus-visible:outline-none">
+          <div className="space-y-6">
           {/* Key Metric Gauges */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-1">
@@ -828,14 +915,15 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </div>
           </div>
         </div>
+        </div>
       )}
 
       {/* MODAL: RATE FAILED REVISION DETAILS */}
       {ratingPortion && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-modal-failed-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-modal-failed-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
               </h3>
               <button onClick={() => setRatingPortion(null)} className="text-stone-400 hover:text-stone-600">
@@ -900,9 +988,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD NEW PORTION */}
       {isAddPortionModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-modal-add-portion-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-modal-add-portion-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
               </h3>
               <button onClick={() => setIsAddPortionModalOpen(false)} className="text-stone-400 hover:text-stone-600">
@@ -1005,9 +1093,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD MANUAL WEAK VERSE */}
       {isAddWeakVerseModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-modal-add-weak-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-modal-add-weak-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
               </h3>
               <button onClick={() => setIsAddWeakVerseModalOpen(false)} className="text-stone-400 hover:text-stone-600">

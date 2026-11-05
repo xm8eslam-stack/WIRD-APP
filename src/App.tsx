@@ -6,9 +6,12 @@ import { StorageService } from './services/storageService';
 import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
 import { EngineGeneratedPlan } from './services/planningEngine';
+import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { getLocalDateString } from './services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange } from './services/unifiedPortionService';
+import { ALL_SURAHS } from './data/quranMeta';
+import { getSessionCompletionMetrics } from './services/sessionCompletion';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -37,10 +40,12 @@ export default function App() {
     surahNumber: number;
     startAyah: number;
     endAyah: number;
+    mode: 'memorize' | 'review';
   }>({
     surahNumber: initialRoute.surahNumber || 67,
     startAyah: initialRoute.startAyah || 1,
-    endAyah: initialRoute.endAyah || 10
+    endAyah: initialRoute.endAyah || 10,
+    mode: initialRoute.mode || 'memorize'
   });
 
   // Track if active session has progress for exit confirmation
@@ -135,8 +140,11 @@ export default function App() {
   const handleToggleTheme = () => {
     const newTheme: 'light' | 'dark' = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: newTheme };
+    if (!StorageService.saveProfile(updated)) {
+      showToast('تعذر حفظ تغيير المظهر في التخزين الدائم. حاول مرة أخرى بعد التحقق من مساحة المتصفح.', 'error');
+      return;
+    }
     setProfile(updated);
-    StorageService.saveProfile(updated);
   };
 
   // Synchronize route with URL hash & browser history
@@ -158,7 +166,8 @@ export default function App() {
         setSessionParams(prev => ({
           surahNumber: route.surahNumber || prev.surahNumber,
           startAyah: route.startAyah || prev.startAyah,
-          endAyah: route.endAyah || prev.endAyah
+          endAyah: route.endAyah || prev.endAyah,
+          mode: route.mode || prev.mode
         }));
       }
     };
@@ -176,27 +185,130 @@ export default function App() {
   };
 
   // Start daily session handler with deep link URL
-  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10) => {
-    setSessionParams({ surahNumber, startAyah, endAyah });
+  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10, mode: 'memorize' | 'review' = 'memorize') => {
+    setSessionParams({ surahNumber, startAyah, endAyah, mode });
     navigateTo({
       tab: 'session',
       surahNumber,
       startAyah,
       endAyah,
-      mode: 'memorize'
+      mode
     });
   };
 
-  // Session complete callback
-  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(memorizedAyahs, reviewedPages, minutes, taskName);
-    if (sessionParams.surahNumber) {
-      RetentionService.recordMemorizationCompletion(
-        sessionParams.surahNumber,
-        sessionParams.startAyah,
-        sessionParams.endAyah
+  // Choose today's session from the user's real plan and retention queue.
+  const handleStartDailySession = () => {
+    const currentPortions = RetentionService.getPortions();
+    const currentEnginePlans = StorageService.getEnginePlans();
+    const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused)
+      || currentEnginePlans.find(plan => !plan.isPaused);
+    const pendingEngineTask = activeEnginePlan?.schedule.find(day =>
+      day.memorizationTask && !day.memorizationTask.completed
+    )?.memorizationTask;
+
+    if (pendingEngineTask) {
+      handleStartSession(
+        pendingEngineTask.surahNumber,
+        pendingEngineTask.startAyah,
+        pendingEngineTask.endAyah,
+        'memorize'
       );
+      return;
     }
+
+    const activePreset = StorageService.getPlans().find(plan => plan.isActive);
+    // Only use scopes whose exact Surah boundaries are explicit. Juz/page/custom
+    // scopes need their own canonical ayah-range resolver before they can safely
+    // drive a session; do not silently widen them to an entire Surah.
+    const exactPresetSurahs = activePreset?.type === 'whole_quran'
+      ? ALL_SURAHS.map(surah => surah.number)
+      : activePreset?.targetSurahs;
+    if (activePreset && activePreset.unitType === 'ayah' && exactPresetSurahs && exactPresetSurahs.length > 0) {
+      const nextPresetRange = findNextUnmemorizedRange(
+        currentPortions,
+        exactPresetSurahs,
+        activePreset.dailyTarget || 7
+      );
+      if (nextPresetRange) {
+        handleStartSession(nextPresetRange.surahNumber, nextPresetRange.startAyah, nextPresetRange.endAyah, 'memorize');
+        return;
+      }
+    }
+
+    const duePortion = RetentionService.getDailyRevisionQueue()[0];
+    if (duePortion) {
+      handleStartSession(duePortion.surahNumber, duePortion.startAyah, duePortion.endAyah, 'review');
+      return;
+    }
+
+    const nextRange = findNextUnmemorizedRange(
+      currentPortions,
+      ALL_SURAHS.map(surah => surah.number),
+      activePreset?.dailyTarget || 7
+    );
+    if (nextRange) {
+      handleStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
+      return;
+    }
+
+    const firstMemorized = currentPortions.find(portion => portion.status !== 'not_memorized');
+    if (firstMemorized) {
+      handleStartSession(firstMemorized.surahNumber, firstMemorized.startAyah, firstMemorized.endAyah, 'review');
+      return;
+    }
+
+    handleStartSession(1, 1, 7, 'memorize');
+  };
+
+  // Session completion is mode-aware: a review must never create memorization progress.
+  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
+    const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      try {
+        RetentionService.recordMemorizationCompletion(
+          sessionParams.surahNumber,
+          sessionParams.startAyah,
+          sessionParams.endAyah
+        );
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'تعذر حفظ إنجاز جلسة الحفظ. لم يتم تسجيلها كإنجاز مؤكد.', 'error');
+        return;
+      }
+    }
+
+    const activitySaved = StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+    if (!activitySaved) {
+      showToast('تم حفظ تقدم المقطع، لكن تعذر حفظ سجل النشاط أو تحديث سلسلة المواظبة. صدّر نسخة احتياطية قبل إعادة المحاولة.', 'error');
+    }
+
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      const currentEnginePlans = StorageService.getEnginePlans();
+      const activeEnginePlan = currentEnginePlans.find(p => p.isActive && !p.isPaused)
+        || currentEnginePlans.find(p => !p.isPaused);
+      const matchingTask = activeEnginePlan?.schedule.find(day =>
+        day.memorizationTask &&
+        !day.memorizationTask.completed &&
+        day.memorizationTask.surahNumber === sessionParams.surahNumber &&
+        day.memorizationTask.startAyah === sessionParams.startAyah &&
+        day.memorizationTask.endAyah === sessionParams.endAyah
+      );
+      if (activeEnginePlan && matchingTask?.memorizationTask) {
+        const updatedPlan = PlanLifecycle.updateTask(activeEnginePlan, matchingTask.id, {
+          status: 'completed',
+          memorizationTask: {
+            ...matchingTask.memorizationTask,
+            completed: true,
+            completedAt: new Date().toISOString()
+          }
+        });
+        const updatedPlans = currentEnginePlans.map(plan =>
+          plan.id === activeEnginePlan.id ? updatedPlan : plan
+        );
+        setEnginePlans(updatedPlans);
+        StorageService.saveEnginePlans(updatedPlans);
+      }
+    }
+
     setLogs(StorageService.getLogs());
     setProfile(StorageService.getProfile());
     setRevisionItems(StorageService.getRevisionItems());
@@ -209,8 +321,13 @@ export default function App() {
   };
 
   const handleRecordRevisionComplete = (pagesCount: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    const saved = StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    if (!saved) {
+      showToast('تعذر حفظ سجل المراجعة أو تحديث سلسلة المواظبة. لم يتم تأكيد تسجيل النشاط.', 'error');
+      return;
+    }
     setLogs(StorageService.getLogs());
+    setProfile(StorageService.getProfile());
   };
 
   // Save preset plans
@@ -259,16 +376,19 @@ export default function App() {
 
     setRevisionItems(StorageService.getRevisionItems());
 
-    // Synchronize directly with Retention Service
-    RetentionService.addOrIncrementWeakVerse(
-      surahNumber,
-      ayahNumber,
-      surahName,
-      `الآية رقم ${ayahNumber} من سورة ${surahName}`,
-      'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
-    );
-
-    showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+    // Synchronize directly with Retention Service and never announce success after a failed write.
+    try {
+      RetentionService.addOrIncrementWeakVerse(
+        surahNumber,
+        ayahNumber,
+        surahName,
+        `الآية رقم ${ayahNumber} من سورة ${surahName}`,
+        'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
+      );
+      showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة.', 'error');
+    }
   };
 
   // Reset all data
@@ -286,7 +406,7 @@ export default function App() {
   const dueRevisionCount = RetentionService.getDailyRevisionQueueDetails(todayStr).totalDueCount;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
+    <div className="wird-app-shell min-h-screen flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}
@@ -298,7 +418,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+      <div className="wird-content-column flex-1 flex flex-col min-w-0 overflow-x-hidden">
         {/* Header */}
         <Header
           currentTab={currentTab}
@@ -306,7 +426,7 @@ export default function App() {
           profile={profile}
           onToggleTheme={handleToggleTheme}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
-          onStartDailySession={() => handleStartSession(67, 1, 10)}
+          onStartDailySession={handleStartDailySession}
           pwaInstallPrompt={pwaInstallPrompt}
           isStandalone={isStandalone}
           onInstallPwa={handleTriggerPwaInstall}
@@ -346,7 +466,7 @@ export default function App() {
         )}
 
         {/* Content Viewport with Code Splitting Suspense */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="wird-main wird-content flex-1 w-full mx-auto">
           <React.Suspense fallback={
             <div className="flex flex-col items-center justify-center py-28 space-y-3 text-stone-400">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-700 dark:text-emerald-400" />
@@ -387,6 +507,7 @@ export default function App() {
                 initialSurahNumber={sessionParams.surahNumber}
                 initialStartAyah={sessionParams.startAyah}
                 initialEndAyah={sessionParams.endAyah}
+                mode={sessionParams.mode}
                 profile={profile}
                 onCompleteSession={handleCompleteSession}
                 onExit={() => handleNavigate('dashboard')}
@@ -450,7 +571,7 @@ export default function App() {
         <div 
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-6 z-50 max-w-md bg-stone-900/95 dark:bg-stone-800/95 text-white px-4 py-3 rounded-2xl shadow-xl border border-stone-700/80 backdrop-blur-md flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-4"
+          className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-6 left-3 md:left-6 z-50 max-w-md bg-stone-900/95 dark:bg-stone-800/95 text-white px-4 py-3 rounded-2xl shadow-xl border border-stone-700/80 backdrop-blur-md flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-4"
         >
           {toastMessage.type === 'success' && (
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">

@@ -1,4 +1,4 @@
-import { getPageAyahSegments, getPageProgressStatus } from './pageProgressService';
+import { getPageAyahSegments, getPageProgressStatus, getPagesForAyahRange } from './pageProgressService';
 import { PortionStatusRecord } from '../types/quran';
 
 export function runPageProgressServiceTests(): { passed: number; failed: number } {
@@ -14,6 +14,20 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     const segments = getPageAyahSegments(1);
     assert(segments.length === 1, 'Page 1 must have one contiguous Surah segment');
     assert(segments[0].surahNumber === 1 && segments[0].startAyah === 1 && segments[0].endAyah === 7, 'Page 1 must map to Al-Fatihah 1-7');
+  });
+
+  test('Ayah ranges resolve to their exact canonical Mushaf pages', () => {
+    const fatihaPages = getPagesForAyahRange(1, 1, 7);
+    assert(fatihaPages.length === 1 && fatihaPages[0] === 1, 'Al-Fatihah 1-7 must resolve to page 1');
+    const baqarahPages = getPagesForAyahRange(2, 1, 10);
+    assert(baqarahPages.length >= 2, 'Al-Baqarah 1-10 must include every page crossed by the range');
+    assert(baqarahPages.every((page, index) => index === 0 || page > baqarahPages[index - 1]), 'Page results must be unique and sorted');
+  });
+
+  test('Ayah page lookup rejects invalid canonical coordinates', () => {
+    assert(getPagesForAyahRange(115, 1, 1).length === 0, 'Invalid Surah number must return no pages');
+    assert(getPagesForAyahRange(1, 1, 8).length === 0, 'Ayah beyond the Surah boundary must return no pages');
+    assert(getPagesForAyahRange(1, 7, 6).length === 0, 'Reversed ayah range must return no pages');
   });
 
   test('Generated page index covers every page and every ayah exactly once', () => {

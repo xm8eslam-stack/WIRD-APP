@@ -1,6 +1,7 @@
 import { RetentionService, DEFAULT_PORTIONS } from './retentionService';
 import { PortionMemorizationStatus, RevisionRating } from '../types/quran';
-import { createCanonicalPortionId } from './unifiedPortionService';
+import { createCanonicalPortionId, getLocalDateString } from './unifiedPortionService';
+import { StorageService } from './storageService';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -93,6 +94,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
 
   // 4. Performance Rating: Failed (Resets interval to 1 day and status to weak)
   runTest('RetentionService: "failed" rating resets interval to 1 day and marks status as weak', () => {
+    RetentionService.saveWeakVerses([]);
     const newPortion = RetentionService.addPortion({
       type: 'passage',
       surahNumber: 109,
@@ -122,6 +124,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
     const weakVerses = RetentionService.getWeakVerses();
     const foundWeak = weakVerses.find(w => w.surahNumber === 109 && w.ayahNumber === 3);
     assert(Boolean(foundWeak), 'Weak verse should be added to weak verses tracker');
+    assert(foundWeak?.mistakeCount === 1, 'One failed review must increment a weak-verse mistake exactly once');
   });
 
   // 5. Daily Queue Priority
@@ -157,6 +160,27 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
       `Expected score 0-100%, got ${metrics.retentionScorePercentage}%`);
     assert(metrics.statusBreakdown.stable >= 0, 'Stable count should be non-negative');
     assert(metrics.totalTrackedPortions > 0, 'Should have tracked portions');
+  });
+
+  runTest('RetentionService: revision activity counts exact Mushaf pages, not verse-count estimates', () => {
+    const today = getLocalDateString();
+    const before = StorageService.getLogs().find(log => log.date === today)?.reviewedPagesCount || 0;
+    const portion = RetentionService.addPortion({
+      type: 'passage',
+      surahNumber: 2,
+      surahName: 'البقرة',
+      startAyah: 1,
+      endAyah: 20,
+      status: 'recently_memorized',
+      nextDueDate: today,
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1,
+      mistakesCount: 0
+    });
+    RetentionService.recordRevisionPerformance(portion.id, 'successful');
+    const after = StorageService.getLogs().find(log => log.date === today)?.reviewedPagesCount || 0;
+    assert(after - before === 3, 'Al-Baqarah 1-20 spans three canonical Mushaf pages and must add exactly three');
   });
 
   return { passed, failed, results };

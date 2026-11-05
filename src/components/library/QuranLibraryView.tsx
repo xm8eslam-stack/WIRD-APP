@@ -140,7 +140,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="wird-library space-y-6">
       {/* 1. Header & Filters Toolbar */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -240,7 +240,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
       {/* 2. Main Content Split: Surah List (Right in RTL) & Surah Detail Reader (Left in RTL) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Surahs List */}
-        <div className="lg:col-span-5 space-y-2 max-h-[720px] overflow-y-auto pr-1">
+        <div className="wird-surah-list lg:col-span-5 space-y-2 max-h-[720px] overflow-y-auto pr-1">
           <div className="text-xs text-stone-500 px-1 pb-1 flex items-center justify-between">
             <span>نتائج السور ({filteredSurahs.length})</span>
             <span>اختر سورة للمعاينة</span>
@@ -252,60 +252,60 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             return (
               <div
                 key={surah.number}
-                onClick={() => {
-                  handleStopAudio();
-                  setSelectedSurah(surah);
-                }}
-                className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                className={"wird-surah-option p-3.5 rounded-xl border transition-all flex items-center justify-between " + (
                   isSelected
-                    ? 'bg-emerald-800 text-white border-emerald-900 shadow-sm'
-                    : 'bg-white dark:bg-stone-800/90 hover:bg-stone-50 dark:hover:bg-stone-800 border-stone-200/80 dark:border-stone-700/80 text-stone-900 dark:text-stone-100'
-                }`}
+                    ? "bg-emerald-800 text-white border-emerald-900 shadow-sm"
+                    : "bg-white dark:bg-stone-800/90 hover:bg-stone-50 dark:hover:bg-stone-800 border-stone-200/80 dark:border-stone-700/80 text-stone-900 dark:text-stone-100"
+                )}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs font-mono tabular-nums ${
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStopAudio();
+                    setSelectedSurah(surah);
+                  }}
+                  aria-pressed={isSelected}
+                  className="wird-surah-select flex items-center gap-3 text-right"
+                >
+                  <span className={"w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs font-mono tabular-nums " + (
                     isSelected
-                      ? 'bg-amber-400 text-emerald-950'
-                      : 'bg-[#faf8f5] dark:bg-stone-900 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700'
-                  }`}>
+                      ? "bg-amber-400 text-emerald-950"
+                      : "bg-[#faf8f5] dark:bg-stone-900 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
+                  )}>
                     {surah.number}
-                  </div>
-
-                  <div className="text-right">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-base font-quran">
-                        سورة {surah.name}
-                      </h4>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        isSelected 
-                          ? 'bg-emerald-700/80 text-emerald-100' 
-                          : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
-                      }`}>
+                  </span>
+                  <span className="text-right">
+                    <span className="flex items-center gap-2">
+                      <span className="font-bold text-base font-quran">سورة {surah.name}</span>
+                      <span className={"text-[10px] px-1.5 py-0.5 rounded " + (
+                        isSelected
+                          ? "bg-emerald-700/80 text-emerald-100"
+                          : "bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300"
+                      )}>
                         {surah.revelationType}
                       </span>
-                    </div>
-                    <div className={`text-xs ${isSelected ? 'text-emerald-100/90' : 'text-stone-500 dark:text-stone-400'}`}>
+                    </span>
+                    <span className={"block text-xs " + (isSelected ? "text-emerald-100/90" : "text-stone-500 dark:text-stone-400")}>
                       {surah.versesCount} آيات · الجزء {surah.juzStart} · صفحة {surah.pageStart}
-                    </div>
-                  </div>
-                </div>
+                    </span>
+                  </span>
+                </button>
 
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStartSession(surah.number, 1, Math.min(10, surah.versesCount));
-                    }}
+                    type="button"
+                    onClick={() => onStartSession(surah.number, 1, Math.min(10, surah.versesCount))}
                     title="بدء جلسة حفظ لهذه السورة"
-                    className={`p-2 rounded-lg transition-colors ${
+                    aria-label={`بدء جلسة حفظ سورة ${surah.name}`}
+                    className={"p-2 rounded-lg transition-colors " + (
                       isSelected
-                        ? 'bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold'
-                        : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100'
-                    }`}
+                        ? "bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold"
+                        : "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
+                    )}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                   </button>
-                  <ChevronLeft className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-stone-400'}`} />
+                  <ChevronLeft className={"w-4 h-4 " + (isSelected ? "text-white" : "text-stone-400")} />
                 </div>
               </div>
             );
@@ -319,9 +319,9 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
         </div>
 
         {/* Selected Surah Detail & Verses Viewer */}
-        <div className="lg:col-span-7 bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-5">
+        <div className="wird-reading-panel lg:col-span-7 bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-5">
           {/* Surah Header Card */}
-          <div className="bg-[#fdfbf7] dark:bg-stone-900/60 p-5 rounded-2xl border border-stone-200 dark:border-stone-700 text-center relative overflow-hidden">
+          <div className="wird-surah-banner bg-[#fdfbf7] dark:bg-stone-900/60 p-5 rounded-2xl border border-stone-200 dark:border-stone-700 text-center relative overflow-hidden">
             <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-2">
               <span>الجزء {selectedSurah.juzStart} {selectedSurah.juzEnd !== selectedSurah.juzStart && `إلى ${selectedSurah.juzEnd}`}</span>
               <span>صفحة {selectedSurah.pageStart} - {selectedSurah.pageEnd}</span>
@@ -457,7 +457,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                 return (
                   <div
                     key={ayah.numberInSurah}
-                    className={`p-4 rounded-xl border transition-all ${
+                    className={`wird-ayah-card p-4 rounded-xl border transition-all ${
                       isThisPlaying
                         ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 shadow-xs'
                         : 'bg-[#faf8f5]/60 dark:bg-stone-900/40 border-stone-200/70 dark:border-stone-700/60 hover:border-emerald-300'
@@ -510,7 +510,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                     </div>
 
                     {/* Ayah Text in authentic Amiri Uthmanic font */}
-                    <p className={`font-quran ${fontClass} text-stone-900 dark:text-stone-100 text-right`}>
+                    <p className={`wird-quran-reading-text font-quran ${fontClass} text-stone-900 dark:text-stone-100 text-right`}>
                       {ayah.text}
                       <span className="ayah-number">{ayah.numberInSurah}</span>
                     </p>

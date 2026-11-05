@@ -59,11 +59,13 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="wird-plans space-y-6">
       {/* Top Segmented Control */}
       <div className="bg-white dark:bg-stone-800/90 p-2 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            aria-pressed={activeTab === 'engine'}
             onClick={() => setActiveTab('engine')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'engine'
@@ -76,6 +78,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
           </button>
 
           <button
+            type="button"
+            aria-pressed={activeTab === 'presets'}
             onClick={() => setActiveTab('presets')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'presets'
@@ -113,7 +117,11 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {plans.map((plan) => {
-              const percent = Math.min(100, Math.round((plan.completedUnits / plan.totalUnits) * 100));
+              const totalUnits = Number.isFinite(plan.totalUnits) ? plan.totalUnits : 0;
+              const completedUnits = Number.isFinite(plan.completedUnits) ? plan.completedUnits : 0;
+              const percent = totalUnits > 0
+                ? Math.min(100, Math.max(0, Math.round((completedUnits / totalUnits) * 100)))
+                : 0;
 
               return (
                 <div
@@ -143,6 +151,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                       </div>
 
                       <button
+                        type="button"
+                        aria-label={`حذف الخطة ${plan.title}`}
                         onClick={() => setPlanToDelete(plan.id)}
                         className="text-stone-400 hover:text-red-500 p-1 transition-colors"
                         title="حذف الخطة"
@@ -160,7 +170,14 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="w-full bg-stone-100 dark:bg-stone-700 h-2 rounded-full overflow-hidden">
+                      <div
+                        role="progressbar"
+                        aria-label={`نسبة إنجاز ${plan.title}`}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={percent}
+                        aria-valuetext={`${percent}%`}
+                        className="w-full bg-stone-100 dark:bg-stone-700 h-2 rounded-full overflow-hidden">
                         <div
                           className="bg-emerald-600 h-full rounded-full transition-all duration-500"
                           style={{ width: `${percent}%` }}

@@ -188,7 +188,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   const totalMemorizedPagesCount = pageStats.completed;
 
   return (
-    <div className="space-y-6">
+    <div className="wird-progress space-y-6">
       {/* 1. Header with Export/Import */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

@@ -22,8 +22,9 @@ interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
   initialStartAyah?: number;
   initialEndAyah?: number;
+  mode?: 'memorize' | 'review';
   profile: UserProfile;
-  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => void;
+  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => void;
   onExit: () => void;
   onProgressChange?: (inProgress: boolean) => void;
 }
@@ -32,6 +33,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   initialSurahNumber = 67, // Default Al-Mulk
   initialStartAyah = 1,
   initialEndAyah = 5,
+  mode = 'memorize',
   profile,
   onCompleteSession,
   onExit,
@@ -98,11 +100,12 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
+    if (isCompleted || sessionAyahs.length === 0) return;
     const timer = setInterval(() => {
       setSecondsElapsed(prev => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isCompleted, sessionAyahs.length]);
 
   useEffect(() => {
     onProgressChange?.(repeatCount > 0 && !isCompleted);
@@ -111,7 +114,9 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // Keyboard shortcut: Spacebar to repeat
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
+      const targetTag = (e.target as HTMLElement).tagName;
+      const isInteractiveTarget = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(targetTag);
+      if (e.code === 'Space' && !isInteractiveTarget) {
         e.preventDefault();
         setRepeatCount(c => c + 1);
       }
@@ -162,6 +167,18 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     }
   };
 
+  // A deep-link or navigation change starts a fresh session with the requested mode and range.
+  useEffect(() => {
+    setSurahNumber(initialSurahNumber);
+    setCurrentAyahIndex(0);
+    setRepeatCount(0);
+    setRevealedWordIndices(new Set());
+    setSecondsElapsed(0);
+    setIsCompleted(false);
+    audioRef.current?.pause();
+    setIsPlaying(false);
+  }, [initialSurahNumber, initialStartAyah, initialEndAyah, mode]);
+
   // Word Masking Logic
   const words = currentAyah ? getAyahWords(currentAyah.text) : [];
   
@@ -191,10 +208,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       setIsCompleted(true);
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
       onCompleteSession(
-        sessionAyahs.length,
-        1,
+        mode === 'memorize' ? sessionAyahs.length : 0,
+        mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
         minutesSpent,
-        `إتمام حفظ سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`
+        `${mode === 'review' ? 'مراجعة' : 'إتمام حفظ'} سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`,
+        mode
       );
     }
   };
@@ -279,19 +297,19 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         <div className="space-y-2">
           <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-            مبارك الإنجاز القرآني
+            {mode === 'review' ? 'مبارك إتمام المراجعة' : 'مبارك الإنجاز القرآني'}
           </span>
           <h2 className="text-2xl font-bold font-quran text-stone-900 dark:text-stone-100">
-            أتممت وِرد الحفظ اليومي بنجاح!
+            {mode === 'review' ? 'أتممت جلسة المراجعة بنجاح!' : 'أتممت وِرد الحفظ اليومي بنجاح!'}
           </h2>
           <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
-            تم حفظ وتكرار وتثبيت الآيات المقررة لسورة {surahMeta.name}. ثبّت الله القرآن في قلبك ونفعك به في الدنيا والآخرة.
+            {mode === 'review' ? `تمت مراجعة الآيات المحددة من سورة ${surahMeta.name}.` : `تم حفظ وتكرار وتثبيت الآيات المقررة لسورة ${surahMeta.name}. ثبّت الله القرآن في قلبك ونفعك به في الدنيا والآخرة.`}
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3 p-4 bg-[#faf8f5] dark:bg-stone-900/60 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-xs">
           <div>
-            <div className="text-stone-400">الآيات المحفوظة</div>
+            <div className="text-stone-400">{mode === 'review' ? 'الآيات المراجعة' : 'الآيات المحفوظة'}</div>
             <div className="text-lg font-bold text-emerald-800 dark:text-emerald-300 font-mono">
               {sessionAyahs.length}
             </div>
@@ -306,7 +324,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             <div className="text-stone-400">سلسلة المواظبة</div>
             <div className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono flex items-center justify-center gap-1">
               <Flame className="w-4 h-4 fill-amber-500" />
-              <span>{profile.streakDays + 1} يوم</span>
+              <span>{profile.streakDays} يوم</span>
             </div>
           </div>
         </div>
@@ -320,7 +338,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             }}
             className="px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold"
           >
-            تكرار الجلسة للتثبيت
+            {mode === 'review' ? 'إعادة المراجعة' : 'تكرار الجلسة للتثبيت'}
           </button>
 
           <button
@@ -335,7 +353,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="wird-session space-y-6 max-w-4xl mx-auto">
       {/* 1. Session Navigation & Progress Bar */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
         <button
@@ -347,6 +365,9 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </button>
 
         <div className="flex items-center gap-3">
+          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${mode === 'review' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'}`}>
+            {mode === 'review' ? 'جلسة مراجعة' : 'جلسة حفظ'}
+          </span>
           <span className="font-bold text-sm text-stone-900 dark:text-stone-100 font-quran">
             سورة {surahMeta.name}
           </span>
@@ -359,10 +380,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
 
         {/* Ayah Steps Indicators */}
-        <div className="flex items-center gap-1.5">
+        <div className="wird-session-progress flex items-center gap-1.5" role="list" aria-label="تقدم الآيات">
           {sessionAyahs.map((a, idx) => (
             <div
               key={a.numberInSurah}
+              role="listitem"
+              aria-current={idx === currentAyahIndex ? 'step' : undefined}
+              aria-label={`الآية ${a.numberInSurah} ${idx < currentAyahIndex ? 'مكتملة' : idx === currentAyahIndex ? 'الحالية' : 'قادمة'}`}
               className={`w-2.5 h-2.5 rounded-full transition-all ${
                 idx === currentAyahIndex
                   ? 'bg-emerald-600 ring-2 ring-emerald-300 dark:ring-emerald-700 scale-125'
@@ -391,17 +415,23 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             {words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
+              if (masked) {
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleToggleWordReveal(idx)}
+                    aria-label={`كشف الكلمة رقم ${idx + 1} من الآية ${currentAyah.numberInSurah}`}
+                    className="inline-block font-quran px-2.5 py-0.5 rounded-lg transition-all select-none bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500"
+                    title="اضغط لإظهار الكلمة للتسميع"
+                  >
+                    {word}
+                  </button>
+                );
+              }
+
               return (
-                <span
-                  key={idx}
-                  onClick={() => masked ? handleToggleWordReveal(idx) : null}
-                  className={`inline-block px-2.5 py-0.5 rounded-lg transition-all select-none ${
-                    masked
-                      ? 'bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500'
-                      : 'cursor-default'
-                  }`}
-                  title={masked ? "اضغط لإظهار الكلمة للتسميع" : undefined}
-                >
+                <span key={idx} className="inline-block px-2.5 py-0.5 font-quran cursor-default">
                   {word}
                 </span>
               );

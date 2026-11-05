@@ -25,7 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   onInstallPwa
 }) => {
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[#faf8f5]/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
+    <header className="wird-topbar sticky top-0 z-30 flex items-center justify-between gap-4 px-4 md:px-8 transition-colors">
       {/* Zone 1: Mobile Menu & Semantic RTL Breadcrumb */}
       <div className="flex items-center gap-3">
         <button
@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         <nav aria-label="مسار التنقل" className="flex items-center gap-2 text-xs">
-          <span className="font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/60 dark:border-emerald-800/50 px-2.5 py-1 rounded-md tracking-wide">
+          <span className="wird-brand-chip font-bold px-3 py-1 tracking-wide">
             وِرد
           </span>
           <ChevronLeft className="w-3.5 h-3.5 text-stone-400 dark:text-stone-600 shrink-0" aria-hidden="true" />
@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-2 text-stone-600 dark:text-stone-400">
           <BookOpen className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-          <span>الورد المقرر: <strong className="text-stone-900 dark:text-stone-200 font-bold font-quran text-sm">سورة الملك (1-10)</strong></span>
+          <span>رفيقك اليومي: <strong className="text-stone-900 dark:text-stone-200 font-bold font-quran text-sm">خطوة ثابتة مع القرآن</strong></span>
         </div>
       </div>
 
@@ -92,10 +92,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onStartDailySession}
-          className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-700 dark:hover:bg-emerald-600 rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-600"
+          className="wird-header-cta flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-700 dark:hover:bg-emerald-600 rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-600"
         >
           <Play className="w-3.5 h-3.5 fill-white" />
-          <span>جلسة الحفظ اليومية</span>
+          <span className="hidden sm:inline">جلسة الحفظ اليومية</span>
         </button>
       </div>
     </header>

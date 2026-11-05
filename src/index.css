@@ -2,9 +2,64 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  color-scheme: light;
+  --wird-canvas: #f5f3ec;
+  --wird-surface: #fffefa;
+  --wird-surface-soft: #f9f7f0;
+  --wird-ink: #1d3029;
+  --wird-muted: #718078;
+  --wird-line: rgba(39, 69, 56, .11);
+  --wird-forest: #174b3b;
+  --wird-forest-deep: #10372d;
+  --wird-gold: #c7a35b;
+  --wird-shadow: 0 12px 34px rgba(32, 48, 39, .055);
+}
+
+.dark {
+  color-scheme: dark;
+  --wird-canvas: #101a17;
+  --wird-surface: #18241f;
+  --wird-surface-soft: #1d2b25;
+  --wird-ink: #e8eee8;
+  --wird-muted: #a1afa6;
+  --wird-line: rgba(220, 235, 224, .09);
+  --wird-forest: #83b69b;
+  --wird-forest-deep: #0d211a;
+  --wird-gold: #d5b66f;
+  --wird-shadow: 0 16px 38px rgba(0, 0, 0, .2);
+}
+
 @layer base {
   * {
     font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    background: var(--wird-canvas);
+  }
+
+  body {
+    min-width: 320px;
+    background: var(--wird-canvas);
+    color: var(--wird-ink);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+  }
+
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--wird-gold);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: rgba(23, 75, 59, .18);
+    color: var(--wird-ink);
   }
 
   .font-quran {
@@ -16,33 +71,292 @@
   }
 }
 
-/* Custom subtle scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(120, 113, 108, 0.25);
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(120, 113, 108, 0.4);
+/* WIRD visual system — calm editorial surfaces, forest green and warm brass. */
+.wird-app-shell {
+  min-height: 100dvh;
+  color: var(--wird-ink);
+  background:
+    radial-gradient(ellipse at 12% 4%, rgba(199, 163, 91, .09), transparent 26rem),
+    radial-gradient(ellipse at 88% 24%, rgba(35, 103, 76, .055), transparent 34rem),
+    var(--wird-canvas);
 }
 
-/* Islamic pattern background overlay helper */
+.dark .wird-app-shell {
+  background:
+    radial-gradient(ellipse at 12% 4%, rgba(199, 163, 91, .055), transparent 26rem),
+    radial-gradient(ellipse at 88% 24%, rgba(35, 103, 76, .08), transparent 34rem),
+    var(--wird-canvas);
+}
+
+.wird-content-column {
+  min-width: 0;
+  min-height: 100dvh;
+}
+
+.wird-main {
+  width: min(100%, 1540px);
+  margin-inline: auto;
+  padding: clamp(1rem, 2.2vw, 2.25rem);
+  padding-bottom: calc(6.7rem + env(safe-area-inset-bottom));
+}
+
+.wird-topbar {
+  min-height: 4.5rem;
+  background: color-mix(in srgb, var(--wird-surface) 88%, transparent);
+  border-bottom: 1px solid var(--wird-line);
+  box-shadow: 0 4px 20px rgba(25, 46, 36, .025);
+  backdrop-filter: blur(18px);
+}
+
+.wird-topbar .wird-brand-chip {
+  color: var(--wird-forest);
+  background: rgba(35, 103, 76, .075);
+  border: 1px solid rgba(35, 103, 76, .13);
+  border-radius: 999px;
+  letter-spacing: .02em;
+}
+
+.dark .wird-topbar .wird-brand-chip {
+  color: #c5dfcf;
+  background: rgba(131, 182, 155, .1);
+  border-color: rgba(131, 182, 155, .16);
+}
+
+.wird-sidebar {
+  width: 17.25rem;
+  color: #e8eee8;
+  background:
+    radial-gradient(circle at 85% 8%, rgba(199, 163, 91, .13), transparent 13rem),
+    linear-gradient(165deg, #173f33 0%, #12372d 48%, #0d2b23 100%);
+  border-left: 1px solid rgba(255, 255, 255, .08);
+  box-shadow: 12px 0 36px rgba(17, 44, 34, .08);
+}
+
+.wird-sidebar-brand {
+  border-color: rgba(255, 255, 255, .1) !important;
+}
+
+.wird-brand-mark {
+  background: linear-gradient(145deg, #d7bd7c, #b18b43) !important;
+  color: #173d31 !important;
+  border: 1px solid rgba(255, 239, 190, .55) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .16) !important;
+}
+
+.wird-sidebar .wird-brand-name { color: #fff8e8 !important; }
+.wird-sidebar .wird-brand-subtitle { color: rgba(232, 238, 232, .62) !important; }
+.wird-sidebar .wird-brand-wordmark { color: #d9bd78 !important; }
+
+.wird-sidebar-nav {
+  padding: 1rem .85rem;
+}
+
+.wird-nav-item {
+  min-height: 2.9rem;
+  border: 1px solid transparent;
+  color: rgba(239, 245, 239, .76) !important;
+  border-radius: 13px !important;
+  margin-block: 3px;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.wird-nav-item:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .075) !important;
+  border-color: rgba(255, 255, 255, .06);
+  transform: translateX(-2px);
+}
+
+.wird-nav-item[aria-current="page"] {
+  color: #173d31 !important;
+  background: linear-gradient(105deg, #e3cf9b, #c8a963) !important;
+  border-color: rgba(255, 239, 190, .55) !important;
+  box-shadow: 0 7px 18px rgba(0, 0, 0, .13);
+}
+
+.wird-nav-item[aria-current="page"] svg { color: #244b3b !important; }
+
+.wird-sidebar-profile {
+  background: rgba(255, 255, 255, .075) !important;
+  border: 1px solid rgba(255, 255, 255, .1) !important;
+}
+
+.wird-sidebar-profile .wird-profile-avatar {
+  background: #d2b674 !important;
+  color: #173d31 !important;
+}
+
+.wird-sidebar-profile .wird-profile-name { color: #fff !important; }
+.wird-sidebar-profile .wird-profile-caption { color: rgba(232, 238, 232, .62) !important; }
+
+.wird-mobile-dock {
+  position: fixed;
+  z-index: 45;
+  inset-inline: 12px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  display: none;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 22px;
+  color: #e9eee8;
+  background: rgba(17, 53, 42, .96);
+  box-shadow: 0 16px 40px rgba(10, 34, 25, .26);
+  backdrop-filter: blur(18px);
+}
+
+.wird-mobile-dock-item {
+  min-width: 0;
+  min-height: 3.55rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 15px;
+  color: rgba(239, 245, 239, .72);
+  font-size: 10px;
+  font-weight: 700;
+  transition: background .18s ease, color .18s ease;
+}
+
+.wird-mobile-dock-item[aria-current="page"] {
+  color: #193e32;
+  background: linear-gradient(145deg, #e2ce9a, #c8a963);
+}
+
+.wird-mobile-dock-item svg { width: 18px; height: 18px; }
+.wird-mobile-dock-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.wird-content {
+  color: var(--wird-ink);
+}
+
+.wird-content > :first-child { margin-top: 0; }
+
+.wird-content [class*="bg-white"][class*="rounded-2xl"],
+.wird-content [class*="bg-white"][class*="rounded-3xl"] {
+  border-color: var(--wird-line);
+  box-shadow: var(--wird-shadow);
+}
+
+.wird-content [class*="text-stone-900"] { color: var(--wird-ink); }
+.wird-content [class*="text-stone-500"] { color: var(--wird-muted); }
+
+.wird-content [class*="border-stone-200"],
+.wird-content [class*="border-stone-100"] {
+  border-color: var(--wird-line);
+}
+
+.wird-content input,
+.wird-content select,
+.wird-content textarea {
+  border-radius: 12px;
+}
+
+.wird-content button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.wird-content button:not(:disabled) {
+  touch-action: manipulation;
+}
+
+.wird-dashboard { gap: clamp(1rem, 1.8vw, 1.65rem); }
+
+.wird-hero {
+  isolation: isolate;
+  min-height: 15rem;
+  display: flex;
+  align-items: center;
+  background:
+    radial-gradient(circle at 12% 18%, rgba(216, 189, 120, .22), transparent 17rem),
+    radial-gradient(circle at 90% 90%, rgba(83, 139, 108, .23), transparent 22rem),
+    linear-gradient(118deg, #0d3027 0%, #174b3b 52%, #1c5944 100%) !important;
+  border: 1px solid rgba(215, 189, 120, .32) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 20px 45px rgba(15, 53, 39, .13) !important;
+}
+
+.wird-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: .18;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(232, 211, 158, .75) .7px, transparent .7px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(110deg, transparent 8%, #000 100%);
+}
+
+.wird-dashboard [class*="grid"] > [class*="bg-white"][class*="rounded-2xl"] {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.wird-dashboard [class*="grid"] > [class*="bg-white"][class*="rounded-2xl"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(32, 48, 39, .085);
+  border-color: rgba(199, 163, 91, .32);
+}
+
+.wird-library [class*="text-center"][class*="rounded-2xl"][class*="overflow-hidden"] {
+  background: linear-gradient(180deg, var(--wird-surface-soft), var(--wird-surface));
+}
+
+.wird-library .font-quran,
+.wird-session .font-quran {
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern";
+}
+
+.wird-session {
+  max-width: 68rem;
+  margin-inline: auto;
+}
+
+.wird-session [class*="bg-[#fdfbf7]"] {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(199, 163, 91, .09), transparent 22rem),
+    var(--wird-surface-soft) !important;
+  border-color: rgba(199, 163, 91, .22) !important;
+  box-shadow: 0 18px 42px rgba(34, 48, 39, .06) !important;
+}
+
+.wird-session .font-quran.text-2xl,
+.wird-session .font-quran.text-3xl,
+.wird-session .font-quran.text-4xl {
+  line-height: 2.35;
+  letter-spacing: .01em;
+}
+
+.wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-advisor, .wird-tests {
+  animation: wird-enter .32s ease both;
+}
+
+@keyframes wird-enter {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(120, 113, 108, .25); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(120, 113, 108, .4); }
+
+/* Islamic pattern helper retained for existing views. */
 .bg-islamic-pattern {
   background-color: #fdfbf7;
-  background-image: radial-gradient(#065f46 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #fdfbf7 0.75px);
+  background-image: radial-gradient(#065f46 .75px, transparent .75px), radial-gradient(#c59b27 .75px, #fdfbf7 .75px);
   background-size: 30px 30px;
   background-position: 0 0, 15px 15px;
 }
 
 .dark .bg-islamic-pattern {
   background-color: #0f172a;
-  background-image: radial-gradient(#10b981 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #0f172a 0.75px);
+  background-image: radial-gradient(#10b981 .75px, transparent .75px), radial-gradient(#c59b27 .75px, #0f172a .75px);
   background-size: 30px 30px;
   background-position: 0 0, 15px 15px;
 }
@@ -54,19 +368,271 @@
   justify-content: center;
   width: 1.8rem;
   height: 1.8rem;
-  margin: 0 0.35rem;
-  font-size: 0.85rem;
+  margin: 0 .35rem;
+  font-size: .85rem;
   font-family: 'Amiri', serif;
   color: #b45309;
   border: 1.5px solid #d97706;
   border-radius: 50%;
   vertical-align: middle;
-  background: rgba(251, 191, 36, 0.08);
+  background: rgba(251, 191, 36, .08);
   font-feature-settings: "tnum";
 }
 
 .dark .ayah-number {
   color: #fcd34d;
   border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, .15);
+}
+
+@media (max-width: 767px) {
+  .wird-main {
+    padding: 1rem .85rem calc(7.1rem + env(safe-area-inset-bottom));
+  }
+  .wird-topbar {
+    min-height: 4rem;
+    padding-inline: .85rem;
+  }
+  .wird-topbar h1 {
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .82rem;
+  }
+  .wird-mobile-dock { display: grid; }
+  .wird-hero { min-height: auto; border-radius: 23px !important; }
+  .wird-hero > div.relative { gap: 1.25rem; }
+  .wird-dashboard [class*="grid"] > [class*="bg-white"][class*="rounded-2xl"]:hover {
+    transform: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .wird-main { padding-bottom: 2.25rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Dashboard 5B — clearer focus hierarchy and progress semantics. */
+.wird-focus-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 100%;
+  border-radius: 24px !important;
+  box-shadow: 0 12px 30px rgba(28, 54, 41, .055) !important;
+}
+.wird-focus-card::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 1.35rem;
+  bottom: 1.35rem;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--wird-gold), rgba(199, 163, 91, .12));
+}
+.wird-metric-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 9.25rem;
+  border-radius: 21px !important;
+  box-shadow: 0 8px 24px rgba(28, 54, 41, .045) !important;
+}
+.wird-metric-label {
+  min-height: 2rem;
+  font-weight: 700;
+  letter-spacing: .005em;
+}
+.wird-metric-icon {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  color: var(--wird-forest);
+  background: rgba(35, 103, 76, .085);
+  border: 1px solid rgba(35, 103, 76, .08);
+}
+.dark .wird-metric-icon {
+  color: #c5dfcf;
+  background: rgba(131, 182, 155, .1);
+  border-color: rgba(131, 182, 155, .12);
+}
+.wird-metric-card > .flex.items-baseline > span:first-child,
+.wird-metric-card > div > .text-2xl {
+  font-size: clamp(1.55rem, 2vw, 2rem);
+  font-weight: 800;
+  letter-spacing: -.045em;
+}
+.wird-progress-track {
+  height: 7px !important;
+  border-radius: 999px !important;
+  background: rgba(113, 128, 120, .14) !important;
+}
+.wird-progress-track > div {
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, #1d7655, #64a982) !important;
+  transition: width .55s cubic-bezier(.2,.7,.2,1);
+}
+.wird-progress-track[aria-label*="الصفحات"] > div {
+  background: linear-gradient(90deg, #a87c32, #d7b96f) !important;
+}
+@media (max-width: 639px) {
+  .wird-focus-card { padding: 1.1rem !important; border-radius: 21px !important; }
+  .wird-metric-card { min-height: 8.5rem; padding: 1rem !important; }
+  .wird-metric-card > .flex.items-baseline { align-items: flex-end; gap: .4rem; }
+}
+
+/* Quran library 5C — reading-first layout and keyboard-operable Surah browser. */
+.wird-surah-list {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-inline-end: .2rem;
+}
+.wird-surah-option {
+  min-height: 4.65rem;
+  gap: .6rem;
+  border-radius: 17px !important;
+  box-shadow: 0 4px 14px rgba(28, 54, 41, .035);
+}
+.wird-surah-option:focus-within {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 2px;
+}
+.wird-surah-select {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 11px;
+  padding: .1rem;
+}
+.wird-surah-select:focus-visible {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 3px;
+}
+.wird-reading-panel {
+  border-radius: 26px !important;
+  box-shadow: 0 16px 42px rgba(28, 54, 41, .06) !important;
+}
+.wird-surah-banner {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(199, 163, 91, .13), transparent 17rem),
+    var(--wird-surface-soft) !important;
+  border-color: rgba(199, 163, 91, .24) !important;
+}
+.wird-ayah-card {
+  border-radius: 18px !important;
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.wird-ayah-card:hover {
+  border-color: rgba(35, 103, 76, .28) !important;
+  box-shadow: 0 7px 20px rgba(28, 54, 41, .045);
+}
+.wird-quran-reading-text {
+  line-height: 2.45 !important;
+  word-spacing: .035em;
+  text-wrap: pretty;
+}
+@media (max-width: 1023px) {
+  .wird-surah-list { max-height: min(38vh, 340px) !important; }
+  .wird-reading-panel { padding: 1rem !important; }
+}
+@media (max-width: 639px) {
+  .wird-surah-option { min-height: 4.35rem; padding: .7rem !important; }
+  .wird-quran-reading-text { line-height: 2.3 !important; }
+}
+
+/* Memorization workspace 5D — clear step state and thumb-sized reveal controls. */
+.wird-session-progress [aria-current="step"] {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 2px;
+  transform: scale(1.2);
+}
+.wird-session button[aria-label^="كشف الكلمة"] {
+  min-height: 2.75rem;
+  min-width: 2.25rem;
+  margin-inline: .08rem;
+  touch-action: manipulation;
+}
+.wird-session button[aria-label^="كشف الكلمة"]:focus-visible {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 3px;
+}
+
+
+/* Phase 5E — consistent planning, revision, analytics and settings surfaces. */
+.wird-planning-wizard {
+  display: grid;
+  gap: 1.25rem;
+}
+.wird-plans > div:first-child {
+  background: var(--wird-surface) !important;
+  border-color: var(--wird-line) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--wird-shadow) !important;
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  [class*="rounded-2xl"][class*="border"] {
+  border-color: var(--wird-line) !important;
+  box-shadow: var(--wird-shadow);
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 2.75rem;
+  border-color: var(--wird-line) !important;
+  border-radius: 12px !important;
+  background-color: var(--wird-surface-soft) !important;
+  color: var(--wird-ink);
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  border-color: var(--wird-gold) !important;
+  box-shadow: 0 0 0 3px rgba(199, 163, 91, .14);
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  button {
+  min-height: 2.75rem;
+  touch-action: manipulation;
+}
+.wird-planning-wizard > [class*="rounded-2xl"][class*="border"],
+.wird-revision > [class*="rounded-2xl"][class*="border"],
+.wird-progress > [class*="rounded-2xl"][class*="border"],
+.wird-settings > [class*="rounded-2xl"][class*="border"],
+.wird-tests > [class*="rounded-2xl"][class*="border"] {
+  border-radius: 22px !important;
+}
+.wird-progress [role="progressbar"] {
+  overflow: hidden;
+  border-radius: 999px;
+}
+.wird-progress table {
+  border-color: var(--wird-line);
+}
+.wird-planning-wizard [aria-pressed="true"],
+.wird-plans [aria-pressed="true"],
+.wird-revision [aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px rgba(199, 163, 91, .45);
+}
+@media (max-width: 639px) {
+  .wird-planning-wizard { gap: 1rem; }
+  :where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+    [class*="rounded-2xl"][class*="border"] {
+    border-radius: 18px !important;
+  }
+  :where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+    :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    min-height: 2.875rem;
+    font-size: 16px;
+  }
 }
