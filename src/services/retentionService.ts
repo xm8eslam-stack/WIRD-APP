@@ -646,7 +646,6 @@ export const RetentionService = {
 
     portions.forEach(p => {
       breakdown[p.status] = (breakdown[p.status] || 0) + 1;
-      const count = (p.endAyah - p.startAyah + 1) || 1;
       totalEase += p.easeFactor;
 
       // Retention quality is calculated below once per unique ayah.
