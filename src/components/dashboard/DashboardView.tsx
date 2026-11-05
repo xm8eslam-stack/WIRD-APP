@@ -204,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300"
             >
               <Play className="w-4 h-4 fill-emerald-950" />
-              <span>ابدأ ورد اليوم (سورة {dailyTask.surahName})</span>
+              <span>{dailyTask.mode === 'review' ? 'ابدأ مراجعة اليوم' : 'ابدأ حفظ اليوم'} (سورة {dailyTask.surahName})</span>
             </button>
 
             <button
@@ -230,7 +230,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
-                    الحفظ الجديد (الورد اليومي)
+                    {dailyTask.mode === 'review' ? 'المراجعة المستحقة اليوم' : 'الحفظ الجديد (الورد اليومي)'}
                   </h3>
                   <p className="text-xs text-stone-500 dark:text-stone-400">
                     {dailyTask.label}
@@ -239,7 +239,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-md border border-emerald-200/50 dark:border-emerald-800/40">
-                مستهدف اليوم
+                {dailyTask.mode === 'review' ? 'مراجعة اليوم' : 'مستهدف اليوم'}
               </span>
             </div>
 
@@ -277,11 +277,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="pt-5 mt-4 border-t border-stone-100 dark:border-stone-700 flex flex-col sm:flex-row items-center gap-3">
             <button
-              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah)}
+              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
               className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>بدء جلسة الحفظ التفاعلية</span>
+              <span>{dailyTask.mode === 'review' ? 'بدء جلسة المراجعة التفاعلية' : 'بدء جلسة الحفظ التفاعلية'}</span>
             </button>
             <button
               onClick={() => onNavigate('library')}
