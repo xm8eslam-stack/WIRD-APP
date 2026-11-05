@@ -41,6 +41,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 }) => {
   const [surahNumber, setSurahNumber] = useState(initialSurahNumber);
   const [currentAyahIndex, setCurrentAyahIndex] = useState(0);
+  const [sessionRange, setSessionRange] = useState({ startAyah: initialStartAyah, endAyah: initialEndAyah });
   
   // Available ayahs for this surah
   const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber) || ALL_SURAHS[66];
@@ -48,10 +49,10 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   
   // Filter ayahs within selected range
   const sessionAyahs = allSurahAyahs.length > 0 
-    ? allSurahAyahs.filter(a => a.numberInSurah >= initialStartAyah && a.numberInSurah <= (initialEndAyah || 10))
+    ? allSurahAyahs.filter(a => a.numberInSurah >= sessionRange.startAyah && a.numberInSurah <= sessionRange.endAyah)
     : [];
 
-  const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex] || allSurahAyahs[0];
+  const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex];
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -70,27 +71,40 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [isCompleted, setIsCompleted] = useState(false);
 
   useEffect(() => {
+    if (isCompleted || sessionAyahs.length === 0) return;
     const timer = setInterval(() => {
       setSecondsElapsed(prev => prev + 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isCompleted, sessionAyahs.length]);
 
   useEffect(() => {
-    onProgressChange?.(repeatCount > 0 && !isCompleted);
-  }, [repeatCount, isCompleted, onProgressChange]);
+    onProgressChange?.(sessionAyahs.length > 0 && !isCompleted);
+  }, [sessionAyahs.length, isCompleted, onProgressChange]);
+
+  useEffect(() => {
+    setSurahNumber(initialSurahNumber);
+    setSessionRange({ startAyah: initialStartAyah, endAyah: initialEndAyah });
+    setCurrentAyahIndex(0);
+    setIsCompleted(false);
+    setSecondsElapsed(0);
+  }, [initialSurahNumber, initialStartAyah, initialEndAyah]);
+
+  useEffect(() => () => {
+    audioRef.current?.pause();
+  }, []);
 
   // Keyboard shortcut: Spacebar to repeat
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
+      if (!isCompleted && e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
         e.preventDefault();
         setRepeatCount(c => c + 1);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isCompleted]);
 
   // Reset revealed words when ayah or mask changes
   useEffect(() => {
@@ -157,6 +171,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // Next / Previous Ayah (Semantic RTL: Next is on Left, Prev is on Right)
   const handleNextAyah = () => {
+    if (isCompleted || !currentAyah || repeatCount < targetRepeats) return;
     if (currentAyahIndex < sessionAyahs.length - 1) {
       setCurrentAyahIndex(prev => prev + 1);
     } else {
@@ -185,6 +200,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   };
 
   if (!currentAyah) {
+    const hasLocalSurahText = allSurahAyahs.length > 0;
     return (
       <div className="bg-white dark:bg-stone-800 rounded-3xl p-8 text-center space-y-5 border border-stone-200 dark:border-stone-700 max-w-lg mx-auto shadow-sm">
         <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center mx-auto border border-amber-200 dark:border-amber-800">
@@ -192,36 +208,48 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
         <div className="space-y-2">
           <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-full">
-            تنبيه اكتمال التغطية النصية المحلية
+            {hasLocalSurahText ? 'نطاق جلسة غير صالح' : 'النص غير متاح محلياً'}
           </span>
           <h3 className="font-bold text-stone-900 dark:text-stone-100 text-lg">
-            سورة {surahMeta.name} ({surahMeta.versesCount} آية)
+            سورة {surahMeta.name}
           </h3>
           <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed max-w-md mx-auto">
-            النص القرآني العثماني المشكول لهذه السورة غير مضمن محلياً في الحزمة الأساسية (التطبيق يضمن نصوص السور الأساسية كالفاتحة والملك والكهف وقصار السور لتقليل حجم الحزمة وضمان الدقة). يمكنك التدرب على إحدى السور المعتمدة محلياً أو الاستماع لتلاوة سورة {surahMeta.name} في شاشة المصحف.
+            {hasLocalSurahText
+              ? `النطاق المحدد غير صالح أو لا يحتوي آيات متاحة: (${sessionRange.startAyah} - ${sessionRange.endAyah}). ارجع واختر نطاقاً صحيحاً.`
+              : `النص القرآني العثماني لهذه السورة غير متاح في بيانات الجلسة المحلية. يمكنك تجربة إحدى السور المتاحة محلياً أو فتح السورة من شاشة المصحف.`}
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => {
-              setSurahNumber(67);
-              setCurrentAyahIndex(0);
-            }}
-            className="w-full sm:w-auto px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-900 transition-colors"
-          >
-            جلسة سورة الملك (الآيات 1-10)
-          </button>
-          <button
-            onClick={() => {
-              setSurahNumber(1);
-              setCurrentAyahIndex(0);
-            }}
-            className="w-full sm:w-auto px-5 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold transition-colors"
-          >
-            سورة الفاتحة (كاملة)
-          </button>
-        </div>
+        {!hasLocalSurahText && (
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                setSurahNumber(67);
+                setSessionRange({ startAyah: 1, endAyah: 10 });
+                setCurrentAyahIndex(0);
+                setIsCompleted(false);
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-900 transition-colors"
+            >
+              جلسة سورة الملك (الآيات 1-10)
+            </button>
+            <button
+              onClick={() => {
+                setSurahNumber(1);
+                setSessionRange({ startAyah: 1, endAyah: 7 });
+                setCurrentAyahIndex(0);
+                setIsCompleted(false);
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold transition-colors"
+            >
+              سورة الفاتحة (كاملة)
+            </button>
+          </div>
+        )}
+
+        <button onClick={onExit} className="px-5 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold">
+          العودة
+        </button>
       </div>
     );
   }
@@ -473,10 +501,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         <button
           onClick={handleNextAyah}
-          className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          disabled={repeatCount < targetRepeats}
+          className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           <span>
-            {currentAyahIndex === sessionAyahs.length - 1 ? 'إتمام الجلسة وحفظ الورد' : 'أتقنت الآية — التالية'}
+            {repeatCount < targetRepeats
+              ? `باقي ${targetRepeats - repeatCount} تكرار`
+              : currentAyahIndex === sessionAyahs.length - 1 ? 'إتمام الجلسة' : 'أتقنت الآية — التالية'}
           </span>
           <ChevronLeft className="w-4 h-4" />
         </button>
