@@ -267,6 +267,11 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate preserved');
     assert(migrated[0].history?.length === 2, 'Lossless history: duplicate log ID with differing content is preserved with modified ID');
     assert((migrated[0].conflictAudit?.length || 0) >= 2, 'Metadata conflicts (type, surahName, status, history) logged to conflictAudit');
+    const migratedAgain = migrateLegacyDataLosslessly(legacyPortions, legacyRevisions);
+    const firstHistoryIds = migrated[0].history?.map(log => log.id).sort().join('|');
+    const repeatedHistoryIds = migratedAgain.portions[0].history?.map(log => log.id).sort().join('|');
+    assert(firstHistoryIds === repeatedHistoryIds, 'Conflicting history IDs remain deterministic across repeated migrations');
+
     assert(report.success === true, 'Migration report reports success');
   }
 
