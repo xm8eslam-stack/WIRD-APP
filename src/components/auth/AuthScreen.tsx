@@ -19,6 +19,7 @@ export const AuthScreen: React.FC = () => {
   const { 
     user, 
     isEmailVerified, 
+    lastVerificationSent,
     authError, 
     isFirebaseReady,
     loginWithGoogle, 
@@ -138,9 +139,15 @@ export const AuthScreen: React.FC = () => {
             <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100 font-quran">
               تأكيد البريد الإلكتروني مطلوب
             </h2>
-            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
-              قمنا بإرسال رسالة تأكيد إلى البريد الإلكتروني:
-            </p>
+            {lastVerificationSent === false ? (
+              <p className="text-xs text-rose-600 dark:text-rose-400 font-bold leading-relaxed bg-rose-50 dark:bg-rose-950/60 p-2.5 rounded-xl border border-rose-200 dark:border-rose-800">
+                تعذر إرسال بريد التفعيل تلقائياً عند التسجيل. يرجى الضغط على "إعادة إرسال رسالة التفعيل" أدناه.
+              </p>
+            ) : (
+              <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                تم إرسال رسالة تأكيد إلى البريد الإلكتروني:
+              </p>
+            )}
             <div className="font-mono text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 py-2 px-3 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60 dir-ltr text-center">
               {user?.email}
             </div>

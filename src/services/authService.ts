@@ -50,13 +50,24 @@ export function mapAuthError(error: unknown): string {
   }
 }
 
+let sendVerificationStub: ((user: User) => Promise<void>) | null = null;
+let logoutStub: (() => Promise<void>) | null = null;
+
 export const AuthService = {
   isConfigured(): boolean {
     return isFirebaseConfigured();
   },
 
+  setSendVerificationStub(fn: ((user: User) => Promise<void>) | null) {
+    sendVerificationStub = fn;
+  },
+
+  setLogoutStub(fn: (() => Promise<void>) | null) {
+    logoutStub = fn;
+  },
+
   async loginWithGoogle(): Promise<User> {
-    if (!isFirebaseConfigured()) {
+    if (!isFirebaseConfigured() || !auth || !googleAuthProvider) {
       throw new Error('auth/api-key-not-valid');
     }
     const result = await signInWithPopup(auth, googleAuthProvider);
@@ -64,7 +75,7 @@ export const AuthService = {
   },
 
   async signUpWithEmail(email: string, password: string): Promise<{ user: User; verificationSent: boolean; verificationError?: string }> {
-    if (!isFirebaseConfigured()) {
+    if (!isFirebaseConfigured() || !auth) {
       throw new Error('auth/api-key-not-valid');
     }
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -74,7 +85,11 @@ export const AuthService = {
     let verificationError: string | undefined;
     
     try {
-      await sendEmailVerification(user);
+      if (sendVerificationStub) {
+        await sendVerificationStub(user);
+      } else {
+        await sendEmailVerification(user);
+      }
       verificationSent = true;
     } catch (err: any) {
       console.warn('[WIRD Auth] Could not send initial verification email:', err);
@@ -85,7 +100,7 @@ export const AuthService = {
   },
 
   async loginWithEmail(email: string, password: string): Promise<User> {
-    if (!isFirebaseConfigured()) {
+    if (!isFirebaseConfigured() || !auth) {
       throw new Error('auth/api-key-not-valid');
     }
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -94,24 +109,32 @@ export const AuthService = {
 
   async resendVerificationEmail(user: User): Promise<void> {
     if (!user) throw new Error('لا يوجد کاربر مسجل حالياً.');
-    await sendEmailVerification(user);
+    if (sendVerificationStub) {
+      await sendVerificationStub(user);
+    } else {
+      await sendEmailVerification(user);
+    }
   },
 
   async reloadUserStatus(user: User): Promise<User> {
     if (!user) throw new Error('لا يوجد کاربر مسجل.');
     await user.reload();
-    return auth.currentUser || user;
+    return (auth && auth.currentUser) || user;
   },
 
   async sendPasswordReset(email: string): Promise<void> {
-    if (!isFirebaseConfigured()) {
+    if (!isFirebaseConfigured() || !auth) {
       throw new Error('auth/api-key-not-valid');
     }
     await sendPasswordResetEmail(auth, email);
   },
 
   async logout(): Promise<void> {
-    if (auth.currentUser) {
+    if (logoutStub) {
+      await logoutStub();
+      return;
+    }
+    if (auth && auth.currentUser) {
       await signOut(auth);
     }
   }

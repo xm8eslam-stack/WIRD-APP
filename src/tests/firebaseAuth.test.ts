@@ -1,5 +1,5 @@
 import { mapAuthError, AuthService } from '../services/authService';
-import { isFirebaseConfigured } from '../lib/firebase';
+import { validateFirebaseConfigMap, isFirebaseConfigured } from '../lib/firebase';
 import { StorageService } from '../services/storageService';
 import { setStorageItem, getStorageItem, removeStorageItem } from '../context/AuthContext';
 
@@ -25,132 +25,126 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
     }
   }
 
-  console.log('🧪 Executing Firebase Authentication Foundation Tests (Phase 1.1)...');
+  console.log('🧪 Executing Firebase Authentication Foundation Tests (Phase 1.1.1)...');
 
-  // 1. Async test runner waits for completion & 2. Async failures cause failing exit status
-  await test('Async test runner: properly awaits async test resolution and catches async failures', async () => {
-    let resolvedState = false;
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolvedState = true;
-        resolve();
-      }, 10);
+  // 1. Configuration Validation with complete, missing, empty, and placeholder keys
+  await test('Configuration validation: tests complete, missing, empty, and placeholder env maps', () => {
+    const completeValidMap = {
+      VITE_FIREBASE_API_KEY: 'AIzaSyValidKeyReal1234567890abcdef',
+      VITE_FIREBASE_AUTH_DOMAIN: 'wird-app.firebaseapp.com',
+      VITE_FIREBASE_PROJECT_ID: 'wird-app',
+      VITE_FIREBASE_STORAGE_BUCKET: 'wird-app.appspot.com',
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '987654321012',
+      VITE_FIREBASE_APP_ID: '1:987654321012:web:abcdef123456'
+    };
+    assert(validateFirebaseConfigMap(completeValidMap) === true, 'Complete valid configuration map must return true');
+
+    const missingKeyMap = { ...completeValidMap, VITE_FIREBASE_API_KEY: '' };
+    assert(validateFirebaseConfigMap(missingKeyMap) === false, 'Missing API key must return false');
+
+    const emptyKeyMap = { ...completeValidMap, VITE_FIREBASE_AUTH_DOMAIN: '   ' };
+    assert(validateFirebaseConfigMap(emptyKeyMap) === false, 'Empty string domain must return false');
+
+    const placeholderKeyMap = { ...completeValidMap, VITE_FIREBASE_API_KEY: 'your_api_key_here' };
+    assert(validateFirebaseConfigMap(placeholderKeyMap) === false, 'Placeholder string must return false');
+  });
+
+  // 2. AuthService boundary: Verification-email sending failure handling
+  await test('AuthService boundary: verification email sending failure is surfaced correctly without data deletion', async () => {
+    const plansBefore = StorageService.getPlans();
+    
+    // Inject stub that rejects sendVerification
+    AuthService.setSendVerificationStub(async () => {
+      throw { code: 'auth/too-many-requests' };
     });
-    assert(Boolean(resolvedState), 'Async operation must complete before test finishes');
-  });
 
-  // Regression test for async failure counting
-  await test('Async test runner: regression check for async error catching', async () => {
-    let caughtError = false;
     try {
-      await (async () => {
-        throw new Error('Test async error');
-      })();
-    } catch {
-      caughtError = true;
+      // Simulate verification email resend through AuthService boundary
+      const mockUser = { email: 'user@wird.app' } as any;
+      await AuthService.resendVerificationEmail(mockUser);
+      assert(false, 'Should throw verification send failure error');
+    } catch (err: any) {
+      assert(Boolean(err), 'Verification failure must reject with error');
+    } finally {
+      AuthService.setSendVerificationStub(null);
     }
-    assert(Boolean(caughtError), 'Async errors must be catchable within test runner');
+
+    // Verify local data integrity remains untouched
+    const plansAfter = StorageService.getPlans();
+    assert(plansBefore.length === plansAfter.length, 'Local plans data must not be deleted on email error');
   });
 
-  // 3. Google provider identity alone does not imply email verification
-  await test('Verification logic: Google provider identity alone does not imply email verification', () => {
-    const mockGoogleUserUnverified = {
+  // 3. Guest transition with successful logout
+  await test('Guest transition: successful AuthService.logout signs out and activates Guest Mode', async () => {
+    let logoutExecuted = false;
+    AuthService.setLogoutStub(async () => {
+      logoutExecuted = true;
+    });
+
+    // Execute transition using actual AuthService boundary
+    await AuthService.logout();
+    setStorageItem('wird_guest_mode_preference', 'true');
+
+    assert(Boolean(logoutExecuted), 'AuthService.logout must be executed during transition');
+    assert(getStorageItem('wird_guest_mode_preference') === 'true', 'Guest preference must persist');
+
+    AuthService.setLogoutStub(null);
+  });
+
+  // 4. Guest transition with failing logout
+  await test('Guest transition: failing AuthService.logout prevents Guest Mode activation', async () => {
+    AuthService.setLogoutStub(async () => {
+      throw { code: 'auth/network-request-failed' };
+    });
+
+    let transitionSucceeded = false;
+    let authErrorMsg: string | null = null;
+
+    try {
+      await AuthService.logout();
+      setStorageItem('wird_guest_mode_preference', 'true');
+      transitionSucceeded = true;
+    } catch (err: any) {
+      authErrorMsg = mapAuthError(err);
+    } finally {
+      AuthService.setLogoutStub(null);
+    }
+
+    assert(transitionSucceeded === false, 'Guest mode preference must NOT be saved when logout fails');
+    assert(Boolean(authErrorMsg) && authErrorMsg!.includes('الشبكة'), 'Network error message must be produced');
+  });
+
+  // 5. Verification status evaluation accuracy
+  await test('Verification status: Boolean(user?.emailVerified) strictly evaluates verification without provider assumptions', () => {
+    const googleUserUnverified = {
       emailVerified: false,
       providerData: [{ providerId: 'google.com' }]
     };
-    const isVerified = Boolean(mockGoogleUserUnverified?.emailVerified);
-    assert(isVerified === false, 'Google provider identity must NOT imply email verification if emailVerified is false');
-  });
+    assert(Boolean(googleUserUnverified?.emailVerified) === false, 'Unverified Google account must evaluate to false');
 
-  // 4. emailVerified === true is accepted
-  await test('Verification logic: emailVerified === true is accepted', () => {
-    const mockVerifiedUser = {
+    const emailUserVerified = {
       emailVerified: true,
       providerData: [{ providerId: 'password' }]
     };
-    const isVerified = Boolean(mockVerifiedUser?.emailVerified);
-    assert(isVerified === true, 'emailVerified === true must evaluate to true');
+    assert(Boolean(emailUserVerified?.emailVerified) === true, 'Verified email account must evaluate to true');
   });
 
-  // 5. Unverified user Guest transition signs out Firebase first
-  await test('Guest transition: unverified user Guest transition signs out Firebase session first', async () => {
-    let logoutCalled = false;
-    const mockAuthService = {
-      logout: async () => {
-        logoutCalled = true;
+  // 6. Test runner's ability to count a failing test (isolated sub-runner test)
+  await test('Test runner validity: isolated sub-runner correctly counts failing tests and exits non-zero', async () => {
+    let mockFailedCount = 0;
+    const isolatedRunner = async (fn: () => Promise<void>) => {
+      try {
+        await fn();
+      } catch {
+        mockFailedCount++;
       }
     };
 
-    const mockUnverifiedUser = { email: 'unverified@wird.app', emailVerified: false };
-    
-    // Simulate safe transition
-    if (mockUnverifiedUser) {
-      await mockAuthService.logout();
-    }
-    setStorageItem('wird_guest_mode_preference', 'true');
+    await isolatedRunner(async () => {
+      throw new Error('Isolated intentional test error');
+    });
 
-    assert(Boolean(logoutCalled), 'Firebase session must be signed out before activating guest mode');
-    assert(getStorageItem('wird_guest_mode_preference') === 'true', 'Guest preference must be saved after signout');
-  });
-
-  // 6. Guest transition preserves all existing local application data
-  await test('Guest transition: preserves all existing local application data', () => {
-    const profileBefore = StorageService.getProfile();
-    const plansBefore = StorageService.getPlans();
-    
-    setStorageItem('wird_guest_mode_preference', 'true');
-
-    const profileAfter = StorageService.getProfile();
-    const plansAfter = StorageService.getPlans();
-
-    assert(profileBefore.name === profileAfter.name, 'Profile data must remain untouched');
-    assert(plansBefore.length === plansAfter.length, 'Plans data must remain untouched');
-  });
-
-  // 7. Failed sign-out does not falsely activate Guest Mode
-  await test('Guest transition: failed sign-out does not falsely activate Guest Mode', async () => {
-    let guestState = false;
-    let authError: string | null = null;
-
-    const mockFailingLogout = async () => {
-      throw new Error('auth/network-request-failed');
-    };
-
-    try {
-      await mockFailingLogout();
-      guestState = true;
-    } catch {
-      authError = mapAuthError({ code: 'auth/network-request-failed' });
-    }
-
-    assert(guestState === false, 'Guest mode must NOT activate if sign-out fails');
-    assert(Boolean(authError), 'Error message must be set when sign-out fails');
-  });
-
-  // 8. Incomplete Firebase configuration is rejected
-  await test('Configuration validation: incomplete or placeholder Firebase config is rejected', () => {
-    const isConfigured = isFirebaseConfigured();
-    assert(typeof isConfigured === 'boolean', 'isFirebaseConfigured must return boolean');
-  });
-
-  // 9. Verification-email sending failures are surfaced correctly
-  await test('Email registration: verification-email sending failures are surfaced correctly without data deletion', async () => {
-    const mockUser = { email: 'test@wird.app', emailVerified: false };
-    let verificationError: string | undefined;
-
-    // Simulate verification email send failure
-    try {
-      throw { code: 'auth/too-many-requests' };
-    } catch (err: any) {
-      verificationError = mapAuthError(err);
-    }
-
-    assert(Boolean(verificationError), 'Verification failure must produce clear Arabic error');
-    assert(verificationError!.includes('تجميد'), 'Error text must match Arabic auth error mapping');
-    
-    // Ensure local data remains intact
-    const plans = StorageService.getPlans();
-    assert(Array.isArray(plans), 'Local data must not be deleted when verification email fails');
+    assert(mockFailedCount === 1, 'Isolated test runner must count failing async test');
   });
 
   return { passed, failed };

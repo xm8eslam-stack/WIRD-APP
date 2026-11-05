@@ -45,6 +45,7 @@ export interface AuthContextType {
   loading: boolean;
   isGuest: boolean;
   isEmailVerified: boolean;
+  lastVerificationSent: boolean | null;
   authError: string | null;
   isFirebaseReady: boolean;
   loginWithGoogle: () => Promise<void>;
@@ -64,6 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [lastVerificationSent, setLastVerificationSent] = useState<boolean | null>(null);
   
   // Initialize guest state from storage preference or default to true if unauthenticated
   const [isGuest, setIsGuest] = useState<boolean>(() => {
@@ -76,7 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let unsubscribe: () => void = () => {};
 
-    if (isFirebaseReady) {
+    if (isFirebaseReady && auth) {
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         
@@ -121,6 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res = await AuthService.signUpWithEmail(e, p);
       setIsGuest(false);
       removeStorageItem(GUEST_PREFERENCE_KEY);
+      setLastVerificationSent(res.verificationSent);
       if (!res.verificationSent && res.verificationError) {
         setAuthError(`تم إنشاء الحساب بنجاح ولكن تعذر إرسال بريد التفعيل: ${res.verificationError}`);
       }
@@ -137,6 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await AuthService.loginWithEmail(e, p);
       setIsGuest(false);
       removeStorageItem(GUEST_PREFERENCE_KEY);
+      setLastVerificationSent(true);
     } catch (err) {
       const msg = mapAuthError(err);
       setAuthError(msg);
@@ -149,6 +153,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAuthError(null);
     try {
       await AuthService.resendVerificationEmail(user);
+      setLastVerificationSent(true);
     } catch (err) {
       const msg = mapAuthError(err);
       setAuthError(msg);
@@ -222,6 +227,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading,
         isGuest,
         isEmailVerified,
+        lastVerificationSent,
         authError,
         isFirebaseReady,
         loginWithGoogle,

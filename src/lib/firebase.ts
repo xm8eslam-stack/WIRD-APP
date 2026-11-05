@@ -11,7 +11,7 @@ function getEnvVar(key: string): string {
   return '';
 }
 
-export function isFirebaseConfigured(): boolean {
+export function validateFirebaseConfigMap(envMap: Record<string, string>): boolean {
   const keys = [
     'VITE_FIREBASE_API_KEY',
     'VITE_FIREBASE_AUTH_DOMAIN',
@@ -22,7 +22,7 @@ export function isFirebaseConfigured(): boolean {
   ];
 
   for (const key of keys) {
-    const val = getEnvVar(key);
+    const val = envMap[key];
     if (!val || val.trim() === '') return false;
     const lower = val.toLowerCase();
     if (
@@ -39,27 +39,45 @@ export function isFirebaseConfigured(): boolean {
   return true;
 }
 
-const firebaseConfig = {
-  apiKey: getEnvVar('VITE_FIREBASE_API_KEY') || 'AIzaSyPlaceholderApiKeyForTesting12345',
-  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN') || 'wird-quran-app.firebaseapp.com',
-  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID') || 'wird-quran-app',
-  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET') || 'wird-quran-app.appspot.com',
-  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID') || '1234567890',
-  appId: getEnvVar('VITE_FIREBASE_APP_ID') || '1:1234567890:web:1234567890'
-};
+export function isFirebaseConfigured(): boolean {
+  const envMap: Record<string, string> = {
+    VITE_FIREBASE_API_KEY: getEnvVar('VITE_FIREBASE_API_KEY'),
+    VITE_FIREBASE_AUTH_DOMAIN: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
+    VITE_FIREBASE_PROJECT_ID: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
+    VITE_FIREBASE_STORAGE_BUCKET: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
+    VITE_FIREBASE_MESSAGING_SENDER_ID: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+    VITE_FIREBASE_APP_ID: getEnvVar('VITE_FIREBASE_APP_ID')
+  };
 
-// Singleton Firebase initialization
-let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
+  return validateFirebaseConfigMap(envMap);
 }
 
-export const auth: Auth = getAuth(app);
-export const googleAuthProvider = new GoogleAuthProvider();
+// Truly optional Firebase initialization - null when unconfigured
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let googleAuthProvider: GoogleAuthProvider | null = null;
 
-// Configure Google provider options
-googleAuthProvider.setCustomParameters({
-  prompt: 'select_account'
-});
+if (isFirebaseConfigured()) {
+  const firebaseConfig = {
+    apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
+    authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
+    projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
+    storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+    appId: getEnvVar('VITE_FIREBASE_APP_ID')
+  };
+
+  if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+
+  auth = getAuth(app);
+  googleAuthProvider = new GoogleAuthProvider();
+  googleAuthProvider.setCustomParameters({
+    prompt: 'select_account'
+  });
+}
+
+export { app, auth, googleAuthProvider };
