@@ -35,8 +35,8 @@ export const AdvisorService = {
           return {
             available: true,
             mode: 'gemini_free',
-            model: 'gemini-3.8-flash (Free Tier)',
-            message: 'مستشار الذكاء الاصطناعي متاح (Gemini Free Tier)'
+            model: data.model || 'gemini-3.8-flash',
+            message: typeof data.message === 'string' ? data.message : 'مفتاح Gemini مضبوط؛ نجاح الطلبات يعتمد على صلاحية المفتاح والحصة المتاحة.'
           };
         }
       }
