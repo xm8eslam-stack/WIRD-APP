@@ -171,9 +171,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalWeeklyAyahs = last7Logs.reduce((acc, curr) => acc + curr.memorizedAyahsCount, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="wird-dashboard space-y-6">
       {/* 1. Personalized Welcome & Daily Ayah Banner */}
-      <section className="bg-gradient-to-l from-emerald-950 via-emerald-900 to-emerald-800 text-white rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden border border-emerald-800/60">
+      <section className="wird-hero text-white rounded-3xl p-6 md:p-8 relative overflow-hidden">
         {/* Subtle decorative radial atmosphere */}
         <div className="absolute top-0 left-0 w-96 h-96 bg-radial from-amber-400/15 via-emerald-700/5 to-transparent rounded-full -translate-x-32 -translate-y-32 pointer-events-none" />
 
