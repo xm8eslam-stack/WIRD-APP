@@ -13,6 +13,7 @@ import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
 import { runMobileErgonomicsTests } from './mobileErgonomics.test';
 import { runTafsirServiceTests } from '../services/tafsirService.test';
+import { runTafsirProxyTests } from './tafsirProxy.test';
 
 export interface SuiteResult {
   passed: number;
@@ -73,6 +74,7 @@ async function main() {
     { name: 'Quran Lazy Loading & Chunk Integrity', runner: runQuranLazyLoadingTests },
     { name: 'Mobile Mushaf Touch Ergonomics', runner: runMobileErgonomicsTests },
     { name: 'Tafsir Muyassar API Validation & Cache', runner: runTafsirServiceTests },
+    { name: 'Tafsir Serverless Proxy Security & Cache', runner: runTafsirProxyTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
