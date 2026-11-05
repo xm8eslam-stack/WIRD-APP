@@ -96,3 +96,65 @@
 4. Add emulator-backed rules, migration, isolation, realtime update, and conflict tests.
 5. Inspect actual Firebase project/rules before deploying rules or migrating live user data; obtain approval for irreversible operations.
 6. Update this checkpoint after each verified batch with exact SHAs, test results, push/merge state, and separate deployment/AI Studio sync status.
+
+
+---
+
+## 8. Follow-up audit and verified development batches — 2026-11-05
+
+### Main branch state
+- Latest main HEAD before this checkpoint update: `43aa93adc0651a0d87410ab007b6d307e3ea5613` (security audit report).
+- Previous full Quality Gate commit: `59486db8eddef6b00a13565024a2754969ff056d`.
+- Latest full Quality Gate run: `42103972108`, conclusion `success`.
+- CI steps verified: Bun 1.4.4 frozen-lockfile install, npm install, `npm audit --audit-level=high`, automated tests, TypeScript validation, production build/Quran chunk validation, production server startup smoke test.
+- The docs-only security-audit commit still needs its own GitHub Actions run; do not assume it passed until confirmed.
+
+### Files added/updated on main
+- `docs/engineering/OPEN_SOURCE_RESEARCH.md`: source/license review and reuse decisions.
+- `docs/engineering/FIRESTORE_SYNC_DESIGN.md`: UID-scoped, local-first sync design, migration/conflict/offline/security policy, free-tier constraints.
+- `docs/engineering/SECURITY_AUDIT.md`: source-level security/reliability findings and explicit limitations.
+- `docs/engineering/WORK_SESSION_CHECKPOINT.md`: this update.
+- `src/components/settings/SettingsView.tsx`: destructive demo-data UI and confirmation are DEV-only; handler refuses to run outside development.
+- `src/tests/cleanInitialization.test.ts`: checks clean zero-progress initialization, no demo seeding from normal startup, and production isolation of the demo loader.
+- `src/tests/geminiSecurity.test.ts`: guards wildcard CORS against credentialed CORS and checks expired rate-limit record pruning.
+- `api/advisor.ts`: removed wildcard-plus-credentials CORS header; added bounded cleanup of expired in-memory rate-limit entries.
+- `server.ts`: added cleanup of expired in-memory rate-limit entries.
+- `package.json`: Node engine `>=24.12.0`, package manager Bun 1.4.4, `tsx` runtime dependency, `start: tsx server.ts`, `@grpc/grpc-js` override 1.14.6, and production server smoke script.
+- `bun.lock`: regenerated with Bun 1.4.4 to resolve the patched gRPC package, ordered-map dependency, esbuild version drift, and runtime dependency placement.
+- `scripts/smoke-server.mjs`: starts the production server and checks `/api/advisor/status` with no Gemini API key.
+- `.github/workflows/ci.yml`: Node 24, current Node-24-compatible checkout/setup-node actions, Bun frozen-lockfile verification, npm audit, and production server smoke test.
+
+### Verified outcomes
+- The demo-data feature is still available to developers/tests only; it is not exposed to production users.
+- The first dependency audit found four high-severity advisories through `@grpc/grpc-js`. A non-breaking npm override to `1.14.6` resolved them; no forced Firebase downgrade was used.
+- Node 22.16 could not start `server.ts` directly. The app now starts through `tsx`, and the production server smoke test passed.
+- Full Quality Gate run `42103972108` passed on main SHA `59486db8eddef6b00a13565024a2754969ff056d`.
+- The main commit status still reports Vercel failure with `build-rate-limit`; this is an external quota blocker, not a verified application build failure.
+- GitHub cannot prove Google AI Studio's UI has synchronized the latest main commit.
+
+### Additional confirmed architectural/security findings
+- `RetentionService` weak-verse records use a separate localStorage path; centralize before sync.
+- Existing localStorage keys are global rather than UID-scoped; account switching on one browser is a high-priority isolation risk.
+- `server.ts` and Vercel `api/advisor.ts` are separate implementations and their request/history handling is not fully aligned.
+- Advisor rate limits remain process-local/in-memory; pruning prevents unbounded map growth but does not create a distributed rate limiter.
+- `vercel.json` currently has rewrites but no explicit security response headers.
+- Firestore, rules, real-time listeners, and cross-device sync remain unimplemented. The design document is not proof of a working sync system.
+
+### Phase 5 branch — separate, not yet merged
+- Branch: `feat/phase5-premium-ui-ux`.
+- Latest head: `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d`.
+- PR #2 remains OPEN + DRAFT and is based on the old main SHA `15ec5069b4850968588be2e4363fbd182bf2a8fc`; GitHub reports it is not currently mergeable. Do not merge until its base is reconciled and the full diff is reviewed.
+- Phase 5 also gates demo data in production and adds the same regression test.
+- Added `src/services/dailySessionSelection.ts` and `src/services/dailySessionSelection.test.ts`; registered the suite in `src/tests/runAllTests.ts`.
+- Fix: daily quick-start now ignores future tasks, ignores inactive/paused engine plans, and does not widen Juz/page presets into unrelated whole-Surah ranges. Unsupported plan scopes produce an explicit message instead of starting an unrelated global range.
+- Phase 5 Quality Gate run `42103642438` passed on SHA `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d`.
+- Visual browser/Preview review is still outstanding because Vercel Preview deployment is quota-blocked.
+
+### Next exact work
+1. Reconcile the Phase 5 branch with the new main commits before any merge; review every changed file and resolve overlap deliberately.
+2. Centralize weak-verse persistence and implement UID-scoped local storage with a one-time, backup-preserving legacy-data ownership migration.
+3. Add Firestore rules and Emulator tests for unauthenticated/unverified/cross-UID access, malformed payloads, and size limits.
+4. Implement Firestore sync with per-user collections, idempotent mutations, conflict handling, tombstones, offline outbox, and real-time listeners.
+5. Test two accounts on two devices, then deploy rules only after explicit live-project review.
+6. Align Express/Vercel advisor validation and assess distributed rate limiting/security headers.
+7. Re-run Vercel deployment after the quota resets; verify the actual production URL separately.
