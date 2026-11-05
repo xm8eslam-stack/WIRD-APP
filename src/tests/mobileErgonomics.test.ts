@@ -8,7 +8,8 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     try { fn(); passed++; console.log('  ✅ ' + name); }
     catch (error: any) { failed++; console.error('  ❌ ' + name + ': ' + (error?.message || error)); }
   };
-  const progressView = fs.readFileSync(path.resolve(process.cwd(), 'src/components/progress/ProgressAnalyticsView.tsx'), 'utf8');\n  const sidebar = fs.readFileSync(path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');
+  const progressView = fs.readFileSync(path.resolve(process.cwd(), 'src/components/progress/ProgressAnalyticsView.tsx'), 'utf8');
+  const sidebar = fs.readFileSync(path.resolve(process.cwd(), 'src/components/layout/Sidebar.tsx'), 'utf8');
 
   test('604-page Mushaf map provides at least 48px mobile tap targets', () => {
     assert(progressView.includes('grid-cols-5 sm:grid-cols-8'), 'Mobile grid must use a low enough column count for 48px cells');
