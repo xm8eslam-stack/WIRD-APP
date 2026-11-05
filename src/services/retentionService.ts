@@ -8,7 +8,7 @@ import {
 } from '../types/quran';
 import { StorageService } from './storageService';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
+import { getPagesForAyahRange } from '../data/quranPageMap';
 import { 
   calculateUniqueMemorizedAyahs, 
   calculateUniqueMemorizedPages,
@@ -472,11 +472,11 @@ export const RetentionService = {
     }
 
     // Record session completion in daily logs
-    const reviewedPagesCount = new Set(
-      (VERIFIED_AYAHS[target.surahNumber] || [])
-        .filter(ayah => ayah.numberInSurah >= target.startAyah && ayah.numberInSurah <= target.endAyah)
-        .map(ayah => ayah.page)
-    ).size;
+    const reviewedPagesCount = getPagesForAyahRange(
+      target.surahNumber,
+      target.startAyah,
+      target.endAyah
+    ).length;
     const sessionLogSaved = StorageService.recordSessionCompletion(
       0,
       Math.max(1, reviewedPagesCount),
