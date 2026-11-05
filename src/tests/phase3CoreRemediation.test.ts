@@ -417,6 +417,39 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(validGen.questions.length === 5, 'Generates full question set when sufficient memorized content exists');
     assert(validGen.hasSufficientData === true, 'hasSufficientData is true when full question set generated');
     assert(validGen.questions.every(q => q.isFromMemorizedPortion), 'Every generated question originates exclusively from user memorized portions');
+
+    const baqarahAyah2: WirdPortion = {
+      id: 's2_a2_a2',
+      type: 'passage',
+      surahNumber: 2,
+      surahName: 'البقرة',
+      startAyah: 2,
+      endAyah: 2,
+      status: 'stable',
+      nextDueDate: '2026-05-10',
+      intervalDays: 5,
+      easeFactor: 2.5,
+      repetitionCount: 4
+    };
+    const oneSideOnly = generateDynamicTestQuestions('mutashabihat', [baqarahAyah2], 1);
+    assert(oneSideOnly.questions.length === 0, 'Mutashabihat does not quiz a comparison when only one referenced ayah is memorized');
+
+    const namlAyah2: WirdPortion = {
+      id: 's27_a2_a2',
+      type: 'passage',
+      surahNumber: 27,
+      surahName: 'النمل',
+      startAyah: 2,
+      endAyah: 2,
+      status: 'stable',
+      nextDueDate: '2026-05-10',
+      intervalDays: 5,
+      easeFactor: 2.5,
+      repetitionCount: 4
+    };
+    const bothSides = generateDynamicTestQuestions('mutashabihat', [baqarahAyah2, namlAyah2], 1);
+    assert(bothSides.questions.length === 1, 'Mutashabihat comparison is available when both referenced ayahs are memorized');
+    assert(bothSides.questions[0].isFromMemorizedPortion, 'Eligible Mutashabihat comparison is marked as based on memorized content');
   }
 
   console.log('\n--- 9. Dashboard Due Count Canonical Uniformity ---');
