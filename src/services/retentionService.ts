@@ -697,7 +697,11 @@ export const RetentionService = {
 
   // Explicit demo loader for demo mode
   loadDemoPortions(): void {
-    this.savePortions(DEFAULT_PORTIONS);
+    const canonicalDemoPortions = DEFAULT_PORTIONS.map(portion => ({
+      ...portion,
+      id: createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah)
+    }));
+    this.savePortions(canonicalDemoPortions);
     this.saveWeakVerses(DEFAULT_WEAK_VERSES);
   },
 
