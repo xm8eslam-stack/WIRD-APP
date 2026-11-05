@@ -107,7 +107,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="wird-tests space-y-6 max-w-3xl mx-auto">
       {/* 1. Header & Test Mode Switcher */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-4">
         <div>
