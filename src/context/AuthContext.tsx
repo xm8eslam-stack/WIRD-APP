@@ -40,6 +40,22 @@ export function removeStorageItem(key: string): void {
   memoryGuestStore.delete(key);
 }
 
+export async function executeGuestTransition(
+  currentUser: User | null,
+  logoutFn: () => Promise<void>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (currentUser || (typeof auth !== 'undefined' && auth && auth.currentUser)) {
+      await logoutFn();
+    }
+    setStorageItem(GUEST_PREFERENCE_KEY, 'true');
+    return { success: true };
+  } catch (err: any) {
+    const msg = mapAuthError(err);
+    return { success: false, error: msg };
+  }
+}
+
 export interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -134,13 +150,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+
+
   const loginWithEmail = async (e: string, p: string) => {
     setAuthError(null);
     try {
       await AuthService.loginWithEmail(e, p);
       setIsGuest(false);
       removeStorageItem(GUEST_PREFERENCE_KEY);
-      setLastVerificationSent(true);
+      // login must never be interpreted as sending a verification email
     } catch (err) {
       const msg = mapAuthError(err);
       setAuthError(msg);
@@ -155,6 +173,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await AuthService.resendVerificationEmail(user);
       setLastVerificationSent(true);
     } catch (err) {
+      setLastVerificationSent(false);
       const msg = mapAuthError(err);
       setAuthError(msg);
       throw new Error(msg);
@@ -200,20 +219,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const continueAsGuest = async (): Promise<boolean> => {
     setAuthError(null);
-    // If a Firebase session is active (unverified or active user), sign out first
-    if (user || (auth && auth.currentUser)) {
-      try {
-        await AuthService.logout();
-        setUser(null);
-      } catch (err) {
-        const msg = mapAuthError(err);
-        setAuthError(msg);
-        return false; // Sign out failed, do NOT falsely enter guest mode
+    const result = await executeGuestTransition(user, async () => {
+      await AuthService.logout();
+      setUser(null);
+    });
+    if (result.success) {
+      setIsGuest(true);
+      return true;
+    } else {
+      if (result.error) {
+        setAuthError(result.error);
       }
+      return false;
     }
-    setIsGuest(true);
-    setStorageItem(GUEST_PREFERENCE_KEY, 'true');
-    return true;
   };
 
   const clearError = () => setAuthError(null);

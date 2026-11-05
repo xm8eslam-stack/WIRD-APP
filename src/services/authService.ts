@@ -52,6 +52,7 @@ export function mapAuthError(error: unknown): string {
 
 let sendVerificationStub: ((user: User) => Promise<void>) | null = null;
 let logoutStub: (() => Promise<void>) | null = null;
+let createUserStub: ((email: string, password: string) => Promise<User>) | null = null;
 
 export const AuthService = {
   isConfigured(): boolean {
@@ -66,6 +67,10 @@ export const AuthService = {
     logoutStub = fn;
   },
 
+  setCreateUserStub(fn: ((email: string, password: string) => Promise<User>) | null) {
+    createUserStub = fn;
+  },
+
   async loginWithGoogle(): Promise<User> {
     if (!isFirebaseConfigured() || !auth || !googleAuthProvider) {
       throw new Error('auth/api-key-not-valid');
@@ -76,10 +81,17 @@ export const AuthService = {
 
   async signUpWithEmail(email: string, password: string): Promise<{ user: User; verificationSent: boolean; verificationError?: string }> {
     if (!isFirebaseConfigured() || !auth) {
-      throw new Error('auth/api-key-not-valid');
+      if (!createUserStub) {
+        throw new Error('auth/api-key-not-valid');
+      }
     }
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+    let user: User;
+    if (createUserStub) {
+      user = await createUserStub(email, password);
+    } else {
+      const userCredential = await createUserWithEmailAndPassword(auth!, email, password);
+      user = userCredential.user;
+    }
     
     let verificationSent = false;
     let verificationError: string | undefined;

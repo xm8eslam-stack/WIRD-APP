@@ -143,9 +143,13 @@ export const AuthScreen: React.FC = () => {
               <p className="text-xs text-rose-600 dark:text-rose-400 font-bold leading-relaxed bg-rose-50 dark:bg-rose-950/60 p-2.5 rounded-xl border border-rose-200 dark:border-rose-800">
                 تعذر إرسال بريد التفعيل تلقائياً عند التسجيل. يرجى الضغط على "إعادة إرسال رسالة التفعيل" أدناه.
               </p>
-            ) : (
+            ) : lastVerificationSent === true ? (
               <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
                 تم إرسال رسالة تأكيد إلى البريد الإلكتروني:
+              </p>
+            ) : (
+              <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                حسابك بانتظار التفعيل. يمكنك إرسال رسالة التأكيد بالضغط على الزر أدناه:
               </p>
             )}
             <div className="font-mono text-sm font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 py-2 px-3 rounded-xl border border-emerald-200/60 dark:border-emerald-800/60 dir-ltr text-center">
