@@ -67,7 +67,7 @@ for (let pageNumber = 1; pageNumber <= 604; pageNumber++) {
 }
 
 const pageIndexPath = path.join(projectRoot, 'src/data/quranPageIndex.generated.ts');
-const pageIndexSource = 'export const QURAN_PAGE_INDEX = ' + JSON.stringify(pageIndex) + ' as const;\\n';
+const pageIndexSource = 'export const QURAN_PAGE_INDEX = ' + JSON.stringify(pageIndex) + ' as const;\n';
 if (!fs.existsSync(pageIndexPath) || fs.readFileSync(pageIndexPath, 'utf8') !== pageIndexSource) {
   fs.writeFileSync(pageIndexPath, pageIndexSource, 'utf8');
 }
