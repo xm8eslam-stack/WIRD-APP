@@ -8,7 +8,7 @@ import {
   MemorizationPlan
 } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { VERIFIED_AYAHS } from '../data/verifiedAyahs';
+import { QURAN_PAGE_AYAH_KEYS } from '../data/quranPageMap';
 
 /**
  * ====================================================================
@@ -128,19 +128,8 @@ export function calculateUniqueMemorizedPages(portions: WirdPortion[]): number {
   const { ayahKeys } = calculateUniqueMemorizedAyahs(portions);
   if (ayahKeys.size === 0) return 0;
 
-  const pageAyahKeys = new Map<number, string[]>();
-  for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
-    const surahAyahs = VERIFIED_AYAHS[surahNumber] || [];
-    for (const ayah of surahAyahs) {
-      if (ayah.page < 1 || ayah.page > 604) continue;
-      const keys = pageAyahKeys.get(ayah.page) || [];
-      keys.push(`${surahNumber}:${ayah.numberInSurah}`);
-      pageAyahKeys.set(ayah.page, keys);
-    }
-  }
-
   let fullyMemorizedPages = 0;
-  pageAyahKeys.forEach(keys => {
+  Object.values(QURAN_PAGE_AYAH_KEYS).forEach(keys => {
     if (keys.length > 0 && keys.every(key => ayahKeys.has(key))) {
       fullyMemorizedPages++;
     }
