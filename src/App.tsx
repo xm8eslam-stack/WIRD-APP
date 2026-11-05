@@ -193,6 +193,64 @@ export default function App() {
     });
   };
 
+  // Choose today's session from the user's real plan and retention queue.
+  const handleStartDailySession = () => {
+    const currentPortions = RetentionService.getPortions();
+    const currentEnginePlans = StorageService.getEnginePlans();
+    const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused)
+      || currentEnginePlans.find(plan => !plan.isPaused);
+    const pendingEngineTask = activeEnginePlan?.schedule.find(day =>
+      day.memorizationTask && !day.memorizationTask.completed
+    )?.memorizationTask;
+
+    if (pendingEngineTask) {
+      handleStartSession(
+        pendingEngineTask.surahNumber,
+        pendingEngineTask.startAyah,
+        pendingEngineTask.endAyah,
+        'memorize'
+      );
+      return;
+    }
+
+    const activePreset = StorageService.getPlans().find(plan => plan.isActive);
+    if (activePreset) {
+      const nextPresetRange = findNextUnmemorizedRange(
+        currentPortions,
+        getPlanTargetSurahNumbers(activePreset),
+        activePreset.dailyTarget || 7
+      );
+      if (nextPresetRange) {
+        handleStartSession(nextPresetRange.surahNumber, nextPresetRange.startAyah, nextPresetRange.endAyah, 'memorize');
+        return;
+      }
+    }
+
+    const duePortion = RetentionService.getDailyRevisionQueue()[0];
+    if (duePortion) {
+      handleStartSession(duePortion.surahNumber, duePortion.startAyah, duePortion.endAyah, 'review');
+      return;
+    }
+
+    const nextRange = findNextUnmemorizedRange(
+      currentPortions,
+      ALL_SURAHS.map(surah => surah.number),
+      activePreset?.dailyTarget || 7
+    );
+    if (nextRange) {
+      handleStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
+      return;
+    }
+
+    const firstMemorized = currentPortions.find(portion => portion.status !== 'not_memorized');
+    if (firstMemorized) {
+      handleStartSession(firstMemorized.surahNumber, firstMemorized.startAyah, firstMemorized.endAyah, 'review');
+      return;
+    }
+
+    handleStartSession(1, 1, 7, 'memorize');
+  };
+
   // Session completion is mode-aware: a review must never create memorization progress.
   const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
     const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
@@ -348,7 +406,7 @@ export default function App() {
           profile={profile}
           onToggleTheme={handleToggleTheme}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
-          onStartDailySession={() => handleStartSession(67, 1, 10)}
+          onStartDailySession={handleStartDailySession}
           pwaInstallPrompt={pwaInstallPrompt}
           isStandalone={isStandalone}
           onInstallPwa={handleTriggerPwaInstall}
