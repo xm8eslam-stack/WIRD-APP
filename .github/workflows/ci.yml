@@ -25,6 +25,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Setup Bun for lockfile verification
+        uses: oven-sh/setup-bun@v2
+      - name: Refresh Bun lockfile and show required changes
+        run: |
+          bun install --force
+          git diff -- bun.lock
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Audit dependency vulnerabilities
