@@ -80,7 +80,7 @@ function rawRemoveItem(key: string): boolean {
  */
 function isUserStorageScope(scope: string): boolean {
   const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
-  return uid.length > 0 && uid.length <= 128 && !/[\\u0000-\\u001F]/.test(uid);
+  return uid.length > 0 && uid.length <= 128 && !/[\u0000-\u001F]/.test(uid);
 }
 
 function hasLegacyStorageData(): boolean {
