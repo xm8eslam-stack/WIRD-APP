@@ -1,4 +1,11 @@
-import { validateBackupPayload, StorageService } from '../services/storageService';
+import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE } from '../services/storageService';
+import { WirdPortion } from '../types/quran';
+
+const SAMPLE_PORTION: WirdPortion = {
+  id: 's67_a1_a3', type: 'passage', surahNumber: 67, surahName: 'الملك',
+  startAyah: 1, endAyah: 3, status: 'stable', nextDueDate: '2026-11-06',
+  intervalDays: 3, easeFactor: 2.5, repetitionCount: 2, history: []
+};
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -78,6 +85,58 @@ export function runBackupTests(): { passed: number; failed: number } {
     };
     const res = validateBackupPayload(corruptedPlans);
     assert(Boolean(res.valid === false && res.error?.includes('مصفوفة')), 'Should reject non-array plans');
+  });
+
+  // 5. Canonical portion validation and backup schema v4
+  test('Version 4 accepts structurally valid canonical portions', () => {
+    const res = validateBackupPayload({ version: 4, unifiedPortions: [SAMPLE_PORTION] });
+    assert(res.valid, 'Valid canonical portion should pass v4 validation');
+  });
+
+  test('Version 4 rejects malformed canonical portion records', () => {
+    const invalid = { ...SAMPLE_PORTION, status: 'invented-status' };
+    const res = validateBackupPayload({ version: 4, unifiedPortions: [invalid] });
+    assert(!res.valid && Boolean(res.error?.includes('المقطع الموحد')), 'Invalid portion status must be rejected');
+  });
+
+  // Canonical data must survive export, reset, and import.
+  test('Backup v4 round-trip preserves canonical memorization portions', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Canonical sample should save');
+      const exported = JSON.parse(StorageService.exportFullBackup());
+      assert(exported.version === 4, 'New exports must use version 4');
+      assert(JSON.stringify(exported.unifiedPortions) === JSON.stringify([SAMPLE_PORTION]), 'Export must include canonical portion payload');
+      StorageService.resetAllData();
+      const imported = StorageService.importBackup(JSON.stringify(exported));
+      assert(imported.success, 'Version 4 backup should import successfully');
+      assert(JSON.stringify(StorageService.getUnifiedPortions()) === JSON.stringify([SAMPLE_PORTION]), 'Imported canonical portions must exactly match exported data');
+    } finally { StorageService.restoreStorageSnapshot(snapshot); }
+  });
+
+  test('Legacy version 3 portions migrate into the canonical schema', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const legacyPortion = { ...SAMPLE_PORTION, id: 'legacy-portion-67-1' };
+      const imported = StorageService.importBackup(JSON.stringify({ version: 3, portions: [legacyPortion], revisionItems: [] }));
+      assert(imported.success, 'Legacy v3 backup should import');
+      const restored = StorageService.getUnifiedPortions();
+      assert(restored.length === 1 && restored[0].surahNumber === 67 && restored[0].startAyah === 1, 'Legacy portion must be migrated into canonical storage');
+    } finally { StorageService.restoreStorageSnapshot(snapshot); }
+  });
+
+  test('Failed import preserves the existing profile', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'المستخدم الحالي' });
+      const malformed = JSON.stringify({ version: 3, profile: { ...CLEAN_INITIAL_PROFILE, name: 'مستخدم جديد' }, plans: 'broken' });
+      const result = StorageService.importBackup(malformed);
+      assert(!result.success, 'Malformed backup must fail');
+      assert(StorageService.getProfile().name === 'المستخدم الحالي', 'Failed import must not overwrite existing profile');
+    } finally { StorageService.restoreStorageSnapshot(snapshot); }
   });
 
   // 5. Atomic protection: Failed import never overwrites existing data
