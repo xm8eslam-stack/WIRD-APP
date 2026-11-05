@@ -475,9 +475,7 @@ export function migrateLegacyDataLosslessly(
 
     // 1. Deterministic Ingestion of legacyPortions (handles internal duplicates)
     legacyPortions.forEach((p, idx) => {
-      const canonicalId = p.id?.startsWith('s') && p.id.includes('_a') 
-        ? p.id 
-        : createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
+      const canonicalId = createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
 
       const coordKey = `${p.surahNumber}:${p.startAyah}:${p.endAyah}`;
       sourceCoordinateKeys.add(coordKey);
