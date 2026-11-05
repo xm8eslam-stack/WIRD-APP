@@ -27,6 +27,7 @@ import {
   getPrioritizedRevisionQueue,
   migrateLegacyDataLosslessly,
   findNextUnmemorizedRange,
+  calculateUniqueRetentionScore,
 } from '../services/unifiedPortionService';
 import { StorageService, STORAGE_KEYS } from '../services/storageService';
 import { RetentionService } from '../services/retentionService';
@@ -136,6 +137,12 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       nextDueDate: '2026-05-06'
     }];
     assert(calculateUniqueMemorizedPages(partialMushafPage) === 0, 'A partially memorized Mushaf page is not counted as a fully memorized page');
+
+    const overlapScore = calculateUniqueRetentionScore([
+      { ...portionsOverlap[0], status: 'stable' },
+      { ...portionsOverlap[1], status: 'weak' }
+    ]);
+    assert(overlapScore === 66, `Retention quality is weighted once per unique ayah and resolves overlap conservatively (got ${overlapScore})`);
 
     const portionsNonOverlap: WirdPortion[] = [
       ...portionsOverlap,
