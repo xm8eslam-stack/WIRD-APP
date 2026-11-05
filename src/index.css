@@ -490,3 +490,64 @@
   .wird-metric-card { min-height: 8.5rem; padding: 1rem !important; }
   .wird-metric-card > .flex.items-baseline { align-items: flex-end; gap: .4rem; }
 }
+
+/* Quran library 5C — reading-first layout and keyboard-operable Surah browser. */
+.wird-surah-list {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-inline-end: .2rem;
+}
+.wird-surah-option {
+  min-height: 4.65rem;
+  gap: .6rem;
+  border-radius: 17px !important;
+  box-shadow: 0 4px 14px rgba(28, 54, 41, .035);
+}
+.wird-surah-option:focus-within {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 2px;
+}
+.wird-surah-select {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 11px;
+  padding: .1rem;
+}
+.wird-surah-select:focus-visible {
+  outline: 2px solid var(--wird-gold);
+  outline-offset: 3px;
+}
+.wird-reading-panel {
+  border-radius: 26px !important;
+  box-shadow: 0 16px 42px rgba(28, 54, 41, .06) !important;
+}
+.wird-surah-banner {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(199, 163, 91, .13), transparent 17rem),
+    var(--wird-surface-soft) !important;
+  border-color: rgba(199, 163, 91, .24) !important;
+}
+.wird-ayah-card {
+  border-radius: 18px !important;
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.wird-ayah-card:hover {
+  border-color: rgba(35, 103, 76, .28) !important;
+  box-shadow: 0 7px 20px rgba(28, 54, 41, .045);
+}
+.wird-quran-reading-text {
+  line-height: 2.45 !important;
+  word-spacing: .035em;
+  text-wrap: pretty;
+}
+@media (max-width: 1023px) {
+  .wird-surah-list { max-height: min(38vh, 340px) !important; }
+  .wird-reading-panel { padding: 1rem !important; }
+}
+@media (max-width: 639px) {
+  .wird-surah-option { min-height: 4.35rem; padding: .7rem !important; }
+  .wird-quran-reading-text { line-height: 2.3 !important; }
+}
