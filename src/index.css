@@ -167,7 +167,7 @@
   transform: translateX(-2px);
 }
 
-.wird-nav-item-active {
+.wird-nav-item[aria-current="page"] {
   color: #173d31 !important;
   background: linear-gradient(105deg, #e3cf9b, #c8a963) !important;
   border-color: rgba(255, 239, 190, .55) !important;
