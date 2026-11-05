@@ -39,6 +39,9 @@ export function getPagesForAyahRange(surahNumber: number, startAyah: number, end
     startAyah < 1 || endAyah < startAyah
   ) return [];
 
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  if (!surah || endAyah > surah.versesCount) return [];
+
   const index = QURAN_PAGE_INDEX as unknown as Record<number, PageAyahSegment[]>;
   const pages: number[] = [];
   for (let pageNumber = 1; pageNumber <= 604; pageNumber++) {
