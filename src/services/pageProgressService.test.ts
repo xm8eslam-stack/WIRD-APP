@@ -54,7 +54,9 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
       surahName: 'الفاتحة', startAyah: segment.startAyah, endAyah: segment.startAyah,
       status: 'weak' as const, nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 1.3, repetitionCount: 0
     } as PortionStatusRecord;
-    assert(getPageProgressStatus(1, [weakPartial]).status === 'weak', 'Partial coverage must not hide a weak tracked ayah');
+    const result = getPageProgressStatus(1, [weakPartial]);
+    assert(result.status === 'weak', 'Partial coverage must not hide a weak tracked ayah');
+    assert(!result.isFullyCovered, 'A weak partial page must not count as a fully memorized page');
   });
 
   test('Page-specific portions affect only their recorded page', () => {
@@ -78,6 +80,7 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     const stablePage = { ...shared, id: 'stable-page', type: 'page' as const, pageNumber: 1, pageStart: 1, pageEnd: 1, status: 'stable' as const } as PortionStatusRecord;
     const weakPassage = { ...shared, id: 'weak-passage', type: 'passage' as const, status: 'weak' as const } as PortionStatusRecord;
     assert(getPageProgressStatus(1, [stablePage, weakPassage]).status === 'weak', 'The least secure overlapping record must determine page status');
+    assert(!getPageProgressStatus(1, [stablePage]).isFullyCovered || getPageProgressStatus(1, [stablePage]).status === 'stable', 'Coverage state must remain explicit for page-level records');
   });
 
   test('Overlapping page records choose the least secure status and retain all IDs', () => {
