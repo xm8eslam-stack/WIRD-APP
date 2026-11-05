@@ -27,46 +27,101 @@ export const STORAGE_KEYS = {
   SCHEMA_VERSION: 'wird_data_schema_version'
 } as const;
 
-// In-memory fallback for test / Node / SSR environments where localStorage is not defined
+// In-memory fallback for test / Node / SSR environments where localStorage is not defined.
 const memoryStorage = new Map<string, string>();
+const STORAGE_SCOPE_PREFIX = 'wird_scope_v1';
+const STORAGE_OWNER_MARKER = 'wird_storage_owner_v1';
+let activeStorageScope = 'legacy';
 
-function getItem(key: string): string | null {
+function resolveStorageKey(key: string, scope = activeStorageScope): string {
+  if (scope === 'legacy' || scope === 'guest') return key;
+  return `${STORAGE_SCOPE_PREFIX}:${scope}:${key}`;
+}
+
+function rawGetItem(key: string): string | null {
   try {
     if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem(key);
+      const value = localStorage.getItem(key);
+      if (value !== null) return value;
     }
   } catch {
-    // ignore
+    // Fall back to the in-memory copy when browser storage is unavailable.
   }
-  return memoryStorage.get(key) || null;
+  return memoryStorage.get(key) ?? null;
+}
+
+function rawSetItem(key: string, value: string): boolean {
+  memoryStorage.set(key, value);
+  if (typeof localStorage === 'undefined') return true;
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.error(`[WIRD Storage] Durable write to localStorage failed for ${key}`, error);
+    return false;
+  }
+}
+
+function rawRemoveItem(key: string): boolean {
+  let success = true;
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
+  } catch {
+    success = false;
+  }
+  memoryStorage.delete(key);
+  return success;
+}
+
+/**
+ * Authenticated accounts receive isolated local keys. The first authenticated
+ * account safely claims the legacy unscoped dataset; subsequent accounts never
+ * inherit it. Guest mode deliberately continues to use the legacy guest store.
+ */
+function setStorageScope(scope: string): boolean {
+  const normalized = scope.trim();
+  if (normalized === 'legacy' || normalized === 'guest') {
+    activeStorageScope = normalized;
+    return true;
+  }
+  if (!/^user:[A-Za-z0-9_-]{1,128}$/.test(normalized)) return false;
+
+  const owner = rawGetItem(STORAGE_OWNER_MARKER);
+  if (!owner) {
+    const legacyValues = Object.values(STORAGE_KEYS).map(key => ({
+      key,
+      value: rawGetItem(key)
+    }));
+
+    // Copy and verify every legacy value before removing any source key.
+    for (const item of legacyValues) {
+      if (item.value === null) continue;
+      const destinationKey = resolveStorageKey(item.key, normalized);
+      if (rawGetItem(destinationKey) === null && !rawSetItem(destinationKey, item.value)) return false;
+      if (rawGetItem(destinationKey) !== item.value) return false;
+    }
+
+    for (const item of legacyValues) {
+      if (item.value !== null && !rawRemoveItem(item.key)) return false;
+    }
+
+    if (!rawSetItem(STORAGE_OWNER_MARKER, normalized)) return false;
+  }
+
+  activeStorageScope = normalized;
+  return true;
+}
+
+function getItem(key: string): string | null {
+  return rawGetItem(resolveStorageKey(key));
 }
 
 function setItem(key: string, value: string): boolean {
-  let durableSuccess = false;
-  if (typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(key, value);
-      durableSuccess = true;
-    } catch (e) {
-      console.error(`[WIRD Storage] Durable write to localStorage failed for ${key}`, e);
-      durableSuccess = false;
-    }
-  } else {
-    durableSuccess = true; // In Node / test environment without window.localStorage
-  }
-  memoryStorage.set(key, value);
-  return durableSuccess;
+  return rawSetItem(resolveStorageKey(key), value);
 }
 
 function removeItem(key: string): void {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(key);
-    }
-  } catch {
-    // ignore
-  }
-  memoryStorage.delete(key);
+  rawRemoveItem(resolveStorageKey(key));
 }
 
 // 1. Clean Initial State for New Users (No fabricated identity, streaks, or fake progress)
@@ -291,6 +346,47 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
 }
 
 export const StorageService = {
+  // Scope and raw-key API used by AuthGate and the retention adapter.
+  setStorageScope(scope: string): boolean {
+    return setStorageScope(scope);
+  },
+
+  getStorageScope(): string {
+    return activeStorageScope;
+  },
+
+  getRawItem(key: string): string | null {
+    return getItem(key);
+  },
+
+  setRawItem(key: string, value: string): boolean {
+    return setItem(key, value);
+  },
+
+  removeRawItem(key: string): void {
+    removeItem(key);
+  },
+
+  /** @internal Test-only reset; never call from application UI. */
+  __resetStorageForTests(): void {
+    activeStorageScope = 'legacy';
+    const keysToRemove = new Set<string>([
+      ...Object.values(STORAGE_KEYS),
+      STORAGE_OWNER_MARKER
+    ]);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        for (let index = 0; index < localStorage.length; index++) {
+          const key = localStorage.key(index);
+          if (key?.startsWith(`${STORAGE_SCOPE_PREFIX}:`)) keysToRemove.add(key);
+        }
+      }
+    } catch { /* ignore */ }
+    keysToRemove.forEach(key => rawRemoveItem(key));
+    memoryStorage.clear();
+  },
+
+
   // Profile
   getProfile(): UserProfile {
     try {
@@ -742,50 +838,37 @@ export const StorageService = {
     removeItem(STORAGE_KEYS.WEAK_VERSES);
     removeItem(STORAGE_KEYS.UNIFIED_PORTIONS);
     removeItem(STORAGE_KEYS.SCHEMA_VERSION);
-    memoryStorage.clear();
   },
 
   // Test-only Snapshot API
   getStorageSnapshot(): Record<string, string | null> {
     const snapshot: Record<string, string | null> = {};
-    // Snapshots internal memory storage
-    memoryStorage.forEach((val, key) => {
-      snapshot[`memory:${key}`] = val;
-    });
-    // Snapshots localStorage
-    Object.values(STORAGE_KEYS).forEach(key => {
+    const scopedKeys = Object.values(STORAGE_KEYS).map(key => resolveStorageKey(key));
+    scopedKeys.forEach(key => {
+      const memoryValue = memoryStorage.get(key);
+      if (memoryValue !== undefined) snapshot[`memory:${key}`] = memoryValue;
       try {
-        if (typeof localStorage !== 'undefined') {
-          snapshot[`local:${key}`] = localStorage.getItem(key);
-        }
+        if (typeof localStorage !== 'undefined') snapshot[`local:${key}`] = localStorage.getItem(key);
       } catch { /* ignore */ }
     });
     return snapshot;
   },
 
   restoreStorageSnapshot(snapshot: Record<string, string | null>): void {
-    // Restore memory storage
-    memoryStorage.clear();
-    // Restore localStorage
-    Object.values(STORAGE_KEYS).forEach(key => {
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem(key);
-        }
-      } catch { /* ignore */ }
-    });
+    const scopedKeys = Object.values(STORAGE_KEYS).map(key => resolveStorageKey(key));
+    scopedKeys.forEach(key => rawRemoveItem(key));
 
     Object.entries(snapshot).forEach(([fullKey, val]) => {
       if (fullKey.startsWith('memory:')) {
-        const key = fullKey.replace('memory:', '');
+        const key = fullKey.slice('memory:'.length);
         if (val !== null) memoryStorage.set(key, val);
       } else if (fullKey.startsWith('local:')) {
-        const key = fullKey.replace('local:', '');
-        try {
-          if (typeof localStorage !== 'undefined' && val !== null) {
-            localStorage.setItem(key, val);
-          }
-        } catch { /* ignore */ }
+        const key = fullKey.slice('local:'.length);
+        if (val !== null) {
+          try {
+            if (typeof localStorage !== 'undefined') localStorage.setItem(key, val);
+          } catch { /* ignore */ }
+        }
       }
     });
   }
