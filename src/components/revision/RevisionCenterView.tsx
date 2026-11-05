@@ -98,12 +98,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const revisionHistory = RetentionService.getRevisionHistory();
 
   // Handle rating a portion
-  const handleRatePortion = (rating: RevisionRating) => {
-    if (!ratingPortion) return;
+  const handleRatePortion = (rating: RevisionRating, portionOverride?: PortionStatusRecord) => {
+    const targetPortion = portionOverride || ratingPortion;
+    if (!targetPortion) return;
 
     let weakDetails = undefined;
     if (rating === 'failed' && weakAyahNum) {
-      const verifiedList = VERIFIED_AYAHS[ratingPortion.surahNumber] || [];
+      const verifiedList = VERIFIED_AYAHS[targetPortion.surahNumber] || [];
       const foundAyah = verifiedList.find(a => a.numberInSurah === Number(weakAyahNum));
       weakDetails = {
         ayahNumber: Number(weakAyahNum),
@@ -113,7 +114,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
 
     const result = RetentionService.recordRevisionPerformance(
-      ratingPortion.id,
+      targetPortion.id,
       rating,
       reviewNotes,
       weakDetails
@@ -428,10 +429,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                       <div className="grid grid-cols-3 gap-2">
                         <button
-                          onClick={() => {
-                            setRatingPortion(item);
-                            handleRatePortion('successful');
-                          }}
+                          onClick={() => handleRatePortion('successful', item)}
                           className="py-2 px-1 text-center bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -439,10 +437,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         </button>
 
                         <button
-                          onClick={() => {
-                            setRatingPortion(item);
-                            handleRatePortion('difficult');
-                          }}
+                          onClick={() => handleRatePortion('difficult', item)}
                           className="py-2 px-1 text-center bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold border border-amber-200 dark:border-amber-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <Clock className="w-3.5 h-3.5 text-amber-600" />
