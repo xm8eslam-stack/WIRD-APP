@@ -287,7 +287,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* REVISION CARD (المراجعة والتثبيت) */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+        <div className="wird-focus-card bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
               <div className="flex items-center gap-3">
@@ -377,7 +377,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <span className="text-xs text-stone-400 tabular-nums font-mono">من {TOTAL_QURAN_VERSES}</span>
           </div>
-          <div className="w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div className="wird-progress-track w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden" role="progressbar" aria-label="نسبة الآيات المحفوظة" aria-valuenow={Number(versesPercentage)} aria-valuemin={0} aria-valuemax={100}>
             <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${versesPercentage}%` }} />
           </div>
           <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
@@ -394,7 +394,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <span className="text-xs text-stone-400 tabular-nums font-mono">من {TOTAL_QURAN_PAGES} صفحة</span>
           </div>
-          <div className="w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden">
+          <div className="wird-progress-track w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden" role="progressbar" aria-label="نسبة الصفحات المحفوظة بالكامل" aria-valuenow={Number(pagesPercentage)} aria-valuemin={0} aria-valuemax={100}>
             <div className="bg-amber-600 h-full rounded-full" style={{ width: `${pagesPercentage}%` }} />
           </div>
           <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5 font-medium">
