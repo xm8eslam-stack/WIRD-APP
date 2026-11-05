@@ -58,6 +58,18 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     assert(getPageProgressStatus(563, portions).status === 'not_memorized', 'Adjacent page must remain unmemorized');
   });
 
+  test('A stable page record cannot hide a weaker overlapping passage record', () => {
+    const segment = getPageAyahSegments(1)[0];
+    const shared = {
+      surahNumber: segment.surahNumber, surahName: 'الفاتحة',
+      startAyah: segment.startAyah, endAyah: segment.endAyah,
+      nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5, repetitionCount: 1
+    };
+    const stablePage = { ...shared, id: 'stable-page', type: 'page' as const, pageNumber: 1, pageStart: 1, pageEnd: 1, status: 'stable' as const } as PortionStatusRecord;
+    const weakPassage = { ...shared, id: 'weak-passage', type: 'passage' as const, status: 'weak' as const } as PortionStatusRecord;
+    assert(getPageProgressStatus(1, [stablePage, weakPassage]).status === 'weak', 'The least secure overlapping record must determine page status');
+  });
+
   test('Overlapping page records choose the least secure status and retain all IDs', () => {
     const segment = getPageAyahSegments(1)[0];
     const base = { surahNumber: segment.surahNumber, surahName: 'الفاتحة', startAyah: segment.startAyah, endAyah: segment.endAyah, pageNumber: 1, pageStart: 1, pageEnd: 1, type: 'page' as const, nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5, repetitionCount: 1 };
