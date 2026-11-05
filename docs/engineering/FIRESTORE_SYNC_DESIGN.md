@@ -1,6 +1,6 @@
 # WIRD — Cross-Device Sync Architecture
 
-> Status: Design approved for implementation planning; NOT implemented or deployed.
+> Status: Local account isolation is implemented on main; Firestore sync and rules are NOT implemented or deployed.
 > Reviewed: 2026-11-05
 > Constraint: Firebase Spark / free services only; no mandatory paid service.
 
@@ -9,9 +9,11 @@
 - Firebase Authentication is already initialized in `src/lib/firebase.ts`.
 - Verified users are admitted by `AuthGate`; guest mode is local-only.
 - No Firestore initialization, Firestore Security Rules, or sync listeners currently exist in the inspected main source.
-- `StorageService` uses global, unscoped browser storage keys.
-- `RetentionService` stores weak-verse records directly through a second localStorage path, outside the main StorageService API.
-- The app initializes React state from local storage before any cloud data flow.
+- `StorageService` now namespaces authenticated local keys by Firebase UID; guest mode remains in a separate legacy/guest scope.
+- `AuthGate` prepares the correct local scope before mounting the app.
+- First-account legacy data requires an explicit choice: import into the account, or keep it in guest mode. Import copies and verifies destination values before removing legacy source keys.
+- `RetentionService` weak-verse reads/writes now use the central StorageService adapter.
+- The app still initializes React state from local storage; no Firestore data flow exists yet.
 - Therefore, simply adding `onSnapshot` to one collection is insufficient and risks cross-account leakage or data loss.
 
 ## 2. Product behavior
@@ -56,15 +58,21 @@ Do not sync duplicate projections blindly: `RevisionItem` is derived/legacy-comp
 
 ## 4. Local storage and account isolation
 
-Before enabling sync, centralize persistence:
-- Route weak-verse reads/writes through the same storage adapter.
-- Add an explicit active scope: guest vs authenticated UID.
-- Namespace local keys per scope; never leave account A's state under a shared global key after account B signs in.
+Implemented locally on main:
+- Weak-verse reads/writes use the same storage adapter.
+- AuthGate sets an explicit guest vs authenticated UID scope before app mount.
+- Authenticated local keys are UID-namespaced; account switching does not read another UID's local keys.
+- A one-time legacy-data ownership choice prevents silent cross-account import.
+
+Still required before enabling cloud sync:
+- Add a durable outbox per UID containing mutation ID, entity type, document ID, schema version, and payload.
+- Keep remote snapshot application from re-enqueueing the same mutation.
+- Do not clear local state on sign-out until pending writes are acknowledged or safely retained in that UID's namespace.
 - Add a durable outbox per UID containing mutation ID, entity type, document ID, schema version, and payload.
 - Remote snapshot application must not re-enqueue the same mutation.
 - Do not clear local state on sign-out until pending writes are acknowledged or safely retained in that UID's namespace.
 - On account switch, unsubscribe listeners, flush/retain the old account's outbox, then load the new UID scope.
-- Existing legacy global keys require a one-time backup and migration marker bound to the first account that claims them.
+- Existing legacy global keys are handled by a one-time in-app ownership choice and a migration marker. Choosing import copies and verifies before deleting the legacy source; choosing guest preserves the old dataset in guest mode.
 
 ## 5. Conflict and deletion policy
 
