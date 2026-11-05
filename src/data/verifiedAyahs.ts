@@ -1,6 +1,5 @@
 import { Ayah } from '../types/quran';
 import COMPLETE_QURAN_DATA from './completeQuranData.json';
-import { QURAN_DATA_SOURCE_INFO } from './quranDataInfo';
 export { QURAN_DATA_SOURCE_INFO } from './quranDataInfo';
 
 /**
