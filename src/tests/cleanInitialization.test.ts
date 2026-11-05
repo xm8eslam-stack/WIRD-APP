@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { StorageService, CLEAN_INITIAL_PROFILE } from '../services/storageService';
 import { RetentionService } from '../services/retentionService';
 
@@ -19,6 +21,7 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
       passed++;
     } catch (e: any) {
       failed++;
+      console.error(`❌ FAIL: ${name} — ${e?.message || e}`);
     }
   }
 
@@ -47,7 +50,26 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
     assert(weak.length === 0, `Weak verses should be empty, got ${weak.length}`);
   });
 
-  // 3. True zero retention metrics
+  // 3. Production entry points must never seed demo progress.
+  test('Normal app startup does not invoke demo data loaders', () => {
+    const productionEntryFiles = [
+      'src/main.tsx',
+      'src/App.tsx',
+      'src/context/AuthContext.tsx',
+      'src/components/auth/AuthGate.tsx',
+      'src/components/dashboard/DashboardView.tsx',
+      'src/components/plans/MemorizationPlansView.tsx',
+      'src/components/assistant/QuranAdvisorView.tsx'
+    ];
+    const demoLoaderCalls = /\b(?:StorageService\s*\.\s*)?loadDemoData\s*\(|\b(?:RetentionService\s*\.\s*)?loadDemoPortions\s*\(/;
+
+    for (const file of productionEntryFiles) {
+      const source = fs.readFileSync(path.resolve(process.cwd(), file), 'utf8');
+      assert(!demoLoaderCalls.test(source), `${file} must not seed demo data during normal use`);
+    }
+  });
+
+  // 4. True zero retention metrics
   test('Retention metrics for clean user report 0% retention and 0 memorized verses', () => {
     StorageService.resetAllData();
     RetentionService.resetAll();
@@ -58,7 +80,7 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
     assert(metrics.totalTrackedPortions === 0, `Tracked portions should be 0, got ${metrics.totalTrackedPortions}`);
   });
 
-  // 4. Demo mode loads explicitly
+  // 5. Demo mode loads explicitly
   test('Demo mode explicitly populates sample data on demand', () => {
     StorageService.loadDemoData();
     RetentionService.loadDemoPortions();
