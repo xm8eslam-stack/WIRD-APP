@@ -16,12 +16,8 @@ export interface PageProgressStatus {
 }
 
 const CONSERVATIVE_STATUS_PRIORITY: Record<PortionMemorizationStatus, number> = {
-  not_memorized: 0,
-  stable: 1,
-  recently_memorized: 2,
-  currently_memorizing: 3,
-  needs_revision: 4,
-  weak: 5
+  not_memorized: 0, stable: 1, recently_memorized: 2,
+  currently_memorizing: 3, needs_revision: 4, weak: 5
 };
 
 export function getPageAyahSegments(pageNumber: number): PageAyahSegment[] {
@@ -32,19 +28,61 @@ export function getPageAyahSegments(pageNumber: number): PageAyahSegment[] {
 
 export function getPageProgressStatus(pageNumber: number, portions: PortionStatusRecord[]): PageProgressStatus {
   const surah = ALL_SURAHS.find(item => pageNumber >= item.pageStart && pageNumber <= item.pageEnd) || ALL_SURAHS[0];
-  const matching = portions.filter(portion => {
-    const startPage = portion.pageStart ?? portion.pageNumber;
-    const endPage = portion.pageEnd ?? portion.pageNumber ?? startPage;
-    if (typeof startPage !== 'number' || typeof endPage !== 'number') return false;
-    return pageNumber >= Math.min(startPage, endPage) && pageNumber <= Math.max(startPage, endPage);
+  const segments = getPageAyahSegments(pageNumber);
+  if (segments.length === 0) return { status: 'not_memorized', surah, portionIds: [] };
+
+  const bySurah = new Map<number, PortionStatusRecord[]>();
+  portions.forEach(portion => {
+    const group = bySurah.get(portion.surahNumber) || [];
+    group.push(portion);
+    bySurah.set(portion.surahNumber, group);
   });
 
-  if (matching.length === 0) return { status: 'not_memorized', surah, portionIds: [] };
-
-  // When portions overlap a page, show the least secure status rather than overstating mastery.
-  const selected = matching.reduce((worst, current) =>
-    CONSERVATIVE_STATUS_PRIORITY[current.status] > CONSERVATIVE_STATUS_PRIORITY[worst.status] ? current : worst
+  const exactPagePortions = portions.filter(portion =>
+    portion.type === 'page' && portion.pageStart === pageNumber && portion.pageEnd === pageNumber
   );
+  const exactPageBySurah = new Map<number, PortionStatusRecord[]>();
+  exactPagePortions.forEach(portion => {
+    const group = exactPageBySurah.get(portion.surahNumber) || [];
+    group.push(portion);
+    exactPageBySurah.set(portion.surahNumber, group);
+  });
 
-  return { status: selected.status, surah, portionId: selected.id, portionIds: matching.map(portion => portion.id) };
+  let anyCovered = false;
+  let fullyCovered = true;
+  let worstStatus: PortionMemorizationStatus = 'stable';
+
+  for (const segment of segments) {
+    const exactForSurah = exactPageBySurah.get(segment.surahNumber) || [];
+    const allForSurah = bySurah.get(segment.surahNumber) || [];
+    for (let ayahNumber = segment.startAyah; ayahNumber <= segment.endAyah; ayahNumber++) {
+      const exactMatches = exactForSurah.filter(portion => portion.startAyah <= ayahNumber && portion.endAyah >= ayahNumber);
+      const matches = exactMatches.length > 0
+        ? exactMatches
+        : allForSurah.filter(portion => portion.startAyah <= ayahNumber && portion.endAyah >= ayahNumber);
+      if (matches.length === 0) {
+        fullyCovered = false;
+        continue;
+      }
+      anyCovered = true;
+      for (const match of matches) {
+        if (CONSERVATIVE_STATUS_PRIORITY[match.status] > CONSERVATIVE_STATUS_PRIORITY[worstStatus]) {
+          worstStatus = match.status;
+        }
+      }
+    }
+  }
+
+  const status: PortionMemorizationStatus = !anyCovered
+    ? 'not_memorized'
+    : !fullyCovered
+      ? 'currently_memorizing'
+      : worstStatus;
+
+  return {
+    status,
+    surah,
+    portionId: exactPagePortions[0]?.id,
+    portionIds: exactPagePortions.map(portion => portion.id)
+  };
 }
