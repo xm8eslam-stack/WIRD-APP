@@ -85,7 +85,7 @@ export async function executeGuestTransition(
   logoutFn: () => Promise<void>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (currentUser || (typeof auth !== 'undefined' && auth && auth.currentUser)) {
+    if (currentUser) {
       await logoutFn();
     }
     setStorageItem(GUEST_PREFERENCE_KEY, 'true');
@@ -95,6 +95,7 @@ export async function executeGuestTransition(
     return { success: false, error: msg };
   }
 }
+
 
 export interface AuthContextType {
   user: User | null;
