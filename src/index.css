@@ -568,3 +568,70 @@
   outline: 2px solid var(--wird-gold);
   outline-offset: 3px;
 }
+
+
+/* Phase 5E — consistent planning, revision, analytics and settings surfaces. */
+.wird-planning-wizard {
+  display: grid;
+  gap: 1.25rem;
+}
+.wird-plans > div:first-child {
+  background: var(--wird-surface) !important;
+  border-color: var(--wird-line) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--wird-shadow) !important;
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  [class*="rounded-2xl"][class*="border"] {
+  border-color: var(--wird-line) !important;
+  box-shadow: var(--wird-shadow);
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  min-height: 2.75rem;
+  border-color: var(--wird-line) !important;
+  border-radius: 12px !important;
+  background-color: var(--wird-surface-soft) !important;
+  color: var(--wird-ink);
+  transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  border-color: var(--wird-gold) !important;
+  box-shadow: 0 0 0 3px rgba(199, 163, 91, .14);
+}
+:where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+  button {
+  touch-action: manipulation;
+}
+.wird-planning-wizard > [class*="rounded-2xl"][class*="border"],
+.wird-revision > [class*="rounded-2xl"][class*="border"],
+.wird-progress > [class*="rounded-2xl"][class*="border"],
+.wird-settings > [class*="rounded-2xl"][class*="border"],
+.wird-tests > [class*="rounded-2xl"][class*="border"] {
+  border-radius: 22px !important;
+}
+.wird-progress [role="progressbar"] {
+  overflow: hidden;
+  border-radius: 999px;
+}
+.wird-progress table {
+  border-color: var(--wird-line);
+}
+.wird-planning-wizard [aria-pressed="true"],
+.wird-plans [aria-pressed="true"],
+.wird-revision [aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px rgba(199, 163, 91, .45);
+}
+@media (max-width: 639px) {
+  .wird-planning-wizard { gap: 1rem; }
+  :where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+    [class*="rounded-2xl"][class*="border"] {
+    border-radius: 18px !important;
+  }
+  :where(.wird-planning-wizard, .wird-plans, .wird-revision, .wird-progress, .wird-settings, .wird-tests)
+    :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    min-height: 2.875rem;
+    font-size: 16px;
+  }
+}
