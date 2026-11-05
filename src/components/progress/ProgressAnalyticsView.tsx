@@ -181,7 +181,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     pageStats[status] = (pageStats[status] || 0) + 1;
   }
 
-  const totalMemorizedPagesCount = 604 - pageStats.not_memorized;
+  const totalMemorizedPagesCount = 604 - pageStats.not_memorized - pageStats.currently_memorizing;
 
   return (
     <div className="space-y-6">
