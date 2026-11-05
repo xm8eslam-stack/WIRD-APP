@@ -35,6 +35,7 @@ import { RetentionService } from '../services/retentionService';
 import { generateDynamicTestQuestions } from '../services/testQuestionGenerator';
 import { parseRoute, buildRouteHash } from '../services/router';
 import { getSessionCompletionMetrics } from '../services/sessionCompletion';
+import { getPagesForAyahRange, QURAN_PAGE_AYAH_KEYS } from '../data/quranPageMap';
 import { WirdPortion, PortionStatusRecord, RevisionItem } from '../types/quran';
 
 interface TestResult {
@@ -82,6 +83,10 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
   {
     assert(calculateUniqueMemorizedAyahs([]).uniqueCount === 0, 'Empty portions return 0 unique ayahs');
     assert(calculateUniqueMemorizedPages([]) === 0, 'Empty portions return 0 unique pages');
+    assert(Object.keys(QURAN_PAGE_AYAH_KEYS).length === 604, 'Compact page index contains all 604 Mushaf pages');
+    assert(Object.values(QURAN_PAGE_AYAH_KEYS).reduce((sum, keys) => sum + keys.length, 0) === 6236, 'Compact page index contains all 6,236 canonical ayah coordinates');
+    assert(getPagesForAyahRange(1, 1, 7).join(',') === '1', 'Al-Fatihah range resolves to page 1');
+    assert(getPagesForAyahRange(67, 1, 30).join(',') === '562,563,564', 'Surah Al-Mulk resolves to its three actual Mushaf pages');
 
     const portionsOverlap: WirdPortion[] = [
       {
