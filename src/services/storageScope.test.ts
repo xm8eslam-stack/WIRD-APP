@@ -62,6 +62,16 @@ export function runStorageScopeTests(): { passed: number; failed: number } {
       assert(RetentionService.getWeakVerses().length === 1, 'Resetting Beta must not erase Alpha weak verses');
     });
 
+    test('Keep-as-guest choice preserves legacy data without importing it into the account', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'بيانات ضيف محفوظة' });
+      assert(StorageService.needsLegacyDataDecision('user:delta'), 'Legacy guest data should require a choice');
+      assert(StorageService.setStorageScope('user:delta', 'keep-guest'), 'Keep-as-guest choice should activate the account');
+      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Account should start clean');
+      assert(StorageService.setStorageScope('guest'), 'Guest scope should remain accessible');
+      assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Legacy data should remain in guest scope');
+    });
+
     test('Guest data stays separate and is not silently claimed by a later account', () => {
       assert(StorageService.setStorageScope('guest'), 'Guest scope should activate');
       assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Imported legacy data should no longer remain in the guest store');
