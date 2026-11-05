@@ -134,7 +134,15 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
     assert(week[0].isToday === true, 'First day should be marked as today');
   });
 
-  // 7. Retention Dashboard Metrics
+  // 7. Local-calendar weekly overview must not shift dates through UTC parsing.
+  runTest('RetentionService: weekly overview preserves local date strings across year boundaries', () => {
+    const week = RetentionService.getWeeklyRevisionOverview('2026-12-29');
+    assert(week[0].date === '2026-12-29', 'Week must begin on the requested local date');
+    assert(week[3].date === '2027-01-01', 'Week must cross into the next year without date drift');
+    assert(week[6].date === '2027-01-04', 'Seven-day range must retain exact local calendar arithmetic');
+  });
+
+  // 8. Retention Dashboard Metrics
   runTest('RetentionService: Dashboard metrics calculate retention score between 0% and 100%', () => {
     const metrics = RetentionService.getRetentionDashboardMetrics();
     assert(metrics.retentionScorePercentage >= 0 && metrics.retentionScorePercentage <= 100,
