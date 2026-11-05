@@ -265,7 +265,31 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         )}
 
         {/* Navigation Tabs (5 Views) */}
-        <div role="tablist" aria-label="أقسام مركز المراجعة" className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
+        <div
+          role="tablist"
+          aria-label="أقسام مركز المراجعة"
+          onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
+            const tabOrder: RevisionTab[] = ['daily_queue', 'weekly_overview', 'weak_verses', 'history', 'retention_dashboard'];
+            const currentIndex = tabOrder.indexOf(activeTab);
+            let nextIndex = currentIndex;
+            if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabOrder.length;
+            else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabOrder.length) % tabOrder.length;
+            else if (event.key === 'Home') nextIndex = 0;
+            else if (event.key === 'End') nextIndex = tabOrder.length - 1;
+            else return;
+            event.preventDefault();
+            const nextTab = tabOrder[nextIndex];
+            setActiveTab(nextTab);
+            const tabIds: Record<RevisionTab, string> = {
+              daily_queue: 'revision-tab-daily-queue',
+              weekly_overview: 'revision-tab-weekly-overview',
+              weak_verses: 'revision-tab-weak-verses',
+              history: 'revision-tab-history',
+              retention_dashboard: 'revision-tab-retention-dashboard'
+            };
+            event.currentTarget.querySelector<HTMLButtonElement>(`#${tabIds[nextTab]}`)?.focus();
+          }}
+          className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
             type="button"
             role="tab"
