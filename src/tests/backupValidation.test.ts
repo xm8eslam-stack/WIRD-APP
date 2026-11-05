@@ -25,6 +25,7 @@ export function runBackupTests(): { passed: number; failed: number } {
       passed++;
     } catch (e: any) {
       failed++;
+      console.error('❌ FAIL: ' + name + ' - ' + (e?.message || e));
     }
   }
 
