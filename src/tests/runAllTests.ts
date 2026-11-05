@@ -10,15 +10,34 @@ import { runIndependentTanzilComparison, runNegativeComparisonTests } from './in
 import { runPwaIntegrationTests } from './pwaIntegration.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
 
-let totalPassed = 0;
-let totalFailed = 0;
+export interface SuiteResult {
+  passed: number;
+  failed: number;
+}
 
-async function runSuite(name: string, runner: () => { passed: number; failed: number } | Promise<{ passed: number; failed: number }>) {
-  console.log(`\n▶ [SUITE]: ${name}`);
-  const { passed, failed } = await runner();
-  totalPassed += passed;
-  totalFailed += failed;
-  console.log(`  Summary: ${passed} Passed, ${failed} Failed`);
+export type SuiteRunner = () => SuiteResult | Promise<SuiteResult>;
+
+export async function executeSuiteAggregation(
+  suites: Array<{ name: string; runner: SuiteRunner }>
+): Promise<SuiteResult> {
+  let totalPassed = 0;
+  let totalFailed = 0;
+
+  for (const suite of suites) {
+    console.log(`\n▶ [SUITE]: ${suite.name}`);
+    try {
+      const { passed, failed } = await suite.runner();
+      totalPassed += passed;
+      totalFailed += failed;
+      console.log(`  Summary: ${passed} Passed, ${failed} Failed`);
+    } catch (err: any) {
+      // A rejected asynchronous suite is recorded as a failure and does not stop the run.
+      totalFailed++;
+      console.error(`  ❌ [CRITICAL SUITE FAILURE]: ${suite.name} rejected with error:`, err?.message || err);
+    }
+  }
+
+  return { passed: totalPassed, failed: totalFailed };
 }
 
 export function evaluateTestResults(passed: number, failed: number): number {
@@ -33,64 +52,27 @@ async function main() {
   console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
   console.log('====================================================\n');
 
-  // 1. Planning Engine
-  await runSuite('Planning Engine Math & Task Distribution', () => {
-    const res = runAllPlanningEngineTests();
-    return { passed: res.passed, failed: res.failed };
-  });
+  const suites = [
+    { name: 'Planning Engine Math & Task Distribution', runner: () => runAllPlanningEngineTests() },
+    { name: 'Retention & Spaced Revision Engine', runner: () => runAllRetentionTests() },
+    { name: 'Deterministic Advisor Engine (Offline AI Fallback)', runner: () => runAllAdvisorTests() },
+    { name: 'Truthful Daily Streak Engine (Phase 3)', runner: runStreakTests },
+    { name: 'Backup Schema Validation & Atomic Imports (Phase 3)', runner: runBackupTests },
+    { name: 'Clean User Initialization & Zero Fake Progress (Phase 1)', runner: runCleanInitializationTests },
+    { name: 'Gemini Free Tier Security & Isolation (Phase 2)', runner: runGeminiSecurityTests },
+    { name: 'Quran Data Structural Integrity & Coverage', runner: runQuranIntegrityTests },
+    { name: 'Independent Tanzil Character-by-Character Verification', runner: () => runIndependentTanzilComparison() },
+    { name: 'Tanzil Comparison Detector Sensitivity (Negative Tests)', runner: () => runNegativeComparisonTests() },
+    { name: 'PWA Compliance & Service Worker Infrastructure', runner: runPwaIntegrationTests },
+    { name: 'Firebase Authentication Foundation & Data Preservation', runner: runFirebaseAuthTests },
+  ];
 
-  // 2. Retention & SM-2 Engine
-  await runSuite('Retention & Spaced Revision Engine', () => {
-    const res = runAllRetentionTests();
-    return { passed: res.passed, failed: res.failed };
-  });
-
-  // 3. Deterministic Advisor Engine
-  await runSuite('Deterministic Advisor Engine (Offline AI Fallback)', () => {
-    const res = runAllAdvisorTests();
-    return { passed: res.passed, failed: res.failed };
-  });
-
-  // 4. Streak Calculations
-  await runSuite('Truthful Daily Streak Engine (Phase 3)', runStreakTests);
-
-  // 5. Backup Validation & Version Compatibility
-  await runSuite('Backup Schema Validation & Atomic Imports (Phase 3)', runBackupTests);
-
-  // 6. Clean User Initialization
-  await runSuite('Clean User Initialization & Zero Fake Progress (Phase 1)', runCleanInitializationTests);
-
-  // 7. Gemini Free Tier Security & Isolation
-  await runSuite('Gemini Free Tier Security, Rate Limits & Bundle Isolation (Phase 2)', runGeminiSecurityTests);
-
-  // 8. Quran Data Structural Integrity
-  await runSuite('Quran Data Structural Integrity & Coverage', runQuranIntegrityTests);
-
-  // 9. Independent Character-by-Character Tanzil Comparison
-  await runSuite('Independent Tanzil Character-by-Character Text & Metadata Verification', () => {
-    const res = runIndependentTanzilComparison();
-    return { passed: res.passed, failed: res.failed };
-  });
-
-  // 10. Negative Comparison Sensitivity Tests
-  await runSuite('Tanzil Comparison Detector Sensitivity (Negative Tests)', () => {
-    const res = runNegativeComparisonTests();
-    return { passed: res.passed, failed: res.failed };
-  });
-
-  // 11. PWA Compliance & Infrastructure Tests
-  await runSuite('PWA Compliance & Service Worker Infrastructure', runPwaIntegrationTests);
-
-  // 12. Firebase Authentication Foundation Tests
-  await runSuite('Firebase Authentication Foundation & Data Preservation', runFirebaseAuthTests);
-
-  const exitCode = evaluateTestResults(totalPassed, totalFailed);
+  const { passed, failed } = await executeSuiteAggregation(suites);
+  const exitCode = evaluateTestResults(passed, failed);
   process.exit(exitCode);
 }
 
 if (typeof process !== 'undefined' && process.argv && (process.argv[1]?.includes('runAllTests') || process.argv[1]?.endsWith('tsx'))) {
-  // Only auto-run if this is the main entry point
-  // The second check covers some environments where the path might be slightly different
   main().catch((err) => {
     console.error('❌ Fatal error in test runner:', err);
     process.exit(1);

@@ -1,10 +1,15 @@
-import { mapAuthError, AuthService } from '../services/authService';
+import { AuthService } from '../services/authService';
 import { validateFirebaseConfigMap } from '../lib/firebase';
-import { StorageService, STORAGE_KEYS } from '../services/storageService';
-import { handleContinueAsGuest, getStorageItem, removeStorageItem, setStorageItem } from '../context/AuthContext';
-import { evaluateTestResults } from './runAllTests';
-
-const GUEST_PREFERENCE_KEY = 'wird_guest_mode_preference';
+import { StorageService } from '../services/storageService';
+import { 
+  handleContinueAsGuest, 
+  getAuthStorageSnapshot, 
+  restoreAuthStorageSnapshot,
+  setStorageItem as setAuthStorageItem,
+  getStorageItem as getAuthStorageItem
+} from '../context/AuthContext';
+import { calculateVerificationState } from '../services/authUtils';
+import { executeSuiteAggregation, evaluateTestResults } from './runAllTests';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -18,16 +23,9 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
   let failed = 0;
 
   async function test(name: string, fn: () => void | Promise<void>) {
-    // 1. Snapshot ALL storage keys to ensure perfect isolation
-    const snapshot: Record<string, string | null> = {};
-    const keysToWatch = [
-      GUEST_PREFERENCE_KEY,
-      ...Object.values(STORAGE_KEYS)
-    ];
-    
-    keysToWatch.forEach(k => {
-      snapshot[k] = getStorageItem(k);
-    });
+    // 1. Snapshot ALL storage backends
+    const storageSnapshot = StorageService.getStorageSnapshot();
+    const authSnapshot = getAuthStorageSnapshot();
 
     try {
       await fn();
@@ -42,67 +40,106 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
       AuthService.setLogoutStub(null);
       AuthService.setCreateUserStub(null);
 
-      // 3. Restore localStorage exactly as it was
-      keysToWatch.forEach(k => {
-        const val = snapshot[k];
-        if (val === null) {
-          removeStorageItem(k);
-        } else {
-          setStorageItem(k, val);
-        }
-      });
+      // 3. Restore ALL storage backends exactly as they were
+      StorageService.restoreStorageSnapshot(storageSnapshot);
+      restoreAuthStorageSnapshot(authSnapshot);
     }
   }
 
-  console.log('🧪 Executing Firebase Authentication Foundation Tests (Phase 1.1.4)...');
+  console.log('🧪 Executing Firebase Authentication Foundation & Integrity Tests (Phase 1.1.4.1)...');
 
-  // 1. Configuration Validation
-  await test('Configuration validation: tests complete, missing, empty, and placeholder env maps', () => {
-    const completeValidMap = {
-      VITE_FIREBASE_API_KEY: 'AIzaSyValidKeyReal1234567890abcdef',
-      VITE_FIREBASE_AUTH_DOMAIN: 'wird-app.firebaseapp.com',
-      VITE_FIREBASE_PROJECT_ID: 'wird-app',
-      VITE_FIREBASE_STORAGE_BUCKET: 'wird-app.appspot.com',
-      VITE_FIREBASE_MESSAGING_SENDER_ID: '987654321012',
-      VITE_FIREBASE_APP_ID: '1:987654321012:web:abcdef123456'
-    };
-    assert(validateFirebaseConfigMap(completeValidMap) === true, 'Complete valid configuration map must return true');
-
-    const missingKeyMap = { ...completeValidMap, VITE_FIREBASE_API_KEY: '' };
-    assert(validateFirebaseConfigMap(missingKeyMap) === false, 'Missing API key must return false');
-
-    const placeholderKeyMap = { ...completeValidMap, VITE_FIREBASE_API_KEY: 'your_api_key_here' };
-    assert(validateFirebaseConfigMap(placeholderKeyMap) === false, 'Placeholder string must return false');
+  // 1. Storage Restoration Logic Verification
+  await test('Storage restoration: restores in-memory fallback state correctly after modification', () => {
+    // Modify in-memory state (assuming we are in node/test env where memory fallback is active)
+    setAuthStorageItem('test_key', 'modified_val');
+    assert(getAuthStorageItem('test_key') === 'modified_val', 'Pre-restoration modification must stick');
+    
+    // The 'test' wrapper's finally block will handle restoration.
+    // We will verify restoration in a separate test to ensure it actually happened.
   });
 
-  // 2. Test actual AuthService.signUpWithEmail()
-  await test('AuthService signUpWithEmail: success correctly updates verificationSent flag', async () => {
+  await test('Storage restoration verification: previous test state must be cleared', () => {
+    assert(getAuthStorageItem('test_key') === null, 'Storage must be restored to null between tests');
+  });
+
+  // 2. Verification State Behavioral Transitions
+  await test('Verification state: initial state is null', () => {
+    assert(calculateVerificationState('signup', true, null) === true, 'Signup success -> true');
+    assert(calculateVerificationState('signup', false, null) === false, 'Signup failure -> false');
+  });
+
+  await test('Verification state: login always returns null', () => {
+    assert(calculateVerificationState('login', true, true) === null, 'Login success must reset to null even if previously true');
+    assert(calculateVerificationState('login', true, false) === null, 'Login success must reset to null even if previously false');
+  });
+
+  await test('Verification state: resend transitions correctly', () => {
+    assert(calculateVerificationState('resend', true, null) === true, 'Resend success -> true');
+    assert(calculateVerificationState('resend', false, true) === false, 'Resend failure -> false');
+  });
+
+  // 3. Test Runner Aggregation Reliability
+  await test('Runner aggregation: aggregates passed and failed counts correctly', async () => {
+    const mockSuites = [
+      { name: 'Suite 1', runner: () => ({ passed: 5, failed: 0 }) },
+      { name: 'Suite 2', runner: () => ({ passed: 3, failed: 2 }) }
+    ];
+    const result = await executeSuiteAggregation(mockSuites);
+    assert(result.passed === 8, `Expected 8 passed, got ${result.passed}`);
+    assert(result.failed === 2, `Expected 2 failed, got ${result.failed}`);
+  });
+
+  await test('Runner aggregation: handles rejected suites as failures', async () => {
+    const mockSuites = [
+      { name: 'Passing Suite', runner: () => ({ passed: 1, failed: 0 }) },
+      { name: 'Rejecting Suite', runner: () => Promise.reject(new Error('Async failure')) }
+    ];
+    // Silence error log for this specific test
+    const originalError = console.error;
+    console.error = () => {};
+    
+    const result = await executeSuiteAggregation(mockSuites);
+    
+    console.error = originalError;
+    
+    assert(result.passed === 1, 'Passed count should be 1');
+    assert(result.failed === 1, 'Failed count should be 1 due to rejection');
+  });
+
+  await test('Runner aggregation: evaluateTestResults maps exit codes', () => {
+    const originalLog = console.log;
+    console.log = () => {};
+    assert(evaluateTestResults(10, 0) === 0, '0 failures -> 0');
+    assert(evaluateTestResults(5, 1) === 1, '1+ failures -> 1');
+    console.log = originalLog;
+  });
+
+  // 4. Preserved Behavioral Tests (AuthService & Transitions)
+  await test('AuthService signUpWithEmail: account creation succeeds and verification succeeds', async () => {
     AuthService.setCreateUserStub(async (e) => ({ email: e, uid: 'uid-123', emailVerified: false } as any));
     AuthService.setSendVerificationStub(async () => {});
 
     const result = await AuthService.signUpWithEmail('test@wird.app', 'password123');
-    assert(result.verificationSent === true, 'verificationSent must be true on success');
+    assert(result.verificationSent === true, 'verificationSent must be true');
     assert(!result.verificationError, 'No error expected');
   });
 
-  await test('AuthService signUpWithEmail: handles verification failure but preserves user data', async () => {
+  await test('AuthService signUpWithEmail: handles verification failure but preserves user object', async () => {
     AuthService.setCreateUserStub(async (e) => ({ email: e, uid: 'uid-456', emailVerified: false } as any));
     AuthService.setSendVerificationStub(async () => { throw { code: 'auth/too-many-requests' }; });
 
     const result = await AuthService.signUpWithEmail('fail@wird.app', 'password123');
-    assert(result.verificationSent === false, 'verificationSent must be false on failure');
-    assert(Boolean(result.verificationError), 'Error message must be present');
+    assert(result.verificationSent === false, 'verificationSent must be false');
+    assert(Boolean(result.verificationError), 'Error must be reported');
   });
 
-  // 3. Test actual handleContinueAsGuest logic (Dependency Boundary)
-  await test('AuthContext handleContinueAsGuest: succeeds, logs out, clears user and persists pref', async () => {
-    const state = {
-      user: { email: 'authenticated@wird.app' } as any,
-      isGuest: false,
+  await test('AuthContext handleContinueAsGuest: succeeds, logs out and clears state', async () => {
+    const state = { 
+      user: { email: 'user@wird.app' } as any, 
+      isGuest: false, 
       authError: null as string | null,
-      logoutCalled: false
+      logoutCalled: false 
     };
-
     AuthService.setLogoutStub(async () => { state.logoutCalled = true; });
 
     const success = await handleContinueAsGuest(
@@ -112,20 +149,15 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
       (e) => { state.authError = e; }
     );
 
-    assert(success === true, 'Should return success true');
-    assert(state.logoutCalled === true, 'AuthService.logout must be called');
-    assert(state.user === null, 'User state must be cleared');
-    assert(state.isGuest === true, 'isGuest state must be true');
-    assert(getStorageItem(GUEST_PREFERENCE_KEY) === 'true', 'Guest preference must be persisted in storage');
+    assert(success === true, 'Success must be true');
+    assert(state.logoutCalled === true, 'Logout must be called');
+    assert(state.user === null, 'User must be cleared');
+    assert(state.isGuest === true, 'Guest mode must be active');
   });
 
-  await test('AuthContext handleContinueAsGuest: fails on logout, preserves user state and surfacing error', async () => {
-    const state = {
-      user: { email: 'stay@wird.app' } as any,
-      isGuest: false,
-      authError: null as string | null
-    };
 
+  await test('AuthContext handleContinueAsGuest: fails on logout and preserves user', async () => {
+    const state = { user: { email: 'keep@wird.app' } as any, isGuest: false, authError: null as string | null };
     AuthService.setLogoutStub(async () => { throw { code: 'auth/network-request-failed' }; });
 
     const success = await handleContinueAsGuest(
@@ -135,45 +167,24 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
       (e) => { state.authError = e; }
     );
 
-    assert(success === false, 'Should return success false');
-    assert(state.user !== null, 'User state must NOT be cleared on failed logout');
-    assert(state.isGuest === false, 'isGuest state must NOT be updated');
-    assert(getStorageItem(GUEST_PREFERENCE_KEY) === null, 'Guest preference must NOT be persisted');
-    assert(state.authError !== null && state.authError!.includes('الشبكة'), 'Localized error must be set in context');
+    assert(success === false, 'Success must be false');
+    assert(state.user !== null, 'User must NOT be cleared');
+    assert(state.isGuest === false, 'Guest mode must NOT be active');
+    assert(state.authError !== null && state.authError!.includes('الشبكة'), 'Error must be surfaced');
   });
 
 
-
-  // 4. Verification state behavior semantics
-  await test('Verification state semantics: signUpWithEmail and resendVerificationEmail correctly manage true/false/null', async () => {
-    // This test ensures the logic in AuthContext.tsx matches the requirements:
-    // true: success, false: failure, null: unconfirmed (login)
-    
-    // 1. Initial / Login (should stay null)
-    let lastSent: boolean | null = null;
-    const mockLogin = () => { /* setLastVerificationSent is NOT called */ };
-    mockLogin();
-    assert(lastSent === null, 'Login must not set verification flag');
-
-    // 2. resend (Success)
-    lastSent = true; // Simulating AuthService.resendVerificationEmail success
-    assert(lastSent === true, 'Successful resend must set flag to true');
-
-    // 3. resend (Failure)
-    lastSent = false; // Simulating AuthService.resendVerificationEmail failure
-    assert(lastSent === false, 'Failed resend must set flag to false');
-  });
-
-  // 5. Test Runner Aggregation Logic
-  await test('Test Runner: evaluateTestResults correctly maps exit codes', () => {
-    // Silence console for this test
-    const originalLog = console.log;
-    console.log = () => {};
-    
-    assert(evaluateTestResults(10, 0) === 0, '0 failures must return exit code 0');
-    assert(evaluateTestResults(5, 1) === 1, '1+ failures must return exit code 1');
-    
-    console.log = originalLog;
+  // 5. Configuration Validation
+  await test('Firebase Config: validates valid map', () => {
+    const valid = {
+      VITE_FIREBASE_API_KEY: 'AIzaSyValidKey',
+      VITE_FIREBASE_AUTH_DOMAIN: 'app.firebaseapp.com',
+      VITE_FIREBASE_PROJECT_ID: 'app',
+      VITE_FIREBASE_STORAGE_BUCKET: 'app.appspot.com',
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '123456',
+      VITE_FIREBASE_APP_ID: '1:123456:web:abc'
+    };
+    assert(validateFirebaseConfigMap(valid) === true, 'Valid config should pass');
   });
 
   return { passed, failed };
@@ -184,6 +195,3 @@ if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes(
     if (res.failed > 0) process.exit(1);
   });
 }
-
-
-

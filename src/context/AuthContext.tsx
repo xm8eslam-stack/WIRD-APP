@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../lib/firebase';
 import { AuthService, mapAuthError } from '../services/authService';
+import { calculateVerificationState } from '../services/authUtils';
+
 
 const GUEST_PREFERENCE_KEY = 'wird_guest_mode_preference';
 const memoryGuestStore = new Map<string, string>();
@@ -39,6 +41,44 @@ export function removeStorageItem(key: string): void {
   }
   memoryGuestStore.delete(key);
 }
+
+// Test-only Snapshot API for AuthContext storage
+export function getAuthStorageSnapshot(): Record<string, string | null> {
+  const snapshot: Record<string, string | null> = {};
+  memoryGuestStore.forEach((val, key) => {
+    snapshot[`memory:${key}`] = val;
+  });
+  try {
+    if (typeof localStorage !== 'undefined') {
+      snapshot[`local:${GUEST_PREFERENCE_KEY}`] = localStorage.getItem(GUEST_PREFERENCE_KEY);
+    }
+  } catch { /* ignore */ }
+  return snapshot;
+}
+
+export function restoreAuthStorageSnapshot(snapshot: Record<string, string | null>): void {
+  memoryGuestStore.clear();
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(GUEST_PREFERENCE_KEY);
+    }
+  } catch { /* ignore */ }
+
+  Object.entries(snapshot).forEach(([fullKey, val]) => {
+    if (fullKey.startsWith('memory:')) {
+      const key = fullKey.replace('memory:', '');
+      if (val !== null) memoryGuestStore.set(key, val);
+    } else if (fullKey.startsWith('local:')) {
+      const key = fullKey.replace('local:', '');
+      try {
+        if (typeof localStorage !== 'undefined' && val !== null) {
+          localStorage.setItem(key, val);
+        }
+      } catch { /* ignore */ }
+    }
+  });
+}
+
 
 export async function executeGuestTransition(
   currentUser: User | null,
@@ -161,8 +201,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const res = await AuthService.signUpWithEmail(e, p);
       setIsGuest(false);
       removeStorageItem(GUEST_PREFERENCE_KEY);
-      setLastVerificationSent(res.verificationSent);
+      const nextState = calculateVerificationState('signup', res.verificationSent, lastVerificationSent);
+      setLastVerificationSent(nextState);
       if (!res.verificationSent && res.verificationError) {
+
         setAuthError(`تم إنشاء الحساب بنجاح ولكن تعذر إرسال بريد التفعيل: ${res.verificationError}`);
       }
     } catch (err) {
@@ -180,7 +222,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await AuthService.loginWithEmail(e, p);
       setIsGuest(false);
       removeStorageItem(GUEST_PREFERENCE_KEY);
+      setLastVerificationSent(calculateVerificationState('login', true, lastVerificationSent));
       // login must never be interpreted as sending a verification email
+
     } catch (err) {
       const msg = mapAuthError(err);
       setAuthError(msg);
@@ -193,10 +237,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAuthError(null);
     try {
       await AuthService.resendVerificationEmail(user);
-      setLastVerificationSent(true);
+      setLastVerificationSent(calculateVerificationState('resend', true, lastVerificationSent));
     } catch (err) {
-      setLastVerificationSent(false);
+      setLastVerificationSent(calculateVerificationState('resend', false, lastVerificationSent));
       const msg = mapAuthError(err);
+
       setAuthError(msg);
       throw new Error(msg);
     }

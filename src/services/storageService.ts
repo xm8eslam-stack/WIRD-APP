@@ -477,5 +477,51 @@ export const StorageService = {
     removeItem(STORAGE_KEYS.PORTIONS);
     removeItem(STORAGE_KEYS.WEAK_VERSES);
     memoryStorage.clear();
+  },
+
+  // Test-only Snapshot API
+  getStorageSnapshot(): Record<string, string | null> {
+    const snapshot: Record<string, string | null> = {};
+    // Snapshots internal memory storage
+    memoryStorage.forEach((val, key) => {
+      snapshot[`memory:${key}`] = val;
+    });
+    // Snapshots localStorage
+    Object.values(STORAGE_KEYS).forEach(key => {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          snapshot[`local:${key}`] = localStorage.getItem(key);
+        }
+      } catch { /* ignore */ }
+    });
+    return snapshot;
+  },
+
+  restoreStorageSnapshot(snapshot: Record<string, string | null>): void {
+    // Restore memory storage
+    memoryStorage.clear();
+    // Restore localStorage
+    Object.values(STORAGE_KEYS).forEach(key => {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem(key);
+        }
+      } catch { /* ignore */ }
+    });
+
+    Object.entries(snapshot).forEach(([fullKey, val]) => {
+      if (fullKey.startsWith('memory:')) {
+        const key = fullKey.replace('memory:', '');
+        if (val !== null) memoryStorage.set(key, val);
+      } else if (fullKey.startsWith('local:')) {
+        const key = fullKey.replace('local:', '');
+        try {
+          if (typeof localStorage !== 'undefined' && val !== null) {
+            localStorage.setItem(key, val);
+          }
+        } catch { /* ignore */ }
+      }
+    });
   }
 };
+
