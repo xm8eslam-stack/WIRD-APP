@@ -362,16 +362,19 @@ export default function App() {
 
     setRevisionItems(StorageService.getRevisionItems());
 
-    // Synchronize directly with Retention Service
-    RetentionService.addOrIncrementWeakVerse(
-      surahNumber,
-      ayahNumber,
-      surahName,
-      `الآية رقم ${ayahNumber} من سورة ${surahName}`,
-      'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
-    );
-
-    showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+    // Synchronize directly with Retention Service and never announce success after a failed write.
+    try {
+      RetentionService.addOrIncrementWeakVerse(
+        surahNumber,
+        ayahNumber,
+        surahName,
+        `الآية رقم ${ayahNumber} من سورة ${surahName}`,
+        'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
+      );
+      showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة.', 'error');
+    }
   };
 
   // Reset all data
