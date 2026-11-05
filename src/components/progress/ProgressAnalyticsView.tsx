@@ -89,7 +89,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
 
     const matchingPortions = pageAyahs.map(ayah =>
       portions
-        .filter(p => p.surahNumber === ayah.surahNumber && p.startAyah <= ayah.numberInSurah && p.endAyah >= ayah.numberInSurah)
+        .filter(p => p.status !== 'not_memorized' && p.surahNumber === ayah.surahNumber && p.startAyah <= ayah.numberInSurah && p.endAyah >= ayah.numberInSurah)
         .sort((a, b) => statusPriority[a.status] - statusPriority[b.status])[0]
     );
     const coveredCount = matchingPortions.filter(Boolean).length;
@@ -595,7 +595,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                   className="flex items-center gap-1.5 px-3 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  <span>مراجعة مقطع الصفحة</span>
+                  <span>مراجعة أول مقطع في الصفحة</span>
                 </button>
               )}
 
