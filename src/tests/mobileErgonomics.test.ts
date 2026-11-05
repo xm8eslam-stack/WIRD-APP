@@ -86,6 +86,22 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(styles.includes('min-height: 2.75rem;\n  touch-action: manipulation;'), 'Planning and revision actions must have touch-sized targets');
   });
 
+  test('Revision navigation exposes semantic, labelled tabs and panels', () => {
+    const revision = fs.readFileSync(path.resolve(process.cwd(), 'src/components/revision/RevisionCenterView.tsx'), 'utf8');
+    assert(revision.includes('role="tablist" aria-label="أقسام مركز المراجعة"'), 'Revision navigation must expose a named tablist');
+    assert(revision.includes('role="tab"'), 'Each revision destination must be exposed as a tab');
+    assert(revision.includes('aria-selected={activeTab ==='), 'Selected revision tab must be announced');
+    assert(revision.includes('aria-controls="revision-panel-'), 'Revision tabs must reference their panels');
+    assert(revision.includes('role="tabpanel"'), 'Revision content must expose tabpanel semantics');
+    assert(revision.includes('aria-labelledby="revision-tab-'), 'Revision panels must reference their controlling tabs');
+  });
+
+  test('Memorization test result does not double-count the final correct answer', () => {
+    const tests = fs.readFileSync(path.resolve(process.cwd(), 'src/components/tests/MemorizationTestsView.tsx'), 'utf8');
+    assert(tests.includes('const finalScore = score;'), 'Saved score must use the already-updated score state');
+    assert(!tests.includes('score + (selectedOption === currentQ.correctIndex ? 1 : 0)'), 'Final answer must not be added a second time');
+  });
+
   return { passed, failed };
 }
 
