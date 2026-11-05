@@ -1,5 +1,6 @@
 import { DeterministicAdvisorEngine, PerformanceAnalysisReport } from './deterministicAdvisor';
 import { DailyLog, UserProfile, PortionStatusRecord, WeakVerseItem, MemorizationPlan } from '../types/quran';
+import { calculateUniqueMemorizedAyahs, calculateUniqueRetentionScore, getPrioritizedRevisionQueue, getLocalDateString } from './unifiedPortionService';
 
 export interface AdvisorStatus {
   available: boolean;
@@ -113,10 +114,10 @@ ${deterministicReport.revisionPriorities.map(p => `• ${p}`).join('\n')}`;
           userData: {
             goal: profile.memorizationGoal || 'حفظ القرآن الكريم',
             activePlanTitle: activePlan?.title || 'خطة الحفظ',
-            memorizedAyahsCount: portions.filter(p => p.status !== 'not_memorized').reduce((s, p) => s + (p.endAyah - p.startAyah + 1), 0),
+            memorizedAyahsCount: calculateUniqueMemorizedAyahs(portions).uniqueCount,
             weakVersesCount: weakVerses.length,
-            retentionScore: deterministicReport.completionRate || 0,
-            dueRevisionsCount: portions.filter(p => p.nextDueDate <= new Date().toISOString().split('T')[0]).length
+            retentionScore: calculateUniqueRetentionScore(portions),
+            dueRevisionsCount: getPrioritizedRevisionQueue(portions, { todayStr: getLocalDateString(), maxDailyLimit: 20 }).totalDueCount
           }
         })
       });
