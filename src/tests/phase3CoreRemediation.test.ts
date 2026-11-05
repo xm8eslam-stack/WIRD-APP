@@ -495,8 +495,12 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const invalidRoute = parseRoute('#/invalid_tab_name');
     assert(invalidRoute.tab === 'dashboard', 'parseRoute falls back to dashboard on invalid tab');
 
+    const reviewRoute = parseRoute('#/session?mode=review&surah=2&start=2&end=2');
+    assert(reviewRoute.mode === 'review', 'parseRoute preserves review mode for revision sessions');
+    assert(reviewRoute.surahNumber === 2 && reviewRoute.startAyah === 2 && reviewRoute.endAyah === 2, 'Review deep link preserves the exact ayah range');
+
     const constructedHash = buildRouteHash({ tab: 'session', mode: 'review', surahNumber: 1 });
-    assert(constructedHash === '#/session?surah=1&mode=review', 'buildRouteHash constructs correct query string');
+    assert(constructedHash === '#/session?surah=1&mode=review', 'buildRouteHash constructs correct review-mode query string');
   }
 
   const passed = results.filter(r => r.passed).length;
