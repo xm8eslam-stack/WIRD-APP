@@ -28,6 +28,30 @@ export function getPageAyahSegments(pageNumber: number): PageAyahSegment[] {
   return (index[pageNumber] || []).map(segment => ({ ...segment }));
 }
 
+/**
+ * Return the canonical Mushaf pages touched by a Surah ayah range.
+ * A range can cross page boundaries; every intersecting page is counted once.
+ */
+export function getPagesForAyahRange(surahNumber: number, startAyah: number, endAyah: number): number[] {
+  if (
+    !Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 ||
+    !Number.isInteger(startAyah) || !Number.isInteger(endAyah) ||
+    startAyah < 1 || endAyah < startAyah
+  ) return [];
+
+  const index = QURAN_PAGE_INDEX as unknown as Record<number, PageAyahSegment[]>;
+  const pages: number[] = [];
+  for (let pageNumber = 1; pageNumber <= 604; pageNumber++) {
+    const intersects = (index[pageNumber] || []).some(segment =>
+      segment.surahNumber === surahNumber &&
+      segment.startAyah <= endAyah &&
+      segment.endAyah >= startAyah
+    );
+    if (intersects) pages.push(pageNumber);
+  }
+  return pages;
+}
+
 export function getPageProgressStatus(pageNumber: number, portions: PortionStatusRecord[]): PageProgressStatus {
   const segments = getPageAyahSegments(pageNumber);
   const surahNumbers = Array.from(new Set(segments.map(segment => segment.surahNumber)));
