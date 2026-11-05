@@ -111,6 +111,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleLoadDemoData = () => {
+    if (!import.meta.env.DEV) return;
     StorageService.loadDemoData();
     RetentionService.loadDemoPortions();
     const updated = StorageService.getProfile();
@@ -424,6 +425,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
+        {import.meta.env.DEV && (
+          <>
         {/* 6. Isolated Demo Mode Card */}
         <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-3 text-xs">
           <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-700 pb-3">
@@ -449,6 +452,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>تحميل بيانات تجريبية (Demo Data)</span>
           </button>
         </div>
+          </>
+        )}
 
         {/* Submit Actions */}
         <div className="flex items-center justify-between pt-2">
@@ -514,7 +519,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       )}
 
       {/* In-app Demo Mode Confirmation Dialog */}
-      {showDemoConfirm && (
+      {import.meta.env.DEV && showDemoConfirm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
             <div className="flex items-center gap-3">
