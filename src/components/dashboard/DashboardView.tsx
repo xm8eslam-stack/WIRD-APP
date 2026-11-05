@@ -214,7 +214,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 2. Primary Focus: Clear Distinction Between New Memorization vs. Revision */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* NEW MEMORIZATION CARD (الحفظ الجديد) */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+        <div className="wird-focus-card bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
               <div className="flex items-center gap-3">
@@ -260,10 +260,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
               <div className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-stone-400" />
-                <span>المدة المتوقعة: <strong className="text-stone-800 dark:text-stone-200">20 دقيقة</strong></span>
+                <span>المدة: <strong className="text-stone-800 dark:text-stone-200">حسب وقتك المتاح</strong></span>
               </div>
               <div>
-                <span>طريقة الحفظ: <strong className="text-emerald-700 dark:text-emerald-400">التكرار 10 مرات مع الإخفاء</strong></span>
+                <span>طريقة الحفظ: <strong className="text-emerald-700 dark:text-emerald-400">التكرار {profile.repetitionTarget || 10} مرات مع الإخفاء التدريجي</strong></span>
               </div>
             </div>
           </div>
@@ -369,8 +369,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 3. Overall Quran Progress & Active Plan Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Verses */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الآيات المحفوظة</div>
+        <div className="wird-metric-card bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="wird-metric-label flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-1"><span>الآيات المحفوظة</span><span className="wird-metric-icon"><BookOpen className="w-4 h-4" /></span></div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
               {totalMemorizedAyahs}
@@ -386,8 +386,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Metric 2: Pages */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المحفوظة بالكامل</div>
+        <div className="wird-metric-card bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="wird-metric-label flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-1"><span>الصفحات المحفوظة بالكامل</span><span className="wird-metric-icon"><CheckCircle className="w-4 h-4" /></span></div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
               {totalMemorizedPages}
@@ -403,8 +403,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Metric 3: Weekly Activity */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">نشاط هذا الأسبوع</div>
+        <div className="wird-metric-card bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
+          <div className="wird-metric-label flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 mb-1"><span>نشاط هذا الأسبوع</span><span className="wird-metric-icon"><Calendar className="w-4 h-4" /></span></div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
               {totalWeeklyMinutes}
@@ -417,9 +417,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Metric 4: Streak */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+        <div className="wird-metric-card bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-xs text-stone-500 dark:text-stone-400 mb-1 flex items-center justify-between">
+            <div className="wird-metric-label text-xs text-stone-500 dark:text-stone-400 mb-1 flex items-center justify-between">
               <span>سلسلة الالتزام</span>
               <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20" />
             </div>
