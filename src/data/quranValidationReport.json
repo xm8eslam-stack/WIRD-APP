@@ -1,5 +1,6 @@
 {
-  "validationTimestamp": "2026-11-05T04:07:42.895Z",
+  "verificationTimestamp": "2026-11-05T04:16:19.684Z",
+  "status": "VERIFIED_100_PERCENT",
   "sourceInfo": {
     "provider": "Tanzil Project (http://tanzil.net)",
     "edition": "quran-uthmani",
@@ -11,25 +12,18 @@
     "license": "Creative Commons Attribution 3.0 Unported (CC BY 3.0)",
     "verifiedDate": "2026-11-04"
   },
-  "statistics": {
-    "totalSurahs": 114,
-    "totalAyahs": 6236,
-    "totalPages": 604,
-    "totalJuz": 30,
-    "totalHizbQuarters": 240
+  "comparisonMetrics": {
+    "totalSurahsCompared": 114,
+    "totalAyahsCompared": 6236,
+    "exactAyahMatchesCount": 6236,
+    "characterMismatchesCount": 0,
+    "pageMappingMismatchesCount": 0,
+    "juzMappingMismatchesCount": 0,
+    "hizbQuarterMismatchesCount": 0,
+    "totalMismatchesFound": 0
   },
-  "integrityChecks": {
-    "surahCountPassed": true,
-    "ayahCountPassed": true,
-    "orderingPassed": true,
-    "pageBoundsPassed": true,
-    "juzBoundsPassed": true,
-    "hizbQuarterBoundsPassed": true,
-    "diacriticsVerified": true,
-    "noMissingVerses": true,
-    "noDuplicateVerses": true
-  },
-  "firstAyahSample": {
+  "discrepancies": [],
+  "sampleFirstAyah": {
     "number": 1,
     "numberInSurah": 1,
     "surahNumber": 1,
@@ -39,7 +33,7 @@
     "hizbQuarter": 1,
     "sajda": false
   },
-  "lastAyahSample": {
+  "sampleLastAyah": {
     "number": 6236,
     "numberInSurah": 6,
     "surahNumber": 114,
