@@ -82,18 +82,44 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
 
   // Change page status
   const handleUpdatePageStatus = (pageNumber: number, newStatus: PortionMemorizationStatus) => {
-    const { portionIds } = getPageStatus(pageNumber);
+    const segments = getPageAyahSegments(pageNumber);
+    if (segments.length === 0) {
+      onToast?.('تعذر تحديد نطاق الآيات لهذه الصفحة؛ لم يتم تسجيل تقدم غير دقيق.', 'error');
+      return;
+    }
 
-    if (portionIds.length > 0) {
-      portionIds.forEach(id => RetentionService.updatePortionStatus(id, newStatus));
-    } else {
-      const segments = getPageAyahSegments(pageNumber);
-      if (segments.length === 0) {
-        onToast?.('تعذر تحديد نطاق الآيات لهذه الصفحة؛ لم يتم تسجيل تقدم غير دقيق.', 'error');
-        return;
-      }
+    const exactPagePortions = portions.filter(portion =>
+      portion.type === 'page' && portion.pageStart === pageNumber && portion.pageEnd === pageNumber
+    );
+    exactPagePortions.forEach(portion => RetentionService.updatePortionStatus(portion.id, newStatus));
 
-      segments.forEach(segment => {
+    const missingSegments = segments.filter(segment => !exactPagePortions.some(portion =>
+      portion.surahNumber === segment.surahNumber &&
+      portion.startAyah <= segment.startAyah &&
+      portion.endAyah >= segment.endAyah
+    ));
+    missingSegments.forEach(segment => {
+      const segmentSurah = ALL_SURAHS.find(item => item.number === segment.surahNumber);
+      if (!segmentSurah) return;
+      RetentionService.addPortion({
+        type: 'page',
+        surahNumber: segment.surahNumber,
+        surahName: segmentSurah.name,
+        startAyah: segment.startAyah,
+        endAyah: segment.endAyah,
+        pageNumber,
+        pageStart: pageNumber,
+        pageEnd: pageNumber,
+        juzNumber: segmentSurah.juzStart,
+        status: newStatus,
+        lastReviewedDate: getLocalDateString(),
+        nextDueDate: getLocalDateString(),
+        intervalDays: newStatus === 'stable' ? 7 : 1,
+        easeFactor: 2.5,
+        repetitionCount: newStatus === 'stable' ? 3 : 1,
+        mistakesCount: 0
+      });
+    });
         const segmentSurah = ALL_SURAHS.find(item => item.number === segment.surahNumber);
         if (!segmentSurah) return;
         RetentionService.addPortion({
