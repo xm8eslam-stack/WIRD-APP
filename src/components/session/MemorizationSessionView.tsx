@@ -111,7 +111,9 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // Keyboard shortcut: Spacebar to repeat
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
+      const targetTag = (e.target as HTMLElement).tagName;
+      const isInteractiveTarget = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(targetTag);
+      if (e.code === 'Space' && !isInteractiveTarget) {
         e.preventDefault();
         setRepeatCount(c => c + 1);
       }
@@ -359,10 +361,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
 
         {/* Ayah Steps Indicators */}
-        <div className="flex items-center gap-1.5">
+        <div className="wird-session-progress flex items-center gap-1.5" role="list" aria-label="تقدم الآيات">
           {sessionAyahs.map((a, idx) => (
             <div
               key={a.numberInSurah}
+              role="listitem"
+              aria-current={idx === currentAyahIndex ? 'step' : undefined}
+              aria-label={`الآية ${a.numberInSurah} ${idx < currentAyahIndex ? 'مكتملة' : idx === currentAyahIndex ? 'الحالية' : 'قادمة'}`}
               className={`w-2.5 h-2.5 rounded-full transition-all ${
                 idx === currentAyahIndex
                   ? 'bg-emerald-600 ring-2 ring-emerald-300 dark:ring-emerald-700 scale-125'
@@ -391,17 +396,23 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             {words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
+              if (masked) {
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleToggleWordReveal(idx)}
+                    aria-label={`كشف الكلمة رقم ${idx + 1} من الآية ${currentAyah.numberInSurah}`}
+                    className="inline-block border-0 bg-transparent font-quran px-2.5 py-0.5 rounded-lg transition-all select-none bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500"
+                    title="اضغط لإظهار الكلمة للتسميع"
+                  >
+                    {word}
+                  </button>
+                );
+              }
+
               return (
-                <span
-                  key={idx}
-                  onClick={() => masked ? handleToggleWordReveal(idx) : null}
-                  className={`inline-block px-2.5 py-0.5 rounded-lg transition-all select-none ${
-                    masked
-                      ? 'bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500'
-                      : 'cursor-default'
-                  }`}
-                  title={masked ? "اضغط لإظهار الكلمة للتسميع" : undefined}
-                >
+                <span key={idx} className="inline-block px-2.5 py-0.5 font-quran cursor-default">
                   {word}
                 </span>
               );
