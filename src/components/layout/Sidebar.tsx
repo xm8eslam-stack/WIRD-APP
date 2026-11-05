@@ -197,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="wird-mobile-dock-item"
             >
               <span className="relative">
-                <Icon aria-hidden="true" />
+                <span aria-hidden="true"><Icon /></span>
                 {item.id === 'revision' && dueRevisionCount > 0 && (
                   <span className="absolute -top-1.5 -left-2 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] leading-4 font-bold">
                     {dueRevisionCount > 99 ? '99+' : dueRevisionCount}
