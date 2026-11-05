@@ -220,11 +220,11 @@ export default function App() {
     const exactPresetSurahs = activePreset?.type === 'whole_quran'
       ? ALL_SURAHS.map(surah => surah.number)
       : activePreset?.targetSurahs;
-    if (activePreset && exactPresetSurahs && exactPresetSurahs.length > 0) {
+    if (activePreset && activePreset.unitType === 'ayah' && exactPresetSurahs && exactPresetSurahs.length > 0) {
       const nextPresetRange = findNextUnmemorizedRange(
         currentPortions,
         exactPresetSurahs,
-        activePreset.unitType === 'ayah' ? (activePreset.dailyTarget || 7) : 7
+        activePreset.dailyTarget || 7
       );
       if (nextPresetRange) {
         handleStartSession(nextPresetRange.surahNumber, nextPresetRange.startAyah, nextPresetRange.endAyah, 'memorize');
