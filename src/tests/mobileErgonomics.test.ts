@@ -109,6 +109,19 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(revision.includes("event.key === 'Home'") && revision.includes("event.key === 'End'"), 'Revision tabs must support Home and End navigation');
   });
 
+  test('Review sessions are routed and displayed separately from memorization', () => {
+    const app = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf8');
+    const session = fs.readFileSync(path.resolve(process.cwd(), 'src/components/session/MemorizationSessionView.tsx'), 'utf8');
+    const revision = fs.readFileSync(path.resolve(process.cwd(), 'src/components/revision/RevisionCenterView.tsx'), 'utf8');
+    assert(app.includes('mode: initialRoute.mode || \'memorize\''), 'Deep links must restore the requested session mode');
+    assert(app.includes('mode={sessionParams.mode}'), 'The route mode must reach the session component');
+    assert(app.includes('getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages)'), 'App completion must normalize counts by session mode');
+    assert(app.includes('if (completion.shouldRecordMemorization && sessionParams.surahNumber)'), 'Only memorization sessions may advance memorized portions');
+    assert(session.includes("mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0"), 'Review completion must count its actual pages');
+    assert(session.includes("mode === 'memorize' ? sessionAyahs.length : 0"), 'Review completion must contribute zero memorized ayahs');
+    assert(revision.includes("onStartSession(item.surahNumber, item.startAyah, item.endAyah, 'review')"), 'Revision queue actions must open review mode');
+  });
+
   test('Memorization test result does not double-count the final correct answer', () => {
     const tests = fs.readFileSync(path.resolve(process.cwd(), 'src/components/tests/MemorizationTestsView.tsx'), 'utf8');
     assert(tests.includes('const finalScore = score;'), 'Saved score must use the already-updated score state');
