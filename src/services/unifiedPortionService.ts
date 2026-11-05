@@ -265,6 +265,32 @@ export function calculateCanonicalSM2(
 }
 
 /**
+ * Resolve the Surahs covered by a preset plan from its explicit scope.
+ * Juz and page scopes use the canonical Mushaf metadata, not a guessed first Surah.
+ */
+export function getPlanTargetSurahNumbers(plan: Pick<MemorizationPlan, 'targetSurahs' | 'targetJuz' | 'startPage' | 'endPage'>): number[] {
+  if (plan.targetSurahs && plan.targetSurahs.length > 0) {
+    return Array.from(new Set(plan.targetSurahs)).filter(n => n >= 1 && n <= 114);
+  }
+
+  if (plan.targetJuz && plan.targetJuz.length > 0) {
+    return ALL_SURAHS
+      .filter(surah => plan.targetJuz!.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
+      .map(surah => surah.number);
+  }
+
+  if (plan.startPage !== undefined && plan.endPage !== undefined) {
+    const startPage = Math.max(1, Math.min(604, plan.startPage));
+    const endPage = Math.max(startPage, Math.min(604, plan.endPage));
+    return ALL_SURAHS
+      .filter(surah => surah.pageStart <= endPage && surah.pageEnd >= startPage)
+      .map(surah => surah.number);
+  }
+
+  return ALL_SURAHS.map(surah => surah.number);
+}
+
+/**
  * Find the next memorization range that is not already represented by a
  * memorized portion. Existing in-progress portions are resumed before new gaps.
  */
