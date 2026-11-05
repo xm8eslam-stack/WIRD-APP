@@ -267,7 +267,10 @@ export default function App() {
       }
     }
 
-    StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+    const activitySaved = StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+    if (!activitySaved) {
+      showToast('تم حفظ تقدم المقطع، لكن تعذر حفظ سجل النشاط أو تحديث سلسلة المواظبة. صدّر نسخة احتياطية قبل إعادة المحاولة.', 'error');
+    }
 
     if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
       const currentEnginePlans = StorageService.getEnginePlans();
