@@ -123,7 +123,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const { user, isGuest, isEmailVerified, logout } = useAuth();
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
+    <div className="wird-settings space-y-6 max-w-3xl mx-auto">
       {/* 1. Header */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs">
         <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-quran">
