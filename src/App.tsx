@@ -249,7 +249,7 @@ export default function App() {
       startAyah: ayahNumber,
       endAyah: ayahNumber,
       status: 'weak',
-      nextDueDate: new Date().toISOString().split('T')[0],
+      nextDueDate: getLocalDateString(),
       intervalDays: 1,
       easeFactor: 2.0,
       repetitionCount: 1,
