@@ -456,14 +456,19 @@ export const RetentionService = {
       throw new Error('تعذر حفظ تقييم المراجعة في التخزين الدائم؛ لم يتم تسجيل نجاح التقييم.');
     }
 
+    let weakVerseWarning = '';
     if (rating === 'failed' && weakAyahDetails) {
-      this.addOrIncrementWeakVerse(
-        target.surahNumber,
-        weakAyahDetails.ayahNumber,
-        target.surahName,
-        weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
-        weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
-      );
+      try {
+        this.addOrIncrementWeakVerse(
+          target.surahNumber,
+          weakAyahDetails.ayahNumber,
+          target.surahName,
+          weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
+          weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
+        );
+      } catch {
+        weakVerseWarning = ' تم حفظ تقييم المقطع، لكن تعذر تحديث قائمة الآيات المتعثرة.';
+      }
     }
 
     // Record session completion in daily logs
@@ -479,7 +484,7 @@ export const RetentionService = {
       updatedPortion,
       nextIntervalDays: sm2Result.intervalDays,
       nextDueDate: sm2Result.nextDueDate,
-      messageAr: sm2Result.messageAr
+      messageAr: `${sm2Result.messageAr}${weakVerseWarning}`
     };
   },
 
