@@ -22,6 +22,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
     const controller = new AbortController();
     setText('');
     setError(null);
+    setIsCached(false);
     setIsLoading(true);
     getTafsirMuyassar(ayah.surahNumber, ayah.numberInSurah, controller.signal)
       .then(result => {
