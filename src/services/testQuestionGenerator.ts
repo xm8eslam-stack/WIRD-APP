@@ -61,16 +61,20 @@ export function generateDynamicTestQuestions(
 
   // 1. Curated Mutashabihat Test Mode (Thematic comparative Quranic questions)
   if (testType === 'mutashabihat') {
-    const memorizedSurahNumbers = new Set(memorized.map(p => p.surahNumber));
-    const prioritized = [...MUTASHABIHAT_DATA].sort((a, b) => {
-      const aHas = memorizedSurahNumbers.has(a.surah1.surahNumber) || memorizedSurahNumbers.has(a.surah2.surahNumber);
-      const bHas = memorizedSurahNumbers.has(b.surah1.surahNumber) || memorizedSurahNumbers.has(b.surah2.surahNumber);
-      if (aHas && !bHas) return -1;
-      if (!aHas && bHas) return 1;
-      return 0;
-    });
+    // A comparison question is eligible only when BOTH referenced ayahs are
+    // inside portions the user has actually recorded as memorized.
+    const isAyahMemorized = (surahNumber: number, ayahNumber: number) =>
+      memorized.some(portion =>
+        portion.surahNumber === surahNumber &&
+        portion.startAyah <= ayahNumber &&
+        portion.endAyah >= ayahNumber
+      );
 
-    const selectedItems = prioritized.slice(0, targetCount);
+    const eligibleItems = MUTASHABIHAT_DATA.filter(item =>
+      isAyahMemorized(item.surah1.surahNumber, item.surah1.ayahNumber) &&
+      isAyahMemorized(item.surah2.surahNumber, item.surah2.ayahNumber)
+    );
+    const selectedItems = eligibleItems.slice(0, targetCount);
     const questions: GeneratedQuestion[] = selectedItems.map(item => {
       const rawOptions = [item.surah1.text, item.surah2.text];
       const { shuffled, originalIndexMap } = shuffleArray(rawOptions);
@@ -84,7 +88,7 @@ export function generateDynamicTestQuestions(
         correctIndex,
         distinctionRule: item.distinctionRule,
         targetAyahNumber: item.surah1.ayahNumber,
-        isFromMemorizedPortion: memorizedSurahNumbers.has(item.surah1.surahNumber)
+        isFromMemorizedPortion: true
       };
     });
 
@@ -94,7 +98,9 @@ export function generateDynamicTestQuestions(
       memorizedPortionsCount: memorized.length,
       isCuratedMutashabihat: true,
       messageAr: questions.length < targetCount 
-        ? `نماذج المتشابهات المتاحة حالياً: ${questions.length} أسئلة.`
+        ? (questions.length === 0
+            ? 'لا توجد مواضع متشابهات تتوفر آياتها كلها ضمن محفوظك المسجل بعد.'
+            : `نماذج المتشابهات المتاحة حالياً: ${questions.length} أسئلة من مواضع محفوظة لديك.`)
         : undefined
     };
   }
