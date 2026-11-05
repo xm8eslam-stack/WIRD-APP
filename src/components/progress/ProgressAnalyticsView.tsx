@@ -173,15 +173,19 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     needs_revision: 0,
     weak: 0,
     currently_memorizing: 0,
-    not_memorized: 0
+    not_memorized: 0,
+    completed: 0
   };
 
   for (let p = 1; p <= 604; p++) {
-    const { status } = getPageStatus(p);
-    pageStats[status] = (pageStats[status] || 0) + 1;
+    const pageProgress = getPageStatus(p);
+    pageStats[pageProgress.status] = (pageStats[pageProgress.status] || 0) + 1;
+    if (pageProgress.isFullyCovered && pageProgress.status !== 'not_memorized' && pageProgress.status !== 'currently_memorizing') {
+      pageStats.completed++;
+    }
   }
 
-  const totalMemorizedPagesCount = 604 - pageStats.not_memorized - pageStats.currently_memorizing;
+  const totalMemorizedPagesCount = pageStats.completed;
 
   return (
     <div className="space-y-6">
