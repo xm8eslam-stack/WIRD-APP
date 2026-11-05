@@ -140,6 +140,34 @@ export function runBackupTests(): { passed: number; failed: number } {
     } finally { StorageService.restoreStorageSnapshot(snapshot); }
   });
 
+  test('A storage write failure rolls back earlier backup import writes', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const fakeStore = new Map<string, string>();
+    const fakeStorage = {
+      getItem: (key: string) => fakeStore.has(key) ? fakeStore.get(key)! : null,
+      setItem: (key: string, value: string) => {
+        if (key === 'wird_plans') throw new Error('Simulated quota failure');
+        fakeStore.set(key, String(value));
+      },
+      removeItem: (key: string) => { fakeStore.delete(key); },
+      clear: () => { fakeStore.clear(); }
+    };
+    try {
+      Object.defineProperty(globalThis, 'localStorage', { value: fakeStorage, configurable: true, writable: true });
+      StorageService.resetAllData();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'الحساب الأصلي' });
+      const payload = { version: 3, profile: { ...CLEAN_INITIAL_PROFILE, name: 'الحساب البديل' }, plans: [] };
+      const result = StorageService.importBackup(JSON.stringify(payload));
+      assert(!result.success, 'Import must fail when a durable storage write fails');
+      assert(StorageService.getProfile().name === 'الحساب الأصلي', 'Rollback must restore the profile written before the failing key');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+    }
+  });
+
   // 5. Atomic protection: Failed import never overwrites existing data
   test('Failed import returns error and preserves existing user data', () => {
     const malformedJson = '{"version": 3, "profile": {"name": "جديد"}, "plans": "broken"}';
