@@ -4,7 +4,7 @@ export interface TafsirResult {
   bookName: string;
 }
 
-const API_BASE = 'https://api.quranpedia.net/v1';
+const API_BASE = '/api/tafsir';
 const TAFSIR_BOOK_ID = 27809;
 const CACHE_PREFIX = 'wird_tafsir_muyassar_v1_';
 const MAX_CACHED_TAFSIRS = 100;
@@ -58,7 +58,7 @@ export async function getTafsirMuyassar(
   const cached = readCachedTafsir(key);
   if (cached) return { text: cached, source: 'cache', bookName: 'التفسير الميسر' };
 
-  const url = API_BASE + '/ayah/' + surahNumber + '/' + ayahNumber + '/book/' + TAFSIR_BOOK_ID;
+  const url = API_BASE + '?surah=' + surahNumber + '&ayah=' + ayahNumber;
   const response = await fetch(url, {
     method: 'GET',
     headers: { Accept: 'application/json' },
