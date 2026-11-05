@@ -302,7 +302,7 @@ export const RetentionService = {
         status: newStatus
       };
     });
-    this.savePortions(updated);
+    if (!this.savePortions(updated)) throw new Error('تعذر حفظ حالة المقطع في التخزين الدائم. لم يتم تأكيد التغيير.');
     return updated;
   },
 
@@ -329,7 +329,7 @@ export const RetentionService = {
       };
       portions.unshift(record);
     }
-    this.savePortions(portions);
+    if (!this.savePortions(portions)) throw new Error('تعذر حفظ المقطع الجديد في التخزين الدائم.');
     return record;
   },
 
@@ -395,7 +395,7 @@ export const RetentionService = {
       portions.unshift(updatedPortion);
     }
 
-    this.savePortions(portions);
+    if (!this.savePortions(portions)) throw new Error('تعذر حفظ إنجاز جلسة الحفظ في التخزين الدائم.');
     return updatedPortion;
   },
 
@@ -451,6 +451,11 @@ export const RetentionService = {
       history: [logEntry, ...(target.history || [])]
     };
 
+    const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
+    if (!this.savePortions(updatedList)) {
+      throw new Error('تعذر حفظ تقييم المراجعة في التخزين الدائم؛ لم يتم تسجيل نجاح التقييم.');
+    }
+
     if (rating === 'failed' && weakAyahDetails) {
       this.addOrIncrementWeakVerse(
         target.surahNumber,
@@ -460,9 +465,6 @@ export const RetentionService = {
         weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
       );
     }
-
-    const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
-    this.savePortions(updatedList);
 
     // Record session completion in daily logs
     const versesCount = (target.endAyah - target.startAyah + 1) || 10;
