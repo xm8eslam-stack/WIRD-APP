@@ -11,6 +11,7 @@ export interface PageAyahSegment {
 export interface PageProgressStatus {
   status: PortionMemorizationStatus;
   surah: SurahMeta;
+  surahs: SurahMeta[];
   portionId?: string;
   portionIds: string[];
 }
@@ -27,9 +28,11 @@ export function getPageAyahSegments(pageNumber: number): PageAyahSegment[] {
 }
 
 export function getPageProgressStatus(pageNumber: number, portions: PortionStatusRecord[]): PageProgressStatus {
-  const surah = ALL_SURAHS.find(item => pageNumber >= item.pageStart && pageNumber <= item.pageEnd) || ALL_SURAHS[0];
   const segments = getPageAyahSegments(pageNumber);
-  if (segments.length === 0) return { status: 'not_memorized', surah, portionIds: [] };
+  const surahNumbers = Array.from(new Set(segments.map(segment => segment.surahNumber)));
+  const surahs = surahNumbers.map(number => ALL_SURAHS.find(item => item.number === number)).filter((item): item is SurahMeta => Boolean(item));
+  const surah = surahs[0] || ALL_SURAHS[0];
+  if (segments.length === 0) return { status: 'not_memorized', surah, surahs: [], portionIds: [] };
 
   const bySurah = new Map<number, PortionStatusRecord[]>();
   portions.forEach(portion => {
@@ -82,6 +85,7 @@ export function getPageProgressStatus(pageNumber: number, portions: PortionStatu
   return {
     status,
     surah,
+    surahs,
     portionId: exactPagePortions[0]?.id,
     portionIds: exactPagePortions.map(portion => portion.id)
   };
