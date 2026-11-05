@@ -9,6 +9,11 @@ const rateLimitMap = new Map<string, RateLimitRecord>();
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+  if (rateLimitMap.size > 1000) {
+    for (const [key, entry] of rateLimitMap.entries()) {
+      if (now >= entry.resetAt) rateLimitMap.delete(key);
+    }
+  }
   const record = rateLimitMap.get(ip);
   if (!record || now > record.resetAt) {
     rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 });
@@ -52,7 +57,6 @@ const ALLOWED_PAYLOAD_KEYS = new Set(['contextType', 'userData', 'query', 'messa
 
 export default async function handler(req: any, res: any) {
   // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
