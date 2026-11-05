@@ -51,21 +51,6 @@ export function createCanonicalPortionId(surahNumber: number, startAyah: number,
   return `s${surahNumber}_a${startAyah}_a${endAyah}`;
 }
 
-// Map Ayah coordinates to Page numbers quickly
-const ayahPageCache = new Map<string, number>();
-for (const [pageKey, segments] of Object.entries(QURAN_PAGE_INDEX)) {
-  const pageNumber = Number(pageKey);
-  for (const segment of segments) {
-    for (let ayahNumber = segment.startAyah; ayahNumber <= segment.endAyah; ayahNumber++) {
-      ayahPageCache.set(`${segment.surahNumber}:${ayahNumber}`, pageNumber);
-    }
-  }
-}
-
-function getAyahPage(surahNumber: number, ayahNumber: number): number {
-  return ayahPageCache.get(`${surahNumber}:${ayahNumber}`) || 1;
-}
-
 /**
  * 3. Prevent duplicate Ayah counting when portions overlap.
  * Returns exact unique Ayah count and the Set of unique Ayah keys.
