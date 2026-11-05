@@ -9,8 +9,9 @@ import {
   WirdPortion 
 } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
+import { ALL_SURAHS } from '../data/quranMeta';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
-import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString } from './unifiedPortionService';
+import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
 
 export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
@@ -256,21 +257,33 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
 
   if (payload.unifiedPortions !== undefined) {
     const validStatuses = new Set(['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak']);
+    const validTypes = new Set(['passage', 'surah', 'page']);
     for (let index = 0; index < payload.unifiedPortions.length; index++) {
       const portion = payload.unifiedPortions[index];
-      const valid = portion && typeof portion === 'object' &&
-        typeof portion.id === 'string' && portion.id.trim().length > 0 &&
-        Number.isInteger(portion.surahNumber) && portion.surahNumber >= 1 && portion.surahNumber <= 114 &&
+      const surahMeta = portion && ALL_SURAHS.find(surah => surah.number === portion.surahNumber);
+      const validDate = typeof portion?.nextDueDate === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(portion.nextDueDate)
+        && (() => {
+          const [year, month, day] = portion.nextDueDate.split('-').map(Number);
+          const date = new Date(Date.UTC(year, month - 1, day));
+          return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === portion.nextDueDate;
+        })();
+      const valid = portion && typeof portion === 'object' && surahMeta &&
+        typeof portion.id === 'string' && portion.id === createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah) &&
+        validTypes.has(portion.type) &&
         typeof portion.surahName === 'string' && portion.surahName.trim().length > 0 &&
-        Number.isInteger(portion.startAyah) && portion.startAyah >= 1 &&
-        Number.isInteger(portion.endAyah) && portion.endAyah >= portion.startAyah &&
+        Number.isInteger(portion.startAyah) && portion.startAyah >= 1 && portion.startAyah <= surahMeta.versesCount &&
+        Number.isInteger(portion.endAyah) && portion.endAyah >= portion.startAyah && portion.endAyah <= surahMeta.versesCount &&
         validStatuses.has(portion.status) &&
-        typeof portion.nextDueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(portion.nextDueDate) &&
-        Number.isFinite(portion.intervalDays) && portion.intervalDays >= 0 &&
-        Number.isFinite(portion.easeFactor) && portion.easeFactor > 0 &&
+        validDate &&
+        Number.isInteger(portion.intervalDays) && portion.intervalDays >= 1 &&
+        Number.isFinite(portion.easeFactor) && portion.easeFactor >= 1.3 && portion.easeFactor <= 3 &&
         Number.isInteger(portion.repetitionCount) && portion.repetitionCount >= 0 &&
+        (portion.pageNumber === undefined || (Number.isInteger(portion.pageNumber) && portion.pageNumber >= 1 && portion.pageNumber <= 604)) &&
+        (portion.pageStart === undefined || (Number.isInteger(portion.pageStart) && portion.pageStart >= 1 && portion.pageStart <= 604)) &&
+        (portion.pageEnd === undefined || (Number.isInteger(portion.pageEnd) && portion.pageEnd >= 1 && portion.pageEnd <= 604)) &&
+        (portion.juzNumber === undefined || (Number.isInteger(portion.juzNumber) && portion.juzNumber >= 1 && portion.juzNumber <= 30)) &&
         (portion.history === undefined || Array.isArray(portion.history));
-      if (!valid) return { valid: false, error: 'بيانات المقطع الموحد رقم ' + (index + 1) + ' غير صالحة' };
+      if (!valid) return { valid: false, error: 'بيانات المقطع الموحد رقم ' + (index + 1) + ' غير صالحة أو تتجاوز حدود السورة' };
     }
   }
 
