@@ -212,7 +212,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
         <div className="space-y-2">
           <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-full">
-            تنبيه اكتمال التغطية النصية المحلية
+            تعذر تحميل النص القرآني
           </span>
           <h3 className="font-bold text-stone-900 dark:text-stone-100 text-lg">
             سورة {surahMeta.name} ({surahMeta.versesCount} آية)
@@ -223,6 +223,12 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setLoadRetry(value => value + 1)}
+            className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 text-stone-950 rounded-xl text-xs font-bold shadow-xs hover:bg-amber-400 transition-colors"
+          >
+            إعادة تحميل النص
+          </button>
           <button
             onClick={() => {
               setSurahNumber(67);
