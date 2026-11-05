@@ -1,6 +1,6 @@
 import { DeterministicAdvisorEngine, PerformanceAnalysisReport } from './deterministicAdvisor';
 import { DailyLog, UserProfile, PortionStatusRecord, WeakVerseItem, MemorizationPlan } from '../types/quran';
-import { calculateUniqueMemorizedAyahs, getPrioritizedRevisionQueue, getLocalDateString } from './unifiedPortionService';
+import { calculateUniqueMemorizedAyahs, calculateUniqueRetentionScore, getPrioritizedRevisionQueue, getLocalDateString } from './unifiedPortionService';
 
 export interface AdvisorStatus {
   available: boolean;
@@ -116,7 +116,7 @@ ${deterministicReport.revisionPriorities.map(p => `• ${p}`).join('\n')}`;
             activePlanTitle: activePlan?.title || 'خطة الحفظ',
             memorizedAyahsCount: calculateUniqueMemorizedAyahs(portions).uniqueCount,
             weakVersesCount: weakVerses.length,
-            retentionScore: deterministicReport.completionRate || 0,
+            retentionScore: calculateUniqueRetentionScore(portions),
             dueRevisionsCount: getPrioritizedRevisionQueue(portions, { todayStr: getLocalDateString(), maxDailyLimit: 20 }).totalDueCount
           }
         })
