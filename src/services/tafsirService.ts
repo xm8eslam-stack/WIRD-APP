@@ -1,3 +1,5 @@
+import { ALL_SURAHS } from '../data/quranMeta';
+
 export interface TafsirResult {
   text: string;
   source: 'cache' | 'network';
@@ -50,7 +52,8 @@ export async function getTafsirMuyassar(
   ayahNumber: number,
   signal?: AbortSignal
 ): Promise<TafsirResult> {
-  if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 || !Number.isInteger(ayahNumber) || ayahNumber < 1) {
+  const surahMeta = ALL_SURAHS.find(surah => surah.number === surahNumber);
+  if (!surahMeta || !Number.isInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > surahMeta.versesCount) {
     throw new Error('إحداثيات الآية غير صالحة.');
   }
 
