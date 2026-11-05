@@ -373,8 +373,12 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
 
 export const StorageService = {
   // Scope and raw-key API used by AuthGate and the retention adapter.
-  setStorageScope(scope: string): boolean {
-    return setStorageScope(scope);
+  needsLegacyDataDecision(scope: string): boolean {
+    return needsLegacyDataDecision(scope);
+  },
+
+  setStorageScope(scope: string, legacyChoice?: 'import' | 'keep-guest'): boolean {
+    return setStorageScope(scope, legacyChoice);
   },
 
   getStorageScope(): string {
