@@ -11,7 +11,8 @@
  * 7. Storage Write Verification, Complete Payload Readback & Quota Failure Safety
  * 8. Honest Dynamic Testing (Zero Unmemorized Fallbacks & Truthful hasSufficientData)
  * 9. Dashboard Due Count Uniformity from Canonical Queue
- * 10. Session Mode Completion Isolation\n * 11. Router Parsing & Deep Linking
+ * 10. Session Mode Completion Isolation
+ * 11. Router Parsing & Deep Linking
  */
 
 import {
