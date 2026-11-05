@@ -638,7 +638,7 @@ export const StorageService = {
       revisionItems: this.getRevisionItems(),
       logs: this.getLogs(),
       tests: this.getTests(),
-      portions: getItem(STORAGE_KEYS.PORTIONS) ? JSON.parse(getItem(STORAGE_KEYS.PORTIONS)!) : [],
+      portions: this.getUnifiedPortions(),
       weakVerses: getItem(STORAGE_KEYS.WEAK_VERSES) ? JSON.parse(getItem(STORAGE_KEYS.WEAK_VERSES)!) : []
     };
     return JSON.stringify(backup, null, 2);
