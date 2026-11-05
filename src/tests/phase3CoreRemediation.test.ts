@@ -275,6 +275,25 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(report.success === true, 'Migration report reports success');
   }
 
+  console.log('\n--- 4A. Canonical ID Recovery from Untrusted Legacy IDs ---');
+  {
+    const mismatchedId = {
+      id: 's18_a2_a10',
+      surahNumber: 18,
+      surahName: 'الكهف',
+      startAyah: 1,
+      endAyah: 10,
+      status: 'stable' as const,
+      nextDueDate: '2026-05-10',
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1
+    } as PortionStatusRecord;
+    const normalized = migrateLegacyDataLosslessly([mismatchedId], []);
+    assert(normalized.report.success, 'Migration must recover valid coordinates despite a mismatched legacy ID');
+    assert(normalized.portions[0].id === 's18_a1_a10', 'Canonical ID must be derived from actual Surah and ayah coordinates');
+  }
+
   console.log('\n--- 5. Verified Quran Coordinates Boundary Validation ---');
   {
     // Test invalid Surah number 115
