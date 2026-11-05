@@ -68,6 +68,15 @@ These projects are references for product patterns and UX research, not permissi
 - Keep all work on this feature branch until review and CI pass; merge to main only after release checks.
 - Current blocker: Vercel status reports the Free-plan daily deployment limit; no new Preview is confirmed for the current Phase 5 head.
 
+## Phase 5E continuation — first visual consistency pass
+
+- Added a dedicated `wird-planning-wizard` layout hook without changing planning calculations or generated schedules.
+- Extended the shared visual system to planning, preset plans, revision, analytics, settings, and memorization-test surfaces.
+- Standardized nested surface borders/shadows, form control appearance, focus feedback, and mobile form-control sizing.
+- Added regression assertions for the 5E component hooks and responsive form styling.
+- This is a first consistency pass, not final sign-off: inspect each view at mobile/tablet/desktop widths, verify long Arabic labels and dense analytics, and refine any component-specific exceptions.
+- No Quran text, audio, memorization algorithms, retention logic, plan generation, storage, authentication, or Firebase rules were changed.
+
 ## Current implementation snapshot
 
 - Branch: `feat/phase5-premium-ui-ux`
@@ -93,5 +102,5 @@ These projects are references for product patterns and UX research, not permissi
 
 1. Verify the current feature branch head and latest GitHub Actions run.
 2. Fix any CI or type errors before adding more visual work.
-3. Continue with Dashboard 5B, then Quran Library 5C and memorization session 5D.
-4. Update this plan and `docs/DEVELOPMENT_CHECKPOINT.md` with exact SHAs and CI state before stopping.
+3. Continue the focused 5E visual pass across plans, revision queue, analytics, settings, and memorization tests; review each at mobile, tablet, and desktop widths.
+4. Verify the latest CI run, check the Vercel Preview quota/status, then update this plan and `docs/DEVELOPMENT_CHECKPOINT.md` with exact SHAs and the next action before stopping.
