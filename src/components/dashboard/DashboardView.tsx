@@ -87,7 +87,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           versesCount: nextRange.endAyah - nextRange.startAyah + 1,
           pageNumber: previewAyah?.page || sMeta?.pageStart || 1,
           previewText: previewAyah?.text ? `«${previewAyah.text}»` : '«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»',
-          label: `الخطة النشطة: ${activePlan.title}`,
+          label: `الخطة النشطة: ${activePlan?.title || 'حفظ جديد'}`,
           source: 'preset_plan' as const,
           mode: 'memorize' as const
         };
