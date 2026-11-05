@@ -75,6 +75,20 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
     assert(handlerContent.includes('500'), 'api/advisor.ts must enforce 500 char prompt limit');
   });
 
+  // 5. CORS and memory-bounded rate limiting
+  test('Public wildcard CORS does not enable credentialed cross-origin requests', () => {
+    const handlerContent = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    assert(handlerContent.includes("Access-Control-Allow-Origin', '*'"), 'Advisor endpoint must declare its public origin policy');
+    assert(!handlerContent.includes('Access-Control-Allow-Credentials'), 'Wildcard CORS must not be combined with credential credentials');
+  });
+
+  test('In-memory rate-limit maps prune expired IP records when they grow', () => {
+    const handlerContent = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    const serverContent = fs.readFileSync(path.resolve('./server.ts'), 'utf8');
+    assert(handlerContent.includes('rateLimitMap.size > 1000') && handlerContent.includes('rateLimitMap.entries()'), 'Serverless advisor limiter must prune expired records');
+    assert(serverContent.includes('rateLimitMap.size > 1000') && serverContent.includes('rateLimitMap.entries()'), 'Express advisor limiter must prune expired records');
+  });
+
   return { passed, failed };
 }
 
