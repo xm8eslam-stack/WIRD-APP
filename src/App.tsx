@@ -12,6 +12,7 @@ import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { getLocalDateString, findNextUnmemorizedRange } from './services/unifiedPortionService';
 import { ALL_SURAHS } from './data/quranMeta';
 import { getSessionCompletionMetrics } from './services/sessionCompletion';
+import { getNextDueEngineTask, getNextPresetMemorizationRange, isPresetAutoStartSupported } from './services/dailySessionSelection';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -196,15 +197,13 @@ export default function App() {
     });
   };
 
-  // Choose today's session from the user's real plan and retention queue.
+  // Choose only work that is due and within the user's explicit plan scope.
   const handleStartDailySession = () => {
     const currentPortions = RetentionService.getPortions();
     const currentEnginePlans = StorageService.getEnginePlans();
-    const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused)
-      || currentEnginePlans.find(plan => !plan.isPaused);
-    const pendingEngineTask = activeEnginePlan?.schedule.find(day =>
-      day.memorizationTask && !day.memorizationTask.completed
-    )?.memorizationTask;
+    const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused);
+    const today = getLocalDateString();
+    const pendingEngineTask = getNextDueEngineTask(activeEnginePlan, today);
 
     if (pendingEngineTask) {
       handleStartSession(
@@ -216,35 +215,48 @@ export default function App() {
       return;
     }
 
-    const activePreset = StorageService.getPlans().find(plan => plan.isActive);
-    // Only use scopes whose exact Surah boundaries are explicit. Juz/page/custom
-    // scopes need their own canonical ayah-range resolver before they can safely
-    // drive a session; do not silently widen them to an entire Surah.
-    const exactPresetSurahs = activePreset?.type === 'whole_quran'
-      ? ALL_SURAHS.map(surah => surah.number)
-      : activePreset?.targetSurahs;
-    if (activePreset && activePreset.unitType === 'ayah' && exactPresetSurahs && exactPresetSurahs.length > 0) {
-      const nextPresetRange = findNextUnmemorizedRange(
+    const activePreset = activeEnginePlan ? undefined : StorageService.getPlans().find(plan => plan.isActive);
+    if (activePreset && isPresetAutoStartSupported(activePreset)) {
+      const nextPresetRange = getNextPresetMemorizationRange(
+        activePreset,
         currentPortions,
-        exactPresetSurahs,
         activePreset.dailyTarget || 7
       );
       if (nextPresetRange) {
-        handleStartSession(nextPresetRange.surahNumber, nextPresetRange.startAyah, nextPresetRange.endAyah, 'memorize');
+        handleStartSession(
+          nextPresetRange.surahNumber,
+          nextPresetRange.startAyah,
+          nextPresetRange.endAyah,
+          'memorize'
+        );
         return;
       }
     }
 
-    const duePortion = RetentionService.getDailyRevisionQueue()[0];
+    const duePortion = RetentionService.getDailyRevisionQueue(today)[0];
     if (duePortion) {
       handleStartSession(duePortion.surahNumber, duePortion.startAyah, duePortion.endAyah, 'review');
+      return;
+    }
+
+    if (activeEnginePlan) {
+      showToast('لا توجد مهمة حفظ مستحقة اليوم في خطتك الحالية. ستظهر المهمة تلقائياً عند حلول موعدها.', 'info');
+      return;
+    }
+
+    if (activePreset) {
+      if (!isPresetAutoStartSupported(activePreset)) {
+        showToast('لا يمكن بدء جلسة تلقائية لهذه الخطة دون تحديد نطاق آيات دقيق. افتح تفاصيل الخطة أو اختر نطاقاً من مكتبة القرآن.', 'info');
+      } else {
+        showToast('أكملت نطاق الحفظ المحدد في خطتك. يمكنك مراجعة إنجازك أو تعديل الخطة.', 'success');
+      }
       return;
     }
 
     const nextRange = findNextUnmemorizedRange(
       currentPortions,
       ALL_SURAHS.map(surah => surah.number),
-      activePreset?.dailyTarget || 7
+      7
     );
     if (nextRange) {
       handleStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
