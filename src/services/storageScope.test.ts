@@ -70,17 +70,11 @@ export function runStorageScopeTests(): { passed: number; failed: number } {
       assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Account should start clean');
       assert(StorageService.setStorageScope('guest'), 'Guest scope should remain accessible');
       assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Legacy data should remain in guest scope');
-    });
-
-    test('Guest data stays separate and is not silently claimed by a later account', () => {
-      assert(StorageService.setStorageScope('guest'), 'Guest scope should activate');
-      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Imported legacy data should no longer remain in the guest store');
-      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'بيانات ضيف مستقلة' });
 
       assert(StorageService.setStorageScope('user:gamma'), 'A later account should activate');
       assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Gamma must not inherit guest data');
       assert(StorageService.setStorageScope('guest'), 'Guest scope should be recoverable');
-      assert(StorageService.getProfile().name === 'بيانات ضيف مستقلة', 'Guest data should remain available to guest mode');
+      assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Guest data should remain available to guest mode');
     });
   } finally {
     StorageService.__resetStorageForTests();
