@@ -1,3 +1,5 @@
+import { ALL_SURAHS } from '../src/data/quranMeta';
+
 const TAFSIR_BOOK_ID = 27809;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
@@ -44,7 +46,8 @@ export default async function handler(req: any, res: any) {
   const query = req.query || {};
   const surahNumber = Number(Array.isArray(query.surah) ? query.surah[0] : query.surah);
   const ayahNumber = Number(Array.isArray(query.ayah) ? query.ayah[0] : query.ayah);
-  if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 || !Number.isInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > 286) {
+  const surahMeta = ALL_SURAHS.find(surah => surah.number === surahNumber);
+  if (!surahMeta || !Number.isInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > surahMeta.versesCount) {
     return send(res, 400, { error: 'INVALID_QURAN_COORDINATES' });
   }
 
