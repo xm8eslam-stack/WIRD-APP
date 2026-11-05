@@ -74,16 +74,23 @@ function rawRemoveItem(key: string): boolean {
 }
 
 /**
- * Authenticated accounts receive isolated local keys. The first authenticated
- * account safely claims the legacy unscoped dataset; subsequent accounts never
- * inherit it. Guest mode deliberately continues to use the legacy guest store.
+ * Authenticated accounts receive isolated local keys. A first account must
+ * explicitly choose whether to import legacy device data or keep it in guest
+ * mode. Later accounts never silently inherit another account's local data.
  */
+function isUserStorageScope(scope: string): boolean {
+  const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
+  return uid.length > 0 && uid.length <= 128 && !/[\\u0000-\\u001F]/.test(uid);
+}
+
 function hasLegacyStorageData(): boolean {
-  return Object.values(STORAGE_KEYS).some(key => rawGetItem(key) !== null);
+  return Object.values(STORAGE_KEYS)
+    .filter(key => key !== STORAGE_KEYS.SCHEMA_VERSION)
+    .some(key => rawGetItem(key) !== null);
 }
 
 function needsLegacyDataDecision(scope: string): boolean {
-  return /^user:[A-Za-z0-9_-]{1,128}$/.test(scope.trim()) &&
+  return isUserStorageScope(scope.trim()) &&
     rawGetItem(STORAGE_OWNER_MARKER) === null &&
     hasLegacyStorageData();
 }
@@ -94,7 +101,7 @@ function setStorageScope(scope: string, legacyChoice?: 'import' | 'keep-guest'):
     activeStorageScope = normalized;
     return true;
   }
-  if (!/^user:[A-Za-z0-9_-]{1,128}$/.test(normalized)) return false;
+  if (!isUserStorageScope(normalized)) return false;
 
   const owner = rawGetItem(STORAGE_OWNER_MARKER);
   if (!owner) {
