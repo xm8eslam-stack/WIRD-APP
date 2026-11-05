@@ -120,6 +120,23 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const uniquePages = calculateUniqueMemorizedPages(portionsOverlap);
     assert(uniquePages === 1, `Al-Fatihah resolves to exactly 1 page (got ${uniquePages})`);
 
+    const partialMushafPage: WirdPortion[] = [{
+      id: 's2_a1_a2',
+      type: 'passage',
+      surahNumber: 2,
+      surahName: 'البقرة',
+      startAyah: 1,
+      endAyah: 2,
+      pageNumber: 2,
+      status: 'stable',
+      easeFactor: 2.5,
+      intervalDays: 5,
+      repetitionCount: 2,
+      lastReviewedDate: '2026-05-01',
+      nextDueDate: '2026-05-06'
+    }];
+    assert(calculateUniqueMemorizedPages(partialMushafPage) === 0, 'A partially memorized Mushaf page is not counted as a fully memorized page');
+
     const portionsNonOverlap: WirdPortion[] = [
       ...portionsOverlap,
       {
