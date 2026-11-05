@@ -18,7 +18,10 @@
 
 - Last code-change HEAD before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`
 - Initial checkpoint documentation commit: `85e618540cfe547b49cde302c550aa1d34c91e5e`
-- Latest checkpoint revision before Phase 5: `e96a09d4bdde34f78a139320f2b36e6f407ac6cb`\n- Phase 4 post-merge main SHA before Phase 5: `15ec5069b4850968588be2e4363fbd182bf2a8fc`\n- Phase 5 current code head: `63d2b65068a730115b76669abbe04b798512cd91`\n- Phase 5 GitHub Actions run #162 / `42092223535`: **success** — automated tests, TypeScript validation, and Vite production build all passed.
+- Latest checkpoint revision before Phase 5: `e96a09d4bdde34f78a139320f2b36e6f407ac6cb`
+- Phase 4 post-merge main SHA before Phase 5: `15ec5069b4850968588be2e4363fbd182bf2a8fc`
+- Phase 5 current code head: `63d2b65068a730115b76669abbe04b798512cd91`
+- Phase 5 GitHub Actions run #162 / `42092223535`: **success** — automated tests, TypeScript validation, and Vite production build all passed.
 - Previous `main` base SHA: `862f6056ac5d54abf9f26249941ba994e74bf6a9`.
 - Feature head merged: `a043da31f7f8d170bcbfb0c41a0d687cf2c6b2ec`.
 - Merge commit / `main` SHA verified after merge: `bc368d6894afacf420529ca55c827a21cd695635`.
@@ -67,17 +70,21 @@ Always fetch the current file versions before editing; paths above are not a gua
 
 ## Release / synchronization state
 
-- PR #1 is merged and closed; `main` contains the full Phase 4 change set.\n- Phase 5 changes are only on `feat/phase5-premium-ui-ux`; `main` remains at `15ec5069b4850968588be2e4363fbd182bf2a8fc` and does not yet contain the Phase 5 UI work.\n- Google AI Studio connected to `main` will not see Phase 5 until it is safely merged.
+- PR #1 is merged and closed; `main` contains the full Phase 4 change set.
+- Phase 5 changes are only on `feat/phase5-premium-ui-ux`; `main` remains at `15ec5069b4850968588be2e4363fbd182bf2a8fc` and does not yet contain the Phase 5 UI work.
+- Google AI Studio connected to `main` will not see Phase 5 until it is safely merged.
 - Vercel GitHub integration reported a **Ready Preview** for the PR feature branch before merge.
 - Vercel Production deployment for merge commit `bc368d6894afacf420529ca55c827a21cd695635` was rejected with `api-deployments-free-per-day` (retry in 24 hours). Production deployment is **not confirmed**.
 - Google AI Studio can now sync from `main`; the actual in-app sync must be confirmed by the user because this workspace cannot inspect the AI Studio UI.
-- For the current Phase 5 head `63d2b65068a730115b76669abbe04b798512cd91`, Vercel status is `failure`: `Deployment rate limited — retry in 24 hours`. No Phase 5 Preview is confirmed.\n- Do not claim production deployment success or tell the user to sync Phase 5 into Google AI Studio before merge.
+- For the current Phase 5 head `63d2b65068a730115b76669abbe04b798512cd91`, Vercel status is `failure`: `Deployment rate limited — retry in 24 hours`. No Phase 5 Preview is confirmed.
+- Do not claim production deployment success or tell the user to sync Phase 5 into Google AI Studio before merge.
 
 ## Known cautions / next investigations
 
 1. Confirm the user has synced the `main` branch in Google AI Studio and inspect any sync/build feedback they report.
 2. Re-check Vercel Production deployment after the free daily deployment quota resets; do not bypass the limit.
-3. Investigate the current build warning: `MemorizationTestsView` chunk is approximately 1.96 MB minified (about 345 KB gzip), above the 650 KB warning threshold. It likely includes a static dependency chain from `testQuestionGenerator` to `verifiedAyahs` / `completeQuranData.json`; inspect before changing and preserve test generation semantics.\n4. Re-check Quran chunk-size warning and lazy-loading behavior in built output.
+3. Investigate the current build warning: `MemorizationTestsView` chunk is approximately 1.96 MB minified (about 345 KB gzip), above the 650 KB warning threshold. It likely includes a static dependency chain from `testQuestionGenerator` to `verifiedAyahs` / `completeQuranData.json`; inspect before changing and preserve test generation semantics.
+4. Re-check Quran chunk-size warning and lazy-loading behavior in built output.
 4. Inspect any remaining runtime/data flows that create `WirdPortion` IDs to ensure all use `createCanonicalPortionId`.
 5. Confirm storage migration does not discard recoverable data and never silently replaces invalid canonical payload with empty data.
 6. Re-check exact Quran source attribution and independent Tanzil comparison before claiming textual equivalence.
