@@ -450,7 +450,7 @@ export default function App() {
         <div 
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 left-6 z-50 max-w-md bg-stone-900/95 dark:bg-stone-800/95 text-white px-4 py-3 rounded-2xl shadow-xl border border-stone-700/80 backdrop-blur-md flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-4"
+          className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] md:bottom-6 left-3 md:left-6 z-50 max-w-md bg-stone-900/95 dark:bg-stone-800/95 text-white px-4 py-3 rounded-2xl shadow-xl border border-stone-700/80 backdrop-blur-md flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-4"
         >
           {toastMessage.type === 'success' && (
             <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
