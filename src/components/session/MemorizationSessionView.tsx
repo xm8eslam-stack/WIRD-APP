@@ -79,7 +79,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     return () => { cancelled = true; };
   }, [surahNumber, profile.preferredReciter, allSurahAyahs, currentAyahIndex, initialStartAyah, initialEndAyah]);
 
-  const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex] || allSurahAyahs[0];
+  const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex];
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
