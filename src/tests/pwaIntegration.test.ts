@@ -48,12 +48,25 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(fs.existsSync(swPath), 'sw.js must exist in /public');
 
     const swContent = fs.readFileSync(swPath, 'utf8');
-    assert(swContent.includes("CACHE_NAME = 'wird-app-v1'"), 'SW must declare versioned CACHE_NAME');
+    assert(swContent.includes("CACHE_NAME = 'wird-app-v2'"), 'SW must declare the upgraded shell cache version');
+    assert(swContent.includes("AUDIO_CACHE_NAME = 'wird-app-audio-v1'"), 'Session audio must use a separate persistent cache');
+    assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
+    assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
+    assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
+    assert(swContent.includes("url.hostname !== 'everyayah.com'"), 'Only the approved recitation host may be pre-cached');
+    assert(swContent.includes("mode: 'no-cors'"), 'Cross-origin audio must support opaque CDN responses');
+    assert(swContent.includes('name !== AUDIO_CACHE_NAME'), 'Audio cache must survive shell cache upgrades');
     assert(swContent.includes("event.waitUntil("), 'SW must handle install/activate wait');
     assert(swContent.includes("caches.delete"), 'SW must clean up old versioned caches on activate');
     assert(swContent.includes("req.mode === 'navigate'"), 'SW must implement SPA navigation fallback');
     assert(swContent.includes("cache.match('/index.html')"), 'SW must fall back to /index.html offline');
     assert(!swContent.includes("tanzilReferenceData.json"), 'SW must NOT cache 2.9MB reference test dataset');
+  });
+
+  test('Memorization sessions request caching only for their active verse range', () => {
+    const sessionContent = fs.readFileSync(path.resolve('./src/components/session/MemorizationSessionView.tsx'), 'utf8');
+    assert(sessionContent.includes("type: 'WIRD_CACHE_SESSION_AUDIO'"), 'Session must request its audio cache');
+    assert(sessionContent.includes('sessionAyahs.slice(0, 20)'), 'Session must bound the number of audio URLs sent');
   });
 
   // 3. HTML integration
