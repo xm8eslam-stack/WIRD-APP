@@ -26,6 +26,7 @@ import { RECITERS } from '../../services/audioService';
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -74,7 +75,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `wird-quran-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `wird-quran-backup-${getLocalDateString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     if (onToast) {
