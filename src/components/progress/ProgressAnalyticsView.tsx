@@ -22,6 +22,7 @@ import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, JUZ_NAMES, ALL_SURAHS } from '..
 import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord } from '../../types/quran';
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
+import { getAyahsByPage } from '../../data/verifiedAyahs';
 
 interface ProgressAnalyticsViewProps {
   logs: DailyLog[];
@@ -65,63 +66,118 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     setPortions(RetentionService.getPortions());
   }, []);
 
-  // Map each of the 604 pages to its status based on tracked portions or default
+  // Derive each Mushaf page exclusively from its canonical ayah coordinates.
+  // A page is memorized only when every ayah on it is covered by a tracked portion.
   const getPageStatus = (page: number): { status: PortionMemorizationStatus; surah: typeof ALL_SURAHS[0]; portionId?: string } => {
-    // Find surah on this page
-    const surah = ALL_SURAHS.find(s => page >= s.pageStart && page <= s.pageEnd) || ALL_SURAHS[0];
-    
-    // Check if we have a tracked portion for this surah or page
-    const matchingPortion = portions.find(p => {
-      if (p.pageNumber === page) return true;
-      if (p.surahNumber === surah.number && page >= surah.pageStart && page <= surah.pageEnd) return true;
-      return false;
-    });
+    const pageAyahs = getAyahsByPage(page);
+    const firstAyah = pageAyahs[0];
+    const surah = ALL_SURAHS.find(s => s.number === (firstAyah?.surahNumber || 0))
+      || ALL_SURAHS.find(s => page >= s.pageStart && page <= s.pageEnd)
+      || ALL_SURAHS[0];
 
-    if (matchingPortion) {
-      return { status: matchingPortion.status, surah, portionId: matchingPortion.id };
-    }
+    if (pageAyahs.length === 0) return { status: 'not_memorized', surah };
 
-    // Default heuristics based on seed user journey:
-    // Page 1 (Al-Fatihah) -> stable
-    if (page === 1) return { status: 'stable', surah };
-    // Pages 562-564 (Al-Mulk) -> recently_memorized
-    if (page >= 562 && page <= 564) return { status: 'recently_memorized', surah };
-    // Pages 582-583 (An-Naba) -> currently_memorizing
-    if (page >= 582 && page <= 583) return { status: 'currently_memorizing', surah };
-    // Pages 596-604 (Juz 30 short surahs) -> stable
-    if (page >= 596 && page <= 604) {
-      if (page === 603) return { status: 'weak', surah }; // Al-Kafirun weak
-      return { status: 'stable', surah };
-    }
+    const statusPriority: Record<PortionMemorizationStatus, number> = {
+      weak: 0,
+      needs_revision: 1,
+      currently_memorizing: 2,
+      recently_memorized: 3,
+      stable: 4,
+      not_memorized: 5
+    };
 
-    return { status: 'not_memorized', surah };
+    const matchingPortions = pageAyahs.map(ayah =>
+      portions
+        .filter(p => p.surahNumber === ayah.surahNumber && p.startAyah <= ayah.numberInSurah && p.endAyah >= ayah.numberInSurah)
+        .sort((a, b) => statusPriority[a.status] - statusPriority[b.status])[0]
+    );
+    const coveredCount = matchingPortions.filter(Boolean).length;
+
+    if (coveredCount === 0) return { status: 'not_memorized', surah };
+    if (coveredCount < pageAyahs.length) return { status: 'currently_memorizing', surah };
+
+    const weakestStatus = matchingPortions
+      .filter(Boolean)
+      .map(p => p!.status)
+      .sort((a, b) => statusPriority[a] - statusPriority[b])[0];
+    const uniquePortionIds = new Set(matchingPortions.map(p => p!.id));
+    const onlyPortion = uniquePortionIds.size === 1 ? matchingPortions[0] : undefined;
+    const sameSurah = pageAyahs.every(a => a.surahNumber === firstAyah.surahNumber);
+    const exactPageRange = onlyPortion && sameSurah &&
+      onlyPortion.surahNumber === firstAyah.surahNumber &&
+      onlyPortion.startAyah === pageAyahs[0].numberInSurah &&
+      onlyPortion.endAyah === pageAyahs[pageAyahs.length - 1].numberInSurah;
+
+    return {
+      status: weakestStatus,
+      surah,
+      portionId: exactPageRange ? onlyPortion!.id : undefined
+    };
   };
 
-  // Change page status
+  // Change page status without accidentally marking an entire Surah as one page.
   const handleUpdatePageStatus = (pageNumber: number, newStatus: PortionMemorizationStatus) => {
-    const { surah, portionId } = getPageStatus(pageNumber);
-
-    if (portionId) {
-      RetentionService.updatePortionStatus(portionId, newStatus);
-    } else {
-      // Add as new tracked portion
-      RetentionService.addPortion({
-        type: 'page',
-        surahNumber: surah.number,
-        surahName: surah.name,
-        startAyah: 1,
-        endAyah: surah.versesCount,
-        pageNumber,
-        juzNumber: surah.juzStart,
-        status: newStatus,
-        lastReviewedDate: new Date().toISOString().split('T')[0],
-        nextDueDate: new Date().toISOString().split('T')[0],
-        intervalDays: newStatus === 'stable' ? 7 : 1,
-        easeFactor: 2.5,
-        repetitionCount: newStatus === 'stable' ? 3 : 1,
-        mistakesCount: 0
-      });
+    const pageAyahs = getAyahsByPage(pageNumber);
+    if (pageAyahs.length === 0) {
+      onToast?.('تعذر تحديد آيات الصفحة من بيانات المصحف المعتمدة.', 'error');
+      return;
     }
+
+    const segments: Array<{ surahNumber: number; startAyah: number; endAyah: number }> = [];
+    pageAyahs.forEach(ayah => {
+      const last = segments[segments.length - 1];
+      if (last && last.surahNumber === ayah.surahNumber && last.endAyah + 1 === ayah.numberInSurah) {
+        last.endAyah = ayah.numberInSurah;
+      } else {
+        segments.push({ surahNumber: ayah.surahNumber, startAyah: ayah.numberInSurah, endAyah: ayah.numberInSurah });
+      }
+    });
+
+    const currentPortions = RetentionService.getPortions();
+    const hasUnsafeOverlap = segments.some(segment =>
+      currentPortions.some(p =>
+        p.surahNumber === segment.surahNumber &&
+        p.startAyah <= segment.endAyah &&
+        p.endAyah >= segment.startAyah &&
+        !(p.startAyah === segment.startAyah && p.endAyah === segment.endAyah)
+      )
+    );
+
+    if (hasUnsafeOverlap) {
+      onToast?.('هذه الصفحة تتداخل مع مقطع محفوظ أكبر أو أصغر. لم نغيّر البيانات حتى لا نعدّل آيات خارج الصفحة.', 'warn');
+      return;
+    }
+
+    const today = new Date().toLocaleDateString('en-CA');
+    segments.forEach(segment => {
+      const surah = ALL_SURAHS.find(s => s.number === segment.surahNumber)!;
+      const existing = currentPortions.find(p =>
+        p.surahNumber === segment.surahNumber &&
+        p.startAyah === segment.startAyah &&
+        p.endAyah === segment.endAyah
+      );
+
+      if (existing) {
+        RetentionService.updatePortionStatus(existing.id, newStatus);
+      } else {
+        RetentionService.addPortion({
+          type: 'page',
+          surahNumber: segment.surahNumber,
+          surahName: surah.name,
+          startAyah: segment.startAyah,
+          endAyah: segment.endAyah,
+          pageNumber,
+          juzNumber: surah.juzStart,
+          status: newStatus,
+          lastReviewedDate: today,
+          nextDueDate: today,
+          intervalDays: newStatus === 'stable' ? 7 : 1,
+          easeFactor: 2.5,
+          repetitionCount: newStatus === 'stable' ? 3 : 1,
+          mistakesCount: 0
+        });
+      }
+    });
 
     setPortions(RetentionService.getPortions());
     setInspectedPage(null);
@@ -149,7 +205,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
-      if (content && StorageService.importBackup(content)) {
+      const result = content ? StorageService.importBackup(content) : { success: false, message: 'الملف فارغ' };
+      if (result.success) {
         if (onToast) {
           onToast("تم استعادة نسختك الاحتياطية وسجلات الحفظ بنجاح!", "success");
         }
@@ -182,7 +239,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     pageStats[status] = (pageStats[status] || 0) + 1;
   }
 
-  const totalMemorizedPagesCount = 604 - pageStats.not_memorized;
+  const totalMemorizedPagesCount = pageStats.stable + pageStats.recently_memorized + pageStats.needs_revision + pageStats.weak;
 
   return (
     <div className="space-y-6">
@@ -256,7 +313,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-1">
           <div className="text-xs text-stone-500">معدل التثبيت العام</div>
           <div className="text-2xl font-bold text-stone-900 dark:text-stone-100 font-mono tabular-nums">
-            %{totalMemorizedPagesCount > 0 ? Math.round(((pageStats.stable + pageStats.recently_memorized * 0.8) / totalMemorizedPagesCount) * 100) : 90}
+            %{totalMemorizedPagesCount > 0 ? Math.round(((pageStats.stable + pageStats.recently_memorized * 0.8) / totalMemorizedPagesCount) * 100)  : 0}
           </div>
           <div className="text-[11px] text-stone-400">
             جودة الرسوخ التراكمية
