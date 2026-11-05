@@ -42,12 +42,16 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     assert(generator.includes('surahNumber <= 114'), 'Generator must cover all 114 Surahs');
     assert(generator.includes('totalAyahs !== 6236'), 'Generator must enforce the 6,236-ayah total');
     assert(generator.includes('ayah.numberInSurah !== index + 1'), 'Generator must validate verse coordinates');
+    assert(generator.includes('quranPageIndex.generated.ts'), 'Generator must emit the page-to-ayah coordinate index');
+    assert(generator.includes('pageNumber <= 604'), 'Generator must validate all 604 Mushaf pages');
   });
 
   test('Development and production builds generate chunks before Vite starts', () => {
     const pkg = JSON.parse(read('package.json'));
     assert(pkg.scripts.predev === 'node scripts/split-quran-data.mjs', 'Dev startup must generate Surah chunks');
     assert(pkg.scripts.prebuild === 'node scripts/split-quran-data.mjs', 'Production build must generate Surah chunks');
+    assert(pkg.scripts.pretest === 'node scripts/split-quran-data.mjs', 'Tests must generate page-index data before importing it');
+    assert(pkg.scripts.prelint === 'node scripts/split-quran-data.mjs', 'TypeScript validation must generate page-index data');
   });
 
   test('Quran source attribution metadata is independent from the full text payload', () => {
