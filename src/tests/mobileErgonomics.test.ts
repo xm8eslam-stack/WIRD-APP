@@ -94,6 +94,8 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(revision.includes('aria-controls="revision-panel-'), 'Revision tabs must reference their panels');
     assert(revision.includes('role="tabpanel"'), 'Revision content must expose tabpanel semantics');
     assert(revision.includes('aria-labelledby="revision-tab-'), 'Revision panels must reference their controlling tabs');
+    assert(revision.includes("event.key === 'ArrowRight'") && revision.includes("event.key === 'ArrowLeft'"), 'Revision tabs must support arrow-key navigation');
+    assert(revision.includes("event.key === 'Home'") && revision.includes("event.key === 'End'"), 'Revision tabs must support Home and End navigation');
   });
 
   test('Memorization test result does not double-count the final correct answer', () => {
