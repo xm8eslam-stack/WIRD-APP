@@ -350,9 +350,9 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               </div>
             </div>
 
-            <div className={`grid ${PAGE_GRID_ZOOM_CLASSES[pageGridZoom]} gap-2 max-h-[600px] overflow-y-auto overscroll-contain touch-pan-y p-2 bg-[#faf8f5] dark:bg-stone-900/50 rounded-2xl border border-stone-200/60 dark:border-stone-700/50">
+            <div className={`grid ${PAGE_GRID_ZOOM_CLASSES[pageGridZoom]} gap-2 max-h-[600px] overflow-y-auto overscroll-contain touch-pan-y p-2 bg-[#faf8f5] dark:bg-stone-900/50 rounded-2xl border border-stone-200/60 dark:border-stone-700/50`}>
               {Array.from({ length: 604 }, (_, i) => i + 1).map((pageNum) => {
-                const { status, surah, portionId } = getPageStatus(pageNum);
+                const { status, surah, portionId, portionIds } = getPageStatus(pageNum);
                 const cfg = STATUS_CONFIG[status];
                 const matchesFilter = statusFilter === 'all' || statusFilter === status;
 
