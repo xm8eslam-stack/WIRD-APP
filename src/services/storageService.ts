@@ -93,7 +93,7 @@ export const DEMO_PROFILE: UserProfile = {
   repetitionTarget: 10,
   theme: "light",
   streakDays: 3,
-  lastActiveDate: new Date().toISOString().split('T')[0]
+  lastActiveDate: getLocalDateString()
 };
 
 export const DEMO_REVISION_ITEMS: RevisionItem[] = [
@@ -107,7 +107,7 @@ export const DEMO_REVISION_ITEMS: RevisionItem[] = [
     juzNumber: 29,
     type: "minor",
     lastReviewedDate: "2026-11-02",
-    nextDueDate: new Date().toISOString().split('T')[0],
+    nextDueDate: getLocalDateString(),
     intervalDays: 2,
     easeFactor: 2.5,
     repetitionCount: 4,
@@ -123,7 +123,7 @@ export const DEMO_REVISION_ITEMS: RevisionItem[] = [
     juzNumber: 29,
     type: "minor",
     lastReviewedDate: "2026-11-01",
-    nextDueDate: new Date().toISOString().split('T')[0],
+    nextDueDate: getLocalDateString(),
     intervalDays: 3,
     easeFactor: 2.2,
     repetitionCount: 3,
