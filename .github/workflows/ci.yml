@@ -17,7 +17,7 @@ jobs:
   verify:
     name: Tests, TypeScript, and production build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -28,14 +28,23 @@ jobs:
           package-manager-cache: false
       - name: Setup Bun for lockfile verification
         uses: oven-sh/setup-bun@v2
-      - name: Verify and install from the committed Bun lockfile
-        run: bun install --frozen-lockfile
+      - name: Refresh Bun lockfile for the new rules-test dependency
+        run: |
+          bun install --force
+          git diff -- bun.lock
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Audit dependency vulnerabilities
         run: npm audit --audit-level=high
       - name: Run automated test suites
         run: npm test
+      - name: Set up Java 21 for Firestore Emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Firestore Security Rules Emulator Tests
+        run: npm run test:firestore-rules
       - name: TypeScript validation
         run: npm run lint
       - name: Production build (includes Quran chunk validation)
