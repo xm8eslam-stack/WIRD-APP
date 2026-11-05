@@ -103,17 +103,19 @@ export function calculateUniqueMemorizedPages(portions: WirdPortion[]): number {
   const { ayahKeys } = calculateUniqueMemorizedAyahs(portions);
   if (ayahKeys.size === 0) return 0;
 
-  // Track distinct pages touched by memorized Ayahs
-  const pagesTouched = new Set<number>();
-  ayahKeys.forEach(key => {
-    const [s, a] = key.split(':').map(Number);
-    const page = getAyahPage(s, a);
-    if (page >= 1 && page <= 604) {
-      pagesTouched.add(page);
-    }
-  });
+  // Count only pages whose every ayah is covered by memorized portions.
+  let completedPages = 0;
+  for (const segments of Object.values(QURAN_PAGE_INDEX)) {
+    const isComplete = segments.every(segment => {
+      for (let ayahNumber = segment.startAyah; ayahNumber <= segment.endAyah; ayahNumber++) {
+        if (!ayahKeys.has(`${segment.surahNumber}:${ayahNumber}`)) return false;
+      }
+      return true;
+    });
+    if (isComplete) completedPages++;
+  }
 
-  return pagesTouched.size;
+  return completedPages;
 }
 
 /**
