@@ -342,20 +342,25 @@ export default function App() {
 
   // Add verse to revision from test with canonical retention sync
   const handleAddVerseToRevision = (surahNumber: number, surahName: string, ayahNumber: number) => {
-    RetentionService.addPortion({
-      type: 'passage',
-      surahNumber,
-      surahName,
-      startAyah: ayahNumber,
-      endAyah: ayahNumber,
-      status: 'weak',
-      nextDueDate: getLocalDateString(),
-      intervalDays: 1,
-      easeFactor: 2.0,
-      repetitionCount: 1,
-      mistakesCount: 1,
-      strength: 'weak'
-    });
+    try {
+      RetentionService.addPortion({
+        type: 'passage',
+        surahNumber,
+        surahName,
+        startAyah: ayahNumber,
+        endAyah: ayahNumber,
+        status: 'weak',
+        nextDueDate: getLocalDateString(),
+        intervalDays: 1,
+        easeFactor: 2.0,
+        repetitionCount: 1,
+        mistakesCount: 1,
+        strength: 'weak'
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'تعذر حفظ الآية في سجل المراجعة.', 'error');
+      return;
+    }
 
     setRevisionItems(StorageService.getRevisionItems());
 
