@@ -381,6 +381,7 @@ export default function App() {
                 plans={plans}
                 onUpdatePlans={handleUpdatePlans}
                 enginePlans={enginePlans}
+                memorizedPortions={RetentionService.getPortions()}
                 onUpdateEnginePlans={handleUpdateEnginePlans}
                 onStartSession={handleStartSession}
                 onToast={showToast}
