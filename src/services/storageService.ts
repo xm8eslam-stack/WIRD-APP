@@ -78,7 +78,17 @@ function rawRemoveItem(key: string): boolean {
  * account safely claims the legacy unscoped dataset; subsequent accounts never
  * inherit it. Guest mode deliberately continues to use the legacy guest store.
  */
-function setStorageScope(scope: string): boolean {
+function hasLegacyStorageData(): boolean {
+  return Object.values(STORAGE_KEYS).some(key => rawGetItem(key) !== null);
+}
+
+function needsLegacyDataDecision(scope: string): boolean {
+  return /^user:[A-Za-z0-9_-]{1,128}$/.test(scope.trim()) &&
+    rawGetItem(STORAGE_OWNER_MARKER) === null &&
+    hasLegacyStorageData();
+}
+
+function setStorageScope(scope: string, legacyChoice?: 'import' | 'keep-guest'): boolean {
   const normalized = scope.trim();
   if (normalized === 'legacy' || normalized === 'guest') {
     activeStorageScope = normalized;
@@ -92,19 +102,28 @@ function setStorageScope(scope: string): boolean {
       key,
       value: rawGetItem(key)
     }));
+    const hasLegacyData = legacyValues.some(item => item.value !== null);
 
-    // Copy and verify every legacy value before removing any source key.
-    for (const item of legacyValues) {
-      if (item.value === null) continue;
-      const destinationKey = resolveStorageKey(item.key, normalized);
-      if (rawGetItem(destinationKey) === null && !rawSetItem(destinationKey, item.value)) return false;
-      if (rawGetItem(destinationKey) !== item.value) return false;
+    // Existing unscoped data may belong to a guest or another person using
+    // this browser. Require an explicit in-app choice before claiming it.
+    if (hasLegacyData && !legacyChoice) return false;
+
+    if (legacyChoice === 'import') {
+      // Copy and verify every legacy value before removing any source key.
+      for (const item of legacyValues) {
+        if (item.value === null) continue;
+        const destinationKey = resolveStorageKey(item.key, normalized);
+        if (rawGetItem(destinationKey) === null && !rawSetItem(destinationKey, item.value)) return false;
+        if (rawGetItem(destinationKey) !== item.value) return false;
+      }
+
+      for (const item of legacyValues) {
+        if (item.value !== null && !rawRemoveItem(item.key)) return false;
+      }
     }
 
-    for (const item of legacyValues) {
-      if (item.value !== null && !rawRemoveItem(item.key)) return false;
-    }
-
+    // keep-guest leaves the legacy dataset untouched and prevents another
+    // account from silently claiming it on this device.
     if (!rawSetItem(STORAGE_OWNER_MARKER, normalized)) return false;
   }
 
