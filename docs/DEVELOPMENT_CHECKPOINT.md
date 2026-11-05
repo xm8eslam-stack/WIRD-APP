@@ -1,6 +1,6 @@
 # WIRD APP — Development Checkpoint
 
-> Last updated: 2026-11-05 20:52 (Africa/Cairo)
+> Last updated: 2026-11-05 — post-merge checkpoint
 > Purpose: durable handoff marker. Read this file before continuing development.
 
 ## Repository and branch rules
@@ -8,23 +8,23 @@
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Google AI Studio is connected to the default branch `main`.
 - Vercel deploys from GitHub; verify the Production Branch is `main`.
-- Working branch for the current accumulated work: `feat/phase4-data-integrity-backup-v4`.
-- Open draft PR: #1 — https://github.com/xm8eslam-stack/WIRD-APP/pull/1
-- **Do not assume feature-branch changes are already present in `main`.**
-- Do not force-push, overwrite main, or merge while deployment/release checks remain unresolved.
+- Merged working branch: `feat/phase4-data-integrity-backup-v4`.
+- PR #1: merged — https://github.com/xm8eslam-stack/WIRD-APP/pull/1
+- Merge commit: `bc368d6894afacf420529ca55c827a21cd695635`.
+- Google AI Studio is connected to `main`; all PR #1 changes are now part of `main`.
+- Never force-push or overwrite `main`.
 
 ## Exact saved point
 
 - Last code-change HEAD before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`
 - Initial checkpoint documentation commit: `85e618540cfe547b49cde302c550aa1d34c91e5e`
 - Latest checkpoint revision (clarified SHA labels): `e96a09d4bdde34f78a139320f2b36e6f407ac6cb`
-- `main` base SHA observed during comparison: `862f6056ac5d54abf9f26249941ba994e74bf6a9`
-- Branch comparison before the checkpoint-only documentation commit: 119 commits ahead, 0 behind; after it: 120 commits ahead, 0 behind.
-- Latest GitHub Actions run: #119 / run ID `42088152069`.
-- Latest verified CI code commit before the checkpoint-only documentation commit: `38764e713ce2527eac716a9246ad5a09d426f9c4`.
-- CI result: **181 tests passed, 0 failed; TypeScript validation passed; Vite production build passed**.
-- Build log: `✓ built in 759ms`.
-- Note: checkpoint commit itself will create a new commit and trigger CI again. Re-check the new head's run before considering it verified.
+- Previous `main` base SHA: `862f6056ac5d54abf9f26249941ba994e74bf6a9`.
+- Feature head merged: `a043da31f7f8d170bcbfb0c41a0d687cf2c6b2ec`.
+- Merge commit / `main` SHA verified after merge: `bc368d6894afacf420529ca55c827a21cd695635`.
+- Feature-branch CI run #125 / `42088739952`: success; all steps passed.
+- Merge-commit CI run `42089276504`: success; dependency installation, tests, TypeScript validation, and Vite production build all passed.
+- Prior detailed source-code test summary: 181 passed, 0 failed; TypeScript and production build passed.
 
 ## Work preserved on the feature branch
 
@@ -67,29 +67,28 @@ Always fetch the current file versions before editing; paths above are not a gua
 
 ## Release / synchronization state
 
-- `main` has **not** been updated by this work.
-- PR #1 remains open and draft.
-- Earlier Vercel attempts hit the Free-plan daily deployment quota (`api-deployments-free-per-day`) and transient socket errors. A fresh Vercel preview for the latest commit has not been confirmed.
+- PR #1 is merged and closed; `main` contains the full Phase 4 change set.
+- Vercel GitHub integration reported a **Ready Preview** for the PR feature branch before merge.
+- Vercel Production deployment for merge commit `bc368d6894afacf420529ca55c827a21cd695635` was rejected with `api-deployments-free-per-day` (retry in 24 hours). Production deployment is **not confirmed**.
+- Google AI Studio can now sync from `main`; the actual in-app sync must be confirmed by the user because this workspace cannot inspect the AI Studio UI.
 - Do not claim production deployment success.
-- To make these changes appear in the Google AI Studio project connected to `main`, first finish the release gate, then merge PR #1 into `main` safely (normal merge only; no force push). After merge, verify the new main SHA and Google AI Studio repository sync. Then verify Vercel's production deployment from `main`.
 
 ## Known cautions / next investigations
 
-1. Review PR #1's full 34-file diff before merge; compare against current `main`, not a stale snapshot.
-2. Confirm latest CI remains green after the checkpoint commit.
-3. Inspect Vercel status/preview for the exact final feature SHA. If the free daily quota is still exhausted, leave PR draft and explain the blocker rather than bypassing limits.
-4. Re-check Quran chunk size and lazy-loading behavior in built output; current build passes but logs contain a chunk-size warning.
-5. Inspect any remaining runtime/data flows that create `WirdPortion` IDs to ensure all use `createCanonicalPortionId`.
-6. Confirm storage migration does not discard recoverable data and never silently replaces an invalid canonical payload with empty data.
-7. Re-check the exact Quran source attribution and independent Tanzil comparison test. Earlier log output showed a separate Tanzil discrepancy in one older run; the latest passing CI's final test summary is green, but inspect the current verification report before claiming textual equivalence.
-8. Do not change Firebase security rules, authentication, secrets, or Vercel project settings without explicit evidence and authorization.
+1. Confirm the user has synced the `main` branch in Google AI Studio and inspect any sync/build feedback they report.
+2. Re-check Vercel Production deployment after the free daily deployment quota resets; do not bypass the limit.
+3. Re-check Quran chunk-size warning and lazy-loading behavior in built output.
+4. Inspect any remaining runtime/data flows that create `WirdPortion` IDs to ensure all use `createCanonicalPortionId`.
+5. Confirm storage migration does not discard recoverable data and never silently replaces invalid canonical payload with empty data.
+6. Re-check exact Quran source attribution and independent Tanzil comparison before claiming textual equivalence.
+7. Do not change Firebase security rules, authentication, secrets, or Vercel project settings without explicit evidence and authorization.
 
 ## Exact continuation instruction
 
 On resumption:
 
-1. Read this checkpoint first.
-2. Fetch current `main`, feature branch, PR #1, latest commit, and workflow status. Never rely only on this saved SHA.
-3. If the feature head moved, rerun comparison and CI checks for the new head.
-4. Continue with the release gate: full PR diff review → fresh Vercel preview/build verification → safe merge to `main` → verify main SHA and Vercel production deployment → confirm Google AI Studio sync.
-5. If a tool/context limit approaches, stop before starting another unverified change, commit all safe work, update this checkpoint with the new exact SHA and next action, and leave a concise handoff note.
+1. Read this checkpoint first and verify current `main` SHA before any edits.
+2. PR #1 is already merged; do not attempt to merge it again.
+3. Continue with Google AI Studio sync verification and Vercel Production deployment retry only after the quota reset.
+4. Before any new feature work, inspect the current repository state and run CI.
+5. If a tool/context limit approaches, commit safe work and update this checkpoint with exact SHAs, CI state, deployment state, and next action.
