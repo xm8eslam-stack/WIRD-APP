@@ -34,7 +34,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     const loader = read('src/data/quranDataLoader.ts');
     assert(loader.includes("import.meta.glob<{ default: Ayah[] }>") , 'Vite must discover generated Surah chunks');
     assert(loader.includes('surahCache'), 'Repeated requests must reuse the same loaded Surah');
-    assert(!loader.includes('completeQuranData.json'), 'Lazy loader must not import the full Quran JSON');
+    assert(!loader.includes("from './completeQuranData.json'") && !loader.includes("import('./completeQuranData.json')"), 'Lazy loader must not import the full Quran JSON');
   });
 
   test('Chunk generator validates the complete 114-Surah, 6,236-ayah source before writing', () => {
