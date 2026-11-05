@@ -11,6 +11,7 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "tsx src/tests/runAllTests.ts",
+    "smoke:server": "node scripts/smoke-server.mjs",
     "quran:split": "node scripts/split-quran-data.mjs",
     "predev": "node scripts/split-quran-data.mjs",
     "prebuild": "node scripts/split-quran-data.mjs",
