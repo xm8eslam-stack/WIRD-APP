@@ -254,14 +254,21 @@ export default function App() {
   // Session complete callback
   const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
     const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      try {
+        RetentionService.recordMemorizationCompletion(
+          sessionParams.surahNumber,
+          sessionParams.startAyah,
+          sessionParams.endAyah
+        );
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'تعذر حفظ إنجاز جلسة الحفظ. لم يتم تسجيلها كإنجاز مؤكد.', 'error');
+        return;
+      }
+    }
+
     StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
     if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
-      RetentionService.recordMemorizationCompletion(
-        sessionParams.surahNumber,
-        sessionParams.startAyah,
-        sessionParams.endAyah
-      );
-
       // Completing the exact task from an active engine plan must advance
       // that plan, otherwise the dashboard would keep serving the same range.
       const currentEnginePlans = StorageService.getEnginePlans();
