@@ -252,11 +252,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             return (
               <div
                 key={surah.number}
-                className={`wird-surah-option p-3.5 rounded-xl border transition-all flex items-center justify-between ${
+                className={"wird-surah-option p-3.5 rounded-xl border transition-all flex items-center justify-between " + (
                   isSelected
-                    ? 'bg-emerald-800 text-white border-emerald-900 shadow-sm'
-                    : 'bg-white dark:bg-stone-800/90 hover:bg-stone-50 dark:hover:bg-stone-800 border-stone-200/80 dark:border-stone-700/80 text-stone-900 dark:text-stone-100'
-                }`}
+                    ? "bg-emerald-800 text-white border-emerald-900 shadow-sm"
+                    : "bg-white dark:bg-stone-800/90 hover:bg-stone-50 dark:hover:bg-stone-800 border-stone-200/80 dark:border-stone-700/80 text-stone-900 dark:text-stone-100"
+                )}
               >
                 <button
                   type="button"
@@ -267,64 +267,45 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                   aria-pressed={isSelected}
                   className="wird-surah-select flex items-center gap-3 text-right"
                 >
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs font-mono tabular-nums ${
+                  <span className={"w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs font-mono tabular-nums " + (
                     isSelected
-                      ? 'bg-amber-400 text-emerald-950'
-                      : 'bg-[#faf8f5] dark:bg-stone-900 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700'
-                  }`}>
+                      ? "bg-amber-400 text-emerald-950"
+                      : "bg-[#faf8f5] dark:bg-stone-900 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700"
+                  )}>
                     {surah.number}
                   </span>
                   <span className="text-right">
                     <span className="flex items-center gap-2">
                       <span className="font-bold text-base font-quran">سورة {surah.name}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      <span className={"text-[10px] px-1.5 py-0.5 rounded " + (
                         isSelected
-                          ? 'bg-emerald-700/80 text-emerald-100'
-                          : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
-                      }`}>
+                          ? "bg-emerald-700/80 text-emerald-100"
+                          : "bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300"
+                      )}>
                         {surah.revelationType}
                       </span>
                     </span>
-                    <span className={`block text-xs ${isSelected ? 'text-emerald-100/90' : 'text-stone-500 dark:text-stone-400'}`}>
+                    <span className={"block text-xs " + (isSelected ? "text-emerald-100/90" : "text-stone-500 dark:text-stone-400")}>
                       {surah.versesCount} آيات · الجزء {surah.juzStart} · صفحة {surah.pageStart}
                     </span>
                   </span>
                 </button>
 
                 <div className="flex items-center gap-2">
-                      <h4 className="font-bold text-base font-quran">
-                        سورة {surah.name}
-                      </h4>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        isSelected 
-                          ? 'bg-emerald-700/80 text-emerald-100' 
-                          : 'bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300'
-                      }`}>
-                        {surah.revelationType}
-                      </span>
-                    </div>
-                    <div className={`text-xs ${isSelected ? 'text-emerald-100/90' : 'text-stone-500 dark:text-stone-400'}`}>
-                      {surah.versesCount} آيات · الجزء {surah.juzStart} · صفحة {surah.pageStart}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStartSession(surah.number, 1, Math.min(10, surah.versesCount));
-                    }}
+                    type="button"
+                    onClick={() => onStartSession(surah.number, 1, Math.min(10, surah.versesCount))}
                     title="بدء جلسة حفظ لهذه السورة"
-                    className={`p-2 rounded-lg transition-colors ${
+                    aria-label={`بدء جلسة حفظ سورة ${surah.name}`}
+                    className={"p-2 rounded-lg transition-colors " + (
                       isSelected
-                        ? 'bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold'
-                        : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100'
-                    }`}
+                        ? "bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold"
+                        : "bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100"
+                    )}
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                   </button>
-                  <ChevronLeft className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-stone-400'}`} />
+                  <ChevronLeft className={"w-4 h-4 " + (isSelected ? "text-white" : "text-stone-400")} />
                 </div>
               </div>
             );
