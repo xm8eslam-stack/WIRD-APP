@@ -30,7 +30,7 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
     let requestCount = 0;
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       requestCount++;
-      assert(String(input).includes('/ayah/114/6/book/27809'), 'Request must target the configured Tafsir Muyassar book');
+      assert(String(input).includes('/api/tafsir?surah=114&ayah=6'), 'Request must target the configured Tafsir Muyassar book');
       return new Response(JSON.stringify({
         book: { id: 27809, name: 'التفسير الميسر' },
         content: [{ text: 'المعنى الأول.' }, { text: 'المعنى الثاني.' }]
