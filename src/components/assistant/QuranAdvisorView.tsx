@@ -24,6 +24,7 @@ import {
 import { UserProfile, MemorizationPlan, DailyLog, PortionStatusRecord, WeakVerseItem } from '../../types/quran';
 import { AdvisorService, AdvisorStatus } from '../../services/advisorService';
 import { RetentionService } from '../../services/retentionService';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 
 interface QuranAdvisorViewProps {
   profile?: UserProfile;
@@ -130,7 +131,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
       repetitionTarget: 10,
       theme: 'light',
       streakDays: 14,
-      lastActiveDate: new Date().toISOString().split('T')[0]
+      lastActiveDate: getLocalDateString()
     };
 
     const portions = RetentionService.getPortions();
