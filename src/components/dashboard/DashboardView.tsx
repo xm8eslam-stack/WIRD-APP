@@ -387,7 +387,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Metric 2: Pages */}
         <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المتقنة</div>
+          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المحفوظة بالكامل</div>
           <div className="flex items-baseline justify-between">
             <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
               {totalMemorizedPages}
