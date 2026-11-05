@@ -11,7 +11,7 @@
  * 7. Storage Write Verification, Complete Payload Readback & Quota Failure Safety
  * 8. Honest Dynamic Testing (Zero Unmemorized Fallbacks & Truthful hasSufficientData)
  * 9. Dashboard Due Count Uniformity from Canonical Queue
- * 10. Router Parsing & Deep Linking
+ * 10. Session Mode Completion Isolation\n * 11. Router Parsing & Deep Linking
  */
 
 import {
@@ -481,7 +481,20 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     }
   }
 
-  console.log('\n--- 10. Router Parsing & Deep Linking ---');
+  console.log('\n--- 10. Session Mode Completion Isolation ---');
+  {
+    const reviewMetrics = getSessionCompletionMetrics('review', 12, 1);
+    assert(reviewMetrics.memorizedAyahs === 0, 'Review session never increments memorized ayah totals');
+    assert(reviewMetrics.reviewedPages === 1, 'Review session records review activity');
+    assert(reviewMetrics.shouldRecordMemorization === false, 'Review session never writes a memorized portion');
+
+    const memorizeMetrics = getSessionCompletionMetrics('memorize', 12, 1);
+    assert(memorizeMetrics.memorizedAyahs === 12, 'Memorization session records memorized ayahs');
+    assert(memorizeMetrics.reviewedPages === 0, 'Memorization session does not masquerade as page review');
+    assert(memorizeMetrics.shouldRecordMemorization === true, 'Memorization session writes memorization progress');
+  }
+
+  console.log('\n--- 11. Router Parsing & Deep Linking ---');
   {
     const route1 = parseRoute('#/library');
     assert(route1.tab === 'library', 'parseRoute parses #/library');
