@@ -120,28 +120,6 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         mistakesCount: 0
       });
     });
-        const segmentSurah = ALL_SURAHS.find(item => item.number === segment.surahNumber);
-        if (!segmentSurah) return;
-        RetentionService.addPortion({
-          type: 'page',
-          surahNumber: segment.surahNumber,
-          surahName: segmentSurah.name,
-          startAyah: segment.startAyah,
-          endAyah: segment.endAyah,
-          pageNumber,
-          pageStart: pageNumber,
-          pageEnd: pageNumber,
-          juzNumber: segmentSurah.juzStart,
-          status: newStatus,
-          lastReviewedDate: getLocalDateString(),
-          nextDueDate: getLocalDateString(),
-          intervalDays: newStatus === 'stable' ? 7 : 1,
-          easeFactor: 2.5,
-          repetitionCount: newStatus === 'stable' ? 3 : 1,
-          mistakesCount: 0
-        });
-      });
-    }
 
     setPortions(RetentionService.getPortions());
     setInspectedPage(null);
