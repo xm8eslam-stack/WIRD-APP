@@ -80,7 +80,7 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     const stablePage = { ...shared, id: 'stable-page', type: 'page' as const, pageNumber: 1, pageStart: 1, pageEnd: 1, status: 'stable' as const } as PortionStatusRecord;
     const weakPassage = { ...shared, id: 'weak-passage', type: 'passage' as const, status: 'weak' as const } as PortionStatusRecord;
     assert(getPageProgressStatus(1, [stablePage, weakPassage]).status === 'weak', 'The least secure overlapping record must determine page status');
-    assert(!getPageProgressStatus(1, [stablePage]).isFullyCovered || getPageProgressStatus(1, [stablePage]).status === 'stable', 'Coverage state must remain explicit for page-level records');
+    assert(getPageProgressStatus(1, [stablePage]).isFullyCovered, 'A full page-level record must report complete coverage');
   });
 
   test('Overlapping page records choose the least secure status and retain all IDs', () => {
