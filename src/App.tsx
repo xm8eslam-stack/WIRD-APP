@@ -8,6 +8,7 @@ import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } fro
 import { EngineGeneratedPlan } from './services/planningEngine';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
+import { getLocalDateString } from './services/unifiedPortionService';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -281,9 +282,8 @@ export default function App() {
     setLogs(StorageService.getLogs());
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const dueQueueCount = RetentionService.getDailyRevisionQueue(todayStr).length;
-  const dueRevisionCount = Math.max(dueQueueCount, revisionItems.filter(i => i.nextDueDate <= todayStr).length);
+  const todayStr = getLocalDateString();
+  const dueRevisionCount = RetentionService.getDailyRevisionQueueDetails(todayStr).totalDueCount;
 
   return (
     <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-row selection:bg-emerald-800 selection:text-emerald-50">

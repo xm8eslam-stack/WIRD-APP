@@ -44,14 +44,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const activePlan = plans.find(p => p.isActive) || plans[0];
 
-  // Calculate due revision items from both RetentionService and revisionItems
+  // Calculate due revision items strictly from canonical RetentionService
   const todayStr = new Date().toISOString().split('T')[0];
-  const queuePortions = RetentionService.getDailyRevisionQueue(todayStr);
+  const queueDetails = RetentionService.getDailyRevisionQueueDetails(todayStr);
+  const queuePortions = queueDetails.queue;
+  const totalDueCount = queueDetails.totalDueCount;
+  const overdueCount = queueDetails.overdueCount;
   const weakVerses = RetentionService.getWeakVerses();
-  const dueRevisions = revisionItems.filter(item => item.nextDueDate <= todayStr);
-  const totalDueCount = Math.max(queuePortions.length, dueRevisions.length);
-  const minorRevisions = dueRevisions.filter(i => i.type === 'minor');
-  const majorRevisions = dueRevisions.filter(i => i.type === 'major');
+  const minorRevisionsCount = queuePortions.filter(p => (p.revisionType || 'minor') === 'minor').length;
+  const majorRevisionsCount = queuePortions.filter(p => p.revisionType === 'major').length;
 
   // 1. Truthful overall statistics (computed from real memorized portions)
   const retentionMetrics = RetentionService.getRetentionDashboardMetrics();
@@ -294,12 +295,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-md border border-amber-200/50 dark:border-amber-800/40">
-                {dueRevisions.length} مهام مستحقة
+                {totalDueCount} مهام مستحقة
               </span>
             </div>
 
             <div className="space-y-2.5">
-              {dueRevisions.slice(0, 3).map((item) => (
+              {queuePortions.slice(0, 3).map((item) => (
                 <div 
                   key={item.id}
                   className="p-3.5 bg-[#faf8f5] dark:bg-stone-900/60 rounded-xl border border-stone-200/60 dark:border-stone-700/60 flex items-center justify-between text-xs"
@@ -310,11 +311,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         سورة {item.surahName}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                        item.type === 'minor' 
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300' 
-                          : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                        item.revisionType === 'major' 
+                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300' 
+                          : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
                       }`}>
-                        {item.type === 'minor' ? 'مراجعة صغرى' : 'مراجعة كبرى'}
+                        {item.revisionType === 'major' ? 'مراجعة كبرى' : 'مراجعة صغرى'}
                       </span>
                     </div>
                     <div className="text-stone-500 dark:text-stone-400">
@@ -331,7 +332,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ))}
 
-              {dueRevisions.length === 0 && (
+              {queuePortions.length === 0 && (
                 <div className="text-center py-6 text-stone-500 text-xs space-y-1">
                   <Check className="w-6 h-6 text-emerald-600 mx-auto" />
                   <p>أتممت جميع مهام المراجعة لليوم، بارك الله فيك!</p>
@@ -342,7 +343,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="pt-4 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between text-xs">
             <span className="text-stone-500 dark:text-stone-400">
-              صغرى: {minorRevisions.length} · كبرى: {majorRevisions.length}
+              صغرى: {minorRevisionsCount} · كبرى: {majorRevisionsCount}
             </span>
             <button
               onClick={() => onNavigate('revision')}

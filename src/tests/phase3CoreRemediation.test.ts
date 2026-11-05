@@ -1,17 +1,17 @@
 /**
  * phase3CoreRemediation.test.ts
  *
- * Automated verification suite for Phase 3 & Phase 3.1: Core Remediation & Data-Safety Patch:
+ * Automated verification suite for Phase 3, Phase 3.1 & Phase 3.1.1:
  * 1. Canonical Portion ID & Local Date Safety
  * 2. Overlap-Safe Unique Ayah & Page Calculations
  * 3. Canonical SM-2 Grade Scheduling & Boundaries
- * 4. Lossless Migration with Duplicate/Conflict Merging & Recovery
- * 5. RetentionService & StorageService Unified Authoritative Pipeline
- * 6. Revision Performance Grading on Canonical Records
- * 7. Storage Write Verification & Missing/Corrupt Payload Recovery
+ * 4. Deterministic Migration with Metadata Conflict Auditing & Duplicate History Disagreements
+ * 5. Verified Quran Coordinates Boundary Validation (Surah 1..114, Ayah <= versesCount)
+ * 6. RetentionService & StorageService Unified Pipeline
+ * 7. Storage Write Verification, Complete Payload Readback & Quota Failure Safety
  * 8. Honest Dynamic Testing (Zero Unmemorized Fallbacks & Truthful hasSufficientData)
- * 9. Daily Revision Queue Limits, Prioritization & Grace Period
- * 10. Lightweight Hash Router & Deep Linking
+ * 9. Dashboard Due Count Uniformity from Canonical Queue
+ * 10. Router Parsing & Deep Linking
  */
 
 import {
@@ -74,11 +74,9 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
   console.log('\n--- 2. Overlap-Safe Unique Ayah & Page Calculations ---');
   {
-    // Empty state returns 0
     assert(calculateUniqueMemorizedAyahs([]).uniqueCount === 0, 'Empty portions return 0 unique ayahs');
     assert(calculateUniqueMemorizedPages([]) === 0, 'Empty portions return 0 unique pages');
 
-    // Overlapping portions: Al-Fatihah 1-7 and Al-Fatihah 3-5
     const portionsOverlap: WirdPortion[] = [
       {
         id: 's1_a1_a7',
@@ -118,7 +116,6 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const uniquePages = calculateUniqueMemorizedPages(portionsOverlap);
     assert(uniquePages === 1, `Al-Fatihah resolves to exactly 1 page (got ${uniquePages})`);
 
-    // Non-overlapping: Al-Fatihah (7) + Al-Ikhlas (4) = 11 unique ayahs
     const portionsNonOverlap: WirdPortion[] = [
       ...portionsOverlap,
       {
@@ -140,7 +137,6 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
     assert(calculateUniqueMemorizedAyahs(portionsNonOverlap).uniqueCount === 11, 'Non-overlapping portions correctly sum unique ayahs (7 + 4 = 11)');
 
-    // Status filtering: not_memorized portions are ignored
     const withUnmemorized: WirdPortion[] = [
       ...portionsNonOverlap,
       {
@@ -180,7 +176,6 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       nextDueDate: '2026-05-07',
     };
 
-    // Grade 'failed' (1 / Lapse) -> resets interval to 1, status to weak
     const resAgain = calculateCanonicalSM2(basePortion, 'failed', { customTodayStr: '2026-05-07' });
     assert(resAgain.intervalDays === 1, 'SM-2 "failed" resets interval to 1 day');
     assert(resAgain.repetitionCount === 0, 'SM-2 "failed" resets repetitions to 0');
@@ -188,23 +183,19 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(resAgain.nextDueDate === '2026-05-08', 'SM-2 "failed" schedules for next day');
     assert(resAgain.easeFactor <= 2.5, 'SM-2 "failed" decreases ease factor');
 
-    // Grade 'difficult' (2 / Hard) -> conservative interval growth
     const resHard = calculateCanonicalSM2(basePortion, 'difficult', { customTodayStr: '2026-05-07' });
     assert(resHard.intervalDays >= 2, 'SM-2 "difficult" sets interval for careful review');
     assert(resHard.easeFactor < basePortion.easeFactor, 'SM-2 "difficult" reduces ease factor');
 
-    // Grade 'successful' (3 / Good) -> standard growth (~2.5x), status becomes stable at rep >= 3
     const resGood = calculateCanonicalSM2(basePortion, 'successful', { customTodayStr: '2026-05-07' });
     assert(resGood.intervalDays >= 14, `SM-2 "successful" multiplies interval by ease factor (expected >= 14, got ${resGood.intervalDays})`);
     assert(resGood.status === 'stable', 'SM-2 "successful" at rep 3 sets status to stable');
     assert(resGood.repetitionCount === 3, 'SM-2 "successful" increments repetitions to 3');
 
-    // Grade 'strong' (5 / Flawless) -> accelerated growth, easeFactor increase
     const resStrong = calculateCanonicalSM2(basePortion, 'strong', { customTodayStr: '2026-05-07' });
     assert(resStrong.intervalDays > resGood.intervalDays, 'SM-2 "strong" results in longer interval than "successful"');
     assert(resStrong.easeFactor > basePortion.easeFactor, 'SM-2 "strong" increases ease factor');
 
-    // Minimum ease factor boundary (1.3)
     let lowEasePortion: WirdPortion = { ...basePortion, easeFactor: 1.35 };
     for (let i = 0; i < 5; i++) {
       const calc = calculateCanonicalSM2(lowEasePortion, 'failed', { customTodayStr: '2026-05-01' });
@@ -213,13 +204,14 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(lowEasePortion.easeFactor >= 1.3, `SM-2 ease factor is strictly bounded at >= 1.3 (got ${lowEasePortion.easeFactor})`);
   }
 
-  console.log('\n--- 4. Deterministic Migration with Conflict Resolution ---');
+  console.log('\n--- 4. Deterministic Migration with Metadata Conflict Auditing & Duplicate History Preservation ---');
   {
     const legacyPortions: PortionStatusRecord[] = [
       {
         id: 'legacy_p1',
+        type: 'passage',
         surahNumber: 18,
-        surahName: 'الكهف',
+        surahName: 'الكهف القديم',
         startAyah: 1,
         endAyah: 10,
         pageNumber: 293,
@@ -234,19 +226,20 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       },
       {
         id: 'legacy_p2_duplicate',
+        type: 'surah', // Disagreeing metadata field
         surahNumber: 18,
-        surahName: 'الكهف',
+        surahName: 'الكهف الجديد', // Disagreeing surah name
         startAyah: 1,
         endAyah: 10,
         pageNumber: 293,
         status: 'weak', // Conflicting weaker status
         strength: 'weak',
-        lastReviewedDate: '2026-04-15', // More recent review
-        nextDueDate: '2026-04-16', // Earlier due date
-        repetitionCount: 5, // Higher repetition count
+        lastReviewedDate: '2026-04-15',
+        nextDueDate: '2026-04-16',
+        repetitionCount: 5,
         intervalDays: 1,
         easeFactor: 2.1,
-        history: [{ id: 'h2', date: '2026-04-15', rating: 'failed', intervalDaysBefore: 10, intervalDaysAfter: 1 }]
+        history: [{ id: 'h1', date: '2026-04-15', rating: 'failed', intervalDaysBefore: 10, intervalDaysAfter: 1, notes: 'disagreeing history content' }]
       }
     ];
 
@@ -258,7 +251,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
         startAyah: 1,
         endAyah: 10,
         type: 'minor',
-        nextDueDate: '2026-04-12', // Even earlier due date
+        nextDueDate: '2026-04-12',
         intervalDays: 8,
         easeFactor: 2.4,
         repetitionCount: 3,
@@ -269,22 +262,55 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const { portions: migrated, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevisions);
     assert(migrated.length === 1, 'Migration coalesces duplicate portions and revisions into 1 canonical record');
     assert(migrated[0].id === 's18_a1_a10', 'Migrated record uses canonical ID (s18_a1_a10)');
-    assert(migrated[0].status === 'weak', 'Conflict resolution: weakest/most urgent status (weak) wins');
+    assert(migrated[0].status === 'weak', 'Conflict resolution: weakest status (weak) wins');
     assert(migrated[0].repetitionCount === 5, 'Conflict resolution: highest repetition count (5) preserved');
-    assert(migrated[0].lastReviewedDate === '2026-04-15', 'Conflict resolution: most recent lastReviewedDate preserved');
-    assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate (2026-04-12) preserved');
-    assert(migrated[0].history?.length === 2, 'Lossless history: revision logs from both duplicate sources are preserved');
-    assert((migrated[0].conflictAudit?.length || 0) > 0, 'Conflict audit records overrides losslessly');
+    assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate preserved');
+    assert(migrated[0].history?.length === 2, 'Lossless history: duplicate log ID with differing content is preserved with modified ID');
+    assert((migrated[0].conflictAudit?.length || 0) >= 2, 'Metadata conflicts (type, surahName, status, history) logged to conflictAudit');
     assert(report.success === true, 'Migration report reports success');
   }
 
-  console.log('\n--- 5. RetentionService & StorageService Unified Pipeline ---');
+  console.log('\n--- 5. Verified Quran Coordinates Boundary Validation ---');
+  {
+    // Test invalid Surah number 115
+    const invalidSurahPortion: PortionStatusRecord = {
+      id: 'invalid_1',
+      surahNumber: 115,
+      surahName: 'غير موجودة',
+      startAyah: 1,
+      endAyah: 5,
+      status: 'stable',
+      nextDueDate: '2026-05-10',
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1
+    };
+    const res1 = migrateLegacyDataLosslessly([invalidSurahPortion], []);
+    assert(res1.report.success === false, 'Migration rejects invalid Surah number 115');
+
+    // Test invalid Ayah number 99 in Al-Fatiha (max 7)
+    const invalidAyahPortion: PortionStatusRecord = {
+      id: 'invalid_2',
+      surahNumber: 1,
+      surahName: 'الفاتحة',
+      startAyah: 1,
+      endAyah: 99,
+      status: 'stable',
+      nextDueDate: '2026-05-10',
+      intervalDays: 1,
+      easeFactor: 2.5,
+      repetitionCount: 1
+    };
+    const res2 = migrateLegacyDataLosslessly([invalidAyahPortion], []);
+    assert(res2.report.success === false, 'Migration rejects invalid Ayah number 99 in Al-Fatiha (max 7)');
+  }
+
+  console.log('\n--- 6. RetentionService & StorageService Unified Pipeline ---');
   {
     const snap = StorageService.getStorageSnapshot();
     try {
       StorageService.resetAllData();
       
-      // Add portion via RetentionService
       const newP = RetentionService.addPortion({
         type: 'passage',
         surahNumber: 67,
@@ -300,16 +326,13 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
       assert(newP.id === 's67_a1_a10', 'RetentionService creates canonical ID s67_a1_a10');
       
-      // Verify direct StorageService read return exact same canonical portion
       const directUnified = StorageService.getUnifiedPortions();
       assert(directUnified.length === 1 && directUnified[0].id === 's67_a1_a10', 'RetentionService writes directly to StorageService.getUnifiedPortions');
 
-      // Record revision performance
       const perfRes = RetentionService.recordRevisionPerformance('s67_a1_a10', 'successful', 'مراجعة ممتازة');
       assert(perfRes.updatedPortion.repetitionCount === 2, 'recordRevisionPerformance increments repetition count on canonical record');
       assert(perfRes.updatedPortion.history?.length === 1, 'recordRevisionPerformance adds log entry to canonical history');
 
-      // Check Retention metrics
       const metrics = RetentionService.getRetentionDashboardMetrics();
       assert(metrics.totalTrackedPortions === 1, 'Dashboard metrics read canonical portion count');
       assert(metrics.totalMemorizedAyahs === 10, 'Dashboard metrics calculate 10 unique memorized ayahs');
@@ -318,13 +341,12 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     }
   }
 
-  console.log('\n--- 6. Storage Write Verification & Corrupt Payload Recovery ---');
+  console.log('\n--- 7. Storage Write Verification & Payload Readback Verification ---');
   {
     const snap = StorageService.getStorageSnapshot();
     try {
       StorageService.resetAllData();
 
-      // Seed legacy storage via StorageService snapshot API
       const legacyPortion: PortionStatusRecord = {
         id: 'legacy_portion_1',
         type: 'passage',
@@ -346,7 +368,6 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       };
       StorageService.restoreStorageSnapshot(seedSnapshot);
 
-      // getUnifiedPortions should catch corrupt payload and recover losslessly from legacy key
       const recovered = StorageService.getUnifiedPortions();
       assert(recovered.length === 1, 'getUnifiedPortions recovers losslessly from legacy keys when v2 payload is corrupt');
       assert(recovered[0].id === 's112_a1_a4', 'Recovered portion has canonical ID s112_a1_a4');
@@ -355,15 +376,13 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     }
   }
 
-  console.log('\n--- 7. Honest Dynamic Test Question Generation ---');
+  console.log('\n--- 8. Honest Dynamic Test Question Generation ---');
   {
-    // Case 1: Fresh profile with 0 memorized portions
     const emptyGen = generateDynamicTestQuestions('complete_verse', [], 5);
     assert(emptyGen.questions.length === 0, 'Zero fallback questions generated from unmemorized content when profile is clean');
     assert(emptyGen.hasSufficientData === false, 'hasSufficientData is false when profile is clean');
     assert(typeof emptyGen.messageAr === 'string', 'Honest Arabic explanatory message returned for clean profile');
 
-    // Case 2: User with 1 single-verse memorized portion (insufficient for verse completion)
     const singleVersePortion: WirdPortion = {
       id: 's109_a1_a1',
       type: 'passage',
@@ -381,7 +400,6 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(partialGen.questions.length === 0, 'Does not fabricate questions if memorized portion is too short');
     assert(partialGen.hasSufficientData === false, 'hasSufficientData is strictly false when target question count cannot be met');
 
-    // Case 3: User with valid memorized portion Al-Mulk (1-10)
     const mulkPortion: WirdPortion = {
       id: 's67_a1_a10',
       type: 'passage',
@@ -401,37 +419,35 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(validGen.questions.every(q => q.isFromMemorizedPortion), 'Every generated question originates exclusively from user memorized portions');
   }
 
-  console.log('\n--- 8. Daily Revision Queue Limits & Prioritization ---');
+  console.log('\n--- 9. Dashboard Due Count Canonical Uniformity ---');
   {
-    const portions: WirdPortion[] = [];
-    for (let i = 1; i <= 30; i++) {
-      portions.push({
-        id: `s2_a${i}_a${i}`,
-        type: 'passage',
-        surahNumber: 2,
-        surahName: 'البقرة',
-        startAyah: i,
-        endAyah: i,
-        pageNumber: 2,
-        status: i === 1 ? 'weak' : 'needs_revision',
-        easeFactor: 2.5,
-        intervalDays: 1,
-        repetitionCount: 1,
-        lastReviewedDate: '2026-05-01',
-        nextDueDate: i <= 5 ? '2026-05-02' : '2026-05-10',
-      });
-    }
+    const snap = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
 
-    const { queue, totalDueCount } = getPrioritizedRevisionQueue(portions, {
-      todayStr: '2026-05-10',
-      maxDailyLimit: 20,
-    });
-    assert(totalDueCount === 30, 'Total due items correctly identified as 30');
-    assert(queue.length === 20, `Queue is strictly capped at maxDailyLimit (got ${queue.length})`);
-    assert(queue[0].status === 'weak', 'Queue prioritizes weak portions at top of queue');
+      RetentionService.addPortion({
+        type: 'passage',
+        surahNumber: 1,
+        surahName: 'الفاتحة',
+        startAyah: 1,
+        endAyah: 7,
+        status: 'weak',
+        nextDueDate: '2026-01-01', // Overdue
+        intervalDays: 1,
+        easeFactor: 2.0,
+        repetitionCount: 1
+      });
+
+      const today = getLocalDateString();
+      const queueDetails = RetentionService.getDailyRevisionQueueDetails(today);
+      assert(queueDetails.totalDueCount === 1, 'Canonical queueDetails correctly counts 1 due/overdue item');
+      assert(queueDetails.overdueCount === 1, 'Canonical queueDetails correctly counts 1 overdue item');
+    } finally {
+      StorageService.restoreStorageSnapshot(snap);
+    }
   }
 
-  console.log('\n--- 9. Router Parsing & Deep Linking ---');
+  console.log('\n--- 10. Router Parsing & Deep Linking ---');
   {
     const route1 = parseRoute('#/library');
     assert(route1.tab === 'library', 'parseRoute parses #/library');

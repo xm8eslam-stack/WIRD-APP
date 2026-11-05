@@ -329,6 +329,27 @@ function mergePortionRecords(
     existing.conflictAudit = [];
   }
 
+  // Preserve metadata disagreements in conflictAudit
+  const metaFields: (keyof WirdPortion)[] = [
+    'type', 'surahName', 'pageNumber', 'pageStart', 'pageEnd', 'juzNumber',
+    'revisionType', 'strength', 'createdAt', 'updatedAt'
+  ];
+
+  metaFields.forEach(field => {
+    if (
+      incoming[field] !== undefined && 
+      existing[field] !== undefined && 
+      incoming[field] !== existing[field]
+    ) {
+      existing.conflictAudit!.push({
+        source: sourceName,
+        field: String(field),
+        value: `Metadata conflict: existing '${existing[field]}' vs incoming '${incoming[field]}'`,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   // 1. Status: Weakest/most urgent state wins to prevent forgotten lapses
   if (incoming.status) {
     const existingRank = STATUS_SEVERITY_HIERARCHY[existing.status] ?? 3;
@@ -382,20 +403,48 @@ function mergePortionRecords(
     existing.mistakesCount = Math.max(existing.mistakesCount || 0, incoming.mistakesCount);
   }
 
-  // 8. History: lossless union of revision logs
+  // 8. History: Lossless union of revision logs with duplicate ID content-disagreement handling
   if (Array.isArray(incoming.history) && incoming.history.length > 0) {
     if (!existing.history) existing.history = [];
-    const seenLogKeys = new Set(existing.history.map(h => h.id || `${h.date}_${h.rating}_${h.intervalDaysAfter}`));
-    incoming.history.forEach(log => {
-      const key = log.id || `${log.date}_${log.rating}_${log.intervalDaysAfter}`;
-      if (!seenLogKeys.has(key)) {
-        existing.history!.push(log);
-        seenLogKeys.add(key);
+    
+    incoming.history.forEach(incLog => {
+      const sameIdLog = existing.history!.find(h => h.id && incLog.id && h.id === incLog.id);
+      if (sameIdLog) {
+        // Check if content differs
+        const contentDiff = sameIdLog.date !== incLog.date ||
+          sameIdLog.rating !== incLog.rating ||
+          sameIdLog.intervalDaysBefore !== incLog.intervalDaysBefore ||
+          sameIdLog.intervalDaysAfter !== incLog.intervalDaysAfter ||
+          sameIdLog.notes !== incLog.notes;
+
+        if (contentDiff) {
+          // Preserve conflicting history entry under a modified ID so no log is lost!
+          const preservedLog = {
+            ...incLog,
+            id: `${incLog.id}_conflict_${Date.now()}`
+          };
+          existing.history!.push(preservedLog);
+          existing.conflictAudit!.push({
+            source: sourceName,
+            field: 'history',
+            value: `Conflicting history entry under ID '${incLog.id}' preserved as '${preservedLog.id}'`,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } else {
+        // Check exact content signature
+        const contentSig = `${incLog.date}_${incLog.rating}_${incLog.intervalDaysBefore}_${incLog.intervalDaysAfter}_${incLog.notes || ''}`;
+        const existsExact = existing.history!.some(h => 
+          `${h.date}_${h.rating}_${h.intervalDaysBefore}_${h.intervalDaysAfter}_${h.notes || ''}` === contentSig
+        );
+        if (!existsExact) {
+          existing.history!.push(incLog);
+        }
       }
     });
   }
 
-  // 9. Unreconciled notes or metadata
+  // 9. Unreconciled notes
   if (incoming.notes) {
     existing.conflictAudit.push({
       source: sourceName,
@@ -520,14 +569,20 @@ export function migrateLegacyDataLosslessly(
 
     const portions = Array.from(mergedMap.values());
 
-    // 3. Post-Migration Integrity Validation
+    // 3. Post-Migration Integrity & Verified Quran Coordinates Validation
     let totalPreservedLogs = 0;
     let totalConflictAudits = 0;
 
     for (const p of portions) {
-      // Validate schema invariants
-      if (!p.id || !p.surahNumber || p.startAyah <= 0 || p.endAyah < p.startAyah) {
-        throw new Error(`Invalid migrated portion geometry: ${JSON.stringify(p)}`);
+      const surahMeta = ALL_SURAHS.find(s => s.number === p.surahNumber);
+      if (!surahMeta) {
+        throw new Error(`Invalid Quran Surah number: ${p.surahNumber}`);
+      }
+      if (p.startAyah < 1 || p.startAyah > surahMeta.versesCount) {
+        throw new Error(`Invalid startAyah ${p.startAyah} for Surah ${p.surahNumber} (${surahMeta.name}, max ${surahMeta.versesCount})`);
+      }
+      if (p.endAyah < p.startAyah || p.endAyah > surahMeta.versesCount) {
+        throw new Error(`Invalid endAyah ${p.endAyah} for Surah ${p.surahNumber} (${surahMeta.name}, max ${surahMeta.versesCount})`);
       }
       if (p.easeFactor < 1.3) {
         p.easeFactor = 1.3;

@@ -40,16 +40,21 @@ function getItem(key: string): string | null {
   return memoryStorage.get(key) || null;
 }
 
-function setItem(key: string, value: string): void {
-  try {
-    if (typeof localStorage !== 'undefined') {
+function setItem(key: string, value: string): boolean {
+  let durableSuccess = false;
+  if (typeof localStorage !== 'undefined') {
+    try {
       localStorage.setItem(key, value);
-      return;
+      durableSuccess = true;
+    } catch (e) {
+      console.error(`[WIRD Storage] Durable write to localStorage failed for ${key}`, e);
+      durableSuccess = false;
     }
-  } catch {
-    // ignore
+  } else {
+    durableSuccess = true; // In Node / test environment without window.localStorage
   }
   memoryStorage.set(key, value);
+  return durableSuccess;
 }
 
 function removeItem(key: string): void {
@@ -385,22 +390,62 @@ export const StorageService = {
   saveUnifiedPortions(portions: WirdPortion[]): boolean {
     try {
       const serialized = JSON.stringify(portions);
-      setItem(STORAGE_KEYS.UNIFIED_PORTIONS, serialized);
+      
+      // Attempt durable write
+      const writeOk = setItem(STORAGE_KEYS.UNIFIED_PORTIONS, serialized);
+      if (!writeOk) {
+        console.error('[WIRD Storage] Write failed: Durable localStorage write failed (quota or storage error)');
+        return false;
+      }
 
-      // Verified Readback: Confirm actual persistence before updating schema version
+      // Verified Readback
       const readback = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
       if (!readback) {
         console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS readback is null');
         return false;
       }
-      const parsed = JSON.parse(readback);
+
+      let parsed: any[];
+      try {
+        parsed = JSON.parse(readback);
+      } catch {
+        console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS readback is corrupt');
+        return false;
+      }
+
       if (!Array.isArray(parsed) || parsed.length !== portions.length) {
         console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS record count mismatch');
         return false;
       }
 
-      // Update schema version only after persistence is verified
-      setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      // Complete Payload Deep Verification across all records and key fields
+      const isCompletePayloadValid = parsed.every((p: any, idx: number) => {
+        const orig = portions[idx];
+        return (
+          p.id === orig.id &&
+          p.surahNumber === orig.surahNumber &&
+          p.startAyah === orig.startAyah &&
+          p.endAyah === orig.endAyah &&
+          p.status === orig.status &&
+          p.nextDueDate === orig.nextDueDate &&
+          p.intervalDays === orig.intervalDays &&
+          p.easeFactor === orig.easeFactor &&
+          p.repetitionCount === orig.repetitionCount &&
+          (orig.lastReviewedDate === undefined || p.lastReviewedDate === orig.lastReviewedDate) &&
+          (orig.mistakesCount === undefined || p.mistakesCount === orig.mistakesCount)
+        );
+      });
+
+      if (!isCompletePayloadValid) {
+        console.error('[WIRD Storage] Write verification failed: Complete payload content mismatch on readback');
+        return false;
+      }
+
+      // Update schema version only after persistence and complete payload readback are verified
+      const versionOk = setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      if (!versionOk) {
+        return false;
+      }
 
       // Keep legacy keys in sync for backward compatibility
       try {
