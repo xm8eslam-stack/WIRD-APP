@@ -44,6 +44,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     const nextRange = findNextUnmemorizedRange(memorizedPortions, targetSurahs, plan.dailyTarget || 7);
 
     if (nextRange) {
+      if (!plan.isActive) handleToggleActive(plan.id);
       onStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
       return;
     }
@@ -52,6 +53,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
       targetSurahs.includes(p.surahNumber) && p.status !== 'not_memorized'
     );
     if (reviewTarget) {
+      if (!plan.isActive) handleToggleActive(plan.id);
       onStartSession(reviewTarget.surahNumber, reviewTarget.startAyah, reviewTarget.endAyah, 'review');
       return;
     }
