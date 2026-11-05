@@ -115,6 +115,8 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
     const uniquePages = calculateUniqueMemorizedPages(portionsOverlap);
     assert(uniquePages === 1, `Al-Fatihah resolves to exactly 1 page (got ${uniquePages})`);
+    const partialPagePortion: WirdPortion = { ...portionsOverlap[0], endAyah: 6, id: 's1_a1_a6' };
+    assert(calculateUniqueMemorizedPages([partialPagePortion]) === 0, 'A partially covered Mushaf page is not counted as completed');
 
     const portionsNonOverlap: WirdPortion[] = [
       ...portionsOverlap,
