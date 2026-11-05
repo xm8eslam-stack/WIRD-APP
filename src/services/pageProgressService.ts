@@ -44,25 +44,15 @@ export function getPageProgressStatus(pageNumber: number, portions: PortionStatu
   const exactPagePortions = portions.filter(portion =>
     portion.type === 'page' && portion.pageStart === pageNumber && portion.pageEnd === pageNumber
   );
-  const exactPageBySurah = new Map<number, PortionStatusRecord[]>();
-  exactPagePortions.forEach(portion => {
-    const group = exactPageBySurah.get(portion.surahNumber) || [];
-    group.push(portion);
-    exactPageBySurah.set(portion.surahNumber, group);
-  });
-
   let anyCovered = false;
   let fullyCovered = true;
   let worstStatus: PortionMemorizationStatus = 'not_memorized';
 
   for (const segment of segments) {
-    const exactForSurah = exactPageBySurah.get(segment.surahNumber) || [];
     const allForSurah = bySurah.get(segment.surahNumber) || [];
     for (let ayahNumber = segment.startAyah; ayahNumber <= segment.endAyah; ayahNumber++) {
-      const exactMatches = exactForSurah.filter(portion => portion.startAyah <= ayahNumber && portion.endAyah >= ayahNumber);
-      const matches = exactMatches.length > 0
-        ? exactMatches
-        : allForSurah.filter(portion => portion.startAyah <= ayahNumber && portion.endAyah >= ayahNumber);
+      // A page-level record must never hide a weaker passage-level record for the same ayah.
+      const matches = allForSurah.filter(portion => portion.startAyah <= ayahNumber && portion.endAyah >= ayahNumber);
       if (matches.length === 0) {
         fullyCovered = false;
         continue;
