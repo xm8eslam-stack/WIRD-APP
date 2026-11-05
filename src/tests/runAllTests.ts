@@ -6,7 +6,7 @@ import { runBackupTests } from './backupValidation.test';
 import { runCleanInitializationTests } from './cleanInitialization.test';
 import { runGeminiSecurityTests } from './geminiSecurity.test';
 import { runQuranIntegrityTests } from './quranContentIntegrity.test';
-import { runIndependentTanzilComparison } from './independentTanzilComparison';
+import { runIndependentTanzilComparison, runNegativeComparisonTests } from './independentTanzilComparison';
 
 console.log('====================================================');
 console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
@@ -59,6 +59,12 @@ runSuite('Quran Data Structural Integrity & Coverage', runQuranIntegrityTests);
 // 9. Independent Character-by-Character Tanzil Comparison
 runSuite('Independent Tanzil Character-by-Character Text & Metadata Verification', () => {
   const res = runIndependentTanzilComparison();
+  return { passed: res.passed, failed: res.failed };
+});
+
+// 10. Negative Comparison Sensitivity Tests
+runSuite('Tanzil Comparison Detector Sensitivity (Negative Tests)', () => {
+  const res = runNegativeComparisonTests();
   return { passed: res.passed, failed: res.failed };
 });
 
