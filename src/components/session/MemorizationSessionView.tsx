@@ -57,6 +57,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const completionReported = useRef(false);
 
   // 2. Progressive word masking: 0 = none, 1 = 30%, 2 = 60%, 3 = 100% (hidden)
   const [maskLevel, setMaskLevel] = useState<number>(0);
@@ -87,6 +88,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     setSessionRange({ startAyah: initialStartAyah, endAyah: initialEndAyah });
     setCurrentAyahIndex(0);
     setIsCompleted(false);
+    completionReported.current = false;
     setSecondsElapsed(0);
   }, [initialSurahNumber, initialStartAyah, initialEndAyah]);
 
@@ -176,10 +178,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // Next / Previous Ayah (Semantic RTL: Next is on Left, Prev is on Right)
   const handleNextAyah = () => {
-    if (isCompleted || !currentAyah || repeatCount < targetRepeats) return;
+    if (isCompleted || completionReported.current || !currentAyah || repeatCount < targetRepeats) return;
     if (currentAyahIndex < sessionAyahs.length - 1) {
       setCurrentAyahIndex(prev => prev + 1);
     } else {
+      completionReported.current = true;
       setIsCompleted(true);
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
       onCompleteSession(
@@ -233,6 +236,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                 setSessionRange({ startAyah: 1, endAyah: 10 });
                 setCurrentAyahIndex(0);
                 setIsCompleted(false);
+                completionReported.current = false;
               }}
               className="w-full sm:w-auto px-5 py-2.5 bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs hover:bg-emerald-900 transition-colors"
             >
@@ -305,6 +309,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           <button
             onClick={() => {
               setIsCompleted(false);
+              completionReported.current = false;
               setCurrentAyahIndex(0);
               setSecondsElapsed(0);
             }}
