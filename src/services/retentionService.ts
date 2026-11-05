@@ -472,10 +472,14 @@ export const RetentionService = {
     }
 
     // Record session completion in daily logs
-    const versesCount = (target.endAyah - target.startAyah + 1) || 10;
+    const reviewedPagesCount = new Set(
+      (VERIFIED_AYAHS[target.surahNumber] || [])
+        .filter(ayah => ayah.numberInSurah >= target.startAyah && ayah.numberInSurah <= target.endAyah)
+        .map(ayah => ayah.page)
+    ).size;
     const sessionLogSaved = StorageService.recordSessionCompletion(
       0,
-      Math.max(1, Math.round(versesCount / 15)),
+      Math.max(1, reviewedPagesCount),
       15,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
