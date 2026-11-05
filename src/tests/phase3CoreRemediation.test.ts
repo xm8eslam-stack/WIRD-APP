@@ -12,7 +12,8 @@
  * 8. Honest Dynamic Testing (Zero Unmemorized Fallbacks & Truthful hasSufficientData)
  * 9. Dashboard Due Count Uniformity from Canonical Queue
  * 10. Session Mode Completion Isolation
- * 11. Router Parsing & Deep Linking
+ * 11. Plan Task Range Selection
+ * 12. Router Parsing & Deep Linking
  */
 
 import {
@@ -25,6 +26,7 @@ import {
   calculateCanonicalSM2,
   getPrioritizedRevisionQueue,
   migrateLegacyDataLosslessly,
+  findNextUnmemorizedRange,
 } from '../services/unifiedPortionService';
 import { StorageService, STORAGE_KEYS } from '../services/storageService';
 import { RetentionService } from '../services/retentionService';
@@ -495,7 +497,35 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(memorizeMetrics.shouldRecordMemorization === true, 'Memorization session writes memorization progress');
   }
 
-  console.log('\n--- 11. Router Parsing & Deep Linking ---');
+  console.log('\n--- 11. Plan Task Range Selection ---');
+  {
+    const trackedRanges: WirdPortion[] = [
+      {
+        id: 's67_a1_a10', type: 'passage', surahNumber: 67, surahName: 'الملك',
+        startAyah: 1, endAyah: 10, status: 'stable', nextDueDate: '2026-11-10',
+        intervalDays: 5, easeFactor: 2.5, repetitionCount: 3
+      },
+      {
+        id: 's67_a15_a20', type: 'passage', surahNumber: 67, surahName: 'الملك',
+        startAyah: 15, endAyah: 20, status: 'stable', nextDueDate: '2026-11-10',
+        intervalDays: 5, easeFactor: 2.5, repetitionCount: 3
+      }
+    ];
+    const nextGap = findNextUnmemorizedRange(trackedRanges, [67], 5);
+    assert(nextGap?.surahNumber === 67 && nextGap.startAyah === 11 && nextGap.endAyah === 14, 'Plan starts at the first real unmemorized gap and stops before a saved range');
+
+    const resumed = findNextUnmemorizedRange([
+      ...trackedRanges,
+      {
+        id: 's67_a25_a27', type: 'passage', surahNumber: 67, surahName: 'الملك',
+        startAyah: 25, endAyah: 27, status: 'currently_memorizing', nextDueDate: '2026-11-05',
+        intervalDays: 1, easeFactor: 2.5, repetitionCount: 1
+      }
+    ], [67], 5);
+    assert(resumed?.startAyah === 25 && resumed.endAyah === 27, 'An in-progress portion is resumed rather than creating a duplicate new range');
+  }
+
+  console.log('\n--- 12. Router Parsing & Deep Linking ---');
   {
     const route1 = parseRoute('#/library');
     assert(route1.tab === 'library', 'parseRoute parses #/library');
