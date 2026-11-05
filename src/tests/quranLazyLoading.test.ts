@@ -54,6 +54,11 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     assert(pkg.scripts.prelint === 'node scripts/split-quran-data.mjs', 'TypeScript validation must generate page-index data');
   });
 
+  test('Revision center loads a single ayah on demand instead of importing the full Quran', () => {
+    const revision = read('src/components/revision/RevisionCenterView.tsx');
+    assert(revision.includes('loadAyahByCoordinate') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use the lazy coordinate loader');
+  });
+
   test('Quran source attribution metadata is independent from the full text payload', () => {
     const info = read('src/data/quranDataInfo.ts');
     assert(info.includes('Tanzil Project') && info.includes('CC BY 3.0'), 'Source and license attribution must remain available');
