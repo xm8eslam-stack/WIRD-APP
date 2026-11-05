@@ -6,9 +6,12 @@ import { StorageService } from './services/storageService';
 import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
 import { EngineGeneratedPlan } from './services/planningEngine';
+import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { getLocalDateString } from './services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange, getPlanTargetSurahNumbers } from './services/unifiedPortionService';
+import { ALL_SURAHS } from './data/quranMeta';
+import { getSessionCompletionMetrics } from './services/sessionCompletion';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -37,10 +40,12 @@ export default function App() {
     surahNumber: number;
     startAyah: number;
     endAyah: number;
+    mode: 'memorize' | 'review';
   }>({
     surahNumber: initialRoute.surahNumber || 67,
     startAyah: initialRoute.startAyah || 1,
-    endAyah: initialRoute.endAyah || 10
+    endAyah: initialRoute.endAyah || 10,
+    mode: initialRoute.mode || 'memorize'
   });
 
   // Track if active session has progress for exit confirmation
@@ -158,7 +163,8 @@ export default function App() {
         setSessionParams(prev => ({
           surahNumber: route.surahNumber || prev.surahNumber,
           startAyah: route.startAyah || prev.startAyah,
-          endAyah: route.endAyah || prev.endAyah
+          endAyah: route.endAyah || prev.endAyah,
+          mode: route.mode || prev.mode
         }));
       }
     };
@@ -176,27 +182,63 @@ export default function App() {
   };
 
   // Start daily session handler with deep link URL
-  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10) => {
-    setSessionParams({ surahNumber, startAyah, endAyah });
+  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10, mode: 'memorize' | 'review' = 'memorize') => {
+    setSessionParams({ surahNumber, startAyah, endAyah, mode });
     navigateTo({
       tab: 'session',
       surahNumber,
       startAyah,
       endAyah,
-      mode: 'memorize'
+      mode
     });
   };
 
-  // Session complete callback
-  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(memorizedAyahs, reviewedPages, minutes, taskName);
-    if (sessionParams.surahNumber) {
-      RetentionService.recordMemorizationCompletion(
-        sessionParams.surahNumber,
-        sessionParams.startAyah,
-        sessionParams.endAyah
-      );
+  // Session completion is mode-aware: a review must never create memorization progress.
+  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode: 'memorize' | 'review' = sessionParams.mode) => {
+    const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      try {
+        RetentionService.recordMemorizationCompletion(
+          sessionParams.surahNumber,
+          sessionParams.startAyah,
+          sessionParams.endAyah
+        );
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'تعذر حفظ إنجاز جلسة الحفظ. لم يتم تسجيلها كإنجاز مؤكد.', 'error');
+        return;
+      }
     }
+
+    StorageService.recordSessionCompletion(completion.memorizedAyahs, completion.reviewedPages, minutes, taskName);
+
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      const currentEnginePlans = StorageService.getEnginePlans();
+      const activeEnginePlan = currentEnginePlans.find(p => p.isActive && !p.isPaused)
+        || currentEnginePlans.find(p => !p.isPaused);
+      const matchingTask = activeEnginePlan?.schedule.find(day =>
+        day.memorizationTask &&
+        !day.memorizationTask.completed &&
+        day.memorizationTask.surahNumber === sessionParams.surahNumber &&
+        day.memorizationTask.startAyah === sessionParams.startAyah &&
+        day.memorizationTask.endAyah === sessionParams.endAyah
+      );
+      if (activeEnginePlan && matchingTask?.memorizationTask) {
+        const updatedPlan = PlanLifecycle.updateTask(activeEnginePlan, matchingTask.id, {
+          status: 'completed',
+          memorizationTask: {
+            ...matchingTask.memorizationTask,
+            completed: true,
+            completedAt: new Date().toISOString()
+          }
+        });
+        const updatedPlans = currentEnginePlans.map(plan =>
+          plan.id === activeEnginePlan.id ? updatedPlan : plan
+        );
+        setEnginePlans(updatedPlans);
+        StorageService.saveEnginePlans(updatedPlans);
+      }
+    }
+
     setLogs(StorageService.getLogs());
     setProfile(StorageService.getProfile());
     setRevisionItems(StorageService.getRevisionItems());
@@ -387,6 +429,7 @@ export default function App() {
                 initialSurahNumber={sessionParams.surahNumber}
                 initialStartAyah={sessionParams.startAyah}
                 initialEndAyah={sessionParams.endAyah}
+                mode={sessionParams.mode}
                 profile={profile}
                 onCompleteSession={handleCompleteSession}
                 onExit={() => handleNavigate('dashboard')}
