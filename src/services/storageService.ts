@@ -265,7 +265,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
         Number.isInteger(portion.startAyah) && portion.startAyah >= 1 &&
         Number.isInteger(portion.endAyah) && portion.endAyah >= portion.startAyah &&
         validStatuses.has(portion.status) &&
-        typeof portion.nextDueDate === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(portion.nextDueDate) &&
+        typeof portion.nextDueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(portion.nextDueDate) &&
         Number.isFinite(portion.intervalDays) && portion.intervalDays >= 0 &&
         Number.isFinite(portion.easeFactor) && portion.easeFactor > 0 &&
         Number.isInteger(portion.repetitionCount) && portion.repetitionCount >= 0 &&
