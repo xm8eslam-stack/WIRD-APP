@@ -62,7 +62,7 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
       'src/context/AuthContext.tsx',
       'src/components/auth/AuthGate.tsx'
     ];
-    const demoLoaderCalls = /\\b(?:StorageService\\s*\\.\\s*)?loadDemoData\\s*\\(|\\b(?:RetentionService\\s*\\.\\s*)?loadDemoPortions\\s*\\(/;
+    const demoLoaderCalls = /\b(?:StorageService\s*\.\s*)?loadDemoData\s*\(|\b(?:RetentionService\s*\.\s*)?loadDemoPortions\s*\(/;
     for (const file of productionEntryFiles) {
       const source = fs.readFileSync(path.resolve(process.cwd(), file), 'utf8');
       assert(!demoLoaderCalls.test(source), `${file} must not seed demo data during normal use`);
