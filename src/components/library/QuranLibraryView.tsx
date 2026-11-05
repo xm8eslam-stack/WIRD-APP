@@ -14,6 +14,7 @@ import {
 import { ALL_SURAHS, JUZ_NAMES } from '../../data/quranMeta';
 import { QURAN_DATA_SOURCE_INFO } from '../../data/quranDataInfo';
 import { loadSurahVerses } from '../../data/quranDataLoader';
+import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
 
@@ -34,6 +35,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   const [isLoadingSurah, setIsLoadingSurah] = useState(true);
   const [surahLoadError, setSurahLoadError] = useState(false);
   const [loadRetry, setLoadRetry] = useState(0);
+  const [tafsirAyah, setTafsirAyah] = useState<Ayah | null>(null);
   
   // Font size adjustment for Quran text
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'huge'>('large');
@@ -474,6 +476,15 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                         >
                           {isThisPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setTafsirAyah(ayah)}
+                          title="اقرأ تفسير الآية"
+                          aria-label={`تفسير الآية ${ayah.numberInSurah} من سورة ${selectedSurah.name}`}
+                          className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors touch-manipulation"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                        </button>
                         
                         <span className="text-xs font-bold text-stone-700 dark:text-stone-300 font-mono bg-stone-200/70 dark:bg-stone-700 px-2 py-0.5 rounded">
                           الآية {ayah.numberInSurah}
@@ -535,10 +546,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             المصدر: <span className="font-medium text-emerald-800 dark:text-emerald-400">{QURAN_DATA_SOURCE_INFO.provider}</span>
           </div>
           <div className="text-stone-400">
-            ترخيص {QURAN_DATA_SOURCE_INFO.license} · عمل محلي دون استدعاءات خارجية
+            ترخيص {QURAN_DATA_SOURCE_INFO.license} · نص القرآن محلي، والتفسير يُحمّل عند الطلب ويُحفظ محلياً
           </div>
         </div>
       </div>
+      <TafsirSheet ayah={tafsirAyah} onClose={() => setTafsirAyah(null)} />
     </div>
   );
 };
