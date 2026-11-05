@@ -37,6 +37,16 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     assert(getPageProgressStatus(1, []).status === 'not_memorized', 'Al-Fatihah must not be pre-marked as memorized');
   });
 
+  test('A partially tracked page is never reported as fully memorized', () => {
+    const segment = getPageAyahSegments(1)[0];
+    const partial = {
+      id: 'partial-fatiha', type: 'passage' as const, surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: segment.startAyah, endAyah: segment.startAyah + 2, status: 'stable' as const,
+      nextDueDate: '2026-11-06', intervalDays: 7, easeFactor: 2.5, repetitionCount: 3
+    } as PortionStatusRecord;
+    assert(getPageProgressStatus(1, [partial]).status === 'currently_memorizing', 'Partial coverage must remain visibly incomplete');
+  });
+
   test('Page-specific portions affect only their recorded page', () => {
     const segments = getPageAyahSegments(562);
     const portions = segments.map((segment, index) => ({
