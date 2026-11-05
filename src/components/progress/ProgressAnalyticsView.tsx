@@ -23,12 +23,13 @@ import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord }
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
 import { getAyahsByPage } from '../../data/verifiedAyahs';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 
 interface ProgressAnalyticsViewProps {
   logs: DailyLog[];
   profile: UserProfile;
   onRefreshData: () => void;
-  onStartSession?: (surahNumber: number, startAyah: number, endAyah: number) => void;
+  onStartSession?: (surahNumber: number, startAyah: number, endAyah: number, mode?: 'memorize' | 'review') => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
@@ -148,7 +149,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
       return;
     }
 
-    const today = new Date().toLocaleDateString('en-CA');
+    const today = getLocalDateString();
     segments.forEach(segment => {
       const surah = ALL_SURAHS.find(s => s.number === segment.surahNumber)!;
       const existing = currentPortions.find(p =>
@@ -281,7 +282,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
       {/* 2. Key Metrics Summary Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-1">
-          <div className="text-xs text-stone-500">الصفحات المتقنة والمحفوظة</div>
+          <div className="text-xs text-stone-500">الصفحات المسجلة كمحفوظة</div>
           <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">
             {totalMemorizedPagesCount}
           </div>
@@ -581,13 +582,20 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               {onStartSession && (
                 <button
                   onClick={() => {
-                    onStartSession(inspectedPage.surah.number, 1, Math.min(10, inspectedPage.surah.versesCount));
+                    const pageAyahs = getAyahsByPage(inspectedPage.pageNumber);
+                    const firstAyah = pageAyahs[0];
+                    const firstSurahAyahs = firstAyah
+                      ? pageAyahs.filter(a => a.surahNumber === firstAyah.surahNumber)
+                      : [];
+                    if (firstAyah && firstSurahAyahs.length > 0) {
+                      onStartSession(firstAyah.surahNumber, firstAyah.numberInSurah, firstSurahAyahs[firstSurahAyahs.length - 1].numberInSurah, 'review');
+                    }
                     setInspectedPage(null);
                   }}
                   className="flex items-center gap-1.5 px-3 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  <span>فتح جلسة تسميع وتكرار</span>
+                  <span>مراجعة مقطع الصفحة</span>
                 </button>
               )}
 
