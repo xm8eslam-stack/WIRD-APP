@@ -75,6 +75,23 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
     assert(handlerContent.includes('500'), 'api/advisor.ts must enforce 500 char prompt limit');
   });
 
+  // 5. Vercel chat route exists and preserves bounded conversation context
+  test('Advisor chat endpoint is routed in production and validates conversation history', () => {
+    const chatRoute = fs.readFileSync(path.resolve('./api/advisor/chat.ts'), 'utf8');
+    const apiHandler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    assert(chatRoute.includes("from '../advisor'"), 'Vercel /api/advisor/chat route must delegate to the shared advisor handler');
+    assert(apiHandler.includes('INVALID_HISTORY'), 'Serverless handler must reject malformed or oversized chat history');
+    assert(apiHandler.includes('safeHistory.map'), 'Serverless handler must include validated conversation context');
+  });
+
+  // 6. Local Express implementation enforces the same chat constraints
+  test('Development server validates advisor chat history and request size', () => {
+    const serverContent = fs.readFileSync(path.resolve('./server.ts'), 'utf8');
+    assert(serverContent.includes("limit: '4kb'"), 'Development server body parser must enforce the 4KB limit');
+    assert(serverContent.includes('INVALID_HISTORY'), 'Development server must validate chat history');
+    assert(serverContent.includes('conversationContext'), 'Development server must preserve chat context');
+  });
+
   return { passed, failed };
 }
 
