@@ -83,6 +83,7 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(tests.includes('wird-tests'), 'Memorization tests must expose the shared design-system hook');
     assert(styles.includes('Phase 5E — consistent planning'), 'Phase 5E surfaces must use shared visual rules');
     assert(styles.includes('min-height: 2.875rem'), 'Mobile form controls must remain comfortably touchable');
+    assert(styles.includes('min-height: 2.75rem;\n  touch-action: manipulation;'), 'Planning and revision actions must have touch-sized targets');
   });
 
   return { passed, failed };
