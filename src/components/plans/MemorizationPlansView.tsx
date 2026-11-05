@@ -13,7 +13,7 @@ import { MemorizationPlan, PortionStatusRecord } from '../../types/quran';
 import { EngineGeneratedPlan } from '../../services/planningEngine';
 import { PlanningEngineWizard } from './PlanningEngineWizard';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { findNextUnmemorizedRange } from '../../services/unifiedPortionService';
+import { findNextUnmemorizedRange, getPlanTargetSurahNumbers } from '../../services/unifiedPortionService';
 
 interface MemorizationPlansViewProps {
   plans: MemorizationPlan[];
@@ -38,9 +38,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   const handleStartPresetPlan = (plan: MemorizationPlan) => {
-    const targetSurahs = plan.targetSurahs?.length
-      ? plan.targetSurahs
-      : ALL_SURAHS.map(s => s.number);
+    const targetSurahs = getPlanTargetSurahNumbers(plan);
     const nextRange = findNextUnmemorizedRange(memorizedPortions, targetSurahs, plan.dailyTarget || 7);
 
     if (nextRange) {
