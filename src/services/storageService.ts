@@ -660,7 +660,7 @@ export const StorageService = {
     }
 
     const keys = Object.values(STORAGE_KEYS);
-    const snapshot = new Map<string, string | null>(keys.map(key => [key, getItem(key)]));
+    const snapshot = new Map<string, string | null>(keys.map(key => [key, getItem(key)] as [string, string | null]));
 
     try {
       const writeJson = (key: string, value: unknown) => {
