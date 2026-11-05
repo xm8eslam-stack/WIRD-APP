@@ -24,6 +24,7 @@ import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
 import { StorageService } from '../../services/storageService';
 import { getAyahByCoordinate } from '../../data/verifiedAyahs';
+import { getLocalDateString } from '../../services/unifiedPortionService';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -45,7 +46,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const activePlan = plans.find(p => p.isActive) || plans[0];
 
   // Calculate due revision items strictly from canonical RetentionService
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
   const queueDetails = RetentionService.getDailyRevisionQueueDetails(todayStr);
   const queuePortions = queueDetails.queue;
   const totalDueCount = queueDetails.totalDueCount;
