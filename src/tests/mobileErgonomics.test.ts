@@ -86,6 +86,15 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(styles.includes('min-height: 2.75rem;\n  touch-action: manipulation;'), 'Planning and revision actions must have touch-sized targets');
   });
 
+  test('Preset plan progress is safe and accessible', () => {
+    const plans = fs.readFileSync(path.resolve(process.cwd(), 'src/components/plans/MemorizationPlansView.tsx'), 'utf8');
+    assert(plans.includes('totalUnits > 0'), 'Zero-unit plans must not produce NaN progress');
+    assert(plans.includes('Math.max(0, Math.round((completedUnits / totalUnits) * 100))'), 'Plan progress must be clamped at zero');
+    assert(plans.includes('role="progressbar"'), 'Plan progress must expose progressbar semantics');
+    assert(plans.includes('aria-valuenow={percent}'), 'Plan progress must expose its current percentage');
+    assert(plans.includes('aria-label={`حذف الخطة ${plan.title}`}'), 'Plan deletion must have a descriptive accessible name');
+  });
+
   test('Revision navigation exposes semantic, labelled tabs and panels', () => {
     const revision = fs.readFileSync(path.resolve(process.cwd(), 'src/components/revision/RevisionCenterView.tsx'), 'utf8');
     assert(revision.includes('role="tablist" aria-label="أقسام مركز المراجعة"'), 'Revision navigation must expose a named tablist');
