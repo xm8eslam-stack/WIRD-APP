@@ -15,12 +15,17 @@ import {
   Upload,
   FileText,
   Database,
-  AlertTriangle
+  AlertTriangle,
+  LogOut,
+  CheckCircle2,
+  KeyRound,
+  Shield
 } from 'lucide-react';
 import { UserProfile, ReciterId } from '../../types/quran';
 import { RECITERS } from '../../services/audioService';
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
+import { useAuth } from '../../context/AuthContext';
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -114,6 +119,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
+  const { user, isGuest, isEmailVerified, logout } = useAuth();
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* 1. Header */}
@@ -123,8 +130,74 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           الإعدادات والملف الشخصي
         </h2>
         <p className="text-xs text-stone-500 dark:text-stone-400">
-          تخصيص تفضيلات التلاوة، وحجم الخط القرآني، والقارئ المفضل، وإدارة البيانات
+          تخصيص تفضيلات التلاوة، وحجم الخط القرآني، والقارئ المفضل، وإدارة الحساب والبيانات
         </p>
+      </div>
+
+      {/* 1.5 Firebase Authentication Status Card */}
+      <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">
+        <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-700 pb-3">
+          <div className="flex items-center gap-2 font-bold text-sm text-stone-900 dark:text-stone-100">
+            <Shield className="w-4 h-4 text-emerald-700" />
+            <span>حالة الهوية والحساب (Firebase Auth)</span>
+          </div>
+          {user ? (
+            <span className="text-[11px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300/80">
+              حساب موثق
+            </span>
+          ) : (
+            <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80">
+              نمط الزائر (بدون تسجيل)
+            </span>
+          )}
+        </div>
+
+        {user ? (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#faf8f5] dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <div className="space-y-1">
+              <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-mono">
+                <span>{user.email || user.displayName || 'مستخدم مسجل'}</span>
+                {isEmailVerified && (
+                  <span title="البريد الإلكتروني مفعل">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                طريقة التسجيل: {user.providerData.some(p => p.providerId === 'google.com') ? 'Google OAuth' : 'البريد الإلكتروني وكلمة المرور'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold rounded-xl border border-rose-200 dark:border-rose-800 transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>تسجيل الخروج</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#faf8f5] dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <div className="space-y-1">
+              <div className="font-bold text-stone-900 dark:text-stone-100">
+                أنت تستخدم المنصة حالياً بنمط الزائر
+              </div>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                جميع بيانات الحفظ والمراجعة المحفوظة محلية وتعمل بكفاءة تامة. يمكنك إنشاء حساب مستقبلاً لتفعيل المزامنة في المكونات القادمة.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 shrink-0"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>تسجيل الدخول / حساب جديد</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

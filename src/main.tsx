@@ -1,8 +1,16 @@
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { AuthProvider } from './context/AuthContext.tsx';
+import { AuthGate } from './components/auth/AuthGate.tsx';
 import './index.css';
 
-createRoot(document.getElementById('root')!).render(<App />);
+createRoot(document.getElementById('root')!).render(
+  <AuthProvider>
+    <AuthGate>
+      <App />
+    </AuthGate>
+  </AuthProvider>
+);
 
 // Register Service Worker in production environment or browser preview
 if ('serviceWorker' in navigator && (import.meta.env.PROD || process.env.NODE_ENV === 'production')) {

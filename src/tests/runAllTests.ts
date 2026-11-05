@@ -8,6 +8,7 @@ import { runGeminiSecurityTests } from './geminiSecurity.test';
 import { runQuranIntegrityTests } from './quranContentIntegrity.test';
 import { runIndependentTanzilComparison, runNegativeComparisonTests } from './independentTanzilComparison';
 import { runPwaIntegrationTests } from './pwaIntegration.test';
+import { runFirebaseAuthTests } from './firebaseAuth.test';
 
 console.log('====================================================');
 console.log('   WIRD | وِرد — Automated Quality & Integrity Suite');
@@ -71,6 +72,9 @@ runSuite('Tanzil Comparison Detector Sensitivity (Negative Tests)', () => {
 
 // 11. PWA Compliance & Infrastructure Tests
 runSuite('PWA Compliance & Service Worker Infrastructure', runPwaIntegrationTests);
+
+// 12. Firebase Authentication Foundation Tests
+runSuite('Firebase Authentication Foundation & Data Preservation', runFirebaseAuthTests);
 
 console.log('\n====================================================');
 console.log(`FINAL RESULT: ${totalPassed} PASSED | ${totalFailed} FAILED`);
