@@ -93,6 +93,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
 
   // 4. Performance Rating: Failed (Resets interval to 1 day and status to weak)
   runTest('RetentionService: "failed" rating resets interval to 1 day and marks status as weak', () => {
+    RetentionService.saveWeakVerses([]);
     const newPortion = RetentionService.addPortion({
       type: 'passage',
       surahNumber: 109,
@@ -122,6 +123,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
     const weakVerses = RetentionService.getWeakVerses();
     const foundWeak = weakVerses.find(w => w.surahNumber === 109 && w.ayahNumber === 3);
     assert(Boolean(foundWeak), 'Weak verse should be added to weak verses tracker');
+    assert(foundWeak?.mistakeCount === 1, 'One failed review must increment a weak-verse mistake exactly once');
   });
 
   // 5. Daily Queue Priority
