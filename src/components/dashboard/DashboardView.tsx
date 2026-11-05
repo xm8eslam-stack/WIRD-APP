@@ -24,7 +24,7 @@ import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
 import { StorageService } from '../../services/storageService';
 import { getAyahByCoordinate } from '../../data/verifiedAyahs';
-import { getLocalDateString, findNextUnmemorizedRange } from '../../services/unifiedPortionService';
+import { getLocalDateString, findNextUnmemorizedRange, getPlanTargetSurahNumbers } from '../../services/unifiedPortionService';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -71,9 +71,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // 2. Determine the next task from real plan and memorization data.
   const trackedPortions = RetentionService.getPortions();
 
+  const activePlanSurahNumbers = activePlan ? getPlanTargetSurahNumbers(activePlan) : [];
+
   function getFallbackDailyTask() {
-    if (activePlan?.targetSurahs && activePlan.targetSurahs.length > 0) {
-      const nextRange = findNextUnmemorizedRange(trackedPortions, activePlan.targetSurahs, activePlan.dailyTarget || 7);
+    if (activePlanSurahNumbers.length > 0) {
+      const nextRange = findNextUnmemorizedRange(trackedPortions, activePlanSurahNumbers, activePlan?.dailyTarget || 7);
       if (nextRange) {
         const sMeta = ALL_SURAHS.find(s => s.number === nextRange.surahNumber);
         const previewAyah = getAyahByCoordinate(nextRange.surahNumber, nextRange.startAyah);
