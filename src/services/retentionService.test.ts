@@ -1,5 +1,6 @@
 import { RetentionService, DEFAULT_PORTIONS } from './retentionService';
 import { PortionMemorizationStatus, RevisionRating } from '../types/quran';
+import { createCanonicalPortionId } from './unifiedPortionService';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -37,6 +38,13 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
     portions.forEach(p => {
       assert(validStatuses.includes(p.status), `Invalid status ${p.status} on portion ${p.id}`);
     });
+  });
+
+  runTest('RetentionService: demo seed uses canonical coordinate IDs', () => {
+    RetentionService.loadDemoPortions();
+    const portions = RetentionService.getPortions();
+    assert(portions.every(portion => portion.id === createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah)),
+      'Every demo portion ID must match its exact Quran coordinates');
   });
 
   // 2. Performance Rating: Successful
