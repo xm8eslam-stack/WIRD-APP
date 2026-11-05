@@ -12,6 +12,7 @@ import { runFirebaseAuthTests } from './firebaseAuth.test';
 import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
 import { runMobileErgonomicsTests } from './mobileErgonomics.test';
+import { runTafsirServiceTests } from '../services/tafsirService.test';
 
 export interface SuiteResult {
   passed: number;
@@ -71,6 +72,7 @@ async function main() {
     { name: 'Phase 3 Core Remediation (Unified Portions, SM-2, Tests & Router)', runner: runPhase3CoreRemediationTests },
     { name: 'Quran Lazy Loading & Chunk Integrity', runner: runQuranLazyLoadingTests },
     { name: 'Mobile Mushaf Touch Ergonomics', runner: runMobileErgonomicsTests },
+    { name: 'Tafsir Muyassar API Validation & Cache', runner: runTafsirServiceTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
