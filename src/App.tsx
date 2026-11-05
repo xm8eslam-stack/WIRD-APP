@@ -6,6 +6,7 @@ import { StorageService } from './services/storageService';
 import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
 import { EngineGeneratedPlan } from './services/planningEngine';
+import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { getLocalDateString, findNextUnmemorizedRange } from './services/unifiedPortionService';
@@ -260,6 +261,34 @@ export default function App() {
         sessionParams.startAyah,
         sessionParams.endAyah
       );
+
+      // Completing the exact task from an active engine plan must advance
+      // that plan, otherwise the dashboard would keep serving the same range.
+      const currentEnginePlans = StorageService.getEnginePlans();
+      const activeEnginePlan = currentEnginePlans.find(p => p.isActive && !p.isPaused)
+        || currentEnginePlans.find(p => !p.isPaused);
+      const matchingTask = activeEnginePlan?.schedule.find(day =>
+        day.memorizationTask &&
+        !day.memorizationTask.completed &&
+        day.memorizationTask.surahNumber === sessionParams.surahNumber &&
+        day.memorizationTask.startAyah === sessionParams.startAyah &&
+        day.memorizationTask.endAyah === sessionParams.endAyah
+      );
+      if (activeEnginePlan && matchingTask?.memorizationTask) {
+        const updatedPlan = PlanLifecycle.updateTask(activeEnginePlan, matchingTask.id, {
+          status: 'completed',
+          memorizationTask: {
+            ...matchingTask.memorizationTask,
+            completed: true,
+            completedAt: new Date().toISOString()
+          }
+        });
+        const updatedPlans = currentEnginePlans.map(plan =>
+          plan.id === activeEnginePlan.id ? updatedPlan : plan
+        );
+        setEnginePlans(updatedPlans);
+        StorageService.saveEnginePlans(updatedPlans);
+      }
     }
     setLogs(StorageService.getLogs());
     setProfile(StorageService.getProfile());
