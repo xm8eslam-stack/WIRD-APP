@@ -102,6 +102,8 @@ export function runMobileErgonomicsTests(): { passed: number; failed: number } {
     assert(revision.includes('aria-selected={activeTab ==='), 'Selected revision tab must be announced');
     assert(revision.includes('aria-controls="revision-panel-'), 'Revision tabs must reference their panels');
     assert(revision.includes('role="tabpanel"'), 'Revision content must expose tabpanel semantics');
+    assert((revision.match(/role="dialog"/g) || []).length === 3, 'Revision modals must expose dialog semantics');
+    assert(revision.includes('role="status" aria-live="polite"'), 'Revision action feedback must be announced politely');
     assert(revision.includes('aria-labelledby="revision-tab-'), 'Revision panels must reference their controlling tabs');
     assert(revision.includes("event.key === 'ArrowRight'") && revision.includes("event.key === 'ArrowLeft'"), 'Revision tabs must support arrow-key navigation');
     assert(revision.includes("event.key === 'Home'") && revision.includes("event.key === 'End'"), 'Revision tabs must support Home and End navigation');
