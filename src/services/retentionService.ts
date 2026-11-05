@@ -300,7 +300,7 @@ export const RetentionService = {
         status: newStatus
       };
     });
-    this.savePortions(updated);
+    if (!this.savePortions(updated)) throw new Error('تعذر حفظ حالة المقطع في التخزين الدائم. لم يتم تأكيد التغيير.');
     return updated;
   },
 
@@ -327,7 +327,7 @@ export const RetentionService = {
       };
       portions.unshift(record);
     }
-    this.savePortions(portions);
+    if (!this.savePortions(portions)) throw new Error('تعذر حفظ المقطع الجديد في التخزين الدائم.');
     return record;
   },
 
@@ -393,7 +393,7 @@ export const RetentionService = {
       portions.unshift(updatedPortion);
     }
 
-    this.savePortions(portions);
+    if (!this.savePortions(portions)) throw new Error('تعذر حفظ إنجاز جلسة الحفظ في التخزين الدائم.');
     return updatedPortion;
   },
 
@@ -460,14 +460,30 @@ export const RetentionService = {
     }
 
     const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
-    this.savePortions(updatedList);
+    if (!this.savePortions(updatedList)) {
+      throw new Error('تعذر حفظ تقييم المراجعة في التخزين الدائم؛ لم يتم تسجيل نجاح التقييم.');
+    }
 
-    // Record session completion in daily logs
-    const versesCount = (target.endAyah - target.startAyah + 1) || 10;
-    StorageService.recordSessionCompletion(
-      0, 
-      Math.max(1, Math.round(versesCount / 15)), 
-      15, 
+    let weakVerseWarning = '';
+    if (rating === 'failed' && weakAyahDetails) {
+      try {
+        this.addOrIncrementWeakVerse(
+          target.surahNumber,
+          weakAyahDetails.ayahNumber,
+          target.surahName,
+          weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
+          weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
+        );
+      } catch {
+        weakVerseWarning = ' تم حفظ تقييم المقطع، لكن تعذر تحديث قائمة الآيات المتعثرة.';
+      }
+    }
+
+    const reviewedPagesCount = getPagesForAyahRange(target.surahNumber, target.startAyah, target.endAyah).length;
+    const sessionLogSaved = StorageService.recordSessionCompletion(
+      0,
+      Math.max(1, reviewedPagesCount),
+      15,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
 
@@ -475,7 +491,7 @@ export const RetentionService = {
       updatedPortion,
       nextIntervalDays: sm2Result.intervalDays,
       nextDueDate: sm2Result.nextDueDate,
-      messageAr: sm2Result.messageAr
+      messageAr: `${sm2Result.messageAr}${weakVerseWarning}${sessionLogSaved ? '' : ' تعذر حفظ سجل النشاط اليومي أو تحديث سلسلة المواظبة.'}`
     };
   },
 
@@ -553,15 +569,17 @@ export const RetentionService = {
     }
   },
 
-  saveWeakVerses(items: WeakVerseItem[]): void {
+  saveWeakVerses(items: WeakVerseItem[]): boolean {
     try {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
       } else {
         memoryWeakVerses = items;
       }
+      return true;
     } catch (e) {
       console.warn('Failed to save weak verses', e);
+      return false;
     }
   },
 
@@ -595,13 +613,13 @@ export const RetentionService = {
       });
     }
 
-    this.saveWeakVerses(items);
+    if (!this.saveWeakVerses(items)) throw new Error('تعذر حفظ سجل الآيات المتعثرة في التخزين الدائم.');
     return items;
   },
 
   resolveWeakVerse(id: string): WeakVerseItem[] {
     const items = this.getWeakVerses().filter(i => i.id !== id);
-    this.saveWeakVerses(items);
+    if (!this.saveWeakVerses(items)) throw new Error('تعذر حفظ تحديث الآيات المتعثرة في التخزين الدائم.');
     return items;
   },
 
