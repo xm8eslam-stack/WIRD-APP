@@ -1,5 +1,5 @@
 import React from 'react';
-import { PLAYBACK_RATES, PlaybackRate } from '../../services/audioPreferences';
+import { PLAYBACK_RATES, type PlaybackRate } from '../../services/audioPreferences';
 
 interface AudioPlaybackRateControlProps {
   value: PlaybackRate;
