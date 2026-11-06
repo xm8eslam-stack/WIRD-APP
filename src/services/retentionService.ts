@@ -6,7 +6,7 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { StorageService } from './storageService';
+import { StorageService, STORAGE_KEYS } from './storageService';
 import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { 
@@ -484,6 +484,19 @@ export const RetentionService = {
     };
 
     const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
+    const previousWeakArchive = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+    const restoreAttempt = (): boolean => {
+      const portionsRestored = this.savePortions(portions) &&
+        JSON.stringify(this.getPortions()) === JSON.stringify(portions);
+      if (previousWeakArchive === null) {
+        StorageService.removeRawItem(STORAGE_KEYS.WEAK_VERSES);
+      } else {
+        StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
+      }
+      const weakArchiveRestored = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === previousWeakArchive;
+      return portionsRestored && weakArchiveRestored;
+    };
+
     if (!this.savePortions(updatedList)) {
       throw new Error('تعذر حفظ تقييم المراجعة في التخزين المحلي؛ لم يتم تأكيد التغيير.');
     }
@@ -498,7 +511,9 @@ export const RetentionService = {
           weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
         );
       } catch (error) {
-        this.savePortions(portions);
+        if (!restoreAttempt()) {
+          throw new Error('فشل حفظ الآية المتعثرة، كما تعذر التحقق من استعادة تقييم المراجعة وسجل الآيات السابق. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
+        }
         throw error;
       }
     }
@@ -510,15 +525,19 @@ export const RetentionService = {
       minutesSpent,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
+    if (!activitySaved) {
+      if (!restoreAttempt()) {
+        throw new Error('تعذر حفظ سجل نشاط المراجعة، كما تعذر التحقق من استعادة تقييم المقطع وسجل الآيات المتعثرة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
+      }
+      throw new Error('تعذر حفظ سجل نشاط المراجعة؛ أُلغي التقييم وأُعيدت حالة المقطع وقائمة الآيات إلى ما قبل المحاولة. يمكنك المحاولة مجددًا.');
+    }
 
     return {
       updatedPortion,
       nextIntervalDays: sm2Result.intervalDays,
       nextDueDate: sm2Result.nextDueDate,
-      activitySaved,
-      messageAr: activitySaved
-        ? sm2Result.messageAr
-        : `${sm2Result.messageAr} لكن تعذر حفظ سجل النشاط وسلسلة المواظبة.`
+      activitySaved: true,
+      messageAr: sm2Result.messageAr
     };
   },
 
