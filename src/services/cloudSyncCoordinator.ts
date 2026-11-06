@@ -10,6 +10,7 @@ export type CloudSyncStatus =
   | 'synced'
   | 'offline'
   | 'unverified'
+  | 'partial'
   | 'guest'
   | 'error';
 
@@ -262,7 +263,7 @@ class CloudSyncCoordinator {
       const finalCount = await this.refreshPendingCount();
       const complete = finalCount === 0 && remoteReconciled;
       this.updateState({
-        status: complete ? 'synced' : finalCount > 0 ? 'error' : 'unverified',
+        status: complete ? 'synced' : finalCount > 0 ? 'error' : 'partial',
         lastSyncAtMs: complete ? Date.now() : this.state.lastSyncAtMs,
         errorMessage: firstPushError || (finalCount > 0
           ? 'بعض التغييرات لم تُرفع بعد؛ احتفظنا بها محلياً وسنعيد المحاولة.'
