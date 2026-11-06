@@ -414,7 +414,7 @@ export function runBackupTests(): { passed: number; failed: number } {
   });
 
   test('Legacy revision items with migration-supported missing fields remain importable', () => {
-    const legacyRevision = { surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5 };
+    const legacyRevision = { surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5, nextDueDate: '', intervalDays: 0, easeFactor: 0, repetitionCount: 0 };
     const result = validateBackupPayload({ version: 3, revisionItems: [legacyRevision] });
     assert(result.valid, 'Legacy revision records with fields normalized by migration must remain supported');
   });
