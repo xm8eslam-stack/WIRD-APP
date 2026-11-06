@@ -1,7 +1,7 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
-import type { LegacyOutboxState } from './indexedDbSyncJournal';
+import type { JournalOutboxEntry, LegacyOutboxState } from './indexedDbSyncJournal';
 
 export type SyncCollection =
   | 'profile'
@@ -254,6 +254,7 @@ function persistState(state: OutboxState): void {
 }
 
 let indexedDbJournal: IndexedDbSyncJournal | null = null;
+const lastMigratedLegacyRawByUid = new Map<string, string>();
 
 function getIndexedDbJournal(): IndexedDbSyncJournal {
   if (!indexedDbJournal) indexedDbJournal = new IndexedDbSyncJournal();
@@ -261,7 +262,7 @@ function getIndexedDbJournal(): IndexedDbSyncJournal {
 }
 
 async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 'already_migrated'> {
-  getActiveUid();
+  const uid = getActiveUid();
   const key = STORAGE_KEYS.SYNC_OUTBOX;
   const raw = StorageService.getRawItem(key);
   if (raw === null) {
@@ -270,6 +271,7 @@ async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 
     }
     return 'empty';
   }
+  if (lastMigratedLegacyRawByUid.get(uid) === raw) return 'already_migrated';
   if (byteLength(raw) > MAX_OUTBOX_BYTES) {
     throw new Error('صندوق المزامنة القديم أكبر من الحد الآمن؛ تم الحفاظ عليه دون تعديل.');
   }
@@ -291,173 +293,53 @@ async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 
   if (!StorageService.verifyRawItem(key, raw)) {
     throw new Error('تغير صندوق المزامنة القديم أثناء الترحيل؛ تم الاحتفاظ بالمصدر وأُوقف تأكيد المزامنة حتى إعادة الدمج.');
   }
+  lastMigratedLegacyRawByUid.set(uid, raw);
   return result;
 }
 
+function toOutboxMutation(entry: JournalOutboxEntry): OutboxMutation {
+  const { key: _key, uid: _uid, eventId: _eventId, fingerprint: _fingerprint, ...mutation } = entry;
+  return mutation;
+}
+
 export const LocalSyncOutbox = {
-  /** One-time, idempotent migration; normal outbox calls remain unchanged until the adapter cutover. */
+  /** One-time, idempotent migration; the old localStorage value remains as a recovery copy. */
   migrateLegacyToIndexedDb: migrateLegacyOutboxToIndexedDb,
-  /** Add one UID-scoped mutation. Reusing an ID never creates a second queue item. */
-  enqueue(input: EnqueueMutationInput): EnqueueMutationResult {
-    if (!input || typeof input !== 'object') throw new Error('بيانات عملية المزامنة غير صالحة.');
-    getActiveUid();
 
-    if (!ALLOWED_COLLECTIONS.has(input.collection)) throw new Error('مجموعة مزامنة غير مسموح بها.');
-    if (typeof input.documentId !== 'string' || !input.documentId || byteLength(input.documentId) > 1500 ||
-        input.documentId.includes('/') || /[\u0000-\u001f]/.test(input.documentId)) {
-      throw new Error('معرّف مستند المزامنة غير صالح.');
-    }
-    const operation = input.operation ?? 'upsert';
-    if (operation !== 'upsert' && operation !== 'tombstone') throw new Error('نوع عملية المزامنة غير مسموح به.');
-    if (!isRecord(input.payload)) throw new Error('حمولة عملية المزامنة يجب أن تكون كائناً صالحاً.');
-
-    let payloadJson: string;
-    try { payloadJson = JSON.stringify(input.payload); }
-    catch { throw new Error('تعذر تحويل بيانات العملية إلى صيغة قابلة للحفظ.'); }
-    if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
-      throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
-    }
-
-    const mutationId = input.mutationId === undefined ? createSecureId() : input.mutationId;
-    if (!isValidMutationId(mutationId)) throw new Error('معرّف العملية غير صالح.');
-    const canonicalPayload = JSON.parse(payloadJson) as Record<string, unknown>;
-    const fingerprint = createMutationFingerprint(input.collection, input.documentId, operation, canonicalPayload);
-
-    const state = readState();
-    const existing = state.pending.find(item => item.mutationId === mutationId);
-    if (existing) {
-      const sameMutation = existing.collection === input.collection &&
-        existing.documentId === input.documentId &&
-        existing.operation === operation &&
-        stableStringify(existing.payload) === stableStringify(canonicalPayload);
-      if (!sameMutation) throw new Error('معرّف المزامنة مستخدم مسبقاً لبيانات مختلفة؛ أوقفنا العملية لمنع إسقاط تعديل جديد.');
-      return { status: 'already_pending', mutation: { ...existing } };
-    }
-
-    if (state.acknowledgedIds.includes(mutationId)) {
-      const previousFingerprint = state.acknowledgedFingerprints.find(item => item.mutationId === mutationId);
-      if (!previousFingerprint) {
-        throw new Error('هذا المعرّف أُقرّ سابقاً قبل حفظ بصمة محتواه؛ لا يمكن التحقق من تطابق العملية القديمة. استخدم معرّفاً جديداً.');
-      }
-      if (previousFingerprint.fingerprint !== fingerprint) {
-        throw new Error('معرّف المزامنة أُقرّ سابقاً بمحتوى مختلف؛ أوقفنا العملية لمنع إسقاط تعديل جديد.');
-      }
-      return { status: 'already_acknowledged', mutationId };
-    }
-
-    if (state.pending.length >= MAX_PENDING_MUTATIONS) {
-      throw new Error('وصل صندوق المزامنة إلى سعته الآمنة؛ لم نحذف أي عملية معلقة.');
-    }
-
-    const now = input.nowMs ?? Date.now();
-    if (!Number.isSafeInteger(now) || now < 0) throw new Error('وقت إنشاء العملية غير صالح.');
-    const mutation: OutboxMutation = {
-      mutationId,
-      collection: input.collection,
-      documentId: input.documentId,
-      operation,
-      schemaVersion: 1,
-      clientUpdatedAtMs: now,
-      deviceId: state.deviceId,
-      payload: canonicalPayload,
-      queuedAtMs: now,
-      attemptCount: 0,
-      nextAttemptAtMs: 0
-    };
-
-    state.pending.push(mutation);
-    persistState(state);
-    return { status: 'queued', mutation: { ...mutation } };
+  /** Add one UID-scoped mutation using the atomic IndexedDB event/outbox transaction. */
+  async enqueue(input: EnqueueMutationInput): Promise<EnqueueMutationResult> {
+    await migrateLegacyOutboxToIndexedDb();
+    const result = await getIndexedDbJournal().enqueue(input);
+    if (result.status === 'already_acknowledged') return result;
+    return { status: result.status, mutation: toOutboxMutation(result.mutation) };
   },
 
   /** Return only due mutations, oldest first, with a bounded page size. */
-  listReady(nowMs: number = Date.now(), limit: number = 25): OutboxMutation[] {
-    getActiveUid();
-    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت قراءة صندوق المزامنة غير صالح.');
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_BATCH_SIZE) {
-      throw new Error('حجم دفعة المزامنة يجب أن يكون عدداً صحيحاً من 1 إلى ' + MAX_BATCH_SIZE + '.');
-    }
-    return readState().pending
-      .filter(item => item.nextAttemptAtMs <= nowMs)
-      .sort((a, b) => a.queuedAtMs - b.queuedAtMs || a.mutationId.localeCompare(b.mutationId))
-      .slice(0, limit)
-      .map(item => ({ ...item, payload: { ...item.payload } }));
+  async listReady(nowMs: number = Date.now(), limit: number = 25): Promise<OutboxMutation[]> {
+    await migrateLegacyOutboxToIndexedDb();
+    return (await getIndexedDbJournal().listReady(nowMs, limit)).map(toOutboxMutation);
   },
 
   /** Acknowledge only after the remote server confirms the mutation. */
-  acknowledge(mutationIds: string[]): number {
-    getActiveUid();
-    if (!Array.isArray(mutationIds)) throw new Error('قائمة معرفات الإقرار غير صالحة.');
-    if (mutationIds.length === 0) return 0;
-    if (!mutationIds.every(isValidMutationId)) throw new Error('تحتوي قائمة الإقرار على معرف عملية غير صالح.');
-
-    const state = readState();
-    const ids = new Set(mutationIds);
-    const acknowledgedNow = state.pending.filter(item => ids.has(item.mutationId));
-    if (acknowledgedNow.length === 0) return 0;
-
-    const remaining = state.pending.filter(item => !ids.has(item.mutationId));
-    const removedCount = state.pending.length - remaining.length;
-    const acknowledged = Array.from(new Set([
-      ...state.acknowledgedIds,
-      ...acknowledgedNow.map(item => item.mutationId)
-    ])).slice(-MAX_ACKNOWLEDGED_IDS);
-    const acknowledgedSet = new Set(acknowledged);
-    const fingerprintById = new Map(state.acknowledgedFingerprints.map(item => [item.mutationId, item.fingerprint]));
-    for (const item of acknowledgedNow) {
-      fingerprintById.set(item.mutationId, createMutationFingerprint(item.collection, item.documentId, item.operation, item.payload));
-    }
-    const acknowledgedFingerprints = acknowledged
-      .filter(id => fingerprintById.has(id))
-      .map(id => ({ mutationId: id, fingerprint: fingerprintById.get(id)! }));
-
-    state.pending = remaining;
-    state.acknowledgedIds = acknowledged;
-    state.acknowledgedFingerprints = acknowledgedFingerprints.filter(item => acknowledgedSet.has(item.mutationId));
-    persistState(state);
-    return removedCount;
+  async acknowledge(mutationIds: string[], nowMs: number = Date.now()): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().acknowledge(mutationIds, nowMs);
   },
 
   /** Record a retryable failure with capped exponential backoff; keep the mutation. */
-  markFailed(mutationId: string, errorCode: string, nowMs: number = Date.now()): boolean {
-    getActiveUid();
-    if (!isValidMutationId(mutationId)) throw new Error('معرّف العملية غير صالح.');
-    if (typeof errorCode !== 'string' || errorCode.length > 64) throw new Error('رمز خطأ المزامنة غير صالح.');
-    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت إعادة المحاولة غير صالح.');
-
-    const state = readState();
-    const index = state.pending.findIndex(item => item.mutationId === mutationId);
-    if (index < 0) return false;
-
-    const current = state.pending[index];
-    if (current.attemptCount >= Number.MAX_SAFE_INTEGER) {
-      throw new Error('تعذر زيادة عداد محاولات المزامنة بأمان؛ لم يتم تعديل العملية.');
-    }
-    const attemptCount = current.attemptCount + 1;
-    const delay = Math.min(MAX_BACKOFF_MS, 1000 * (2 ** Math.min(attemptCount, 16)));
-    const nextAttemptAtMs = nowMs + delay;
-    if (!Number.isSafeInteger(nextAttemptAtMs)) {
-      throw new Error('وقت إعادة المحاولة يتجاوز الحد الآمن؛ لم يتم تعديل العملية.');
-    }
-
-    state.pending[index] = {
-      ...current,
-      attemptCount,
-      nextAttemptAtMs,
-      lastErrorCode: errorCode.trim().slice(0, 64) || 'UNKNOWN'
-    };
-    persistState(state);
-    return true;
+  async markFailed(mutationId: string, errorCode: string, nowMs: number = Date.now()): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().markFailed(mutationId, errorCode, nowMs);
   },
 
-  getSnapshot(): { uid: string; deviceId: string; pendingCount: number; acknowledgedCount: number } {
-    const uid = getActiveUid();
-    const state = readState();
+  async getSnapshot(): Promise<{ uid: string; deviceId: string; pendingCount: number; acknowledgedCount: number }> {
+    await migrateLegacyOutboxToIndexedDb();
+    const snapshot = await getIndexedDbJournal().getSnapshot();
     return {
-      uid,
-      deviceId: state.deviceId,
-      pendingCount: state.pending.length,
-      acknowledgedCount: state.acknowledgedIds.length
+      uid: snapshot.uid,
+      deviceId: snapshot.deviceId,
+      pendingCount: snapshot.pendingCount,
+      acknowledgedCount: snapshot.acknowledgedCount
     };
   }
 };
