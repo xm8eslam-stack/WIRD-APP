@@ -757,8 +757,26 @@ export const StorageService = {
     return parsed;
   },
 
+  /** Safe read-only projection for screens; write paths must continue to use strict getLogs(). */
+  getLogsForDisplay(): DailyLog[] {
+    try { return this.getLogs(); }
+    catch (error) {
+      console.error('[WIRD Storage] Daily activity archive needs recovery; preserving original bytes:', error);
+      return [];
+    }
+  },
+
   saveLogs(logs: DailyLog[]): boolean {
     if (!isValidDailyLogArray(logs)) return false;
+    const current = getItem(STORAGE_KEYS.LOGS);
+    if (current !== null) {
+      try {
+        const parsed: unknown = JSON.parse(current);
+        if (!isValidDailyLogArray(parsed)) return false;
+      } catch {
+        return false;
+      }
+    }
     return setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
   },
 

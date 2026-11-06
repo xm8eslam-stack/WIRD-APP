@@ -34,7 +34,7 @@ export default function App() {
   const [plans, setPlans] = useState<MemorizationPlan[]>(() => StorageService.getPlans());
   const [enginePlans, setEnginePlans] = useState<EngineGeneratedPlan[]>(() => StorageService.getEnginePlans());
   const [revisionItems, setRevisionItems] = useState<RevisionItem[]>(() => StorageService.getRevisionItems());
-  const [logs, setLogs] = useState<DailyLog[]>(() => StorageService.getLogs());
+  const [logs, setLogs] = useState<DailyLog[]>(() => StorageService.getLogsForDisplay());
 
   // Session specific parameters when started from other views or URL deep link
   const [sessionParams, setSessionParams] = useState<{
@@ -257,7 +257,7 @@ export default function App() {
         else showToast('تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
       }
     }
-    setLogs(StorageService.getLogs());
+    setLogs(StorageService.getLogsForDisplay());
     setProfile(StorageService.getProfile());
     setRevisionItems(StorageService.getRevisionItems());
     return true;
@@ -278,7 +278,7 @@ export default function App() {
       showToast('تعذر حفظ سجل المراجعة أو تحديث سلسلة المواظبة.', 'error');
       return;
     }
-    setLogs(StorageService.getLogs());
+    setLogs(StorageService.getLogsForDisplay());
     setProfile(StorageService.getProfile());
   };
 
@@ -321,6 +321,14 @@ export default function App() {
     }, 4000);
   };
 
+  useEffect(() => {
+    try {
+      StorageService.getLogs();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'سجل النشاط يحتاج إلى استعادة؛ لم يتم تعديل البيانات.', 'warn');
+    }
+  }, []);
+
   // Record the weak-verse portion and its mistake counter as one recoverable operation.
   const handleAddVerseToRevision = (
     surahNumber: number,
@@ -346,7 +354,7 @@ export default function App() {
     setPlans(StorageService.getPlans());
     setEnginePlans(StorageService.getEnginePlans());
     setRevisionItems(StorageService.getRevisionItems());
-    setLogs(StorageService.getLogs());
+    setLogs(StorageService.getLogsForDisplay());
     if (!resetSucceeded) {
       showToast('لم نتمكن من التحقق من حذف كل البيانات. لا تعتبر إعادة الضبط مكتملة؛ صدّر نسخة احتياطية وراجع التخزين قبل المتابعة.', 'error');
     }
@@ -491,7 +499,7 @@ export default function App() {
                   setPlans(StorageService.getPlans());
                   setEnginePlans(StorageService.getEnginePlans());
                   setRevisionItems(StorageService.getRevisionItems());
-                  setLogs(StorageService.getLogs());
+                  setLogs(StorageService.getLogsForDisplay());
                 }}
               />
             )}

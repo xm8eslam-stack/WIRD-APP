@@ -65,6 +65,20 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Display reads degrade safely while strict reads and writes preserve corrupt daily logs', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:daily-log-display');
+    const corrupt = '{damaged daily log';
+    StorageService.setRawItem(STORAGE_KEYS.LOGS, corrupt);
+    assert(StorageService.getLogsForDisplay().length === 0, 'Display projection should remain renderable');
+    let strictReadRejected = false;
+    try { StorageService.getLogs(); } catch { strictReadRejected = true; }
+    assert(strictReadRejected, 'Strict read must expose corruption to write/backup flows');
+    assert(!StorageService.saveLogs([]), 'A normal save must not overwrite a corrupt archive');
+    assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === corrupt, 'Original corrupt bytes must remain intact');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Invalid session counters and labels are rejected before any activity write', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:invalid-session-metrics');
