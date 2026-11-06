@@ -192,6 +192,7 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     const values = new Map<string, string>();
     let ignoreNextWrite = false;
     let corruptNextWrite = false;
+    let ignoreNextRemove = false;
     const key = STORAGE_KEYS.WEAK_VERSES;
     StorageService.__resetStorageForTests();
     Object.defineProperty(globalThis, 'localStorage', {
@@ -210,7 +211,13 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
           }
           values.set(storageKey, value);
         },
-        removeItem: (storageKey: string) => values.delete(storageKey)
+        removeItem: (storageKey: string) => {
+          if (storageKey.endsWith(key) && ignoreNextRemove) {
+            ignoreNextRemove = false;
+            return;
+          }
+          values.delete(storageKey);
+        }
       }
     });
     try {
@@ -227,6 +234,12 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
         'A setItem call that stores mismatched bytes must be rejected');
       assert(StorageService.getRawItem(key) === '[]',
         'A mismatched write must attempt and verify restoration of the previous archive bytes');
+
+      ignoreNextRemove = true;
+      assert(!StorageService.removeRawItem(key),
+        'A silent no-op removal must be reported as unsuccessful');
+      assert(StorageService.getRawItem(key) === '[]',
+        'A silent no-op removal must not be hidden by the in-memory fallback');
     } finally {
       if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
       else delete (globalThis as any).localStorage;
