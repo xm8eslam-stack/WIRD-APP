@@ -203,7 +203,9 @@ export function persistTestResultSnapshot(
           schemaVersion: 1,
           id: 'test-' + test.id,
           type: 'test.completed',
-          occurredAt: new Date().toISOString(),
+          occurredAt: Number.isFinite(Date.parse(test.date))
+            ? new Date(test.date).toISOString()
+            : '1970-01-01T00:00:00.000Z',
           payload: {
             testResultId: test.id,
             testType: test.type,
