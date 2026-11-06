@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `00543fd826f4e03ae14cf9eacd5dd018e6e9af34`  
+**Audited HEAD:** `b549a29f9a9052bb0b93c993907727420e65c674`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -24,6 +24,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Activity/streak write | Session log/profile write reports failure and attempts rollback rather than silently claiming success |
 | Session completion boundary | `persistSessionCompletion` validates exact Quran coordinates and rolls back the newly saved portion if activity/streak persistence fails |
 | Revision rating transaction | Portion rating and weak-verse writes roll back together if weak-verse or activity/streak persistence fails; restoration is verified |
+| Event identity | Revision history and sync outbox use collision-resistant Web Crypto UUIDv4 identifiers instead of millisecond timestamps |
 | Review vs memorization | Review sessions no longer add memorized ayahs or create memorization portions |
 | Retention score | Overlapping ranges count each ayah once; weakest overlapping status wins |
 | Review page count | Uses canonical Mushaf page mapping rather than an ayah-count estimate |
@@ -83,8 +84,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run: [42178408517](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42178408517) — success.
-- Automated test suites: 248 passed, 0 failed.
+Latest Actions run: [42178884028](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42178884028) — success.
+- Automated test suites: 250 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.

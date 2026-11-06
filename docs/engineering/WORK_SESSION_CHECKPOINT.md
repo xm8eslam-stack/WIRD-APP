@@ -3,9 +3,9 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `00543fd826f4e03ae14cf9eacd5dd018e6e9af34`  
+**Current HEAD:** `b549a29f9a9052bb0b93c993907727420e65c674`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42178408517 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42178408517)
+**Latest CI run:** [42178884028 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42178884028)
 
 ## Resume instructions
 
@@ -16,6 +16,7 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `b549a29` — introduce a shared Web Crypto UUIDv4 generator and use it for outbox device IDs/mutations plus revision-history and weak-verse record IDs. Added tests proving unique review history IDs even with identical wall-clock timestamps. CI run `42178884028` passed 250 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `59ba288` — validate weak-verse failure coordinates against canonical Surah metadata, reject out-of-range ayahs before mutation, and store canonical Surah labels. Added coordinate-boundary tests.
 - `1ba7f0e` — keep the revision center and unrelated retention metrics available when the weak-verse archive is damaged; surface a warning while preserving the raw archive. Added a regression test.
 - `1f2b3f3` + `00543fd` — make revision rating a rollback-aware operation: if weak-verse persistence or activity/streak persistence fails, restore the previous portion and weak-verse archive and verify restoration; keep the rating UI open for retry. Added failure-injection tests. A TypeScript import-name collision was caught by CI and corrected in `00543fd`.
@@ -48,7 +49,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 - UID-scoped local storage and guest separation exist.
 - Legacy data ownership decision exists.
 - Firestore rules, emulator configuration, and emulator tests exist.
-- Firestore client integration, merge engine, immutable activity/weak-verse event ledger, and cross-device sync do **not** exist yet. The UID-scoped outbox primitive exists but is not yet wired into domain mutations.
+- Firestore client integration, merge engine, immutable activity/weak-verse event ledger, and cross-device sync do **not** exist yet. The UID-scoped outbox primitive and shared UUID generator exist but are not yet wired into domain mutations.
 - Firestore rules are not confirmed deployed to the production Firebase project.
 - User reports the Vercel app is live at `https://wird-app.vercel.app/#/dashboard`.
 
@@ -59,6 +60,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 3. Portion review history needs stable unique event IDs before merging across devices.
 4. Session completion and revision rating now roll back ordinary localStorage failures; revision rollback verifies portion and weak-verse archive restoration. Backup import rollback verifies restoration. Crash-atomicity still requires a journal/transactional store before sync.
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
+6. Revision-history IDs now use collision-resistant UUIDs rather than millisecond timestamps, preparing the data model for safe cross-device event identity.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
 
 ## Additional verified local reliability fixes
