@@ -7,7 +7,7 @@
 
 ## Latest continuation checkpoint — 2026-11-06
 
-- Canonical main HEAD: 1de59512e61e359ba001eeaae663e50597b6f58f.
+- Last verified application-code main SHA before this documentation checkpoint: 1de59512e61e359ba001eeaae663e50597b6f58f.
 - PR #14 merged as c0390692d5f9ec7e81e04c8a674dbb035e0924ec: page-based Mushaf reader for 604 pages; generated exact navigation for all 30 Juz and 240 Hizb quarters; Surah/page/Juz/Hizb navigation; page bookmarks and last-read persistence; tafsir access; continuous ayah audio across page boundaries; shared 0.75×–2× playback speed in Quran Library, memorization session, and Mushaf reader. EveryAyah link-back attribution and separate audio-rights documentation added.
 - PR #15 merged as 57fa70624dc1a9651b87035fd1a66565e284d5a9: detailed activity/profile rollback status, durable read-back verification that bypasses memory fallback, and combined rollback reporting for memorization, revision, and weak-verse operations.
 - PR #16 merged as 1de59512e61e359ba001eeaae663e50597b6f58f: local outbox writes now verify the durable previous state after failure and surface recovery-required errors when restoration cannot be confirmed.
@@ -18,7 +18,7 @@
 
 ## Verified repository position
 
-- Latest `main` HEAD: `1de59512e61e359ba001eeaae663e50597b6f58f` — PR #16 (verified outbox rollback). PR #15 rollback-status merge: `57fa70624dc1a9651b87035fd1a66565e284d5a9`. PR #14 Mushaf/audio merge: `c0390692d5f9ec7e81e04c8a674dbb035e0924ec`. Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
+- Latest application-code commit on `main` before this documentation checkpoint: `1de59512e61e359ba001eeaae663e50597b6f58f` — PR #16 (verified outbox rollback). PR #15 rollback-status merge: `57fa70624dc1a9651b87035fd1a66565e284d5a9`. PR #14 Mushaf/audio merge: `c0390692d5f9ec7e81e04c8a674dbb035e0924ec`. Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
 - Previous merges: PR #6 `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`; PR #5 `fd480526dd3eac728f60b3554e83309354903ad8`; PR #4 `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - GitHub Actions run `42190653101` on PR #9 head `2b520ebcf6c51ae155de508ddf49e49d421ba7ab` passed automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test. The merged code is `f8e0cef`.
