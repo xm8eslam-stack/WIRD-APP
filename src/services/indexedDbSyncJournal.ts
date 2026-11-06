@@ -248,7 +248,10 @@ export class IndexedDbSyncJournal {
       };
       request.onsuccess = () => {
         const database = request.result;
-        database.onversionchange = () => database.close();
+        database.onversionchange = () => {
+          database.close();
+          this.databasePromise = null;
+        };
         resolve(database);
       };
       request.onerror = () => {
