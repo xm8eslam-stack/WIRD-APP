@@ -488,6 +488,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         </button>
 
                         <button
+                          disabled={isSavingRating}
                           onClick={() => { setRatingPortion(item); setReviewNotes(''); setWeakAyahNum(''); }}
                           className="py-2 px-1 text-center bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800/60 transition-all flex flex-col items-center gap-1"
                         >
@@ -877,7 +878,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
               </h3>
-              <button onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="text-stone-400 hover:text-stone-600">
+              <button disabled={isSavingRating} onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
