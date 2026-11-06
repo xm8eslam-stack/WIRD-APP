@@ -1375,7 +1375,11 @@ export const StorageService = {
     minutes: number,
     taskName: string
   ): boolean {
-    return this.recordSessionCompletionDetailed(memorizedAyahs, reviewedPages, minutes, taskName).success;
+    const result = this.recordSessionCompletionDetailed(memorizedAyahs, reviewedPages, minutes, taskName);
+    if (!result.success && !result.rollbackVerified) {
+      console.error('[WIRD Storage] Session completion rollback requires recovery:', result.failureStage);
+    }
+    return result.success;
   },
 
   recordSessionCompletionDetailed(
@@ -1399,7 +1403,13 @@ export const StorageService = {
     const activitySnapshot = this.captureRawSnapshot([STORAGE_KEYS.LOGS, STORAGE_KEYS.PROFILE]);
     if (!activitySnapshot.available) return fail('snapshot-read');
 
-    const restoreActivitySnapshots = (): boolean => this.restoreRawSnapshot(activitySnapshot).success;
+    const restoreActivitySnapshots = (): boolean => {
+      const restored = this.restoreRawSnapshot(activitySnapshot);
+      if (!restored.success) {
+        console.error('[WIRD Storage] Activity/profile rollback requires recovery:', restored.failedKeys);
+      }
+      return restored.success;
+    };
 
     let logs: DailyLog[];
     try {
