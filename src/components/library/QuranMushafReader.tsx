@@ -58,7 +58,7 @@ function readBookmarks(): number[] {
 
 export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack, initialPage }) => {
   const [page, setPage] = useState(() => Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage());
-  const [pageInput, setPageInput] = useState(String(readLastPage()));
+  const [pageInput, setPageInput] = useState(String(Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage()));
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
