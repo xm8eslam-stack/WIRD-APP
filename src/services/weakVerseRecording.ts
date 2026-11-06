@@ -140,6 +140,29 @@ export function buildWeakVerseFailureTransaction(
   }
 }
 
+export type BuildWeakVerseResolutionSnapshotResult =
+  | { success: true; records: import('../types/quran').WeakVerseItem[]; changed: boolean }
+  | { success: false; messageAr: string };
+
+/** Prepare an idempotent weak-verse resolution without writing to local storage. */
+export function buildWeakVerseResolutionSnapshot(
+  id: string
+): BuildWeakVerseResolutionSnapshotResult {
+  if (typeof id !== 'string' || !id.trim() || id.length > 180) {
+    return { success: false, messageAr: 'معرّف الآية المتعثرة غير صالح؛ لم يتم تعديل السجل.' };
+  }
+  try {
+    const current = RetentionService.getWeakVerses();
+    const records = current.filter(item => item.id !== id);
+    return { success: true, records, changed: records.length !== current.length };
+  } catch (error) {
+    return {
+      success: false,
+      messageAr: error instanceof Error ? error.message : 'تعذر قراءة قائمة الآيات المتعثرة؛ لم يتم تعديل السجل.'
+    };
+  }
+}
+
 /** Save the canonical weak portion and its mistake counter without leaving a half-written result. */
 export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): RecordWeakVerseFailureResult {
   const surah = Number.isSafeInteger(input.surahNumber)
