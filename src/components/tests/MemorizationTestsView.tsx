@@ -21,7 +21,7 @@ import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/
 
 interface MemorizationTestsViewProps {
   onSaveTestResult: (result: TestResult) => boolean;
-  onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number) => void;
+  onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number, text: string, notes: string) => boolean;
 }
 
 type TestType = 'complete_verse' | 'bidirectional_recall' | 'random_recall' | 'mutashabihat';
@@ -99,28 +99,24 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   const handleAddCurrentToWeakVerses = () => {
-    try {
-      RetentionService.addOrIncrementWeakVerse(
-        currentQ.surahNumber,
-        currentQ.targetAyahNumber,
-        currentQ.surahName,
-        currentQ.options[currentQ.correctIndex],
-        `تعثر في اختبار: ${
-          selectedTestType === 'complete_verse' ? 'إكمال الآية التالية' :
-          selectedTestType === 'bidirectional_recall' ? 'الآية السابقة والتالية' :
-          selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
-        }`
-      );
-      setWeakVerseFeedback({
-        message: `تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} بنجاح في قائمة الآيات الملتبسة.`,
-        success: true
-      });
-    } catch (error) {
-      setWeakVerseFeedback({
-        message: error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.',
-        success: false
-      });
-    }
+    const notes = `تعثر في اختبار: ${
+      selectedTestType === 'complete_verse' ? 'إكمال الآية التالية' :
+      selectedTestType === 'bidirectional_recall' ? 'الآية السابقة والتالية' :
+      selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
+    }`;
+    const saved = onAddVerseToRevision(
+      currentQ.surahNumber,
+      currentQ.surahName,
+      currentQ.targetAyahNumber,
+      currentQ.options[currentQ.correctIndex],
+      notes
+    );
+    setWeakVerseFeedback({
+      message: saved
+        ? `تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} في قائمة الالتباس والمراجعة المستعجلة.`
+        : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.',
+      success: saved
+    });
   };
 
   return (

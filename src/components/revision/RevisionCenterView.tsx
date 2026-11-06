@@ -32,6 +32,7 @@ import { RetentionService, RetentionMetrics } from '../../services/retentionServ
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadAyahByCoordinate } from '../../data/quranDataLoader';
+import { recordWeakVerseFailure } from '../../services/weakVerseRecording';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
@@ -189,7 +190,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
     refreshAll();
     setActionFeedback({
-      message: `تم تثبيت ${ayahRef} بنجاح وإزالتها من قائمة الآيات المتعثرة.`,
+      message: `تمت إزالة ${ayahRef} من قائمة الآيات الملتبسة فقط؛ لم يتغير تقييم المقطع أو موعد مراجعته.`,
       type: 'success'
     });
   };
@@ -206,16 +207,15 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       text = found?.text || `آية رقم ${manualWeakAyahNum}`;
     }
 
-    try {
-      RetentionService.addOrIncrementWeakVerse(
-        weakSurahNum,
-        manualWeakAyahNum,
-        surah.name,
-        text,
-        manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
-      );
-    } catch (error) {
-      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة.', type: 'warn' });
+    const result = recordWeakVerseFailure({
+      surahNumber: weakSurahNum,
+      surahName: surah.name,
+      ayahNumber: manualWeakAyahNum,
+      text,
+      notes: manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
+    });
+    if (!result.success) {
+      setActionFeedback({ message: result.messageAr, type: 'warn' });
       return;
     }
 
@@ -649,7 +649,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                       className="flex-1 py-1.5 px-3 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-colors flex items-center justify-center gap-1.5"
                     >
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>تم التثبيت والإتقان (إزالة)</span>
+                      <span>إزالة من قائمة الالتباس</span>
                     </button>
 
                     {onStartSession && (

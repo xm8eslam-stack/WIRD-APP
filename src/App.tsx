@@ -322,20 +322,21 @@ export default function App() {
   };
 
   // Record the weak-verse portion and its mistake counter as one recoverable operation.
-  const handleAddVerseToRevision = (surahNumber: number, surahName: string, ayahNumber: number) => {
-    const result = recordWeakVerseFailure({
-      surahNumber,
-      surahName,
-      ayahNumber,
-      text: `الآية رقم ${ayahNumber} من سورة ${surahName}`,
-      notes: 'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
-    });
+  const handleAddVerseToRevision = (
+    surahNumber: number,
+    surahName: string,
+    ayahNumber: number,
+    text: string,
+    notes: string
+  ): boolean => {
+    const result = recordWeakVerseFailure({ surahNumber, surahName, ayahNumber, text, notes });
     setRevisionItems(StorageService.getRevisionItems());
     if (!result.success) {
       showToast(result.messageAr, 'error');
-      return;
+      return false;
     }
     showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+    return true;
   };
 
   // Reset all data and report whether every scoped key was durably removed.

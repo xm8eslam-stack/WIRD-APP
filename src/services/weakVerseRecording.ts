@@ -1,5 +1,6 @@
 import type { PortionStatusRecord } from '../types/quran';
 import { RetentionService } from './retentionService';
+import { getLocalDateString } from './unifiedPortionService';
 
 export interface RecordWeakVerseFailureInput {
   surahNumber: number;
@@ -24,7 +25,7 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
       startAyah: input.ayahNumber,
       endAyah: input.ayahNumber,
       status: 'weak',
-      nextDueDate: new Date().toISOString().slice(0, 10),
+      nextDueDate: getLocalDateString(),
       intervalDays: 1,
       easeFactor: 2.0,
       repetitionCount: 1,
