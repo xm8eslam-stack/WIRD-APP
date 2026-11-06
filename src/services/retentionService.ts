@@ -534,21 +534,25 @@ export const RetentionService = {
     };
 
     const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
-    const previousWeakArchive = StorageService.getRawItem(APP_STORAGE_KEYS.WEAK_VERSES);
-    const restoreAttempt = (): boolean => {
-      const portionsRestored = this.savePortions(portions) &&
-        JSON.stringify(this.getPortions()) === JSON.stringify(portions);
-      if (previousWeakArchive === null) {
-        StorageService.removeRawItem(APP_STORAGE_KEYS.WEAK_VERSES);
-      } else {
-        StorageService.setRawItem(APP_STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
-      }
-      const weakArchiveRestored = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === previousWeakArchive;
-      return portionsRestored && weakArchiveRestored;
-    };
+    const transactionSnapshot = StorageService.captureRawSnapshot([
+      STORAGE_KEYS.UNIFIED_PORTIONS,
+      STORAGE_KEYS.SCHEMA_VERSION,
+      STORAGE_KEYS.PORTIONS,
+      STORAGE_KEYS.REVISION,
+      STORAGE_KEYS.WEAK_VERSES,
+      STORAGE_KEYS.LOGS,
+      STORAGE_KEYS.PROFILE
+    ]);
+    if (!transactionSnapshot.available) {
+      throw new Error('تعذر قراءة جميع الأرشيفات الأصلية والتحقق منها؛ لم يبدأ تسجيل تقييم المراجعة لحماية بياناتك.');
+    }
+    const restoreAttempt = (): boolean => StorageService.restoreRawSnapshot(transactionSnapshot).success;
 
     if (!this.savePortions(updatedList)) {
-      throw new Error('تعذر حفظ تقييم المراجعة في التخزين المحلي؛ لم يتم تأكيد التغيير.');
+      if (!restoreAttempt()) {
+        throw new Error('فشل حفظ تقييم المراجعة، كما تعذر التحقق من استعادة جميع الأرشيفات السابقة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
+      }
+      throw new Error('تعذر حفظ تقييم المراجعة؛ أُعيدت جميع الأرشيفات إلى حالتها السابقة ولم يتم تأكيد التغيير.');
     }
 
     if (rating === 'failed' && weakAyahDetails) {
@@ -569,17 +573,17 @@ export const RetentionService = {
     }
 
     // Activity aggregation is a separate durable write; record only measured time.
-    const activitySaved = StorageService.recordSessionCompletion(
+    const activityResult = StorageService.recordSessionCompletionDetailed(
       0,
       reviewedPagesCount,
       minutesSpent,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
-    if (!activitySaved) {
+    if (!activityResult.success) {
       if (!restoreAttempt()) {
-        throw new Error('تعذر حفظ سجل نشاط المراجعة، كما تعذر التحقق من استعادة تقييم المقطع وسجل الآيات المتعثرة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
+        throw new Error('تعذر حفظ سجل نشاط المراجعة، كما تعذر التحقق من استعادة جميع الأرشيفات (المقطع والآيات المتعثرة والنشاط والملف الشخصي). لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
       }
-      throw new Error('تعذر حفظ سجل نشاط المراجعة؛ أُلغي التقييم وأُعيدت حالة المقطع وقائمة الآيات إلى ما قبل المحاولة. يمكنك المحاولة مجددًا.');
+      throw new Error('تعذر حفظ سجل نشاط المراجعة؛ أُعيدت جميع الأرشيفات إلى حالتها السابقة ولم يتم تأكيد التقييم. يمكنك المحاولة مجددًا.');
     }
 
     return {
