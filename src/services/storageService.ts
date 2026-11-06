@@ -39,46 +39,125 @@ function resolveStorageKey(key: string, scope = activeStorageScope): string {
   return `${STORAGE_SCOPE_PREFIX}:${scope}:${key}`;
 }
 
-function rawGetItem(key: string): string | null {
+interface DurableStorageRead {
+  available: boolean;
+  value: string | null;
+}
+
+/** Reads the durable backend without silently substituting a stale memory cache. */
+function readDurableValue(key: string): DurableStorageRead {
   try {
-    if (typeof localStorage !== 'undefined') {
-      const value = localStorage.getItem(key);
-      if (value !== null) return value;
+    if (typeof localStorage === 'undefined') {
+      return { available: true, value: memoryStorage.get(key) ?? null };
     }
+    return { available: true, value: localStorage.getItem(key) };
   } catch {
-    // Fall back to the in-memory copy when browser storage is unavailable.
+    return { available: false, value: null };
   }
+}
+
+function restoreDurableValue(key: string, value: string | null): boolean {
+  try {
+    if (typeof localStorage === 'undefined') {
+      if (value === null) memoryStorage.delete(key);
+      else memoryStorage.set(key, value);
+      return (memoryStorage.get(key) ?? null) === value;
+    }
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+    return localStorage.getItem(key) === value;
+  } catch {
+    return false;
+  }
+}
+
+function restoreMemoryValue(key: string, value: string | undefined): void {
+  if (value === undefined) memoryStorage.delete(key);
+  else memoryStorage.set(key, value);
+}
+
+function rawGetItem(key: string): string | null {
+  const durable = readDurableValue(key);
+  if (durable.available) return durable.value;
+  // Memory fallback is only valid when the durable backend is unavailable,
+  // never when it authoritatively reports that the key is absent.
   return memoryStorage.get(key) ?? null;
 }
 
 function rawSetItem(key: string, value: string): boolean {
   const previousMemoryValue = memoryStorage.get(key);
+  const previousDurable = readDurableValue(key);
+  if (!previousDurable.available) return false;
+
   if (typeof localStorage === 'undefined') {
     memoryStorage.set(key, value);
-    return true;
+    return memoryStorage.get(key) === value;
   }
+
   try {
     localStorage.setItem(key, value);
-    memoryStorage.set(key, value);
-    return true;
+    const readback = readDurableValue(key);
+    if (readback.available && readback.value === value) {
+      memoryStorage.set(key, value);
+      return true;
+    }
+
+    const current = readDurableValue(key);
+    const rollbackVerified = current.available && current.value === previousDurable.value
+      ? true
+      : restoreDurableValue(key, previousDurable.value);
+    restoreMemoryValue(key, previousMemoryValue);
+    if (!rollbackVerified) {
+      console.error('[WIRD Storage] Write readback failed and the previous durable value could not be verified for ' + key);
+    }
+    return false;
   } catch (error) {
-    // A failed durable write must not appear successful through the memory fallback.
-    if (previousMemoryValue === undefined) memoryStorage.delete(key);
-    else memoryStorage.set(key, previousMemoryValue);
-    console.error(`[WIRD Storage] Durable write to localStorage failed for ${key}`, error);
+    const current = readDurableValue(key);
+    const rollbackVerified = current.available && current.value === previousDurable.value
+      ? true
+      : restoreDurableValue(key, previousDurable.value);
+    restoreMemoryValue(key, previousMemoryValue);
+    if (!rollbackVerified) {
+      console.error('[WIRD Storage] Failed write left an unverified durable value for ' + key, error);
+    }
     return false;
   }
 }
 
 function rawRemoveItem(key: string): boolean {
-  let success = true;
-  try {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
-  } catch {
-    success = false;
+  const previousMemoryValue = memoryStorage.get(key);
+  const previousDurable = readDurableValue(key);
+  if (!previousDurable.available) return false;
+  if (previousDurable.value === null) {
+    memoryStorage.delete(key);
+    return true;
   }
-  memoryStorage.delete(key);
-  return success;
+
+  if (typeof localStorage === 'undefined') {
+    memoryStorage.delete(key);
+    return true;
+  }
+
+  try {
+    localStorage.removeItem(key);
+    const readback = readDurableValue(key);
+    if (readback.available && readback.value === null) {
+      memoryStorage.delete(key);
+      return true;
+    }
+  } catch {
+    // Attempt to restore the pre-operation value below.
+  }
+
+  const current = readDurableValue(key);
+  const rollbackVerified = current.available && current.value === previousDurable.value
+    ? true
+    : restoreDurableValue(key, previousDurable.value);
+  restoreMemoryValue(key, previousMemoryValue);
+  if (!rollbackVerified) {
+    console.error('[WIRD Storage] Failed removal left an unverified durable value for ' + key);
+  }
+  return false;
 }
 
 /**
