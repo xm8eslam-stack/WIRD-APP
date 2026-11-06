@@ -3,9 +3,11 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Last verified application-code main SHA before this documentation checkpoint: `60d475d1f4f06ea4a852751e1548297d9c7dc6de` (PR #37).
-- Main Quality Gate after PR #32: run 42240305979 — **success** on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e. Main Quality Gate after PR #34: run 42241532674 — **success** on exact main SHA bfff3969d510c49da6d0224a375b87ca2959c651.
-- Production deployment for current main SHA bfff3969d510c49da6d0224a375b87ca2959c651: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
+- Current main SHA: `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f` (PR #45 merge).
+- PR #43 grouped transaction primitive: exact-head PR/push runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
+- PR #44 weak-verse failure journal integration: exact-head PR/push runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
+- PR #45 weak-verse resolution journal integration: exact-head PR/push runs `42261861919` and `42261851120` passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`; post-merge main run `42262136009` is **in progress** on the current main SHA. Recheck before marking post-merge verification complete.
+- Vercel Production deployment for current main is not confirmed. Green GitHub Actions is not a deployment receipt.
 
 ## Completed since the previous checkpoint
 1. PR #14 — c0390692d5f9ec7e81e04c8a674dbb035e0924ec
@@ -213,3 +215,37 @@
 6. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; verify an actual Vercel production deployment for the exact main SHA.
 
 **Important current-state distinction:** PR #37 journals profile settings/theme and plan snapshots, but profile streak/activity updates inside `recordSessionCompletionDetailed`, backup import/reset, canonical portions/revision, weak verses, and tests are not yet journal-first. This is not completed cloud sync or release readiness.
+
+
+## 2026-11-06 — PR #43, #44, and #45 journal-first milestones merged
+
+### PR #43 — grouped local journal transactions
+- Merged as `dc258764723b4d88635175c912d159e6adaacf4b`.
+- Added a versioned grouped-transaction envelope under the existing `syncMeta` journal collection.
+- Multiple local projection operations now share one IndexedDB event+outbox pair and one projection-cursor step.
+- The projection transaction snapshots only affected scoped keys, verifies each child write, and restores/verifies every affected key if a child projection fails.
+- Stable mutation identity is reused as the transaction document identity so retries do not create a fingerprint collision.
+- Exact-head PR/push runs `42258043045` and `42258032606` passed on SHA `73faac0434cf626c6d55907f579aa245ba037a1e`; post-merge main run `42258433095` passed.
+
+### PR #44 — journal-first weak-verse failure recording
+- Merged as `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
+- Manual weak-verse recording and test-driven weak-verse recording now prepare snapshots without writing first, then persist the canonical weak portion and weak-verse counter together in one grouped journal transaction.
+- Added stable per-action mutation IDs, duplicate-submit guards, durable preflight reads for every affected archive, and recovery verification before success is reported.
+- Exact-head PR/push runs `42260702702` and `42260691784` passed on SHA `d01d31605204ebb50ff93467d4739323f280b5ed`; post-merge main run `42261020224` passed.
+
+### PR #45 — journal-first weak-verse resolution
+- Merged as `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`.
+- Weak-verse removal now builds a pure snapshot, verifies durable source reads, and persists through the UID-scoped IndexedDB journal before changing the local projection.
+- Stable retry identity and idempotent repeated resolution are preserved. Resolution does not change canonical portion rating or review schedule.
+- Exact-head PR/push runs `42261861919` and `42261851120` passed on SHA `e2a28de43cc4f31176883af8022a34cb2e1ec773`.
+- Post-merge main Quality Gate `42262136009` was still in progress when this checkpoint was written; verify its final result separately.
+
+## Updated next actions — Phase 2 remains IN PROGRESS
+1. Journal-first revision ratings, grouping the canonical portion snapshot, optional weak-verse update, activity log snapshot, and profile streak snapshot into one event.
+2. Journal-first memorization/session completion and related plan/profile/activity changes as one recoverable grouped transaction.
+3. Journal backup import/reset with explicit pending-event ordering and crash recovery.
+4. Reconcile mutable local activity, weak-verse, and test snapshots with immutable event-ledger semantics before enabling cloud sync.
+5. Implement Firestore worker/repository, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests.
+6. Finish manual responsive/accessibility/audio QA and verify Production deployment for the exact main SHA.
+
+**Important boundary:** PR #43–#45 improve local write-ahead persistence and replay. They do not implement Firestore cloud sync, immutable remote event semantics, production rules deployment, or release readiness.
