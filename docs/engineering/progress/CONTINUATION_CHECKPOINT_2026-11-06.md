@@ -1,31 +1,33 @@
 # WIRD — Continuation Checkpoint (2026-11-06)
 
-## Latest verified position — PRs #49–#54 merged; PR #55 in progress
+## Latest verified position — PRs #49–#55 merged
 
 - Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
-- Latest main SHA: `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
+- Latest main SHA: `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`.
 - PR #49 merged: Tafsir Express route and direct Surah Mushaf navigation; merge SHA `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`; exact-head run `42267849373` passed.
 - PR #50 merged: journal-first session progress/activity/profile; merge SHA `dacba8298db954392f7fbcbbf10af9f18ecc31dc`; exact-head run `42276148126` passed.
 - PR #51 merged: matching smart-plan task in same session transaction; merge SHA `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head run `42276561011` and post-merge run `42276748346` passed.
 - PR #52 merged: journal-ordered backup import/reset; merge SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head run `42277464313` and post-merge run `42277666291` passed.
-- PR #53 merged: removed unused direct-write App handlers and updated checkpoints; merge SHA `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge run `42278457062` passed.
-- Main then advanced via direct Tafsir multi-source commit `dee0e7a926700092e3d4b3e5fd63e74565428de0`; no Actions run was found for this exact SHA at checkpoint time.
-- PR #54 current branch: `feat/domain-event-envelope-phase3-20261106-fresh`, based on latest main. Adds typed domain-event metadata to journal entries for sessions, revision ratings, tests, and weak-verse failures/resolutions. CI pending.
-- Vercel build-rate limit is not a merge blocker per owner instruction; production deployment remains unconfirmed.
-- Firestore client/sync worker/remote acknowledgements/tombstones/two-device sync remain unimplemented.
+- PR #53 merged: removed unused direct-write App handlers; merge SHA `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge run `42278457062` passed.
+- PR #54 merged: typed, validated local domain-event envelopes; merge SHA `6cc1d20e63257387044334da45e38bc204961c09`; exact-head run `42280361752` and post-merge run `42280564932` passed.
+- PR #55 merged: development demo loader now uses one journaled grouped transaction for authenticated users and one rollback-safe local transaction for guests; merge SHA `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`; exact-head runs `42281993489` and `42281999065` passed; post-merge main run `42282206155` passed.
+- Main also contains direct Quran Library tabs/Juz navigation commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
+- Vercel status is not a merge gate per owner instruction; production deployment/live browser verification remain unconfirmed.
+- Firestore client/sync worker/remote acknowledgements/tombstones/two-device sync remain unimplemented and inactive.
 
 ## Next work
-1. Finish PR #55 exact-head Quality Gate and second review, merge, and verify post-merge main.
-2. Complete remaining local mutation audit and failure-injection coverage.
-3. Define deterministic aggregate derivation from domain events.
-4. Implement Firestore adapter/sync coordinator behind a disabled feature gate.
-5. Test offline replay, duplicate delivery, account isolation, tombstones, and two-device conflicts.
-6. Keep production sync inactive until backup review and explicit approval.
+1. Finish the remaining local mutation audit: legacy outbox migration/reset, device-local preferences, and remaining multi-key mutation callers.
+2. Add failure-injection coverage for any remaining IndexedDB blocked/quota/read/write cases and rollback verification gaps.
+3. Derive daily aggregates and streaks deterministically from the typed domain-event ledger.
+4. Define Firestore record/event mapping and conflict semantics.
+5. Implement Firestore adapter/sync coordinator behind a disabled feature gate.
+6. Test offline replay, duplicate delivery, account isolation, tombstones, and two-device conflicts.
+7. Keep production sync inactive until backup review and explicit approval.
 
 ## Required process
 - Work from freshly fetched `main` on a separate branch.
 - Run exact-head GitHub Actions Quality Gate, inspect all jobs, then merge.
-- Verify merge SHA and main state after each PR.
+- Verify merge SHA and post-merge main run after each PR.
 - Vercel status is informational for merge only; do not claim deployment success.
 - Never enable cloud writes or deploy production Firestore rules without explicit approval.
 
