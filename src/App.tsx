@@ -13,6 +13,7 @@ import { persistSessionCompletion } from './services/sessionPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
 import { recordWeakVerseFailure } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
+import { persistEnginePlansSnapshot, persistPlansSnapshot, persistProfileSnapshot } from './services/journaledSnapshotService';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -137,12 +138,26 @@ export default function App() {
     settings: 'الإعدادات والملف الشخصي'
   };
 
+  const refreshJournaledSnapshots = () => {
+    setProfile(StorageService.getProfile());
+    setPlans(StorageService.getPlans());
+    setEnginePlans(StorageService.getEnginePlans());
+  };
+
   // Toggle Theme handler
-  const handleToggleTheme = () => {
+  const handleToggleTheme = async () => {
     const newTheme: 'light' | 'dark' = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: newTheme };
-    if (!StorageService.saveProfile(updated)) {
-      showToast('تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
+    const result = await persistProfileSnapshot(updated);
+    if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا البيانات الحالية؛ لم ننفذ تغيير المظهر الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
+        ? 'تم حفظ تغيير المظهر في سجل الاستعادة، لكن تعذر إسقاطه محلياً.'
+        : result.recoveryBlocked
+          ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نطبق التغيير الجديد لحماية بياناتك.'
+          : 'تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
       return;
     }
     setProfile(updated);
@@ -217,13 +232,13 @@ export default function App() {
   };
 
   // A session is complete only after canonical progress and activity both persist.
-  const handleCompleteSession = (
+  const handleCompleteSession = async (
     memorizedAyahs: number,
     reviewedPages: number,
     minutes: number,
     taskName: string,
     mode: 'memorize' | 'review' = sessionParams.mode
-  ): boolean => {
+  ): Promise<boolean> => {
     const result = persistSessionCompletion({
       mode, memorizedAyahs, reviewedPages, minutes, taskName,
       surahNumber: sessionParams.surahNumber,
@@ -253,8 +268,18 @@ export default function App() {
           memorizationTask: { ...matchingDay.memorizationTask, completed: true, completedAt: new Date().toISOString() }
         });
         const updatedPlans = currentEnginePlans.map(plan => plan.id === activeEnginePlan.id ? updatedPlan : plan);
-        if (StorageService.saveEnginePlans(updatedPlans)) setEnginePlans(updatedPlans);
-        else showToast('تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
+        const planResult = await persistEnginePlansSnapshot(updatedPlans);
+        if (planResult.success) setEnginePlans(updatedPlans);
+        else {
+          if (planResult.recoveredPriorEvents) refreshJournaledSnapshots();
+          showToast(planResult.recoveredPriorEvents
+          ? 'استعدنا تحديثاً سابقاً للخطة الذكية؛ لم ننفذ التحديث الجديد. راجع الخطة ثم أعد المحاولة.'
+          : planResult.queued
+            ? 'تم حفظ تحديث الخطة الذكية في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
+            : planResult.recoveryBlocked
+            ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تحديث الخطة الجديد.'
+            : 'تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
+        }
       }
     }
     setLogs(StorageService.getLogsForDisplay());
@@ -283,9 +308,17 @@ export default function App() {
   };
 
   // Save preset plans
-  const handleUpdatePlans = (newPlans: MemorizationPlan[]): boolean => {
-    if (!StorageService.savePlans(newPlans)) {
-      showToast('تعذر حفظ الخطة في التخزين المحلي.', 'error');
+  const handleUpdatePlans = async (newPlans: MemorizationPlan[]): Promise<boolean> => {
+    const result = await persistPlansSnapshot(newPlans);
+    if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا الخطط؛ لم ننفذ تعديل الخطة الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
+        ? 'الخطة محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
+        : result.recoveryBlocked
+          ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تعديل الخطة الجديد.'
+          : 'تعذر حفظ الخطة في التخزين المحلي.', 'error');
       return false;
     }
     setPlans(newPlans);
@@ -293,12 +326,37 @@ export default function App() {
   };
 
   // Save engine plans
-  const handleUpdateEnginePlans = (updatedEnginePlans: EngineGeneratedPlan[]): boolean => {
-    if (!StorageService.saveEnginePlans(updatedEnginePlans)) {
-      showToast('تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
+  const handleUpdateEnginePlans = async (updatedEnginePlans: EngineGeneratedPlan[]): Promise<boolean> => {
+    const result = await persistEnginePlansSnapshot(updatedEnginePlans);
+    if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا الخطط؛ لم ننفذ تعديل الخطة الذكية الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
+        ? 'الخطة الذكية محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
+        : result.recoveryBlocked
+          ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تعديل الخطة الذكية الجديد.'
+          : 'تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
       return false;
     }
     setEnginePlans(updatedEnginePlans);
+    return true;
+  };
+
+  const handleSaveProfile = async (updatedProfile: UserProfile): Promise<boolean> => {
+    const result = await persistProfileSnapshot(updatedProfile);
+    if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا الملف الشخصي؛ لم ننفذ التعديل الجديد. راجع البيانات ثم أعد المحاولة.'
+        : result.queued
+        ? 'تم حفظ الملف الشخصي في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
+        : result.recoveryBlocked
+          ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تعديل الملف الشخصي الجديد.'
+          : 'تعذر حفظ إعدادات الملف الشخصي في التخزين الدائم.', 'error');
+      return false;
+    }
+    setProfile(updatedProfile);
     return true;
   };
 
@@ -517,6 +575,7 @@ export default function App() {
               <SettingsView
                 profile={profile}
                 onUpdateProfile={setProfile}
+                onSaveProfile={handleSaveProfile}
                 onResetAllData={handleResetAllData}
                 onToast={showToast}
               />
