@@ -62,3 +62,22 @@
 5. Connect domain mutations to UID-scoped Firestore sync only after the journal is tested.
 6. Add two-account/two-device/offline tests, collection-specific Firestore rules, and manual UI/audio QA.
 7. Do not deploy production rules, activate cloud writes, or claim release readiness without explicit approval and successful real deployment verification.
+
+
+## 2026-11-06 — PR #24 transactional reset and snapshot restoration checkpoint
+
+- PR #24 merged to `main` as `753dbf7d95f6f577f022952f122280de69d8e074` from head `545d7f7921a185d7a2cc8e4c92a38896484828d6`.
+- `resetAllData` now captures a complete trusted snapshot before deleting any key; unreadable storage stops the reset before the first deletion.
+- If any deletion fails or cannot be durably verified, reset attempts to restore the complete previous dataset and still returns failure (it never reports a partial reset as success).
+- `restoreStorageSnapshot` now judges success from the final memory and durable read-back, not a transient cleanup result when the final value already matches the snapshot.
+- Added failure-injection coverage for partial deletion rollback and snapshot-read preflight failure. Existing restore durable-readback coverage remains in place.
+- PR exact-head Quality Gate run `42232090692` (#883): **success** — automated suites, Firestore rules emulator, dependency audit, TypeScript, production build, and server smoke test.
+- Post-merge main Quality Gate run `42232397539` (#885) completed successfully on exact main SHA `753dbf7d95f6f577f022952f122280de69d8e074`.
+- Vercel reported its known free deployment-rate limit on the PR head. This is not a code-build failure and production deployment remains unconfirmed.
+
+## Updated remaining work — do not claim release readiness
+1. Audit remaining domain mutation call sites and multi-key rollback/recovery behavior.
+2. Replace localStorage outbox read/modify/write with an IndexedDB transactional event journal; prove cross-tab atomicity, crash recovery, quota handling, and deterministic replay.
+3. Connect domain mutations to UID-scoped Firestore only after the journal and replay tests pass.
+4. Complete collection-specific Firestore rules and two-account/two-device/offline tests.
+5. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; confirm a real production deployment.

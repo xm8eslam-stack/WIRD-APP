@@ -75,3 +75,12 @@
 - [x] Verify weak-verse quota failure, rollback failure/recovery warning, and profile quota failure after successful portion/weak-verse/activity writes in CI (PR #12, Actions #741).
 - [x] Verify silent no-op write, mismatched write, silent removal, and weak-verse rollback behavior in CI (PR #13, Actions #759).
 - [ ] Audit remaining multi-key mutation paths for rollback completeness and recovery-state reporting before marking Phase 2 complete.
+
+
+## Storage reset rollback — verified in PR #24
+- [x] Capture a complete durable snapshot before a full data reset; abort before deletion if snapshot reads fail.
+- [x] Roll back earlier deletions when a later scoped-key removal fails; never report a partial reset as success.
+- [x] Verify snapshot restoration from final memory and durable values.
+- [x] Failure-injection tests for partial deletion rollback and unreadable-snapshot preflight (PR #24; exact-head Quality Gate run 42232090692 passed).
+- [x] Post-merge main Quality Gate run 42232397539 (#885) passed on exact SHA `753dbf7d95f6f577f022952f122280de69d8e074`.
+- [ ] Complete the remaining mutation-path and cross-tab/outbox audit.
