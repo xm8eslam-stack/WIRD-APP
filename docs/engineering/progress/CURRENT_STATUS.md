@@ -3,7 +3,7 @@
 **Updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PRs:** #3, #4, #5, #6, #9, and #10 merged; PR #7 was closed without merge as superseded.
+**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, and #11 merged; PR #7 was closed without merge as superseded.
 
 ## Verified repository position
 
@@ -20,7 +20,7 @@
 **PHASE 2 — Memorization/revision correctness audit**  
 **Status:** IN PROGRESS on `main`; PR #10 merged and its code gates passed. Remaining daily queue/statistics/rollback audit is still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
-**Last code milestone:** PR #10 merge `e698718`; all code gates passed in Actions run `42194241711`.  
+**Last code milestone:** PR #11 merge `84aac72`; all code gates passed in Actions run `42195579600`.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
 **Remaining:** daily revision queue/weekly overview, aggregate statistics, and complete multi-key rollback audit remain Phase 2 work. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
 
@@ -57,12 +57,11 @@
 - Final PR head before merge: `958067b1b1e3c64513b1732c947e81c18a830a52`. Squash merge SHA on main: `e69871897c2561e7aa75c6e31f9005169ed08c23`.
 - The reviewed Phase 2 mutation-integrity slice is merged. Phase 2 itself remains IN PROGRESS; do not mark it completed until daily queue, aggregate statistics, and remaining rollback/mutation-path audits are complete.
 
-## Phase 2 queue/metrics audit — in progress on branch
+## Phase 2 queue/metrics audit — merged and verified
 
-- Working branch: `fix/phase2-queue-metrics-audit`, based on main code/docs checkpoint `0de185af757cfecead14beb98a465cf088200fff`.
-- Current code work: shared deterministic priority sorting for daily and weekly queues; removal of the unused gracePeriodDays queue option; legacy `init-` first-memorization entries filtered from review history without deleting stored history; duplicate review event IDs counted once across portion records; average ease excludes not-memorized portions; weak-ayah text is mandatory at the review-service boundary to prevent placeholder Quran text.
-- Added regression coverage for legacy history preservation/filtering, duplicate event identity, average ease denominator, weekly ordering, 20-item daily cap/backlog metrics, invalid dates, and missing weak-ayah text.
-- Tests are added but not yet run in CI. Current branch head before checkpoint docs: `c2d5ab906bc66443f63bdc049595d0504e303937`. No PR opened yet.
+- PR #11 from `fix/phase2-queue-metrics-audit` was squash-merged as `84aac72c9d3489f93d200e331c35760eb754462e`.
+- Merged behavior: shared deterministic priority sorting for daily and weekly queues; removal of the unused gracePeriodDays queue option; legacy `init-` first-memorization entries filtered from review history without deleting stored history; duplicate review event IDs counted once across portion records; average ease excludes not-memorized portions; weak-ayah text is mandatory at the review-service boundary.
+- Actions Quality Gate #708 (`42195579600`) passed on PR head `1c7e57e6beeed1327900acc38c5642298ba37aad`: 312 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
 
 ## Not yet implemented / not verified
 
@@ -97,7 +96,7 @@
 3. **High:** localStorage cannot atomically commit domain state plus outbox; a write-ahead event journal / transactional IndexedDB design is needed.
 4. **High:** Firestore rules are generic-envelope-only and not production complete.
 5. **High — local atomicity:** the outbox's localStorage read-modify-write is not cross-tab atomic; do not enable cloud sync until a transactional IndexedDB design is in place.
-6. **High — Phase 2:** PR #10's mutation-integrity slice is merged and CI-verified; continue auditing review scheduling, daily queue behavior, aggregate statistics, and multi-key rollback.
+6. **High — Phase 2:** PR #10 and PR #11 slices are merged and CI-verified; remaining work is multi-key rollback failure injection and any uncovered mutation paths.
 7. **Medium:** complete file-by-file audit of all mutation call sites, backup/restore, PWA, APIs, and Quran integrity remains open.
 8. **Release:** Vercel rate limit previously blocked a production deployment; retry only through the normal platform path when quota permits.
 
@@ -120,8 +119,8 @@
 
 ## Next exact action
 
-1. Re-fetch main and `fix/phase2-queue-metrics-audit`; inspect the complete diff and current head.
-2. Open a draft PR to trigger the full quality gate; fix any failures and perform an independent second review.
-3. Continue multi-key rollback tests under weak-verse write failure, profile write failure, quota, and read-back mismatch.
+1. Continue the Phase 2 multi-key rollback audit for review + weak-verse + activity writes.
+2. Inject weak-verse write failures, activity/profile write failures, storage quota errors, and read-back mismatches; verify full rollback or an explicit recovery-required state.
+3. Add tests for failure after each durable write and confirm the original raw archives remain recoverable.
 4. Keep localStorage outbox disconnected from cloud writes; cross-tab atomicity still requires an IndexedDB event+outbox transaction.
 5. Do not activate Firestore production writes or deploy production rules without explicit approval.
