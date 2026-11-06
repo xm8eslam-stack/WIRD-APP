@@ -6,7 +6,7 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS, isValidWeakVerseRecord } from './storageService';
+import { StorageService, STORAGE_KEYS, isValidWeakVerseRecord } from './storageService';
 import { createSecureId } from './secureId';
 import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
