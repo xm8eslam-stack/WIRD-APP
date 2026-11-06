@@ -45,6 +45,8 @@ interface OutboxState {
   deviceId: string;
   pending: OutboxMutation[];
   acknowledgedIds: string[];
+  /** Fingerprints retained for newly acknowledged IDs; optional for legacy schema-v1 states. */
+  acknowledgedMutations?: OutboxMutation[];
 }
 
 const MAX_PENDING_MUTATIONS = 1000;
@@ -96,8 +98,13 @@ function isValidMutation(value: unknown): value is OutboxMutation {
     && (value.lastErrorCode === undefined || (typeof value.lastErrorCode === 'string' && value.lastErrorCode.length <= 64));
 }
 
+
+function sameMutationIdentity(a: Pick<OutboxMutation, 'collection' | 'documentId' | 'operation' | 'payload'>, b: Pick<OutboxMutation, 'collection' | 'documentId' | 'operation' | 'payload'>): boolean {
+  return a.collection === b.collection && a.documentId === b.documentId && a.operation === b.operation && JSON.stringify(a.payload) === JSON.stringify(b.payload);
+}
+
 function createEmptyState(): OutboxState {
-  return { schemaVersion: 1, deviceId: createSecureId(), pending: [], acknowledgedIds: [] };
+  return { schemaVersion: 1, deviceId: createSecureId(), pending: [], acknowledgedIds: [], acknowledgedMutations: [] };
 }
 
 function readState(): OutboxState {
@@ -120,11 +127,28 @@ function readState(): OutboxState {
       !Array.isArray(parsed.pending) || parsed.pending.length > MAX_PENDING_MUTATIONS ||
       !Array.isArray(parsed.acknowledgedIds) || parsed.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS ||
       !parsed.pending.every(isValidMutation) ||
-      !parsed.acknowledgedIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128)) {
+      !parsed.acknowledgedIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128) ||
+      (parsed.acknowledgedMutations !== undefined &&
+        (!Array.isArray(parsed.acknowledgedMutations) ||
+          parsed.acknowledgedMutations.length > MAX_ACKNOWLEDGED_IDS ||
+          !parsed.acknowledgedMutations.every(isValidMutation)))) {
     throw new Error('بنية صندوق المزامنة غير صالحة؛ تم الحفاظ على النسخة الحالية دون تعديل.');
   }
 
-  return parsed as unknown as OutboxState;
+  const pendingIds = parsed.pending.map((item: OutboxMutation) => item.mutationId);
+  const acknowledgedIds = parsed.acknowledgedIds as string[];
+  const acknowledgedMutations = (parsed.acknowledgedMutations ?? []) as OutboxMutation[];
+  const fingerprintIds = acknowledgedMutations.map(item => item.mutationId);
+  if (new Set(pendingIds).size !== pendingIds.length ||
+      new Set(acknowledgedIds).size !== acknowledgedIds.length ||
+      new Set(fingerprintIds).size !== fingerprintIds.length ||
+      pendingIds.some(id => acknowledgedIds.includes(id)) ||
+      fingerprintIds.some(id => !acknowledgedIds.includes(id)) ||
+      fingerprintIds.some((id, index) => fingerprintIds.indexOf(id) !== index)) {
+    throw new Error('صندوق المزامنة يحتوي على معرفات مكررة أو متعارضة بين العمليات المعلقة والمؤكدة؛ تم إيقافه دون تعديل.');
+  }
+
+  return { ...(parsed as unknown as OutboxState), acknowledgedMutations };
 }
 
 function persistState(state: OutboxState): void {
@@ -173,6 +197,13 @@ export const LocalSyncOutbox = {
       return { status: 'already_pending', mutation: { ...existing } };
     }
     if (state.acknowledgedIds.includes(mutationId)) {
+      const acknowledged = state.acknowledgedMutations?.find(item => item.mutationId === mutationId);
+      if (!acknowledged) {
+        throw new Error('معرّف العملية موجود في سجل تأكيد قديم بلا بصمة بيانات؛ لا يمكن إثبات تطابق العملية بأمان، لذلك أوقفنا إعادة استخدامها.');
+      }
+      if (!sameMutationIdentity(acknowledged, { collection: input.collection, documentId: input.documentId, operation, payload: canonicalPayload })) {
+        throw new Error('معرّف عملية مؤكدة مستخدم لبيانات مختلفة؛ تم رفض العملية لمنع إسقاط تعديل جديد.');
+      }
       return { status: 'already_acknowledged', mutationId };
     }
     if (state.pending.length >= MAX_PENDING_MUTATIONS) {
@@ -220,11 +251,15 @@ export const LocalSyncOutbox = {
     const ids = new Set(mutationIds);
     const remaining = state.pending.filter(item => !ids.has(item.mutationId));
     const removedCount = state.pending.length - remaining.length;
-    const acknowledged = Array.from(new Set([...state.acknowledgedIds, ...state.pending.filter(item => ids.has(item.mutationId)).map(item => item.mutationId)]))
+    const newlyAcknowledged = state.pending.filter(item => ids.has(item.mutationId));
+    const acknowledged = [...state.acknowledgedIds, ...newlyAcknowledged.map(item => item.mutationId)]
       .slice(-MAX_ACKNOWLEDGED_IDS);
     if (removedCount === 0) return 0;
     state.pending = remaining;
     state.acknowledgedIds = acknowledged;
+    const fingerprints = [...(state.acknowledgedMutations ?? []), ...newlyAcknowledged]
+      .filter(item => acknowledged.includes(item.mutationId));
+    state.acknowledgedMutations = fingerprints.slice(-MAX_ACKNOWLEDGED_IDS);
     persistState(state);
     return removedCount;
   },
