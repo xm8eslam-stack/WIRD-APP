@@ -5,6 +5,7 @@ import type { PortionStatusRecord, WirdPortion, TestResult } from '../types/qura
 import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
 import { persistJournaledSessionCompletion } from './sessionPersistence';
+import { loadDemoDataJournaled } from './demoDataPersistence';
 import type { WirdDomainEvent } from './domainEvents';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
@@ -38,6 +39,27 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
   };
 
   try {
+    await test('Demo data loads as one journaled grouped projection and is not partially applied', async () => {
+      const journal = createJournal();
+      const result = await loadDemoDataJournaled({ journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      const event = events[0];
+      assert(result.success && result.mode === 'journal' && result.queued,
+        'Authenticated demo data must commit through the IndexedDB journal');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'All demo projections must share one atomic journal/outbox event');
+      assert(StorageService.getPlans().length > 0 && StorageService.getEnginePlans().length === 1,
+        'Demo plans and the engine plan must be projected');
+      assert(RetentionService.getPortions().length > 0 && StorageService.getWeakVerses().length > 0,
+        'Canonical demo portions and weak verses must be projected');
+      assert(StorageService.getLogs().length > 0 && StorageService.getProfile().name.includes('تجريبي'),
+        'Demo activity and profile must be projected');
+      assert(event?.collection === 'syncMeta' && event.projectionRequired !== false,
+        'Demo data must be recoverable from the append-only journal event');
+      journal.close();
+    });
+
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
       const journal = createJournal();
       const today = new Date().toISOString().slice(0, 10);
