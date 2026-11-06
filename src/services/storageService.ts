@@ -210,12 +210,14 @@ function isValidUserProfile(value: unknown): value is UserProfile {
   return true;
 }
 
-function readJsonArrayArchive<T>(key: string, label: string): T[] {
+function readJsonArrayArchive<T>(key: string, label: string, isValidRecord: (value: unknown) => value is T): T[] {
   const raw = getItem(key);
   if (raw === null) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('Archive root is not an array.');
+    if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
+      throw new Error('Archive contains malformed records.');
+    }
     return parsed as T[];
   } catch (error) {
     console.error('[WIRD Storage] ' + label + ' archive needs recovery; preserving original bytes:', error);
@@ -223,11 +225,25 @@ function readJsonArrayArchive<T>(key: string, label: string): T[] {
   }
 }
 
-function canWriteJsonArrayArchive(key: string): boolean {
+function readStrictJsonArrayArchive<T>(key: string, label: string, isValidRecord: (value: unknown) => value is T): T[] {
+  const raw = getItem(key);
+  if (raw === null) return [];
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error(label + ' archive is corrupt; export stopped to prevent an incomplete backup.'); }
+  if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
+    throw new Error(label + ' archive contains invalid records; export stopped to preserve the original data.');
+  }
+  return parsed;
+}
+
+function canWriteJsonArrayArchive(key: string, isValidRecord: (value: unknown) => boolean): boolean {
   const raw = getItem(key);
   if (raw === null) return true;
-  try { return Array.isArray(JSON.parse(raw)); }
-  catch { return false; }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length <= 10000 && parsed.every(isValidRecord);
+  } catch { return false; }
 }
 
 function isValidDailyLog(value: unknown): value is DailyLog {
@@ -771,31 +787,31 @@ export const StorageService = {
 
   // Plans (Returns clean empty array by default)
   getPlans(): MemorizationPlan[] {
-    return readJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans');
+    return readJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
   },
 
   savePlans(plans: MemorizationPlan[]): boolean {
-    if (!Array.isArray(plans) || !canWriteJsonArrayArchive(STORAGE_KEYS.PLANS)) return false;
+    if (!Array.isArray(plans) || plans.length > 500 || !plans.every(isValidMemorizationPlan) || !canWriteJsonArrayArchive(STORAGE_KEYS.PLANS, isValidMemorizationPlan)) return false;
     return setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
   },
 
   // Engine Plans
   getEnginePlans(): EngineGeneratedPlan[] {
-    return readJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans');
+    return readJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
   },
 
   saveEnginePlans(plans: EngineGeneratedPlan[]): boolean {
-    if (!Array.isArray(plans) || !canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS)) return false;
+    if (!Array.isArray(plans) || plans.length > 100 || !plans.every(isValidEngineGeneratedPlan) || !canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS, isValidEngineGeneratedPlan)) return false;
     return setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
   },
 
   // Revision Items
   getRevisionItems(): RevisionItem[] {
-    return readJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items');
+    return readJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidRevisionItem);
   },
 
   saveRevisionItems(items: RevisionItem[]): boolean {
-    if (!Array.isArray(items) || !canWriteJsonArrayArchive(STORAGE_KEYS.REVISION)) return false;
+    if (!Array.isArray(items) || items.length > 10000 || !items.every(isValidRevisionItem) || !canWriteJsonArrayArchive(STORAGE_KEYS.REVISION, isValidRevisionItem)) return false;
     return setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
   },
 
@@ -1070,13 +1086,13 @@ export const StorageService = {
 
   // Tests
   getTests(): TestResult[] {
-    return readJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results');
+    return readJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
   },
 
   saveTest(test: TestResult): boolean {
-    if (!canWriteJsonArrayArchive(STORAGE_KEYS.TESTS)) return false;
+    if (!isValidTestResultRecord(test) || !canWriteJsonArrayArchive(STORAGE_KEYS.TESTS, isValidTestResultRecord)) return false;
     try {
-      const current = this.getTests();
+      const current = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
       current.unshift(test);
       return setItem(STORAGE_KEYS.TESTS, JSON.stringify(current.slice(0, 50)));
     } catch (e) {
