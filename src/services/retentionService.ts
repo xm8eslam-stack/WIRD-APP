@@ -543,7 +543,7 @@ export const RetentionService = {
       } else {
         StorageService.setRawItem(APP_STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
       }
-      const weakArchiveRestored = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === previousWeakArchive;
+      const weakArchiveRestored = StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
       return portionsRestored && weakArchiveRestored;
     };
 
