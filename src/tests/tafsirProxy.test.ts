@@ -62,6 +62,21 @@ export async function runTafsirProxyTests(): Promise<{ passed: number; failed: n
     } finally { globalThis.fetch = originalFetch; }
   });
 
+  await test('Tafsir proxy converts an upstream HTML error page into a JSON 502 response', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '<!doctype html><html><body>Upstream maintenance</body></html>',
+      { status: 200, headers: { 'Content-Type': 'text/html' } }
+    )) as typeof fetch;
+    const res = new MockResponse();
+    try {
+      await tafsirHandler({ method: 'GET', query: { surah: '5', ayah: '3' }, headers: { 'x-forwarded-for': '198.51.100.30' } }, res);
+      assert(res.statusCode === 502, 'HTML upstream payload must not be accepted as tafsir content');
+      assert(res.body?.error === 'INVALID_TAFSIR_SOURCE_RESPONSE', 'HTML upstream payload must return a stable JSON error code');
+      assert(res.headers['Content-Type'].includes('application/json'), 'Proxy errors must retain JSON content type');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
   await test('Tafsir proxy rejects unexpected upstream book responses', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async () => new Response(JSON.stringify({ book: { id: 1 }, content: [{ text: 'wrong book' }] }), { status: 200 })) as typeof fetch;
