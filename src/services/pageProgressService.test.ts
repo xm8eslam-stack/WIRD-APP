@@ -39,7 +39,7 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     const segments = getPageAyahSegments(multiSegmentPage);
     const updated = buildPageStatusUpdate([], multiSegmentPage, 'weak', '2026-11-06');
     assert(updated?.length === segments.length, 'Every segment on a multi-Surah page must be represented');
-    assert(updated?.every(portion => portion.status === 'weak'), 'All page segments must receive the same requested status');
+    assert(Boolean(updated && updated.every(portion => portion.status === 'weak')), 'All page segments must receive the same requested status');
   });
 
   test('Invalid page status updates are rejected without producing a partial list', () => {
