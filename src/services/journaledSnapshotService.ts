@@ -31,6 +31,8 @@ export interface JournaledSnapshotOptions {
   journal?: IndexedDbSyncJournal;
   /** Test seam for deterministic replay-lock behavior. */
   runExclusive?: ProjectionLockRunner;
+  /** Abort a scoped migration if the active account changes while it waits for the journal lock. */
+  expectedStorageScope?: string;
 }
 
 /**
@@ -59,6 +61,16 @@ export async function persistJournaledSnapshot(
     };
   }
   const scope = StorageService.getStorageScope();
+  if (options.expectedStorageScope && options.expectedStorageScope !== scope) {
+    return {
+      success: false,
+      mode: scope.startsWith('user:') ? 'journal' : 'local-only',
+      queued: false,
+      recoveryBlocked: false,
+      recoveredPriorEvents: false,
+      error: 'تغير نطاق الحساب أثناء تجهيز العملية؛ أوقفنا الحفظ لحماية بيانات الحسابات.'
+    };
+  }
   if (!scope.startsWith('user:') || typeof indexedDB === 'undefined') {
     const success = localOnlyWrite();
     return {
@@ -81,10 +93,17 @@ export async function persistJournaledSnapshot(
 
   try {
     const outcome = await runExclusive('wird-journal-projection:' + uid, async () => {
+      const assertExpectedScope = () => {
+        if (options.expectedStorageScope && StorageService.getStorageScope() !== options.expectedStorageScope) {
+          throw new Error('تغير نطاق الحساب أثناء انتظار قفل سجل الحفظ؛ تُرك الحدث دون إسقاط على حساب آخر.');
+        }
+      };
+      assertExpectedScope();
       // Replay older committed events while holding the same cross-tab lock
       // used for this new enqueue. Never append a stale snapshot behind an
       // event that changed the local projection during recovery.
       const previousReplay = await replayJournalProjection(journal, inlineProjectionLock);
+      assertExpectedScope();
       preflightPassed = true;
       if (previousReplay.applied > 0) {
         recoveredPriorEvents = true;
@@ -93,7 +112,9 @@ export async function persistJournaledSnapshot(
 
       await journal.enqueue({ ...input, mutationId: input.mutationId ?? createSecureId() });
       queued = true;
+      assertExpectedScope();
       await replayJournalProjection(journal, inlineProjectionLock);
+      assertExpectedScope();
       return 'saved' as const;
     });
 

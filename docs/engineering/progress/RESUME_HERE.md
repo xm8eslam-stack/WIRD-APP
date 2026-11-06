@@ -5,9 +5,9 @@
 ## Canonical repository
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Canonical branch: `main` (Google AI Studio source)
-- Latest main SHA: `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`
-- PRs #49–#55 are merged. PR #54 added typed domain-event envelopes; PR #55 routed demo fixture writes through journal-first grouped persistence.
-- PR #55 exact-head runs `42281993489` and `42281999065` passed; post-merge main run `42282206155` passed.
+- Latest main SHA: `a6a4eabf2572f1c0f7812fe891ddbaec27b3536d`
+- PRs #49–#57 are merged. PR #54 added typed domain-event envelopes; PR #55 journaled demo fixture writes; PR #57 removed read-side mutations and journaled legacy portion migration.
+- PR #57 exact-head runs `42283803166` and `42283813448` passed; post-merge main run `42284039747` passed.
 - Latest PR #55 main merge includes the preceding direct Quran Library tabs/Juz-index commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
 
 ## Completed reliability work
@@ -19,9 +19,13 @@
 - Quota rollback and simulated IndexedDB restart/replay recovery tests are included.
 - Quran reader has direct Surah-to-Mushaf navigation; Tafsir route is registered in Express.
 
-## Current next task — finish local mutation audit
+## Current next task — PR #58 account-scope guard
+- Branch: `fix/journal-scope-guard-20261106`; verify exact-head CI and merge after review.
+- It aborts a legacy migration if the active account scope changes while the journal lock is pending.
+
+## Remaining local mutation audit
 1. Review legacy outbox migration/reset and IndexedDB-loss/blocked scenarios.
-2. Audit remaining device-local reading/Tafsir/audio preferences and remaining multi-key mutation callers.
+2. Review remaining multi-key mutation callers; device-local reader/Tafsir/audio preferences are intentionally local and catch storage exceptions.
 3. Add any missing failure-injection coverage for quota/read/write/rollback behavior.
 4. Keep the local-first experience intact; guests must not open a cloud outbox.
 
