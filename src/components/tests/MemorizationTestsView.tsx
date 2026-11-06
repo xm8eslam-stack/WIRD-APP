@@ -44,7 +44,8 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [pendingTestResult, setPendingTestResult] = useState<TestResult | null>(null);
   const [isSavingTestResult, setIsSavingTestResult] = useState(false);
   const [isSavingWeakVerse, setIsSavingWeakVerse] = useState(false);
-  const weakVerseMutationIdRef = useRef<string | null>(null);
+  const weakVerseMutationIdsRef = useRef<Map<string, string>>(new Map());
+  const weakVerseSaveInFlightRef = useRef(false);
   const saveInProgressRef = useRef(false);
   const [sessionKey, setSessionKey] = useState(0);
 
@@ -122,14 +123,16 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   const handleAddCurrentToWeakVerses = async () => {
-    if (isSavingWeakVerse) return;
+    if (weakVerseSaveInFlightRef.current || isSavingWeakVerse) return;
     const notes = `تعثر في اختبار: ${
       selectedTestType === 'complete_verse' ? 'إكمال الآية التالية' :
       selectedTestType === 'bidirectional_recall' ? 'الآية السابقة والتالية' :
       selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
     }`;
-    const mutationId = weakVerseMutationIdRef.current || 'weak-' + createSecureId();
-    weakVerseMutationIdRef.current = mutationId;
+    const actionKey = [selectedTestType, currentQ.surahNumber, currentQ.targetAyahNumber, notes].join('|');
+    const mutationId = weakVerseMutationIdsRef.current.get(actionKey) || 'weak-' + createSecureId();
+    weakVerseMutationIdsRef.current.set(actionKey, mutationId);
+    weakVerseSaveInFlightRef.current = true;
     setIsSavingWeakVerse(true);
     let saved = false;
     try {
@@ -144,9 +147,10 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     } catch (error) {
       console.error('[WIRD Tests] Weak-verse journal persistence failed:', error);
     } finally {
+      weakVerseSaveInFlightRef.current = false;
       setIsSavingWeakVerse(false);
     }
-    if (saved) weakVerseMutationIdRef.current = null;
+    if (saved) weakVerseMutationIdsRef.current.delete(actionKey);
     setWeakVerseFeedback({
       message: saved
         ? `تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} في قائمة الالتباس والمراجعة المستعجلة.`
