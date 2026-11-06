@@ -325,7 +325,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                       {ayah.surahNumber !== 1 && ayah.surahNumber !== 9 && <p className="mt-3 text-xl text-stone-700 dark:text-stone-300">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>}
                     </div>
                   )}
-                  <button id={\`wird-ayah-\${ayah.surahNumber}-\${ayah.numberInSurah}\`} type="button" onClick={() => setTafsirAyah(ayah)} title={`عرض تفسير سورة ${surah?.name || ayah.surahNumber} الآية ${ayah.numberInSurah}`} className={`inline rounded-lg px-1 text-right transition-colors hover:bg-amber-100/70 dark:hover:bg-stone-800 ${isCurrent ? 'bg-amber-100 dark:bg-amber-950/60' : ''}`}>
+                  <button id={'wird-ayah-' + ayah.surahNumber + '-' + ayah.numberInSurah} type="button" onClick={() => setTafsirAyah(ayah)} title={`عرض تفسير سورة ${surah?.name || ayah.surahNumber} الآية ${ayah.numberInSurah}`} className={`inline rounded-lg px-1 text-right transition-colors hover:bg-amber-100/70 dark:hover:bg-stone-800 ${isCurrent ? 'bg-amber-100 dark:bg-amber-950/60' : ''}`}>
                     {ayah.text}{' '}
                     <span className="inline-flex h-7 w-7 translate-y-[-2px] items-center justify-center rounded-full border border-amber-400/70 text-[10px] font-sans text-amber-800 dark:text-amber-300">{ayah.numberInSurah}</span>
                   </button>
