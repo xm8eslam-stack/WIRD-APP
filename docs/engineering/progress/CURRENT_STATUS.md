@@ -1,24 +1,25 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06 (PR #45 merged; post-merge Quality Gate passed)
+**Updated:** 2026-11-06 (PR #47 merged; post-merge Quality Gate pending)
 **Repository:** `xm8eslam-stack/WIRD-APP`
 **Canonical branch:** `main` (Google AI Studio source)
-**Current main SHA:** `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`
+**Current main SHA:** `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`
 
-## Latest verified position — after PR #45
+## Latest verified position — after PR #47
 
-- PR #36 merged: deterministic UID-scoped IndexedDB journal replay runs before authenticated app state initializes; replay is sequence-ordered, protected by Web Locks, and advances the cursor only after verified local projection.
-- PR #37 merged: authenticated profile settings/theme, preset plans, and engine-plan snapshots use journal-first event+outbox persistence.
-- PR #38 merged: progress checkpoint and Firestore design were updated after PRs #36/#37.
-- PR #40 merged: Progress Analytics page-status changes now persist canonical portion snapshots through the journal.
-- PR #41 merged: manual portion additions now use pure snapshot preparation and journal-first canonical persistence.
-- PR #42 merged: test-result snapshots use stable result IDs, idempotent retry, and conflicting-ID rejection.
+- PR #36–#37: UID-scoped IndexedDB journal/replay and journal-first profile/theme/plans/engine-plan snapshots.
+- PR #40: Progress Analytics page-status changes persist canonical portion snapshots through the journal.
+- PR #41: Manual portion additions use pure snapshot preparation and journal-first canonical persistence.
+- PR #42: Test-result snapshots use stable result IDs, idempotent retry, and conflicting-ID rejection.
 - PR #43 merged as `dc258764723b4d88635175c912d159e6adaacf4b`: grouped transaction envelope commits multiple local projections as one IndexedDB event+outbox pair; failed child projection restores and verifies affected keys; stable mutation identity is preserved across retries.
-- PR #44 merged as `0a24862e255946ea487e120cd6d82f5a3c81eb20`: manual and test-driven weak-verse failures now journal the canonical weak portion and weak-verse counter together. Preparation is non-mutating and checks durable source reads before enqueue.
+- PR #44 merged as `0a24862e255946ea487e120cd6d82f5a3c81eb20`: manual and test-driven weak-verse failures journal the canonical weak portion and weak-verse counter together, with durable preflight checks.
 - PR #45 merged as `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`: weak-verse resolution is journal-first, idempotent, and does not alter canonical portion rating or schedule.
-- PR #43 exact-head runs `42258043045` (PR) and `42258032606` (push) passed on `73faac0434cf626c6d55907f579aa245ba037a1e`; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
-- PR #44 exact-head runs `42260702702` (PR) and `42260691784` (push) passed on `d01d31605204ebb50ff93467d4739323f280b5ed`; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
-- PR #45 exact-head runs `42261861919` (PR) and `42261851120` (push) passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`. Post-merge main Quality Gate `42262136009` **passed** on the exact main SHA above.
+- PR #46 merged: authoritative current status, release checklist, continuation checkpoint, and Firestore design refreshed through PR #45.
+- PR #47 merged as `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`: Revision Center ratings now prepare SM-2 portion, activity-log, and profile streak snapshots without writes, then commit them in one grouped journal transaction. Failed ratings can include the weak-verse archive and, when distinct, a single-ayah weak portion. A same-single-ayah failed review increments the canonical mistake count only once.
+- PR #43 exact-head PR/push runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed.
+- PR #44 exact-head PR/push runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed.
+- PR #45 exact-head PR/push runs `42261861919` and `42261851120` passed; post-merge main run `42262136009` passed.
+- PR #47 exact-head PR/push runs `42264220176` and `42264210902` passed on `7a476f5439091110bd3254b3498499335dd47be2`. Post-merge main Quality Gate `42264485087` is still **in progress** on the current main SHA; recheck before marking the merge fully quality-gated.
 - Vercel Production deployment for the current main SHA is **not confirmed**. GitHub Actions success is not a deployment receipt.
 
 ## Phase 2 status — IN PROGRESS
@@ -26,21 +27,20 @@
 The IndexedDB journal, outbox, sequencing, replay, grouped projection rollback, and several journal-first mutation paths are implemented. This is not full mutation coverage and is not cloud sync.
 
 **Still not journal-first / not complete:**
-- Revision ratings and their grouped portion + optional weak-verse + activity/profile updates.
 - Memorization/session completion, including activity logs and profile streak.
-- All remaining activity/profile aggregate mutation paths.
+- Remaining activity/profile aggregate mutation paths outside Revision Center ratings.
 - Backup import/reset and recovery semantics when pending journal events exist.
-- Complete immutable event semantics for activity, revision, weak-verse, and test records. Current weak-verse and test flows still journal full local snapshots; do not describe them as immutable cloud event models.
+- Complete immutable event semantics for activity, revision, weak-verse, and test records. Current activity, weak-verse, and test flows still journal full local snapshots; do not describe them as immutable cloud event models.
 - Firestore client/repository, sync worker, server acknowledgements, retries/backoff, tombstones, collection-specific security rules, and two-device/offline sync.
 - Production Firestore rules deployment, manual responsive/accessibility/audio QA, and verified Vercel Production deployment.
 
 ## Next implementation sequence
 
-1. Journal-first revision ratings: prepare the SM-2 portion snapshot without writes, include optional weak-verse failure and activity/profile snapshots in one grouped journal transaction, and preserve stable retry identity.
-2. Journal-first memorization/session completion: group canonical portion, activity log, profile streak, and any related plan updates as one recoverable action.
+1. Journal-first memorization/session completion: group canonical portion changes, activity log snapshots, profile streak, and related plan updates as one recoverable action.
+2. Audit and migrate all remaining activity/profile mutation paths; avoid direct writes outside the journal for authenticated users.
 3. Journal backup import/reset with explicit ordering, pending-event handling, and crash/recovery tests; never clear or overwrite an unprojected event.
 4. Reconcile mutable local aggregates with immutable event-ledger semantics before defining their Firestore representation.
-5. Implement the Firestore adapter/worker, acknowledgements, retries, tombstones, collection-specific rules, and two-device/offline tests. Keep cloud writes inactive until the release gate passes.
+5. Implement the Firestore adapter/worker, acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests. Keep cloud writes inactive until the release gate passes.
 6. Complete manual UI/audio/accessibility QA and verify an actual Vercel Production deployment for the exact main SHA.
 
 ## Branch and release safety
