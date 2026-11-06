@@ -189,23 +189,39 @@ export function calculateUniqueMemorizedPages(portions: WirdPortion[]): number {
 export function getPlanTargetSurahNumbers(
   plan: Pick<MemorizationPlan, 'targetSurahs' | 'targetJuz' | 'startPage' | 'endPage'>
 ): number[] {
-  if (plan.targetSurahs && plan.targetSurahs.length > 0) {
-    return Array.from(new Set(plan.targetSurahs)).filter(number =>
-      Number.isInteger(number) && number >= 1 && number <= 114
-    );
+  if (!plan || typeof plan !== 'object') throw new TypeError('A valid memorization plan scope is required.');
+
+  if (plan.targetSurahs !== undefined && plan.targetSurahs.length > 0) {
+    if (!Array.isArray(plan.targetSurahs) ||
+        plan.targetSurahs.some(number => !Number.isSafeInteger(number) || number < 1 || number > 114)) {
+      throw new RangeError('Target Surahs must contain integers from 1 to 114.');
+    }
+    if (new Set(plan.targetSurahs).size !== plan.targetSurahs.length) {
+      throw new RangeError('Target Surahs must not contain duplicate numbers.');
+    }
+    return [...plan.targetSurahs];
   }
 
-  if (plan.targetJuz && plan.targetJuz.length > 0) {
+  if (plan.targetJuz !== undefined && plan.targetJuz.length > 0) {
+    if (!Array.isArray(plan.targetJuz) ||
+        plan.targetJuz.some(juz => !Number.isSafeInteger(juz) || juz < 1 || juz > 30)) {
+      throw new RangeError('Target Juz values must be integers from 1 to 30.');
+    }
+    if (new Set(plan.targetJuz).size !== plan.targetJuz.length) {
+      throw new RangeError('Target Juz values must not contain duplicates.');
+    }
     return ALL_SURAHS
       .filter(surah => plan.targetJuz!.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
       .map(surah => surah.number);
   }
 
-  if (plan.startPage !== undefined && plan.endPage !== undefined) {
-    const startPage = Math.max(1, Math.min(604, plan.startPage));
-    const endPage = Math.max(startPage, Math.min(604, plan.endPage));
+  if (plan.startPage !== undefined || plan.endPage !== undefined) {
+    if (!Number.isSafeInteger(plan.startPage) || !Number.isSafeInteger(plan.endPage) ||
+        plan.startPage! < 1 || plan.endPage! > 604 || plan.endPage! < plan.startPage!) {
+      throw new RangeError('Page scope must be an inclusive integer range from 1 to 604.');
+    }
     return ALL_SURAHS
-      .filter(surah => surah.pageStart <= endPage && surah.pageEnd >= startPage)
+      .filter(surah => surah.pageStart <= plan.endPage! && surah.pageEnd >= plan.startPage!)
       .map(surah => surah.number);
   }
 
@@ -441,7 +457,7 @@ export function getPrioritizedRevisionQueue(
     throw new RangeError('Revision queue grace period must be a whole number from 0 to 30 days.');
   }
   for (const portion of portions) {
-    if (!isValidLocalDateString(portion.nextDueDate) || !Number.isFinite(portion.easeFactor)) {
+    if (!isValidLocalDateString(portion.nextDueDate) || !Number.isFinite(portion.easeFactor) || portion.easeFactor < 1.3 || portion.easeFactor > 3) {
       throw new RangeError('Revision queue contains an invalid due date or ease factor.');
     }
   }
