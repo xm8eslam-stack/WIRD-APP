@@ -17,6 +17,9 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadSurahVerses, getAyahWords } from '../../data/quranDataLoader';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
+import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
+import type { PlaybackRate } from '../../services/audioPreferences';
+import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 
 interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
@@ -85,8 +88,15 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(() => getSavedPlaybackRate());
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const completionInProgressRef = useRef(false);
+
+  const handlePlaybackRateChange = (rate: PlaybackRate) => {
+    const savedRate = savePlaybackRate(rate);
+    setPlaybackRate(savedRate);
+    if (audioRef.current) audioRef.current.playbackRate = savedRate;
+  };
 
   // 2. Progressive word masking: 0 = none, 1 = 30%, 2 = 60%, 3 = 100% (hidden)
   const [maskLevel, setMaskLevel] = useState<number>(0);
@@ -144,6 +154,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     if (audioRef.current) audioRef.current.pause();
 
     const audio = new Audio(url);
+    audio.playbackRate = getSavedPlaybackRate();
     audioRef.current = audio;
     setIsPlaying(true);
 
@@ -480,6 +491,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           >
             {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white mr-0.5" />}
           </button>
+          <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
         </div>
 
         {/* Repetition Counter (Traditional Method - طريقة التكرار والتثبيت) */}
