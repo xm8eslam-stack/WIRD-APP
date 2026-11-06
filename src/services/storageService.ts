@@ -867,6 +867,12 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
 
   return { valid: true };
 }
+export interface SessionCompletionWriteResult {
+  success: boolean;
+  rollbackVerified: boolean;
+  failureStage?: 'validation' | 'snapshot-read' | 'logs-read' | 'logs-write' | 'profile-write' | 'profile-update';
+}
+
 export const StorageService = {
   // Scope and raw-key API used by AuthGate and the retention adapter.
   needsLegacyDataDecision(scope: string): boolean {
@@ -1295,22 +1301,66 @@ export const StorageService = {
     }
   },
 
-  // Session Completion with rollback if either durable write fails.
-  recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
+  // Session Completion with explicit rollback verification for each durable archive.
+  recordSessionCompletion(
+    memorizedAyahs: number,
+    reviewedPages: number,
+    minutes: number,
+    taskName: string
+  ): boolean {
+    return this.recordSessionCompletionDetailed(memorizedAyahs, reviewedPages, minutes, taskName).success;
+  },
+
+  recordSessionCompletionDetailed(
+    memorizedAyahs: number,
+    reviewedPages: number,
+    minutes: number,
+    taskName: string
+  ): SessionCompletionWriteResult {
+    const fail = (
+      failureStage: SessionCompletionWriteResult['failureStage'],
+      rollbackVerified = true
+    ): SessionCompletionWriteResult => ({ success: false, rollbackVerified, failureStage });
+
     if (!Number.isSafeInteger(memorizedAyahs) || memorizedAyahs < 0 || memorizedAyahs > 6236 ||
         !Number.isSafeInteger(reviewedPages) || reviewedPages < 0 || reviewedPages > 604 ||
         !Number.isSafeInteger(minutes) || minutes < 0 || minutes > 1440 ||
-        typeof taskName !== 'string' || !taskName.trim() || taskName.length > 200) return false;
-    const today = getLocalDateString();
-    const previousLogs = getItem(STORAGE_KEYS.LOGS);
-    const previousProfile = getItem(STORAGE_KEYS.PROFILE);
-    let logs: DailyLog[];
-    try { logs = this.getLogs(); } catch (error) {
-      console.warn('[WIRD Storage] Refusing to overwrite an invalid daily activity archive:', error);
-      return false;
+        typeof taskName !== 'string' || !taskName.trim() || taskName.length > 200) {
+      return fail('validation');
     }
-    const existingIndex = logs.findIndex(log => log.date === today);
 
+    const logsSnapshot = readDurableValue(resolveStorageKey(STORAGE_KEYS.LOGS));
+    const profileSnapshot = readDurableValue(resolveStorageKey(STORAGE_KEYS.PROFILE));
+    if (!logsSnapshot.available || !profileSnapshot.available) return fail('snapshot-read');
+
+    const previousLogs = logsSnapshot.value;
+    const previousProfile = profileSnapshot.value;
+    const restoreSnapshot = (key: string, previous: string | null): boolean => {
+      const resolvedKey = resolveStorageKey(key);
+      const current = readDurableValue(resolvedKey);
+      if (!current.available) return false;
+      if (current.value === previous) return true;
+      if (previous === null) rawRemoveItem(resolvedKey);
+      else rawSetItem(resolvedKey, previous);
+      const restored = readDurableValue(resolvedKey);
+      return restored.available && restored.value === previous;
+    };
+    const restoreActivitySnapshots = (): boolean => {
+      const logsRestored = restoreSnapshot(STORAGE_KEYS.LOGS, previousLogs);
+      const profileRestored = restoreSnapshot(STORAGE_KEYS.PROFILE, previousProfile);
+      return logsRestored && profileRestored;
+    };
+
+    let logs: DailyLog[];
+    try {
+      logs = this.getLogs();
+    } catch (error) {
+      console.warn('[WIRD Storage] Refusing to overwrite an invalid daily activity archive:', error);
+      return fail('logs-read');
+    }
+
+    const today = getLocalDateString();
+    const existingIndex = logs.findIndex(log => log.date === today);
     if (existingIndex >= 0) {
       logs[existingIndex].memorizedAyahsCount += memorizedAyahs;
       logs[existingIndex].reviewedPagesCount += reviewedPages;
@@ -1328,32 +1378,24 @@ export const StorageService = {
       });
     }
 
-    if (!this.saveLogs(logs)) return false;
-
-    const profile = this.getProfile();
-    const { newStreak, newDate } = advanceStreakOnCompletion(profile.lastActiveDate, profile.streakDays, today);
-    profile.streakDays = newStreak;
-    profile.lastActiveDate = newDate;
-    if (!this.saveProfile(profile)) {
-      // Restore and verify both durable snapshots; never silently claim rollback succeeded.
-      const restoreSnapshot = (key: string, previous: string | null): boolean => {
-        try {
-          if (previous === null) removeItem(key);
-          else if (!setItem(key, previous)) return false;
-          return getItem(key) === previous;
-        } catch {
-          return false;
-        }
-      };
-      const logsRestored = restoreSnapshot(STORAGE_KEYS.LOGS, previousLogs);
-      const profileRestored = restoreSnapshot(STORAGE_KEYS.PROFILE, previousProfile);
-      if (!logsRestored || !profileRestored) {
-        console.error('[WIRD Storage] Session activity rollback could not be verified. Export a backup before further edits.');
-      }
-      return false;
+    if (!this.saveLogs(logs)) {
+      return fail('logs-write', restoreActivitySnapshots());
     }
 
-    return true;
+    try {
+      const profile = this.getProfile();
+      const { newStreak, newDate } = advanceStreakOnCompletion(profile.lastActiveDate, profile.streakDays, today);
+      profile.streakDays = newStreak;
+      profile.lastActiveDate = newDate;
+      if (!this.saveProfile(profile)) {
+        return fail('profile-write', restoreActivitySnapshots());
+      }
+    } catch (error) {
+      console.warn('[WIRD Storage] Profile update failed during session completion:', error);
+      return fail('profile-update', restoreActivitySnapshots());
+    }
+
+    return { success: true, rollbackVerified: true };
   },
 
   // Explicit Demo Data Loader (for demo mode only)
