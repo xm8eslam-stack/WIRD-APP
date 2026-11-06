@@ -199,11 +199,11 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
       value: {
         getItem: (storageKey: string) => values.get(storageKey) ?? null,
         setItem: (storageKey: string, value: string) => {
-          if (storageKey === key && ignoreNextWrite) {
+          if (storageKey.endsWith(key) && ignoreNextWrite) {
             ignoreNextWrite = false;
             return;
           }
-          if (storageKey === key && corruptNextWrite) {
+          if (storageKey.endsWith(key) && corruptNextWrite) {
             corruptNextWrite = false;
             values.set(storageKey, 'silently-corrupted-value');
             return;
