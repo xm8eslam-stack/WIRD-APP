@@ -49,6 +49,23 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
     }
   });
 
+  test('Manual status updates keep strength labels consistent', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:manual-status-strength');
+    try {
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 40, endAyah: 42,
+        status: 'weak', strength: 'weak', nextDueDate: getLocalDateString(), intervalDays: 1,
+        easeFactor: 1.8, repetitionCount: 1, mistakesCount: 2
+      });
+      const updated = RetentionService.updatePortionStatus(portion.id, 'stable');
+      assert(updated[0].status === 'stable' && updated[0].strength === 'strong',
+        'Explicitly setting a portion to stable must also set its strength label to strong');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Updating a missing portion ID is rejected without writing a no-op success', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:portion-missing-update');
