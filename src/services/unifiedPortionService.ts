@@ -448,6 +448,17 @@ function getStableHistoryConflictSuffix(log: RevisionLogEntry): string {
   return (hash >>> 0).toString(36);
 }
 
+function getStableMissingHistoryId(log: RevisionLogEntry, sourceName: string, index: number): string {
+  const signature = JSON.stringify([
+    sourceName, index, log.date, log.rating, log.intervalDaysBefore, log.intervalDaysAfter, log.notes || ''
+  ]);
+  let hash = 2166136261;
+  for (let cursor = 0; cursor < signature.length; cursor++) {
+    hash = Math.imul(hash ^ signature.charCodeAt(cursor), 16777619);
+  }
+  return 'legacy_' + (hash >>> 0).toString(36);
+}
+
 function mergePortionRecords(
   existing: WirdPortion,
   incoming: Partial<WirdPortion> & { notes?: string },
@@ -535,10 +546,14 @@ function mergePortionRecords(
   if (Array.isArray(incoming.history) && incoming.history.length > 0) {
     if (!existing.history) existing.history = [];
     
-    incoming.history.forEach(incLog => {
-      const sameIdLog = existing.history!.find(h => h.id && incLog.id && h.id === incLog.id);
+    incoming.history.forEach((rawLog, logIndex) => {
+      // Missing legacy IDs are normalized deterministically from their source row.
+      const incLog: RevisionLogEntry = rawLog.id && rawLog.id.trim()
+        ? rawLog
+        : { ...rawLog, id: getStableMissingHistoryId(rawLog, sourceName, logIndex) };
+      const sameIdLog = existing.history!.find(historyLog => historyLog.id === incLog.id);
       if (sameIdLog) {
-        // Check if content differs
+        // Only the same stable event ID proves that two records are retries/duplicates.
         const contentDiff = sameIdLog.date !== incLog.date ||
           sameIdLog.rating !== incLog.rating ||
           sameIdLog.intervalDaysBefore !== incLog.intervalDaysBefore ||
@@ -546,9 +561,9 @@ function mergePortionRecords(
           sameIdLog.notes !== incLog.notes;
 
         if (contentDiff) {
-          // Preserve conflicting history entry under a modified ID so no log is lost!
+          // Preserve conflicting content under a deterministic alternate ID.
           const preservedId = `${incLog.id}_conflict_${getStableHistoryConflictSuffix(incLog)}`;
-          const alreadyPreserved = existing.history!.some(log => log.id === preservedId);
+          const alreadyPreserved = existing.history!.some(historyLog => historyLog.id === preservedId);
           if (!alreadyPreserved) {
             const preservedLog = { ...incLog, id: preservedId };
             existing.history!.push(preservedLog);
@@ -560,15 +575,10 @@ function mergePortionRecords(
             });
           }
         }
+        // Same ID + same content is a duplicate delivery of the same logical event.
       } else {
-        // Check exact content signature
-        const contentSig = `${incLog.date}_${incLog.rating}_${incLog.intervalDaysBefore}_${incLog.intervalDaysAfter}_${incLog.notes || ''}`;
-        const existsExact = existing.history!.some(h => 
-          `${h.date}_${h.rating}_${h.intervalDaysBefore}_${h.intervalDaysAfter}_${h.notes || ''}` === contentSig
-        );
-        if (!existsExact) {
-          existing.history!.push(incLog);
-        }
+        // Different IDs are distinct review attempts even when their content is identical.
+        existing.history!.push(incLog);
       }
     });
   }
