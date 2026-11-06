@@ -25,7 +25,38 @@ import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
  */
 
 // Local-Date-Safe Utilities (prevents UTC offset rollover bugs)
+const VALID_PORTION_STATUSES: PortionMemorizationStatus[] = [
+  'not_memorized', 'currently_memorizing', 'recently_memorized',
+  'stable', 'needs_revision', 'weak'
+];
+
+function isValidLocalDateString(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  if (year < 1900 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function assertValidPortionCollection(portions: WirdPortion[]): void {
+  if (!Array.isArray(portions) || portions.length > 10000) {
+    throw new TypeError('Portion collection must be an array containing no more than 10,000 records.');
+  }
+  for (const portion of portions) {
+    if (!portion || typeof portion !== 'object') {
+      throw new TypeError('Portion collection contains a malformed record.');
+    }
+    assertValidQuranRange(portion.surahNumber, portion.startAyah, portion.endAyah);
+    if (!VALID_PORTION_STATUSES.includes(portion.status)) {
+      throw new TypeError('Portion collection contains an unsupported memorization status.');
+    }
+  }
+}
+
 export function getLocalDateString(d: Date = new Date()): string {
+  if (!(d instanceof Date) || !Number.isFinite(d.getTime())) throw new TypeError('A valid Date is required.');
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -33,6 +64,9 @@ export function getLocalDateString(d: Date = new Date()): string {
 }
 
 export function addDaysToLocalDate(dateStr: string, days: number): string {
+  if (!isValidLocalDateString(dateStr) || !Number.isSafeInteger(days) || Math.abs(days) > 100000) {
+    throw new RangeError('A valid YYYY-MM-DD date and a safe whole-day offset are required.');
+  }
   const [y, m, d] = dateStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   date.setDate(date.getDate() + days);
@@ -40,6 +74,9 @@ export function addDaysToLocalDate(dateStr: string, days: number): string {
 }
 
 export function getDayDifference(dateStr1: string, dateStr2: string): number {
+  if (!isValidLocalDateString(dateStr1) || !isValidLocalDateString(dateStr2)) {
+    throw new RangeError('Both dates must be valid YYYY-MM-DD calendar dates.');
+  }
   const [y1, m1, d1] = dateStr1.split('-').map(Number);
   const [y2, m2, d2] = dateStr2.split('-').map(Number);
   const utcA = Date.UTC(y1, m1 - 1, d1);
@@ -49,6 +86,7 @@ export function getDayDifference(dateStr1: string, dateStr2: string): number {
 
 // Canonical Portion Identity
 export function createCanonicalPortionId(surahNumber: number, startAyah: number, endAyah: number): string {
+  assertValidQuranRange(surahNumber, startAyah, endAyah);
   return `s${surahNumber}_a${startAyah}_a${endAyah}`;
 }
 
@@ -60,6 +98,7 @@ export function calculateUniqueMemorizedAyahs(portions: WirdPortion[]): {
   uniqueCount: number;
   ayahKeys: Set<string>;
 } {
+  assertValidPortionCollection(portions);
   const keys = new Set<string>();
 
   portions.forEach(p => {
@@ -70,9 +109,7 @@ export function calculateUniqueMemorizedAyahs(portions: WirdPortion[]): {
       p.status === 'needs_revision' || 
       p.status === 'weak'
     ) {
-      const start = Math.max(1, p.startAyah);
-      const end = Math.max(start, p.endAyah);
-      for (let a = start; a <= end; a++) {
+      for (let a = p.startAyah; a <= p.endAyah; a++) {
         keys.add(`${p.surahNumber}:${a}`);
       }
     }
@@ -86,6 +123,7 @@ export function calculateUniqueMemorizedAyahs(portions: WirdPortion[]): {
  * records conservatively by keeping the weakest recorded status.
  */
 export function calculateUniqueRetentionScore(portions: WirdPortion[]): number {
+  assertValidPortionCollection(portions);
   const statusPriority: Record<PortionMemorizationStatus, number> = {
     weak: 0,
     needs_revision: 1,
@@ -106,7 +144,7 @@ export function calculateUniqueRetentionScore(portions: WirdPortion[]): number {
 
   portions.forEach(portion => {
     if (portion.status === 'not_memorized') return;
-    for (let ayah = Math.max(1, portion.startAyah); ayah <= portion.endAyah; ayah++) {
+    for (let ayah = portion.startAyah; ayah <= portion.endAyah; ayah++) {
       const key = `${portion.surahNumber}:${ayah}`;
       const existing = uniqueStatuses.get(key);
       if (!existing || statusPriority[portion.status] < statusPriority[existing]) {
@@ -183,8 +221,15 @@ export function findNextUnmemorizedRange(
   surahNumbers: number[],
   maxVerses: number
 ): { surahNumber: number; startAyah: number; endAyah: number } | null {
-  const limit = Math.max(1, Math.floor(maxVerses || 1));
-  const targets = Array.from(new Set(surahNumbers)).filter(number => Number.isInteger(number) && number >= 1 && number <= 114);
+  assertValidPortionCollection(portions);
+  if (!Number.isSafeInteger(maxVerses) || maxVerses < 1 || maxVerses > 6236) {
+    throw new RangeError('maxVerses must be a whole number from 1 to 6,236.');
+  }
+  if (!Array.isArray(surahNumbers) || surahNumbers.some(number => !Number.isSafeInteger(number) || number < 1 || number > 114)) {
+    throw new RangeError('Every target Surah must be an integer from 1 to 114.');
+  }
+  const limit = maxVerses;
+  const targets = Array.from(new Set(surahNumbers));
 
   for (const surahNumber of targets) {
     const surah = ALL_SURAHS.find(item => item.number === surahNumber);
@@ -197,10 +242,7 @@ export function findNextUnmemorizedRange(
       // Resume the exact persisted passage. Clipping it to the daily target
       // creates a child range, but completion updates only exact coordinate
       // matches; the parent then remains in-progress and repeats forever.
-      const endAyah = Math.min(
-        Math.max(inProgress.startAyah, inProgress.endAyah),
-        surah.versesCount
-      );
+      const endAyah = inProgress.endAyah;
       return {
         surahNumber,
         startAyah: inProgress.startAyah,
@@ -260,8 +302,23 @@ export function calculateCanonicalSM2(
   gradeInput: RetentionGradeInput,
   options?: { customTodayStr?: string; gracePeriodDays?: number }
 ): SM2CalculationResult {
+  assertValidPortionCollection([portion]);
+  if (!isValidLocalDateString(options?.customTodayStr ?? getLocalDateString())) {
+    throw new RangeError('SM-2 requires a valid YYYY-MM-DD review date.');
+  }
   const todayStr = options?.customTodayStr || getLocalDateString();
   const gracePeriodDays = options?.gracePeriodDays ?? 1;
+  if (!Number.isSafeInteger(gracePeriodDays) || gracePeriodDays < 0 || gracePeriodDays > 30) {
+    throw new RangeError('SM-2 grace period must be a whole number from 0 to 30 days.');
+  }
+  if (!['failed', 'difficult', 'successful', 'strong', 1, 2, 3, 4, 5].includes(gradeInput)) {
+    throw new TypeError('Unsupported SM-2 review grade.');
+  }
+  if (!Number.isFinite(portion.easeFactor) || portion.easeFactor < 1.3 || portion.easeFactor > 3 ||
+      !Number.isSafeInteger(portion.intervalDays) || portion.intervalDays < 0 ||
+      !Number.isSafeInteger(portion.repetitionCount) || portion.repetitionCount < 0) {
+    throw new RangeError('SM-2 portion scheduling metrics are invalid.');
+  }
 
   // Normalize grade to 1, 2, 3, or 5
   let grade: 1 | 2 | 3 | 5;
@@ -372,8 +429,22 @@ export function getPrioritizedRevisionQueue(
   portions: WirdPortion[],
   options?: QueueOptions
 ): PrioritizedQueueResult {
+  assertValidPortionCollection(portions);
   const today = options?.todayStr || getLocalDateString();
+  if (!isValidLocalDateString(today)) throw new RangeError('Revision queue requires a valid YYYY-MM-DD date.');
   const maxLimit = options?.maxDailyLimit ?? 20;
+  if (!Number.isSafeInteger(maxLimit) || maxLimit < 1 || maxLimit > 20) {
+    throw new RangeError('Daily revision queue limit must be a whole number from 1 to 20.');
+  }
+  if (options?.gracePeriodDays !== undefined &&
+      (!Number.isSafeInteger(options.gracePeriodDays) || options.gracePeriodDays < 0 || options.gracePeriodDays > 30)) {
+    throw new RangeError('Revision queue grace period must be a whole number from 0 to 30 days.');
+  }
+  for (const portion of portions) {
+    if (!isValidLocalDateString(portion.nextDueDate) || !Number.isFinite(portion.easeFactor)) {
+      throw new RangeError('Revision queue contains an invalid due date or ease factor.');
+    }
+  }
 
   // Filter portions due today or overdue (excluding unmemorized)
   const dueItems = portions.filter(p => p.nextDueDate <= today && p.status !== 'not_memorized');
