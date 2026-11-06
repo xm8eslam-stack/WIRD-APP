@@ -10,7 +10,7 @@
 - **PR #49** — Quran reader and Tafsir routing repair: direct Surah-to-Mushaf navigation and Express registration of `/api/tafsir`. Merged as `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`; exact-head Quality Gate run `42267849373` passed.
 - **PR #50** — Journal-first session completion: canonical memorization progress, activity log, and profile streak are committed through one recoverable IndexedDB transaction. Merged as `dacba8298db954392f7fbcbbf10af9f18ecc31dc`; exact-head Quality Gate run `42276148126` passed.
 - **PR #51** — Matching smart-plan task completion is now included in the same session transaction, preventing a successful session from leaving the plan task behind. Merged as `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head Quality Gate run `42276561011` passed.
-- **PR #52** — Backup import and factory reset are journal-ordered. Older pending events replay before the operation; import/reset then commits as one grouped event. Merged as `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head Quality Gate run `42277464313` passed.
+- **PR #52** — Backup import and factory reset are journal-ordered. Older pending events replay before the operation; import/reset then commits as one grouped event. Merged as `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head Quality Gate run `42277464313` passed; post-merge main Quality Gate run `42277666291` also passed on the exact main SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`.
 - PR #49–#52 changes are present on `main`. Post-merge main Quality Gate for PR #51 passed on `99c466b9de6ae977979f8989443fba5b94017a30`. The post-merge main run for PR #52 was still in progress at the time of this checkpoint; re-check it before relying on the push-triggered result.
 
 ## Deployment status
@@ -21,7 +21,7 @@
 
 ## Phase 2 — local data reliability
 
-<badge color="success">Major local mutation paths journal-first</badge>
+**Phase 2:** Major local mutation paths journal-first; final audit and immutable event model remain open.
 
 Completed and merged:
 - Profile, preset plans, and engine-plan snapshots.
