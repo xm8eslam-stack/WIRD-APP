@@ -106,3 +106,28 @@
 - [x] Exact-head Quality Gate runs `42236675217` / `42236639584` passed on PR head `bb5a5224671fc3d1ef83b619b01556f8c6c39c01` (336 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
 - [x] Post-merge main Quality Gate run `42236977371` passed on exact SHA `f739b64aae61398c51769340f0e4182d51624fca`.
 - [ ] Continue the remaining multi-key mutation and outbox cross-tab audit.
+
+
+## IndexedDB event journal and outbox foundation — PR #30
+- [x] Append-only event and outbox delivery records share one IndexedDB read/write transaction.
+- [x] Cross-tab duplicate enqueue is idempotent; changed-content mutation ID collisions are rejected.
+- [x] Transaction abort leaves no partial event/outbox pair.
+- [x] Acknowledgement and retry metadata are separated from immutable event history.
+- [x] Exact-head Quality Gate passed on PR SHA `9bc4945d92737df086396f436b2388a92972bf92` (344 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
+- [x] Post-merge main Quality Gate run `42238366343` passed.
+
+## Legacy outbox migration — PR #31
+- [x] Import pending records, retry metadata, device identity, acknowledgements, and known fingerprints atomically.
+- [x] Detect conflicts and abort the complete migration without partial writes.
+- [x] Retain localStorage source as a recovery copy; merge changed snapshots idempotently.
+- [x] Exact-head Quality Gate passed on PR SHA `2f6e82213188110c9ae69cf057c376b1eb40051d` (349 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
+- [x] Post-merge main Quality Gate run `42239494829` passed.
+
+## Async IndexedDB outbox adapter — PR #32
+- [x] Replace synchronous localStorage outbox facade with async IndexedDB operations.
+- [x] Import legacy data before each facade operation and retain source as a recovery copy.
+- [x] Verify UID isolation, retry/acknowledgement, stale-tab merges, and invalid-input rejection.
+- [x] Exact-head Quality Gate passed on PR SHA `d97d8cf10cd076a726dbf377c8a4078b8c2dec2c` (346 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
+- [ ] Verify post-merge main Quality Gate run `42240305979` on exact SHA `f3a207844020494ebf6a350ae9cb27d6db62398e`.
+- [ ] Connect domain mutation call sites and implement deterministic local projection replay.
+- [ ] Implement Firestore sync worker and two-device/offline integration tests.
