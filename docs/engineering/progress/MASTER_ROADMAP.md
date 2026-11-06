@@ -8,7 +8,7 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 | Phase | Scope | Status | Evidence / remaining gate |
 |---|---|---|---|
 | 0 | Repository baseline, branch audit, architecture map | VERIFIED | Main inspected; branch divergence recorded; continue file-by-file audit |
-| 1 | Local storage and backup integrity | IN PROGRESS | PR #4 adds per-record validation and deep backup checks; PR #5 adds pre-write session/range validation; PR #6 hardens outbox ID fingerprints, uniqueness/disjointness, and retry bounds. Remaining: `unifiedPortionService.ts` merge/dedup/conflict audit and final persistence-boundary review |
+| 1 | Local storage, backup, and portion merge integrity | COMPLETED | PR #4 strict record/backup validation, PR #5 pre-write session/range checks, PR #6 outbox identity/idempotency, and PR #9 deterministic history/conflict preservation all merged and CI-verified. Cross-tab atomicity remains Phase 3, not a Phase 1 gate |
 | 2 | Memorization/revision correctness | IN PROGRESS | PR #5 now rejects negative/fractional/unsafe session counters, validates Quran coordinates, revision ratings, weak-ayah ranges, notes, and durations before writes. Remaining review-scheduling, duplicate-operation, and statistics audit stays open |
 | 3 | Local outbox foundation and identity | IMPLEMENTED / partial | PR #6 now fingerprints acknowledged mutations, validates pending/acknowledged uniqueness and disjointness, binds pending records to device identity, and prevents retry overflow. Still localStorage-backed (not cross-tab transactional), not wired to domain writes, and no cloud sync is active |
 | 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | Next priority: immutable activity/weak-verse/review events and durable outbox in one recoverable transaction |
@@ -23,15 +23,16 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 
 ## M4 detailed sequence
 
-1. Finish file-by-file audit of `unifiedPortionService.ts` merge/dedup/conflict behavior, history preservation, and every remaining mutation call site.
-2. Outbox idempotency, acknowledged-ID semantics, state validation, device identity, retry bounds, and regression coverage are implemented in PR #6; do not repeat this milestone.
-3. Compare Dexie, idb, and native IndexedDB for transaction semantics, licensing, compatibility, bundle cost, and migration impact; do not add a dependency until a representative prototype proves the benefit.
-4. Define append-only event schemas for activity, revision attempts, weak-verse mistakes, and tests.
-5. Implement transaction/journal semantics for domain event + outbox mutation.
-6. Derive daily logs, streaks, and weak-verse counts from deduplicated events.
-7. Preserve existing localStorage records; migration must be idempotent, non-destructive, and exportable.
-8. Test crash/reload, quota, blocked IndexedDB, account switching, duplicate retries, and partial migration.
-9. Run full CI and a separate code review before integration to main.
+1. Phase 1 is complete: PR #9 audited deterministic portion merge, distinct review-history preservation, conflict-audit union, status/strength consistency, and strict Quran range/scheduling boundaries. Do not repeat this work.
+2. Finish Phase 2 audit of all remaining `RetentionService` mutation paths, review scheduling, duplicate operations, and dashboard statistics.
+3. Outbox idempotency, acknowledged-ID semantics, state validation, device identity, retry bounds, and regression coverage are implemented in PR #6; do not repeat this milestone.
+4. Compare Dexie, idb, and native IndexedDB for transaction semantics, licensing, compatibility, bundle cost, and migration impact; do not add a dependency until a representative prototype proves the benefit.
+5. Define append-only event schemas for activity, revision attempts, weak-verse mistakes, and tests.
+6. Implement transaction/journal semantics for domain event + outbox mutation.
+7. Derive daily logs, streaks, and weak-verse counts from deduplicated events.
+8. Preserve existing localStorage records; migration must be idempotent, non-destructive, and exportable.
+9. Test crash/reload, quota, blocked IndexedDB, account switching, duplicate retries, and partial migration.
+10. Run full CI and a separate code review before integration to main.
 
 ## M5–M7 cloud sequence
 
