@@ -8,9 +8,9 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 | Phase | Scope | Status | Evidence / remaining gate |
 |---|---|---|---|
 | 0 | Repository baseline, branch audit, architecture map | VERIFIED | Main inspected; branch divergence recorded; continue file-by-file audit |
-| 1 | Local storage and backup integrity | IN PROGRESS | Corrupt-root preservation and backup rollback exist, but several arrays are validated only as arrays; record-level validation for plans, engine plans, revision items, tests, and imported backup records remains required |
-| 2 | Memorization/revision correctness | IN PROGRESS | Known session/revision fixes are verified; audit every domain mutation and enforce full record/range validation before persistence |
-| 3 | Local outbox foundation and identity | IMPLEMENTED / partial | UID-scoped outbox and UUIDs exist; not wired to domain writes |
+| 1 | Local storage and backup integrity | IN PROGRESS | PR #4 adds CI-verified per-record validation, deep backup import/export checks, legacy migration guards, and duplicate daily-log rejection. Remaining: audit session persistence, outbox, and every mutation boundary before closing Phase 1 |
+| 2 | Memorization/revision correctness | IN PROGRESS | Existing rollback/range fixes remain; `sessionCompletion.ts` still silently floors/clamps negative/fractional counters and must reject invalid inputs before writes |
+| 3 | Local outbox foundation and identity | IMPLEMENTED / partial | UID-scoped outbox and UUIDs exist; acknowledged-ID reuse with changed content is a confirmed defect; uniqueness/disjointness checks remain; not wired to domain writes |
 | 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | Next priority: immutable activity/weak-verse/review events and durable outbox in one recoverable transaction |
 | 5 | Firestore adapter and deterministic merge | NOT STARTED | No Firestore client, repository, sync coordinator, or merge engine |
 | 6 | Firestore rules hardening and emulator integration | IN PROGRESS | UID/verified-user/allowlist/generic envelope exists; per-collection schemas, immutable event create-only rules, two-client tests remain |
