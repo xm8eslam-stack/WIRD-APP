@@ -45,6 +45,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'huge'>('large');
   const [verseFilter, setVerseFilter] = useState('');
   const [showMushafReader, setShowMushafReader] = useState(false);
+  const [mushafInitialPage, setMushafInitialPage] = useState<number | undefined>(undefined);
 
   // Audio state
   const [activeReciter, setActiveReciter] = useState<ReciterId>(initialReciter || 'alafasy');
@@ -154,7 +155,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   }, []);
 
   if (showMushafReader) {
-    return <QuranMushafReader preferredReciter={activeReciter} onBack={() => setShowMushafReader(false)} />;
+    return <QuranMushafReader preferredReciter={activeReciter} initialPage={mushafInitialPage} onBack={() => setShowMushafReader(false)} />;
   }
 
   return (
@@ -190,7 +191,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             </select>
           </div>
           <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
-          <button type="button" onClick={() => { handleStopAudio(); setShowMushafReader(true); }} className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-900">
+          <button type="button" onClick={() => { handleStopAudio(); setMushafInitialPage(undefined); setShowMushafReader(true); }} className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-900">
             <BookOpen className="h-4 w-4" /> المصحف بالصفحات
           </button>
         </div>
@@ -314,6 +315,25 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStopAudio();
+                      setMushafInitialPage(surah.pageStart);
+                      setShowMushafReader(true);
+                    }}
+                    title={`قراءة سورة ${surah.name} في المصحف من صفحتها الأولى`}
+                    aria-label={`افتح سورة ${surah.name} في المصحف من الصفحة ${surah.pageStart}`}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isSelected
+                        ? 'bg-white/15 hover:bg-white/25 text-white'
+                        : 'bg-amber-50 dark:bg-amber-950 text-amber-800 dark:text-amber-300 hover:bg-amber-100'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onStartSession(surah.number, 1, Math.min(10, surah.versesCount));
@@ -368,6 +388,14 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                 <span>بدء حفظ السورة في جلسة تفاعلية</span>
               </button>
 
+              <button
+                type="button"
+                onClick={() => { handleStopAudio(); setMushafInitialPage(selectedSurah.pageStart); setShowMushafReader(true); }}
+                className="flex items-center gap-2 px-3.5 py-2 bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800 transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>قراءة في المصحف</span>
+              </button>
               <button
                 onClick={() => handlePlayAyah(1)}
                 className="flex items-center gap-2 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl text-xs font-semibold border border-stone-300 dark:border-stone-700 transition-colors"
