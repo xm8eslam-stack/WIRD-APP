@@ -29,11 +29,12 @@ import {
   UserProfile 
 } from '../../types/quran';
 import { RetentionService, RetentionMetrics } from '../../services/retentionService';
-import { persistPortionsSnapshot } from '../../services/journaledSnapshotService';
+import { persistJournaledTransaction, persistPortionsSnapshot } from '../../services/journaledSnapshotService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadAyahByCoordinate } from '../../data/quranDataLoader';
-import { recordWeakVerseFailure } from '../../services/weakVerseRecording';
+import { buildWeakVerseFailureTransaction } from '../../services/weakVerseRecording';
+import { createSecureId } from '../../services/secureId';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
@@ -71,6 +72,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const [weakAyahNum, setWeakAyahNum] = useState<number | ''>('');
   const [isSavingRating, setIsSavingRating] = useState(false);
   const ratingInFlightRef = useRef(false);
+  const weakVerseMutationIdRef = useRef<string | null>(null);
 
   // Add new portion modal
   const [isAddPortionModalOpen, setIsAddPortionModalOpen] = useState(false);
@@ -255,18 +257,48 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       text = found.text;
     }
 
-    const result = recordWeakVerseFailure({
+    const mutationId = weakVerseMutationIdRef.current || 'weak-' + createSecureId();
+    weakVerseMutationIdRef.current = mutationId;
+    const prepared = buildWeakVerseFailureTransaction({
       surahNumber: weakSurahNum,
       surahName: surah.name,
       ayahNumber: manualWeakAyahNum,
       text,
       notes: manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
-    });
-    if (!result.success) {
-      setActionFeedback({ message: result.messageAr, type: 'warn' });
+    }, mutationId);
+    if (!prepared.success) {
+      weakVerseMutationIdRef.current = null;
+      setActionFeedback({ message: prepared.messageAr, type: 'warn' });
       return;
     }
 
+    const result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+    let projectionsMatch = false;
+    try {
+      projectionsMatch = JSON.stringify(RetentionService.getPortions()) ===
+          JSON.stringify(prepared.operations[0].payload.records) &&
+        JSON.stringify(RetentionService.getWeakVerses()) ===
+          JSON.stringify(prepared.operations[1].payload.records);
+    } catch {
+      projectionsMatch = false;
+    }
+    if (!result.success && !(result.recoveredPriorEvents && projectionsMatch)) {
+      if (result.recoveredPriorEvents) {
+        weakVerseMutationIdRef.current = null;
+        refreshAll();
+      }
+      setActionFeedback({
+        message: result.recoveredPriorEvents
+          ? 'استعدنا تغييراً سابقاً وحدّثنا البيانات؛ راجع سجل الآية قبل إعادة المحاولة.'
+          : result.queued
+            ? 'حُفظت العملية في سجل الاستعادة، لكن تعذر تطبيقها محلياً. حدّث الصفحة قبل أي محاولة أخرى.'
+            : result.error || 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.',
+        type: 'warn'
+      });
+      return;
+    }
+
+    weakVerseMutationIdRef.current = null;
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');
     setManualWeakNotes('');
