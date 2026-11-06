@@ -279,6 +279,19 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
     assert(report.success === true, 'Migration report reports success');
 
+    const missingStrengthRevision = {
+      ...legacyRevisions[0],
+      id: 'legacy-revision-without-strength',
+      startAyah: 20,
+      endAyah: 25,
+      strength: undefined
+    } as any;
+    const strengthFallback = migrateLegacyDataLosslessly([], [missingStrengthRevision]);
+    assert(strengthFallback.report.success &&
+      strengthFallback.portions[0].status === 'recently_memorized' &&
+      strengthFallback.portions[0].strength === 'medium',
+      'A legacy revision without strength must use a consistent recently_memorized/medium fallback');
+
     const identicalAttemptA: PortionStatusRecord = {
       ...legacyPortions[0],
       id: 'legacy-identical-a',
