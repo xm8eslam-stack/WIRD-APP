@@ -129,6 +129,73 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Version 1 journal upgrade backfills ordered sequences and enforces a contiguous projection cursor', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:sequence-upgrade');
+      const factory = new IDBFactory();
+      const databaseName = 'wird-sync-journal-v1-upgrade-test';
+      const legacyDatabase = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = factory.open(databaseName, 1);
+        request.onupgradeneeded = () => {
+          const database = request.result;
+          const events = database.createObjectStore('events', { keyPath: 'key' });
+          events.createIndex('uid', 'uid', { unique: false });
+          events.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
+          const outbox = database.createObjectStore('outbox', { keyPath: 'key' });
+          outbox.createIndex('uid', 'uid', { unique: false });
+          outbox.createIndex('uidNextAttempt', ['uid', 'nextAttemptAtMs'], { unique: false });
+          const acknowledgements = database.createObjectStore('acknowledgements', { keyPath: 'key' });
+          acknowledgements.createIndex('uid', 'uid', { unique: false });
+          acknowledgements.createIndex('uidAcknowledgedAt', ['uid', 'acknowledgedAtMs'], { unique: false });
+          database.createObjectStore('metadata', { keyPath: 'uid' });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      const legacyTransaction = legacyDatabase.transaction(['events', 'metadata'], 'readwrite');
+      const legacyEvents = legacyTransaction.objectStore('events');
+      const base = {
+        uid: 'sequence-upgrade',
+        eventType: 'domain-mutation',
+        collection: 'activityEvents',
+        documentId: 'legacy-session',
+        operation: 'upsert',
+        schemaVersion: 1,
+        clientUpdatedAtMs: 100,
+        deviceId: 'v1-device',
+        payload: { minutes: 1 },
+        fingerprint: '0123456789abcdef'
+      };
+      legacyEvents.add({ ...base, key: 'sequence-upgrade:old-later', eventId: 'old-later', mutationId: 'old-later', createdAtMs: 200 });
+      legacyEvents.add({ ...base, key: 'sequence-upgrade:old-earlier', eventId: 'old-earlier', mutationId: 'old-earlier', createdAtMs: 100 });
+      legacyTransaction.objectStore('metadata').put({ uid: 'sequence-upgrade', deviceId: 'v1-device', schemaVersion: 1 });
+      await new Promise<void>((resolve, reject) => {
+        legacyTransaction.oncomplete = () => resolve();
+        legacyTransaction.onabort = () => reject(legacyTransaction.error);
+      });
+      legacyDatabase.close();
+
+      const journal = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      const events = await journal.listEvents();
+      assert(events.length === 2 && events[0].eventId === 'old-earlier' && events[0].sequence === 1 &&
+        events[1].eventId === 'old-later' && events[1].sequence === 2,
+        'Version 1 events must receive deterministic per-UID sequences');
+      let skippedSequenceRejected = false;
+      try { await journal.markProjected(2); } catch { skippedSequenceRejected = true; }
+      assert(skippedSequenceRejected, 'Projection cursor must not skip an unprojected event');
+      assert(await journal.markProjected(1), 'First projection sequence must advance');
+      assert(!(await journal.markProjected(1)), 'Repeated projection acknowledgement must be idempotent');
+      assert(await journal.markProjected(2), 'Second contiguous projection sequence must advance');
+      await journal.enqueue({ mutationId: 'after-upgrade', collection: 'activityEvents', documentId: 'new-session', payload: { minutes: 2 }, nowMs: 300 });
+      const afterCursor = await journal.listEventsAfter(2);
+      const snapshot = await journal.getSnapshot();
+      assert(afterCursor.length === 1 && afterCursor[0].sequence === 3 && afterCursor[0].eventId === 'after-upgrade',
+        'New events must continue the sequence and replay after the cursor');
+      assert(snapshot.projectionCursor === 2 && snapshot.eventCount === 3,
+        'The durable projection cursor must survive and report the contiguous progress');
+      journal.close();
+    });
+
     await test('Journal snapshot creates and preserves a stable device identity', async () => {
       const { journal } = createJournal();
       const first = await journal.getSnapshot();
