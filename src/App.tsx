@@ -11,6 +11,7 @@ import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { persistSessionCompletion } from './services/sessionPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
+import { recordWeakVerseFailure } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
 
 // Lazy loaded views for optimal chunking and initial load performance
@@ -318,38 +319,21 @@ export default function App() {
     }, 4000);
   };
 
-  // Add verse to revision from test with canonical retention sync
+  // Record the weak-verse portion and its mistake counter as one recoverable operation.
   const handleAddVerseToRevision = (surahNumber: number, surahName: string, ayahNumber: number) => {
-    try {
-      RetentionService.addPortion({
-        type: 'passage',
-        surahNumber,
-        surahName,
-        startAyah: ayahNumber,
-        endAyah: ayahNumber,
-        status: 'weak',
-        nextDueDate: getLocalDateString(),
-        intervalDays: 1,
-        easeFactor: 2.0,
-        repetitionCount: 1,
-        mistakesCount: 1,
-        strength: 'weak'
-      });
-
-      RetentionService.addOrIncrementWeakVerse(
-        surahNumber,
-        ayahNumber,
-        surahName,
-        `الآية رقم ${ayahNumber} من سورة ${surahName}`,
-        'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
-      );
-
-      setRevisionItems(StorageService.getRevisionItems());
-      showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
-    } catch (error) {
-      setRevisionItems(StorageService.getRevisionItems());
-      showToast(error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة؛ لم يتم تأكيد التغيير.', 'error');
+    const result = recordWeakVerseFailure({
+      surahNumber,
+      surahName,
+      ayahNumber,
+      text: `الآية رقم ${ayahNumber} من سورة ${surahName}`,
+      notes: 'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
+    });
+    setRevisionItems(StorageService.getRevisionItems());
+    if (!result.success) {
+      showToast(result.messageAr, 'error');
+      return;
     }
+    showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
   };
 
   // Reset all data and report whether every scoped key was durably removed.
