@@ -38,7 +38,7 @@
 - PR #44 exact-head runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed.
 - PR #45 exact-head runs `42261861919` and `42261851120` passed; post-merge main run `42262136009` passed.
 - PR #47 exact-head runs `42264220176` and `42264210902` passed on `7a476f5439091110bd3254b3498499335dd47be2`.
-- Post-merge main run `42264485087` is still **in progress** on the current main SHA; recheck before marking post-merge verification complete.
+- Post-merge main run `42264485087` **passed** on the exact current main SHA.
 - Vercel Production deployment is not confirmed. Phase 2 remains IN PROGRESS; session completion, remaining mutation paths, immutable event semantics, cloud sync, and manual release QA remain open.
 
 ## Cloud sync
