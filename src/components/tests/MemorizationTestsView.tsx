@@ -110,7 +110,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   const handleResetTest = () => {
-    if (pendingTestResult || saveInProgressRef.current) return;
+    if (pendingTestResult || saveInProgressRef.current || weakVerseSaveInFlightRef.current) return;
     setCurrentQuestionIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
@@ -177,7 +177,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-semibold">
           <button
             onClick={() => {
-              if (pendingTestResult || saveInProgressRef.current) return;
+              if (pendingTestResult || saveInProgressRef.current || weakVerseSaveInFlightRef.current) return;
               setSelectedTestType('complete_verse');
               handleResetTest();
             }}
