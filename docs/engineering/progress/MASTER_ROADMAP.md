@@ -9,7 +9,7 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 |---|---|---|---|
 | 0 | Repository baseline, branch audit, architecture map | VERIFIED | Main inspected; branch divergence recorded; continue file-by-file audit |
 | 1 | Local storage, backup, and portion merge integrity | COMPLETED | PR #4 strict record/backup validation, PR #5 pre-write session/range checks, PR #6 outbox identity/idempotency, and PR #9 deterministic history/conflict preservation all merged and CI-verified. Cross-tab atomicity remains Phase 3, not a Phase 1 gate |
-| 2 | Memorization/revision correctness | IN PROGRESS | PR #5 now rejects negative/fractional/unsafe session counters, validates Quran coordinates, revision ratings, weak-ayah ranges, notes, and durations before writes. Remaining review-scheduling, duplicate-operation, and statistics audit stays open |
+| 2 | Memorization/revision correctness | IN PROGRESS | Phase 2 audit branch adds service-boundary validation, safe duplicate portion handling, weak-verse uniqueness/idempotency, and guarded revision UI; regression tests added but CI/independent review/main merge still pending. Continue daily queue/statistics/rollback audit |
 | 3 | Local outbox foundation and identity | IMPLEMENTED / partial | PR #6 now fingerprints acknowledged mutations, validates pending/acknowledged uniqueness and disjointness, binds pending records to device identity, and prevents retry overflow. Still localStorage-backed (not cross-tab transactional), not wired to domain writes, and no cloud sync is active |
 | 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | Next priority: immutable activity/weak-verse/review events and durable outbox in one recoverable transaction |
 | 5 | Firestore adapter and deterministic merge | NOT STARTED | No Firestore client, repository, sync coordinator, or merge engine |
@@ -24,7 +24,7 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 ## M4 detailed sequence
 
 1. Phase 1 is complete: PR #9 audited deterministic portion merge, distinct review-history preservation, conflict-audit union, status/strength consistency, and strict Quran range/scheduling boundaries. Do not repeat this work.
-2. Finish Phase 2 audit of all remaining `RetentionService` mutation paths, review scheduling, duplicate operations, and dashboard statistics.
+2. Current Phase 2 branch adds validation and safe duplicate behavior to `RetentionService`, weak-verse records, and revision modal. Keep IN PROGRESS until CI and independent review pass; finish review scheduling, daily queue, aggregate statistics, and rollback audit.
 3. Outbox idempotency, acknowledged-ID semantics, state validation, device identity, retry bounds, and regression coverage are implemented in PR #6; do not repeat this milestone.
 4. Compare Dexie, idb, and native IndexedDB for transaction semantics, licensing, compatibility, bundle cost, and migration impact; do not add a dependency until a representative prototype proves the benefit.
 5. Define append-only event schemas for activity, revision attempts, weak-verse mistakes, and tests.

@@ -18,7 +18,8 @@ import {
   getLocalDateString,
   calculateCanonicalSM2,
   createCanonicalPortionId,
-  addDaysToLocalDate
+  addDaysToLocalDate,
+  mergeCanonicalPortionRecords
 } from './unifiedPortionService';
 
 const STORAGE_KEYS = {
@@ -35,7 +36,16 @@ function assertValidQuranRange(surahNumber: number, startAyah: number, endAyah: 
 }
 
 function isValidWeakVerseArray(value: unknown): value is WeakVerseItem[] {
-  return Array.isArray(value) && value.length <= 6236 && value.every(isValidWeakVerseRecord);
+  if (!Array.isArray(value) || value.length > 6236 || !value.every(isValidWeakVerseRecord)) return false;
+  const ids = new Set<string>();
+  const coordinates = new Set<string>();
+  for (const item of value) {
+    const coordinate = item.surahNumber + ':' + item.ayahNumber;
+    if (ids.has(item.id) || coordinates.has(coordinate)) return false;
+    ids.add(item.id);
+    coordinates.add(coordinate);
+  }
+  return true;
 }
 
 // Initial realistic seed portions representing various Quran portions across the 6 statuses
@@ -308,39 +318,57 @@ export const RetentionService = {
 
   // Update a single portion's status directly
   updatePortionStatus(id: string, newStatus: PortionMemorizationStatus): PortionStatusRecord[] {
+    if (typeof id !== 'string' || !id.trim() || id.length > 180) {
+      throw new Error('معرّف المقطع غير صالح؛ لم يتم تعديل أي بيانات.');
+    }
+    if (!['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak'].includes(newStatus)) {
+      throw new Error('حالة الحفظ المطلوبة غير صالحة؛ لم يتم تعديل أي بيانات.');
+    }
     const portions = this.getPortions();
-    const updated = portions.map(p => {
-      if (p.id !== id) return p;
-      return {
-        ...p,
-        status: newStatus
-      };
-    });
+    const index = portions.findIndex(portion => portion.id === id);
+    if (index < 0) throw new Error('المقطع المطلوب غير موجود؛ لم يتم حفظ تحديث وهمي.');
+    const updated: PortionStatusRecord[] = portions.map((portion, currentIndex): PortionStatusRecord =>
+      currentIndex !== index ? portion : {
+        ...portion,
+        status: newStatus,
+        strength: newStatus === 'weak' ? 'weak' : newStatus === 'stable' ? 'strong' : 'medium'
+      }
+    );
     if (!this.savePortions(updated)) throw new Error('تعذر حفظ تحديث حالة المقطع في التخزين المحلي.');
     return updated;
   },
 
   // Add a new portion to track
   addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
+    if (!portion || typeof portion !== 'object') throw new Error('بيانات المقطع غير صالحة.');
     assertValidQuranRange(portion.surahNumber, portion.startAyah, portion.endAyah);
+    const surahMeta = ALL_SURAHS.find(surah => surah.number === portion.surahNumber)!;
+    const normalizedPortion = { ...portion, surahName: surahMeta.name };
     const portions = this.getPortions();
     const canonicalId = createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah);
-    const existingIndex = portions.findIndex(p => p.id === canonicalId || (p.surahNumber === portion.surahNumber && p.startAyah === portion.startAyah && p.endAyah === portion.endAyah));
+    const existingIndex = portions.findIndex(existing =>
+      existing.id === canonicalId ||
+      (existing.surahNumber === portion.surahNumber &&
+        existing.startAyah === portion.startAyah && existing.endAyah === portion.endAyah)
+    );
 
     let record: PortionStatusRecord;
     if (existingIndex >= 0) {
-      record = {
-        ...portions[existingIndex],
-        ...portion,
-        id: canonicalId
-      };
+      // Re-adding an existing range must never reset its review history,
+      // counters, or weaker memorization state.
+      record = mergeCanonicalPortionRecords(
+        portions[existingIndex],
+        normalizedPortion,
+        'RetentionService.addPortion'
+      ) as PortionStatusRecord;
+      record.id = canonicalId;
       portions[existingIndex] = record;
     } else {
       record = {
-        ...portion,
+        ...normalizedPortion,
         id: canonicalId,
         history: [],
-        createdAt: new Date().toISOString()
+        createdAt: portion.createdAt || new Date().toISOString()
       };
       portions.unshift(record);
     }
@@ -369,15 +397,20 @@ export const RetentionService = {
       const newStatus = existing.status === 'not_memorized' || existing.status === 'currently_memorizing' 
         ? 'recently_memorized' 
         : existing.status;
+      const nextIntervalDays = newStatus === 'weak'
+        ? 1
+        : Math.max(1, existing.intervalDays || 1);
       updatedPortion = {
         ...existing,
         id: canonicalId,
         status: newStatus,
+        strength: newStatus === 'weak' ? 'weak' : existing.strength || 'medium',
         lastReviewedDate: today,
         nextDueDate: tomorrow,
         repetitionCount: (existing.repetitionCount || 0) + 1,
-        intervalDays: Math.max(1, existing.intervalDays || 1),
-        easeFactor: existing.easeFactor || 2.5
+        intervalDays: nextIntervalDays,
+        easeFactor: existing.easeFactor || 2.5,
+        history: existing.history || []
       };
       portions[existingIndex] = updatedPortion;
     } else {
@@ -396,16 +429,7 @@ export const RetentionService = {
         easeFactor: 2.5,
         repetitionCount: 1,
         mistakesCount: 0,
-        history: [
-          {
-            id: `init-${createSecureId()}`,
-            date: today,
-            rating: 'successful',
-            intervalDaysBefore: 0,
-            intervalDaysAfter: 1,
-            notes: 'إتمام جلسة الحفظ الأولى للمقطع'
-          }
-        ],
+        history: [],
         createdAt: new Date().toISOString()
       };
       portions.unshift(updatedPortion);
@@ -637,27 +661,41 @@ export const RetentionService = {
   },
 
   addOrIncrementWeakVerse(
-    surahNumber: number, 
-    ayahNumber: number, 
-    surahName: string, 
-    text: string, 
+    surahNumber: number,
+    ayahNumber: number,
+    _surahName: string,
+    text: string,
     notes?: string
   ): WeakVerseItem[] {
+    const surah = Number.isSafeInteger(surahNumber)
+      ? ALL_SURAHS.find(item => item.number === surahNumber)
+      : undefined;
+    if (!surah || !Number.isSafeInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > surah.versesCount) {
+      throw new Error('رقم السورة أو الآية غير صحيح؛ لم يتم تعديل قائمة الآيات المتعثرة.');
+    }
+    if (typeof text !== 'string' || !text.trim() || text.length > 4000 ||
+        (notes !== undefined && (typeof notes !== 'string' || notes.length > 2000))) {
+      throw new Error('نص الآية أو الملاحظة غير صالح؛ لم يتم تعديل قائمة الآيات المتعثرة.');
+    }
     const items = this.getWeakVerses();
-    const existingIndex = items.findIndex(i => i.surahNumber === surahNumber && i.ayahNumber === ayahNumber);
+    const existingIndex = items.findIndex(item =>
+      item.surahNumber === surahNumber && item.ayahNumber === ayahNumber
+    );
     const today = getLocalDateString();
 
     if (existingIndex >= 0) {
+      if (items[existingIndex].mistakeCount >= 1000000) {
+        throw new Error('وصل عداد تعثر الآية إلى الحد الآمن؛ لم يتم تغيير السجل.');
+      }
       items[existingIndex].mistakeCount += 1;
       items[existingIndex].lastFailedDate = today;
-      if (notes) {
-        items[existingIndex].notes = notes;
-      }
+      items[existingIndex].surahName = surah.name;
+      if (notes) items[existingIndex].notes = notes;
     } else {
       items.unshift({
         id: `weak-${surahNumber}-${ayahNumber}-${createSecureId()}`,
         surahNumber,
-        surahName,
+        surahName: surah.name,
         ayahNumber,
         text,
         mistakeCount: 1,
@@ -671,9 +709,14 @@ export const RetentionService = {
   },
 
   resolveWeakVerse(id: string): WeakVerseItem[] {
-    const items = this.getWeakVerses().filter(i => i.id !== id);
-    if (!this.saveWeakVerses(items)) throw new Error('تعذر تحديث قائمة الآيات المتعثرة في التخزين المحلي.');
-    return items;
+    if (typeof id !== 'string' || !id.trim() || id.length > 180) {
+      throw new Error('معرّف الآية المتعثرة غير صالح.');
+    }
+    const items = this.getWeakVerses();
+    const updated = items.filter(item => item.id !== id);
+    if (updated.length === items.length) return items; // Idempotent repeated resolution.
+    if (!this.saveWeakVerses(updated)) throw new Error('تعذر تحديث قائمة الآيات المتعثرة في التخزين المحلي.');
+    return updated;
   },
 
   // 4. Flattened Revision History Audit Log

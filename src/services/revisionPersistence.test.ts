@@ -10,6 +10,79 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
   };
   const assert = (condition: boolean, message: string) => { if (!condition) throw new Error(message); };
 
+  test('Re-adding an existing canonical portion never resets its history or weaker progress', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:portion-duplicate-add');
+    try {
+      const today = getLocalDateString();
+      const original = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 21, endAyah: 25,
+        status: 'weak', strength: 'weak', nextDueDate: today, intervalDays: 1, easeFactor: 1.8,
+        repetitionCount: 8, mistakesCount: 4
+      });
+      const historyEntry = {
+        id: 'existing-review-event', date: today, rating: 'failed' as const,
+        intervalDaysBefore: 3, intervalDaysAfter: 1, notes: 'existing failure'
+      };
+      RetentionService.savePortions([{
+        ...original,
+        history: [historyEntry],
+        repetitionCount: 8,
+        mistakesCount: 4,
+        status: 'weak',
+        strength: 'weak'
+      }]);
+      const readded = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'اسم غير صحيح', startAyah: 21, endAyah: 25,
+        status: 'stable', strength: 'strong', nextDueDate: today, intervalDays: 7, easeFactor: 2.8,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      assert(readded.status === 'weak' && readded.strength === 'weak',
+        'A duplicate stable add must not upgrade an existing weak portion');
+      assert(readded.repetitionCount === 8 && readded.mistakesCount === 4,
+        'Existing repetition and mistake counters must not be reset');
+      assert(readded.history?.length === 1 && readded.history[0].id === 'existing-review-event',
+        'Existing review history must survive duplicate add');
+      assert(readded.surahName === 'الملك', 'Surah metadata must come from canonical Quran metadata');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Manual status updates keep strength labels consistent', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:manual-status-strength');
+    try {
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 26, endAyah: 28,
+        status: 'weak', strength: 'weak', nextDueDate: getLocalDateString(), intervalDays: 1,
+        easeFactor: 1.8, repetitionCount: 1, mistakesCount: 2
+      });
+      const updated = RetentionService.updatePortionStatus(portion.id, 'stable');
+      assert(updated[0].status === 'stable' && updated[0].strength === 'strong',
+        'Explicitly setting a portion to stable must also set its strength label to strong');
+      const reset = RetentionService.updatePortionStatus(portion.id, 'not_memorized');
+      assert(reset[0].status === 'not_memorized' && reset[0].strength === 'medium',
+        'Resetting a portion to not_memorized must not retain a contradictory strong label');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Updating a missing portion ID is rejected without writing a no-op success', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:portion-missing-update');
+    try {
+      const before = JSON.stringify(RetentionService.getPortions());
+      let rejected = false;
+      try { RetentionService.updatePortionStatus('missing-canonical-id', 'stable'); } catch { rejected = true; }
+      assert(rejected, 'Unknown portion IDs must be rejected');
+      assert(JSON.stringify(RetentionService.getPortions()) === before, 'Unknown ID updates must not write or change progress');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Revision rating does not invent 15 minutes when duration was not measured', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:revision-duration');

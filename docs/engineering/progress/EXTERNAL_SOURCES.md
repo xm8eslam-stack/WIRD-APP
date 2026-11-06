@@ -61,3 +61,14 @@ Do not add a validator dependency in this documentation/audit pass. First map al
 - The merge algorithm remains domain-specific and conservative: exact canonical Quran ranges are reconciled; distinct review attempts are deduplicated only by stable event ID; same-ID content conflicts are retained under deterministic alternate IDs; existing conflict-audit entries are unioned; weaker status/strength wins.
 - Generic last-write-wins and CRDT libraries were not adopted because they do not replace Quran-aware range validation, explicit status severity, or review-event identity.
 - No third-party source code, snippets, or dependencies were copied or added.
+
+
+## Phase 2 mutation/idempotency and Quran-platform research — 2026-11-06
+
+| Project / source | URL | License / terms | Reviewed for | WIRD decision |
+|---|---|---|---|---|
+| Microsoft Azure Architecture Center — Event Sourcing | https://learn.microsoft.com/en-us/azure/architecture/patterns/event-sourcing | Microsoft documentation; no source code copied | At-least-once delivery and idempotent event handlers; duplicate event processing must not double-apply side effects | Architecture guidance only; use stable event IDs and idempotent projections when the event ledger is implemented |
+| Brenopms/ts-event-sourcing | https://github.com/Brenopms/ts-event-sourcing | Repository page reviewed; verify exact license before any adoption | Strongly typed command handlers and idempotency keys | Reference only; no code copied and no dependency added |
+| UmmahLibrary/ummah-library | https://github.com/UmmahLibrary/ummah-library | AGPL-3.0 | Quran-first architecture, offline reader, Uthmani text, tafsir/Hifz feature organization | Architecture-only reference; do not copy code into WIRD without separate AGPL compatibility/legal review |
+
+No third-party source code or dependencies were copied/added in this Phase 2 continuation. The current fixes use WIRD's existing domain model and storage abstractions.

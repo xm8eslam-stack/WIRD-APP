@@ -743,6 +743,19 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     return { valid: false, error: 'يحتوي سجل النشاط اليومي على أكثر من سجل للتاريخ نفسه' };
   }
 
+  if (Array.isArray(payload.weakVerses)) {
+    const weakIds = new Set<string>();
+    const weakCoordinates = new Set<string>();
+    for (const item of payload.weakVerses as WeakVerseItem[]) {
+      const coordinate = item.surahNumber + ':' + item.ayahNumber;
+      if (weakIds.has(item.id) || weakCoordinates.has(coordinate)) {
+        return { valid: false, error: 'يحتوي سجل الآيات المتعثرة على معرف أو موضع قرآني مكرر' };
+      }
+      weakIds.add(item.id);
+      weakCoordinates.add(coordinate);
+    }
+  }
+
   if (payload.version === 4 && Array.isArray(payload.unifiedPortions)) {
     if (payload.portions !== undefined &&
         JSON.stringify(payload.portions) !== JSON.stringify(payload.unifiedPortions)) {

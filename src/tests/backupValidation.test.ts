@@ -101,6 +101,24 @@ export function runBackupTests(): { passed: number; failed: number } {
       'Complete legacy revision item should pass its migration-compatible schema');
   });
 
+  test('Backup rejects duplicate weak-verse IDs and duplicate Quran coordinates', () => {
+    const weakVerse: WeakVerseItem = {
+      id: 'weak-duplicate-a', surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
+      text: 'نص تجريبي', mistakeCount: 1, lastFailedDate: '2026-11-06'
+    };
+    const duplicateId = validateBackupPayload({
+      version: 3,
+      weakVerses: [weakVerse, { ...weakVerse, surahNumber: 68, ayahNumber: 1 }]
+    });
+    assert(!duplicateId.valid, 'Duplicate weak-verse IDs must be rejected');
+
+    const duplicateCoordinate = validateBackupPayload({
+      version: 3,
+      weakVerses: [weakVerse, { ...weakVerse, id: 'weak-duplicate-b', text: 'نص آخر' }]
+    });
+    assert(!duplicateCoordinate.valid, 'Duplicate weak-verse Quran coordinates must be rejected');
+  });
+
   test('Backup rejects malformed records inside arrays, not only malformed array roots', () => {
     const badPlan = { ...PRESET_PLANS[0], dailyTarget: -1 };
     const badRevision = {

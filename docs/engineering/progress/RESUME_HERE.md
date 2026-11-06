@@ -55,3 +55,26 @@
 - Production rules deployment: not confirmed and requires explicit approval.
 
 If any current evidence differs from these notes, current GitHub state wins. Update all checkpoint files with the newly verified facts before stopping.
+
+
+## 2026-11-06 — Latest continuation checkpoint (takes precedence over older next-action notes)
+
+- Current working branch: `fix/phase2-retention-mutation-audit`.
+- Canonical branch: `main`; its verified HEAD at the beginning of this continuation was `87d6abfb95809c2395e5acff7bfe4ab90e9d9a6f`. Re-fetch both refs before further edits.
+- Initial comparison: working branch was 16 commits ahead / 0 behind main. Additional code commits were added during this continuation; the latest code commit before this checkpoint's documentation updates was `360702ad4b6ab3e8e5233670ad0eb5203fd50678`. Re-run compare for the current branch HEAD.
+- Phase 1 remains COMPLETED on main by PR #9. Phase 2 remains IN PROGRESS and is not merged or CI-verified.
+- Phase 2 changes on the branch cover: manual status validation/strength consistency; canonical duplicate portion merging without history/counter reset; weak-verse unique IDs and Quran coordinates; strict direct weak-verse mutation validation; idempotent weak-verse resolution; backup duplicate weak-verse rejection; revision modal double-submit protection and stale input reset.
+- Memorization completion was deliberately removed from the revision-history ledger to keep review statistics semantically accurate. The updated regression test checks review history and total review count remain unchanged by a memorization session.
+- New tests have been added but not yet executed in a confirmed GitHub Actions run. A draft PR is the next step to trigger CI.
+- External architecture research: Microsoft Event Sourcing guidance, Brenopms TypeScript event-sourcing reference, and Ummah Library (AGPL-3.0). No external code copied; no dependency added.
+- No Phase 2 code has been written to main. Do not force-push or merge until tests and independent review pass.
+- No Firestore production rules deployment, live cloud sync, destructive migration, or production data mutation has occurred.
+
+### Resume instructions
+
+1. Fetch latest main and working branch refs and compare them.
+2. Re-read this file, CURRENT_STATUS.md, MASTER_ROADMAP.md, and WORK_LOG.md.
+3. Inspect the full Phase 2 diff, especially `retentionService.ts`, `RevisionCenterView.tsx`, and all touched tests.
+4. Create/inspect a draft PR to run CI; wait for test, lint, build, Firestore emulator, audit, and smoke-test results.
+5. Fix all failures and perform an independent second review.
+6. Continue remaining Phase 2 daily queue/statistics/rollback tests. Only merge verified changes to main.

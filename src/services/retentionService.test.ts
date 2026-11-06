@@ -95,10 +95,10 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
   runTest('RetentionService: "failed" rating resets interval to 1 day and marks status as weak', () => {
     const newPortion = RetentionService.addPortion({
       type: 'passage',
-      surahNumber: 109,
-      surahName: 'الكافرون',
+      surahNumber: 110,
+      surahName: 'النصر',
       startAyah: 1,
-      endAyah: 6,
+      endAyah: 3,
       status: 'needs_revision',
       nextDueDate: new Date().toISOString().split('T')[0],
       intervalDays: 4,
@@ -111,7 +111,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
       newPortion.id, 
       'failed', 
       'نسيان الآية 3',
-      { ayahNumber: 3, text: 'وَلَا أَنتُمْ عَابِدُونَ مَا أَعْبُدُ', notes: 'التباس التكرار' }
+      { ayahNumber: 2, text: 'نص آية اختبار من سورة النصر', notes: 'التباس التكرار' }
     );
 
     assert(result.nextIntervalDays === 1, `Expected reset to 1 day, got ${result.nextIntervalDays}`);
@@ -120,7 +120,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
 
     // Verify weak verse was logged in weak verses list
     const weakVerses = RetentionService.getWeakVerses();
-    const foundWeak = weakVerses.find(w => w.surahNumber === 109 && w.ayahNumber === 3);
+    const foundWeak = weakVerses.find(w => w.surahNumber === 110 && w.ayahNumber === 2);
     assert(Boolean(foundWeak), 'Weak verse should be added to weak verses tracker');
   });
 

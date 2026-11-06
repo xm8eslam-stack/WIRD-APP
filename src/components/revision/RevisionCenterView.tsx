@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Repeat, 
   CheckCircle2, 
@@ -68,6 +68,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const [ratingPortion, setRatingPortion] = useState<PortionStatusRecord | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [weakAyahNum, setWeakAyahNum] = useState<number | ''>('');
+  const [isSavingRating, setIsSavingRating] = useState(false);
+  const ratingInFlightRef = useRef(false);
 
   // Add new portion modal
   const [isAddPortionModalOpen, setIsAddPortionModalOpen] = useState(false);
@@ -109,49 +111,59 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const weeklyOverview = RetentionService.getWeeklyRevisionOverview(todayStr);
   const revisionHistory = RetentionService.getRevisionHistory();
 
-  // Handle rating a portion
-  const handleRatePortion = async (rating: RevisionRating) => {
-    if (!ratingPortion) return;
+  // Handle rating a portion. The ref blocks rapid double clicks before React re-renders.
+  const handleRatePortion = async (
+    rating: RevisionRating,
+    portionOverride?: PortionStatusRecord
+  ) => {
+    const selectedPortion = portionOverride || ratingPortion;
+    if (!selectedPortion || ratingInFlightRef.current) return;
 
-    let weakDetails = undefined;
-    if (rating === 'failed' && weakAyahNum) {
-      const foundAyah = await loadAyahByCoordinate(ratingPortion.surahNumber, Number(weakAyahNum)).catch(() => undefined);
-      weakDetails = {
-        ayahNumber: Number(weakAyahNum),
-        text: foundAyah?.text || `الآية رقم ${weakAyahNum}`,
-        notes: reviewNotes || 'خطأ متكرر أثناء المراجعة'
-      };
-    }
-
-    let result;
+    ratingInFlightRef.current = true;
+    setIsSavingRating(true);
     try {
-      result = RetentionService.recordRevisionPerformance(
-        ratingPortion.id,
+      let weakDetails = undefined;
+      if (rating === 'failed' && weakAyahNum) {
+        const foundAyah = await loadAyahByCoordinate(selectedPortion.surahNumber, Number(weakAyahNum)).catch(() => undefined);
+        if (!foundAyah?.text) {
+          throw new Error('تعذر تحميل نص الآية من مصدر القرآن؛ لم يتم تسجيل نص بديل أو تعديل تقييم المراجعة.');
+        }
+        weakDetails = {
+          ayahNumber: Number(weakAyahNum),
+          text: foundAyah.text,
+          notes: reviewNotes || 'خطأ متكرر أثناء المراجعة'
+        };
+      }
+
+      const result = RetentionService.recordRevisionPerformance(
+        selectedPortion.id,
         rating,
         reviewNotes,
         weakDetails
       );
+
+      setActionFeedback({
+        message: result.messageAr,
+        type: !result.activitySaved ? 'warn' : rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
+      });
+
+      setRatingPortion(null);
+      setReviewNotes('');
+      setWeakAyahNum('');
+      refreshAll();
+
+      setTimeout(() => {
+        setActionFeedback(null);
+      }, 5000);
     } catch (error) {
       setActionFeedback({
         message: error instanceof Error ? error.message : 'تعذر حفظ تقييم المراجعة؛ لم يتم تأكيد التغيير.',
         type: 'warn'
       });
-      return;
+    } finally {
+      ratingInFlightRef.current = false;
+      setIsSavingRating(false);
     }
-
-    setActionFeedback({
-      message: result.messageAr,
-      type: !result.activitySaved ? 'warn' : rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
-    });
-
-    setRatingPortion(null);
-    setReviewNotes('');
-    setWeakAyahNum('');
-    refreshAll();
-
-    setTimeout(() => {
-      setActionFeedback(null);
-    }, 5000);
   };
 
   // Handle adding new portion
@@ -211,10 +223,17 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const surah = ALL_SURAHS.find(s => s.number === weakSurahNum);
     if (!surah) return;
 
-    let text = manualWeakText;
+    let text = manualWeakText.trim();
     if (!text) {
       const found = await loadAyahByCoordinate(weakSurahNum, manualWeakAyahNum).catch(() => undefined);
-      text = found?.text || `آية رقم ${manualWeakAyahNum}`;
+      if (!found?.text) {
+        setActionFeedback({
+          message: 'تعذر تحميل نص الآية من مصدر القرآن؛ أدخل النص القرآني الصحيح أو حاول مجددًا. لم يتم تسجيل نص بديل.',
+          type: 'warn'
+        });
+        return;
+      }
+      text = found.text;
     }
 
     const result = recordWeakVerseFailure({
@@ -461,10 +480,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                       <div className="grid grid-cols-3 gap-2">
                         <button
-                          onClick={() => {
-                            setRatingPortion(item);
-                            handleRatePortion('successful');
-                          }}
+                          disabled={isSavingRating}
+                          onClick={() => handleRatePortion('successful', item)}
                           className="py-2 px-1 text-center bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -472,10 +489,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         </button>
 
                         <button
-                          onClick={() => {
-                            setRatingPortion(item);
-                            handleRatePortion('difficult');
-                          }}
+                          disabled={isSavingRating}
+                          onClick={() => handleRatePortion('difficult', item)}
                           className="py-2 px-1 text-center bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold border border-amber-200 dark:border-amber-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <Clock className="w-3.5 h-3.5 text-amber-600" />
@@ -483,7 +498,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         </button>
 
                         <button
-                          onClick={() => setRatingPortion(item)}
+                          disabled={isSavingRating}
+                          onClick={() => { setRatingPortion(item); setReviewNotes(''); setWeakAyahNum(''); }}
                           className="py-2 px-1 text-center bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
@@ -872,7 +888,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
               </h3>
-              <button onClick={() => setRatingPortion(null)} className="text-stone-400 hover:text-stone-600">
+              <button disabled={isSavingRating} onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -914,13 +930,15 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setRatingPortion(null)}
+                disabled={isSavingRating}
+                onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }}
                 className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold"
               >
                 إلغاء
               </button>
               <button
                 type="button"
+                disabled={isSavingRating}
                 onClick={() => handleRatePortion('failed')}
                 className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors"
               >
