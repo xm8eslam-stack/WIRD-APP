@@ -18,7 +18,8 @@ import {
   getLocalDateString,
   calculateCanonicalSM2,
   createCanonicalPortionId,
-  addDaysToLocalDate
+  addDaysToLocalDate,
+  mergeCanonicalPortionRecords
 } from './unifiedPortionService';
 
 const STORAGE_KEYS = {
@@ -35,7 +36,16 @@ function assertValidQuranRange(surahNumber: number, startAyah: number, endAyah: 
 }
 
 function isValidWeakVerseArray(value: unknown): value is WeakVerseItem[] {
-  return Array.isArray(value) && value.length <= 6236 && value.every(isValidWeakVerseRecord);
+  if (!Array.isArray(value) || value.length > 6236 || !value.every(isValidWeakVerseRecord)) return false;
+  const ids = new Set<string>();
+  const coordinates = new Set<string>();
+  for (const item of value) {
+    const coordinate = item.surahNumber + ':' + item.ayahNumber;
+    if (ids.has(item.id) || coordinates.has(coordinate)) return false;
+    ids.add(item.id);
+    coordinates.add(coordinate);
+  }
+  return true;
 }
 
 // Initial realistic seed portions representing various Quran portions across the 6 statuses
@@ -308,13 +318,19 @@ export const RetentionService = {
 
   // Update a single portion's status directly
   updatePortionStatus(id: string, newStatus: PortionMemorizationStatus): PortionStatusRecord[] {
+    if (typeof id !== 'string' || !id.trim() || id.length > 180) {
+      throw new Error('معرّف المقطع غير صالح؛ لم يتم تعديل أي بيانات.');
+    }
+    if (!['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak'].includes(newStatus)) {
+      throw new Error('حالة الحفظ المطلوبة غير صالحة؛ لم يتم تعديل أي بيانات.');
+    }
     const portions = this.getPortions();
-    const updated = portions.map(p => {
-      if (p.id !== id) return p;
-      return {
-        ...p,
-        status: newStatus
-      };
+    const index = portions.findIndex(portion => portion.id === id);
+    if (index < 0) throw new Error('المقطع المطلوب غير موجود؛ لم يتم حفظ تحديث وهمي.');
+    const updated = portions.map((portion, currentIndex) => currentIndex !== index ? portion : {
+      ...portion,
+      status: newStatus,
+      strength: newStatus === 'weak' ? 'weak' : portion.strength
     });
     if (!this.savePortions(updated)) throw new Error('تعذر حفظ تحديث حالة المقطع في التخزين المحلي.');
     return updated;
@@ -322,25 +338,35 @@ export const RetentionService = {
 
   // Add a new portion to track
   addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
+    if (!portion || typeof portion !== 'object') throw new Error('بيانات المقطع غير صالحة.');
     assertValidQuranRange(portion.surahNumber, portion.startAyah, portion.endAyah);
+    const surahMeta = ALL_SURAHS.find(surah => surah.number === portion.surahNumber)!;
+    const normalizedPortion = { ...portion, surahName: surahMeta.name };
     const portions = this.getPortions();
     const canonicalId = createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah);
-    const existingIndex = portions.findIndex(p => p.id === canonicalId || (p.surahNumber === portion.surahNumber && p.startAyah === portion.startAyah && p.endAyah === portion.endAyah));
+    const existingIndex = portions.findIndex(existing =>
+      existing.id === canonicalId ||
+      (existing.surahNumber === portion.surahNumber &&
+        existing.startAyah === portion.startAyah && existing.endAyah === portion.endAyah)
+    );
 
     let record: PortionStatusRecord;
     if (existingIndex >= 0) {
-      record = {
-        ...portions[existingIndex],
-        ...portion,
-        id: canonicalId
-      };
+      // Re-adding an existing range must never reset its review history,
+      // counters, or weaker memorization state.
+      record = mergeCanonicalPortionRecords(
+        portions[existingIndex],
+        normalizedPortion,
+        'RetentionService.addPortion'
+      ) as PortionStatusRecord;
+      record.id = canonicalId;
       portions[existingIndex] = record;
     } else {
       record = {
-        ...portion,
+        ...normalizedPortion,
         id: canonicalId,
         history: [],
-        createdAt: new Date().toISOString()
+        createdAt: portion.createdAt || new Date().toISOString()
       };
       portions.unshift(record);
     }
