@@ -189,11 +189,9 @@ class CloudSyncCoordinator {
             // Verify the immutable event identity before changing its mutable
             // snapshot projection. A reused event ID with different content must
             // never overwrite the previously accepted remote snapshot.
-            let eventRef = null;
-            let eventRecord: Record<string, unknown> | null = null;
             if (entry.eventId) {
-              eventRef = doc(db, 'users', uid, 'events', entry.eventId);
-              eventRecord = {
+              const eventRef = doc(db, 'users', uid, 'events', entry.eventId);
+              const eventRecord = {
                 schemaVersion: 1,
                 eventId: entry.eventId,
                 mutationId: entry.mutationId,
@@ -210,7 +208,7 @@ class CloudSyncCoordinator {
               if (existingEvent.exists()) {
                 const remote = existingEvent.data();
                 const matches = Object.keys(eventRecord).every((key) =>
-                  stableSerialize(remote[key]) === stableSerialize(eventRecord![key])
+                  stableSerialize(remote[key]) === stableSerialize(eventRecord[key])
                 );
                 if (!matches) {
                   throw new Error('يوجد تعارض في سجل المزامنة لنفس معرف العملية؛ تم الاحتفاظ بالعملية المحلية دون استبدال السجل السحابي.');
