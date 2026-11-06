@@ -269,3 +269,16 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - No algorithm migration, schedule rescheduling, production migration, Firestore rules deployment, or cloud sync activation occurred.
 - Vercel's status still reports the Free-plan daily deployment limit; production deployment is not confirmed. GitHub Actions code quality gates passed.
 - Phase 2 remains IN PROGRESS. Next work is failure-injection for multi-key review/weak-verse/activity rollback and recovery-state correctness.
+
+
+## 2026-11-06 — Phase 2 multi-key rollback failure injection merged (PR #12)
+
+- PR #12 `test(storage): inject multi-key rollback failures` was squash-merged to `main`.
+- Merge SHA: `1ffd6c23363d636a6b395620e7f9c7cd15828827`; tested PR head: `522bbc549074217af8e3d434538078cc5a8204bc`.
+- GitHub Actions WIRD Quality Gate #741 / run `42216315142` passed: **315 automated assertions / 0 failures**, **10 Firestore Security Rules Emulator tests**, dependency audit, TypeScript, production build, and production server startup smoke test.
+- New tests prove: (1) a weak-verse archive quota failure restores the changed review portion and prevents activity recording; (2) a subsequent rollback write failure produces an explicit recovery-required/backup warning; (3) profile quota failure after successful portion, weak-verse, and activity writes restores all four archives to their original raw values.
+- Independent review strengthened the third test to assert that weak-verse and activity writes actually succeeded before injecting the later profile failure.
+- PR #12 was test-only; no application runtime code, schema, user data, algorithm, or migration changed.
+- External references reviewed: MDN IndexedDB transaction guide, W3C IndexedDB 3.0 atomic commit/abort semantics, Dexie transaction documentation, and OWASP browser-storage testing guidance. No source code or dependencies copied.
+- Vercel passed for the PR head before merge; post-merge deployment status on the merge SHA was pending at the last check. Do not claim production deployment.
+- Phase 2 remains IN PROGRESS. Next: inject silent-write/read-back mismatch and audit each multi-key mutation path for complete rollback/recovery behavior.
