@@ -1,6 +1,7 @@
 import { RetentionService, DEFAULT_PORTIONS } from './retentionService';
+import { StorageService } from './storageService';
 import { PortionMemorizationStatus, RevisionRating } from '../types/quran';
-import { createCanonicalPortionId } from './unifiedPortionService';
+import { addDaysToLocalDate, createCanonicalPortionId, getLocalDateString, getPrioritizedRevisionQueue } from './unifiedPortionService';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -157,6 +158,213 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
       `Expected score 0-100%, got ${metrics.retentionScorePercentage}%`);
     assert(metrics.statusBreakdown.stable >= 0, 'Stable count should be non-negative');
     assert(metrics.totalTrackedPortions > 0, 'Should have tracked portions');
+  });
+
+  runTest('RetentionService: legacy first-memorization logs stay archived but are excluded from review history and totals', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:legacy-memorization-history');
+    try {
+      const today = getLocalDateString();
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 3,
+        status: 'stable', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      const legacyMemorization = {
+        id: 'init-legacy-1', date: today, rating: 'successful' as const,
+        intervalDaysBefore: 0, intervalDaysAfter: 1,
+        notes: 'إتمام جلسة الحفظ الأولى للمقطع'
+      };
+      const realReview = {
+        id: 'review-real-1', date: today, rating: 'successful' as const,
+        intervalDaysBefore: 1, intervalDaysAfter: 2
+      };
+      RetentionService.savePortions([{ ...portion, history: [legacyMemorization, realReview] }]);
+      const history = RetentionService.getRevisionHistory();
+      assert(history.length === 1 && history[0].id === realReview.id,
+        'Legacy first-memorization event must not appear as a review');
+      assert(RetentionService.getPortions()[0].history?.length === 2,
+        'Filtering legacy memorization from review views must not delete archived data');
+      assert(RetentionService.getRetentionDashboardMetrics().totalReviewsCompleted === 1,
+        'Legacy memorization must not inflate completed-review totals');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  runTest('RetentionService: duplicate review event IDs are counted only once across portion records', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:duplicate-review-event-id');
+    try {
+      const today = getLocalDateString();
+      const first = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 2,
+        status: 'stable', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      const second = RetentionService.addPortion({
+        type: 'passage', surahNumber: 78, surahName: 'النبأ', startAyah: 1, endAyah: 2,
+        status: 'stable', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      const sharedEvent = {
+        id: 'same-review-event-id', date: today, rating: 'difficult' as const,
+        intervalDaysBefore: 2, intervalDaysAfter: 1
+      };
+      RetentionService.savePortions([
+        { ...first, history: [sharedEvent] },
+        { ...second, history: [{ ...sharedEvent }] }
+      ]);
+      assert(RetentionService.getRevisionHistory().length === 1,
+        'A stable review event ID must not be counted twice across overlapping projections');
+      assert(RetentionService.getRetentionDashboardMetrics().totalReviewsCompleted === 1,
+        'Dashboard review totals must use unique event identities');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  runTest('RetentionService: average ease factor excludes portions not yet memorized', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:average-active-ease');
+    try {
+      const today = getLocalDateString();
+      RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 2,
+        status: 'not_memorized', nextDueDate: today, intervalDays: 1, easeFactor: 3,
+        repetitionCount: 0, mistakesCount: 0
+      });
+      RetentionService.addPortion({
+        type: 'passage', surahNumber: 78, surahName: 'النبأ', startAyah: 1, endAyah: 2,
+        status: 'stable', nextDueDate: today, intervalDays: 5, easeFactor: 2,
+        repetitionCount: 3, mistakesCount: 0
+      });
+      assert(RetentionService.getRetentionDashboardMetrics().averageEaseFactor === 2,
+        'Average ease must reflect only memorized/reviewable portions');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  runTest('RetentionService: weekly overview uses the same status priority as the daily queue', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weekly-priority-order');
+    try {
+      const today = getLocalDateString();
+      const base = { nextDueDate: today, intervalDays: 1, repetitionCount: 1, mistakesCount: 0 };
+      RetentionService.addPortion({
+        ...base, type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 2,
+        status: 'stable', easeFactor: 2.5
+      });
+      RetentionService.addPortion({
+        ...base, type: 'passage', surahNumber: 78, surahName: 'النبأ', startAyah: 1, endAyah: 2,
+        status: 'needs_revision', easeFactor: 2.5
+      });
+      RetentionService.addPortion({
+        ...base, type: 'passage', surahNumber: 93, surahName: 'الضحى', startAyah: 1, endAyah: 2,
+        status: 'weak', easeFactor: 1.5
+      });
+      const statuses = RetentionService.getWeeklyRevisionOverview(today)[0].portions.map(item => item.status);
+      assert(statuses.join(',') === 'weak,needs_revision,stable',
+        'Weekly overview must put weak and needs-revision portions before stable portions');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  runTest('RetentionService: daily queue reports the full backlog while enforcing its 20-item cap', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:daily-queue-cap');
+    try {
+      const overdueDate = addDaysToLocalDate(getLocalDateString(), -1);
+      for (let surahNumber = 1; surahNumber <= 21; surahNumber++) {
+        RetentionService.addPortion({
+          type: 'passage',
+          surahNumber,
+          surahName: 'اختبار',
+          startAyah: 1,
+          endAyah: 1,
+          status: surahNumber === 21 ? 'weak' : 'stable',
+          nextDueDate: overdueDate,
+          intervalDays: 1,
+          easeFactor: surahNumber === 21 ? 1.5 : 2.5,
+          repetitionCount: 1,
+          mistakesCount: 0
+        });
+      }
+      const result = RetentionService.getDailyRevisionQueueDetails();
+      assert(result.queue.length === 20, 'Daily queue must never exceed 20 items');
+      assert(result.totalDueCount === 21 && result.overdueCount === 21,
+        'Queue details must retain accurate total-due and overdue counts beyond the visible cap');
+      assert(result.catchUpSuggested, 'A backlog greater than 15 must suggest catch-up');
+      assert(result.queue[0].status === 'weak', 'Weak portions must remain first when the queue is capped');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  runTest('RetentionService: daily and weekly queues reject impossible calendar dates', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:invalid-queue-dates');
+    try {
+      let dailyRejected = false;
+      let weeklyRejected = false;
+      try { RetentionService.getDailyRevisionQueue('2026-02-30'); } catch { dailyRejected = true; }
+      try { RetentionService.getWeeklyRevisionOverview('2026-02-30'); } catch { weeklyRejected = true; }
+      assert(dailyRejected && weeklyRejected, 'Both queue views must reject impossible calendar dates');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  runTest('RetentionService: daily queue validates future records before excluding them from today', () => {
+    const invalidFuture = {
+      id: 'future-invalid-date', type: 'passage' as const,
+      surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 1,
+      status: 'stable' as const, nextDueDate: '2026-02-30',
+      intervalDays: 1, easeFactor: 2.5, repetitionCount: 0
+    };
+    let rejectedDate = false;
+    try {
+      getPrioritizedRevisionQueue([invalidFuture], { todayStr: '2026-02-01' });
+    } catch { rejectedDate = true; }
+    assert(rejectedDate, 'Invalid future-due records must be rejected before queue filtering');
+
+    const invalidUnmemorizedEase = {
+      ...invalidFuture, status: 'not_memorized' as const,
+      nextDueDate: 'not-a-date', easeFactor: 0.5
+    };
+    let rejectedEase = false;
+    try {
+      getPrioritizedRevisionQueue([invalidUnmemorizedEase], { todayStr: '2026-02-01' });
+    } catch { rejectedEase = true; }
+    assert(rejectedEase, 'Invalid ease values must be rejected even on not-memorized records');
+  });
+
+  runTest('RetentionService: failed review cannot store a placeholder when weak-ayah text is missing', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-text-required');
+    try {
+      const today = getLocalDateString();
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 3,
+        status: 'needs_revision', nextDueDate: today, intervalDays: 2, easeFactor: 2.2,
+        repetitionCount: 2, mistakesCount: 0
+      });
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      const beforeWeak = JSON.stringify(RetentionService.getWeakVerses());
+      let rejected = false;
+      try {
+        RetentionService.recordRevisionPerformance(portion.id, 'failed', undefined, { ayahNumber: 2 });
+      } catch { rejected = true; }
+      assert(rejected, 'A failed review with weak-ayah details must include verified verse text');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'Missing Quran text must be rejected before revision state changes');
+      assert(JSON.stringify(RetentionService.getWeakVerses()) === beforeWeak,
+        'Missing Quran text must not create a placeholder weak-verse record');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
   });
 
   return { passed, failed, results };

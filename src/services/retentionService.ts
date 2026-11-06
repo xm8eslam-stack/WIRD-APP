@@ -19,7 +19,8 @@ import {
   calculateCanonicalSM2,
   createCanonicalPortionId,
   addDaysToLocalDate,
-  mergeCanonicalPortionRecords
+  mergeCanonicalPortionRecords,
+  sortRevisionPortionsByPriority
 } from './unifiedPortionService';
 
 const STORAGE_KEYS = {
@@ -46,6 +47,11 @@ function isValidWeakVerseArray(value: unknown): value is WeakVerseItem[] {
     coordinates.add(coordinate);
   }
   return true;
+}
+
+function isLegacyMemorizationHistoryEntry(log: RevisionLogEntry): boolean {
+  // The legacy first-memorization writer uniquely prefixed these synthetic entries with init-.
+  return log.id.startsWith('init-');
 }
 
 // Initial realistic seed portions representing various Quran portions across the 6 statuses
@@ -467,13 +473,16 @@ export const RetentionService = {
     if (!Number.isSafeInteger(minutesSpent) || minutesSpent < 0 || minutesSpent > 1440) {
       throw new Error('مدة المراجعة المسجلة غير صالحة؛ يجب أن تكون عدد دقائق صحيحاً من 0 إلى 1440.');
     }
+    let weakAyahText: string | undefined;
     if (weakAyahDetails !== undefined) {
+      const suppliedText = weakAyahDetails?.text;
       if (rating !== 'failed' || !weakAyahDetails || typeof weakAyahDetails !== 'object' ||
           !Number.isSafeInteger(weakAyahDetails.ayahNumber) || weakAyahDetails.ayahNumber < 1 ||
-          (weakAyahDetails.text !== undefined && (typeof weakAyahDetails.text !== 'string' || weakAyahDetails.text.length > 4000)) ||
+          typeof suppliedText !== 'string' || !suppliedText.trim() || suppliedText.length > 4000 ||
           (weakAyahDetails.notes !== undefined && (typeof weakAyahDetails.notes !== 'string' || weakAyahDetails.notes.length > 2000))) {
         throw new Error('بيانات الآية المتعثرة غير صالحة أو لا تتوافق مع تقييم المراجعة.');
       }
+      weakAyahText = suppliedText;
     }
 
     const portions = this.getPortions();
@@ -548,7 +557,7 @@ export const RetentionService = {
           target.surahNumber,
           weakAyahDetails.ayahNumber,
           target.surahName,
-          weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
+          weakAyahText!,
           weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
         );
       } catch (error) {
@@ -582,7 +591,7 @@ export const RetentionService = {
     };
   },
 
-  // 1. Daily Revision Queue (Enforces canonical 20-item daily limit & grace period)
+  // 1. Daily Revision Queue (Enforces the canonical 20-item daily limit)
   getDailyRevisionQueue(dateStr?: string): PortionStatusRecord[] {
     const portions = this.getPortions();
     const today = dateStr || getLocalDateString();
@@ -624,7 +633,7 @@ export const RetentionService = {
       const dayName = daysAr[localDate.getDay()];
 
       // For day 0 (today), include anything overdue as well
-      const dayPortions = i === 0 
+      const dayPortions = i === 0
         ? portions.filter(p => p.nextDueDate <= dateStr && p.status !== 'not_memorized')
         : portions.filter(p => p.nextDueDate === dateStr && p.status !== 'not_memorized');
 
@@ -632,7 +641,7 @@ export const RetentionService = {
         date: dateStr,
         dayName,
         isToday: dateStr === todayStr,
-        portions: dayPortions
+        portions: sortRevisionPortionsByPriority(dayPortions) as PortionStatusRecord[]
       });
     }
 
@@ -726,6 +735,9 @@ export const RetentionService = {
 
     portions.forEach(portion => {
       (portion.history || []).forEach(log => {
+        // Older releases incorrectly wrote first-time memorization as a successful review.
+        // Keep the original archive untouched, but exclude those entries from review history.
+        if (isLegacyMemorizationHistoryEntry(log)) return;
         flatLogs.push({
           ...log,
           surahName: portion.surahName,
@@ -736,8 +748,22 @@ export const RetentionService = {
       });
     });
 
-    // Sort descending by date
-    return flatLogs.sort((a, b) => b.date.localeCompare(a.date));
+    // Event IDs are the review identity. Collapse exact retries/duplicate projections
+    // across portions so one review cannot inflate the history or dashboard totals.
+    flatLogs.sort((a, b) =>
+      b.date.localeCompare(a.date) ||
+      a.id.localeCompare(b.id) ||
+      a.surahNumber - b.surahNumber ||
+      a.startAyah - b.startAyah
+    );
+    const seenIds = new Set<string>();
+    const uniqueLogs = flatLogs.filter(log => {
+      if (seenIds.has(log.id)) return false;
+      seenIds.add(log.id);
+      return true;
+    });
+
+    return uniqueLogs;
   },
 
   // 5. Retention Dashboard Metrics
@@ -761,11 +787,14 @@ export const RetentionService = {
     let totalEase = 0;
     portions.forEach(portion => {
       breakdown[portion.status] = (breakdown[portion.status] || 0) + 1;
-      totalEase += portion.easeFactor;
     });
 
-    const memorizedPortionsCount = portions.filter(portion => portion.status !== 'not_memorized').length;
-    const averageEase = portions.length > 0 ? Number((totalEase / portions.length).toFixed(2)) : 2.5;
+    const activePortions = portions.filter(portion => portion.status !== 'not_memorized');
+    activePortions.forEach(portion => { totalEase += portion.easeFactor; });
+    const memorizedPortionsCount = activePortions.length;
+    const averageEase = memorizedPortionsCount > 0
+      ? Number((totalEase / memorizedPortionsCount).toFixed(2))
+      : 2.5;
     const retentionScore = calculateUniqueRetentionScore(portions as WirdPortion[]);
 
     const totalActive = memorizedPortionsCount || 1;
