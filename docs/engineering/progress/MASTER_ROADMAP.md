@@ -3,7 +3,7 @@
 **Updated:** 2026-11-06 after PR #54 merge and PR #55 local mutation audit  
 **Source of truth:** `main`; Google AI Studio is connected to `main`.  
 **Latest main SHA:** `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.  
-**Post-merge main Quality Gates:** PR #52 run `42277666291`, PR #53 run `42278457062`, and PR #54 run `42280564932` passed. Main then advanced via direct Quran Library/Juz commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`; PR #55 tests this base.  
+**Post-merge main Quality Gates:** PR #52 run `42277666291`, PR #53 run `42278457062`, and PR #54 run `42280564932` passed. Main then advanced via direct Quran Library/Juz commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`; PR #55 tests this base. Current PR #55 head `9d1352c65e371d36a84a1e136912f3835a3925e3` includes a simulated restart/replay test; exact-head Quality Gate run `42281919337` is pending.  
 **Owner instruction:** Vercel build-rate-limit does not block merging tested changes; production deployment must still be verified separately.
 
 Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVIEWED`, `VERIFIED`, `COMMITTED`, `COMPLETED`. Use `COMPLETED` only when independent review, relevant tests, commit verification, and CI evidence all exist.
