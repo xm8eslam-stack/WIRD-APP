@@ -178,7 +178,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const journal = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
       const events = await journal.listEvents();
       assert(events.length === 2 && events[0].eventId === 'old-earlier' && events[0].sequence === 1 &&
-        events[1].eventId === 'old-later' && events[1].sequence === 2,
+        events[1].eventId === 'old-later' && events[1].sequence === 2 && events[0].projectionRequired === false,
         'Version 1 events must receive deterministic per-UID sequences');
       let skippedSequenceRejected = false;
       try { await journal.markProjected(2); } catch { skippedSequenceRejected = true; }
@@ -189,7 +189,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({ mutationId: 'after-upgrade', collection: 'activityEvents', documentId: 'new-session', payload: { minutes: 2 }, nowMs: 300 });
       const afterCursor = await journal.listEventsAfter(2);
       const snapshot = await journal.getSnapshot();
-      assert(afterCursor.length === 1 && afterCursor[0].sequence === 3 && afterCursor[0].eventId === 'after-upgrade',
+      assert(afterCursor.length === 1 && afterCursor[0].sequence === 3 && afterCursor[0].eventId === 'after-upgrade' && afterCursor[0].projectionRequired === true,
         'New events must continue the sequence and replay after the cursor');
       assert(snapshot.projectionCursor === 2 && snapshot.eventCount === 3,
         'The durable projection cursor must survive and report the contiguous progress');
