@@ -372,7 +372,7 @@ export function isValidWeakVerseRecord(value: unknown): value is WeakVerseItem {
   return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
     typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
     typeof value.text === 'string' && value.text.trim().length > 0 && value.text.length <= 4000 &&
-    isIntegerBetween(value.mistakeCount, 1, 100000) &&
+    isIntegerBetween(value.mistakeCount, 1, 1000000) &&
     isValidDateOnly(value.lastFailedDate) &&
     (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
 }
@@ -392,7 +392,7 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
         typeof item.field === 'string' && item.field.length <= 160 &&
         (item.timestamp === undefined || isValidTimestamp(item.timestamp))));
   return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
-    (!requireCanonicalId || value.id === expectedId) &&
+    (!requireCanonicalId || (value.id === expectedId && value.type !== undefined && isValidDateOnly(value.nextDueDate) && isIntegerBetween(value.intervalDays, 1, 100000))) &&
     (value.type === undefined || validTypes.includes(value.type)) &&
     typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
     validStatuses.includes(value.status) && nextDueValid &&
