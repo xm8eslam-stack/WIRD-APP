@@ -1,46 +1,46 @@
 # WIRD — Resume Here
 
-**Authoritative checkpoint: 2026-11-06, after PR #52. Re-fetch GitHub before any new edit.**
+**Authoritative checkpoint: 2026-11-06. Re-fetch GitHub before any new edit.**
 
 ## Canonical repository
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Canonical branch: `main` (Google AI Studio source)
-- Latest verified main SHA: `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`
-- PR #49: https://github.com/xm8eslam-stack/WIRD-APP/pull/49 — merged as `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`
-- PR #50: https://github.com/xm8eslam-stack/WIRD-APP/pull/50 — merged as `dacba8298db954392f7fbcbbf10af9f18ecc31dc`
-- PR #51: https://github.com/xm8eslam-stack/WIRD-APP/pull/51 — merged as `99c466b9de6ae977979f8989443fba5b94017a30`
-- PR #52: https://github.com/xm8eslam-stack/WIRD-APP/pull/52 — merged as `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`
+- Latest main SHA: `dee0e7a926700092e3d4b3e5fd63e74565428de0`
+- PR #49–#52 are merged and exact-head quality gates passed; PR #51 and #52 post-merge main runs also passed.
+- PR #53 merged as `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge main run `42278457062` passed.
+- Main commit `dee0e7a926700092e3d4b3e5fd63e74565428de0` adds multiple Tafsir sources/book IDs. No Actions run was found for this exact direct commit at checkpoint time.
 
-## Verified quality gates
-- PR #49 exact-head run `42267849373`: passed.
-- PR #50 exact-head run `42276148126`: passed.
-- PR #51 exact-head run `42276561011`: passed; post-merge main run `42276748346` passed.
-- PR #52 exact-head run `42277464313`: passed (tests, Firestore emulator, TypeScript, build, server smoke).
-- Post-merge main run `42277666291` passed on exact main SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`.
+## Current work — PR #54 domain-event envelope
+- Branch: `feat/domain-event-envelope-phase3-20261106-fresh` (based on latest main SHA above).
+- Adds typed event metadata for `session.completed`, `revision.rated`, `test.completed`, `weak_verse.failed`, and `weak_verse.resolved`.
+- Event IDs must equal journal mutation IDs; semantic validation runs before enqueue.
+- Retry IDs/timestamps are stable across session, revision, weak-verse, and test flows.
+- This is local journal metadata only. It is not a Firestore sync implementation.
+- Exact-head Quality Gate and second review are pending; do not merge until every job passes.
 
 ## Deployment interpretation
-- Vercel Free daily build limit still returns `build-rate-limit`.
-- The owner explicitly says Vercel is not a blocker for merging tested changes into main.
-- Never claim production deployment or live-site verification unless the exact main SHA has a confirmed deployment and browser smoke test.
+- Vercel Free daily build limit remains `build-rate-limit`.
+- Owner explicitly says Vercel is not a blocker for merging tested changes into main.
+- Production deployment and live browser verification remain unconfirmed.
 
 ## Completed reliability work
 - Journal-first profile/plans/page progress/manual portions/test snapshots/weak-verse failure and resolution/revision ratings.
-- Session completion groups memorization progress, activity, profile streak, and matching smart-plan task into one journal event.
-- Backup import and factory reset are ordered through the journal; older pending events replay before the new operation.
-- The Quran reader has direct Surah-to-Mushaf navigation; Tafsir API route is registered in Express.
-- Existing Firestore rules/emulator tests are a foundation only. No Firestore client or cloud sync is active.
+- Session completion groups memorization progress, activity, streak/profile, and matching smart-plan task into one recoverable event.
+- Backup import/reset replay older pending events first and commit grouped snapshots through the journal.
+- Quran reader has direct Surah-to-Mushaf navigation; Tafsir route is registered in Express.
+- Active App-level direct local-only session/revision handlers were removed in PR #53.
 
-## Next exact task
-1. Re-fetch `main`, check its exact SHA and post-merge run `42277666291`.
-2. Review and merge the current audit/checkpoint PR only after its exact-head CI passes.
-3. Finish the local mutation audit, especially legacy localStorage outbox migration/reset interactions, development-only demo loaders, durable-read failures, quota exhaustion, partial projection rollback, and reload recovery.
-4. Define immutable domain-event records for sessions, revision attempts, tests, and weak-verse mistakes; derive aggregate logs/streaks/counters from unique event IDs.
-5. Implement Firestore adapter/worker behind an inactive feature gate. Preserve local-first behavior and UID isolation.
-6. Harden collection-specific Firestore rules and test offline replay, duplicate delivery, account switching, and two-device conflicts in emulators.
+## Next exact tasks
+1. Run PR #54 exact-head Quality Gate against latest main, fix any failures, inspect logs, and perform a second review.
+2. Merge only after exact-head checks pass; verify merge SHA and post-merge main run.
+3. Continue audit of legacy outbox migration/reset and development-only demo loaders.
+4. Define deterministic local aggregate derivation from domain events before designing Firestore remote event documents.
+5. Implement Firestore adapter/sync coordinator behind a disabled feature gate; preserve local-first behavior and UID isolation.
+6. Test offline replay, duplicate delivery, account switching, tombstones, and two-device conflicts.
 7. Do not deploy production rules, activate cloud writes, or perform destructive migration without explicit approval.
 
 ## Working rules
-- Inspect latest main, create a fresh feature branch, make a focused change, run exact-head GitHub Quality Gate, inspect every job, review the diff, merge, and verify main SHA.
-- Vercel failure is not a merge blocker by the owner's instruction; it remains an unverified deployment state.
-- Do not merge stale/diverged PRs #2 or #8 wholesale. Reapply only reviewed useful changes.
-- Keep Quran text and verified static assets untouched by AI or sync migrations.
+- Work from freshly fetched `main` on a separate branch.
+- Run exact-head GitHub Quality Gate, inspect every job, review the diff, merge, and verify main SHA.
+- Vercel failure is not a merge blocker by owner's instruction; it remains an unverified deployment state.
+- Do not merge stale/diverged PRs #2 or #8 wholesale; reapply only reviewed useful changes.
