@@ -352,15 +352,18 @@ export default function App() {
     }
   };
 
-  // Reset all data
-  const handleResetAllData = () => {
-    StorageService.resetAllData();
-    RetentionService.resetAll();
+  // Reset all data and report whether every scoped key was durably removed.
+  const handleResetAllData = (): boolean => {
+    const resetSucceeded = StorageService.resetAllData();
     setProfile(StorageService.getProfile());
     setPlans(StorageService.getPlans());
     setEnginePlans(StorageService.getEnginePlans());
     setRevisionItems(StorageService.getRevisionItems());
     setLogs(StorageService.getLogs());
+    if (!resetSucceeded) {
+      showToast('لم نتمكن من التحقق من حذف كل البيانات. لا تعتبر إعادة الضبط مكتملة؛ صدّر نسخة احتياطية وراجع التخزين قبل المتابعة.', 'error');
+    }
+    return resetSucceeded;
   };
 
   const todayStr = getLocalDateString();

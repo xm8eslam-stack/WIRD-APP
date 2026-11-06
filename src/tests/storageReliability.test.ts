@@ -54,6 +54,36 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     }
   });
 
+  test('Full data reset reports failure when one scoped key cannot be removed', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>([
+      [STORAGE_KEYS.PROFILE, JSON.stringify(CLEAN_INITIAL_PROFILE)],
+      [STORAGE_KEYS.PLANS, JSON.stringify([{ id: 'keep-me' }])]
+    ]);
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => {
+          if (key === STORAGE_KEYS.PLANS) throw new Error('simulated remove failure');
+          values.delete(key);
+        }
+      }
+    });
+    try {
+      const reset = StorageService.resetAllData();
+      assert(reset === false, 'Reset must return false when any durable key cannot be removed');
+      assert(values.has(STORAGE_KEYS.PLANS), 'The failed key should remain visible for recovery');
+      assert(!values.has(STORAGE_KEYS.PROFILE), 'Other keys may be removed but reset must not claim full success');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('A failed durable write is not exposed through the in-memory fallback', () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const key = 'wird_storage_reliability_failure_probe';

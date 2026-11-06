@@ -154,8 +154,9 @@ function setItem(key: string, value: string): boolean {
   return rawSetItem(resolveStorageKey(key), value);
 }
 
-function removeItem(key: string): void {
-  rawRemoveItem(resolveStorageKey(key));
+function removeItem(key: string): boolean {
+  const resolved = resolveStorageKey(key);
+  return rawRemoveItem(resolved) && rawGetItem(resolved) === null;
 }
 
 // 1. Clean Initial State for New Users (No fabricated identity, streaks, or fake progress)
@@ -884,20 +885,19 @@ export const StorageService = {
     }
   },
 
-  // Complete Clean Reset
-  resetAllData(): void {
-    removeItem(STORAGE_KEYS.PROFILE);
-    removeItem(STORAGE_KEYS.PLANS);
-    removeItem(STORAGE_KEYS.ENGINE_PLANS);
-    removeItem(STORAGE_KEYS.PROGRESS);
-    removeItem(STORAGE_KEYS.REVISION);
-    removeItem(STORAGE_KEYS.LOGS);
-    removeItem(STORAGE_KEYS.TESTS);
-    removeItem(STORAGE_KEYS.PORTIONS);
-    removeItem(STORAGE_KEYS.WEAK_VERSES);
-    removeItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-    removeItem(STORAGE_KEYS.SCHEMA_VERSION);
-    removeItem(STORAGE_KEYS.SYNC_OUTBOX);
+  // Complete Clean Reset — never report success unless every scoped key is absent.
+  resetAllData(): boolean {
+    const keys = [
+      STORAGE_KEYS.PROFILE, STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS,
+      STORAGE_KEYS.PROGRESS, STORAGE_KEYS.REVISION, STORAGE_KEYS.LOGS,
+      STORAGE_KEYS.TESTS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.WEAK_VERSES,
+      STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.SCHEMA_VERSION, STORAGE_KEYS.SYNC_OUTBOX
+    ];
+    let success = true;
+    for (const key of keys) {
+      if (!removeItem(key)) success = false;
+    }
+    return success;
   },
 
   // Test-only Snapshot API

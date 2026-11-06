@@ -31,7 +31,7 @@ import { getLocalDateString } from '../../services/unifiedPortionService';
 interface SettingsViewProps {
   profile: UserProfile;
   onUpdateProfile: (profile: UserProfile) => void;
-  onResetAllData: () => void;
+  onResetAllData: () => boolean;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
@@ -62,14 +62,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleConfirmReset = () => {
-    StorageService.resetAllData();
-    RetentionService.resetAll();
-    onResetAllData();
+    const resetSucceeded = onResetAllData();
     setFormData(StorageService.getProfile());
-    setShowResetConfirm(false);
-    if (onToast) {
-      onToast("تمت إعادة ضبط بيانات المنصة ونقطة البداية الصفرية بنجاح", "info");
+    if (!resetSucceeded) {
+      onToast?.('تعذر التحقق من إعادة ضبط جميع البيانات؛ لم نغلق نافذة التأكيد ولم نعلن نجاح العملية.', 'error');
+      return;
     }
+    setShowResetConfirm(false);
+    onToast?.("تم التحقق من إعادة ضبط بيانات المنصة بنجاح", "info");
   };
 
   const handleExportBackup = () => {
