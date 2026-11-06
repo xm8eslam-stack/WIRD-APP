@@ -261,7 +261,8 @@ function isValidDailyLog(value: unknown): value is DailyLog {
 }
 
 function isValidDailyLogArray(value: unknown): value is DailyLog[] {
-  return Array.isArray(value) && value.length <= 10000 && value.every(isValidDailyLog);
+  return Array.isArray(value) && value.length <= 10000 && value.every(isValidDailyLog) &&
+    new Set(value.map(log => log.date)).size === value.length;
 }
 
 function isPlainRecord(value: unknown): value is Record<string, any> {
@@ -735,6 +736,11 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
         return { valid: false, error: 'السجل رقم ' + (index + 1) + ' في ' + spec.label + ' غير صالح' };
       }
     }
+  }
+
+  if (Array.isArray(payload.logs) &&
+      new Set(payload.logs.map((log: DailyLog) => log.date)).size !== payload.logs.length) {
+    return { valid: false, error: 'يحتوي سجل النشاط اليومي على أكثر من سجل للتاريخ نفسه' };
   }
 
   if (payload.version === 4 && Array.isArray(payload.unifiedPortions)) {
@@ -1276,6 +1282,9 @@ export const StorageService = {
     const plans = readStrictJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
     const enginePlans = readStrictJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
     const logs = readStrictJsonArrayArchive<DailyLog>(STORAGE_KEYS.LOGS, 'Daily logs', isValidDailyLog);
+    if (new Set(logs.map(log => log.date)).size !== logs.length) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: يحتوي سجل النشاط اليومي على تواريخ مكررة.');
+    }
     const tests = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
 
     const canonicalPortions = this.getUnifiedPortions();
