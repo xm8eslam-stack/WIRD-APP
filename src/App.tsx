@@ -138,13 +138,22 @@ export default function App() {
     settings: 'الإعدادات والملف الشخصي'
   };
 
+  const refreshJournaledSnapshots = () => {
+    setProfile(StorageService.getProfile());
+    setPlans(StorageService.getPlans());
+    setEnginePlans(StorageService.getEnginePlans());
+  };
+
   // Toggle Theme handler
   const handleToggleTheme = async () => {
     const newTheme: 'light' | 'dark' = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: newTheme };
     const result = await persistProfileSnapshot(updated);
     if (!result.success) {
-      showToast(result.queued
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا البيانات الحالية؛ لم ننفذ تغيير المظهر الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
         ? 'تم حفظ تغيير المظهر في سجل الاستعادة، لكن تعذر إسقاطه محلياً.'
         : result.recoveryBlocked
           ? 'هناك تغيير سابق لم تتم استعادته؛ أوقفنا حفظ التغيير الجديد لحماية بياناتك. أعد المحاولة بعد استعادة السجل.'
@@ -261,11 +270,16 @@ export default function App() {
         const updatedPlans = currentEnginePlans.map(plan => plan.id === activeEnginePlan.id ? updatedPlan : plan);
         const planResult = await persistEnginePlansSnapshot(updatedPlans);
         if (planResult.success) setEnginePlans(updatedPlans);
-        else showToast(planResult.queued
-          ? 'تم حفظ تحديث الخطة الذكية في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
-          : planResult.recoveryBlocked
+        else {
+          if (planResult.recoveredPriorEvents) refreshJournaledSnapshots();
+          showToast(planResult.recoveredPriorEvents
+          ? 'استعدنا تحديثاً سابقاً للخطة الذكية؛ لم ننفذ التحديث الجديد. راجع الخطة ثم أعد المحاولة.'
+          : planResult.queued
+            ? 'تم حفظ تحديث الخطة الذكية في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
+            : planResult.recoveryBlocked
             ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تحديث الخطة الجديد.'
             : 'تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
+        }
       }
     }
     setLogs(StorageService.getLogsForDisplay());
@@ -297,7 +311,10 @@ export default function App() {
   const handleUpdatePlans = async (newPlans: MemorizationPlan[]): Promise<boolean> => {
     const result = await persistPlansSnapshot(newPlans);
     if (!result.success) {
-      showToast(result.queued
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا الخطط؛ لم ننفذ تعديل الخطة الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
         ? 'الخطة محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
         : result.recoveryBlocked
           ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تعديل الخطة الجديد.'
@@ -312,7 +329,10 @@ export default function App() {
   const handleUpdateEnginePlans = async (updatedEnginePlans: EngineGeneratedPlan[]): Promise<boolean> => {
     const result = await persistEnginePlansSnapshot(updatedEnginePlans);
     if (!result.success) {
-      showToast(result.queued
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا الخطط؛ لم ننفذ تعديل الخطة الذكية الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
         ? 'الخطة الذكية محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
         : result.recoveryBlocked
           ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تعديل الخطة الذكية الجديد.'
@@ -326,7 +346,10 @@ export default function App() {
   const handleSaveProfile = async (updatedProfile: UserProfile): Promise<boolean> => {
     const result = await persistProfileSnapshot(updatedProfile);
     if (!result.success) {
-      showToast(result.queued
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييراً سابقاً وحدّثنا الملف الشخصي؛ لم ننفذ التعديل الجديد. راجع البيانات ثم أعد المحاولة.'
+        : result.queued
         ? 'تم حفظ الملف الشخصي في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
         : result.recoveryBlocked
           ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تعديل الملف الشخصي الجديد.'
