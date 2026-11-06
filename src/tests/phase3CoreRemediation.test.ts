@@ -307,8 +307,8 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(sameContentDifferentEvents.report.success, 'Distinct review attempts with identical content must migrate successfully');
     assert(sameContentDifferentEvents.portions[0].history?.length === 2,
       'Distinct event IDs must both be preserved even when date, rating, intervals, and notes are identical');
-    assert(sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-a') &&
-      sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-b'),
+    assert(Boolean(sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-a') &&
+      sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-b')),
       'Both original stable event IDs must remain unchanged');
 
     const auditMerge = migrateLegacyDataLosslessly([
