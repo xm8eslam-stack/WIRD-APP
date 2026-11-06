@@ -47,6 +47,11 @@ export async function persistJournaledSnapshot(
   const ownsJournal = !options.journal;
   let queued = false;
   try {
+    // Drain older committed events first. If recovery is blocked, do not append
+    // a newer full snapshot that may have been derived from stale local state.
+    if (options.runExclusive) await replayJournalProjection(journal, options.runExclusive);
+    else await replayJournalProjection(journal);
+
     await journal.enqueue({ ...input, mutationId: createSecureId() });
     queued = true;
     if (options.runExclusive) await replayJournalProjection(journal, options.runExclusive);
