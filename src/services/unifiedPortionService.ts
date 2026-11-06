@@ -961,12 +961,16 @@ export function migrateLegacyDataLosslessly(
       }
     };
   } catch (err: any) {
+    const safeLegacyPortions = Array.isArray(legacyPortions) ? legacyPortions : [];
+    const safeLegacyRevisionItems = Array.isArray(legacyRevisionItems) ? legacyRevisionItems : [];
     return {
-      portions: legacyPortions as WirdPortion[],
+      // Return the original array unchanged when available; never return an
+      // invalid non-array value through the typed migration result.
+      portions: safeLegacyPortions as WirdPortion[],
       report: {
         success: false,
-        legacyPortionsCount: legacyPortions.length,
-        legacyRevisionCount: legacyRevisionItems.length,
+        legacyPortionsCount: safeLegacyPortions.length,
+        legacyRevisionCount: safeLegacyRevisionItems.length,
         migratedPortionsCount: 0,
         totalPreservedLogsCount: 0,
         conflictAuditCount: 0,
