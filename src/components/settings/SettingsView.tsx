@@ -31,6 +31,7 @@ import { getLocalDateString } from '../../services/unifiedPortionService';
 interface SettingsViewProps {
   profile: UserProfile;
   onUpdateProfile: (profile: UserProfile) => void;
+  onSaveProfile: (profile: UserProfile) => Promise<boolean>;
   onResetAllData: () => boolean;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
@@ -38,6 +39,7 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   profile,
   onUpdateProfile,
+  onSaveProfile,
   onResetAllData,
   onToast
 }) => {
@@ -47,13 +49,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!StorageService.saveProfile(formData)) {
-      onToast?.('تعذر حفظ إعدادات الملف الشخصي في التخزين المحلي. لم يتم تأكيد التغيير.', 'error');
-      return;
-    }
-    onUpdateProfile(formData);
+    if (!await onSaveProfile(formData)) return;
     setIsSaved(true);
     if (onToast) {
       onToast("تم حفظ التعديلات وإعدادات الملف الشخصي بنجاح", "success");
