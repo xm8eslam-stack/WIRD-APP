@@ -1,5 +1,6 @@
 import type { UserProfile, MemorizationPlan, WirdPortion, TestResult } from '../types/quran';
 import type { EngineGeneratedPlan } from './planningEngine';
+import { isValidDomainEvent, type WirdDomainEvent } from './domainEvents';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal, type JournalMutationInput } from './indexedDbSyncJournal';
 import { replayJournalProjection, type ProjectionLockRunner } from './journalProjectionReplayer';
@@ -45,6 +46,18 @@ export async function persistJournaledSnapshot(
   localOnlyWrite: () => boolean,
   options: JournaledSnapshotOptions = {}
 ): Promise<JournaledSnapshotWriteResult> {
+  const suppliedDomainEvent = input.payload?.domainEvent;
+  if (suppliedDomainEvent !== undefined &&
+      (!input.mutationId || !isValidDomainEvent(suppliedDomainEvent, input.mutationId))) {
+    return {
+      success: false,
+      mode: StorageService.getStorageScope().startsWith('user:') ? 'journal' : 'local-only',
+      queued: false,
+      recoveryBlocked: false,
+      recoveredPriorEvents: false,
+      error: 'بيانات الحدث غير صالحة أو لا تطابق معرّف العملية؛ لم يتم حفظ أي تغيير.'
+    };
+  }
   const scope = StorageService.getStorageScope();
   if (!scope.startsWith('user:') || typeof indexedDB === 'undefined') {
     const success = localOnlyWrite();
@@ -157,6 +170,17 @@ export function persistTestResultSnapshot(
   test: TestResult,
   options: JournaledSnapshotOptions = {}
 ): Promise<JournaledSnapshotWriteResult> {
+  if (!test || typeof test.id !== 'string' || !test.id.trim() ||
+      typeof test.date !== 'string' || !Number.isFinite(Date.parse(test.date))) {
+    return Promise.resolve({
+      success: false,
+      mode: StorageService.getStorageScope().startsWith('user:') ? 'journal' : 'local-only',
+      queued: false,
+      recoveryBlocked: false,
+      recoveredPriorEvents: false,
+      error: 'تاريخ أو معرّف نتيجة الاختبار غير صالح؛ لم يتم حفظ أي حدث.'
+    });
+  }
   const existing = StorageService.getTests();
   const existingMatch = existing.find(item => item.id === test.id);
   const sameResult = (left: TestResult, right: TestResult) =>
@@ -184,7 +208,22 @@ export function persistTestResultSnapshot(
       mutationId: 'test-' + test.id,
       collection: 'tests',
       documentId: test.id,
-      payload: { records }
+      payload: {
+        records,
+        domainEvent: {
+          schemaVersion: 1,
+          id: 'test-' + test.id,
+          type: 'test.completed',
+          occurredAt: new Date(test.date).toISOString(),
+          payload: {
+            testResultId: test.id,
+            testType: test.type,
+            score: test.score,
+            totalQuestions: test.totalQuestions,
+            surahName: test.surahName
+          }
+        }
+      }
     },
     () => StorageService.saveTests(records),
     options
@@ -201,7 +240,8 @@ export type JournaledTransactionOperation = JournalProjectionOperation;
 export function persistJournaledTransaction(
   operations: JournaledTransactionOperation[],
   options: JournaledSnapshotOptions = {},
-  mutationId?: string
+  mutationId?: string,
+  domainEvent?: WirdDomainEvent
 ): Promise<JournaledSnapshotWriteResult> {
   // Keep the journal document ID stable with the mutation ID. IndexedDB
   // fingerprints include documentId, so reusing a mutation ID with a fresh
@@ -212,7 +252,10 @@ export function persistJournaledTransaction(
       mutationId: transactionId,
       collection: 'syncMeta',
       documentId: transactionId,
-      payload: { transaction: { version: 1, operations } }
+      payload: {
+        transaction: { version: 1, operations },
+        ...(domainEvent ? { domainEvent } : {})
+      }
     },
     () => StorageService.applyJournalTransaction(operations),
     options

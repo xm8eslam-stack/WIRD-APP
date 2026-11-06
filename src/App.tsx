@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/layout/Header';
 import { Sidebar, NavTabId } from './components/layout/Sidebar';
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -14,6 +14,7 @@ import { resetAllDataJournaled } from './services/backupPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
 import { buildWeakVerseFailureTransaction } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
+import { createSecureId } from './services/secureId';
 import { persistEnginePlansSnapshot, persistJournaledTransaction, persistPlansSnapshot, persistProfileSnapshot, persistTestResultSnapshot } from './services/journaledSnapshotService';
 
 // Lazy loaded views for optimal chunking and initial load performance
@@ -50,6 +51,10 @@ export default function App() {
     endAyah: initialRoute.endAyah || 10,
     mode: initialRoute.mode || 'memorize'
   });
+
+  // Keep one immutable journal identity across retries of the same session.
+  const sessionRunIdRef = useRef<string>(createSecureId());
+  const sessionCompletionAttemptRef = useRef<{ runId: string; mutationId: string; occurredAt: string } | null>(null);
 
   // Track if active session has progress for exit confirmation
   const [sessionInProgress, setSessionInProgress] = useState<boolean>(false);
@@ -210,6 +215,8 @@ export default function App() {
     endAyah: number = 10,
     mode: 'memorize' | 'review' = 'memorize'
   ) => {
+    sessionRunIdRef.current = createSecureId();
+    sessionCompletionAttemptRef.current = null;
     setSessionParams({ surahNumber, startAyah, endAyah, mode });
     navigateTo({
       tab: 'session',
@@ -263,7 +270,18 @@ export default function App() {
       }
     }
 
+    if (!sessionCompletionAttemptRef.current ||
+        sessionCompletionAttemptRef.current.runId !== sessionRunIdRef.current) {
+      sessionCompletionAttemptRef.current = {
+        runId: sessionRunIdRef.current,
+        mutationId: 'session-' + createSecureId(),
+        occurredAt: new Date().toISOString()
+      };
+    }
+    const completionAttempt = sessionCompletionAttemptRef.current;
     const result = await persistJournaledSessionCompletion({
+      mutationId: completionAttempt.mutationId,
+      occurredAt: completionAttempt.occurredAt,
       mode, memorizedAyahs, reviewedPages, minutes, taskName,
       surahNumber: sessionParams.surahNumber,
       startAyah: sessionParams.startAyah,

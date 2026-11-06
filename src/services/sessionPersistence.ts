@@ -5,12 +5,16 @@ import { ALL_SURAHS } from '../data/quranMeta';
 import { createSecureId } from './secureId';
 import { persistJournaledTransaction, type JournaledSnapshotOptions } from './journaledSnapshotService';
 import type { EngineGeneratedPlan } from './planningEngine';
+import type { SessionCompletedEvent } from './domainEvents';
 
 export interface PersistSessionCompletionInput {
   mode: SessionMode; memorizedAyahs: number; reviewedPages: number;
   minutes: number; taskName: string; surahNumber?: number; startAyah?: number; endAyah?: number;
   /** Optional smart-plan projection committed with the same session event. */
   enginePlansSnapshot?: EngineGeneratedPlan[];
+  /** Stable across retries of the same UI session completion. */
+  mutationId?: string;
+  occurredAt?: string;
 }
 export type PersistSessionCompletionResult =
   | { success: true; memorizedAyahs: number; reviewedPages: number; shouldRecordMemorization: boolean }
@@ -84,7 +88,27 @@ export async function persistJournaledSessionCompletion(
   }
 
   try {
-    const result = await persistJournaledTransaction(operations, options, 'session-' + createSecureId());
+    const mutationId = input.mutationId || 'session-' + createSecureId();
+    const domainEvent: SessionCompletedEvent = {
+      schemaVersion: 1,
+      id: mutationId,
+      type: 'session.completed',
+      occurredAt: input.occurredAt || new Date().toISOString(),
+      payload: {
+        mode: input.mode,
+        memorizedAyahs: metrics.memorizedAyahs,
+        reviewedPages: metrics.reviewedPages,
+        minutes: input.minutes,
+        taskName: input.taskName,
+        ...(metrics.shouldRecordMemorization ? {
+          surahNumber: input.surahNumber!,
+          startAyah: input.startAyah!,
+          endAyah: input.endAyah!
+        } : {}),
+        includesSmartPlanProjection: input.enginePlansSnapshot !== undefined
+      }
+    };
+    const result = await persistJournaledTransaction(operations, options, mutationId, domainEvent);
     if (!result.success) {
       return {
         success: false,

@@ -1,5 +1,37 @@
 # WIRD — Continuation Checkpoint (2026-11-06)
 
+## Latest verified position — PRs #49–#53 merged; PR #54 in progress
+
+- Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
+- Latest main SHA: `dee0e7a926700092e3d4b3e5fd63e74565428de0`.
+- PR #49 merged: Tafsir Express route and direct Surah Mushaf navigation; merge SHA `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`; exact-head run `42267849373` passed.
+- PR #50 merged: journal-first session progress/activity/profile; merge SHA `dacba8298db954392f7fbcbbf10af9f18ecc31dc`; exact-head run `42276148126` passed.
+- PR #51 merged: matching smart-plan task in same session transaction; merge SHA `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head run `42276561011` and post-merge run `42276748346` passed.
+- PR #52 merged: journal-ordered backup import/reset; merge SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head run `42277464313` and post-merge run `42277666291` passed.
+- PR #53 merged: removed unused direct-write App handlers and updated checkpoints; merge SHA `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge run `42278457062` passed.
+- Main then advanced via direct Tafsir multi-source commit `dee0e7a926700092e3d4b3e5fd63e74565428de0`; no Actions run was found for this exact SHA at checkpoint time.
+- PR #54 current branch: `feat/domain-event-envelope-phase3-20261106-fresh`, based on latest main. Adds typed domain-event metadata to journal entries for sessions, revision ratings, tests, and weak-verse failures/resolutions. CI pending.
+- Vercel build-rate limit is not a merge blocker per owner instruction; production deployment remains unconfirmed.
+- Firestore client/sync worker/remote acknowledgements/tombstones/two-device sync remain unimplemented.
+
+## Next work
+1. Finish PR #54 exact-head Quality Gate and second review.
+2. Complete remaining local mutation audit and failure-injection coverage.
+3. Define deterministic aggregate derivation from domain events.
+4. Implement Firestore adapter/sync coordinator behind a disabled feature gate.
+5. Test offline replay, duplicate delivery, account isolation, tombstones, and two-device conflicts.
+6. Keep production sync inactive until backup review and explicit approval.
+
+## Required process
+- Work from freshly fetched `main` on a separate branch.
+- Run exact-head GitHub Actions Quality Gate, inspect all jobs, then merge.
+- Verify merge SHA and main state after each PR.
+- Vercel status is informational for merge only; do not claim deployment success.
+- Never enable cloud writes or deploy production Firestore rules without explicit approval.
+
+## Historical checkpoints
+# WIRD — Continuation Checkpoint (2026-11-06)
+
 ## Latest verified position — PRs #49–#52 merged
 
 - Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
@@ -298,4 +330,5 @@
 - Regression coverage validates all 114 Surah starts against the 604-page index; smoke tests validate the Tafsir JSON route in development and production.
 - Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed PR run `42267248254` and push run `42267243769` (tests, Firestore emulator, TypeScript, build, server smoke).
 - Vercel deployment is blocked by the Free-plan daily deployment cap. PR #49 remains open/draft; no merge or production deployment is claimed.
+
 

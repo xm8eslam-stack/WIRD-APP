@@ -1,6 +1,20 @@
 # Firestore Sync Design
 
-**Current status after PR #52 (2026-11-06):** The UID-scoped IndexedDB journal, atomic event+outbox persistence, monotonic sequencing, deterministic local projection replay, grouped local projection rollback, and journal-first mutation paths for profile/plans, page progress, manual portions, tests, weak-verse failure/resolution, revision ratings, session completion + matching smart-plan task, and backup import/reset are implemented. The Firestore client, sync worker, remote acknowledgement, immutable remote event model, and cross-device data flow are not implemented. No live rules deployment has been verified. Vercel rate limiting is not a merge blocker by owner instruction, but production deployment remains unconfirmed.
+**Current status after PR #53 (2026-11-06):** The UID-scoped IndexedDB journal, atomic event+outbox persistence, monotonic sequencing, deterministic local projection replay, grouped local projection rollback, and journal-first mutation paths for profile/plans, page progress, manual portions, tests, weak-verse failure/resolution, revision ratings, session completion + matching smart-plan task, and backup import/reset are implemented. PR #54 adds a typed, validated domain-event envelope to append-only journal entries for sessions, revisions, tests, and weak-verse actions. The Firestore client, sync worker, remote acknowledgement, separate remote event collection, and cross-device data flow are not implemented. No live rules deployment has been verified. Vercel rate limiting is not a merge blocker by owner instruction, but production deployment remains unconfirmed.
+
+## Domain event envelope v1 — PR #54
+
+The journal now carries a typed `domainEvent` alongside the grouped local projection transaction or snapshot payload:
+
+- `session.completed`
+- `revision.rated`
+- `test.completed`
+- `weak_verse.failed`
+- `weak_verse.resolved`
+
+The envelope includes `schemaVersion`, stable `id`, `type`, `occurredAt`, and a discriminated payload. The event ID must match the journal mutation ID. Validation rejects malformed coordinates, counts, rating values, test scores, timestamps, and event payloads before enqueue. Retry paths retain the same ID and timestamp so a retry cannot silently become a second event.
+
+**Important boundary:** these are immutable metadata records embedded in local IndexedDB journal entries. They are not yet uploaded to a separate Firestore event collection, and daily aggregates are still local snapshots. Do not describe this as cloud sync or a completed event-sourced aggregate model.
 
 ## 1. Non-negotiable invariants
 

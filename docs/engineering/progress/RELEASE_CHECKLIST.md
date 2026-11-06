@@ -1,6 +1,7 @@
 # WIRD — Release Checklist
 
 ## Data integrity
+- [ ] Typed domain-event envelope v1 with stable mutation identity and semantic payload validation; verify exact-head CI before marking complete (PR #54).
 - [x] Active session completion commits memorization progress, activity/profile streak, and matching smart-plan task in one journal event (PRs #50/#51).
 - [x] Backup import and factory reset replay older pending journal events first and commit grouped snapshots with recovery-order tests (PR #52).
 - [x] Existing localStorage archives validated and corrupt bytes preserved for covered stores.
