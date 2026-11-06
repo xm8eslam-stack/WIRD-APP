@@ -395,15 +395,28 @@ export const RetentionService = {
       const newStatus = existing.status === 'not_memorized' || existing.status === 'currently_memorizing' 
         ? 'recently_memorized' 
         : existing.status;
+      const nextIntervalDays = newStatus === 'weak'
+        ? 1
+        : Math.max(1, existing.intervalDays || 1);
+      const memorizationLog: RevisionLogEntry = {
+        id: `mem-${createSecureId()}`,
+        date: today,
+        rating: 'successful',
+        intervalDaysBefore: existing.intervalDays || 0,
+        intervalDaysAfter: nextIntervalDays,
+        notes: 'إتمام جلسة الحفظ للمقطع'
+      };
       updatedPortion = {
         ...existing,
         id: canonicalId,
         status: newStatus,
+        strength: newStatus === 'weak' ? 'weak' : existing.strength || 'medium',
         lastReviewedDate: today,
         nextDueDate: tomorrow,
         repetitionCount: (existing.repetitionCount || 0) + 1,
-        intervalDays: Math.max(1, existing.intervalDays || 1),
-        easeFactor: existing.easeFactor || 2.5
+        intervalDays: nextIntervalDays,
+        easeFactor: existing.easeFactor || 2.5,
+        history: [memorizationLog, ...(existing.history || [])]
       };
       portions[existingIndex] = updatedPortion;
     } else {
