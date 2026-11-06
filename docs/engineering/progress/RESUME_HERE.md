@@ -15,21 +15,21 @@
 4. Inspect current `main` and the current uncommitted/working branch state. Verify the last CI run and deployment status independently.
 5. Do not merge PR #1 again. It was already merged.
 6. Do not merge `feat/phase5-premium-ui-ux` or `work/wird-audit-remediation` wholesale; both were significantly diverged from main when last compared.
-7. Continue reliability work from the verified PR #4 and PR #5 milestones:
+7. Continue from the verified PR #4, #5, and #6 milestones:
    - PR #4 record-level storage and backup validation is merged and CI-verified; do not repeat it.
    - PR #5 strict session counters, pre-write validation, Quran range checks, and revision-input validation are merged and CI-verified; do not repeat them.
-   - finish Phase 1 by auditing `localSyncOutbox.ts`, its tests, and remaining persistence boundaries.
-   - fix acknowledged-ID reuse with changed payload/document/collection/operation, enforce pending/acknowledged uniqueness and disjointness, and prevent retry/timestamp overflow.
-   - test offline, storage quota, partial writes, rollback, account switching, and session reload.
-   - continue Phase 2 review scheduling, duplicate operations, progress statistics, and every remaining domain mutation.
-   - only after Phase 1 and Phase 2 gates, design append-only event schemas and a transactional local event+outbox journal.
+   - PR #6 acknowledged mutation fingerprints, pending/acknowledged uniqueness and disjointness, device identity checks, retry overflow checks, and outbox rollback verification are merged and CI-verified; do not repeat them.
+   - finish Phase 1 by auditing `unifiedPortionService.ts`: merge/dedup behavior, overlap handling, conflict audit, history preservation, and failure rollback.
+   - audit remaining domain mutation call sites and statistics/review scheduling; add tests for duplicate operations and data preservation.
+   - analyze cross-tab concurrency; current localStorage outbox is not transactional and must remain disconnected from cloud sync.
+   - only after Phase 1 and Phase 2 gates, design append-only event schemas and a transactional IndexedDB event+outbox journal.
 8. Preserve all local/legacy data. Do not perform destructive migrations.
 9. Work in small reviewed milestones. Run tests, TypeScript, production build, Firestore emulator tests, and independent review before integrating each code milestone.
 10. Integrate only verified work into `main`; confirm the exact resulting SHA and CI. Never force-push.
 11. Do not deploy production Firestore rules, enable production cloud sync, or change secrets/project settings without explicit user approval.
 
 ## Last known exact state
-- Latest confirmed main code merge before this resume-file update: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` (PR #6). Re-fetch current main HEAD before making any changes.
+- Latest confirmed main code merge before this resume-file update: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` (PR #6). Documentation updates may advance main; re-fetch current main HEAD before making any changes.
 - Documentation PR #3: https://github.com/xm8eslam-stack/WIRD-APP/pull/3 — merged as `82efeacd9118406d850336fa3c862fd5016bed14`.
 - Record-validation PR #4: https://github.com/xm8eslam-stack/WIRD-APP/pull/4 — merged as `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - Session/range validation PR #5: https://github.com/xm8eslam-stack/WIRD-APP/pull/5 — merged as `fd480526dd3eac728f60b3554e83309354903ad8`.
@@ -45,6 +45,7 @@
 - Latest outbox integrity code merge: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`.
 - CI run `42180258989`: documented successful for the audited code commit.
 - Vercel: latest observed status was rate-limited; production deployment not confirmed.
+- Superseded PR #7: https://github.com/xm8eslam-stack/WIRD-APP/pull/7 — closed without merge because its session/outbox changes were already merged more completely in PR #5 and PR #6. Do not reopen or merge its stale branch.
 - M4 event-ledger integration: not complete.
 - Firestore sync: not implemented.
 - Production rules deployment: not confirmed and requires explicit approval.
