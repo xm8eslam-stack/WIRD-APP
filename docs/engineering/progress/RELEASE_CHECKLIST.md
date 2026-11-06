@@ -6,6 +6,7 @@
 - [x] Session completion and revision rating ordinary-failure rollback implemented.
 - [x] Verify durable rollback status for activity/profile, portions, and weak-verse archives; recovery-required warning when any restore cannot be verified (PR #15).
 - [x] Verify local outbox write rollback against durable storage and reject partially applied writes that cannot be restored (PR #16).
+- [x] Verify durable rollback status for canonical portion writes in status updates, add-portion, memorization completion, and revision rating; recovery-required warning when previous bytes cannot be confirmed (PR #18).
 - [x] Outbox acknowledged-ID content fingerprints, pending/acknowledged uniqueness and disjointness, device identity, and retry-bound regression tests.
 - [x] Portion merge preserves distinct review events, same-ID conflicts, and pre-existing conflict-audit records; status/strength merge is conservative.
 - [x] Quran coordinate, calendar date, SM-2 grade, plan-scope, and revision queue boundaries are validated; unbounded numeric ranges are rejected.

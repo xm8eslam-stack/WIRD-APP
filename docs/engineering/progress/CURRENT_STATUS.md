@@ -3,33 +3,34 @@
 **Updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, #11, #12, #13, #14, #15, and #16 merged; PR #7 was closed without merge as superseded.
+**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, #11, #12, #13, #14, #15, #16, #17, and #18 merged; PR #7 was closed without merge as superseded.
 
 ## Latest continuation checkpoint — 2026-11-06
 
-- Last verified application-code main SHA before this documentation checkpoint: 1de59512e61e359ba001eeaae663e50597b6f58f.
+- Last verified application-code main SHA before this documentation checkpoint: c5483159c074e780853fa7dd3c10806396b73354.
 - PR #14 merged as c0390692d5f9ec7e81e04c8a674dbb035e0924ec: page-based Mushaf reader for 604 pages; generated exact navigation for all 30 Juz and 240 Hizb quarters; Surah/page/Juz/Hizb navigation; page bookmarks and last-read persistence; tafsir access; continuous ayah audio across page boundaries; shared 0.75×–2× playback speed in Quran Library, memorization session, and Mushaf reader. EveryAyah link-back attribution and separate audio-rights documentation added.
 - PR #15 merged as 57fa70624dc1a9651b87035fd1a66565e284d5a9: detailed activity/profile rollback status, durable read-back verification that bypasses memory fallback, and combined rollback reporting for memorization, revision, and weak-verse operations.
 - PR #16 merged as 1de59512e61e359ba001eeaae663e50597b6f58f: local outbox writes now verify the durable previous state after failure and surface recovery-required errors when restoration cannot be confirmed.
-- Exact-head Quality Gates passed: PR #14 run 42219689112; PR #15 run 42220560997; PR #16 run 42220935595. Post-merge main run 42221103563 also passed tests, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke.
-- Vercel status on main 1de59512: failure solely from the free daily deployment limit; retry in 24 hours. Production deployment is not confirmed.
-- Branches feat/phase5-premium-ui-ux (115 ahead / 171 behind) and work/wird-audit-remediation (92 ahead / 295 behind) remain divergent; do not merge either wholesale.
+- PR #18 merged as c5483159c074e780853fa7dd3c10806396b73354: canonical portion writes in status updates, add-portion, memorization completion, and revision ratings now report whether the previous durable archive was preserved after a failed write.
+- Exact-head Quality Gates passed: PR #14 run 42219689112; PR #15 run 42220560997; PR #16 run 42220935595; PR #18 run 42221760076. Post-merge main run 42221103563 passed through PR #16; post-PR #18 main run 42221958603 was pending at checkpoint time.
+- Vercel status on main c5483159: failure solely from the free daily deployment limit; retry in 24 hours. Production deployment is not confirmed.
+- Branches feat/phase5-premium-ui-ux (115 ahead / 174 behind) and work/wird-audit-remediation (92 ahead / 298 behind) remain divergent; do not merge either wholesale.
 - Next exact action: continue Phase 2 audit for every remaining single-/multi-key domain mutation and backup/restore failure path. Then design an IndexedDB event journal with crash recovery and atomic event+outbox writes. Only after those tests pass should a Firestore sync coordinator be connected. Do not activate cloud sync or deploy production rules without explicit approval.
 
 ## Verified repository position
 
-- Latest application-code commit on `main` before this documentation checkpoint: `1de59512e61e359ba001eeaae663e50597b6f58f` — PR #16 (verified outbox rollback). PR #15 rollback-status merge: `57fa70624dc1a9651b87035fd1a66565e284d5a9`. PR #14 Mushaf/audio merge: `c0390692d5f9ec7e81e04c8a674dbb035e0924ec`. Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
+- Latest application-code commit on `main` before this documentation checkpoint: `c5483159c074e780853fa7dd3c10806396b73354` — PR #18 (durable portion-write rollback status). PR #16 outbox merge: `1de59512e61e359ba001eeaae663e50597b6f58f`; PR #15 activity/weak-verse rollback merge: `57fa70624dc1a9651b87035fd1a66565e284d5a9`; PR #14 Mushaf/audio merge: `c0390692d5f9ec7e81e04c8a674dbb035e0924ec`. Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
 - Previous merges: PR #6 `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`; PR #5 `fd480526dd3eac728f60b3554e83309354903ad8`; PR #4 `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - GitHub Actions run `42190653101` on PR #9 head `2b520ebcf6c51ae155de508ddf49e49d421ba7ab` passed automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test. The merged code is `f8e0cef`.
-- Vercel failed on the latest main commit `1de59512` due the free daily deployment limit (`Deployment rate limited — retry in 24 hours`). This is not a code build failure; production deployment is not confirmed.
+- Vercel failed on the latest application-code main commit `c5483159` due the free daily deployment limit (`Deployment rate limited — retry in 24 hours`). This is not a code build failure; production deployment is not confirmed.
 - PR #1 was merged previously; do not merge it again.
 - `main` is the only final integration branch. Never force-push.
 
 ## Current milestone
 
 **PHASE 2 — Memorization/revision correctness audit**  
-**Status:** IN PROGRESS on `main`; PR #14 (Mushaf/audio), PR #15 (activity/profile + weak-verse rollback certainty), and PR #16 (outbox durable rollback certainty) are merged and quality-gated. Remaining domain mutation paths, IndexedDB event journal, cloud sync, and manual release QA are still open.  
+**Status:** IN PROGRESS on `main`; PR #14 (Mushaf/audio), PR #15 (activity/profile + weak-verse rollback certainty), PR #16 (outbox durable rollback certainty), and PR #18 (canonical portion-write rollback certainty) are merged and quality-gated. Backup/restore failure injection, remaining mutation paths, IndexedDB event journal, cloud sync, and manual release QA are still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
 **Latest storage-integrity milestones:** PR #13 merge `346b725`; PR #15 merge `57fa706` (activity/profile + weak-verse rollback certainty); PR #16 merge `1de5951` (outbox durable rollback certainty). PR #16 exact-head run `42220935595` and post-merge main run `42221103563` passed. Earlier PR #13 run `42217300654` passed 317 assertions and the full quality gate.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
@@ -111,7 +112,7 @@
 3. **High:** localStorage cannot atomically commit domain state plus outbox; a write-ahead event journal / transactional IndexedDB design is needed.
 4. **High:** Firestore rules are generic-envelope-only and not production complete.
 5. **High — local atomicity:** the outbox's localStorage read-modify-write is not cross-tab atomic; do not enable cloud sync until a transactional IndexedDB design is in place.
-6. **High — Phase 2:** PR #15 and PR #16 close activity/profile, weak-verse, and outbox rollback-reporting gaps; remaining single-key mutation, backup/restore, event-journal, and cross-tab atomicity audits remain open.
+6. **High — Phase 2:** PR #15, #16, and #18 close activity/profile, weak-verse, outbox, and canonical-portion rollback-reporting gaps; backup/restore, remaining mutation, event-journal, and cross-tab atomicity audits remain open.
 7. **Medium:** complete file-by-file audit of all mutation call sites, backup/restore, PWA, APIs, and Quran integrity remains open.
 8. **Release:** Vercel rate limit previously blocked a production deployment; retry only through the normal platform path when quota permits.
 
@@ -134,9 +135,8 @@
 
 ## Next exact action
 
-1. Continue auditing remaining mutation boundaries, especially recordMemorizationCompletion, recordRevisionPerformance, and any savePortions failure path that still reports only a generic write error.
-2. Re-check backup import/export and snapshot restoration against durable read-back, including storage-unavailable and partial-write failure injection.
-3. Audit the local outbox read/modify/write behavior across tabs; it is now safer for a single write but is still not cross-tab atomic.
+1. Re-check backup import/export, restoreStorageSnapshot, and resetAllData against durable read-back, including storage-unavailable and partially applied writes.
+2. Audit remaining domain mutation call sites and outbox cross-tab read/modify/write behavior; primary savePortions failure paths now use savePortionsDetailed.
 4. Design and test an IndexedDB append-only event journal plus atomic event/outbox transaction, crash recovery, quota handling, deterministic replay.
 5. Only then connect domain mutations to a UID-scoped Firestore sync coordinator; add two-account/two-device/offline emulator tests and collection-specific rules.
 6. Do not activate Firestore production writes, deploy production rules, or claim release readiness until explicit approval and real deployment verification.
