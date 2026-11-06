@@ -37,7 +37,7 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
     const backup = JSON.stringify({ version: 4, profile: importedProfile, plans: [], logs: [] });
 
     const firstAttempt = await importBackupJournaled(backup, { journal, runExclusive: inlineLock });
-    assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents,
+    assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents === true,
       'Import must stop after recovering an older pending event instead of overwriting it in the same attempt');
     assert(StorageService.getProfile().name === olderProfile.name,
       'The older event must be replayed and visible before the import is retried');
@@ -75,7 +75,7 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
       payload: { profile: { ...CLEAN_INITIAL_PROFILE, name: 'تغيير سابق قبل إعادة الضبط' } }
     });
     const firstAttempt = await resetAllDataJournaled({ journal, runExclusive: inlineLock });
-    assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents,
+    assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents === true,
       'Reset must replay older pending events first and require a fresh confirmation attempt');
     const result = await resetAllDataJournaled({ journal, runExclusive: inlineLock });
     assert(result.success, 'Reset snapshot must commit after older events are recovered');
