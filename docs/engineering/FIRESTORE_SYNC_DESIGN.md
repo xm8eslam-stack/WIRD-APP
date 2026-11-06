@@ -35,8 +35,8 @@
 
 ### Not present / not verified
 
-- Revision ratings are not yet journal-first; the existing path still combines canonical portion updates, optional weak-verse changes, activity logs, and profile streak locally.
-- Memorization/session completion and activity/profile aggregate updates are not yet fully journal-first.
+- Revision Center ratings are now journal-first (PR #47): canonical SM-2 portion, optional weak-verse, activity-log aggregate, and profile streak snapshots are committed as one grouped journal event.
+- Memorization/session completion and remaining activity/profile aggregate mutation paths are not yet fully journal-first.
 - Backup import/reset do not yet coordinate with pending journal events.
 - Test results and weak-verse state are currently represented by journaled full-snapshot projections. This is not yet the final immutable remote event model required by the invariants below; daily logs and weak-verse counters must be derived from immutable events before cloud sync.
 - No Firestore instance exported by `src/lib/firebase.ts`.
@@ -204,7 +204,7 @@ The current rules satisfy the ownership/allowlist/generic-envelope foundation, b
 Cloud sync is not complete until the two-device emulator suite passes, production rules are reviewed and deployed with approval, and a real two-device test verifies offline replay and account isolation. A green frontend build or a Vercel deployment alone does not satisfy this gate.
 
 
-## 13. Implementation status — 2026-11-06 (PR #45)
+## 13. Implementation status — 2026-11-06 (PR #47)
 
 ### Completed local journal foundation and mutation slices
 
@@ -220,31 +220,31 @@ Cloud sync is not complete until the two-device emulator suite passes, productio
 - PR #43: grouped transaction envelope, one event+outbox pair for multiple local projections, and rollback/read-back verification.
 - PR #44: grouped journal-first weak-verse failure recording across canonical portions and weak-verse counter snapshots.
 - PR #45: journal-first weak-verse resolution; idempotent and isolated from canonical portion rating/schedule.
+- PR #47: journal-first Revision Center ratings, grouped with optional weak-verse updates, activity-log aggregate, and profile streak.
 
-Exact-head PR and push Quality Gates passed for PRs #43, #44, and #45. Post-merge main Quality Gates passed after PR #43 (run `42258433095`) and PR #44 (run `42261020224`). Post-merge main run `42262136009` for PR #45 **passed** on the exact main SHA.
+Exact-head PR and push Quality Gates passed for PRs #43, #44, #45, and #47. Post-merge main Quality Gates passed after PRs #43 (run `42258433095`), #44 (run `42261020224`), and #45 (run `42262136009`). Post-merge main run `42264485087` for PR #47 was still in progress when this document was prepared; verify it separately.
 
 ### Remaining local mutation work
 
-- Journal-first revision ratings, grouping canonical portions, optional weak-verse changes, activity logs, and profile streak into one event.
 - Journal-first memorization/session completion and related activity/profile/plan changes.
+- Audit and migrate remaining activity/profile mutation paths outside the Revision Center.
 - Journal backup import/reset with pending-event ordering, crash recovery, and quota handling.
 - Audit every remaining domain mutation path and confirm that no stale snapshot can be appended behind an unreplayed event.
 - Add failure injection for durable-read failure, partial child projection failure, rollback-verification failure, quota exhaustion, blocked IndexedDB, and reload recovery across each mutation type.
 
 ### Event-model work required before cloud sync
 
-- Current test-result and weak-verse flows journal full-snapshot local projections. The journal itself is append-only, but this does not yet satisfy the intended immutable remote event model.
+- Current test-result, weak-verse, activity-log, and revision flows journal full-snapshot local projections. The journal itself is append-only, but this does not yet satisfy the intended immutable remote event model.
 - Define immutable event records for sessions, revision attempts, tests, and weak-verse mistakes; derive daily logs, counters, and dashboard metrics locally.
 - Specify deterministic remote conflict handling, tombstones, bounded pull/push, acknowledgements, retry/backoff, and server-side idempotency.
 - Expand Firestore rules from generic-envelope validation to collection-specific schemas, size limits, create-only event rules, and validated tombstones.
 
 ### Next implementation sequence
 
-1. Complete journal-first revision ratings with a grouped portion + optional weak-verse + activity/profile transaction.
-2. Complete journal-first memorization/session completion and all remaining activity/profile aggregates.
-3. Journal backup import/reset and verify recovery with pending events.
-4. Reconcile local snapshots with immutable event semantics and finalize the Firestore document model.
-5. Implement Firestore adapter/worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests.
-6. Deploy production rules and activate cloud writes only after explicit approval and the full release gate passes.
+1. Complete journal-first memorization/session completion and all remaining activity/profile/plan mutations.
+2. Journal backup import/reset and verify recovery with pending events.
+3. Reconcile local snapshots with immutable event semantics and finalize the Firestore document model.
+4. Implement Firestore adapter/worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests.
+5. Deploy production rules and activate cloud writes only after explicit approval and the full release gate passes.
 
 Do not describe this IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
