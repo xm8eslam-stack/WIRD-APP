@@ -4,7 +4,7 @@
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
 - Last verified application-code main SHA before this documentation checkpoint: f739b64aae61398c51769340f0e4182d51624fca
-- Main Quality Gate: run 42236977371 — pending on exact main SHA f739b64aae61398c51769340f0e4182d51624fca at checkpoint preparation.
+- Main Quality Gate: run 42236977371 — **success** on exact main SHA f739b64aae61398c51769340f0e4182d51624fca.
 - Production deployment for current main SHA f739b64aae61398c51769340f0e4182d51624fca: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
 ## Completed since the previous checkpoint
@@ -119,7 +119,7 @@
 - `saveUnifiedPortions` now treats the canonical archive, schema version, and legacy portions/revision projections as one logical transaction. It captures directly readable prior bytes before writing, verifies each durable write, and restores the full previous snapshot if canonical, schema-version, or compatibility-projection persistence fails.
 - Added failure-injection tests for schema-version commit failure and a legacy revision projection write that applies before throwing.
 - Exact-head Quality Gate: PR run `42236675217` and push run `42236639584` both passed on SHA `bb5a5224671fc3d1ef83b619b01556f8c6c39c01`: **336 automated assertions passed, 0 failed; 10 Firestore rules emulator tests passed; dependency audit, TypeScript, production build, and server smoke test passed**.
-- Post-merge main Quality Gate run `42236977371` is pending at checkpoint preparation; update this line only after its exact SHA result is confirmed.
+- Post-merge main Quality Gate run `42236977371` completed successfully on exact main SHA `f739b64aae61398c51769340f0e4182d51624fca`.
 - Production deployment for the current main SHA is not confirmed; CI success does not establish a Vercel deployment.
 
 ## Updated next actions — Phase 2 remains IN PROGRESS
