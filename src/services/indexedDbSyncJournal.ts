@@ -415,6 +415,12 @@ export class IndexedDbSyncJournal {
         let pendingCount = currentOutbox.length;
         let nextSequence = currentMetadata?.nextSequence ||
           (Math.max(0, ...currentEvents.map(event => event.sequence || 0)) + 1);
+        if (!Number.isSafeInteger(nextSequence) || nextSequence < 1 ||
+            nextSequence + state.pending.length > Number.MAX_SAFE_INTEGER) {
+          failure = new Error('وصل تسلسل سجل الأحداث إلى الحد الآمن؛ احتفظنا بالمصدر القديم دون ترحيل جزئي.');
+          transaction.abort();
+          return;
+        }
 
         for (const legacy of state.pending) {
           const key = uid + ':' + legacy.mutationId;
@@ -604,6 +610,11 @@ export class IndexedDbSyncJournal {
 
         const deviceId = deviceMetadata?.deviceId || createSecureId();
         const sequence = deviceMetadata?.nextSequence ?? 1;
+        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER) {
+          failure = new Error('وصل تسلسل سجل الأحداث إلى الحد الآمن؛ لم يتم إنشاء عملية جديدة.');
+          transaction.abort();
+          return;
+        }
         const mutation: JournalOutboxEntry = {
           key,
           uid,
@@ -792,6 +803,7 @@ export class IndexedDbSyncJournal {
   async listEventsAfter(sequence: number = 0, limit: number = 100): Promise<JournalEvent[]> {
     const uid = activeUid();
     if (!Number.isSafeInteger(sequence) || sequence < 0) throw new Error('رقم تسلسل سجل الأحداث غير صالح.');
+    if (sequence === Number.MAX_SAFE_INTEGER) return [];
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error('حجم دفعة إعادة التشغيل يجب أن يكون من 1 إلى 500.');
     const database = await this.openDatabase();
     const transaction = database.transaction([STORE_EVENTS], 'readonly');
