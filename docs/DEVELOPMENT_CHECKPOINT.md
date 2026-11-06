@@ -1,5 +1,7 @@
 # WIRD APP — Development Checkpoint
 
+> **Superseded checkpoint notice — 2026-11-06:** This file is a historical Phase 4 handoff and contains stale deployment/branch details. For all current work, read `docs/engineering/WORK_SESSION_CHECKPOINT.md`, `docs/engineering/IMPLEMENTATION_ROADMAP.md`, and `docs/engineering/SECURITY_AUDIT.md`. The current repository branch is `main`; cloud sync is still under implementation and must not be described as active.
+
 > Last updated: 2026-11-05 — post-merge checkpoint
 > Purpose: durable handoff marker. Read this file before continuing development.
 
