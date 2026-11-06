@@ -3,7 +3,7 @@ import { StorageService, type JournalProjectionOperation } from './storageServic
 import { getSessionCompletionMetrics, SessionMode, SessionCompletionMetrics } from './sessionCompletion';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { createSecureId } from './secureId';
-import { persistJournaledTransaction } from './journaledSnapshotService';
+import { persistJournaledTransaction, type JournaledSnapshotOptions } from './journaledSnapshotService';
 
 export interface PersistSessionCompletionInput {
   mode: SessionMode; memorizedAyahs: number; reviewedPages: number;
@@ -20,7 +20,8 @@ export type PersistSessionCompletionResult =
  * grouped projection with rollback verification but remains local-only.
  */
 export async function persistJournaledSessionCompletion(
-  input: PersistSessionCompletionInput
+  input: PersistSessionCompletionInput,
+  options: JournaledSnapshotOptions = {}
 ): Promise<PersistSessionCompletionResult> {
   if (!input || typeof input !== 'object') {
     return { success: false, messageAr: 'بيانات الجلسة غير صالحة؛ لم يتم حفظ أي تغيير.' };
@@ -71,7 +72,7 @@ export async function persistJournaledSessionCompletion(
   );
 
   try {
-    const result = await persistJournaledTransaction(operations, {}, 'session-' + createSecureId());
+    const result = await persistJournaledTransaction(operations, options, 'session-' + createSecureId());
     if (!result.success) {
       return {
         success: false,
