@@ -232,12 +232,22 @@ function persistState(state: OutboxState): void {
 
   const previousRaw = StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX);
   if (!StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, serialized)) {
-    throw new Error('تعذر حفظ صندوق المزامنة في التخزين الدائم؛ لم يتم وضع العملية في قائمة الانتظار.');
+    const rollbackVerified = StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, previousRaw);
+    throw new Error(rollbackVerified
+      ? 'تعذر حفظ صندوق المزامنة؛ تم التحقق من بقاء الحالة السابقة ولم يتم وضع العملية في قائمة الانتظار.'
+      : 'تعذر حفظ صندوق المزامنة، كما تعذر التحقق من استعادة الحالة السابقة. لا تكرر العملية؛ احتفظ بنسخة من بياناتك واطلب مراجعة صندوق المزامنة.');
   }
-  if (StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) !== serialized) {
-    if (previousRaw === null) StorageService.removeRawItem(STORAGE_KEYS.SYNC_OUTBOX);
-    else StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, previousRaw);
-    throw new Error('تعذر التحقق من حفظ صندوق المزامنة؛ أُعيدت الحالة السابقة ولم يتم تأكيد العملية.');
+  if (!StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, serialized)) {
+    try {
+      if (previousRaw === null) StorageService.removeRawItem(STORAGE_KEYS.SYNC_OUTBOX);
+      else StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, previousRaw);
+    } catch {
+      // Durable read-back below determines whether the old state was restored.
+    }
+    const rollbackVerified = StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, previousRaw);
+    throw new Error(rollbackVerified
+      ? 'تعذر التحقق من حفظ صندوق المزامنة؛ تم التحقق من استعادة الحالة السابقة ولم يتم تأكيد العملية.'
+      : 'تعذر التحقق من حفظ صندوق المزامنة، ولم ينجح التحقق من استعادة الحالة السابقة. لا تكرر العملية؛ احتفظ بنسخة من البيانات واطلب مراجعة صندوق المزامنة.');
   }
 }
 
