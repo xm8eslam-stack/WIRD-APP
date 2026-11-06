@@ -1238,16 +1238,14 @@ export const StorageService = {
         const parsed: unknown = JSON.parse(profileRaw);
         if (!isValidUserProfile(parsed)) throw new Error('الملف الشخصي يحتوي على سجل غير صالح.');
         profile = parsed;
-      } catch (error) {
+      } catch {
         throw new Error('تعذر تصدير النسخة الاحتياطية: بيانات الملف الشخصي تالفة أو غير صالحة. تم الحفاظ على البيانات الأصلية.');
       }
     }
 
     const plans = readStrictJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
     const enginePlans = readStrictJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
-    const revisionItems = readStrictJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidLegacyRevisionItem);
     const logs = readStrictJsonArrayArchive<DailyLog>(STORAGE_KEYS.LOGS, 'Daily logs', isValidDailyLog);
-    const legacyPortions = readStrictJsonArrayArchive<PortionStatusRecord>(STORAGE_KEYS.PORTIONS, 'Legacy portions', value => isValidPortionRecord(value, false));
     const tests = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
 
     const canonicalPortions = this.getUnifiedPortions();
@@ -1255,6 +1253,7 @@ export const StorageService = {
     const schemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
     const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
     const legacyRevisionRaw = getItem(STORAGE_KEYS.REVISION);
+
     if (schemaVersion !== '2' && (legacyPortionsRaw !== null || legacyRevisionRaw !== null)) {
       throw new Error('تعذر تصدير النسخة الاحتياطية: توجد سجلات قديمة لم يكتمل ترحيلها؛ تم إيقاف التصدير لمنع إنشاء نسخة ناقصة.');
     }
@@ -1271,6 +1270,42 @@ export const StorageService = {
         throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد يحتوي على بيانات غير صالحة أو تعذر قراءته بالكامل.');
       }
     }
+
+    const storedLegacyPortions = readStrictJsonArrayArchive<PortionStatusRecord>(
+      STORAGE_KEYS.PORTIONS, 'Legacy portions', value => isValidPortionRecord(value, false)
+    );
+    const storedLegacyRevisions = readStrictJsonArrayArchive<RevisionItem>(
+      STORAGE_KEYS.REVISION, 'Revision items', isValidLegacyRevisionItem
+    );
+    const projectedLegacyRevisions: RevisionItem[] = canonicalPortions
+      .filter(portion => portion.status !== 'not_memorized')
+      .map(portion => ({
+        id: portion.id,
+        surahNumber: portion.surahNumber,
+        surahName: portion.surahName,
+        startAyah: portion.startAyah,
+        endAyah: portion.endAyah,
+        pageNumber: portion.pageNumber,
+        juzNumber: portion.juzNumber,
+        type: portion.revisionType || 'minor',
+        lastReviewedDate: portion.lastReviewedDate,
+        nextDueDate: portion.nextDueDate,
+        intervalDays: portion.intervalDays,
+        easeFactor: portion.easeFactor,
+        repetitionCount: portion.repetitionCount,
+        strength: portion.strength || (portion.status === 'weak' ? 'weak' : portion.status === 'stable' ? 'strong' : 'medium')
+      }));
+    if (schemaVersion === '2' && storedLegacyPortions.length > 0 &&
+        JSON.stringify(storedLegacyPortions) !== JSON.stringify(canonicalPortions)) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: نسخة المقاطع القديمة لا تطابق السجل الموحد؛ يلزم فحص التعارض قبل التصدير.');
+    }
+    if (schemaVersion === '2' && storedLegacyRevisions.length > 0 &&
+        JSON.stringify(storedLegacyRevisions) !== JSON.stringify(projectedLegacyRevisions)) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: نسخة المراجعة القديمة لا تطابق السجل الموحد؛ يلزم فحص التعارض قبل التصدير.');
+    }
+
+    const revisionItems = schemaVersion === '2' ? projectedLegacyRevisions : [];
+    const portions = canonicalPortions;
 
     const weakRaw = getItem(STORAGE_KEYS.WEAK_VERSES);
     let weakVerses: WeakVerseItem[] = [];
@@ -1296,7 +1331,7 @@ export const StorageService = {
       revisionItems,
       logs,
       tests,
-      portions: legacyPortions.length > 0 ? legacyPortions : canonicalPortions,
+      portions,
       unifiedPortions: canonicalPortions,
       weakVerses
     };
