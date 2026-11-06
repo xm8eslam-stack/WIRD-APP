@@ -663,27 +663,41 @@ export const RetentionService = {
   },
 
   addOrIncrementWeakVerse(
-    surahNumber: number, 
-    ayahNumber: number, 
-    surahName: string, 
-    text: string, 
+    surahNumber: number,
+    ayahNumber: number,
+    surahName: string,
+    text: string,
     notes?: string
   ): WeakVerseItem[] {
+    const surah = Number.isSafeInteger(surahNumber)
+      ? ALL_SURAHS.find(item => item.number === surahNumber)
+      : undefined;
+    if (!surah || !Number.isSafeInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > surah.versesCount) {
+      throw new Error('رقم السورة أو الآية غير صحيح؛ لم يتم تعديل قائمة الآيات المتعثرة.');
+    }
+    if (typeof text !== 'string' || !text.trim() || text.length > 4000 ||
+        (notes !== undefined && (typeof notes !== 'string' || notes.length > 2000))) {
+      throw new Error('نص الآية أو الملاحظة غير صالح؛ لم يتم تعديل قائمة الآيات المتعثرة.');
+    }
     const items = this.getWeakVerses();
-    const existingIndex = items.findIndex(i => i.surahNumber === surahNumber && i.ayahNumber === ayahNumber);
+    const existingIndex = items.findIndex(item =>
+      item.surahNumber === surahNumber && item.ayahNumber === ayahNumber
+    );
     const today = getLocalDateString();
 
     if (existingIndex >= 0) {
+      if (items[existingIndex].mistakeCount >= 1000000) {
+        throw new Error('وصل عداد تعثر الآية إلى الحد الآمن؛ لم يتم تغيير السجل.');
+      }
       items[existingIndex].mistakeCount += 1;
       items[existingIndex].lastFailedDate = today;
-      if (notes) {
-        items[existingIndex].notes = notes;
-      }
+      items[existingIndex].surahName = surah.name;
+      if (notes) items[existingIndex].notes = notes;
     } else {
       items.unshift({
         id: `weak-${surahNumber}-${ayahNumber}-${createSecureId()}`,
         surahNumber,
-        surahName,
+        surahName: surah.name,
         ayahNumber,
         text,
         mistakeCount: 1,
@@ -697,9 +711,14 @@ export const RetentionService = {
   },
 
   resolveWeakVerse(id: string): WeakVerseItem[] {
-    const items = this.getWeakVerses().filter(i => i.id !== id);
-    if (!this.saveWeakVerses(items)) throw new Error('تعذر تحديث قائمة الآيات المتعثرة في التخزين المحلي.');
-    return items;
+    if (typeof id !== 'string' || !id.trim() || id.length > 180) {
+      throw new Error('معرّف الآية المتعثرة غير صالح.');
+    }
+    const items = this.getWeakVerses();
+    const updated = items.filter(item => item.id !== id);
+    if (updated.length === items.length) return items; // Idempotent repeated resolution.
+    if (!this.saveWeakVerses(updated)) throw new Error('تعذر تحديث قائمة الآيات المتعثرة في التخزين المحلي.');
+    return updated;
   },
 
   // 4. Flattened Revision History Audit Log
