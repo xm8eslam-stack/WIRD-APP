@@ -144,7 +144,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const { user, isGuest, isEmailVerified, logout } = useAuth();
-  const { status: syncStatus, pendingCount, lastSyncAtMs, isOnline, triggerSync } = useCloudSync();
+  const { status: syncStatus, pendingCount, lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync } = useCloudSync();
   const [isManualSyncing, setIsManualSyncing] = useState(false);
 
   const handleManualSync = async () => {
@@ -158,6 +158,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           onToast?.("الجهاز غير متصل بالإنترنت حالياً؛ التغييرات محفوظة محلياً.", "info");
         } else if (!isEmailVerified && !isGuest && user) {
           onToast?.("يتطلب حفظ البيانات سحابياً تفعيل البريد الإلكتروني أولاً.", "warn");
+        } else if (user && !isGuest) {
+          onToast?.(syncErrorMessage || "لم تكتمل المزامنة؛ التغييرات المحلية لم تُحذف.", "warn");
         }
       }
     } finally {
@@ -304,6 +306,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CloudOff className="w-3.5 h-3.5 text-stone-500" />
                 <span>أوفلاين (محلي)</span>
               </span>
+            ) : syncStatus === 'partial' ? (
+              <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80 flex items-center gap-1">
+                <CloudAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>رفع جزئي</span>
+              </span>
             ) : syncStatus === 'unverified' ? (
               <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80 flex items-center gap-1">
                 <CloudAlert className="w-3.5 h-3.5 text-amber-600" />
@@ -344,7 +351,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
           <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
-            تتم مزامنة بيانات حفظك ومراجعاتك وسجل الإنجازات اليومي تلقائياً عند توفر الإنترنت، مع حماية تامة ومطابقة خالية من تعارضات الحفظ.
+            تُرفع التغييرات المحفوظة محلياً تلقائياً عند توفر الإنترنت. استقبال تغييرات الأجهزة الأخرى لم يكتمل بعد، لذلك لن نعرض الحالة كمزامنة كاملة قبل تفعيل ذلك.
           </p>
 
           <button
@@ -361,6 +368,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <span>مزامنة الآن</span>
           </button>
         </div>
+        {syncErrorMessage && syncStatus !== 'synced' && syncStatus !== 'guest' && (
+          <p role="status" className="text-[11px] text-amber-700 dark:text-amber-300 leading-5">{syncErrorMessage}</p>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
