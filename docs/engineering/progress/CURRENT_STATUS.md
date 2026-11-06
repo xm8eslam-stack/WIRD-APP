@@ -7,7 +7,7 @@
 
 ## Latest continuation checkpoint — 2026-11-06
 
-- Last verified application-code main SHA before this documentation checkpoint: 7b6d43bc136f91a882ff12a3434b527ac25af1ec.
+- Last verified application-code main SHA before this documentation checkpoint: e355acffc376b0af355e95926e6315dbf8083951.
 - PR #14 merged as c0390692d5f9ec7e81e04c8a674dbb035e0924ec: page-based Mushaf reader for 604 pages; generated exact navigation for all 30 Juz and 240 Hizb quarters; Surah/page/Juz/Hizb navigation; page bookmarks and last-read persistence; tafsir access; continuous ayah audio across page boundaries; shared 0.75×–2× playback speed in Quran Library, memorization session, and Mushaf reader. EveryAyah link-back attribution and separate audio-rights documentation added.
 - PR #15 merged as 57fa70624dc1a9651b87035fd1a66565e284d5a9: detailed activity/profile rollback status, durable read-back verification that bypasses memory fallback, and combined rollback reporting for memorization, revision, and weak-verse operations.
 - PR #16 merged as 1de59512e61e359ba001eeaae663e50597b6f58f: local outbox writes now verify the durable previous state after failure and surface recovery-required errors when restoration cannot be confirmed.
@@ -170,3 +170,12 @@
 - New tests prove reset performs no deletions when a trusted durable snapshot cannot be read and restores earlier successful deletions when a later key removal fails.
 - Post-merge main run `42232397539` (#885) completed successfully on exact main SHA `753dbf7d95f6f577f022952f122280de69d8e074`.
 - Remaining critical work: full mutation-path audit, IndexedDB event journal + atomic outbox, cross-tab/crash recovery, Firestore sync/rules, two-device tests, and manual release QA. Production deployment is not confirmed.
+
+
+## 2026-11-06 — PR #26 legacy account-import rollback
+
+- PR #26 merged to main as `e355acffc376b0af355e95926e6315dbf8083951`; first-account legacy import now preflights a directly readable snapshot of source keys, scoped destinations, and the ownership marker.
+- Snapshot-read failure aborts before mutation; conflicting destination values are rejected before copying; failures during copy, source removal, or ownership-marker commit attempt a full snapshot restore and do not activate the new account scope.
+- Exact-head Quality Gate runs `42235874739` and `42235863281` passed on PR head `24682b573b31240d23950ed7e92ddea69947ce24`: 334 automated assertions passed, 10 Firestore emulator tests passed, dependency audit, TypeScript, production build, and server smoke test passed.
+- Post-merge main run `42236088244` passed on exact SHA `e355acffc376b0af355e95926e6315dbf8083951`.
+- Phase 2 remains IN PROGRESS. Next mutation-audit target: failure-injection coverage for canonical portions + schema-version + legacy compatibility projection writes in `saveUnifiedPortions`. Local outbox cross-tab atomicity, IndexedDB event journal, Firestore sync/rules, two-device tests, manual QA, and production deployment confirmation remain open.

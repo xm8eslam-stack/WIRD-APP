@@ -84,3 +84,14 @@
 - [x] Failure-injection tests for partial deletion rollback and unreadable-snapshot preflight (PR #24; exact-head Quality Gate run 42232090692 passed).
 - [x] Post-merge main Quality Gate run 42232397539 (#885) passed on exact SHA `753dbf7d95f6f577f022952f122280de69d8e074`.
 - [ ] Complete the remaining mutation-path and cross-tab/outbox audit.
+
+
+## Legacy account-import rollback — verified in PR #26
+- [x] Capture a directly readable snapshot of all legacy sources, scoped destinations, and the ownership marker before first-account import.
+- [x] Abort before mutation when any required durable snapshot read is unavailable.
+- [x] Reject conflicting scoped destination data before changing either storage scope.
+- [x] Roll back copied destinations and previously removed legacy sources when a later source removal fails.
+- [x] Keep the account scope inactive unless migration and ownership-marker persistence are verified.
+- [x] Failure-injection tests and exact-head Quality Gate runs `42235874739` / `42235863281` passed on PR head `24682b573b31240d23950ed7e92ddea69947ce24` (334 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
+- [x] Post-merge main Quality Gate run `42236088244` passed on `e355acffc376b0af355e95926e6315dbf8083951`.
+- [ ] Continue auditing remaining multi-key mutation paths, including canonical archive/schema-version/legacy projection writes.
