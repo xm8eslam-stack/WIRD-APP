@@ -1,6 +1,7 @@
 import type { BackupPayload, JournalProjectionOperation } from './storageService';
 import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService, validateBackupPayload } from './storageService';
-import { migrateLegacyDataLosslessly } from './unifiedPortionService';
+import { migrateLegacyDataLosslessly, type MigrationReport } from './unifiedPortionService';
+import { createSecureId } from './secureId';
 import { persistJournaledTransaction, type JournaledSnapshotOptions, type JournaledSnapshotWriteResult } from './journaledSnapshotService';
 
 export type BackupPersistenceResult = {
@@ -37,6 +38,67 @@ function toWriteResult(result: JournaledSnapshotWriteResult, successMessage: str
       ? 'حُفظت العملية في سجل الاستعادة، لكن تعذر تطبيقها محلياً. حدّث الصفحة قبل أي محاولة أخرى.'
       : 'تعذر تأمين العملية؛ لم يتم تأكيد أي استيراد أو إعادة ضبط.')
   };
+}
+
+export type LegacyPortionMigrationResult = {
+  success: boolean;
+  migrated: boolean;
+  message: string;
+  report?: MigrationReport;
+  queued?: boolean;
+};
+
+/**
+ * Prepare legacy portion migration without writing from a getter, then commit
+ * the canonical archive and compatibility projections through the journal.
+ * For a corrupt v2 canonical snapshot, recovery is allowed only when the
+ * preserved legacy source has passed the full lossless migration validator.
+ */
+export async function migrateLegacyPortionsJournaled(
+  options: JournaledSnapshotOptions = {}
+): Promise<LegacyPortionMigrationResult> {
+  const prepared = StorageService.prepareDataMigration();
+  if (!prepared.report.success || !prepared.portions) {
+    return { success: false, migrated: false, report: prepared.report, message: prepared.report.error || 'تعذر تجهيز ترحيل البيانات القديمة.' };
+  }
+  if (!prepared.needsMigration) {
+    return { success: true, migrated: false, report: prepared.report, message: 'البيانات الموحدة محدثة بالفعل؛ لا توجد عملية ترحيل مطلوبة.' };
+  }
+
+  try {
+    const result = await persistJournaledTransaction([{
+      collection: 'portions',
+      documentId: 'legacy-migration',
+      operation: 'upsert',
+      payload: {
+        records: prepared.portions,
+        recoveryFromLegacy: prepared.allowRecoveryOverwrite
+      }
+    }], options, 'legacy-portions-migration-' + createSecureId());
+
+    if (!result.success) {
+      return {
+        success: false,
+        migrated: false,
+        report: prepared.report,
+        queued: result.queued,
+        message: result.error || 'تعذر حفظ ترحيل المقاطع في سجل الاستعادة.'
+      };
+    }
+    return {
+      success: true,
+      migrated: true,
+      report: prepared.report,
+      message: 'تم ترحيل المقاطع القديمة إلى السجل الموحد عبر عملية قابلة للاستعادة.'
+    };
+  } catch (error) {
+    return {
+      success: false,
+      migrated: false,
+      report: prepared.report,
+      message: error instanceof Error ? error.message : 'تعذر إكمال ترحيل المقاطع القديمة.'
+    };
+  }
 }
 
 export function buildBackupImportOperations(
