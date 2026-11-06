@@ -586,6 +586,8 @@ export function runBackupTests(): { passed: number; failed: number } {
         'Unversioned canonical data must not be exposed as trusted data');
       assert(!StorageService.saveUnifiedPortions([SAMPLE_PORTION]),
         'Normal writes must not overwrite an unversioned canonical archive');
+      assert(!StorageService.saveUnifiedPortions([SAMPLE_PORTION], true),
+        'Recovery override must not bypass protection for an unversioned canonical archive');
       assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === orphanedCanonical,
         'Unversioned canonical bytes must remain unchanged');
       assert(StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === '1',
