@@ -3,7 +3,7 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
@@ -38,6 +38,7 @@ export interface JournalEvent {
   deviceId: string;
   payload: Record<string, unknown>;
   fingerprint: string;
+  sequence: number;
 }
 
 export interface JournalOutboxEntry {
@@ -65,6 +66,7 @@ export interface JournalSnapshot {
   pendingCount: number;
   acknowledgedCount: number;
   eventCount: number;
+  projectionCursor: number;
 }
 
 interface AcknowledgementRecord {
@@ -79,6 +81,8 @@ interface DeviceMetadata {
   uid: string;
   deviceId: string;
   schemaVersion: 1;
+  nextSequence: number;
+  lastProjectedSequence: number;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -225,12 +229,19 @@ export class IndexedDbSyncJournal {
       try { request = this.factory!.open(this.databaseName, DATABASE_VERSION); }
       catch (error) { reject(normalizeError(error)); return; }
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (upgradeEvent) => {
         const database = request.result;
+        const upgradeTransaction = request.transaction!;
+        let events: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_EVENTS)) {
-          const events = database.createObjectStore(STORE_EVENTS, { keyPath: 'key' });
+          events = database.createObjectStore(STORE_EVENTS, { keyPath: 'key' });
           events.createIndex('uid', 'uid', { unique: false });
           events.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
+        } else {
+          events = upgradeTransaction.objectStore(STORE_EVENTS);
+        }
+        if (!events.indexNames.contains('uidSequence')) {
+          events.createIndex('uidSequence', ['uid', 'sequence'], { unique: true });
         }
         if (!database.objectStoreNames.contains(STORE_OUTBOX)) {
           const outbox = database.createObjectStore(STORE_OUTBOX, { keyPath: 'key' });
@@ -242,8 +253,51 @@ export class IndexedDbSyncJournal {
           acknowledgements.createIndex('uid', 'uid', { unique: false });
           acknowledgements.createIndex('uidAcknowledgedAt', ['uid', 'acknowledgedAtMs'], { unique: false });
         }
+        let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
-          database.createObjectStore(STORE_METADATA, { keyPath: 'uid' });
+          metadataStore = database.createObjectStore(STORE_METADATA, { keyPath: 'uid' });
+        } else {
+          metadataStore = upgradeTransaction.objectStore(STORE_METADATA);
+        }
+
+        // Version 1 events had no monotonic sequence. Backfill only for the
+        // v1 -> v2 upgrade; future upgrades must preserve the durable cursor.
+        if (upgradeEvent.oldVersion < 2) {
+          const eventsRequest = events.getAll();
+          eventsRequest.onsuccess = () => {
+            const allEvents = (eventsRequest.result as JournalEvent[])
+              .sort((a, b) => a.uid.localeCompare(b.uid) ||
+                a.createdAtMs - b.createdAtMs || a.eventId.localeCompare(b.eventId));
+            const nextByUid = new Map<string, number>();
+            for (const event of allEvents) {
+              const sequence = nextByUid.get(event.uid) ?? 1;
+              event.sequence = sequence;
+              events.put(event);
+              nextByUid.set(event.uid, sequence + 1);
+            }
+
+            const metadataRequest = metadataStore.getAll();
+            metadataRequest.onsuccess = () => {
+              const existing = metadataRequest.result as DeviceMetadata[];
+              const existingUids = new Set<string>();
+              for (const metadata of existing) {
+                existingUids.add(metadata.uid);
+                metadataStore.put({
+                  ...metadata,
+                  nextSequence: nextByUid.get(metadata.uid) || 1,
+                  lastProjectedSequence: 0
+                });
+              }
+              for (const [uid, nextSequence] of nextByUid) {
+                if (!existingUids.has(uid)) {
+                  metadataStore.put({
+                    uid, deviceId: createSecureId(), schemaVersion: 1,
+                    nextSequence, lastProjectedSequence: 0
+                  } satisfies DeviceMetadata);
+                }
+              }
+            };
+          };
         }
       };
       request.onsuccess = () => {
@@ -359,6 +413,8 @@ export class IndexedDbSyncJournal {
         const eventsByKey = new Map(currentEvents.map(item => [item.key, item]));
         const acknowledgementsByKey = new Map(currentAcknowledgements.map(item => [item.key, item]));
         let pendingCount = currentOutbox.length;
+        let nextSequence = currentMetadata?.nextSequence ||
+          (Math.max(0, ...currentEvents.map(event => event.sequence || 0)) + 1);
 
         for (const legacy of state.pending) {
           const key = uid + ':' + legacy.mutationId;
@@ -397,7 +453,7 @@ export class IndexedDbSyncJournal {
               documentId: legacy.documentId, operation: legacy.operation,
               schemaVersion: 1, clientUpdatedAtMs: legacy.clientUpdatedAtMs,
               createdAtMs: legacy.queuedAtMs, deviceId: legacy.deviceId,
-              payload: legacy.payload, fingerprint
+              payload: legacy.payload, fingerprint, sequence: nextSequence++
             } satisfies JournalEvent);
           }
           if (!existingOutbox) {
@@ -446,6 +502,8 @@ export class IndexedDbSyncJournal {
           uid,
           deviceId: currentMetadata?.deviceId || state.deviceId,
           schemaVersion: 1,
+          nextSequence,
+          lastProjectedSequence: currentMetadata?.lastProjectedSequence ?? 0,
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
@@ -545,6 +603,7 @@ export class IndexedDbSyncJournal {
         }
 
         const deviceId = deviceMetadata?.deviceId || createSecureId();
+        const sequence = deviceMetadata?.nextSequence ?? 1;
         const mutation: JournalOutboxEntry = {
           key,
           uid,
@@ -576,11 +635,19 @@ export class IndexedDbSyncJournal {
           createdAtMs: now,
           deviceId,
           payload,
-          fingerprint
+          fingerprint,
+          sequence
         };
         events.add(event);
         outbox.add(mutation);
-        metadata.put({ uid, deviceId, schemaVersion: 1 } satisfies DeviceMetadata);
+        metadata.put({
+          ...(deviceMetadata || {}),
+          uid,
+          deviceId,
+          schemaVersion: 1,
+          nextSequence: sequence + 1,
+          lastProjectedSequence: deviceMetadata?.lastProjectedSequence ?? 0
+        } satisfies DeviceMetadata);
         result = { status: 'queued', mutation: { ...mutation } };
       };
 
@@ -718,7 +785,69 @@ export class IndexedDbSyncJournal {
     const request = transaction.objectStore(STORE_EVENTS).index('uid').getAll(IDBKeyRange.only(uid));
     const events = await requestResult(request) as JournalEvent[];
     await completed;
-    return events.sort((a, b) => a.createdAtMs - b.createdAtMs || a.eventId.localeCompare(b.eventId));
+    return events.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  /** Read the next deterministic event page after the durable local-projection cursor. */
+  async listEventsAfter(sequence: number = 0, limit: number = 100): Promise<JournalEvent[]> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(sequence) || sequence < 0) throw new Error('رقم تسلسل سجل الأحداث غير صالح.');
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error('حجم دفعة إعادة التشغيل يجب أن يكون من 1 إلى 500.');
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_EVENTS], 'readonly');
+    const completed = transactionComplete(transaction);
+    const range = IDBKeyRange.bound([uid, sequence + 1], [uid, Number.MAX_SAFE_INTEGER]);
+    const request = transaction.objectStore(STORE_EVENTS).index('uidSequence').getAll(range, limit);
+    const events = await requestResult(request) as JournalEvent[];
+    await completed;
+    return events.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  async getProjectionCursor(): Promise<number> {
+    const uid = activeUid();
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    return metadata?.lastProjectedSequence ?? 0;
+  }
+
+  /**
+   * Advance only one committed sequence at a time and only after its local
+   * projection has been written and verified by the caller.
+   */
+  async markProjected(sequence: number): Promise<boolean> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(sequence) || sequence < 1) throw new Error('رقم تسلسل الإسقاط المحلي غير صالح.');
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_METADATA], 'readwrite');
+      const store = transaction.objectStore(STORE_METADATA);
+      const request = store.get(uid);
+      let advanced = false;
+      let failure: Error | undefined;
+      request.onsuccess = () => {
+        const metadata = request.result as DeviceMetadata | undefined;
+        if (!metadata) {
+          failure = new Error('لا توجد بيانات وصفية لسجل المزامنة؛ لم يتم تحريك مؤشر الإسقاط.');
+          transaction.abort();
+          return;
+        }
+        const cursor = metadata.lastProjectedSequence ?? 0;
+        if (sequence <= cursor) return;
+        if (sequence !== cursor + 1 || sequence >= (metadata.nextSequence ?? 1)) {
+          failure = new Error('لا يمكن تجاوز أحداث غير مسقطة أو مؤشر يتجاوز آخر حدث محفوظ.');
+          transaction.abort();
+          return;
+        }
+        store.put({ ...metadata, lastProjectedSequence: sequence } satisfies DeviceMetadata);
+        advanced = true;
+      };
+      transaction.oncomplete = () => resolve(advanced);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection cursor transaction aborted.')));
+    });
   }
 
   async getSnapshot(): Promise<JournalSnapshot> {
@@ -732,13 +861,15 @@ export class IndexedDbSyncJournal {
     const metadataStore = transaction.objectStore(STORE_METADATA);
     const metadataRequest = metadataStore.get(uid);
     let deviceId = '';
+    let projectionCursor = 0;
     metadataRequest.onsuccess = () => {
       const metadata = metadataRequest.result as DeviceMetadata | undefined;
       if (metadata?.deviceId) {
         deviceId = metadata.deviceId;
+        projectionCursor = metadata.lastProjectedSequence ?? 0;
       } else {
         deviceId = createSecureId();
-        metadataStore.put({ uid, deviceId, schemaVersion: 1 } satisfies DeviceMetadata);
+        metadataStore.put({ uid, deviceId, schemaVersion: 1, nextSequence: 1, lastProjectedSequence: 0 } satisfies DeviceMetadata);
       }
     };
     const [pending, acknowledged, events] = await Promise.all([
@@ -750,7 +881,8 @@ export class IndexedDbSyncJournal {
       deviceId,
       pendingCount: (pending as JournalOutboxEntry[]).length,
       acknowledgedCount: (acknowledged as AcknowledgementRecord[]).length,
-      eventCount: (events as JournalEvent[]).length
+      eventCount: (events as JournalEvent[]).length,
+      projectionCursor
     };
   }
 
