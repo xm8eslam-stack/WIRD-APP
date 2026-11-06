@@ -3,9 +3,9 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `1efadcac33a8c57ad8aa4fdb50f8e37fcef94e35`  
+**Current HEAD:** `dc1f85f0b1ee6a33df5c7562262be797b13eb8d7`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42169105813 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813)
+**Latest CI run:** [42171385088 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171385088)
 
 ## Resume instructions
 
@@ -16,6 +16,7 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `dc1f85f` — add `persistSessionCompletion` as a user-visible session persistence boundary. It validates exact Quran coordinates, saves canonical memorization progress and activity together, and rolls back the portion if activity/streak persistence fails. Added regression tests for failed-write rollback and review-only behavior. CI run `42171385088` passed 230 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `655d070` + `1efadca` — add a UID-scoped durable local outbox foundation with secure UUID/device IDs, idempotent enqueue/acknowledgement, retry backoff, bounded batches/payload/storage, corruption preservation, and quota-failure handling. The first CI run exposed a test-mock key-prefix mismatch; the test was corrected to target UID-scoped keys.
 - Latest CI run `42170716768` passed: 228 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - `162e847` — preserve exact coordinates when resuming an in-progress memorization passage; regression tests cover range repeat prevention and Surah boundary clamping.
@@ -40,7 +41,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 - UID-scoped local storage and guest separation exist.
 - Legacy data ownership decision exists.
 - Firestore rules, emulator configuration, and emulator tests exist.
-- Firestore client integration, sync outbox, merge engine, and cross-device sync do **not** exist yet.
+- Firestore client integration, merge engine, and cross-device sync do **not** exist yet. The UID-scoped outbox primitive exists but is not yet wired into the session persistence boundary.
 - Firestore rules are not confirmed deployed to the production Firebase project.
 - User reports the Vercel app is live at `https://wird-app.vercel.app/#/dashboard`.
 
@@ -49,7 +50,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 1. Daily activity is still stored as aggregate per-day logs; concurrent device updates would be lossy.
 2. Weak-verse mistake counts are aggregated; they need immutable events or a transaction-safe model.
 3. Portion review history needs stable unique event IDs before merging across devices.
-4. Multi-key local operations need explicit transaction/rollback behavior before outbox integration.
+4. Session completion now has rollback for ordinary localStorage failures; other multi-key operations still need equivalent journal/rollback behavior before outbox integration.
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
 
@@ -65,7 +66,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 
 ## M4 implementation status
 
-- The outbox primitive is implemented and tested, but no production domain mutation currently enqueues through it. It is not a sync engine and it does not contact Firestore.
+- The outbox primitive is implemented and tested. Session completion now has a dedicated persistence boundary, but it still uses the legacy activity aggregate and does not yet enqueue through the outbox. The outbox is not a sync engine and does not contact Firestore.
 - Next: add immutable activity and weak-verse events to the same durable local mutation boundary; integrate session completion, review rating, test result, plan/profile writes; derive daily logs and mistake counts from deduplicated events; test crash/reload and replay semantics.
 
 ## Mandatory next sequence

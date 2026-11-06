@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `1efadcac33a8c57ad8aa4fdb50f8e37fcef94e35`  
+**Audited HEAD:** `dc1f85f0b1ee6a33df5c7562262be797b13eb8d7`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -22,6 +22,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Weak-verse persistence | Uses the centralized StorageService raw-key adapter |
 | Durable local writes | Failed localStorage writes no longer leak through memory fallback as successful writes |
 | Activity/streak write | Session log/profile write reports failure and attempts rollback rather than silently claiming success |
+| Session completion boundary | `persistSessionCompletion` validates exact Quran coordinates and rolls back the newly saved portion if activity/streak persistence fails |
 | Review vs memorization | Review sessions no longer add memorized ayahs or create memorization portions |
 | Retention score | Overlapping ranges count each ayah once; weakest overlapping status wins |
 | Review page count | Uses canonical Mushaf page mapping rather than an ayah-count estimate |
@@ -54,7 +55,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 - Daily logs are currently updated as per-day aggregates. A cross-device read-modify-write would lose concurrent increments; migrate to immutable activity events before sync.
 - Weak-verse mistake counts are aggregated; migrate to immutable mistake events before sync.
 - Review history and portion state need unique event IDs and deterministic merge semantics.
-- Some multi-key local operations can still partially succeed; the outbox stage must make local state + queued mutation atomic or provide rollback.
+- Session completion now rolls back ordinary write failures across portion/activity. Other multi-key operations can still partially succeed; crash-atomicity requires the event journal and recovery replay.
 
 ### Medium — plan and progress UX
 
@@ -80,8 +81,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run: [42170716768](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42170716768) — success.
-- Automated test suites: 228 passed, 0 failed.
+Latest Actions run: [42171385088](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171385088) — success.
+- Automated test suites: 230 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.
