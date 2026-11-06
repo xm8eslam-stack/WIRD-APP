@@ -865,8 +865,8 @@ export const StorageService = {
     return setItem(key, value);
   },
 
-  removeRawItem(key: string): void {
-    removeItem(key);
+  removeRawItem(key: string): boolean {
+    return removeItem(key);
   },
 
   /** @internal Test-only reset; never call from application UI. */
