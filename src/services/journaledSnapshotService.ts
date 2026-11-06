@@ -10,8 +10,20 @@ export interface JournaledSnapshotWriteResult {
   mode: 'journal' | 'local-only';
   queued: boolean;
   recoveryBlocked: boolean;
+  recoveredPriorEvents: boolean;
   error?: string;
 }
+
+const browserProjectionLock: ProjectionLockRunner = async <T>(name: string, task: () => Promise<T>): Promise<T> => {
+  if (typeof navigator === 'undefined' || !('locks' in navigator) ||
+      !(navigator as Navigator & { locks?: LockManager }).locks?.request) {
+    throw new Error('هذا المتصفح لا يوفر قفلاً آمناً بين التبويبات لحفظ التغييرات؛ لم نعدّل البيانات.');
+  }
+  const lockManager = (navigator as Navigator & { locks: LockManager }).locks;
+  return lockManager.request(name, { mode: 'exclusive' }, task);
+};
+
+const inlineProjectionLock: ProjectionLockRunner = async <T>(_name: string, task: () => Promise<T>): Promise<T> => task();
 
 export interface JournaledSnapshotOptions {
   /** Test seam; production callers should use the shared database default. */
@@ -41,6 +53,7 @@ export async function persistJournaledSnapshot(
       mode: 'local-only',
       queued: false,
       recoveryBlocked: false,
+      recoveredPriorEvents: false,
       ...(success ? {} : { error: 'تعذر حفظ البيانات محلياً.' })
     };
   }
@@ -49,24 +62,46 @@ export async function persistJournaledSnapshot(
   const ownsJournal = !options.journal;
   let queued = false;
   let preflightPassed = false;
-  try {
-    // Drain older committed events first. If recovery is blocked, do not append
-    // a newer full snapshot that may have been derived from stale local state.
-    if (options.runExclusive) await replayJournalProjection(journal, options.runExclusive);
-    else await replayJournalProjection(journal);
-    preflightPassed = true;
+  let recoveredPriorEvents = false;
+  const uid = scope.slice('user:'.length);
+  const runExclusive = options.runExclusive ?? browserProjectionLock;
 
-    await journal.enqueue({ ...input, mutationId: createSecureId() });
-    queued = true;
-    if (options.runExclusive) await replayJournalProjection(journal, options.runExclusive);
-    else await replayJournalProjection(journal);
-    return { success: true, mode: 'journal', queued: true, recoveryBlocked: false };
+  try {
+    const outcome = await runExclusive('wird-journal-projection:' + uid, async () => {
+      // Replay older committed events while holding the same cross-tab lock
+      // used for this new enqueue. Never append a stale snapshot behind an
+      // event that changed the local projection during recovery.
+      const previousReplay = await replayJournalProjection(journal, inlineProjectionLock);
+      preflightPassed = true;
+      if (previousReplay.applied > 0) {
+        recoveredPriorEvents = true;
+        return 'recovered-prior-events' as const;
+      }
+
+      await journal.enqueue({ ...input, mutationId: createSecureId() });
+      queued = true;
+      await replayJournalProjection(journal, inlineProjectionLock);
+      return 'saved' as const;
+    });
+
+    if (outcome === 'recovered-prior-events') {
+      return {
+        success: false,
+        mode: 'journal',
+        queued: false,
+        recoveryBlocked: true,
+        recoveredPriorEvents: true,
+        error: 'تمت استعادة تغيير سابق إلى التخزين المحلي. حدّث بيانات الشاشة ثم أعد المحاولة.'
+      };
+    }
+    return { success: true, mode: 'journal', queued: true, recoveryBlocked: false, recoveredPriorEvents: false };
   } catch (error) {
     return {
       success: false,
       mode: 'journal',
       queued,
       recoveryBlocked: !preflightPassed || queued,
+      recoveredPriorEvents,
       error: error instanceof Error ? error.message : 'تعذر حفظ سجل التغيير أو إسقاطه محلياً.'
     };
   } finally {
