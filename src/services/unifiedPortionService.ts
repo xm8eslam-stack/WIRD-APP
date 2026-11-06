@@ -668,6 +668,26 @@ function sameRevisionLogContent(a: RevisionLogEntry, b: RevisionLogEntry): boole
     a.notes === b.notes;
 }
 
+function mergeConflictAuditEntries(
+  existing: WirdPortion,
+  incomingAudit: NonNullable<WirdPortion['conflictAudit']>
+): void {
+  if (!existing.conflictAudit) existing.conflictAudit = [];
+  for (const incomingEntry of incomingAudit) {
+    const signature = JSON.stringify([
+      incomingEntry.source, incomingEntry.field, incomingEntry.value, incomingEntry.timestamp
+    ]);
+    const duplicate = existing.conflictAudit.some(entry =>
+      JSON.stringify([entry.source, entry.field, entry.value, entry.timestamp]) === signature
+    );
+    if (duplicate) continue;
+    if (existing.conflictAudit.length >= MAX_CONFLICT_AUDIT_ENTRIES) {
+      throw new Error('Merged conflict audit exceeds the safe 1,000-entry limit; source archives remain unchanged.');
+    }
+    existing.conflictAudit.push({ ...incomingEntry });
+  }
+}
+
 /**
  * Deduplicate only by stable event ID. Two different IDs represent two distinct
  * review attempts even when date, grade, intervals, and notes happen to match.
@@ -802,6 +822,9 @@ function mergePortionRecords(
 
   if (Array.isArray(incoming.history) && incoming.history.length > 0) {
     mergeHistoryEntries(existing, incoming.history, sourceName);
+  }
+  if (Array.isArray(incoming.conflictAudit) && incoming.conflictAudit.length > 0) {
+    mergeConflictAuditEntries(existing, incoming.conflictAudit);
   }
 
   if (incoming.notes) {
