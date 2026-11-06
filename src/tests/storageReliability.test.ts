@@ -186,5 +186,53 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     }
   });
 
+
+  test('Silent or mismatched durable writes are rejected and restore the previous raw value', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let ignoreNextWrite = false;
+    let corruptNextWrite = false;
+    const key = STORAGE_KEYS.WEAK_VERSES;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (storageKey: string) => values.get(storageKey) ?? null,
+        setItem: (storageKey: string, value: string) => {
+          if (storageKey === key && ignoreNextWrite) {
+            ignoreNextWrite = false;
+            return;
+          }
+          if (storageKey === key && corruptNextWrite) {
+            corruptNextWrite = false;
+            values.set(storageKey, 'silently-corrupted-value');
+            return;
+          }
+          values.set(storageKey, value);
+        },
+        removeItem: (storageKey: string) => values.delete(storageKey)
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:verified-durable-write');
+      assert(StorageService.setRawItem(key, '[]'), 'Initial archive fixture should be saved');
+      ignoreNextWrite = true;
+      assert(!StorageService.setRawItem(key, '[{"id":"not-persisted"}]'),
+        'A setItem call that silently leaves the old value must be rejected');
+      assert(StorageService.getRawItem(key) === '[]',
+        'A silent no-op write must preserve the previous archive bytes');
+
+      corruptNextWrite = true;
+      assert(!StorageService.setRawItem(key, '[{"id":"new-value"}]'),
+        'A setItem call that stores mismatched bytes must be rejected');
+      assert(StorageService.getRawItem(key) === '[]',
+        'A mismatched write must attempt and verify restoration of the previous archive bytes');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
