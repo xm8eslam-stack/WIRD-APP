@@ -1,5 +1,6 @@
-import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE, STORAGE_KEYS } from '../services/storageService';
-import { WirdPortion } from '../types/quran';
+import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE, STORAGE_KEYS, buildDemoEnginePlan } from '../services/storageService';
+import { WirdPortion, RevisionItem, TestResult, WeakVerseItem, DailyLog } from '../types/quran';
+import { PRESET_PLANS } from '../data/presetPlans';
 
 const SAMPLE_PORTION: WirdPortion = {
   id: 's67_a1_a3', type: 'passage', surahNumber: 67, surahName: 'الملك',
@@ -57,6 +58,158 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(res.valid === true, 'Valid payload should pass');
   });
 
+  test('Deep validation accepts representative valid records across every backup collection', () => {
+    const revisionItem: RevisionItem = {
+      id: 'revision-valid-1', surahNumber: 67, surahName: 'الملك',
+      startAyah: 1, endAyah: 5, type: 'minor',
+      lastReviewedDate: '2026-11-05', nextDueDate: '2026-11-06',
+      intervalDays: 1, easeFactor: 2.5, repetitionCount: 1, strength: 'weak'
+    };
+    const projectedRevision: RevisionItem = {
+      id: SAMPLE_PORTION.id, surahNumber: SAMPLE_PORTION.surahNumber, surahName: SAMPLE_PORTION.surahName,
+      startAyah: SAMPLE_PORTION.startAyah, endAyah: SAMPLE_PORTION.endAyah, type: 'minor',
+      nextDueDate: SAMPLE_PORTION.nextDueDate, intervalDays: SAMPLE_PORTION.intervalDays,
+      easeFactor: SAMPLE_PORTION.easeFactor, repetitionCount: SAMPLE_PORTION.repetitionCount, strength: 'strong'
+    };
+    const testResult: TestResult = {
+      id: 'test-valid-1', date: '2026-11-06', type: 'complete_verse',
+      surahName: 'الملك', score: 8, totalQuestions: 10, weakVerses: ['67:3']
+    };
+    const weakVerse: WeakVerseItem = {
+      id: 'weak-valid-1', surahNumber: 67, surahName: 'الملك', ayahNumber: 3,
+      text: 'نص تجريبي صالح', mistakeCount: 1, lastFailedDate: '2026-11-06'
+    };
+    const log: DailyLog = {
+      date: '2026-11-06', memorizedAyahsCount: 3, reviewedPagesCount: 1,
+      minutesSpent: 15, completedTasks: ['جلسة حفظ']
+    };
+    const payload = {
+      version: 4,
+      profile: { ...CLEAN_INITIAL_PROFILE },
+      plans: [PRESET_PLANS[0]],
+      enginePlans: [buildDemoEnginePlan()],
+      revisionItems: [projectedRevision],
+      logs: [log],
+      tests: [testResult],
+      portions: [SAMPLE_PORTION],
+      unifiedPortions: [SAMPLE_PORTION],
+      weakVerses: [weakVerse]
+    };
+    const result = validateBackupPayload(payload);
+    assert(result.valid, 'All valid nested records should pass strict backup validation: ' + (result.error || ''));
+    assert(validateBackupPayload({ version: 3, revisionItems: [revisionItem] }).valid,
+      'Complete legacy revision item should pass its migration-compatible schema');
+  });
+
+  test('Backup rejects malformed records inside arrays, not only malformed array roots', () => {
+    const badPlan = { ...PRESET_PLANS[0], dailyTarget: -1 };
+    const badRevision = {
+      id: 'revision-bad', surahNumber: 67, surahName: 'الملك', startAyah: 0, endAyah: 5,
+      type: 'minor', nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5,
+      repetitionCount: 1, strength: 'weak'
+    };
+    const badTest = {
+      id: 'test-bad', date: '2026-11-06', type: 'complete_verse', surahName: 'الملك',
+      score: 101, totalQuestions: 10, weakVerses: []
+    };
+    const badWeakVerse = {
+      id: 'weak-bad', surahNumber: 1, surahName: 'الفاتحة', ayahNumber: 8,
+      text: 'آية خارج حدود السورة', mistakeCount: 1, lastFailedDate: '2026-11-06'
+    };
+    const cases = [
+      { plans: [badPlan] },
+      { revisionItems: [badRevision] },
+      { tests: [badTest] },
+      { weakVerses: [badWeakVerse] },
+      { logs: [{ date: '2026-11-06', memorizedAyahsCount: -1, reviewedPagesCount: 0, minutesSpent: 1, completedTasks: [] }] },
+      { portions: [{ ...SAMPLE_PORTION, id: 'legacy-bad', endAyah: 999 }] },
+      { unifiedPortions: [{ ...SAMPLE_PORTION, id: 'not-canonical' }] }
+    ];
+    for (const invalidCollection of cases) {
+      const result = validateBackupPayload({ version: 4, ...invalidCollection });
+      assert(!result.valid, 'Malformed nested records must be rejected');
+    }
+    const badEnginePlan = buildDemoEnginePlan();
+    badEnginePlan.schedule[0].dayOfWeek = 7;
+    assert(!validateBackupPayload({ version: 4, enginePlans: [badEnginePlan] }).valid,
+      'Malformed nested engine schedule days must be rejected');
+  });
+
+  test('Duplicate daily activity dates are rejected without overwriting the original archive', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const duplicateLogs = [
+      { date: '2026-11-06', memorizedAyahsCount: 1, reviewedPagesCount: 0, minutesSpent: 5, completedTasks: ['حفظ'] },
+      { date: '2026-11-06', memorizedAyahsCount: 2, reviewedPagesCount: 0, minutesSpent: 7, completedTasks: ['مراجعة'] }
+    ];
+    const raw = JSON.stringify(duplicateLogs);
+    try {
+      StorageService.resetAllData();
+      assert(StorageService.setRawItem(STORAGE_KEYS.LOGS, raw), 'Duplicate log fixture should be stored');
+      assert(StorageService.getLogsForDisplay().length === 0, 'Safe display projection must not expose duplicate daily log records');
+      assert(!StorageService.recordSessionCompletion(1, 0, 1, 'محاولة جديدة'),
+        'Session completion must refuse to overwrite a duplicate-date archive');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === raw, 'Duplicate-date archive bytes must remain unchanged');
+      assert(!validateBackupPayload({ version: 3, logs: duplicateLogs }).valid,
+        'Backup import must reject duplicate daily activity dates');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Version 4 rejects divergent legacy and canonical backup projections', () => {
+    const mismatchedPortions = validateBackupPayload({
+      version: 4,
+      portions: [{ ...SAMPLE_PORTION, status: 'weak' }],
+      unifiedPortions: [SAMPLE_PORTION]
+    });
+    assert(!mismatchedPortions.valid, 'Legacy portion projection must match canonical portions');
+
+    const mismatchedRevision = validateBackupPayload({
+      version: 4,
+      unifiedPortions: [SAMPLE_PORTION],
+      revisionItems: [{
+        id: 'revision-different', surahNumber: 67, surahName: 'الملك',
+        startAyah: 1, endAyah: 5, type: 'minor', nextDueDate: '2026-11-06',
+        intervalDays: 1, easeFactor: 2.5, repetitionCount: 1, strength: 'weak'
+      }]
+    });
+    assert(!mismatchedRevision.valid, 'Revision projection must match canonical portion metadata');
+  });
+
+  test('Backup export rejects malformed daily logs and divergent legacy projections', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const malformedLog = JSON.stringify([{
+        date: '2026-11-06', memorizedAyahsCount: -1, reviewedPagesCount: 0,
+        minutesSpent: 1, completedTasks: []
+      }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.LOGS, malformedLog), 'Malformed log fixture should be stored');
+      let logExportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { logExportRejected = true; }
+      assert(logExportRejected, 'Malformed log archive must block backup export');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === malformedLog, 'Malformed log bytes must remain unchanged');
+
+      StorageService.resetAllData();
+      assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Canonical fixture should save');
+      const divergentLegacy = JSON.stringify([{ ...SAMPLE_PORTION, status: 'weak' }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.PORTIONS, divergentLegacy), 'Divergent projection fixture should be stored');
+      let projectionExportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { projectionExportRejected = true; }
+      assert(projectionExportRejected, 'Divergent legacy projection must block backup export');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === divergentLegacy, 'Divergent legacy projection must be preserved');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Malformed backup metadata is rejected when supplied', () => {
+    assert(!validateBackupPayload({ version: 3, timestamp: 'not-a-date' }).valid,
+      'Invalid backup timestamp must be rejected');
+    assert(!validateBackupPayload({ version: 3, format: 'other-format' }).valid,
+      'Unknown backup format must be rejected');
+  });
+
   // 2. Unsupported version
   test('Unsupported backup version (e.g. version 99) is rejected', () => {
     const invalidVersion = {
@@ -81,7 +234,7 @@ export function runBackupTests(): { passed: number; failed: number } {
   test('Corrupted field (string instead of array for plans) is rejected', () => {
     const corruptedPlans = {
       version: 3,
-      profile: { name: 'عمر', streakDays: 1 },
+      profile: { ...CLEAN_INITIAL_PROFILE, name: 'عمر' },
       plans: 'not-an-array'
     };
     const res = validateBackupPayload(corruptedPlans);
@@ -251,6 +404,116 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(parsed.isEncrypted === false, 'Exported backup must declare isEncrypted: false');
     assert(typeof parsed.unencryptedWarning === 'string' && parsed.unencryptedWarning.includes('غير مشفر'), 
       'Exported backup must include unencrypted warning');
+  });
+
+  test('Storage write APIs reject malformed records and preserve existing archives', () => {
+    StorageService.__resetStorageForTests();
+    try {
+      assert(StorageService.setStorageScope('user:record-validation-test'), 'Test storage scope should initialize');
+      const validPlan = PRESET_PLANS[0];
+      assert(StorageService.savePlans([validPlan]), 'Valid plan should save');
+      const originalPlans = StorageService.getRawItem(STORAGE_KEYS.PLANS);
+      assert(!StorageService.savePlans([{ ...validPlan, dailyTarget: -1 } as any]), 'Invalid plan record should be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PLANS) === originalPlans, 'Invalid plan write must not overwrite the valid archive');
+
+      const malformedArchive = JSON.stringify([{ ...validPlan, dailyTarget: -1 }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.PLANS, malformedArchive), 'Test corruption fixture should be stored');
+      assert(!StorageService.savePlans([validPlan]), 'A valid replacement must not overwrite an archive containing malformed records');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PLANS) === malformedArchive, 'Malformed archive bytes must be preserved');
+      assert(StorageService.getPlans().length === 0, 'Safe read should not expose malformed records');
+      let exportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { exportRejected = true; }
+      assert(exportRejected, 'Backup export must refuse to silently omit malformed archived records');
+
+      const badEnginePlan = buildDemoEnginePlan();
+      badEnginePlan.schedule[0].dayOfWeek = 7;
+      assert(!StorageService.saveEnginePlans([badEnginePlan]), 'Malformed nested engine plan must not be saved');
+
+      const badRevision: any = {
+        id: 'revision-bad', surahNumber: 67, surahName: 'الملك', startAyah: 0, endAyah: 3,
+        type: 'minor', nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5,
+        repetitionCount: 0, strength: 'weak'
+      };
+      assert(!StorageService.saveRevisionItems([badRevision]), 'Invalid revision coordinate must be rejected');
+
+      const badTest: any = {
+        id: 'test-bad', date: '2026-11-06', type: 'complete_verse', surahName: 'الملك',
+        score: 101, totalQuestions: 10, weakVerses: []
+      };
+      assert(!StorageService.saveTest(badTest), 'Invalid test score must be rejected');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Malformed nested backup records are rejected before any user data is written', () => {
+    StorageService.__resetStorageForTests();
+    try {
+      assert(StorageService.setStorageScope('user:backup-record-validation-test'), 'Test storage scope should initialize');
+      assert(StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'الحساب الأصلي' }), 'Original profile should save');
+      const originalRawProfile = StorageService.getRawItem(STORAGE_KEYS.PROFILE);
+      const invalidBackup = {
+        version: 3,
+        profile: { ...CLEAN_INITIAL_PROFILE, name: 'الحساب المستورد' },
+        plans: [{ ...PRESET_PLANS[0], completedUnits: 999999 }]
+      };
+      const result = StorageService.importBackup(JSON.stringify(invalidBackup));
+      assert(!result.success, 'Backup with malformed nested plan must fail validation');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) === originalRawProfile, 'Profile bytes must remain unchanged when any nested backup record is invalid');
+      assert(StorageService.getProfile().name === 'الحساب الأصلي', 'Existing profile must remain unchanged');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Malformed legacy archives are rejected before migration and their original bytes are preserved', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const malformedLegacyPortions = JSON.stringify([{
+      id: 'legacy-invalid', surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: 1, endAyah: 8, status: 'stable'
+    }]);
+    try {
+      StorageService.restoreStorageSnapshot({
+        ['memory:' + STORAGE_KEYS.SCHEMA_VERSION]: '1',
+        ['memory:' + STORAGE_KEYS.PORTIONS]: malformedLegacyPortions,
+        ['memory:' + STORAGE_KEYS.REVISION]: '[]'
+      });
+      const report = StorageService.ensureDataMigrated();
+      assert(!report.success, 'Malformed legacy coordinate must block migration');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === malformedLegacyPortions,
+        'Malformed legacy bytes must remain available for recovery');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === null,
+        'No canonical archive may be written after a malformed legacy record');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Backup export refuses incomplete legacy migration instead of producing an empty Quran archive', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const malformedLegacy = JSON.stringify([{
+      id: 'legacy-invalid-export', surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: 1, endAyah: 8, status: 'stable'
+    }]);
+    try {
+      StorageService.restoreStorageSnapshot({
+        ['memory:' + STORAGE_KEYS.PORTIONS]: malformedLegacy,
+        ['memory:' + STORAGE_KEYS.REVISION]: '[]'
+      });
+      let rejected = false;
+      try { StorageService.exportFullBackup(); } catch { rejected = true; }
+      assert(rejected, 'Export must stop when legacy migration cannot produce canonical data');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === malformedLegacy,
+        'Malformed legacy bytes must remain unchanged after rejected export');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Legacy revision items with migration-supported missing fields remain importable', () => {
+    const legacyRevision = { surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5, nextDueDate: '', intervalDays: 0, easeFactor: 0, repetitionCount: 0 };
+    const result = validateBackupPayload({ version: 3, revisionItems: [legacyRevision] });
+    assert(result.valid, 'Legacy revision records with fields normalized by migration must remain supported');
   });
 
   return { passed, failed };

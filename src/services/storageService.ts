@@ -210,12 +210,14 @@ function isValidUserProfile(value: unknown): value is UserProfile {
   return true;
 }
 
-function readJsonArrayArchive<T>(key: string, label: string): T[] {
+function readJsonArrayArchive<T>(key: string, label: string, isValidRecord: (value: unknown) => value is T): T[] {
   const raw = getItem(key);
   if (raw === null) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('Archive root is not an array.');
+    if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
+      throw new Error('Archive contains malformed records.');
+    }
     return parsed as T[];
   } catch (error) {
     console.error('[WIRD Storage] ' + label + ' archive needs recovery; preserving original bytes:', error);
@@ -223,11 +225,25 @@ function readJsonArrayArchive<T>(key: string, label: string): T[] {
   }
 }
 
-function canWriteJsonArrayArchive(key: string): boolean {
+function readStrictJsonArrayArchive<T>(key: string, label: string, isValidRecord: (value: unknown) => boolean): T[] {
+  const raw = getItem(key);
+  if (raw === null) return [];
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error(label + ' archive is corrupt; export stopped to prevent an incomplete backup.'); }
+  if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
+    throw new Error(label + ' archive contains invalid records; export stopped to preserve the original data.');
+  }
+  return parsed;
+}
+
+function canWriteJsonArrayArchive(key: string, isValidRecord: (value: unknown) => boolean): boolean {
   const raw = getItem(key);
   if (raw === null) return true;
-  try { return Array.isArray(JSON.parse(raw)); }
-  catch { return false; }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length <= 10000 && parsed.every(isValidRecord);
+  } catch { return false; }
 }
 
 function isValidDailyLog(value: unknown): value is DailyLog {
@@ -245,8 +261,297 @@ function isValidDailyLog(value: unknown): value is DailyLog {
 }
 
 function isValidDailyLogArray(value: unknown): value is DailyLog[] {
-  return Array.isArray(value) && value.length <= 10000 && value.every(isValidDailyLog);
+  return Array.isArray(value) && value.length <= 10000 && value.every(isValidDailyLog) &&
+    new Set(value.map(log => log.date)).size === value.length;
 }
+
+function isPlainRecord(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isValidDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function isValidTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 64 &&
+    /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+}
+
+function isIntegerBetween(value: unknown, min: number, max: number): value is number {
+  return Number.isSafeInteger(value) && Number(value) >= min && Number(value) <= max;
+}
+
+function isFiniteBetween(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function isValidSurahRange(surahNumber: unknown, startAyah: unknown, endAyah: unknown): boolean {
+  if (!isIntegerBetween(surahNumber, 1, 114) || !isIntegerBetween(startAyah, 1, 286) ||
+      !isIntegerBetween(endAyah, Number(startAyah), 286)) return false;
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  return Boolean(surah && Number(startAyah) <= surah.versesCount && Number(endAyah) <= surah.versesCount);
+}
+
+function isValidOptionalPage(value: unknown): boolean {
+  return value === undefined || isIntegerBetween(value, 1, 604);
+}
+
+function isValidOptionalJuz(value: unknown): boolean {
+  return value === undefined || isIntegerBetween(value, 1, 30);
+}
+
+function isValidRevisionLogRecord(value: unknown): boolean {
+  if (!isPlainRecord(value)) return false;
+  return typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 160 &&
+    isValidDateOnly(value.date) &&
+    ['successful', 'difficult', 'failed'].includes(value.rating) &&
+    isIntegerBetween(value.intervalDaysBefore, 0, 100000) &&
+    isIntegerBetween(value.intervalDaysAfter, 0, 100000) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
+function isValidMemorizationPlan(value: unknown): value is MemorizationPlan {
+  if (!isPlainRecord(value)) return false;
+  const validTypes = ['whole_quran', 'juz', 'surahs', 'custom'];
+  const validUnits = ['ayah', 'page'];
+  const validNumberArray = (items: unknown, max: number) =>
+    items === undefined || (Array.isArray(items) && items.length <= max &&
+      items.every(item => isIntegerBetween(item, 1, max)) && new Set(items).size === items.length);
+  const maxUnits = value.unitType === 'page' ? 604 : 6236;
+  if (typeof value.id !== 'string' || !value.id.trim() || value.id.length > 160 ||
+      typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 ||
+      typeof value.description !== 'string' || value.description.length > 2000 ||
+      !validTypes.includes(value.type) ||
+      !validNumberArray(value.targetSurahs, 114) ||
+      !validNumberArray(value.targetJuz, 30) ||
+      !isValidOptionalPage(value.startPage) || !isValidOptionalPage(value.endPage) ||
+      (value.startPage !== undefined && value.endPage !== undefined && value.startPage > value.endPage) ||
+      !validUnits.includes(value.unitType) ||
+      !isIntegerBetween(value.totalUnits, 1, maxUnits) ||
+      !isIntegerBetween(value.completedUnits, 0, value.totalUnits) ||
+      !isIntegerBetween(value.dailyTarget, 1, maxUnits) ||
+      !isIntegerBetween(value.memorizationDaysPerWeek, 1, 7) ||
+      !isIntegerBetween(value.revisionDaysPerWeek, 0, 7) ||
+      !isValidDateOnly(value.startDate) || !isValidDateOnly(value.targetEndDate) ||
+      value.targetEndDate < value.startDate ||
+      typeof value.isActive !== 'boolean' ||
+      (value.color !== undefined && (typeof value.color !== 'string' || value.color.length > 64))) return false;
+  return true;
+}
+
+function isValidRevisionItem(value: unknown): value is RevisionItem {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    ['minor', 'major'].includes(value.type) &&
+    (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
+    isValidDateOnly(value.nextDueDate) &&
+    isValidOptionalPage(value.pageNumber) && isValidOptionalJuz(value.juzNumber) &&
+    isIntegerBetween(value.intervalDays, 0, 100000) &&
+    isFiniteBetween(value.easeFactor, 1.3, 3) &&
+    isIntegerBetween(value.repetitionCount, 0, 100000) &&
+    ['strong', 'medium', 'weak'].includes(value.strength);
+}
+
+function isValidLegacyRevisionItem(value: unknown): boolean {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return (value.id === undefined || (typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160)) &&
+    (value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100)) &&
+    (value.type === undefined || ['minor', 'major'].includes(value.type)) &&
+    (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
+    (value.nextDueDate === undefined || value.nextDueDate === '' || isValidDateOnly(value.nextDueDate)) &&
+    isValidOptionalPage(value.pageNumber) && isValidOptionalJuz(value.juzNumber) &&
+    (value.intervalDays === undefined || isIntegerBetween(value.intervalDays, 0, 100000)) &&
+    (value.easeFactor === undefined || isFiniteBetween(value.easeFactor, 0, 3)) &&
+    (value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000)) &&
+    (value.strength === undefined || ['strong', 'medium', 'weak'].includes(value.strength));
+}
+function isValidTestResultRecord(value: unknown): value is TestResult {
+  if (!isPlainRecord(value)) return false;
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
+    isValidDateOnly(value.date) &&
+    ['complete_verse', 'order_words', 'mutashabihat', 'surah_beginnings', 'random_recall', 'bidirectional_recall'].includes(value.type) &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    isIntegerBetween(value.totalQuestions, 1, 1000) &&
+    isIntegerBetween(value.score, 0, value.totalQuestions) &&
+    Array.isArray(value.weakVerses) && value.weakVerses.length <= 200 &&
+    value.weakVerses.every((item: unknown) => typeof item === 'string' && item.length <= 300);
+}
+
+export function isValidWeakVerseRecord(value: unknown): value is WeakVerseItem {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.ayahNumber, value.ayahNumber)) return false;
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    typeof value.text === 'string' && value.text.trim().length > 0 && value.text.length <= 4000 &&
+    isIntegerBetween(value.mistakeCount, 1, 1000000) &&
+    isValidDateOnly(value.lastFailedDate) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
+function isValidPortionRecord(value: unknown, requireCanonicalId = false): value is PortionStatusRecord {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  const expectedId = 's' + value.surahNumber + '_a' + value.startAyah + '_a' + value.endAyah;
+  const validStatuses = ['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak'];
+  const validTypes = ['passage', 'surah', 'page'];
+  const idValid = requireCanonicalId
+    ? value.id === expectedId
+    : value.id === undefined || (typeof value.id === 'string' && value.id.length <= 180);
+  const nameValid = requireCanonicalId
+    ? typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100
+    : value.surahName === undefined || value.surahName === '' ||
+      (typeof value.surahName === 'string' && value.surahName.length <= 100);
+  const statusValid = requireCanonicalId
+    ? validStatuses.includes(value.status)
+    : value.status === undefined || validStatuses.includes(value.status);
+  const nextDueValid = requireCanonicalId
+    ? isValidDateOnly(value.nextDueDate)
+    : value.nextDueDate === undefined || value.nextDueDate === '' || isValidDateOnly(value.nextDueDate);
+  const intervalValid = requireCanonicalId
+    ? isIntegerBetween(value.intervalDays, 1, 100000)
+    : value.intervalDays === undefined || isIntegerBetween(value.intervalDays, 0, 100000);
+  const easeValid = requireCanonicalId
+    ? isFiniteBetween(value.easeFactor, 1.3, 3)
+    : value.easeFactor === undefined || isFiniteBetween(value.easeFactor, 0.1, 3);
+  const repetitionValid = requireCanonicalId
+    ? isIntegerBetween(value.repetitionCount, 0, 100000)
+    : value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000);
+  const historyValid = value.history === undefined ||
+    (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(isValidRevisionLogRecord));
+  const auditValid = value.conflictAudit === undefined ||
+    (Array.isArray(value.conflictAudit) && value.conflictAudit.length <= 1000 &&
+      value.conflictAudit.every((item: unknown) => isPlainRecord(item) &&
+        typeof item.source === 'string' && item.source.length <= 160 &&
+        typeof item.field === 'string' && item.field.length <= 160 &&
+        (item.timestamp === undefined || isValidTimestamp(item.timestamp))));
+  return idValid && nameValid && statusValid && nextDueValid && intervalValid && easeValid && repetitionValid &&
+    (value.type === undefined ? !requireCanonicalId : validTypes.includes(value.type)) &&
+    (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
+    (value.mistakesCount === undefined || isIntegerBetween(value.mistakesCount, 0, 100000)) &&
+    isValidOptionalPage(value.pageNumber) && isValidOptionalPage(value.pageStart) && isValidOptionalPage(value.pageEnd) &&
+    (value.pageStart === undefined || value.pageEnd === undefined || value.pageStart <= value.pageEnd) &&
+    isValidOptionalJuz(value.juzNumber) &&
+    (value.revisionType === undefined || ['minor', 'major'].includes(value.revisionType)) &&
+    (value.strength === undefined || ['strong', 'medium', 'weak'].includes(value.strength)) &&
+    (value.createdAt === undefined || isValidTimestamp(value.createdAt)) &&
+    (value.updatedAt === undefined || isValidTimestamp(value.updatedAt)) &&
+    historyValid && auditValid;
+}
+function readLegacyArrayForMigration<T>(
+  raw: string | null,
+  label: string,
+  isValidRecord: (value: unknown) => boolean
+): { valid: true; records: T[] } | { valid: false; error: string } {
+  if (raw === null) return { valid: true, records: [] };
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { return { valid: false, error: 'أرشيف ' + label + ' القديم تالف؛ تم الحفاظ على محتواه دون ترحيل.' }; }
+  if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
+    return { valid: false, error: 'أرشيف ' + label + ' القديم يحتوي على سجلات غير صالحة؛ تم الحفاظ عليه دون ترحيل.' };
+  }
+  return { valid: true, records: parsed as T[] };
+}
+
+function isValidPlanGenerationInput(value: unknown): boolean {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.startSurah, value.startAyah, value.startAyah) ||
+      !isValidSurahRange(value.endSurah, value.endAyah, value.endAyah)) return false;
+  const startKey = Number(value.startSurah) * 1000 + Number(value.startAyah);
+  const endKey = Number(value.endSurah) * 1000 + Number(value.endAyah);
+  const validDays = (days: unknown, allowEmpty: boolean) =>
+    Array.isArray(days) && days.length <= 7 && (allowEmpty || days.length > 0) &&
+    days.every(day => isIntegerBetween(day, 0, 6)) && new Set(days).size === days.length;
+  const existingValid = value.existingMemorized === undefined ||
+    (Array.isArray(value.existingMemorized) && value.existingMemorized.length <= 6236 &&
+      value.existingMemorized.every((range: unknown) => isPlainRecord(range) &&
+        isValidSurahRange(range.surahNumber, range.startAyah, range.endAyah)));
+  return typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
+    startKey <= endKey &&
+    isValidDateOnly(value.startDate) &&
+    (value.targetEndDate === undefined || (isValidDateOnly(value.targetEndDate) && value.targetEndDate >= value.startDate)) &&
+    ['beginner', 'intermediate', 'advanced', 'hafiz'].includes(value.level) &&
+    isIntegerBetween(value.dailyAvailableMinutes, 0, 1440) &&
+    isIntegerBetween(value.dailyRevisionMinutes, 0, 1440) &&
+    ['verses_per_day', 'pages_per_day', 'by_target_date'].includes(value.paceType) &&
+    isIntegerBetween(value.paceQuantity, 1, 6236) &&
+    (value.paceType !== 'by_target_date' || value.targetEndDate !== undefined) &&
+    validDays(value.activeDays, false) && validDays(value.restDays, true) &&
+    ['morning_evening', 'single_session'].includes(value.schedulePreference) &&
+    existingValid;
+}
+
+function isValidScheduledTaskUnit(value: unknown): boolean {
+  return isPlainRecord(value) &&
+    isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah) &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    isIntegerBetween(value.versesCount, 1, 6236) &&
+    value.versesCount === value.endAyah - value.startAyah + 1 &&
+    isFiniteBetween(value.estimatedMinutes, 0, 1440) &&
+    typeof value.completed === 'boolean' &&
+    (value.completedAt === undefined || isValidTimestamp(value.completedAt)) &&
+    (value.userRating === undefined || ['strong', 'medium', 'weak'].includes(value.userRating));
+}
+
+function isValidScheduledRevisionUnit(value: unknown): boolean {
+  if (!isPlainRecord(value) || typeof value.description !== 'string' || value.description.length > 500 ||
+      !isIntegerBetween(value.versesCount, 0, 6236) ||
+      !isFiniteBetween(value.estimatedMinutes, 0, 1440) ||
+      typeof value.completed !== 'boolean' || !['minor', 'major'].includes(value.type)) return false;
+  const hasAnyCoordinate = value.surahNumber !== undefined || value.startAyah !== undefined || value.endAyah !== undefined;
+  if (hasAnyCoordinate && !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100);
+}
+
+function isValidEngineGeneratedPlan(value: unknown): value is EngineGeneratedPlan {
+  if (!isPlainRecord(value) || !isPlainRecord(value.meta) || !isPlainRecord(value.feasibility) ||
+      !isPlainRecord(value.actualVsPlanned) || !Array.isArray(value.schedule) ||
+      value.schedule.length > 10000 || !isValidPlanGenerationInput(value.input)) return false;
+  const meta = value.meta;
+  const feasibility = value.feasibility;
+  const actual = value.actualVsPlanned;
+  const validCoordinate = (coordinate: unknown) =>
+    isPlainRecord(coordinate) && isValidSurahRange(coordinate.surahNumber, coordinate.ayahNumber, coordinate.ayahNumber);
+  const scheduleValid = value.schedule.every((day: unknown) => {
+    if (!isPlainRecord(day) || typeof day.id !== 'string' || !day.id.trim() || day.id.length > 160 ||
+        !isValidDateOnly(day.date) || !isIntegerBetween(day.dayOfWeek, 0, 6) ||
+        typeof day.dayNameAr !== 'string' || day.dayNameAr.length > 40 ||
+        typeof day.isRestDay !== 'boolean' ||
+        !['pending', 'completed', 'skipped', 'partially_completed'].includes(day.status) ||
+        (day.notes !== undefined && (typeof day.notes !== 'string' || day.notes.length > 1000))) return false;
+    return (day.memorizationTask === undefined || isValidScheduledTaskUnit(day.memorizationTask)) &&
+      (day.minorRevisionTask === undefined || isValidScheduledRevisionUnit(day.minorRevisionTask)) &&
+      (day.majorRevisionTask === undefined || isValidScheduledRevisionUnit(day.majorRevisionTask));
+  });
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
+    typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
+    typeof value.rationale === 'string' && value.rationale.length <= 4000 &&
+    validCoordinate(meta.startCoordinate) && validCoordinate(meta.endCoordinate) &&
+    isIntegerBetween(meta.totalVerses, 1, 6236) &&
+    isIntegerBetween(meta.activeStudyDaysCount, 0, 10000) &&
+    isIntegerBetween(meta.restDaysCount, 0, 10000) &&
+    isIntegerBetween(meta.totalCalendarDays, 1, 10000) &&
+    isValidDateOnly(meta.projectedEndDate) &&
+    isFiniteBetween(meta.weeklyWorkloadHours, 0, 168) &&
+    typeof feasibility.isFeasible === 'boolean' &&
+    ['optimal', 'light', 'strenuous', 'impossible'].includes(feasibility.cognitiveLoadScore) &&
+    isFiniteBetween(feasibility.requiredMinutesNew, 0, 100000) &&
+    isFiniteBetween(feasibility.requiredMinutesRevision, 0, 100000) &&
+    isFiniteBetween(feasibility.totalRequiredMinutes, 0, 200000) &&
+    isFiniteBetween(feasibility.availableMinutes, 0, 100000) &&
+    isIntegerBetween(feasibility.dailyPaceVerses, 1, 6236) &&
+    (feasibility.warningMessage === undefined || (typeof feasibility.warningMessage === 'string' && feasibility.warningMessage.length <= 2000)) &&
+    scheduleValid &&
+    isIntegerBetween(actual.plannedVersesToDate, 0, 6236) &&
+    isIntegerBetween(actual.actualVersesMemorized, 0, 6236) &&
+    isIntegerBetween(actual.varianceVerses, -6236, 6236) &&
+    ['ahead', 'on_track', 'behind'].includes(actual.status) &&
+    typeof value.isActive === 'boolean' && typeof value.isPaused === 'boolean' &&
+    (value.pausedAt === undefined || isValidTimestamp(value.pausedAt)) &&
+    isValidTimestamp(value.createdAt);
+}
+
 
 
 export const DEMO_REVISION_ITEMS: RevisionItem[] = [
@@ -377,71 +682,99 @@ export interface BackupPayload {
 }
 
 export function validateBackupPayload(payload: any): { valid: boolean; error?: string } {
-  if (!payload || typeof payload !== 'object') {
+  if (!isPlainRecord(payload)) {
     return { valid: false, error: 'الملف لا يحتوي على كائن JSON صالح' };
   }
-
-  // Version check (Supported versions: 1 through 4)
-  if (typeof payload.version !== 'number' || payload.version < 1 || payload.version > 4) {
-    return { valid: false, error: `إصدار النسخة الاحتياطية (${payload.version}) غير مدعوم` };
+  if (!isIntegerBetween(payload.version, 1, 4)) {
+    return { valid: false, error: 'إصدار النسخة الاحتياطية (' + payload.version + ') غير مدعوم' };
+  }
+  if (payload.format !== undefined && payload.format !== 'wird_backup') {
+    return { valid: false, error: 'صيغة النسخة الاحتياطية غير معروفة' };
+  }
+  if (payload.timestamp !== undefined && !isValidTimestamp(payload.timestamp)) {
+    return { valid: false, error: 'تاريخ إنشاء النسخة الاحتياطية غير صالح' };
+  }
+  if (payload.isEncrypted !== undefined && typeof payload.isEncrypted !== 'boolean') {
+    return { valid: false, error: 'حالة تشفير النسخة الاحتياطية غير صالحة' };
+  }
+  if (payload.unencryptedWarning !== undefined &&
+      (typeof payload.unencryptedWarning !== 'string' || payload.unencryptedWarning.length > 1000)) {
+    return { valid: false, error: 'بيان تحذير النسخة الاحتياطية غير صالح' };
   }
 
-  // Profile validation if present
-  if (payload.profile !== undefined) {
-    if (typeof payload.profile !== 'object' || payload.profile === null) {
-      return { valid: false, error: 'بيانات الملف الشخصي (profile) غير صالحة' };
+  if (payload.profile !== undefined && !isValidUserProfile(payload.profile)) {
+    return { valid: false, error: 'اسم الحافظ أو أحد حقول الملف الشخصي مفقود أو غير صالح' };
+  }
+
+  const arraySpecs: Array<{
+    field: string;
+    max: number;
+    validate: (value: unknown) => boolean;
+    label: string;
+  }> = [
+    { field: 'plans', max: 500, validate: isValidMemorizationPlan, label: 'خطط الحفظ' },
+    { field: 'enginePlans', max: 100, validate: isValidEngineGeneratedPlan, label: 'الخطط الذكية' },
+    { field: 'revisionItems', max: 10000, validate: isValidLegacyRevisionItem, label: 'عناصر المراجعة' },
+    { field: 'logs', max: 10000, validate: isValidDailyLog, label: 'سجل النشاط اليومي' },
+    { field: 'tests', max: 50, validate: isValidTestResultRecord, label: 'نتائج الاختبارات' },
+    { field: 'portions', max: 10000, validate: value => isValidPortionRecord(value, false), label: 'المقاطع القديمة' },
+    { field: 'unifiedPortions', max: 10000, validate: value => isValidPortionRecord(value, true), label: 'المقطع الموحد' },
+    { field: 'weakVerses', max: 10000, validate: isValidWeakVerseRecord, label: 'الآيات المتعثرة' }
+  ];
+
+  for (const spec of arraySpecs) {
+    const value = payload[spec.field];
+    if (value === undefined) continue;
+    if (!Array.isArray(value)) {
+      return { valid: false, error: 'الحقل ' + spec.field + ' يجب أن يكون مصفوفة صالحة' };
     }
-    if (typeof payload.profile.name !== 'string' || !payload.profile.name.trim()) {
-      return { valid: false, error: 'اسم الحافظ في الملف الشخصي مفقود أو غير صالح' };
+    if (value.length > spec.max) {
+      return { valid: false, error: 'عدد السجلات في ' + spec.label + ' يتجاوز الحد المسموح' };
     }
-    if (typeof payload.profile.streakDays !== 'number' || payload.profile.streakDays < 0) {
-      return { valid: false, error: 'قيمة سلسلة الأيام غير صالحة' };
+    for (let index = 0; index < value.length; index++) {
+      if (!spec.validate(value[index])) {
+        return { valid: false, error: 'السجل رقم ' + (index + 1) + ' في ' + spec.label + ' غير صالح' };
+      }
     }
   }
 
-  // Array checks
-  const arrayFields = ['plans', 'enginePlans', 'revisionItems', 'logs', 'tests', 'portions', 'unifiedPortions', 'weakVerses'] as const;
-  for (const field of arrayFields) {
-    if (payload[field] !== undefined && !Array.isArray(payload[field])) {
-      return { valid: false, error: `الحقل ${field} يجب أن يكون مصفوفة صالحة` };
-    }
+  if (Array.isArray(payload.logs) &&
+      new Set(payload.logs.map((log: DailyLog) => log.date)).size !== payload.logs.length) {
+    return { valid: false, error: 'يحتوي سجل النشاط اليومي على أكثر من سجل للتاريخ نفسه' };
   }
 
-  if (payload.unifiedPortions !== undefined) {
-    const validStatuses = new Set(['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak']);
-    const validTypes = new Set(['passage', 'surah', 'page']);
-    for (let index = 0; index < payload.unifiedPortions.length; index++) {
-      const portion = payload.unifiedPortions[index];
-      const surahMeta = portion && ALL_SURAHS.find(surah => surah.number === portion.surahNumber);
-      const validDate = typeof portion?.nextDueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(portion.nextDueDate)
-        && (() => {
-          const [year, month, day] = portion.nextDueDate.split('-').map(Number);
-          const date = new Date(Date.UTC(year, month - 1, day));
-          return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === portion.nextDueDate;
-        })();
-      const valid = portion && typeof portion === 'object' && surahMeta &&
-        typeof portion.id === 'string' && portion.id === createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah) &&
-        validTypes.has(portion.type) &&
-        typeof portion.surahName === 'string' && portion.surahName.trim().length > 0 &&
-        Number.isInteger(portion.startAyah) && portion.startAyah >= 1 && portion.startAyah <= surahMeta.versesCount &&
-        Number.isInteger(portion.endAyah) && portion.endAyah >= portion.startAyah && portion.endAyah <= surahMeta.versesCount &&
-        validStatuses.has(portion.status) &&
-        validDate &&
-        Number.isInteger(portion.intervalDays) && portion.intervalDays >= 1 &&
-        Number.isFinite(portion.easeFactor) && portion.easeFactor >= 1.3 && portion.easeFactor <= 3 &&
-        Number.isInteger(portion.repetitionCount) && portion.repetitionCount >= 0 &&
-        (portion.pageNumber === undefined || (Number.isInteger(portion.pageNumber) && portion.pageNumber >= 1 && portion.pageNumber <= 604)) &&
-        (portion.pageStart === undefined || (Number.isInteger(portion.pageStart) && portion.pageStart >= 1 && portion.pageStart <= 604)) &&
-        (portion.pageEnd === undefined || (Number.isInteger(portion.pageEnd) && portion.pageEnd >= 1 && portion.pageEnd <= 604)) &&
-        (portion.juzNumber === undefined || (Number.isInteger(portion.juzNumber) && portion.juzNumber >= 1 && portion.juzNumber <= 30)) &&
-        (portion.history === undefined || Array.isArray(portion.history));
-      if (!valid) return { valid: false, error: 'بيانات المقطع الموحد رقم ' + (index + 1) + ' غير صالحة أو تتجاوز حدود السورة' };
+  if (payload.version === 4 && Array.isArray(payload.unifiedPortions)) {
+    if (payload.portions !== undefined &&
+        JSON.stringify(payload.portions) !== JSON.stringify(payload.unifiedPortions)) {
+      return { valid: false, error: 'نسخة المقاطع القديمة لا تطابق المقاطع الموحدة؛ يلزم إصلاح التعارض قبل الاستيراد.' };
+    }
+    if (payload.revisionItems !== undefined) {
+      const expectedRevisionItems: RevisionItem[] = payload.unifiedPortions
+        .filter((portion: WirdPortion) => portion.status !== 'not_memorized')
+        .map((portion: WirdPortion) => ({
+          id: portion.id,
+          surahNumber: portion.surahNumber,
+          surahName: portion.surahName,
+          startAyah: portion.startAyah,
+          endAyah: portion.endAyah,
+          pageNumber: portion.pageNumber,
+          juzNumber: portion.juzNumber,
+          type: portion.revisionType || 'minor',
+          lastReviewedDate: portion.lastReviewedDate,
+          nextDueDate: portion.nextDueDate,
+          intervalDays: portion.intervalDays,
+          easeFactor: portion.easeFactor,
+          repetitionCount: portion.repetitionCount,
+          strength: portion.strength || (portion.status === 'weak' ? 'weak' : portion.status === 'stable' ? 'strong' : 'medium')
+        }));
+      if (JSON.stringify(payload.revisionItems) !== JSON.stringify(expectedRevisionItems)) {
+        return { valid: false, error: 'سجل المراجعة لا يطابق المقاطع الموحدة؛ يلزم إصلاح التعارض قبل الاستيراد.' };
+      }
     }
   }
 
   return { valid: true };
 }
-
 export const StorageService = {
   // Scope and raw-key API used by AuthGate and the retention adapter.
   needsLegacyDataDecision(scope: string): boolean {
@@ -526,31 +859,31 @@ export const StorageService = {
 
   // Plans (Returns clean empty array by default)
   getPlans(): MemorizationPlan[] {
-    return readJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans');
+    return readJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
   },
 
   savePlans(plans: MemorizationPlan[]): boolean {
-    if (!Array.isArray(plans) || !canWriteJsonArrayArchive(STORAGE_KEYS.PLANS)) return false;
+    if (!Array.isArray(plans) || plans.length > 500 || !plans.every(isValidMemorizationPlan) || !canWriteJsonArrayArchive(STORAGE_KEYS.PLANS, isValidMemorizationPlan)) return false;
     return setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
   },
 
   // Engine Plans
   getEnginePlans(): EngineGeneratedPlan[] {
-    return readJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans');
+    return readJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
   },
 
   saveEnginePlans(plans: EngineGeneratedPlan[]): boolean {
-    if (!Array.isArray(plans) || !canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS)) return false;
+    if (!Array.isArray(plans) || plans.length > 100 || !plans.every(isValidEngineGeneratedPlan) || !canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS, isValidEngineGeneratedPlan)) return false;
     return setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
   },
 
   // Revision Items
   getRevisionItems(): RevisionItem[] {
-    return readJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items');
+    return readJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidRevisionItem);
   },
 
   saveRevisionItems(items: RevisionItem[]): boolean {
-    if (!Array.isArray(items) || !canWriteJsonArrayArchive(STORAGE_KEYS.REVISION)) return false;
+    if (!Array.isArray(items) || items.length > 10000 || !items.every(isValidRevisionItem) || !canWriteJsonArrayArchive(STORAGE_KEYS.REVISION, isValidRevisionItem)) return false;
     return setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
   },
 
@@ -578,10 +911,16 @@ export const StorageService = {
         // Recoverable Integrity Error (Phase 3.1): Re-attempt recovery from preserved legacy keys
         const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
         const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
-        if (legacyPortionsRaw || legacyRevsRaw) {
+        if (legacyPortionsRaw !== null || legacyRevsRaw !== null) {
           console.info('[WIRD Storage] Attempting recovery from preserved legacy storage keys...');
-          const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
-          const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+          const portionsRead = readLegacyArrayForMigration<PortionStatusRecord>(legacyPortionsRaw, 'المقاطع', value => isValidPortionRecord(value, false));
+          const revisionsRead = readLegacyArrayForMigration<RevisionItem>(legacyRevsRaw, 'المراجعة', isValidLegacyRevisionItem);
+          if (!portionsRead.valid || !revisionsRead.valid) {
+            console.error('[WIRD Storage] Legacy recovery stopped:', !portionsRead.valid ? portionsRead.error : revisionsRead.valid ? '' : revisionsRead.error);
+            return [];
+          }
+          const legacyPortions = portionsRead.records;
+          const legacyRevs = revisionsRead.records;
           if (legacyPortions.length === 0 && legacyRevs.length === 0) {
             console.error('[WIRD Storage] Recovery skipped: no non-empty legacy records exist; invalid canonical data was preserved.');
             return [];
@@ -597,7 +936,7 @@ export const StorageService = {
       // If schema version is not 2, run migration first
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
-      if (legacyPortionsRaw || legacyRevsRaw) {
+      if (legacyPortionsRaw !== null || legacyRevsRaw !== null) {
         this.ensureDataMigrated();
         const migrated = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
         if (migrated) return JSON.parse(migrated);
@@ -713,7 +1052,7 @@ export const StorageService = {
     try {
       const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-      const hasInvalidCanonicalPayload = currentVersion === '2' && Boolean(unifiedData);
+      const hasInvalidCanonicalPayload = currentVersion === '2';
 
       if (currentVersion === '2' && unifiedData) {
         try {
@@ -735,9 +1074,23 @@ export const StorageService = {
       }
 
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
-      const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
-      const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+      const portionsRead = readLegacyArrayForMigration<PortionStatusRecord>(legacyPortionsRaw, 'المقاطع', value => isValidPortionRecord(value, false));
+      const revisionsRead = readLegacyArrayForMigration<RevisionItem>(legacyRevsRaw, 'المراجعة', isValidLegacyRevisionItem);
+      if (!portionsRead.valid || !revisionsRead.valid) {
+        return {
+          success: false,
+          legacyPortionsCount: 0,
+          legacyRevisionCount: 0,
+          migratedPortionsCount: 0,
+          totalPreservedLogsCount: 0,
+          conflictAuditCount: 0,
+          alreadyMigrated: false,
+          error: !portionsRead.valid ? portionsRead.error : revisionsRead.valid ? 'تعذر التحقق من أرشيف المراجعة القديم.' : revisionsRead.error
+        };
+      }
+      const legacyPortions = portionsRead.records;
+      const legacyRevs = revisionsRead.records;
 
       if (hasInvalidCanonicalPayload && legacyPortions.length === 0 && legacyRevs.length === 0) {
         return {
@@ -758,7 +1111,7 @@ export const StorageService = {
         return report;
       }
 
-      const saved = this.saveUnifiedPortions(portions);
+      const saved = this.saveUnifiedPortions(portions, hasInvalidCanonicalPayload);
       if (!saved) {
         return {
           success: false,
@@ -825,13 +1178,13 @@ export const StorageService = {
 
   // Tests
   getTests(): TestResult[] {
-    return readJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results');
+    return readJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
   },
 
   saveTest(test: TestResult): boolean {
-    if (!canWriteJsonArrayArchive(STORAGE_KEYS.TESTS)) return false;
+    if (!isValidTestResultRecord(test) || !canWriteJsonArrayArchive(STORAGE_KEYS.TESTS, isValidTestResultRecord)) return false;
     try {
-      const current = this.getTests();
+      const current = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
       current.unshift(test);
       return setItem(STORAGE_KEYS.TESTS, JSON.stringify(current.slice(0, 50)));
     } catch (e) {
@@ -912,23 +1265,122 @@ export const StorageService = {
 
   // Export with Unencrypted Warning Label
   exportFullBackup(): string {
+    const profileRaw = getItem(STORAGE_KEYS.PROFILE);
+    let profile: UserProfile;
+    if (profileRaw === null) {
+      profile = { ...CLEAN_INITIAL_PROFILE };
+    } else {
+      try {
+        const parsed: unknown = JSON.parse(profileRaw);
+        if (!isValidUserProfile(parsed)) throw new Error('الملف الشخصي يحتوي على سجل غير صالح.');
+        profile = parsed;
+      } catch {
+        throw new Error('تعذر تصدير النسخة الاحتياطية: بيانات الملف الشخصي تالفة أو غير صالحة. تم الحفاظ على البيانات الأصلية.');
+      }
+    }
+
+    const plans = readStrictJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
+    const enginePlans = readStrictJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
+    const logs = readStrictJsonArrayArchive<DailyLog>(STORAGE_KEYS.LOGS, 'Daily logs', isValidDailyLog);
+    if (new Set(logs.map(log => log.date)).size !== logs.length) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: يحتوي سجل النشاط اليومي على تواريخ مكررة.');
+    }
+    const tests = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
+
     const canonicalPortions = this.getUnifiedPortions();
+    const canonicalRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+    const schemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+    const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
+    const legacyRevisionRaw = getItem(STORAGE_KEYS.REVISION);
+
+    if (schemaVersion !== '2' && (legacyPortionsRaw !== null || legacyRevisionRaw !== null)) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: توجد سجلات قديمة لم يكتمل ترحيلها؛ تم إيقاف التصدير لمنع إنشاء نسخة ناقصة.');
+    }
+    if (schemaVersion === '2' && canonicalRaw === null) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد مفقود رغم إعلان الإصدار الثاني؛ لم يتم إنشاء نسخة ناقصة.');
+    }
+    if (schemaVersion !== '2' && canonicalRaw !== null) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: يوجد سجل موحد دون علامة إصدار متوافقة؛ يلزم فحص التخزين قبل التصدير.');
+    }
+    if (canonicalRaw !== null) {
+      let parsedCanonical: unknown;
+      try { parsedCanonical = JSON.parse(canonicalRaw); }
+      catch { throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد تالف وتم الحفاظ عليه.'); }
+      if (!Array.isArray(parsedCanonical) || parsedCanonical.length > 10000 ||
+          !parsedCanonical.every((item: unknown) => isValidPortionRecord(item, true)) ||
+          JSON.stringify(parsedCanonical) !== JSON.stringify(canonicalPortions)) {
+        throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد يحتوي على بيانات غير صالحة أو تعذر قراءته بالكامل.');
+      }
+    }
+
+    const storedLegacyPortions = readStrictJsonArrayArchive<PortionStatusRecord>(
+      STORAGE_KEYS.PORTIONS, 'Legacy portions', value => isValidPortionRecord(value, false)
+    );
+    const storedLegacyRevisions = readStrictJsonArrayArchive<RevisionItem>(
+      STORAGE_KEYS.REVISION, 'Revision items', isValidLegacyRevisionItem
+    );
+    const projectedLegacyRevisions: RevisionItem[] = canonicalPortions
+      .filter(portion => portion.status !== 'not_memorized')
+      .map(portion => ({
+        id: portion.id,
+        surahNumber: portion.surahNumber,
+        surahName: portion.surahName,
+        startAyah: portion.startAyah,
+        endAyah: portion.endAyah,
+        pageNumber: portion.pageNumber,
+        juzNumber: portion.juzNumber,
+        type: portion.revisionType || 'minor',
+        lastReviewedDate: portion.lastReviewedDate,
+        nextDueDate: portion.nextDueDate,
+        intervalDays: portion.intervalDays,
+        easeFactor: portion.easeFactor,
+        repetitionCount: portion.repetitionCount,
+        strength: portion.strength || (portion.status === 'weak' ? 'weak' : portion.status === 'stable' ? 'strong' : 'medium')
+      }));
+    if (schemaVersion === '2' && storedLegacyPortions.length > 0 &&
+        JSON.stringify(storedLegacyPortions) !== JSON.stringify(canonicalPortions)) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: نسخة المقاطع القديمة لا تطابق السجل الموحد؛ يلزم فحص التعارض قبل التصدير.');
+    }
+    if (schemaVersion === '2' && storedLegacyRevisions.length > 0 &&
+        JSON.stringify(storedLegacyRevisions) !== JSON.stringify(projectedLegacyRevisions)) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: نسخة المراجعة القديمة لا تطابق السجل الموحد؛ يلزم فحص التعارض قبل التصدير.');
+    }
+
+    const revisionItems = schemaVersion === '2' ? projectedLegacyRevisions : [];
+    const portions = canonicalPortions;
+
+    const weakRaw = getItem(STORAGE_KEYS.WEAK_VERSES);
+    let weakVerses: WeakVerseItem[] = [];
+    if (weakRaw !== null) {
+      let parsedWeak: unknown;
+      try { parsedWeak = JSON.parse(weakRaw); }
+      catch { throw new Error('تعذر تصدير النسخة الاحتياطية: سجل الآيات المتعثرة تالف وتم الحفاظ عليه.'); }
+      if (!Array.isArray(parsedWeak) || parsedWeak.length > 10000 || !parsedWeak.every(isValidWeakVerseRecord)) {
+        throw new Error('تعذر تصدير النسخة الاحتياطية: سجل الآيات المتعثرة يحتوي على عناصر غير صالحة.');
+      }
+      weakVerses = parsedWeak;
+    }
+
     const backup: BackupPayload = {
       format: 'wird_backup',
       version: 4,
       timestamp: new Date().toISOString(),
       isEncrypted: false,
       unencryptedWarning: "تنبيه أمني: هذا الملف نصي غير مشفر بصيغة JSON صريحة ويحتوي على سجلات الحفظ والإعدادات الشخصية. احتفظ به في مكان آمن.",
-      profile: this.getProfile(),
-      plans: this.getPlans(),
-      enginePlans: this.getEnginePlans(),
-      revisionItems: this.getRevisionItems(),
-      logs: this.getLogs(),
-      tests: this.getTests(),
-      portions: canonicalPortions,
+      profile,
+      plans,
+      enginePlans,
+      revisionItems,
+      logs,
+      tests,
+      portions,
       unifiedPortions: canonicalPortions,
-      weakVerses: getItem(STORAGE_KEYS.WEAK_VERSES) ? JSON.parse(getItem(STORAGE_KEYS.WEAK_VERSES)!) : []
+      weakVerses
     };
+    const validation = validateBackupPayload(backup);
+    if (!validation.valid) {
+      throw new Error('تعذر إنشاء نسخة احتياطية مكتملة: ' + (validation.error || 'بيانات غير صالحة'));
+    }
     return JSON.stringify(backup, null, 2);
   },
 

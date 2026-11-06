@@ -1,6 +1,7 @@
 import { AuthService } from '../services/authService';
 import { validateFirebaseConfigMap } from '../lib/firebase';
 import { StorageService } from '../services/storageService';
+import { PRESET_PLANS } from '../data/presetPlans';
 import { 
   executeGuestTransition,
   handleContinueAsGuest, 
@@ -82,7 +83,7 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
 
       // Step B: Write test value through actual production API
       StorageService.saveProfile({ ...initialProfile, name: 'Temporary In-Memory User' });
-      StorageService.savePlans([{ id: 'plan-mem-1', title: 'In-Memory Plan' } as any]);
+      StorageService.savePlans([PRESET_PLANS[0]]);
       assert(StorageService.getProfile().name === 'Temporary In-Memory User', 'Profile modified in memory fallback');
       assert(StorageService.getPlans().length === 1, 'Plans modified in memory fallback');
 
@@ -98,7 +99,7 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
       let caughtError: any = null;
       try {
         try {
-          StorageService.savePlans([{ id: 'throw-test', title: 'Will Be Reverted On Throw' } as any]);
+          StorageService.savePlans([PRESET_PLANS[0]]);
           assert(StorageService.getPlans().length === 1, 'Plan written before throw');
           throw new Error('Simulated operation failure during test');
         } finally {
