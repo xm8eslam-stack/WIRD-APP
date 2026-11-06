@@ -229,6 +229,27 @@ export const AuthScreen: React.FC = () => {
           </p>
         </div>
 
+        {/* Firebase Config Notice Banner */}
+        {!isFirebaseReady && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-2xl text-amber-900 dark:text-amber-200 text-xs space-y-2.5 dir-rtl">
+            <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>تنبيه: مفاتيح Firebase غير مهيأة بعد</span>
+            </div>
+            <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+              يتطلب تسجيل الدخول السحابي ضبط متغيرات البيئة (VITE_FIREBASE_*). يمكنك المتابعة الآن مباشرة كزائر بدون عائق وبكامل الميزات محلياً.
+            </p>
+            <button
+              type="button"
+              onClick={continueAsGuest}
+              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>المتابعة السريعة كزائر (Guest Mode)</span>
+            </button>
+          </div>
+        )}
+
         {/* Tab Switchers */}
         {mode !== 'forgot' && (
           <div className="flex bg-[#faf8f5] dark:bg-stone-800/80 p-1 rounded-2xl border border-stone-200/80 dark:border-stone-700 text-xs font-bold">
