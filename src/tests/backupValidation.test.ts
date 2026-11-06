@@ -283,7 +283,7 @@ export function runBackupTests(): { passed: number; failed: number } {
         [`memory:${STORAGE_KEYS.PORTIONS}`]: '[]',
         [`memory:${STORAGE_KEYS.REVISION}`]: '[]'
       });
-      const report = StorageService.ensureDataMigrated();
+      const report = StorageService.prepareDataMigration().report;
       assert(!report.success, 'Invalid canonical data without legacy recovery must not be reported as migrated');
       const after = StorageService.getStorageSnapshot();
       assert(after[`memory:${STORAGE_KEYS.UNIFIED_PORTIONS}`] === invalidPayload, 'Invalid payload must remain available for manual recovery');
@@ -535,7 +535,7 @@ export function runBackupTests(): { passed: number; failed: number } {
         ['memory:' + STORAGE_KEYS.PORTIONS]: malformedLegacyPortions,
         ['memory:' + STORAGE_KEYS.REVISION]: '[]'
       });
-      const report = StorageService.ensureDataMigrated();
+      const report = StorageService.prepareDataMigration().report;
       assert(!report.success, 'Malformed legacy coordinate must block migration');
       assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === malformedLegacyPortions,
         'Malformed legacy bytes must remain available for recovery');
