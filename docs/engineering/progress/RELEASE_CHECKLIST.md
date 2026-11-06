@@ -131,3 +131,13 @@
 - [x] Post-merge main Quality Gate run `42240305979` passed on exact SHA `f3a207844020494ebf6a350ae9cb27d6db62398e`.
 - [ ] Connect domain mutation call sites and implement deterministic local projection replay.
 - [ ] Implement Firestore sync worker and two-device/offline integration tests.
+
+
+## Monotonic journal sequencing and projection cursor — PR #34
+- [x] Upgrade IndexedDB schema v1→v2 and deterministically backfill existing events.
+- [x] Allocate per-UID event sequences atomically with event/outbox writes.
+- [x] Add bounded replay-page, projection-cursor read, and contiguous-only cursor advancement APIs.
+- [x] Exact-head Quality Gate passed on PR SHA `148e7b27873219f552edee41b819f7b08949e7a5` (348 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, server smoke).
+- [ ] Verify post-merge main Quality Gate run `42241532674` on exact SHA `bfff3969d510c49da6d0224a375b87ca2959c651`.
+- [ ] Implement deterministic local projection replay before app state initialization.
+- [ ] Connect domain mutation call sites and Firestore sync worker.
