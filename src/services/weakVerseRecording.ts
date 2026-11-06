@@ -152,6 +152,10 @@ export function buildWeakVerseResolutionSnapshot(
     return { success: false, messageAr: 'معرّف الآية المتعثرة غير صالح؛ لم يتم تعديل السجل.' };
   }
   try {
+    const weakArchiveRaw = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+    if (!StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, weakArchiveRaw)) {
+      return { success: false, messageAr: 'تعذر التحقق من القراءة الدائمة لقائمة الآيات المتعثرة؛ لم يتم إنشاء عملية استعادة.' };
+    }
     const current = RetentionService.getWeakVerses();
     const records = current.filter(item => item.id !== id);
     return { success: true, records, changed: records.length !== current.length };
