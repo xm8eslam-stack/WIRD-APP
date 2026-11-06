@@ -3,9 +3,9 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Last verified application-code main SHA before this documentation checkpoint: f3a207844020494ebf6a350ae9cb27d6db62398e
-- Main Quality Gate: run 42240305979 — **success** on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e.
-- Production deployment for current main SHA f3a207844020494ebf6a350ae9cb27d6db62398e: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
+- Last verified application-code main SHA before this documentation checkpoint: bfff3969d510c49da6d0224a375b87ca2959c651
+- Main Quality Gate after PR #32: run 42240305979 — **success** on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e. Main Quality Gate after PR #34: run 42241532674 — **success** on exact main SHA bfff3969d510c49da6d0224a375b87ca2959c651.
+- Production deployment for current main SHA bfff3969d510c49da6d0224a375b87ca2959c651: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
 ## Completed since the previous checkpoint
 1. PR #14 — c0390692d5f9ec7e81e04c8a674dbb035e0924ec
@@ -163,3 +163,22 @@
 3. Implement the Firestore sync worker, server acknowledgement, retry/backoff, tombstone handling, and collection-specific security rules.
 4. Run two-account/two-device/offline/online integration tests and verify actual production deployment before release.
 5. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA.
+
+
+## 2026-11-06 — PR #34 monotonic journal sequence and projection cursor merged
+
+- PR #34 merged to `main` as `bfff3969d510c49da6d0224a375b87ca2959c651`.
+- IndexedDB schema upgraded from v1 to v2. Existing v1 events receive deterministic per-UID sequences ordered by `createdAtMs` then `eventId`.
+- New event sequence numbers are allocated inside the same read/write transaction as the event/outbox pair; concurrent tabs receive unique contiguous sequences.
+- Added `listEventsAfter`, `getProjectionCursor`, and `markProjected`. The cursor advances one sequence at a time, rejects gaps, and is idempotent for already projected events.
+- Sequence and cursor metadata are preserved through legacy outbox migration and normal enqueue operations.
+- Exact-head Quality Gate passed on SHA `148e7b27873219f552edee41b819f7b08949e7a5`: **348 automated assertions passed, 0 failed; 10 Firestore rules tests passed; dependency audit, TypeScript, production build, and server smoke test passed**. PR run `42241197325` and push run `42241137521` both succeeded.
+- Post-merge main Quality Gate run `42241532674` is pending at checkpoint preparation.
+
+## Updated next actions — Phase 2 remains IN PROGRESS
+
+1. Implement deterministic journal-to-local projection replay in the auth/storage bootstrap, before App reads scoped local data. Apply each event, verify its projection, then advance the contiguous cursor; a crash before cursor advancement must safely replay the same event.
+2. Define and validate full-snapshot payload contracts for profile, plans, engine plans, portions/revision, weak verses, tests, and activity/session data.
+3. Connect real domain mutation paths to the journal with write-ahead and compensation/replay semantics.
+4. Implement Firestore sync worker, server acknowledgements, tombstones, retry/backoff, and collection-specific security rules.
+5. Run two-account/two-device/offline/online integration tests and verify actual production deployment before release.

@@ -215,3 +215,15 @@ The following foundation has been implemented and merged:
 5. Pass two-account/two-device/offline/online tests before enabling cloud sync for users.
 
 Do not describe the IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
+
+
+### PR #34 update — monotonic sequencing and projection cursor
+
+PR #34 has implemented the first item in the sequence above:
+
+- IndexedDB schema v2 stores a unique `(uid, sequence)` index.
+- v1 event history is deterministically backfilled during upgrade.
+- New event sequence allocation is transactionally coupled to the event/outbox append.
+- `listEventsAfter`, `getProjectionCursor`, and contiguous-only `markProjected` are available.
+
+The projection cursor is currently only a storage primitive. No event-to-localStorage projector is wired into `AuthGate` yet, and no domain mutation call sites are writing journal events. Do not advance the cursor until the corresponding local projection has been successfully written and verified.
