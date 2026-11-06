@@ -31,9 +31,9 @@
 **PHASE 2 — Memorization/revision correctness audit**  
 **Status:** IN PROGRESS on `main`; PR #14 (Mushaf/audio), PR #15 (activity/profile + weak-verse rollback certainty), and PR #16 (outbox durable rollback certainty) are merged and quality-gated. Remaining domain mutation paths, IndexedDB event journal, cloud sync, and manual release QA are still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
-**Last storage-integrity milestone:** PR #13 merge `346b725`; Actions #759 / run `42217300654` on PR head `d675383` passed 317 assertions, 10 Firestore emulator tests, audit, TypeScript, build, and server smoke.  
+**Latest storage-integrity milestones:** PR #13 merge `346b725`; PR #15 merge `57fa706` (activity/profile + weak-verse rollback certainty); PR #16 merge `1de5951` (outbox durable rollback certainty). PR #16 exact-head run `42220935595` and post-merge main run `42221103563` passed. Earlier PR #13 run `42217300654` passed 317 assertions and the full quality gate.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
-**Remaining:** inspect every multi-key mutation path (memorization, revision, activity/profile, weak-verse, backup/restore, outbox) for verified rollback and failure-state reporting. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
+**Remaining:** inspect every remaining single-/multi-key mutation path (especially memorization/revision savePortions failure paths and backup/restore) for durable rollback verification. PR #15 and PR #16 close specific activity/profile, weak-verse, and outbox reporting gaps. Cross-tab atomicity belongs to the IndexedDB event-journal milestone. M4 follows after both gates.
 
 ## Completed and verified foundations
 
