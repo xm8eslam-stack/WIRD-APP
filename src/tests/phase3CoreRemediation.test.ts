@@ -330,6 +330,23 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       'Legacy history without an ID must receive a deterministic ID');
     assert(generatedId === secondMigration.portions[0].history?.[0]?.id,
       'Generated legacy history IDs must remain stable across repeated migrations');
+
+    const metadataSource: PortionStatusRecord = {
+      ...basePortion,
+      id: 'legacy-metadata-source',
+      createdAt: '2026-04-01T10:00:00.000Z',
+      updatedAt: '2026-04-02T10:00:00.000Z',
+      conflictAudit: [{ source: 'older-migration', field: 'notes', value: 'ملاحظة محفوظة', timestamp: '2026-04-02T10:00:00.000Z' }]
+    };
+    const metadataMerge = migrateLegacyDataLosslessly([
+      { ...basePortion, id: 'legacy-metadata-base', createdAt: undefined, updatedAt: undefined, conflictAudit: [] },
+      metadataSource
+    ], []);
+    assert(metadataMerge.portions[0].createdAt === metadataSource.createdAt &&
+      metadataMerge.portions[0].updatedAt === metadataSource.updatedAt,
+      'Metadata present only in a later legacy source must not be discarded');
+    assert(metadataMerge.portions[0].conflictAudit?.some(entry => entry.source === 'older-migration'),
+      'Incoming conflict-audit entries must be retained during duplicate portion merges');
   }
 
   console.log('\n--- 4A. Canonical ID Recovery from Untrusted Legacy IDs ---');
