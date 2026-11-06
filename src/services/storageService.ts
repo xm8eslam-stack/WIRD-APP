@@ -8,7 +8,6 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { PRESET_PLANS } from '../data/presetPlans';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
@@ -1664,15 +1663,6 @@ export const StorageService = {
   // Backward-compatible boolean API for callers that do not need rollback detail.
   recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
     return this.recordSessionCompletionDetailed(memorizedAyahs, reviewedPages, minutes, taskName).success;
-  },
-
-  // Explicit Demo Data Loader (for demo mode only)
-  loadDemoData(): void {
-    this.saveProfile(DEMO_PROFILE);
-    this.savePlans(PRESET_PLANS);
-    this.saveEnginePlans([buildDemoEnginePlan()]);
-    this.saveRevisionItems(DEMO_REVISION_ITEMS);
-    this.saveLogs(DEMO_LOGS);
   },
 
   // Export with Unencrypted Warning Label
