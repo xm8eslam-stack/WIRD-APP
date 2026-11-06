@@ -23,6 +23,17 @@ export interface CloudSyncState {
 
 type SyncListener = (state: CloudSyncState) => void;
 
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return '{' + Object.keys(record).sort().map(key =>
+      JSON.stringify(key) + ':' + stableSerialize(record[key])
+    ).join(',') + '}';
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 function checkIsOnline(): boolean {
   if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
     return navigator.onLine;
@@ -175,24 +186,14 @@ class CloudSyncCoordinator {
 
         for (const entry of readyEntries) {
           try {
-            // Write document snapshot
-            const docRef = doc(db, 'users', uid, entry.collection, entry.documentId);
-            const docData: Record<string, unknown> = {
-              schemaVersion: entry.schemaVersion,
-              payload: entry.payload,
-              updatedAtMs: entry.clientUpdatedAtMs,
-              deviceId: entry.deviceId,
-              mutationId: entry.mutationId
-            };
-            if (entry.operation === 'tombstone') {
-              docData.deletedAt = new Date(entry.clientUpdatedAtMs);
-            }
-            await setDoc(docRef, docData);
-
-            // Write immutable domain event record if eventId is present
+            // Verify the immutable event identity before changing its mutable
+            // snapshot projection. A reused event ID with different content must
+            // never overwrite the previously accepted remote snapshot.
+            let eventRef = null;
+            let eventRecord: Record<string, unknown> | null = null;
             if (entry.eventId) {
-              const eventRef = doc(db, 'users', uid, 'events', entry.eventId);
-              const eventRecord = {
+              eventRef = doc(db, 'users', uid, 'events', entry.eventId);
+              eventRecord = {
                 schemaVersion: 1,
                 eventId: entry.eventId,
                 mutationId: entry.mutationId,
@@ -209,7 +210,7 @@ class CloudSyncCoordinator {
               if (existingEvent.exists()) {
                 const remote = existingEvent.data();
                 const matches = Object.keys(eventRecord).every((key) =>
-                  JSON.stringify(remote[key]) === JSON.stringify(eventRecord[key])
+                  stableSerialize(remote[key]) === stableSerialize(eventRecord![key])
                 );
                 if (!matches) {
                   throw new Error('يوجد تعارض في سجل المزامنة لنفس معرف العملية؛ تم الاحتفاظ بالعملية المحلية دون استبدال السجل السحابي.');
@@ -218,6 +219,21 @@ class CloudSyncCoordinator {
                 await setDoc(eventRef, eventRecord);
               }
             }
+
+            // Write the mutable snapshot only after the immutable event identity
+            // has been checked (and, when needed, created).
+            const docRef = doc(db, 'users', uid, entry.collection, entry.documentId);
+            const docData: Record<string, unknown> = {
+              schemaVersion: entry.schemaVersion,
+              payload: entry.payload,
+              updatedAtMs: entry.clientUpdatedAtMs,
+              deviceId: entry.deviceId,
+              mutationId: entry.mutationId
+            };
+            if (entry.operation === 'tombstone') {
+              docData.deletedAt = new Date(entry.clientUpdatedAtMs);
+            }
+            await setDoc(docRef, docData);
 
             // Acknowledge locally on confirmation
             await LocalSyncOutbox.acknowledge([entry.mutationId]);
