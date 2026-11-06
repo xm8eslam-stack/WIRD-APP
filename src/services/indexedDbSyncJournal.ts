@@ -714,20 +714,30 @@ export class IndexedDbSyncJournal {
   async getSnapshot(): Promise<JournalSnapshot> {
     const uid = activeUid();
     const database = await this.openDatabase();
-    const transaction = database.transaction([STORE_OUTBOX, STORE_ACKNOWLEDGEMENTS, STORE_EVENTS, STORE_METADATA], 'readonly');
+    const transaction = database.transaction([STORE_OUTBOX, STORE_ACKNOWLEDGEMENTS, STORE_EVENTS, STORE_METADATA], 'readwrite');
     const completed = transactionComplete(transaction);
     const pendingRequest = transaction.objectStore(STORE_OUTBOX).index('uid').getAll(IDBKeyRange.only(uid));
     const acknowledgedRequest = transaction.objectStore(STORE_ACKNOWLEDGEMENTS).index('uid').getAll(IDBKeyRange.only(uid));
     const eventRequest = transaction.objectStore(STORE_EVENTS).index('uid').getAll(IDBKeyRange.only(uid));
-    const metadataRequest = transaction.objectStore(STORE_METADATA).get(uid);
-    const [pending, acknowledged, events, metadata] = await Promise.all([
-      requestResult(pendingRequest), requestResult(acknowledgedRequest),
-      requestResult(eventRequest), requestResult(metadataRequest)
+    const metadataStore = transaction.objectStore(STORE_METADATA);
+    const metadataRequest = metadataStore.get(uid);
+    let deviceId = '';
+    metadataRequest.onsuccess = () => {
+      const metadata = metadataRequest.result as DeviceMetadata | undefined;
+      if (metadata?.deviceId) {
+        deviceId = metadata.deviceId;
+      } else {
+        deviceId = createSecureId();
+        metadataStore.put({ uid, deviceId, schemaVersion: 1 } satisfies DeviceMetadata);
+      }
+    };
+    const [pending, acknowledged, events] = await Promise.all([
+      requestResult(pendingRequest), requestResult(acknowledgedRequest), requestResult(eventRequest)
     ]);
     await completed;
     return {
       uid,
-      deviceId: (metadata as DeviceMetadata | undefined)?.deviceId || '',
+      deviceId,
       pendingCount: (pending as JournalOutboxEntry[]).length,
       acknowledgedCount: (acknowledged as AcknowledgementRecord[]).length,
       eventCount: (events as JournalEvent[]).length
