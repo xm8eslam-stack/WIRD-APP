@@ -1260,6 +1260,9 @@ export const StorageService = {
     if (schemaVersion === '2' && canonicalRaw === null) {
       throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد مفقود رغم إعلان الإصدار الثاني؛ لم يتم إنشاء نسخة ناقصة.');
     }
+    if (schemaVersion !== '2' && canonicalRaw !== null) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: يوجد سجل موحد دون علامة إصدار متوافقة؛ يلزم فحص التخزين قبل التصدير.');
+    }
     if (canonicalRaw !== null) {
       let parsedCanonical: unknown;
       try { parsedCanonical = JSON.parse(canonicalRaw); }
