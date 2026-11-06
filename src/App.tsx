@@ -284,25 +284,6 @@ export default function App() {
     return true;
   };
 
-  // Save revision rating or new items
-  const handleUpdateRevisionItems = (items: RevisionItem[]) => {
-    if (!StorageService.saveRevisionItems(items)) {
-      showToast('تعذر حفظ تحديثات المراجعة في التخزين المحلي.', 'error');
-      return;
-    }
-    setRevisionItems(items);
-  };
-
-  const handleRecordRevisionComplete = (pagesCount: number, minutes: number, taskName: string) => {
-    const saved = StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
-    if (!saved) {
-      showToast('تعذر حفظ سجل المراجعة أو تحديث سلسلة المواظبة.', 'error');
-      return;
-    }
-    setLogs(StorageService.getLogsForDisplay());
-    setProfile(StorageService.getProfile());
-  };
-
   // Save preset plans
   const handleUpdatePlans = async (newPlans: MemorizationPlan[]): Promise<boolean> => {
     const result = await persistPlansSnapshot(newPlans);

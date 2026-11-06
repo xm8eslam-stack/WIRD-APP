@@ -1,6 +1,6 @@
 # Firestore Sync Design
 
-**Status as of 2026-11-06 (PR #45 merged):** Firestore security rules and emulator tests exist. The UID-scoped IndexedDB event journal, atomic event+outbox persistence, monotonic sequencing, deterministic local projection replay, grouped local projection rollback, and journal-first writes for profile/plans, page status, manual portion additions, test-result snapshots, weak-verse failures, and weak-verse resolution are implemented. Revision ratings, session completion/activity-profile updates, backup import/reset, and remaining mutation paths are not yet journal-first. The Firestore client, sync worker, remote acknowledgement, and cross-device data flow are not implemented. No live rules deployment has been verified.
+**Current status after PR #52 (2026-11-06):** The UID-scoped IndexedDB journal, atomic event+outbox persistence, monotonic sequencing, deterministic local projection replay, grouped local projection rollback, and journal-first mutation paths for profile/plans, page progress, manual portions, tests, weak-verse failure/resolution, revision ratings, session completion + matching smart-plan task, and backup import/reset are implemented. The Firestore client, sync worker, remote acknowledgement, immutable remote event model, and cross-device data flow are not implemented. No live rules deployment has been verified. Vercel rate limiting is not a merge blocker by owner instruction, but production deployment remains unconfirmed.
 
 ## 1. Non-negotiable invariants
 
@@ -30,14 +30,14 @@
 - Versioned grouped transaction envelope and rollback-verified multi-archive local projection primitive; affected storage keys are snapshotted and restored as a group (PR #43).
 - Journal-first weak-verse failure recording: canonical weak portion + weak-verse counter are grouped under one event/outbox pair, with stable mutation identity and durable preflight reads (PR #44).
 - Journal-first weak-verse resolution with durable read preflight, stable retry identity, and idempotent repeated resolution (PR #45).
+- Journal-first session completion groups canonical memorization progress, activity/profile streak, and the matching smart-plan task in one event (PRs #50/#51).
+- Journal-ordered backup import and factory reset replay older pending events first and commit grouped snapshots with recovery tests (PR #52).
+- The active Revision Center rating path already prepares and commits portion + optional weak-verse + activity/profile projections as one journal transaction.
 - Firestore rules at `firestore.rules`, emulator configuration at `firebase.json`, and CI tests in `scripts/firestoreRules.test.ts`.
 - Rules currently require a verified authenticated user, enforce `request.auth.uid == uid`, allowlist subcollections, validate a generic schema-versioned envelope, deny physical deletes, and default-deny unknown paths.
 
 ### Not present / not verified
 
-- Revision ratings are not yet journal-first; the existing path still combines canonical portion updates, optional weak-verse changes, activity logs, and profile streak locally.
-- Memorization/session completion and activity/profile aggregate updates are not yet fully journal-first.
-- Backup import/reset do not yet coordinate with pending journal events.
 - Test results and weak-verse state are currently represented by journaled full-snapshot projections. This is not yet the final immutable remote event model required by the invariants below; daily logs and weak-verse counters must be derived from immutable events before cloud sync.
 - No Firestore instance exported by `src/lib/firebase.ts`.
 - No application `getFirestore`, `onSnapshot`, cloud repository, sync engine, or Firestore outbox drain/acknowledgement path.
@@ -240,11 +240,10 @@ Exact-head PR and push Quality Gates passed for PRs #43, #44, and #45. Post-merg
 
 ### Next implementation sequence
 
-1. Complete journal-first revision ratings with a grouped portion + optional weak-verse + activity/profile transaction.
-2. Complete journal-first memorization/session completion and all remaining activity/profile aggregates.
-3. Journal backup import/reset and verify recovery with pending events.
-4. Reconcile local snapshots with immutable event semantics and finalize the Firestore document model.
-5. Implement Firestore adapter/worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests.
-6. Deploy production rules and activate cloud writes only after explicit approval and the full release gate passes.
+1. Finish the remaining local mutation audit and recovery failure-injection tests.
+2. Add immutable domain events and deterministic aggregate derivation for activity, revision, tests, and weak-verse mistakes.
+3. Finalize the per-record Firestore document model and deterministic conflict policy.
+4. Implement the Firestore adapter/worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests behind an inactive feature gate.
+5. Deploy production rules and activate cloud writes only after backup/migration review, explicit approval, and the full release gate passes.
 
 Do not describe this IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.

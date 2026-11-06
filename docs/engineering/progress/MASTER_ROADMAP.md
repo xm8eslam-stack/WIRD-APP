@@ -1,17 +1,20 @@
 # WIRD — Master Engineering Roadmap
 
-**Updated:** 2026-11-06  
-**Source of truth:** `main`; Google AI Studio is connected to `main`.
+**Updated:** 2026-11-06 after PR #52  
+**Source of truth:** `main`; Google AI Studio is connected to `main`.  
+**Latest main SHA after PR #52:** `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`.  
+**Post-merge main Quality Gate:** run `42277666291` passed.  
+**Owner instruction:** Vercel build-rate-limit does not block merging tested changes; production deployment must still be verified separately.
 
 Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVIEWED`, `VERIFIED`, `COMMITTED`, `COMPLETED`. Use `COMPLETED` only when independent review, relevant tests, commit verification, and CI evidence all exist.
 
 | Phase | Scope | Status | Evidence / remaining gate |
 |---|---|---|---|
 | 0 | Repository baseline, branch audit, architecture map | VERIFIED | Main inspected; branch divergence recorded; continue file-by-file audit |
-| 1 | Local storage, backup, and portion merge integrity | COMPLETED | PR #4 strict record/backup validation, PR #5 pre-write session/range checks, PR #6 outbox identity/idempotency, and PR #9 deterministic history/conflict preservation all merged and CI-verified. Cross-tab atomicity remains Phase 3, not a Phase 1 gate |
-| 2 | Memorization/revision correctness | IN PROGRESS | PR #10/#11 code slices, PR #12 rollback tests, and PR #13 durable readback verification merged. Actions #759 passed 317 assertions, 10 Firestore emulator tests, audit, TypeScript, build, and server smoke. Continue full mutation-path audit |
+| 1 | Local storage, backup, and portion merge integrity | COMPLETED | PR #4–#9 baseline plus PR #52 journal-ordered backup import/reset; exact-head CI passed |
+| 2 | Memorization/revision correctness | IN PROGRESS | Revision rating journal path audited; PR #50/#51 group session progress, activity, streak, and matching smart-plan task. Continue remaining failure/recovery audit |
 | 3 | Local outbox foundation and identity | IMPLEMENTED / partial | PR #6 now fingerprints acknowledged mutations, validates pending/acknowledged uniqueness and disjointness, binds pending records to device identity, and prevents retry overflow. Still localStorage-backed (not cross-tab transactional), not wired to domain writes, and no cloud sync is active |
-| 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | Next priority: immutable activity/weak-verse/review events and durable outbox in one recoverable transaction |
+| 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | IndexedDB event+outbox and grouped local projections exist. Next priority: immutable domain-event records and deterministic aggregate derivation |
 | 5 | Firestore adapter and deterministic merge | NOT STARTED | No Firestore client, repository, sync coordinator, or merge engine |
 | 6 | Firestore rules hardening and emulator integration | IN PROGRESS | UID/verified-user/allowlist/generic envelope exists; per-collection schemas, immutable event create-only rules, two-client tests remain |
 | 7 | Controlled cloud rollout | BLOCKED pending approval | Requires backup, reviewed rules, explicit approval, two-device/two-account tests |

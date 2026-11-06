@@ -1,71 +1,61 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06 (active PR #49 exact-head Quality Gate passed; Vercel deployment remains rate-limited)
-**Repository:** `xm8eslam-stack/WIRD-APP`
-**Canonical branch:** `main` (Google AI Studio source)
-**Current main SHA:** `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`
+**Updated:** 2026-11-06 after PR #52 merge  
+**Repository:** `xm8eslam-stack/WIRD-APP`  
+**Canonical branch:** `main` (Google AI Studio source)  
+**Verified main SHA:** `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`
 
+## Latest completed work
 
+- **PR #49** — Quran reader and Tafsir routing repair: direct Surah-to-Mushaf navigation and Express registration of `/api/tafsir`. Merged as `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`; exact-head Quality Gate run `42267849373` passed.
+- **PR #50** — Journal-first session completion: canonical memorization progress, activity log, and profile streak are committed through one recoverable IndexedDB transaction. Merged as `dacba8298db954392f7fbcbbf10af9f18ecc31dc`; exact-head Quality Gate run `42276148126` passed.
+- **PR #51** — Matching smart-plan task completion is now included in the same session transaction, preventing a successful session from leaving the plan task behind. Merged as `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head Quality Gate run `42276561011` passed.
+- **PR #52** — Backup import and factory reset are journal-ordered. Older pending events replay before the operation; import/reset then commits as one grouped event. Merged as `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head Quality Gate run `42277464313` passed; post-merge main Quality Gate run `42277666291` also passed on the exact main SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`.
+- PR #49–#52 changes are present on `main`. Post-merge main Quality Gate for PR #51 passed on `99c466b9de6ae977979f8989443fba5b94017a30`. The post-merge main Quality Gate for PR #52 completed successfully on the exact merge SHA.
 
-## 2026-11-06 — Active Quran reader and Tafsir repair (PR #49)
+## Deployment status
 
-- Working branch: `fix/quran-reader-tafsir-navigation-20261106`; base main SHA: `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
-- Root cause found for the reported `Unexpected token 'i', "import { A"...` failure: the client calls `/api/tafsir`, but the custom Express server did not register that route. In development, the request fell through to Vite middleware and could return the TypeScript module source instead of JSON.
-- Fixed by mounting the existing `api/tafsir.ts` handler in `server.ts` before Vite middleware; the Vercel serverless handler remains in place.
-- Added production and development server smoke checks that assert `/api/tafsir` returns JSON for invalid coordinates, rather than source code.
-- Added a direct Mushaf-opening action for every Surah row and the selected-Surah panel. The selected Surah opens at its first Mushaf page; the general Mushaf entry continues to resume the saved reading position.
-- In-reader Surah jumps now resolve the first-ayah page from the generated 604-page index. Added a regression test validating all 114 Surah start pages against the generated page index.
-- Application-code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed exact-head PR run `42267248254` and push run `42267243769`.
-- Latest documentation-inclusive PR head `6d56580e2d2477ded76f1425d97e968f4b317eeb` passed exact-head WIRD Quality Gate run `42267565615` (run #1217): dependency audit, automated tests, Firestore emulator, TypeScript, production build, and production+development server smoke tests all succeeded.
-- Exact-head Vercel status remains failed with `build-rate-limit` / `api-deployments-free-per-day`; no Preview or Production deployment is verified.
-- Vercel deployment is blocked by the Free-plan daily deployment limit (`api-deployments-free-per-day`, retry after 24 hours). This is a deployment gate, not a successful deployment. Do not merge or claim production availability while this required check remains failed.
-- PR #49 remains open as a draft; main has not been modified.
-- Next: keep PR #49 open and unmerged; when the Vercel daily limit resets, retry deployment, verify the exact branch Preview and API response, then review whether merge is safe. Do not merge while Vercel's required check is failing.
+- Vercel still reports `build-rate-limit` / `api-deployments-free-per-day`.
+- Per the project owner's explicit instruction, Vercel is **not a blocker for merging tested changes into main**.
+- This does **not** mean a Preview or Production deployment succeeded. Do not claim that the live site contains the latest main SHA until a deployment receipt and browser verification exist.
 
-## Latest verified position — after PR #45
+## Phase 2 — local data reliability
 
-- PR #36 merged: deterministic UID-scoped IndexedDB journal replay runs before authenticated app state initializes; replay is sequence-ordered, protected by Web Locks, and advances the cursor only after verified local projection.
-- PR #37 merged: authenticated profile settings/theme, preset plans, and engine-plan snapshots use journal-first event+outbox persistence.
-- PR #38 merged: progress checkpoint and Firestore design were updated after PRs #36/#37.
-- PR #40 merged: Progress Analytics page-status changes now persist canonical portion snapshots through the journal.
-- PR #41 merged: manual portion additions now use pure snapshot preparation and journal-first canonical persistence.
-- PR #42 merged: test-result snapshots use stable result IDs, idempotent retry, and conflicting-ID rejection.
-- PR #43 merged as `dc258764723b4d88635175c912d159e6adaacf4b`: grouped transaction envelope commits multiple local projections as one IndexedDB event+outbox pair; failed child projection restores and verifies affected keys; stable mutation identity is preserved across retries.
-- PR #44 merged as `0a24862e255946ea487e120cd6d82f5a3c81eb20`: manual and test-driven weak-verse failures now journal the canonical weak portion and weak-verse counter together. Preparation is non-mutating and checks durable source reads before enqueue.
-- PR #45 merged as `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`: weak-verse resolution is journal-first, idempotent, and does not alter canonical portion rating or schedule.
-- PR #43 exact-head runs `42258043045` (PR) and `42258032606` (push) passed on `73faac0434cf626c6d55907f579aa245ba037a1e`; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
-- PR #44 exact-head runs `42260702702` (PR) and `42260691784` (push) passed on `d01d31605204ebb50ff93467d4739323f280b5ed`; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
-- PR #45 exact-head runs `42261861919` (PR) and `42261851120` (push) passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`. Post-merge main Quality Gate `42262136009` **passed** on the exact main SHA above.
-- Vercel Production deployment for the current main SHA is **not confirmed**. GitHub Actions success is not a deployment receipt.
+**Phase 2:** Major local mutation paths journal-first; final audit and immutable event model remain open.
 
-## Phase 2 status — IN PROGRESS
+Completed and merged:
+- Profile, preset plans, and engine-plan snapshots.
+- Canonical page progress and manual portion additions.
+- Test-result snapshots with stable IDs and idempotent retries.
+- Grouped portion/weak-verse/activity/profile transactions and weak-verse resolution.
+- Revision ratings in the Revision Center use a grouped journal transaction.
+- Session completion now groups memorization progress, activity, streak/profile, and matching smart-plan task.
+- Backup import and reset now replay older pending events first and commit the resulting grouped snapshot through the journal.
+- App-level local-only session/revision handlers that were unused and bypassed the journal are removed in this checkpoint.
 
-The IndexedDB journal, outbox, sequencing, replay, grouped projection rollback, and several journal-first mutation paths are implemented. This is not full mutation coverage and is not cloud sync.
-
-**Still not journal-first / not complete:**
-- Revision ratings and their grouped portion + optional weak-verse + activity/profile updates.
-- Memorization/session completion, including activity logs and profile streak.
-- All remaining activity/profile aggregate mutation paths.
-- Backup import/reset and recovery semantics when pending journal events exist.
-- Complete immutable event semantics for activity, revision, weak-verse, and test records. Current weak-verse and test flows still journal full local snapshots; do not describe them as immutable cloud event models.
-- Firestore client/repository, sync worker, server acknowledgements, retries/backoff, tombstones, collection-specific security rules, and two-device/offline sync.
-- Production Firestore rules deployment, manual responsive/accessibility/audio QA, and verified Vercel Production deployment.
+Still open:
+- Finish a file-by-file mutation audit, including development-only demo data loading and any legacy APIs that remain callable.
+- Strengthen failure-injection coverage for quota exhaustion, durable read failures, partial projection writes, rollback verification, IndexedDB unavailable/blocked states, and reload recovery.
+- Review the legacy localStorage outbox migration and its behavior during explicit factory reset.
+- Define immutable domain event semantics for sessions, revision attempts, tests, and weak-verse mistakes; derive daily aggregates and counters safely before cloud sync.
+- Firestore adapter/repository, sync worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and real two-device/offline tests are not implemented.
+- Production Firestore rules deployment and actual Vercel Production deployment are not verified.
 
 ## Next implementation sequence
 
-1. Journal-first revision ratings: prepare the SM-2 portion snapshot without writes, include optional weak-verse failure and activity/profile snapshots in one grouped journal transaction, and preserve stable retry identity.
-2. Journal-first memorization/session completion: group canonical portion, activity log, profile streak, and any related plan updates as one recoverable action.
-3. Journal backup import/reset with explicit ordering, pending-event handling, and crash/recovery tests; never clear or overwrite an unprojected event.
-4. Reconcile mutable local aggregates with immutable event-ledger semantics before defining their Firestore representation.
-5. Implement the Firestore adapter/worker, acknowledgements, retries, tombstones, collection-specific rules, and two-device/offline tests. Keep cloud writes inactive until the release gate passes.
-6. Complete manual UI/audio/accessibility QA and verify an actual Vercel Production deployment for the exact main SHA.
+1. Complete the remaining local mutation and failure-recovery audit; remove or clearly isolate legacy write paths.
+2. Introduce immutable domain-event records and deterministic local aggregate derivation without changing verified Quran text/assets.
+3. Implement the Firestore adapter and sync coordinator behind an inactive feature gate; preserve local-first behavior.
+4. Harden collection-specific Firestore rules and test UID isolation, duplicate delivery, offline replay, and two-device conflicts in emulators.
+5. Only after backup/migration review and explicit approval, deploy production rules and activate cloud sync.
+6. Complete desktop/mobile browser QA for the Quran reader, Tafsir, audio, backup/reset, accessibility, and account switching.
 
-## Branch and release safety
+## Working rules
 
-- Start new work from the freshly fetched `main` SHA and use independent feature branches.
-- Compare every old or open branch against current main; never merge divergent branches wholesale.
-- Do not activate Firestore production writes or deploy production rules without explicit approval.
-- Do not claim release readiness until all mutation paths, two-device/offline tests, manual QA, and exact-SHA production deployment are verified.
+- Every task: inspect current main → create a branch → implement → run exact-head Quality Gate → review results → merge → verify resulting main SHA.
+- Vercel deployment failure is not a merge gate unless the owner changes this instruction; never represent it as a successful deployment.
+- Do not activate Firestore writes, deploy production rules, perform destructive migration, or alter secrets without explicit approval.
+- Do not merge stale/diverged PRs #2 or #8 wholesale; selectively reapply only verified useful changes.
 
 ## Historical implementation record
 
