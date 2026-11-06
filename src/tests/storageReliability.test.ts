@@ -186,5 +186,53 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     }
   });
 
+  test('Canonical portion writes roll back when a legacy projection write fails', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    StorageService.__resetStorageForTests();
+    const previousPortion: any = {
+      id: 's67_a1_a3', type: 'passage', surahNumber: 67, surahName: 'الملك',
+      startAyah: 1, endAyah: 3, status: 'stable', nextDueDate: getLocalDateString(),
+      intervalDays: 3, easeFactor: 2.5, repetitionCount: 1, history: []
+    };
+    assert(StorageService.saveUnifiedPortions([previousPortion]), 'Initial canonical portion generation should save');
+    const keys = [
+      STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.SCHEMA_VERSION,
+      STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION
+    ];
+    const previousValues = new Map(keys.map(key => [key, StorageService.getRawItem(key)]));
+    StorageService.__resetStorageForTests();
+
+    const values = new Map<string, string>();
+    for (const [key, value] of previousValues) if (value !== null) values.set(key, value);
+    const previousRevision = previousValues.get(STORAGE_KEYS.REVISION);
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key === STORAGE_KEYS.REVISION && value !== previousRevision) {
+            throw new Error('simulated legacy projection quota failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+
+    try {
+      const nextPortion = { ...previousPortion, id: 's67_a1_a4', endAyah: 4 };
+      const saved = StorageService.saveUnifiedPortions([nextPortion]);
+      assert(saved === false, 'Failed legacy projection must make the canonical transaction fail');
+      for (const key of keys) {
+        assert(StorageService.getRawItem(key) === previousValues.get(key),
+          'Previous bytes must be restored for ' + key);
+      }
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
