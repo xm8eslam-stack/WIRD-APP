@@ -1,150 +1,190 @@
-# WIRD — Cross-Device Sync Architecture
+# Firestore Sync Design
 
-> Status: Local account isolation is implemented on main; Firestore sync and rules are NOT implemented or deployed.
-> Reviewed: 2026-11-05
-> Constraint: Firebase Spark / free services only; no mandatory paid service.
+**Status as of 2026-11-06:** Firestore security rules and emulator tests exist; the Firestore client, sync service, local outbox, and cross-device data flow are not implemented. No live rules deployment has been verified.
 
-## 1. Current-state facts
+## 1. Non-negotiable invariants
 
-- Firebase Authentication is already initialized in `src/lib/firebase.ts`.
-- Verified users are admitted by `AuthGate`; guest mode is local-only.
-- No Firestore initialization, Firestore Security Rules, or sync listeners currently exist in the inspected main source.
-- `StorageService` now namespaces authenticated local keys by Firebase UID; guest mode remains in a separate legacy/guest scope.
-- `AuthGate` prepares the correct local scope before mounting the app.
-- First-account legacy data requires an explicit choice: import into the account, or keep it in guest mode. Import copies and verifies destination values before removing legacy source keys.
-- `RetentionService` weak-verse reads/writes now use the central StorageService adapter.
-- The app still initializes React state from local storage; no Firestore data flow exists yet.
-- Therefore, simply adding `onSnapshot` to one collection is insufficient and risks cross-account leakage or data loss.
+1. **Local-first:** memorization and review must work without network access. User actions must not wait for Firestore.
+2. **Account isolation:** every local queue, remote document, cursor, and listener is scoped to the exact Firebase UID.
+3. **No blind overwrite:** a cloud snapshot must never replace local unsynced progress.
+4. **Idempotency:** replaying the same mutation after a timeout/reload must not count it twice.
+5. **Append-only activity:** sessions, revision attempts, tests, and weak-verse mistakes are events, not mutable counters.
+6. **Record-level sync:** do not place all plans, portions, and history in one Firestore document.
+7. **No Quran text sync:** Quran text and metadata are static verified app assets, not user progress.
+8. **No production migration without backup and approval.**
 
-## 2. Product behavior
+## 2. Current implementation state
 
-1. Guests keep using WIRD locally without Firebase or network requirements.
-2. A verified signed-in user receives their cloud data automatically after authentication.
-3. Changes made on one signed-in device become visible on other signed-in devices while online.
-4. Offline edits remain available locally and are queued for later synchronization.
-5. Signing out or switching accounts must never expose the previous account's local data.
-6. A new account must never inherit another account's local dataset.
-7. The first migration of existing unscoped local data must preserve a backup and bind the legacy dataset to exactly one account. If local legacy data exists, show a clear one-time ownership/import confirmation; after that, normal login sync is automatic.
-8. Cloud sync errors must never be reported as successful saves.
+### Already present
 
-## 3. Data model proposal
+- Firebase Auth initialization and verified-user gating.
+- UID-scoped localStorage for authenticated users; guest storage remains separate.
+- A one-time decision for legacy local data ownership.
+- Centralized weak-verse persistence through StorageService.
+- Firestore rules at `firestore.rules`, emulator configuration at `firebase.json`, and CI tests in `scripts/firestoreRules.test.ts`.
+- Rules currently require a verified authenticated user, enforce `request.auth.uid == uid`, allowlist subcollections, validate a generic schema-versioned envelope, deny physical deletes, and default-deny unknown paths.
 
-Use Firebase Auth UID as the ownership boundary. Store each entity separately; do not serialize all user data into one Firestore document (1 MiB document limit and avoid whole-state overwrite).
+### Not present / not verified
+
+- No Firestore instance exported by `src/lib/firebase.ts`.
+- No application `getFirestore`, `onSnapshot`, cloud repository, sync engine, or local mutation outbox.
+- No cloud migration or remote merge path.
+- Firestore rules have not been confirmed deployed to the production Firebase project.
+
+### Current rules limitation
+
+The existing rules validate a generic envelope but do not yet validate the complete payload shape for each collection, enforce all collection-specific size limits, or make event collections create-only. They are a tested foundation, not production-complete sync authorization.
+
+## 3. Why not enable Firestore's persistent web cache by default
+
+Firestore's web SDK uses memory cache by default. Persistent web cache is optional, but Firebase documents that its cache is **not automatically cleared between sessions** and that multiple writes to the same document use last-write-wins. That is risky for a browser where the user can sign out of one account and sign in to another.
+
+For the first implementation, use Firestore's default memory cache and keep offline durability in WIRD's own UID-scoped local store + outbox. This gives us explicit control over account switching, retries, and conflict resolution. Revisit persistent cache only if we can prove account-safe cache isolation and clearing.
+
+Reference: [Firebase — Access data offline](https://firebase.google.com/docs/firestore/manage-data/enable-offline).
+
+## 4. Proposed architecture
 
 ```text
-users/{uid}/profile/main
-users/{uid}/plans/{planId}
-users/{uid}/enginePlans/{planId}
-users/{uid}/portions/{canonicalPortionId}
-users/{uid}/weakVerses/{surah_ayah}
-users/{uid}/tests/{testId}
-users/{uid}/activityEvents/{eventId}
-users/{uid}/syncMeta/state
+UI / domain services
+        |
+        v
+UID-scoped local repository  <---->  local event ledger
+        |                                  |
+        |                                  v
+        |                            durable outbox
+        |                                  |
+        v                                  v
+localStorage (existing)              Sync coordinator
+                                           |
+                                           v
+                                  Firestore adapter
+                                           |
+                                           v
+                              users/{uid}/{collection}/{id}
 ```
 
-- `profile/main`: profile and preferences only.
-- `plans`, `enginePlans`: stable existing IDs.
-- `portions`: canonical passage IDs; validate Surah/ayah boundaries before writes and after reads.
-- `weakVerses`: use a stable coordinate key such as `s{surah}_a{ayah}`, not the current timestamp-based ID.
-- `tests`: stable test IDs, bounded payloads.
-- `activityEvents`: immutable, uniquely identified session/revision events. Derive daily aggregates from events instead of merging counters blindly.
-- `syncMeta/state`: schema version, migration state, and per-device cursor/metadata. Never trust a client-supplied UID.
+- Domain services continue to read/write locally.
+- A local mutation creates a stable mutation ID and an outbox entry.
+- The sync coordinator sends bounded batches when online and when the signed-in UID is ready.
+- A mutation is acknowledged only after the remote write is confirmed.
+- Remote changes are merged into local state through pure merge functions.
+- Sign-out/account switch stops listeners and leaves each UID's outbox untouched.
 
-The current `DailyLog` is an aggregate by date. Two devices can complete different sessions on the same date; replacing the aggregate document with last-write-wins would lose one session. Migrate toward immutable activity events with UUIDs, then derive `DailyLog` values. Preserve existing logs during migration.
+The sync service must not import React components. The Firestore adapter must not own Quran/domain rules. Merge logic must be pure and unit-testable without Firebase.
 
-The current `WirdPortion.history` is nested inside a portion. Concurrent edits to the same portion can overwrite history entries. Preserve history during migration and consider individual review-event records if concurrent same-portion editing is observed.
+## 5. Proposed document model
 
-Do not sync duplicate projections blindly: `RevisionItem` is derived/legacy-compatible with canonical portions in the current storage migration path. Define one source of truth and regenerate the projection locally.
+All documents live below `users/{uid}`. Every collection has an explicit schema version and bounded payload.
 
-## 4. Local storage and account isolation
+| Subcollection | Document ID | Data semantics |
+|---|---|---|
+| `profile` | `main` | User preferences and profile fields; auth email comes from Firebase Auth, not duplicated as an authority |
+| `plans` | stable plan ID | One preset plan per document |
+| `enginePlans` | stable engine-plan ID | One generated plan per document; schedule tasks merge by stable task/day ID |
+| `portions` | canonical portion ID | Current memorization/revision state for one canonical range |
+| `weakVerses` | immutable event ID | One weak-verse/mistake event; aggregate counts are derived locally |
+| `tests` | stable test-result ID | Immutable test attempt |
+| `activityEvents` | immutable event ID | Memorization session, review completion, and other activity events |
+| `syncMeta` | `state` | Schema version and per-collection pull cursors |
 
-Implemented locally on main:
-- Weak-verse reads/writes use the same storage adapter.
-- AuthGate sets an explicit guest vs authenticated UID scope before app mount.
-- Authenticated local keys are UID-namespaced; account switching does not read another UID's local keys.
-- A one-time legacy-data ownership choice prevents silent cross-account import.
+A portion document may carry its current projection plus a bounded history of uniquely identified review events. If history grows beyond a safe document size, history is moved to its own immutable event documents.
 
-Still required before enabling cloud sync:
-- Add a durable outbox per UID containing mutation ID, entity type, document ID, schema version, and payload.
-- Keep remote snapshot application from re-enqueueing the same mutation.
-- Do not clear local state on sign-out until pending writes are acknowledged or safely retained in that UID's namespace.
-- Add a durable outbox per UID containing mutation ID, entity type, document ID, schema version, and payload.
-- Remote snapshot application must not re-enqueue the same mutation.
-- Do not clear local state on sign-out until pending writes are acknowledged or safely retained in that UID's namespace.
-- On account switch, unsubscribe listeners, flush/retain the old account's outbox, then load the new UID scope.
-- Existing legacy global keys are handled by a one-time in-app ownership choice and a migration marker. Choosing import copies and verifies before deleting the legacy source; choosing guest preserves the old dataset in guest mode.
+## 6. Mutation and outbox envelope
 
-## 5. Conflict and deletion policy
+Each local mutation should contain:
 
-- Use stable IDs and per-record writes, not a whole-app last-write-wins blob.
-- Scalar profile/preferences and plan metadata may use deterministic per-record last-write-wins with `updatedAtMs` plus a stable `deviceId` tie-breaker. Document clock-skew limitations.
-- Immutable activity/revision events use unique event IDs so concurrent sessions do not overwrite each other.
-- Weak-verse mistakes should be represented as uniquely identified events or transactionally merged counters; a naive read-modify-write counter is not safe offline.
-- Deletions use tombstones with `deletedAt` and a mutation ID; do not immediately resurrect old local documents.
-- Every remote payload is schema-validated and Quran-coordinate-validated before applying it locally.
-- Sync operations are idempotent; retries cannot duplicate session counts.
+- `mutationId`: UUID, globally unique per event/mutation.
+- `uid`: implicit from the active local storage scope; never trust a UID supplied by a UI form.
+- `collection` and `documentId`: strict allowlist.
+- `operation`: `upsert` or `tombstone`.
+- `schemaVersion`.
+- `clientUpdatedAtMs`: diagnostics/order hint only; not the authoritative server order.
+- `deviceId`: random per-install ID.
+- `payload`: collection-specific validated object.
+- `queuedAtMs` and retry metadata.
 
-## 6. Real-time and offline behavior
+The outbox is persisted in UID-scoped local storage. Enqueue and local state persistence must behave transactionally: if the outbox cannot be written, the mutation must not be reported as safely queued. Queue size and payload sizes are bounded; overflow produces a visible backup/sync warning, never silent deletion.
 
-- Subscribe to the user's scoped collections with Firestore `onSnapshot`; process document changes rather than repeatedly replacing entire app state.
-- Firestore web offline persistence is disabled by default. WIRD already needs local-first data and an outbox; begin with memory cache plus the UID-scoped local store/outbox rather than silently enabling a persistent shared-device IndexedDB cache.
-- If persistent Firestore cache is later enabled, implement and test cache-clearing/account-switch behavior. Firebase documents that the web cache is not automatically cleared between sessions.
-- Use explicit sync states: `local-only`, `syncing`, `synced`, `offline-pending`, `error`. Never label a local write as cloud-synced until server acknowledgement is observed.
-- Avoid one listener per ayah. Keep one document per actual tracked portion and use incremental queries/cursors for larger collections.
+## 7. Conflict policy
 
-## 7. Firestore security rules
+### Immutable event collections
 
-Proposed baseline (must be tightened to the final document schema and tested in the Emulator before deployment):
+- `activityEvents`, `tests`, and `weakVerses` are create-only.
+- Document ID is the event's stable UUID.
+- A retry with the same ID is treated as already applied, not a second event.
+- Events are never physically deleted by clients.
 
-```rules
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null
-        && request.auth.uid == uid
-        && request.auth.token.email_verified == true;
-    }
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-```
+### Memorization portions
 
-- No client-settable admin role.
-- No public collection access.
-- UID path must match the verified Firebase Auth token.
-- Add field allowlists, type/size limits, and schema validation for each document family.
-- Guest users receive no Firestore access.
-- Verify Google sign-in and email/password verification claims against the real Firebase project before deploying.
+- Merge history by unique event ID.
+- Preserve the most conservative status when simultaneous histories conflict; a failed/difficult review must not be overwritten by a stale success.
+- Preserve the earliest next-due date when in doubt, so an unresolved review cannot be postponed silently.
+- Preserve the latest reviewed timestamp, max mistake count, and all unique history events.
+- Recompute derived metrics from the merged unique ayah/event set; never sum overlapping portions blindly.
 
-## 8. Free-tier and offline constraints
+### Plans
 
-Official Firebase documentation currently lists Cloud Firestore Standard free quota as:
-- 1 GiB stored data.
-- 50,000 document reads/day.
-- 20,000 document writes/day.
-- 20,000 document deletes/day.
-- 10 GiB outbound transfer/month.
-- One free database per project.
+- Use stable plan IDs and transaction-based state updates.
+- Merge independent schedule days/tasks by stable IDs.
+- A completed task must not revert to pending because a stale device snapshot arrived.
+- For truly conflicting edits to the same plan metadata, use a server-ordered version and surface a conflict when automatic merge is not safe.
 
-On Spark, exceeding a no-cost quota can shut off that product's usage for the remainder of the month. Keep listeners narrow, avoid full rewrites, and expose a graceful local-only state if quota/network errors block sync.
+### Daily logs and streaks
 
-References:
-- https://firebase.google.com/docs/firestore/pricing
-- https://firebase.google.com/docs/firestore/manage-data/enable-offline
-- https://firebase.google.com/docs/projects/billing/firebase-pricing-plans
+Do not sync the current aggregate `DailyLog` as a last-write-wins document. Two devices can each add activity to the same date and overwrite the other's increments. Sync immutable activity events and derive daily totals and streaks from the merged event ledger.
 
-## 9. Required implementation and release gates
+### Weak-verse counters
 
-1. Centralize local persistence and make all entities scope-aware.
-2. Add deterministic migration/merge functions and tests before cloud writes.
-3. Add Firestore adapter, security rules, and Firebase Emulator configuration.
-4. Test unauthenticated denial, unverified denial, cross-UID denial, malformed payload denial, duplicate mutation IDs, two-device updates, account switching, offline queue replay, and tombstones.
-5. Verify free-tier project/database state and current Firebase Auth providers in the actual project.
-6. Deploy rules only after emulator tests and manual review.
-7. Test with two separate real accounts/devices and confirm server-side document ownership.
-8. Only then enable automatic sync for production users.
+Do not sync an incrementing `mistakesCount` as a last-write-wins counter. Sync one immutable event per mistake and derive the count per Surah/ayah. This makes duplicate retries and concurrent devices safe.
 
-No live Firestore rules, account records, or user data were changed by this design document.
+## 8. Incremental sync and bounded writes
+
+- Use server timestamps for remote ordering; client clocks are not authoritative.
+- Store a cursor per collection, with a stable document-ID tie-breaker.
+- Pull only records newer than the saved cursor; page through large result sets.
+- Push only dirty outbox records in bounded batches well below Firestore's 500-write transaction/batch ceiling.
+- State-document updates use transactions that read the remote version and apply the deterministic merge.
+- Event writes use stable document IDs and create-only semantics.
+- Do not mark rejected or failed mutations as acknowledged.
+- Keep tombstones until all supported devices have had a chance to observe them; do not use an unsafe short time-based pruning window.
+
+The incremental cursor/dirty-push pattern is inspired by the public Ummah Library sync ADRs, but WIRD will use Firestore's authenticated per-user documents and its own tested merge contracts rather than copying their AGPL-3.0 implementation.
+
+## 9. Security-rule requirements before production
+
+- Verified Firebase user and exact UID ownership.
+- Collection allowlist and document-ID validation.
+- Per-collection payload keys/types/ranges and maximum sizes.
+- Event collections: create only; no update/delete.
+- State collections: create/update only through valid envelope and merge version.
+- Tombstones only for allowed state collections; physical delete denied.
+- `syncMeta` writable only by the same UID and with bounded cursor fields.
+- Default deny for every other path.
+- Emulator tests for both allowed and denied cases, including cross-user access and malformed/oversized payloads.
+
+The current rules satisfy the ownership/allowlist/generic-envelope foundation, but still need the collection-specific restrictions above.
+
+## 10. Migration sequence
+
+1. Export a local backup and capture a local data snapshot.
+2. Fetch remote documents for the signed-in UID.
+3. If remote is empty, seed it from local state through bounded idempotent mutations.
+4. If both local and remote have data, merge by stable IDs and event semantics; never replace local arrays wholesale.
+5. Verify counts and hashes after the merge.
+6. Preserve the local snapshot until the user has confirmed sync on a second device.
+7. Keep a rollback path: disable sync and continue using local data without deleting cloud documents.
+
+## 11. Required tests
+
+- Unit tests for event ID idempotency, outbox atomicity, merge functions, and cursor pagination.
+- Firestore emulator rules tests for every collection and every forbidden operation.
+- Two-client integration tests: concurrent new portions, same-portion reviews, weak-verse failures, same-day activity, plan task completion.
+- Offline tests: create event offline, close/reopen, reconnect, replay, and verify exactly one remote event.
+- Account-switch tests: account A's local/outbox/cache never appears under account B.
+- Migration tests: local-only, cloud-only, both populated, partial upload, retry after failure.
+- Quran integrity tests remain separate and must continue to pass unchanged.
+
+## 12. Release gate
+
+Cloud sync is not complete until the two-device emulator suite passes, production rules are reviewed and deployed with approval, and a real two-device test verifies offline replay and account isolation. A green frontend build or a Vercel deployment alone does not satisfy this gate.

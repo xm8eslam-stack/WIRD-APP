@@ -1,110 +1,95 @@
-# WIRD — Security and Reliability Audit
+# WIRD Security & Data Integrity Audit
 
-> Audit date: 2026-11-05
-> Repository: `xm8eslam-stack/WIRD-APP`
-> Audited branch: `main`
-> Latest verified main commit at audit: `59486db8eddef6b00a13565024a2754969ff056d`
-> Scope: source/configuration review and GitHub CI. No live Firebase console, production database, Google AI Studio UI, or Vercel deployment access was available.
+**Audit date:** 2026-11-06  
+**Audited branch:** `main`  
+**Audited HEAD:** `0831e01fcebd79e15978437bd0f702259c3d02d7`  
+**CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
+**Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
 ## Executive summary
 
-- The app has Firebase Authentication and an email-verification gate.
-- There is currently no Firestore integration or deployed Firestore Security Rules in the repository; user progress remains local-browser data.
-- Authenticated local data is now UID-scoped, with an explicit first-account legacy-data ownership choice. This closes the previous local account-isolation gap but does not provide cloud sync.
-- The Vercel advisor API and Express server in `server.ts` are two separate implementations and are not behaviorally equivalent.
-- Advisor rate limits are in-memory and process-local. Pruning expired entries bounds memory but does not provide distributed abuse protection.
-- The public wildcard CORS endpoint no longer advertises credentialed cross-origin access.
-- Production demo-data loading is now development-only and covered by a regression test.
-- Dependency audit is clean after pinning patched `@grpc/grpc-js@1.14.6`; CI uses Node 24 and a frozen Bun lockfile.
-- GitHub Quality Gate passes. Vercel deployment is still blocked by the account's daily build quota; production deployment has not been verified.
+WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped local storage and a legacy-data ownership decision are implemented. Several correctness and persistence bugs affecting memorization/revision were fixed and regression-tested in this session.
 
-## Findings
+**Cloud sync is not implemented yet.** Firestore rules and emulator tests exist, but there is no Firestore client adapter, local outbox, merge engine, or live rules deployment confirmation. Do not tell users their progress is cloud-synced until the M4–M7 gates in `IMPLEMENTATION_ROADMAP.md` pass.
 
-| ID | Severity | Finding | Status |
-|---|---|---|---|
-| SEC-01 | Critical prerequisite | No Firestore rules or UID-scoped cloud data model exists. Do not deploy client-side sync before rules and Emulator tests. | Open — design documented |
-| SEC-02 | High | Local persistence keys were global, not scoped to Firebase UID. | Fixed: UID namespaces + AuthGate scope gate + explicit legacy-data ownership choice + regression tests |
-| SEC-03 | High | Weak-verse persistence in `RetentionService` uses a separate localStorage path instead of the central StorageService adapter. | Open — centralize before sync |
-| SEC-04 | Medium | `server.ts` and `api/advisor.ts` duplicate advisor endpoint behavior. The Express chat path does not use the same bounded conversation-history validation as the Vercel route; keep both implementations aligned or extract one shared validator/handler. | Open |
-| SEC-05 | Medium | Advisor IP rate limits are in-memory and per process/serverless instance. They can reset across instances/restarts and are not a durable global abuse-control boundary. | Open — document limitation; consider App Check/edge limits |
-| SEC-06 | Medium | `vercel.json` contains route rewrites but no explicit security response headers. | Open — add headers after verifying Firebase popup, audio, and microphone behavior |
-| SEC-07 | Medium | No dependency-audit step existed initially. CI now runs `npm audit --audit-level=high`; patched gRPC override is locked and tested. | Fixed / monitored |
-| SEC-08 | Medium | Production `start` command invoked `node server.ts`, which fails on Node 22.16 without a TypeScript loader. | Fixed: `tsx server.ts`, runtime dependency, Node 24.12+ |
-| SEC-09 | Medium | Settings exposed a destructive demo-data loader to production users. | Fixed: DEV-only UI + handler guard + regression test |
-| SEC-10 | Low | Vercel production deployment currently fails with the provider's daily build-rate quota. | External blocker; retry after quota reset |
+## Confirmed protections and fixes
 
-## Authentication and authorization
+| Area | Current state |
+|---|---|
+| Auth gating | Verified-user gating exists in AuthGate; unauthenticated/guest/verified account states are separated |
+| Local account isolation | Authenticated local data is scoped by exact Firebase UID; guest data remains separate |
+| Legacy local data | First authenticated account receives an explicit import-or-keep-as-guest decision |
+| Weak-verse persistence | Uses the centralized StorageService raw-key adapter |
+| Durable local writes | Failed localStorage writes no longer leak through memory fallback as successful writes |
+| Activity/streak write | Session log/profile write reports failure and attempts rollback rather than silently claiming success |
+| Review vs memorization | Review sessions no longer add memorized ayahs or create memorization portions |
+| Retention score | Overlapping ranges count each ayah once; weakest overlapping status wins |
+| Review page count | Uses canonical Mushaf page mapping rather than an ayah-count estimate |
+| Daily plan selection | Does not start future engine tasks or silently escape a plan's explicit scope |
+| Firestore rules | UID ownership, verified-user check, allowlist, generic envelope, tombstone-only delete model, default deny |
+| Rules tests | Firebase Emulator rules tests run in CI |
 
-### Confirmed
-- Firebase Auth is initialized in `src/lib/firebase.ts`.
-- Auth flows include Google sign-in, email/password signup/login, email verification, password reset, logout, and guest mode.
-- `AuthGate` blocks unverified email/password accounts from entering the authenticated app.
-- The Gemini API key is read server-side by the advisor handlers; `.env*` is ignored except `.env.example`.
-- No administrative role or client-side admin shortcut was found in the inspected auth flow.
+## Important unresolved risks
 
-### Not yet verified
-- Actual Firebase authorized domains, enabled providers, verification templates, and production project settings.
-- Real-world Google popup behavior and email verification refresh against the live project.
-- Any live Firestore rules (none are present in the inspected repository).
-- Whether Google AI Studio has synchronized the latest GitHub main commit.
+### Critical — cloud sync is absent
 
-## API and server security
+- `src/lib/firebase.ts` initializes Firebase App/Auth only.
+- No application Firestore client, `onSnapshot` listener, cloud repository, sync engine, or durable mutation outbox is present.
+- Firestore rules are not confirmed deployed to the live Firebase project.
+- Cross-device progress must be considered unavailable until sync is implemented and verified.
 
-### Advisor API
-- `api/advisor.ts` accepts a bounded payload and applies an in-memory IP rate limit.
-- Wildcard CORS is public by design; `Access-Control-Allow-Credentials` was removed because wildcard origin and credentialed requests are incompatible.
-- Expired rate-limit entries are pruned when the map grows beyond 1,000 entries.
-- The endpoint remains unauthenticated so guest mode can use it. Treat it as a public, quota-sensitive endpoint; rate limiting is not distributed.
-- The Express server in `server.ts` contains a separate implementation. Its request validation and chat history handling should be aligned with the Vercel route.
+### High — current Firestore rules are only a foundation
 
-### Tafsir API
-- The proxy validates Surah/Ayah coordinates against canonical metadata, uses an upstream timeout, applies bounded response handling, and caches public tafsir responses.
-- Its rate limiter is also in-memory and process-local; it is not a global abuse-control service.
+- Rules currently validate a generic envelope, not the full schema for each collection.
+- Collection-specific payload key/type/range validation and size limits remain required.
+- Event collections should become create-only.
+- No live Firebase rules deployment was performed.
 
-### Browser and XSS
-- React's normal text rendering escapes text content.
-- No deliberate use of `dangerouslySetInnerHTML` was found in the inspected core UI paths.
-- A full automated DAST/XSS scan and browser-based penetration test have not been performed.
+### High — current activity and weak-verse data are aggregate projections
 
-## Secrets and configuration
+- Daily logs are currently updated as per-day aggregates. A cross-device read-modify-write would lose concurrent increments; migrate to immutable activity events before sync.
+- Weak-verse mistake counts are aggregated; migrate to immutable mistake events before sync.
+- Review history and portion state need unique event IDs and deterministic merge semantics.
+- Some multi-key local operations can still partially succeed; the outbox stage must make local state + queued mutation atomic or provide rollback.
 
-- `.gitignore` excludes `.env*` while allowing `.env.example`.
-- `.env.example` contains placeholders/public Firebase web configuration names, not a service-account private key.
-- Firebase web API keys are client identifiers and must be protected by Firebase API restrictions and Firebase Security Rules; they are not substitutes for database authorization.
-- `GEMINI_API_KEY` must remain server-only and must never be prefixed with `VITE_`.
-- No live secret rotation or Google Cloud IAM review was possible from GitHub source access.
+### Medium — plan and progress UX
 
-## Dependency and runtime verification
+- Daily quick-start and review/memorization modes were corrected, but the remaining components and all mutation call sites still need a complete file-by-file audit.
+- Page/Juz plans are deliberately blocked from automatic quick-start until exact ayah-range resolution is available; they must not be widened to whole Surahs.
 
-- Added Node engine requirement `>=24.12.0`.
-- CI uses Node 24 and current Node-24-compatible GitHub Actions.
-- Pinned `@grpc/grpc-js` to patched `1.14.6` through npm overrides.
-- Regenerated `bun.lock` with Bun 1.4.4; CI verifies with `bun install --frozen-lockfile`.
-- CI runs `npm audit --audit-level=high`; latest successful run reported no high/critical dependency vulnerabilities.
-- The production server is launched with `tsx server.ts`, and a smoke test requests `/api/advisor/status` without a Gemini key.
+### Medium — serverless AI endpoint
 
-## CI evidence
+- `api/advisor.ts` uses an in-memory per-IP rate limiter. Serverless instances can scale independently, so this is not a globally authoritative quota.
+- The endpoint should remain optional and must not be required for memorization, revision, or data integrity.
+- Keep `GEMINI_API_KEY` server-only; never expose it as a `VITE_` variable.
 
-Latest verified main Quality Gate:
-- Commit: `59486db8eddef6b00a13565024a2754969ff056d`
-- Run: https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42103972108
-- Bun frozen-lockfile install: passed
-- npm dependency audit: passed
-- Automated tests: passed
-- TypeScript validation: passed
-- Production build and Quran chunk validation: passed
-- Production server startup smoke test: passed
+## Firestore rules model currently present
 
-## Required next security work
+- Path: `users/{uid}/{collection}/{documentId}`
+- Verified Firebase auth required.
+- `request.auth.uid == uid`.
+- Collection allowlist currently includes profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and syncMeta.
+- Generic envelope includes schema version, payload, client update time, device ID, mutation ID, and optional tombstone.
+- Physical deletes denied; unknown paths default denied.
 
-1. Implement UID-scoped local persistence and a one-time, backup-preserving legacy-data ownership migration.
-2. Centralize weak-verse persistence in the same storage adapter.
-3. Add Firestore rules, emulator configuration, and tests for unauthenticated, unverified, cross-UID, malformed, and oversized writes.
-4. Implement a per-user cloud sync adapter with idempotent mutations, deterministic conflict resolution, tombstones, offline outbox, and real-time listeners.
-5. Align Express and Vercel advisor request validation; consider Firebase App Check or edge-level rate limiting.
-6. Add response security headers to both Vercel and Express after verifying Google popup auth, Quran audio, and microphone use.
-7. Run a two-account/two-device live smoke test after rules are deployed.
+This model must be tightened per collection before production sync.
 
-## Explicit limitations
+## Verification evidence
 
-This audit is based on GitHub source and CI evidence. It does not prove that live Firebase rules are deployed, live Auth settings are correct, Google AI Studio is synchronized, Vercel is deployed, or production behavior has been manually inspected.
+Latest Actions run:
+- Automated test suites: passed.
+- Firestore Emulator security-rule tests: passed.
+- TypeScript validation: passed.
+- Production build, including Quran chunk validation: passed.
+- Production server startup smoke test: passed.
+
+The Vercel status check for the audited commit is successful. No Firebase production rules deployment or real two-device sync test has been performed.
+
+## Next security actions
+
+1. Finish the remaining file-by-file audit and document every data mutation path.
+2. Implement a UID-scoped local event ledger and durable outbox.
+3. Implement deterministic merge functions and tests before Firestore integration.
+4. Harden rules with collection-specific schemas, immutable events, and size limits.
+5. Run two-client emulator tests for account isolation, concurrency, retries, and offline replay.
+6. Request explicit approval before deploying rules or enabling cloud sync for real users.
