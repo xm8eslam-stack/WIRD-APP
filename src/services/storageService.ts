@@ -439,6 +439,21 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
     (value.updatedAt === undefined || isValidTimestamp(value.updatedAt)) &&
     historyValid && auditValid;
 }
+function readLegacyArrayForMigration<T>(
+  raw: string | null,
+  label: string,
+  isValidRecord: (value: unknown) => boolean
+): { valid: true; records: T[] } | { valid: false; error: string } {
+  if (raw === null) return { valid: true, records: [] };
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { return { valid: false, error: 'أرشيف ' + label + ' القديم تالف؛ تم الحفاظ على محتواه دون ترحيل.' }; }
+  if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
+    return { valid: false, error: 'أرشيف ' + label + ' القديم يحتوي على سجلات غير صالحة؛ تم الحفاظ عليه دون ترحيل.' };
+  }
+  return { valid: true, records: parsed as T[] };
+}
+
 function isValidPlanGenerationInput(value: unknown): boolean {
   if (!isPlainRecord(value) || !isValidSurahRange(value.startSurah, value.startAyah, value.startAyah) ||
       !isValidSurahRange(value.endSurah, value.endAyah, value.endAyah)) return false;
@@ -860,10 +875,16 @@ export const StorageService = {
         // Recoverable Integrity Error (Phase 3.1): Re-attempt recovery from preserved legacy keys
         const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
         const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
-        if (legacyPortionsRaw || legacyRevsRaw) {
+        if (legacyPortionsRaw !== null || legacyRevsRaw !== null) {
           console.info('[WIRD Storage] Attempting recovery from preserved legacy storage keys...');
-          const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
-          const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+          const portionsRead = readLegacyArrayForMigration<PortionStatusRecord>(legacyPortionsRaw, 'المقاطع', value => isValidPortionRecord(value, false));
+          const revisionsRead = readLegacyArrayForMigration<RevisionItem>(legacyRevsRaw, 'المراجعة', isValidLegacyRevisionItem);
+          if (!portionsRead.valid || !revisionsRead.valid) {
+            console.error('[WIRD Storage] Legacy recovery stopped:', !portionsRead.valid ? portionsRead.error : revisionsRead.valid ? '' : revisionsRead.error);
+            return [];
+          }
+          const legacyPortions = portionsRead.records;
+          const legacyRevs = revisionsRead.records;
           if (legacyPortions.length === 0 && legacyRevs.length === 0) {
             console.error('[WIRD Storage] Recovery skipped: no non-empty legacy records exist; invalid canonical data was preserved.');
             return [];
@@ -995,7 +1016,7 @@ export const StorageService = {
     try {
       const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-      const hasInvalidCanonicalPayload = currentVersion === '2' && Boolean(unifiedData);
+      const hasInvalidCanonicalPayload = currentVersion === '2';
 
       if (currentVersion === '2' && unifiedData) {
         try {
@@ -1017,9 +1038,23 @@ export const StorageService = {
       }
 
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
-      const legacyPortions: PortionStatusRecord[] = legacyPortionsRaw ? JSON.parse(legacyPortionsRaw) : [];
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
-      const legacyRevs: RevisionItem[] = legacyRevsRaw ? JSON.parse(legacyRevsRaw) : [];
+      const portionsRead = readLegacyArrayForMigration<PortionStatusRecord>(legacyPortionsRaw, 'المقاطع', value => isValidPortionRecord(value, false));
+      const revisionsRead = readLegacyArrayForMigration<RevisionItem>(legacyRevsRaw, 'المراجعة', isValidLegacyRevisionItem);
+      if (!portionsRead.valid || !revisionsRead.valid) {
+        return {
+          success: false,
+          legacyPortionsCount: 0,
+          legacyRevisionCount: 0,
+          migratedPortionsCount: 0,
+          totalPreservedLogsCount: 0,
+          conflictAuditCount: 0,
+          alreadyMigrated: false,
+          error: !portionsRead.valid ? portionsRead.error : revisionsRead.valid ? 'تعذر التحقق من أرشيف المراجعة القديم.' : revisionsRead.error
+        };
+      }
+      const legacyPortions = portionsRead.records;
+      const legacyRevs = revisionsRead.records;
 
       if (hasInvalidCanonicalPayload && legacyPortions.length === 0 && legacyRevs.length === 0) {
         return {
@@ -1040,7 +1075,7 @@ export const StorageService = {
         return report;
       }
 
-      const saved = this.saveUnifiedPortions(portions);
+      const saved = this.saveUnifiedPortions(portions, hasInvalidCanonicalPayload);
       if (!saved) {
         return {
           success: false,
