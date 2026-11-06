@@ -225,7 +225,7 @@ function readJsonArrayArchive<T>(key: string, label: string, isValidRecord: (val
   }
 }
 
-function readStrictJsonArrayArchive<T>(key: string, label: string, isValidRecord: (value: unknown) => value is T): T[] {
+function readStrictJsonArrayArchive<T>(key: string, label: string, isValidRecord: (value: unknown) => boolean): T[] {
   const raw = getItem(key);
   if (raw === null) return [];
   let parsed: unknown;
