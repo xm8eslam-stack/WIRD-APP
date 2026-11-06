@@ -23,6 +23,7 @@ import { runWeakVerseRecordingTests } from '../services/weakVerseRecording.test'
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runLocalSyncOutboxTests } from '../services/localSyncOutbox.test';
 import { runIndexedDbSyncJournalTests } from '../services/indexedDbSyncJournal.test';
+import { runJournalProjectionReplayerTests } from '../services/journalProjectionReplayer.test';
 import { runSecureIdTests } from '../services/secureId.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
@@ -99,6 +100,7 @@ async function main() {
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'UID-Scoped Durable Local Sync Outbox', runner: runLocalSyncOutboxTests },
     { name: 'Atomic IndexedDB Event Journal & Cross-Tab Outbox', runner: runIndexedDbSyncJournalTests },
+    { name: 'Deterministic Local Journal Projection Replay', runner: runJournalProjectionReplayerTests },
     { name: 'Collision-Resistant Local Event IDs', runner: runSecureIdTests },
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },

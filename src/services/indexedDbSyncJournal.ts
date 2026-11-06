@@ -3,7 +3,7 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
@@ -39,6 +39,7 @@ export interface JournalEvent {
   payload: Record<string, unknown>;
   fingerprint: string;
   sequence: number;
+  projectionRequired?: boolean;
 }
 
 export interface JournalOutboxEntry {
@@ -272,6 +273,7 @@ export class IndexedDbSyncJournal {
             for (const event of allEvents) {
               const sequence = nextByUid.get(event.uid) ?? 1;
               event.sequence = sequence;
+              event.projectionRequired = false;
               events.put(event);
               nextByUid.set(event.uid, sequence + 1);
             }
@@ -297,6 +299,19 @@ export class IndexedDbSyncJournal {
                 }
               }
             };
+          };
+        }
+        if (upgradeEvent.oldVersion >= 2 && upgradeEvent.oldVersion < 3) {
+          // v2 was the journal foundation before domain mutation call sites were
+          // connected. Its existing events are legacy imports/already-projected data.
+          const projectionFlagRequest = events.getAll();
+          projectionFlagRequest.onsuccess = () => {
+            for (const event of projectionFlagRequest.result as JournalEvent[]) {
+              if (event.projectionRequired === undefined) {
+                event.projectionRequired = false;
+                events.put(event);
+              }
+            }
           };
         }
       };
@@ -459,7 +474,7 @@ export class IndexedDbSyncJournal {
               documentId: legacy.documentId, operation: legacy.operation,
               schemaVersion: 1, clientUpdatedAtMs: legacy.clientUpdatedAtMs,
               createdAtMs: legacy.queuedAtMs, deviceId: legacy.deviceId,
-              payload: legacy.payload, fingerprint, sequence: nextSequence++
+              payload: legacy.payload, fingerprint, sequence: nextSequence++, projectionRequired: false
             } satisfies JournalEvent);
           }
           if (!existingOutbox) {
@@ -647,7 +662,8 @@ export class IndexedDbSyncJournal {
           deviceId,
           payload,
           fingerprint,
-          sequence
+          sequence,
+          projectionRequired: true
         };
         events.add(event);
         outbox.add(mutation);

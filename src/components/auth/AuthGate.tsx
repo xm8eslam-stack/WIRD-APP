@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StorageService } from '../../services/storageService';
+import { replayJournalProjection } from '../../services/journalProjectionReplayer';
 import { AuthScreen } from './AuthScreen';
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -9,42 +10,69 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const storageScope = isGuest ? 'guest' : user && isEmailVerified ? `user:${user.uid}` : null;
   const [readyScope, setReadyScope] = useState<string | null>(null);
   const [scopeError, setScopeError] = useState(false);
+  const [scopeErrorMessage, setScopeErrorMessage] = useState('');
   const [legacyDecisionScope, setLegacyDecisionScope] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     if (!storageScope) {
       setReadyScope(null);
       setScopeError(false);
+      setScopeErrorMessage('');
       setLegacyDecisionScope(null);
       return;
     }
 
     setReadyScope(null);
     setScopeError(false);
+    setScopeErrorMessage('');
     setLegacyDecisionScope(null);
-    try {
-      if (StorageService.needsLegacyDataDecision(storageScope)) {
-        setLegacyDecisionScope(storageScope);
-        return;
+
+    const initializeScopedStorage = async () => {
+      try {
+        if (StorageService.needsLegacyDataDecision(storageScope)) {
+          if (!cancelled) setLegacyDecisionScope(storageScope);
+          return;
+        }
+        const success = StorageService.setStorageScope(storageScope);
+        if (!success) throw new Error('تعذر تثبيت نطاق التخزين الخاص بالحساب.');
+        if (storageScope.startsWith('user:')) {
+          await replayJournalProjection();
+        }
+        if (!cancelled && StorageService.getStorageScope() === storageScope) {
+          setReadyScope(storageScope);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setScopeErrorMessage(error instanceof Error ? error.message : 'خطأ غير معروف أثناء استعادة سجل الحساب.');
+          setScopeError(true);
+        }
       }
-      const success = StorageService.setStorageScope(storageScope);
-      if (success) setReadyScope(storageScope);
-      else setScopeError(true);
-    } catch {
-      setScopeError(true);
-    }
+    };
+
+    void initializeScopedStorage();
+    return () => { cancelled = true; };
   }, [storageScope, retryToken]);
 
-  const handleLegacyDataChoice = (choice: 'import' | 'keep-guest') => {
+  const handleLegacyDataChoice = async (choice: 'import' | 'keep-guest') => {
     if (!legacyDecisionScope) return;
-    const success = StorageService.setStorageScope(legacyDecisionScope, choice);
-    if (success) {
-      setReadyScope(legacyDecisionScope);
+    const targetScope = legacyDecisionScope;
+    const success = StorageService.setStorageScope(targetScope, choice);
+    if (!success) {
       setLegacyDecisionScope(null);
-      setScopeError(false);
-    } else {
-      setLegacyDecisionScope(null);
+      setScopeErrorMessage('تعذر نقل البيانات القديمة بأمان؛ لم يتم حذف المصدر.');
+      setScopeError(true);
+      return;
+    }
+    setLegacyDecisionScope(null);
+    setScopeError(false);
+    setScopeErrorMessage('');
+    try {
+      if (targetScope.startsWith('user:')) await replayJournalProjection();
+      if (StorageService.getStorageScope() === targetScope) setReadyScope(targetScope);
+    } catch (error) {
+      setScopeErrorMessage(error instanceof Error ? error.message : 'تعذر استعادة سجل المزامنة المحلي.');
       setScopeError(true);
     }
   };
@@ -103,7 +131,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <div className="max-w-md rounded-2xl border border-rose-200 dark:border-rose-900 bg-white dark:bg-stone-900 p-6 text-center shadow-sm">
           <h2 className="text-lg font-bold text-stone-900 dark:text-white">تعذر تجهيز مساحة بيانات الحساب</h2>
           <p className="mt-2 text-sm leading-7 text-stone-600 dark:text-stone-300">
-            لم نتمكن من نقل بيانات هذا الجهاز بأمان. لم نعرض بيانات حساب آخر ولم نحذف النسخة القديمة. حاول مرة أخرى.
+            لم نتمكن من تجهيز أو استعادة بيانات هذا الحساب بأمان. لم نعرض بيانات حساب آخر ولم نحذف السجل الأصلي، ولم نتجاوز أي حدث غير مستعاد. {scopeErrorMessage || 'حاول مرة أخرى بعد التأكد من توفر مساحة التخزين.'}
           </p>
           <button
             type="button"
