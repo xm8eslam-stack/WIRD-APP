@@ -209,9 +209,24 @@ export function runIndependentTanzilComparison(overrideLocalData?: Record<string
 
       let hasDiff = false;
 
-      // Exact text comparison: narrow removal of \\uFEFF BOM byte without modifying diacritics or trailing characters
-      const rText = rAyah.text.replace(/^\uFEFF/, '');
-      const lText = lAyah.text.replace(/^\uFEFF/, '');
+      const BASMALAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+      const BASMALAH_ALT = "بِّسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ";
+
+      // Exact text comparison: narrow removal of \uFEFF BOM byte and prepended Basmalah for Surahs 2..114 (except 9)
+      const stripBasmalahPrefix = (txt: string, surah: number, ayahNum: number) => {
+        let clean = txt.replace(/^\uFEFF/, '');
+        if (surah !== 1 && surah !== 9 && ayahNum === 1) {
+          if (clean.startsWith(BASMALAH + " ")) {
+            clean = clean.slice(BASMALAH.length + 1);
+          } else if (clean.startsWith(BASMALAH_ALT + " ")) {
+            clean = clean.slice(BASMALAH_ALT.length + 1);
+          }
+        }
+        return clean;
+      };
+
+      const rText = stripBasmalahPrefix(rAyah.text, surahNum, rAyah.numberInSurah);
+      const lText = stripBasmalahPrefix(lAyah.text, surahNum, lAyah.numberInSurah);
 
       if (rText !== lText) {
         textMismatches++;
