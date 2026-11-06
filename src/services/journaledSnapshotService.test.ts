@@ -5,6 +5,7 @@ import type { PortionStatusRecord, WirdPortion, TestResult } from '../types/qura
 import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
 import { persistJournaledSessionCompletion } from './sessionPersistence';
+import { loadDemoDataJournaled } from './demoDataPersistence';
 import type { WirdDomainEvent } from './domainEvents';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
@@ -38,6 +39,76 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
   };
 
   try {
+    await test('Demo data loads as one journaled grouped projection and is not partially applied', async () => {
+      const journal = createJournal();
+      const result = await loadDemoDataJournaled({ journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      const event = events[0];
+      assert(result.success && result.mode === 'journal' && result.queued,
+        'Authenticated demo data must commit through the IndexedDB journal');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'All demo projections must share one atomic journal/outbox event');
+      assert(StorageService.getPlans().length > 0 && StorageService.getEnginePlans().length === 1,
+        'Demo plans and the engine plan must be projected');
+      assert(RetentionService.getPortions().length > 0 && StorageService.getWeakVerses().length > 0,
+        'Canonical demo portions and weak verses must be projected');
+      assert(StorageService.getLogs().length > 0 && StorageService.getProfile().name.includes('تجريبي'),
+        'Demo activity and profile must be projected');
+      assert(event?.collection === 'syncMeta' && event.projectionRequired !== false,
+        'Demo data must be recoverable from the append-only journal event');
+      journal.close();
+    });
+
+    await test('Demo fixture quota failure restores every prior archive and leaves one recoverable event', async () => {
+      const journal = createJournal();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      const values = new Map<string, string>();
+      let quotaThrown = false;
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: (key: string) => values.get(key) ?? null,
+          setItem: (key: string, value: string) => {
+            if (!quotaThrown && key.endsWith(STORAGE_KEYS.WEAK_VERSES)) {
+              quotaThrown = true;
+              const error = new Error('simulated browser storage quota exceeded');
+              error.name = 'QuotaExceededError';
+              throw error;
+            }
+            values.set(key, value);
+          },
+          removeItem: (key: string) => values.delete(key)
+        }
+      });
+      try {
+        const result = await loadDemoDataJournaled({ journal, runExclusive: inlineLock });
+        const snapshot = await journal.getSnapshot();
+        assert(!result.success && result.queued && result.recoveryBlocked,
+          'A quota failure after earlier demo projections must leave the journal event pending');
+        assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 0,
+          'A failed demo projection must not advance the journal cursor');
+        assert(values.size === 0,
+          'The profile, plans, engine plans, canonical portions, and weak-verse archives must all roll back');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        journal.close();
+      }
+    });
+
+    await test('Demo fixture remains available to guests through one local rollback-safe transaction', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('guest');
+      const result = await loadDemoDataJournaled();
+      assert(result.success && result.mode === 'local-only' && !result.queued,
+        'Guest demo data must not require IndexedDB or enqueue cloud mutations');
+      assert(StorageService.getPlans().length > 0 && StorageService.getEnginePlans().length === 1 &&
+        RetentionService.getPortions().length > 0 && StorageService.getWeakVerses().length > 0 &&
+        StorageService.getLogs().length > 0,
+        'Guest demo data must apply all local projections together');
+    });
+
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
       const journal = createJournal();
       const today = new Date().toISOString().slice(0, 10);
