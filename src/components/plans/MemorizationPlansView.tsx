@@ -17,9 +17,9 @@ import { getNextPresetMemorizationRange, isPresetAutoStartSupported } from '../.
 
 interface MemorizationPlansViewProps {
   plans: MemorizationPlan[];
-  onUpdatePlans: (plans: MemorizationPlan[]) => boolean;
+  onUpdatePlans: (plans: MemorizationPlan[]) => boolean | Promise<boolean>;
   enginePlans: EngineGeneratedPlan[];
-  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => boolean;
+  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => boolean | Promise<boolean>;
   onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number, mode?: 'memorize' | 'review') => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
@@ -36,18 +36,18 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   // Toggle active plan in presets
-  const handleToggleActive = (planId: string) => {
+  const handleToggleActive = async (planId: string) => {
     const updated = plans.map(p => ({
       ...p,
       isActive: p.id === planId
     }));
-    if (!onUpdatePlans(updated)) return;
+    if (!await onUpdatePlans(updated)) return;
     if (onToast) {
       onToast("تم تفعيل الخطة المحددة بنجاح", "success");
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!planToDelete) return;
     const updated = plans.filter(p => p.id !== planToDelete);
     if (updated.length > 0 && !updated.some(p => p.isActive)) {
