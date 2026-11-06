@@ -3,9 +3,9 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Last verified application-code main SHA before this documentation checkpoint: e355acffc376b0af355e95926e6315dbf8083951
-- Main Quality Gate: run 42236088244 — success on exact main SHA e355acffc376b0af355e95926e6315dbf8083951 (tests, Firestore emulator, dependency audit, TypeScript, production build, server smoke).
-- Production deployment for current main SHA e355acffc376b0af355e95926e6315dbf8083951: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
+- Last verified application-code main SHA before this documentation checkpoint: f739b64aae61398c51769340f0e4182d51624fca
+- Main Quality Gate: run 42236977371 — pending on exact main SHA f739b64aae61398c51769340f0e4182d51624fca at checkpoint preparation.
+- Production deployment for current main SHA f739b64aae61398c51769340f0e4182d51624fca: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
 ## Completed since the previous checkpoint
 1. PR #14 — c0390692d5f9ec7e81e04c8a674dbb035e0924ec
@@ -106,3 +106,25 @@
 3. Replace localStorage outbox read/modify/write with an IndexedDB append-only event journal and atomic event/outbox transaction; test cross-tab atomicity, crash recovery, quota handling, and deterministic replay.
 4. Connect domain mutations to UID-scoped Firestore only after the journal is tested; finish collection-specific rules and two-account/two-device/offline tests.
 5. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; verify an actual production deployment before release.
+
+
+## 2026-11-06 — PR #27 progress checkpoint merged
+
+- PR #27 merged to `main` as `b73bcc862e54d12681b86238423e2bde2ea303f8`; the continuation checkpoint, current status, and release checklist now include PR #25/#26 outcomes.
+- Exact-head Quality Gate runs `42236361054` (PR) and `42236329526` (push) passed on SHA `5f2729849dbd1665fbbfd9591b42cae946c24680`. A duplicate push run was cancelled by workflow concurrency; the exact-head PR and push runs both passed.
+
+## 2026-11-06 — PR #28 canonical portion transaction merged
+
+- PR #28 merged to `main` as `f739b64aae61398c51769340f0e4182d51624fca` from exact head `bb5a5224671fc3d1ef83b619b01556f8c6c39c01`.
+- `saveUnifiedPortions` now treats the canonical archive, schema version, and legacy portions/revision projections as one logical transaction. It captures directly readable prior bytes before writing, verifies each durable write, and restores the full previous snapshot if canonical, schema-version, or compatibility-projection persistence fails.
+- Added failure-injection tests for schema-version commit failure and a legacy revision projection write that applies before throwing.
+- Exact-head Quality Gate: PR run `42236675217` and push run `42236639584` both passed on SHA `bb5a5224671fc3d1ef83b619b01556f8c6c39c01`: **336 automated assertions passed, 0 failed; 10 Firestore rules emulator tests passed; dependency audit, TypeScript, production build, and server smoke test passed**.
+- Post-merge main Quality Gate run `42236977371` is pending at checkpoint preparation; update this line only after its exact SHA result is confirmed.
+- Production deployment for the current main SHA is not confirmed; CI success does not establish a Vercel deployment.
+
+## Updated next actions — Phase 2 remains IN PROGRESS
+
+1. Audit all remaining multi-key mutation paths and verify that each failed write either restores the exact previous durable bytes or surfaces a recovery-required state.
+2. Replace localStorage outbox read/modify/write with an IndexedDB append-only event journal and atomic event/outbox transaction; test cross-tab atomicity, crash recovery, quota handling, and deterministic replay.
+3. Connect domain mutations to UID-scoped Firestore only after the journal is tested; finish collection-specific rules and two-account/two-device/offline tests.
+4. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; verify an actual production deployment before release.
