@@ -4,7 +4,7 @@
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
 - Last verified application-code main SHA before this documentation checkpoint: f3a207844020494ebf6a350ae9cb27d6db62398e
-- Main Quality Gate: run 42240305979 — pending on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e at checkpoint preparation.
+- Main Quality Gate: run 42240305979 — **success** on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e.
 - Production deployment for current main SHA f3a207844020494ebf6a350ae9cb27d6db62398e: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
 ## Completed since the previous checkpoint
@@ -154,7 +154,7 @@
 - Every facade operation first checks for legacy localStorage data and imports changed snapshots idempotently. The legacy source remains available as a recovery copy.
 - Audited all 51 non-test TypeScript/TSX source files: no production call sites currently invoke `LocalSyncOutbox`. The async adapter is therefore in place, but domain mutation events are not yet connected to it.
 - Exact-head Quality Gate runs `42240055554` (push) and `42240065806` (PR) passed on SHA `d97d8cf10cd076a726dbf377c8a4078b8c2dec2c`: **346 automated assertions passed, 0 failed; 10 Firestore rules tests passed; dependency audit, TypeScript, production build, and server smoke test passed**.
-- Post-merge main Quality Gate run `42240305979` is pending at checkpoint preparation. Update only after its exact main SHA result is confirmed.
+- Post-merge main Quality Gate run `42240305979` passed on exact main SHA `f3a207844020494ebf6a350ae9cb27d6db62398e`.
 
 ## Updated next actions — Phase 2 remains IN PROGRESS
 
