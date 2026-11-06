@@ -1246,7 +1246,8 @@ export const StorageService = {
     const plans = readStrictJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
     const enginePlans = readStrictJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
     const revisionItems = readStrictJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidLegacyRevisionItem);
-    const logs = this.getLogs();
+    const logs = readStrictJsonArrayArchive<DailyLog>(STORAGE_KEYS.LOGS, 'Daily logs', isValidDailyLog);
+    const legacyPortions = readStrictJsonArrayArchive<PortionStatusRecord>(STORAGE_KEYS.PORTIONS, 'Legacy portions', value => isValidPortionRecord(value, false));
     const tests = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
 
     const canonicalPortions = this.getUnifiedPortions();
@@ -1290,7 +1291,7 @@ export const StorageService = {
       revisionItems,
       logs,
       tests,
-      portions: canonicalPortions,
+      portions: legacyPortions.length > 0 ? legacyPortions : canonicalPortions,
       unifiedPortions: canonicalPortions,
       weakVerses
     };
