@@ -22,6 +22,7 @@ import { runRevisionPersistenceTests } from '../services/revisionPersistence.tes
 import { runWeakVerseRecordingTests } from '../services/weakVerseRecording.test';
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runLocalSyncOutboxTests } from '../services/localSyncOutbox.test';
+import { runSecureIdTests } from '../services/secureId.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
@@ -94,6 +95,7 @@ async function main() {
     { name: 'Atomic Weak-Verse Recording and Portion Rollback', runner: runWeakVerseRecordingTests },
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'UID-Scoped Durable Local Sync Outbox', runner: runLocalSyncOutboxTests },
+    { name: 'Collision-Resistant Local Event IDs', runner: runSecureIdTests },
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },

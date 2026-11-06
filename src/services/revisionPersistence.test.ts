@@ -26,6 +26,29 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
     StorageService.__resetStorageForTests();
   });
 
+  test('Revision history IDs remain unique even when wall-clock timestamps collide', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:revision-unique-history');
+    const today = getLocalDateString();
+    const portion = RetentionService.addPortion({
+      type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 26, endAyah: 30,
+      status: 'recently_memorized', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+      repetitionCount: 1, mistakesCount: 0
+    });
+    const originalNow = Date.now;
+    try {
+      Date.now = () => 123456789;
+      RetentionService.recordRevisionPerformance(portion.id, 'successful');
+      RetentionService.recordRevisionPerformance(portion.id, 'difficult');
+      const history = RetentionService.getPortions().find(item => item.id === portion.id)?.history || [];
+      assert(history.length === 2, 'Both review attempts must be retained');
+      assert(history[0].id !== history[1].id, 'Review event IDs must not collide when Date.now is identical');
+    } finally {
+      Date.now = originalNow;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Revision rating records an explicitly measured duration exactly once', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:revision-measured');

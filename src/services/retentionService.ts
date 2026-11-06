@@ -7,6 +7,7 @@ import {
   WirdPortion 
 } from '../types/quran';
 import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS } from './storageService';
+import { createSecureId } from './secureId';
 import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { 
@@ -403,7 +404,7 @@ export const RetentionService = {
         mistakesCount: 0,
         history: [
           {
-            id: `init-${Date.now()}`,
+            id: `init-${createSecureId()}`,
             date: today,
             rating: 'successful',
             intervalDaysBefore: 0,
@@ -462,7 +463,7 @@ export const RetentionService = {
       : (target.mistakesCount || 0);
 
     const logEntry: RevisionLogEntry = {
-      id: `log-${Date.now()}`,
+      id: `log-${createSecureId()}`,
       date: todayStr,
       rating,
       intervalDaysBefore: target.intervalDays || 1,
@@ -638,7 +639,7 @@ export const RetentionService = {
       }
     } else {
       items.unshift({
-        id: `weak-${surahNumber}-${ayahNumber}-${Date.now()}`,
+        id: `weak-${surahNumber}-${ayahNumber}-${createSecureId()}`,
         surahNumber,
         surahName,
         ayahNumber,
