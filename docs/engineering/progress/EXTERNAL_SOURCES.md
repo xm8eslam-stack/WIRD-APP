@@ -10,7 +10,8 @@
 | idb | https://github.com/jakearchibald/idb | package 8.0.4; ISC | Minimal promise wrapper over native IndexedDB | Lightweight alternative; more schema and transaction orchestration remains WIRD-owned; not installed |
 | idb README | https://github.com/jakearchibald/idb/blob/main/README.md | Official repository | openDB, promise API, transactions, async iterators | Reference only; no source copied |
 | RxDB | https://github.com/pubkey/rxdb | package 17.6.0; Apache-2.0 declared in package metadata | Local-first replication, checkpoints, batching, conflict handlers, multi-tab behavior | Architectural reference only; full adoption appears unnecessarily broad for initial Firestore-backed sync |
-| RxDB replication docs | https://rxdb.info/replication.html | Official docs | Offline/online replay, checkpoints, batch replication, conflict handling | Reuse concepts, not implementation; default conflict behavior is not suitable for WIRD's conservative memorization semantics without custom logic |
+| RxDB replication docs | https://rxdb.info/replication.html | Official docs | Offline/online replay, checkpoints, batch replication, conflict handling, multi-tab replication coordination | Reuse concepts, not implementation; default conflict behavior is not suitable for WIRD's conservative memorization semantics without custom logic |
+| RxDB transactions/conflicts docs | https://rxdb.info/transactions-conflicts-revisions.html | Official docs | Local write conflicts, revision checks, deterministic conflict handlers, limitations of cross-device ACID | Architectural reference only; highlights why local atomicity and remote conflict resolution are separate concerns |
 | Ummah Library ADRs | https://github.com/UmmahLibrary/ummah-library | AGPL-3.0-only (previously reviewed) | Stable IDs, immutable events, incremental sync, element-level merge | Architecture-only reference; do not copy code without a separate compatibility review |
 | Firebase Firestore offline docs | https://firebase.google.com/docs/firestore/manage-data/enable-offline | Official Firebase docs | Memory/persistent cache and offline behavior | Keep WIRD's own UID-scoped local journal; do not enable persistent web cache by default on shared browsers |
 
@@ -34,3 +35,10 @@
 ### Provisional decision
 
 Do not add a validator dependency in this documentation/audit pass. First map all persisted record interfaces and define exact compatibility rules for legacy versions. Then prototype Zod 4 and Valibot on the same representative schemas (UserProfile, DailyLog, MemorizationPlan, EngineGeneratedPlan, RevisionItem, TestResult, WeakVerseItem, WirdPortion, BackupPayload). Compare strict unknown-key behavior, precise error paths, bundle impact, TypeScript compatibility, and legacy migration behavior. Ajv remains a candidate if shared JSON Schema definitions across client and server become a concrete requirement. No third-party code copied.
+
+
+## Local outbox integrity review — 2026-11-06
+
+- PR #6 uses a compact deterministic, non-cryptographic fingerprint only to detect accidental reuse of an acknowledged mutation ID with changed content. It is not an authentication or tamper-proofing mechanism.
+- The current outbox remains localStorage-backed. Its read-modify-write sequence is not an atomic cross-tab transaction; the queue is therefore not safe to activate for remote sync until an IndexedDB transaction-backed event/outbox journal and multi-tab concurrency tests are implemented.
+- Dexie and idb remain candidates for that future journal; RxDB remains an architectural reference for checkpoints, replication batches, multi-tab coordination, and conflict handling. No dependency or source code was added in PR #6.
