@@ -6,7 +6,7 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS } from './storageService';
+import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS, isValidWeakVerseRecord } from './storageService';
 import { createSecureId } from './secureId';
 import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
@@ -25,25 +25,8 @@ const STORAGE_KEYS = {
   WEAK_VERSES: 'wird_weak_verses'
 };
 
-function isValidWeakVerseItem(value: unknown): value is WeakVerseItem {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-  const item = value as Record<string, unknown>;
-  if (typeof item.id !== 'string' || item.id.length < 1 || item.id.length > 128) return false;
-  if (!Number.isSafeInteger(item.surahNumber) || Number(item.surahNumber) < 1 || Number(item.surahNumber) > 114) return false;
-  if (typeof item.surahName !== 'string' || !item.surahName.trim() || item.surahName.length > 100) return false;
-  if (!Number.isSafeInteger(item.ayahNumber) || Number(item.ayahNumber) < 1 || Number(item.ayahNumber) > 286) return false;
-  if (typeof item.text !== 'string' || !item.text.trim() || item.text.length > 4000) return false;
-  if (!Number.isSafeInteger(item.mistakeCount) || Number(item.mistakeCount) < 1 || Number(item.mistakeCount) > 1_000_000) return false;
-  if (typeof item.lastFailedDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(item.lastFailedDate)) return false;
-  const [year, month, day] = item.lastFailedDate.split('-').map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== item.lastFailedDate) return false;
-  if (item.notes !== undefined && (typeof item.notes !== 'string' || item.notes.length > 2000)) return false;
-  return true;
-}
-
 function isValidWeakVerseArray(value: unknown): value is WeakVerseItem[] {
-  return Array.isArray(value) && value.length <= 6236 && value.every(isValidWeakVerseItem);
+  return Array.isArray(value) && value.length <= 6236 && value.every(isValidWeakVerseRecord);
 }
 
 // Initial realistic seed portions representing various Quran portions across the 6 statuses
