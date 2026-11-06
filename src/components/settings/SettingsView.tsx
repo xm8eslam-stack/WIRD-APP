@@ -25,7 +25,6 @@ import { UserProfile, ReciterId } from '../../types/quran';
 import { RECITERS } from '../../services/audioService';
 import { StorageService } from '../../services/storageService';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
-import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupJournaled } from '../../services/backupPersistence';
