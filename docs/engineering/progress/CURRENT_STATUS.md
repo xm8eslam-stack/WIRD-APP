@@ -3,12 +3,12 @@
 **Updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PR:** #3 merged; progress documentation is now on `main`.
+**Checkpoint PRs:** #3 and #4 merged; progress documentation and record-validation milestone are on `main`.
 
 ## Verified repository position
 
-- Latest confirmed main merge before this status update: `82efeacd9118406d850336fa3c862fd5016bed14` — PR #3 documentation checkpoint. This status update itself is committed directly to main; re-fetch HEAD on resume.
-- Latest observed code commit referenced by the engineering audit: `f342b4bc7e02a48f88b90646098eea178901c8ea`.
+- Latest confirmed code merge before this status update: `647eff6624627d2c93ef797a317c6e7f1e0789c1` — PR #4 record-validation milestone. This status update itself is committed directly to main; re-fetch HEAD on resume. This status update itself is committed directly to main; re-fetch HEAD on resume.
+- Latest verified code merge: `647eff6624627d2c93ef797a317c6e7f1e0789c1` (PR #4). Previous baseline code commit: `f342b4bc7e02a48f88b90646098eea178901c8ea`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - The combined status lookup for `d9737e0` reports a failed Vercel status pointing to the free build/deployment rate limit. This is not evidence of a code build failure. A successful production deployment for this exact commit is not confirmed.
 - PR #1 was merged previously; do not merge it again.
@@ -18,8 +18,9 @@
 
 **PHASE 1 — Record-level local data validation**  
 **Status:** IN PROGRESS.  
-**Last code milestone:** local archive integrity hardening, code commit `f342b4b`.  
-**Next:** strict validation for every record in every persisted archive and backup collection. M4 follows after Phase 1 and Phase 2 gates.
+**Last code milestone:** strict record-level validation and backup integrity, PR #4 merge `647eff6`.  
+**Status detail:** plans, engine plans, revision items, test results, weak verses, daily logs, legacy/canonical portions, and backup boundaries now have runtime record validation and regression coverage.  
+**Remaining:** complete audit of session persistence, local outbox, and all mutation paths before closing Phase 1. M4 follows after Phase 1 and Phase 2 gates.
 
 ## Completed and verified foundations
 
@@ -27,7 +28,10 @@
 - UID-scoped local storage and guest separation.
 - Explicit legacy-data ownership choice.
 - Canonical Quran data and per-Surah lazy-loaded chunks.
-- Backup validation and rollback verification.
+- Backup validation and rollback verification, including deep per-record import/export checks and rejection of inconsistent projections.
+- Runtime validation for persisted plans, engine plans, revision items, tests, weak verses, daily logs, legacy portions, and canonical portions.
+- Legacy archive validation before migration/recovery; malformed sources are preserved.
+- Duplicate daily activity dates rejected to prevent double counting.
 - Corrupt archive preservation for profile, daily activity, plans, engine plans, revision items, tests, weak verses, and canonical portions.
 - Secure UUID generation and local outbox primitive.
 - Session completion and revision operations with ordinary write-failure rollback.
@@ -62,22 +66,23 @@
 2. **Critical before cloud sync:** aggregate daily activity and weak-verse counters are not safe for concurrent multi-device merge.
 3. **High:** localStorage cannot atomically commit domain state plus outbox; a write-ahead event journal / transactional IndexedDB design is needed.
 4. **High:** Firestore rules are generic-envelope-only and not production complete.
-5. **High:** `readJsonArrayArchive()` validates only that the root is an array; `savePlans`, `saveEnginePlans`, `saveRevisionItems`, and `saveTest` do not validate each record. `validateBackupPayload()` also accepts several arrays after root-type checks without complete per-record validation, so malformed nested records can enter through backup import.
-6. **Medium:** complete file-by-file audit of all mutation call sites, backup/restore, PWA, APIs, and Quran integrity remains open.
+5. **High — remaining Phase 1:** session persistence, local outbox state, and every remaining mutation boundary still require record-level and failure-path audit.
+6. **High — Phase 2:** `getSessionCompletionMetrics()` currently uses `Math.max(0, Math.floor(...))`, silently converting negative/fractional counters to zero. Reject invalid values before any write.
+7. **Medium:** complete file-by-file audit of all mutation call sites, backup/restore, PWA, APIs, and Quran integrity remains open.
 6. **Release:** Vercel rate limit previously blocked a production deployment; retry only through the normal platform path when quota permits.
 
 ## Last verified tests
 
 - CI run `42180258989`: documented PASS for code commit `f342b4b`.
-- CI run `42184381262`: PASS on PR #3 head, including automated tests, dependency audit, 10 Firestore emulator tests, TypeScript, production build, and server smoke test.
-- Vercel status on merge commit `82efeac` reports the known free build-rate-limit failure; production deployment is not confirmed.
+- CI run `42184381262`: PASS on PR #3 head.
+- CI run `42186678874`: PASS on PR #4 head, including automated tests, dependency audit, Firestore emulator, TypeScript, production build, and server smoke test.
+- Vercel status on merge commit `647eff6` reports the known free build-rate-limit failure; production deployment is not confirmed.
 - No application code changed in the documentation checkpoint.
 
 ## Next exact action
 
-1. Implement strict record-level validators for plans, engine plans, revision items, tests, logs, weak verses, and every backup collection; preserve invalid source bytes.
-2. Add malformed-record, invalid-boundary, legacy-compatibility, and no-partial-backup-import tests.
-3. Complete Phase 2 mutation/range validation.
-4. Fix the confirmed outbox acknowledged-ID/content mismatch and add uniqueness/disjointness/retry-overflow tests.
-5. Evaluate Dexie / Valibot / Zod against representative schemas and transactional journal requirements before adding dependencies.
-6. Then design and implement the append-only event ledger and durable event+outbox transaction; do not activate Firestore production writes.
+1. Finish Phase 1 audit of `sessionPersistence.ts`, `sessionCompletion.ts`, `unifiedPortionService.ts`, `localSyncOutbox.ts`, and every remaining mutation call site.
+2. Change `getSessionCompletionMetrics()` to reject negative, fractional, unsafe, and out-of-range counters; validate minutes/task names before any mutation.
+3. Fix the confirmed outbox acknowledged-ID/content mismatch; add pending/acknowledged uniqueness, disjointness, retry-overflow, and account-switch tests.
+4. Re-run full CI and independent review for each reliability slice.
+5. After Phase 1/2 pass, design the append-only event ledger and durable event+outbox transaction; do not activate Firestore production writes.
