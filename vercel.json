@@ -19,5 +19,10 @@
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
-  ]
+  ],
+  "functions": {
+    "api/tafsir.ts": {
+      "maxDuration": 15
+    }
+  }
 }
