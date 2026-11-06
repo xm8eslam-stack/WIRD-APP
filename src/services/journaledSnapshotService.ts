@@ -3,7 +3,7 @@ import type { EngineGeneratedPlan } from './planningEngine';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal, type JournalMutationInput } from './indexedDbSyncJournal';
 import { replayJournalProjection, type ProjectionLockRunner } from './journalProjectionReplayer';
-import { StorageService } from './storageService';
+import { StorageService, type JournalProjectionOperation } from './storageService';
 
 export interface JournaledSnapshotWriteResult {
   success: boolean;
@@ -187,6 +187,31 @@ export function persistTestResultSnapshot(
       payload: { records }
     },
     () => StorageService.saveTests(records),
+    options
+  );
+}
+
+export type JournaledTransactionOperation = JournalProjectionOperation;
+
+/**
+ * Commit one journal event whose payload contains several domain projections.
+ * The event/outbox pair is atomic in IndexedDB and StorageService applies all
+ * child projections as one rollback-safe local transaction.
+ */
+export function persistJournaledTransaction(
+  operations: JournaledTransactionOperation[],
+  options: JournaledSnapshotOptions = {},
+  mutationId?: string
+): Promise<JournaledSnapshotWriteResult> {
+  const transactionId = createSecureId();
+  return persistJournaledSnapshot(
+    {
+      mutationId: mutationId ?? 'transaction-' + transactionId,
+      collection: 'syncMeta',
+      documentId: transactionId,
+      payload: { transaction: { version: 1, operations } }
+    },
+    () => StorageService.applyJournalTransaction(operations),
     options
   );
 }
