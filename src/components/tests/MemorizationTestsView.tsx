@@ -16,11 +16,12 @@ import {
 import { MUTASHABIHAT_DATA } from '../../data/mutashabihatData';
 import { TestResult, WirdPortion } from '../../types/quran';
 import { RetentionService } from '../../services/retentionService';
+import { createSecureId } from '../../services/secureId';
 import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
 import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
-  onSaveTestResult: (result: TestResult) => boolean;
+  onSaveTestResult: (result: TestResult) => boolean | Promise<boolean>;
   onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number, text: string, notes: string) => boolean;
 }
 
@@ -40,6 +41,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [isFinished, setIsFinished] = useState(false);
   const [weakVerseFeedback, setWeakVerseFeedback] = useState<{ message: string; success: boolean } | null>(null);
   const [testSaveError, setTestSaveError] = useState<string | null>(null);
+  const [pendingTestResult, setPendingTestResult] = useState<TestResult | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
 
   // Load user portions and dynamically generate verified test questions
@@ -61,7 +63,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < currentQuestions.length - 1) {
       setCurrentQuestionIndex(i => i + 1);
       setSelectedOption(null);
@@ -69,19 +71,28 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
       setWeakVerseFeedback(null);
     } else {
       const finalScore = score + (selectedOption === currentQ.correctIndex ? 1 : 0);
-      const saved = onSaveTestResult({
-        id: `test-${Date.now()}`,
+      const resultToSave: TestResult = pendingTestResult || {
+        id: `test-${createSecureId()}`,
         date: new Date().toISOString().split('T')[0],
         type: selectedTestType,
         surahName: currentQ.surahName,
         score: finalScore,
         totalQuestions: currentQuestions.length,
         weakVerses: []
-      });
+      };
+      if (!pendingTestResult) setPendingTestResult(resultToSave);
+
+      let saved = false;
+      try {
+        saved = await onSaveTestResult(resultToSave);
+      } catch (error) {
+        console.error('[WIRD Tests] Test result persistence failed:', error);
+      }
       if (!saved) {
         setTestSaveError('تعذر حفظ نتيجة الاختبار. لم نعلن اكتماله؛ اضغط «إعادة محاولة حفظ النتيجة» للمحاولة مجدداً.');
         return;
       }
+      setPendingTestResult(null);
       setTestSaveError(null);
       setIsFinished(true);
     }
@@ -95,6 +106,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     setIsFinished(false);
     setWeakVerseFeedback(null);
     setTestSaveError(null);
+    setPendingTestResult(null);
     setSessionKey(k => k + 1);
   };
 
