@@ -317,9 +317,27 @@ export const RetentionService = {
     return StorageService.getUnifiedPortions() as PortionStatusRecord[];
   },
 
-  // Save portions (Persists canonical WirdPortion to StorageService)
+  // Save portions and report whether the previous durable snapshot survived a failed write.
+  savePortionsDetailed(portions: PortionStatusRecord[]): { success: boolean; rollbackVerified: boolean } {
+    const previousRaw = StorageService.getRawItem(APP_STORAGE_KEYS.UNIFIED_PORTIONS);
+    let success = false;
+    try {
+      success = StorageService.saveUnifiedPortions(portions);
+    } catch (error) {
+      console.warn('[WIRD Retention] Portion archive write failed:', error);
+    }
+    if (success) return { success: true, rollbackVerified: true };
+
+    const rollbackVerified = StorageService.verifyRawItem(APP_STORAGE_KEYS.UNIFIED_PORTIONS, previousRaw);
+    if (!rollbackVerified) {
+      console.error('[WIRD Retention] Portion archive rollback could not be verified. Export a backup before further edits.');
+    }
+    return { success: false, rollbackVerified };
+  },
+
+  // Backward-compatible boolean API for rollback helpers and existing callers.
   savePortions(portions: PortionStatusRecord[]): boolean {
-    return StorageService.saveUnifiedPortions(portions);
+    return this.savePortionsDetailed(portions).success;
   },
 
   // Update a single portion's status directly
@@ -340,7 +358,10 @@ export const RetentionService = {
         strength: newStatus === 'weak' ? 'weak' : newStatus === 'stable' ? 'strong' : 'medium'
       }
     );
-    if (!this.savePortions(updated)) throw new Error('تعذر حفظ تحديث حالة المقطع في التخزين المحلي.');
+    const saveResult = this.savePortionsDetailed(updated);
+    if (!saveResult.success) throw new Error(saveResult.rollbackVerified
+      ? 'تعذر حفظ تحديث حالة المقطع؛ تم التحقق من بقاء البيانات السابقة دون تغيير.'
+      : 'تعذر حفظ تحديث حالة المقطع، ولم ينجح التحقق من استعادة النسخة السابقة. لا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة البيانات.');
     return updated;
   },
 
@@ -378,7 +399,10 @@ export const RetentionService = {
       };
       portions.unshift(record);
     }
-    if (!this.savePortions(portions)) throw new Error('تعذر حفظ المقطع الجديد في التخزين المحلي.');
+    const saveResult = this.savePortionsDetailed(portions);
+    if (!saveResult.success) throw new Error(saveResult.rollbackVerified
+      ? 'تعذر حفظ المقطع الجديد؛ تم التحقق من بقاء سجل المقاطع السابق دون تغيير.'
+      : 'تعذر حفظ المقطع الجديد، ولم ينجح التحقق من استعادة سجل المقاطع السابق. لا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة البيانات.');
     return record;
   },
 
@@ -441,8 +465,11 @@ export const RetentionService = {
       portions.unshift(updatedPortion);
     }
 
-    if (!this.savePortions(portions)) {
-      throw new Error('تعذر حفظ تقدم الحفظ في التخزين المحلي؛ لم يتم تأكيد الإنجاز.');
+    const saveResult = this.savePortionsDetailed(portions);
+    if (!saveResult.success) {
+      throw new Error(saveResult.rollbackVerified
+        ? 'تعذر حفظ تقدم الحفظ؛ تم التحقق من بقاء سجل المقاطع السابق دون تغيير ولم يتم تأكيد الإنجاز.'
+        : 'تعذر حفظ تقدم الحفظ، ولم ينجح التحقق من استعادة سجل المقاطع السابق. لا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة البيانات.');
     }
     return updatedPortion;
   },
@@ -547,8 +574,11 @@ export const RetentionService = {
       return portionsRestored && weakArchiveRestored;
     };
 
-    if (!this.savePortions(updatedList)) {
-      throw new Error('تعذر حفظ تقييم المراجعة في التخزين المحلي؛ لم يتم تأكيد التغيير.');
+    const portionSaveResult = this.savePortionsDetailed(updatedList);
+    if (!portionSaveResult.success) {
+      throw new Error(portionSaveResult.rollbackVerified
+        ? 'تعذر حفظ تقييم المراجعة؛ تم التحقق من بقاء حالة المقطع السابقة دون تغيير.'
+        : 'تعذر حفظ تقييم المراجعة، ولم ينجح التحقق من استعادة حالة المقطع السابقة. لا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة البيانات.');
     }
 
     if (rating === 'failed' && weakAyahDetails) {

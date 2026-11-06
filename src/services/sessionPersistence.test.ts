@@ -391,5 +391,91 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
   });
 
 
+  test('Memorization completion surfaces an unverified canonical-portion rollback', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let failPortionWrites = false;
+    let previousRaw: string | null = null;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (failPortionWrites && key.endsWith(STORAGE_KEYS.UNIFIED_PORTIONS)) {
+          if (value !== previousRaw) {
+            values.set(key, value);
+            throw new Error('simulated portion write applied before failure');
+          }
+          return; // Refuse to restore the original portion archive.
+        }
+        values.set(key, value);
+      },
+      removeItem: (key: string) => values.delete(key)
+    }});
+    try {
+      StorageService.setStorageScope('user:portion-memorization-rollback');
+      const today = getLocalDateString();
+      RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'currently_memorizing', nextDueDate: today, intervalDays: 1, easeFactor: 2.5,
+        repetitionCount: 0, mistakesCount: 0
+      });
+      previousRaw = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      failPortionWrites = true;
+      let message = '';
+      try { RetentionService.recordMemorizationCompletion(67, 6, 10); }
+      catch (error: any) { message = error?.message || String(error); }
+      assert(message.includes('لم ينجح التحقق'), 'An unverified portion rollback must surface a recovery-required warning');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) !== previousRaw,
+        'The injected durable mismatch must remain observable instead of being hidden by memory fallback');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Revision rating surfaces an unverified canonical-portion rollback', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let failPortionWrites = false;
+    let previousRaw: string | null = null;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (failPortionWrites && key.endsWith(STORAGE_KEYS.UNIFIED_PORTIONS)) {
+          if (value !== previousRaw) {
+            values.set(key, value);
+            throw new Error('simulated revision write applied before failure');
+          }
+          return;
+        }
+        values.set(key, value);
+      },
+      removeItem: (key: string) => values.delete(key)
+    }});
+    try {
+      StorageService.setStorageScope('user:portion-revision-rollback');
+      const today = getLocalDateString();
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'recently_memorized', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 2, mistakesCount: 0
+      });
+      previousRaw = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      failPortionWrites = true;
+      let message = '';
+      try { RetentionService.recordRevisionPerformance(portion.id, 'successful'); }
+      catch (error: any) { message = error?.message || String(error); }
+      assert(message.includes('لم ينجح التحقق'), 'An unverified revision write rollback must surface a recovery-required warning');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) !== previousRaw,
+        'The injected durable mismatch must remain observable instead of being hidden by memory fallback');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
