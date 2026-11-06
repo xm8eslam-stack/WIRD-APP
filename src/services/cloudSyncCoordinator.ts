@@ -1,4 +1,4 @@
-import { doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, limit as firestoreLimit, serverTimestamp } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { LocalSyncOutbox } from './localSyncOutbox';
 import { StorageService } from './storageService';
@@ -199,8 +199,21 @@ class CloudSyncCoordinator {
                 uid: uid,
                 deviceId: entry.deviceId,
                 occurredAtMs: entry.clientUpdatedAtMs,
-                eventType: 'domain-mutation',
-                payload: entry.payload
+                eventType: 'domain-mutation.v2',
+                payload: {
+                  journalEvent: {
+                    schemaVersion: 1,
+                    collection: entry.collection,
+                    documentId: entry.documentId,
+                    operation: entry.operation,
+                    clientUpdatedAtMs: entry.clientUpdatedAtMs,
+                    createdAtMs: entry.queuedAtMs,
+                    fingerprint: entry.fingerprint,
+                    payload: entry.payload,
+                    serverCreatedAt: serverTimestamp()
+                  },
+                  ...(entry.payload.domainEvent !== undefined ? { domainEvent: entry.payload.domainEvent } : {})
+                }
               };
               // Event documents are append-only. A previous attempt may have
               // committed the remote event but failed before the local outbox ack.
@@ -208,9 +221,23 @@ class CloudSyncCoordinator {
               const existingEvent = await getDoc(eventRef);
               if (existingEvent.exists()) {
                 const remote = existingEvent.data();
-                const matches = Object.entries(eventRecord).every(([key, value]) =>
-                  stableSerialize(remote[key]) === stableSerialize(value)
-                );
+                const remoteEnvelope = remote.payload?.journalEvent;
+                const expectedEnvelope = eventRecord.payload.journalEvent;
+                const { serverCreatedAt: _expectedServerTime, ...expectedWithoutServerTime } = expectedEnvelope;
+                const { serverCreatedAt: remoteServerTime, ...remoteWithoutServerTime } =
+                  remoteEnvelope && typeof remoteEnvelope === 'object' ? remoteEnvelope : {};
+                const isV2Event = remote.eventType === 'domain-mutation.v2' &&
+                  stableSerialize(remoteWithoutServerTime) === stableSerialize(expectedWithoutServerTime) &&
+                  Boolean(remoteServerTime && typeof remoteServerTime.toMillis === 'function');
+                const isLegacyEvent = remote.eventType === 'domain-mutation' &&
+                  stableSerialize(remote.payload) === stableSerialize(entry.payload);
+                const matches = remote.schemaVersion === eventRecord.schemaVersion &&
+                  remote.eventId === eventRecord.eventId &&
+                  remote.mutationId === eventRecord.mutationId &&
+                  remote.uid === eventRecord.uid &&
+                  remote.deviceId === eventRecord.deviceId &&
+                  remote.occurredAtMs === eventRecord.occurredAtMs &&
+                  (isV2Event || isLegacyEvent);
                 if (!matches) {
                   throw new Error('يوجد تعارض في سجل المزامنة لنفس معرف العملية؛ تم الاحتفاظ بالعملية المحلية دون استبدال السجل السحابي.');
                 }
