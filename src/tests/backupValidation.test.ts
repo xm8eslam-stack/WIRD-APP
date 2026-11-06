@@ -330,6 +330,66 @@ export function runBackupTests(): { passed: number; failed: number } {
       'Exported backup must include unencrypted warning');
   });
 
+  test('Storage write APIs reject malformed records and preserve existing archives', () => {
+    StorageService.__resetStorageForTests();
+    try {
+      assert(StorageService.setStorageScope('user:record-validation-test'), 'Test storage scope should initialize');
+      const validPlan = PRESET_PLANS[0];
+      assert(StorageService.savePlans([validPlan]), 'Valid plan should save');
+      const originalPlans = StorageService.getRawItem(STORAGE_KEYS.PLANS);
+      assert(!StorageService.savePlans([{ ...validPlan, dailyTarget: -1 } as any]), 'Invalid plan record should be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PLANS) === originalPlans, 'Invalid plan write must not overwrite the valid archive');
+
+      const malformedArchive = JSON.stringify([{ ...validPlan, dailyTarget: -1 }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.PLANS, malformedArchive), 'Test corruption fixture should be stored');
+      assert(!StorageService.savePlans([validPlan]), 'A valid replacement must not overwrite an archive containing malformed records');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PLANS) === malformedArchive, 'Malformed archive bytes must be preserved');
+      assert(StorageService.getPlans().length === 0, 'Safe read should not expose malformed records');
+      let exportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { exportRejected = true; }
+      assert(exportRejected, 'Backup export must refuse to silently omit malformed archived records');
+
+      const badEnginePlan = buildDemoEnginePlan();
+      badEnginePlan.schedule[0].dayOfWeek = 7;
+      assert(!StorageService.saveEnginePlans([badEnginePlan]), 'Malformed nested engine plan must not be saved');
+
+      const badRevision: any = {
+        id: 'revision-bad', surahNumber: 67, surahName: 'الملك', startAyah: 0, endAyah: 3,
+        type: 'minor', nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5,
+        repetitionCount: 0, strength: 'weak'
+      };
+      assert(!StorageService.saveRevisionItems([badRevision]), 'Invalid revision coordinate must be rejected');
+
+      const badTest: any = {
+        id: 'test-bad', date: '2026-11-06', type: 'complete_verse', surahName: 'الملك',
+        score: 101, totalQuestions: 10, weakVerses: []
+      };
+      assert(!StorageService.saveTest(badTest), 'Invalid test score must be rejected');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Malformed nested backup records are rejected before any user data is written', () => {
+    StorageService.__resetStorageForTests();
+    try {
+      assert(StorageService.setStorageScope('user:backup-record-validation-test'), 'Test storage scope should initialize');
+      assert(StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'الحساب الأصلي' }), 'Original profile should save');
+      const originalRawProfile = StorageService.getRawItem(STORAGE_KEYS.PROFILE);
+      const invalidBackup = {
+        version: 3,
+        profile: { ...CLEAN_INITIAL_PROFILE, name: 'الحساب المستورد' },
+        plans: [{ ...PRESET_PLANS[0], completedUnits: 999999 }]
+      };
+      const result = StorageService.importBackup(JSON.stringify(invalidBackup));
+      assert(!result.success, 'Backup with malformed nested plan must fail validation');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) === originalRawProfile, 'Profile bytes must remain unchanged when any nested backup record is invalid');
+      assert(StorageService.getProfile().name === 'الحساب الأصلي', 'Existing profile must remain unchanged');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
 
