@@ -78,3 +78,24 @@ If any current evidence differs from these notes, current GitHub state wins. Upd
 4. Create/inspect a draft PR to run CI; wait for test, lint, build, Firestore emulator, audit, and smoke-test results.
 5. Fix all failures and perform an independent second review.
 6. Continue remaining Phase 2 daily queue/statistics/rollback tests. Only merge verified changes to main.
+
+
+## 2026-11-06 — Latest verified main checkpoint (PR #10 merged)
+
+- Canonical branch: `main`.
+- Latest application-code merge: `e69871897c2561e7aa75c6e31f9005169ed08c23` (PR #10 squash merge). Re-fetch the current main HEAD before new work because progress-document commits may advance it.
+- PR #10 head before merge: `958067b1b1e3c64513b1732c947e81c18a830a52`.
+- GitHub Actions Quality Gate #681 / run `42194241711`: PASS — 304 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, server smoke test.
+- Vercel check remains rate-limited by the Free-plan daily deployment cap; production deployment of the merge commit is not confirmed.
+- Phase 1 remains COMPLETED. Phase 2 remains IN PROGRESS; PR #10 merged only the mutation-integrity slice.
+- Merged changes: status update validation and strength consistency; safe duplicate canonical portion merge preserving history/counters/weaker status; canonical Surah metadata; weak-verse input/coordinate validation and unique ID/coordinate enforcement; idempotent resolution; backup duplicate rejection; revision UI in-flight guard and stale-input reset; fail-closed handling when canonical Quran text cannot be loaded; memorization sessions excluded from review-history metrics.
+- New/updated regression tests passed in CI. No new third-party code or dependency copied; external research is documented in EXTERNAL_SOURCES.md.
+- No production migration, production Firestore rules deployment, or live cloud sync activation occurred.
+
+### Exact next action
+
+1. Read CURRENT_STATUS.md, MASTER_ROADMAP.md, WORK_LOG.md, and RELEASE_CHECKLIST.md.
+2. Fetch latest main HEAD and inspect the merged Phase 2 code if any later changes exist.
+3. Continue auditing daily revision queue, weekly overview, dashboard aggregate metrics, review-history semantics, and rollback under quota/read-back failures.
+4. Add targeted tests and run the complete quality gate plus independent second review before the next main integration.
+5. Keep cloud sync disabled until the transactional IndexedDB event+outbox design and multi-tab tests are complete; production rules deployment still requires explicit approval.
