@@ -16,6 +16,7 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `162e847` — fix repeated in-progress passage selection by resuming the exact saved coordinates; add tests for exact resumption and Surah-boundary clamping. CI run `42169589580` passed.
 
 Commits on main (in order):
 - `6355677` — isolate review sessions from memorization progress; add session completion tests; make session activity/streak write rollback-aware.

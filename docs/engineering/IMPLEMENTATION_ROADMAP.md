@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `0831e01fcebd79e15978437bd0f702259c3d02d7`
+**Current audited HEAD:** `162e847279a3106c8a4e2672f1334695511e34dd`
 
 ## Operating rules
 
@@ -53,6 +53,8 @@
 
 ### M3 — Daily task selection and plan correctness
 **Status: implemented and CI-verified.**
+
+- Additional regression fix: resume the exact persisted in-progress passage rather than clipping it to the daily target and leaving a parent range that repeats the same ayah. End coordinates are clamped to the canonical Surah verse count. Verified by CI run `42169589580`.
 
 - Dashboard selects only due/overdue engine-plan tasks, never a future task.
 - Preset plans remain within their explicit ayah/Surah scope.
