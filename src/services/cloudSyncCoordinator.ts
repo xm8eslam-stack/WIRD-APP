@@ -1,4 +1,4 @@
-import { doc, setDoc, getDocs, collection, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { LocalSyncOutbox } from './localSyncOutbox';
 import { StorageService } from './storageService';
@@ -201,7 +201,21 @@ class CloudSyncCoordinator {
                 eventType: 'domain-mutation',
                 payload: entry.payload
               };
-              await setDoc(eventRef, eventRecord);
+              // Event documents are append-only. A previous attempt may have
+              // committed the remote event but failed before the local outbox ack.
+              // Verify an existing event instead of trying to update it with setDoc.
+              const existingEvent = await getDoc(eventRef);
+              if (existingEvent.exists()) {
+                const remote = existingEvent.data();
+                const matches = Object.keys(eventRecord).every((key) =>
+                  JSON.stringify(remote[key]) === JSON.stringify(eventRecord[key])
+                );
+                if (!matches) {
+                  throw new Error('يوجد تعارض في سجل المزامنة لنفس معرف العملية؛ تم الاحتفاظ بالعملية المحلية دون استبدال السجل السحابي.');
+                }
+              } else {
+                await setDoc(eventRef, eventRecord);
+              }
             }
 
             // Acknowledge locally on confirmation
