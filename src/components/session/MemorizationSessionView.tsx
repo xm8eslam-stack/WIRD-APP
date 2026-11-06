@@ -467,7 +467,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       {/* 3. Audio & Repetition Counter Deck */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* Recitation Audio Control */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between">
+        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Volume2 className="w-4 h-4 text-emerald-700" />
