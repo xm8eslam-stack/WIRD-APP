@@ -17,6 +17,9 @@ import { loadSurahVerses } from '../../data/quranDataLoader';
 import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
+import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
+import type { PlaybackRate } from '../../services/audioPreferences';
+import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 
 interface QuranLibraryViewProps {
   onStartSession: (surahNumber: number, startAyah?: number, endAyah?: number) => void;
@@ -43,6 +46,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
   // Audio state
   const [activeReciter, setActiveReciter] = useState<ReciterId>(initialReciter || 'alafasy');
+  const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(() => getSavedPlaybackRate());
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -102,6 +106,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     }
 
     const audio = new Audio(audioUrl);
+    audio.playbackRate = getSavedPlaybackRate();
     audioRef.current = audio;
     setPlayingAyah(ayahNumberInSurah);
     setIsPlaying(true);
@@ -121,6 +126,12 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
         setPlayingAyah(null);
       }
     };
+  };
+
+  const handlePlaybackRateChange = (rate: PlaybackRate) => {
+    const savedRate = savePlaybackRate(rate);
+    setPlaybackRate(savedRate);
+    if (audioRef.current) audioRef.current.playbackRate = savedRate;
   };
 
   const handleStopAudio = () => {
@@ -171,6 +182,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
               ))}
             </select>
           </div>
+          <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
         </div>
 
         {/* Search & Filter Bar */}
