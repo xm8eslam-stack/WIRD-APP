@@ -473,13 +473,16 @@ export const RetentionService = {
     if (!Number.isSafeInteger(minutesSpent) || minutesSpent < 0 || minutesSpent > 1440) {
       throw new Error('مدة المراجعة المسجلة غير صالحة؛ يجب أن تكون عدد دقائق صحيحاً من 0 إلى 1440.');
     }
+    let weakAyahText: string | undefined;
     if (weakAyahDetails !== undefined) {
+      const suppliedText = weakAyahDetails?.text;
       if (rating !== 'failed' || !weakAyahDetails || typeof weakAyahDetails !== 'object' ||
           !Number.isSafeInteger(weakAyahDetails.ayahNumber) || weakAyahDetails.ayahNumber < 1 ||
-          typeof weakAyahDetails.text !== 'string' || !weakAyahDetails.text.trim() || weakAyahDetails.text.length > 4000 ||
+          typeof suppliedText !== 'string' || !suppliedText.trim() || suppliedText.length > 4000 ||
           (weakAyahDetails.notes !== undefined && (typeof weakAyahDetails.notes !== 'string' || weakAyahDetails.notes.length > 2000))) {
         throw new Error('بيانات الآية المتعثرة غير صالحة أو لا تتوافق مع تقييم المراجعة.');
       }
+      weakAyahText = suppliedText;
     }
 
     const portions = this.getPortions();
@@ -554,7 +557,7 @@ export const RetentionService = {
           target.surahNumber,
           weakAyahDetails.ayahNumber,
           target.surahName,
-          weakAyahDetails.text,
+          weakAyahText!,
           weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
         );
       } catch (error) {
