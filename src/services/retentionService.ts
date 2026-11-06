@@ -427,16 +427,7 @@ export const RetentionService = {
         easeFactor: 2.5,
         repetitionCount: 1,
         mistakesCount: 0,
-        history: [
-          {
-            id: `init-${createSecureId()}`,
-            date: today,
-            rating: 'successful',
-            intervalDaysBefore: 0,
-            intervalDaysAfter: 1,
-            notes: 'إتمام جلسة الحفظ الأولى للمقطع'
-          }
-        ],
+        history: [],
         createdAt: new Date().toISOString()
       };
       portions.unshift(updatedPortion);
