@@ -105,6 +105,45 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Authenticated browsers without IndexedDB retain local-only persistence', async () => {
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'indexedDB');
+      try {
+        Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: undefined });
+        StorageService.__resetStorageForTests();
+        StorageService.setStorageScope('user:local-only-browser');
+        const result = await persistPlansSnapshot(PRESET_PLANS);
+        assert(result.success && result.mode === 'local-only' && !result.queued,
+          'A browser without IndexedDB must retain the local-only storage path');
+        assert(JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+          'The local-only fallback must preserve the plan snapshot');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'indexedDB', originalDescriptor);
+        else delete (globalThis as any).indexedDB;
+      }
+    });
+
+    await test('An IndexedDB enqueue failure never falls back to a local-only write', async () => {
+      const journal = {
+        getProjectionCursor: async () => 0,
+        listEventsAfter: async () => [],
+        enqueue: async () => { throw new Error('simulated IndexedDB quota failure'); },
+        close: () => undefined
+      } as unknown as IndexedDbSyncJournal;
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:enqueue-failure');
+      let fallbackCalled = false;
+      const result = await persistJournaledSnapshot({
+        collection: 'plans',
+        documentId: 'snapshot',
+        payload: { records: PRESET_PLANS }
+      }, () => { fallbackCalled = true; return StorageService.savePlans(PRESET_PLANS); },
+      { journal, runExclusive: inlineLock });
+      assert(!result.success && !result.queued && !result.recoveryBlocked,
+        'An enqueue failure must be reported without claiming a queued event');
+      assert(!fallbackCalled && StorageService.getPlans().length === 0,
+        'The local archive must remain untouched when IndexedDB cannot commit the event');
+    });
+
     await test('Guest writes remain local-only and do not open a journal', async () => {
       StorageService.__resetStorageForTests();
       StorageService.setStorageScope('guest');
