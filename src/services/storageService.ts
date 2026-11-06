@@ -209,6 +209,18 @@ function setItem(key: string, value: string): boolean {
   return rawSetItem(resolveStorageKey(key), value);
 }
 
+// Unlike getItem, rollback verification must never fall back to memory while
+// localStorage exists: an inaccessible durable store is not a verified restore.
+function verifyItem(key: string, expected: string | null): boolean {
+  const resolved = resolveStorageKey(key);
+  if (typeof localStorage === 'undefined') return (memoryStorage.get(resolved) ?? null) === expected;
+  try {
+    return localStorage.getItem(resolved) === expected;
+  } catch {
+    return false;
+  }
+}
+
 function removeItem(key: string): boolean {
   const resolved = resolveStorageKey(key);
   return rawRemoveItem(resolved) && rawGetItem(resolved) === null;
@@ -869,6 +881,11 @@ export const StorageService = {
     return removeItem(key);
   },
 
+  /** Verify a scoped raw value against durable localStorage without memory fallback. */
+  verifyRawItem(key: string, expected: string | null): boolean {
+    return verifyItem(key, expected);
+  },
+
   /** @internal Test-only reset; never call from application UI. */
   __resetStorageForTests(): void {
     activeStorageScope = 'legacy';
@@ -1283,7 +1300,7 @@ export const StorageService = {
         try {
           if (previous === null) removeItem(key);
           else setItem(key, previous);
-          return getItem(key) === previous;
+          return verifyItem(key, previous);
         } catch {
           return false;
         }
