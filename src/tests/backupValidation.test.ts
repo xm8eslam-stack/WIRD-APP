@@ -85,7 +85,7 @@ export function runBackupTests(): { passed: number; failed: number } {
       revisionItems: [revisionItem],
       logs: [log],
       tests: [testResult],
-      portions: [{ ...SAMPLE_PORTION, id: 'legacy-portion-67-1' }],
+      portions: [SAMPLE_PORTION],
       unifiedPortions: [SAMPLE_PORTION],
       weakVerses: [weakVerse]
     };
@@ -125,6 +125,53 @@ export function runBackupTests(): { passed: number; failed: number } {
     badEnginePlan.schedule[0].dayOfWeek = 7;
     assert(!validateBackupPayload({ version: 4, enginePlans: [badEnginePlan] }).valid,
       'Malformed nested engine schedule days must be rejected');
+  });
+
+  test('Version 4 rejects divergent legacy and canonical backup projections', () => {
+    const mismatchedPortions = validateBackupPayload({
+      version: 4,
+      portions: [{ ...SAMPLE_PORTION, status: 'weak' }],
+      unifiedPortions: [SAMPLE_PORTION]
+    });
+    assert(!mismatchedPortions.valid, 'Legacy portion projection must match canonical portions');
+
+    const mismatchedRevision = validateBackupPayload({
+      version: 4,
+      unifiedPortions: [SAMPLE_PORTION],
+      revisionItems: [{
+        id: 'revision-different', surahNumber: 67, surahName: 'الملك',
+        startAyah: 1, endAyah: 5, type: 'minor', nextDueDate: '2026-11-06',
+        intervalDays: 1, easeFactor: 2.5, repetitionCount: 1, strength: 'weak'
+      }]
+    });
+    assert(!mismatchedRevision.valid, 'Revision projection must match canonical portion metadata');
+  });
+
+  test('Backup export rejects malformed daily logs and divergent legacy projections', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const malformedLog = JSON.stringify([{
+        date: '2026-11-06', memorizedAyahsCount: -1, reviewedPagesCount: 0,
+        minutesSpent: 1, completedTasks: []
+      }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.LOGS, malformedLog), 'Malformed log fixture should be stored');
+      let logExportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { logExportRejected = true; }
+      assert(logExportRejected, 'Malformed log archive must block backup export');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === malformedLog, 'Malformed log bytes must remain unchanged');
+
+      StorageService.resetAllData();
+      assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Canonical fixture should save');
+      const divergentLegacy = JSON.stringify([{ ...SAMPLE_PORTION, status: 'weak' }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.PORTIONS, divergentLegacy), 'Divergent projection fixture should be stored');
+      let projectionExportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { projectionExportRejected = true; }
+      assert(projectionExportRejected, 'Divergent legacy projection must block backup export');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === divergentLegacy, 'Divergent legacy projection must be preserved');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
   });
 
   test('Malformed backup metadata is rejected when supplied', () => {
