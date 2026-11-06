@@ -49,10 +49,9 @@ function isValidWeakVerseArray(value: unknown): value is WeakVerseItem[] {
   return true;
 }
 
-const LEGACY_MEMORIZATION_HISTORY_NOTE = 'إتمام جلسة الحفظ الأولى للمقطع';
-
 function isLegacyMemorizationHistoryEntry(log: RevisionLogEntry): boolean {
-  return log.id.startsWith('init-') && log.notes === LEGACY_MEMORIZATION_HISTORY_NOTE;
+  // The legacy first-memorization writer uniquely prefixed these synthetic entries with init-.
+  return log.id.startsWith('init-');
 }
 
 // Initial realistic seed portions representing various Quran portions across the 6 statuses
