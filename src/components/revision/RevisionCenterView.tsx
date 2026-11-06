@@ -342,6 +342,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       return;
     }
 
+    const resolvedWeakVerse = RetentionService.getWeakVerses().find(item => item.id === id);
+    if (!resolvedWeakVerse) {
+      setActionFeedback({ message: 'لم نعثر على بيانات الآية الأصلية؛ لم يتم تسجيل حدث إزالة غير مكتمل.', type: 'warn' });
+      return;
+    }
     let mutationId = weakVerseResolutionMutationIdsRef.current.get(id);
     if (!mutationId) {
       mutationId = 'weak-resolve-' + createSecureId();
@@ -359,20 +364,17 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           operation: 'upsert',
           payload: {
             records: prepared.records,
-            domainEvent: (() => {
-              const resolved = RetentionService.getWeakVerses().find(item => item.id === id);
-              return {
-                schemaVersion: 1,
-                id: mutationId,
-                type: 'weak_verse.resolved' as const,
-                occurredAt: weakVerseResolutionOccurredAtRef.current.get(id) || new Date().toISOString(),
-                payload: {
-                  weakVerseId: id,
-                  surahNumber: resolved?.surahNumber ?? 0,
-                  ayahNumber: resolved?.ayahNumber ?? 0
-                }
-              } satisfies WeakVerseResolvedEvent;
-            })()
+            domainEvent: {
+              schemaVersion: 1,
+              id: mutationId,
+              type: 'weak_verse.resolved' as const,
+              occurredAt: weakVerseResolutionOccurredAtRef.current.get(id) || new Date().toISOString(),
+              payload: {
+                weakVerseId: id,
+                surahNumber: resolvedWeakVerse.surahNumber,
+                ayahNumber: resolvedWeakVerse.ayahNumber
+              }
+            } satisfies WeakVerseResolvedEvent
           }
         },
         () => RetentionService.saveWeakVerses(prepared.records)
