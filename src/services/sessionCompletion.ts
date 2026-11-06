@@ -8,25 +8,33 @@ export interface SessionCompletionMetrics {
 
 /**
  * Keep review activity separate from memorization progress.
- * Review sessions may count reviewed pages, but never create or advance a
- * memorized portion. The caller passes the actual reviewed page count.
+ * Reject invalid counters at the domain boundary; never silently floor or clamp
+ * user-provided values because doing so can turn corrupt input into a valid-looking completion.
  */
 export function getSessionCompletionMetrics(
   mode: SessionMode,
   memorizedAyahs: number,
   reviewedPages: number
 ): SessionCompletionMetrics {
-  if (mode === 'review') {
-    return {
-      memorizedAyahs: 0,
-      reviewedPages: Math.max(0, Math.floor(reviewedPages)),
-      shouldRecordMemorization: false
-    };
+  if (mode !== 'memorize' && mode !== 'review') {
+    throw new TypeError('نوع جلسة القرآن غير صالح.');
+  }
+  if (!Number.isSafeInteger(memorizedAyahs) || memorizedAyahs < 0 || memorizedAyahs > 6236) {
+    throw new RangeError('عدد الآيات المحفوظة يجب أن يكون عددًا صحيحًا من 0 إلى 6236.');
+  }
+  if (!Number.isSafeInteger(reviewedPages) || reviewedPages < 0 || reviewedPages > 604) {
+    throw new RangeError('عدد صفحات المراجعة يجب أن يكون عددًا صحيحًا من 0 إلى 604.');
   }
 
-  return {
-    memorizedAyahs: Math.max(0, Math.floor(memorizedAyahs)),
-    reviewedPages: 0,
-    shouldRecordMemorization: true
-  };
+  return mode === 'review'
+    ? {
+        memorizedAyahs: 0,
+        reviewedPages,
+        shouldRecordMemorization: false
+      }
+    : {
+        memorizedAyahs,
+        reviewedPages: 0,
+        shouldRecordMemorization: true
+      };
 }

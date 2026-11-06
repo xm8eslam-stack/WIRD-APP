@@ -23,11 +23,30 @@ export function runSessionCompletionTests(): { passed: number; failed: number } 
     assert(result.shouldRecordMemorization === true, 'Memorization must write memorization progress');
   });
 
-  test('Negative counters are clamped to zero', () => {
-    const review = getSessionCompletionMetrics('review', -4, -2);
-    const memorize = getSessionCompletionMetrics('memorize', -4, -2);
-    assert(review.reviewedPages === 0 && review.memorizedAyahs === 0, 'Review counters must not be negative');
-    assert(memorize.memorizedAyahs === 0 && memorize.reviewedPages === 0, 'Memorization counters must not be negative');
+  test('Negative counters are rejected instead of being silently clamped', () => {
+    let reviewRejected = false;
+    let memorizeRejected = false;
+    try { getSessionCompletionMetrics('review', -4, -2); } catch { reviewRejected = true; }
+    try { getSessionCompletionMetrics('memorize', -4, -2); } catch { memorizeRejected = true; }
+    assert(reviewRejected, 'Negative review counters must be rejected');
+    assert(memorizeRejected, 'Negative memorization counters must be rejected');
+  });
+
+  test('Fractional, unsafe, non-finite, and out-of-range counters are rejected', () => {
+    const invalidCases: Array<[any, number, number]> = [
+      ['review', 1.5, 1],
+      ['memorize', 1, 2.25],
+      ['memorize', Number.MAX_SAFE_INTEGER + 1, 0],
+      ['review', 0, Number.POSITIVE_INFINITY],
+      ['memorize', 6237, 0],
+      ['review', 0, 605],
+      ['unknown', 0, 0]
+    ];
+    for (const [mode, ayahs, pages] of invalidCases) {
+      let rejected = false;
+      try { getSessionCompletionMetrics(mode, ayahs, pages); } catch { rejected = true; }
+      assert(rejected, 'Invalid session metric input must be rejected: ' + String(mode) + '/' + ayahs + '/' + pages);
+    }
   });
 
   return { passed, failed };

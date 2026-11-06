@@ -142,5 +142,66 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
     assert(JSON.stringify(RetentionService.getPortions()) === before, 'Rejected duration must not alter the portion or history');
     StorageService.__resetStorageForTests();
   });
+  test('Invalid revision ratings and weak-ayah coordinates are rejected before mutation', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:revision-invalid-inputs');
+    try {
+      const today = getLocalDateString();
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 10,
+        status: 'recently_memorized', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      const before = JSON.stringify(RetentionService.getPortions());
+
+      let invalidRatingRejected = false;
+      try { RetentionService.recordRevisionPerformance(portion.id, 'excellent' as any); }
+      catch { invalidRatingRejected = true; }
+      assert(invalidRatingRejected, 'Unsupported revision rating must be rejected');
+
+      let outsideRangeRejected = false;
+      try {
+        RetentionService.recordRevisionPerformance(portion.id, 'failed', undefined, {
+          ayahNumber: 11, text: 'آية خارج المقطع'
+        });
+      } catch { outsideRangeRejected = true; }
+      assert(outsideRangeRejected, 'Weak ayah outside the reviewed portion must be rejected');
+
+      let notesRejected = false;
+      try { RetentionService.recordRevisionPerformance(portion.id, 'successful', 'x'.repeat(2001)); }
+      catch { notesRejected = true; }
+      assert(notesRejected, 'Oversized revision notes must be rejected');
+
+      assert(JSON.stringify(RetentionService.getPortions()) === before,
+        'All invalid revision inputs must leave portion status, counters, and history unchanged');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Fractional and overlong revision durations are rejected before mutation', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:revision-duration-bounds');
+    try {
+      const today = getLocalDateString();
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 1, surahName: 'الفاتحة', startAyah: 1, endAyah: 7,
+        status: 'recently_memorized', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      const before = JSON.stringify(RetentionService.getPortions());
+      for (const invalidMinutes of [1.5, 1441, Number.MAX_SAFE_INTEGER + 1]) {
+        let rejected = false;
+        try { RetentionService.recordRevisionPerformance(portion.id, 'failed', undefined, undefined, invalidMinutes); }
+        catch { rejected = true; }
+        assert(rejected, 'Invalid revision duration must be rejected: ' + invalidMinutes);
+        assert(JSON.stringify(RetentionService.getPortions()) === before,
+          'Rejected duration must not alter revision history or scheduling');
+      }
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
