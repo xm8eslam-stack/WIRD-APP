@@ -574,7 +574,7 @@ function isValidRevisionHistoryEntry(value: unknown): value is RevisionLogEntry 
 
 function isValidIsoTimestamp(value: unknown): boolean {
   return typeof value === 'string' && value.length <= 64 &&
-    /^\\d{4}-\\d{2}-\\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+    /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
 }
 
 function isValidConflictAuditEntry(value: unknown): boolean {
