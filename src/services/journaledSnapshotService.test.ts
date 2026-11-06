@@ -64,6 +64,21 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Session completion includes the matching smart-plan snapshot in the same journal event', async () => {
+      const journal = createJournal();
+      const result = await persistJournaledSessionCompletion({
+        mode: 'review', memorizedAyahs: 0, reviewedPages: 1, minutes: 4,
+        taskName: 'مراجعة اختبار مع الخطة', enginePlansSnapshot: []
+      }, { journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      assert(result.success, 'A review session with a smart-plan projection must persist');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'The activity/profile and smart-plan projections must share one event/outbox transaction');
+      assert(StorageService.getEnginePlans().length === 0,
+        'The empty smart-plan snapshot must be projected without creating a second journal event');
+      journal.close();
+    });
+
     await test('Authenticated profile writes commit to the journal before local projection', async () => {
       const journal = createJournal();
       const profile = { ...CLEAN_INITIAL_PROFILE, name: 'حافظ القرآن' };
