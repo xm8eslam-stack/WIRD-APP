@@ -3,9 +3,9 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Last verified application-code main SHA before this documentation checkpoint: f739b64aae61398c51769340f0e4182d51624fca
-- Main Quality Gate: run 42236977371 — **success** on exact main SHA f739b64aae61398c51769340f0e4182d51624fca.
-- Production deployment for current main SHA f739b64aae61398c51769340f0e4182d51624fca: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
+- Last verified application-code main SHA before this documentation checkpoint: f3a207844020494ebf6a350ae9cb27d6db62398e
+- Main Quality Gate: run 42240305979 — **success** on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e.
+- Production deployment for current main SHA f3a207844020494ebf6a350ae9cb27d6db62398e: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
 ## Completed since the previous checkpoint
 1. PR #14 — c0390692d5f9ec7e81e04c8a674dbb035e0924ec
@@ -128,3 +128,38 @@
 2. Replace localStorage outbox read/modify/write with an IndexedDB append-only event journal and atomic event/outbox transaction; test cross-tab atomicity, crash recovery, quota handling, and deterministic replay.
 3. Connect domain mutations to UID-scoped Firestore only after the journal is tested; finish collection-specific rules and two-account/two-device/offline tests.
 4. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; verify an actual production deployment before release.
+
+
+## 2026-11-06 — PR #30 IndexedDB event journal foundation merged
+
+- PR #30 merged to `main` as `6c48b2937bd99ddead88c5ca829381bf096e0c94`.
+- Added a UID-scoped append-only IndexedDB event store, outbox delivery records, acknowledgement records, and per-UID device metadata.
+- Event and outbox records are committed in one read/write transaction. Cross-tab duplicate enqueue is serialized; identical mutation IDs are idempotent, changed-content collisions are rejected, and transaction abort leaves neither half committed.
+- Acknowledgement and retry state are stored separately from immutable event history. Retry backoff is capped.
+- Added `fake-indexeddb@6.2.7` and tests for cross-tab enqueue, abort atomicity, acknowledgement, retry, UID isolation, and reopen recovery.
+- Exact-head Quality Gate passed on SHA `9bc4945d92737df086396f436b2388a92972bf92`; **344 automated assertions passed, 0 failed; 10 Firestore rules tests passed; dependency audit, TypeScript, production build, and server smoke test passed**. Post-merge main run `42238366343` passed.
+
+## 2026-11-06 — PR #31 legacy outbox migration merged
+
+- PR #31 merged to `main` as `16481abc42c337defa522aa8049a0b62c5f41042`.
+- Added an atomic, idempotent migration from the legacy localStorage outbox into the IndexedDB journal, preserving pending mutations, retry metadata, device identity, acknowledged IDs, and known fingerprints.
+- Migration rejects ambiguous ID/fingerprint conflicts and aborts the complete transaction rather than committing partial records.
+- The legacy localStorage value is intentionally retained as a recovery copy because older tabs may still write it. Changed snapshots are fingerprinted and incrementally merged; source bytes are verified before confirming migration.
+- Exact-head Quality Gate passed on SHA `2f6e82213188110c9ae69cf057c376b1eb40051d`; **349 automated assertions passed, 0 failed; 10 Firestore rules tests passed; dependency audit, TypeScript, production build, and server smoke test passed**. Post-merge main run `42239494829` passed.
+
+## 2026-11-06 — PR #32 async IndexedDB outbox adapter merged
+
+- PR #32 merged to `main` as `f3a207844020494ebf6a350ae9cb27d6db62398e`.
+- Replaced the synchronous localStorage outbox API with async IndexedDB-backed enqueue, list-ready, acknowledge, retry, and snapshot operations.
+- Every facade operation first checks for legacy localStorage data and imports changed snapshots idempotently. The legacy source remains available as a recovery copy.
+- Audited all 51 non-test TypeScript/TSX source files: no production call sites currently invoke `LocalSyncOutbox`. The async adapter is therefore in place, but domain mutation events are not yet connected to it.
+- Exact-head Quality Gate runs `42240055554` (push) and `42240065806` (PR) passed on SHA `d97d8cf10cd076a726dbf377c8a4078b8c2dec2c`: **346 automated assertions passed, 0 failed; 10 Firestore rules tests passed; dependency audit, TypeScript, production build, and server smoke test passed**.
+- Post-merge main Quality Gate run `42240305979` passed on exact main SHA `f3a207844020494ebf6a350ae9cb27d6db62398e`.
+
+## Updated next actions — Phase 2 remains IN PROGRESS
+
+1. Connect real domain mutation paths to the journal with explicit transaction/recovery semantics; begin with profile and plan writes, then portions/revision, weak verses, tests, and activity/session data.
+2. Add deterministic journal-to-local projection replay so a crash after the IndexedDB write but before localStorage projection cannot lose a committed user action.
+3. Implement the Firestore sync worker, server acknowledgement, retry/backoff, tombstone handling, and collection-specific security rules.
+4. Run two-account/two-device/offline/online integration tests and verify actual production deployment before release.
+5. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA.
