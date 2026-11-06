@@ -202,7 +202,7 @@ function isValidUserProfile(value: unknown): value is UserProfile {
   if (!Number.isSafeInteger(profile.streakDays) || Number(profile.streakDays) < 0 || Number(profile.streakDays) > 100_000) return false;
   if (typeof profile.lastActiveDate !== 'string') return false;
   if (profile.lastActiveDate !== '') {
-    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(profile.lastActiveDate)) return false;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(profile.lastActiveDate)) return false;
     const [year, month, day] = profile.lastActiveDate.split('-').map(Number);
     const parsedDate = new Date(Date.UTC(year, month - 1, day));
     if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== profile.lastActiveDate) return false;
