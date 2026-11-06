@@ -15,7 +15,11 @@
 4. Inspect current `main` and the current uncommitted/working branch state. Verify the last CI run and deployment status independently.
 5. Do not merge PR #1 again. It was already merged.
 6. Do not merge `feat/phase5-premium-ui-ux` or `work/wird-audit-remediation` wholesale; both were significantly diverged from main when last compared.
-7. Continue M4, not cloud sync:
+7. Finish Phase 1 record-level data validation before starting new M4 event-ledger implementation:
+   - add strict validators for each record in plans, engine plans, revision items, test results, logs, and weak-verse archives;
+   - make backup import/export use the same strict validators and reject malformed nested records before any writes;
+   - add legacy-compatibility and invalid-record regression tests; preserve original bytes on failure.
+   - then continue M4, not cloud sync:
    - audit `src/services/localSyncOutbox.ts` and its test file;
    - identify every session, review, weak-verse, test, plan, and profile mutation call site;
    - reproduce and fix the confirmed bug where reusing an acknowledged mutation ID with different content returns `already_acknowledged` without comparing payload/document/collection/operation; also validate pending/acknowledged uniqueness and disjointness;
