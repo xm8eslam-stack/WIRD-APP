@@ -1253,6 +1253,11 @@ export const StorageService = {
     const canonicalPortions = this.getUnifiedPortions();
     const canonicalRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
     const schemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+    const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
+    const legacyRevisionRaw = getItem(STORAGE_KEYS.REVISION);
+    if (schemaVersion !== '2' && (legacyPortionsRaw !== null || legacyRevisionRaw !== null)) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: توجد سجلات قديمة لم يكتمل ترحيلها؛ تم إيقاف التصدير لمنع إنشاء نسخة ناقصة.');
+    }
     if (schemaVersion === '2' && canonicalRaw === null) {
       throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد مفقود رغم إعلان الإصدار الثاني؛ لم يتم إنشاء نسخة ناقصة.');
     }
@@ -1325,7 +1330,6 @@ export const StorageService = {
       if (parsed.logs !== undefined) writeAndVerify(STORAGE_KEYS.LOGS, parsed.logs);
       if (parsed.tests !== undefined) writeAndVerify(STORAGE_KEYS.TESTS, parsed.tests);
       if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
-      if (parsed.portions !== undefined) writeAndVerify(STORAGE_KEYS.PORTIONS, parsed.portions);
 
       if (parsed.unifiedPortions !== undefined) {
         if (!this.saveUnifiedPortions(parsed.unifiedPortions)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
