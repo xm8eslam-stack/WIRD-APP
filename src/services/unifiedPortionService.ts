@@ -475,19 +475,30 @@ function mergePortionRecords(
   ];
 
   metaFields.forEach(field => {
-    if (
-      incoming[field] !== undefined && 
-      existing[field] !== undefined && 
-      incoming[field] !== existing[field]
-    ) {
+    if (incoming[field] === undefined) return;
+    const existingValue = existing[field];
+    if (existingValue === undefined || existingValue === null || existingValue === '') {
+      // Fill metadata missing from the first legacy source instead of silently dropping it.
+      (existing as any)[field] = incoming[field];
+      return;
+    }
+    if (incoming[field] !== existingValue) {
       existing.conflictAudit!.push({
         source: sourceName,
         field: String(field),
-        value: `Metadata conflict: existing '${existing[field]}' vs incoming '${incoming[field]}'`,
+        value: `Metadata conflict: existing '${existingValue}' vs incoming '${incoming[field]}'`,
         timestamp: new Date().toISOString()
       });
     }
   });
+
+  if (Array.isArray(incoming.conflictAudit)) {
+    incoming.conflictAudit.forEach(auditEntry => {
+      const signature = JSON.stringify(auditEntry);
+      const alreadyPresent = existing.conflictAudit!.some(existingEntry => JSON.stringify(existingEntry) === signature);
+      if (!alreadyPresent) existing.conflictAudit!.push({ ...auditEntry });
+    });
+  }
 
   // 1. Status: Weakest/most urgent state wins to prevent forgotten lapses
   if (incoming.status) {
