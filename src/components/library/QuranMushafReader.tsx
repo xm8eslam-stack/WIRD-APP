@@ -68,6 +68,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [retry, setRetry] = useState(0);
   const [tafsirAyah, setTafsirAyah] = useState<Ayah | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const autoPlayNextPageRef = useRef(false);
 
   const pageSegments = useMemo(() => PAGE_INDEX[String(page)] || [], [page]);
 
@@ -140,7 +141,12 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
     audio.onended = () => {
       if (index + 1 < queue.length) playAyahAt(index + 1, queue);
-      else {
+      else if (page < 604) {
+        autoPlayNextPageRef.current = true;
+        setIsPlaying(false);
+        setPlayingIndex(null);
+        setPage(page + 1);
+      } else {
         setIsPlaying(false);
         setPlayingIndex(null);
       }
@@ -155,6 +161,13 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
       setPlayingIndex(null);
     });
   };
+
+  useEffect(() => {
+    if (!isLoading && ayahs.length > 0 && autoPlayNextPageRef.current) {
+      autoPlayNextPageRef.current = false;
+      playAyahAt(0, ayahs);
+    }
+  }, [ayahs, isLoading, page]);
 
   const togglePageAudio = () => {
     if (isPlaying) {
@@ -172,6 +185,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const changePage = (nextPage: number) => {
     if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > 604) return;
+    autoPlayNextPageRef.current = false;
     stopAudio();
     setPage(nextPage);
   };
