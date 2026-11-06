@@ -115,7 +115,7 @@ export async function getTafsir(
 
   // Vercel's SPA fallback and upstream gateways can return an HTML document
   // for a missing/failed API route. Never pass that document to JSON.parse().
-  if (trimmedResponse.startsWith('<!doctype') || trimmedResponse.startsWith('<html') || contentType.includes('text/html')) {
+  if (trimmedResponse.startsWith('<') || contentType.toLowerCase().includes('text/html')) {
     throw new Error(
       'خدمة التفسير لم تُرجع بيانات التفسير؛ وصلتنا صفحة HTML بدل استجابة JSON. غالباً مسار API غير متاح في النشر الحالي. أعد المحاولة لاحقاً.'
     );
