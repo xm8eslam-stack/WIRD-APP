@@ -354,14 +354,17 @@ export class IndexedDbSyncJournal {
           const existingEvent = eventsByKey.get(key);
           if (existingOutbox && existingOutbox.fingerprint !== fingerprint) {
             failure = new Error('يوجد تعارض بين صندوق المزامنة القديم والحديث لنفس المعرف؛ أوقفنا الترحيل لحماية البيانات.');
+            transaction.abort();
             return;
           }
           if (existingAck && existingAck.fingerprint !== fingerprint) {
             failure = new Error('يتعارض سجل قديم مع عملية أُقرّت سابقاً؛ لم يتم استبدال أي سجل.');
+            transaction.abort();
             return;
           }
           if (existingEvent && existingEvent.fingerprint !== fingerprint) {
             failure = new Error('سجل الأحداث يحتوي على محتوى مختلف لنفس المعرف؛ تم إيقاف الترحيل.');
+            transaction.abort();
             return;
           }
           if (existingAck) continue;
