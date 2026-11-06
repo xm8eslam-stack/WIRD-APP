@@ -23,6 +23,9 @@ import {
   calculateUniqueMemorizedPages,
   calculateCanonicalSM2,
   getPrioritizedRevisionQueue,
+  getPlanTargetSurahNumbers,
+  findNextUnmemorizedRange,
+  calculateUniqueRetentionScore,
   migrateLegacyDataLosslessly,
 } from '../services/unifiedPortionService';
 import { StorageService, STORAGE_KEYS } from '../services/storageService';
@@ -265,6 +268,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(migrated.length === 1, 'Migration coalesces duplicate portions and revisions into 1 canonical record');
     assert(migrated[0].id === 's18_a1_a10', 'Migrated record uses canonical ID (s18_a1_a10)');
     assert(migrated[0].status === 'weak', 'Conflict resolution: weakest status (weak) wins');
+    assert(migrated[0].strength === 'weak', 'Conflict resolution must not retain a stronger label after a weaker status wins');
     assert(migrated[0].repetitionCount === 5, 'Conflict resolution: highest repetition count (5) preserved');
     assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate preserved');
     assert(migrated[0].history?.length === 2, 'Lossless history: duplicate log ID with differing content is preserved with modified ID');
@@ -275,6 +279,59 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(firstHistoryIds === repeatedHistoryIds, 'Conflicting history IDs remain deterministic across repeated migrations');
 
     assert(report.success === true, 'Migration report reports success');
+
+    const missingStrengthRevision = {
+      ...legacyRevisions[0],
+      id: 'legacy-revision-without-strength',
+      startAyah: 20,
+      endAyah: 25,
+      strength: undefined
+    } as any;
+    const strengthFallback = migrateLegacyDataLosslessly([], [missingStrengthRevision]);
+    assert(strengthFallback.report.success &&
+      strengthFallback.portions[0].status === 'recently_memorized' &&
+      strengthFallback.portions[0].strength === 'medium',
+      'A legacy revision without strength must use a consistent recently_memorized/medium fallback');
+
+    const identicalAttemptA: PortionStatusRecord = {
+      ...legacyPortions[0],
+      id: 'legacy-identical-a',
+      history: [{ id: 'attempt-a', date: '2026-04-10', rating: 'successful', intervalDaysBefore: 5, intervalDaysAfter: 10 }]
+    };
+    const identicalAttemptB: PortionStatusRecord = {
+      ...legacyPortions[0],
+      id: 'legacy-identical-b',
+      history: [{ id: 'attempt-b', date: '2026-04-10', rating: 'successful', intervalDaysBefore: 5, intervalDaysAfter: 10 }]
+    };
+    const sameContentDifferentEvents = migrateLegacyDataLosslessly([identicalAttemptA, identicalAttemptB], []);
+    assert(sameContentDifferentEvents.report.success, 'Distinct review attempts with identical content must migrate successfully');
+    assert(sameContentDifferentEvents.portions[0].history?.length === 2,
+      'Distinct event IDs must both be preserved even when date, rating, intervals, and notes are identical');
+    assert(Boolean(sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-a') &&
+      sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-b')),
+      'Both original stable event IDs must remain unchanged');
+
+    const auditMerge = migrateLegacyDataLosslessly([
+      { ...identicalAttemptA, conflictAudit: [{ source: 'device-a', field: 'status', value: 'legacy status A' }] },
+      { ...identicalAttemptB, conflictAudit: [{ source: 'device-b', field: 'status', value: 'legacy status B' }] }
+    ], []);
+    assert(auditMerge.portions[0].conflictAudit?.length === 2 &&
+      auditMerge.portions[0].conflictAudit.some(item => item.source === 'device-a') &&
+      auditMerge.portions[0].conflictAudit.some(item => item.source === 'device-b'),
+      'Distinct existing conflict-audit entries must survive duplicate portion merges');
+
+    const repeatedSameEvent = migrateLegacyDataLosslessly([
+      identicalAttemptA,
+      { ...identicalAttemptA, id: 'legacy-duplicate-source' }
+    ], []);
+    assert(repeatedSameEvent.portions[0].history?.length === 1,
+      'The same stable event ID and content must still be deduplicated');
+
+    const repeatedConflict = migrateLegacyDataLosslessly(legacyPortions, []);
+    const repeatedConflictAgain = migrateLegacyDataLosslessly(legacyPortions, []);
+    assert(repeatedConflict.portions[0].history?.map(log => log.id).sort().join('|') ===
+      repeatedConflictAgain.portions[0].history?.map(log => log.id).sort().join('|'),
+      'Conflicting event IDs must be deterministic across repeated migrations');
   }
 
   console.log('\n--- 4A. Canonical ID Recovery from Untrusted Legacy IDs ---');
@@ -294,6 +351,53 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const normalized = migrateLegacyDataLosslessly([mismatchedId], []);
     assert(normalized.report.success, 'Migration must recover valid coordinates despite a mismatched legacy ID');
     assert(normalized.portions[0].id === 's18_a1_a10', 'Canonical ID must be derived from actual Surah and ayah coordinates');
+  }
+
+  console.log('\n--- 4B. Strict Range, Queue, and Scheduling Input Validation ---');
+  {
+    const validPortion: WirdPortion = {
+      id: 's1_a1_a7', type: 'passage', surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: 1, endAyah: 7, status: 'stable', nextDueDate: '2026-05-10',
+      intervalDays: 7, easeFactor: 2.5, repetitionCount: 3
+    };
+
+    let invalidDateRejected = false;
+    try { addDaysToLocalDate('2026-02-30', 1); } catch { invalidDateRejected = true; }
+    assert(invalidDateRejected, 'Invalid calendar dates must not silently roll into another month');
+
+    let invalidGradeRejected = false;
+    try { calculateCanonicalSM2(validPortion, 'excellent' as any, { customTodayStr: '2026-05-10' }); }
+    catch { invalidGradeRejected = true; }
+    assert(invalidGradeRejected, 'Unsupported SM-2 grades must be rejected instead of becoming a strong grade');
+
+    let invalidQueueLimitRejected = false;
+    try { getPrioritizedRevisionQueue([validPortion], { todayStr: '2026-05-10', maxDailyLimit: 21 }); }
+    catch { invalidQueueLimitRejected = true; }
+    assert(invalidQueueLimitRejected, 'Daily revision queue must never exceed the hard 20-item limit');
+
+    let invalidMaxVersesRejected = false;
+    try { findNextUnmemorizedRange([], [1], 1.5); } catch { invalidMaxVersesRejected = true; }
+    assert(invalidMaxVersesRejected, 'Daily memorization targets must be whole numbers');
+
+    const invalidPlanSurahScope = getPlanTargetSurahNumbers({ targetSurahs: [115] });
+    assert(invalidPlanSurahScope.length === 0,
+      'Invalid explicit Surah targets must be filtered without widening the scope to all Surahs');
+
+    let invalidPlanPageRejected = false;
+    try { getPlanTargetSurahNumbers({ startPage: 0, endPage: 10 }); } catch { invalidPlanPageRejected = true; }
+    assert(invalidPlanPageRejected, 'Plan page ranges outside 1..604 must be rejected');
+
+    let invalidPortionRejected = false;
+    try {
+      calculateUniqueMemorizedAyahs([{ ...validPortion, startAyah: 1.5 }]);
+    } catch { invalidPortionRejected = true; }
+    assert(invalidPortionRejected, 'Unique ayah calculations must reject fractional Quran coordinates');
+
+    let infiniteRangeRejected = false;
+    try {
+      calculateUniqueRetentionScore([{ ...validPortion, endAyah: Number.POSITIVE_INFINITY }]);
+    } catch { infiniteRangeRejected = true; }
+    assert(infiniteRangeRejected, 'Retention calculations must reject infinite ranges instead of entering an unbounded loop');
   }
 
   console.log('\n--- 5. Verified Quran Coordinates Boundary Validation ---');
@@ -329,6 +433,24 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     };
     const res2 = migrateLegacyDataLosslessly([invalidAyahPortion], []);
     assert(res2.report.success === false, 'Migration rejects invalid Ayah number 99 in Al-Fatiha (max 7)');
+
+    const fractionalPortion = { ...invalidAyahPortion, surahNumber: 67, startAyah: 1.5, endAyah: 3 };
+    const res3 = migrateLegacyDataLosslessly([fractionalPortion], []);
+    assert(res3.report.success === false, 'Migration rejects fractional ayah coordinates instead of normalizing them');
+
+    const invalidHistory = {
+      ...invalidAyahPortion,
+      surahNumber: 67,
+      startAyah: 1,
+      endAyah: 3,
+      history: [{ id: 'bad-date', date: '2026-02-30', rating: 'successful' as const, intervalDaysBefore: 1, intervalDaysAfter: 2 }]
+    };
+    const res4 = migrateLegacyDataLosslessly([invalidHistory], []);
+    assert(res4.report.success === false, 'Migration rejects malformed review history dates and preserves the source archive');
+
+    const malformedRoot = migrateLegacyDataLosslessly(null as any, []);
+    assert(malformedRoot.report.success === false && malformedRoot.portions.length === 0,
+      'Malformed non-array migration roots must return a safe failure report without throwing from the catch path');
   }
 
   console.log('\n--- 6. RetentionService & StorageService Unified Pipeline ---');
