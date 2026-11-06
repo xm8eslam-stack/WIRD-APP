@@ -589,7 +589,7 @@ export const RetentionService = {
     };
   },
 
-  // 1. Daily Revision Queue (Enforces canonical 20-item daily limit & grace period)
+  // 1. Daily Revision Queue (Enforces the canonical 20-item daily limit)
   getDailyRevisionQueue(dateStr?: string): PortionStatusRecord[] {
     const portions = this.getPortions();
     const today = dateStr || getLocalDateString();
