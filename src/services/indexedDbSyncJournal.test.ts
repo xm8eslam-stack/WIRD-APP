@@ -161,16 +161,36 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         acknowledgedFingerprints: [{ mutationId: 'legacy-acknowledged', fingerprint: '0123456789abcdef' }]
       };
       assert(await journal.importLegacyState(legacy) === 'migrated', 'First migration must commit');
-      assert(await journal.importLegacyState(legacy) === 'already_migrated', 'Repeated migration must be idempotent');
+      assert(await journal.importLegacyState(legacy) === 'already_migrated', 'Repeated identical migration must be idempotent');
+      const extended: LegacyOutboxState = {
+        ...legacy,
+        pending: [...legacy.pending, {
+          mutationId: 'legacy-pending-2',
+          collection: 'plans',
+          documentId: 'legacy-plan',
+          operation: 'upsert',
+          schemaVersion: 1,
+          clientUpdatedAtMs: 9300,
+          deviceId: 'legacy-device-1',
+          payload: { pages: 5 },
+          queuedAtMs: 9300,
+          attemptCount: 0,
+          nextAttemptAtMs: 0
+        }]
+      };
+      assert(await journal.importLegacyState(extended) === 'migrated',
+        'A changed legacy snapshot must safely merge newly queued operations');
+      assert(await journal.importLegacyState(extended) === 'already_migrated',
+        'The updated legacy snapshot must also become idempotent');
       const snapshot = await journal.getSnapshot();
       const events = await journal.listEvents();
-      const ready = await journal.listReady(9000);
+      const ready = await journal.listReady(9300);
       assert(snapshot.deviceId === 'legacy-device-1', 'Legacy device identity must be preserved');
-      assert(snapshot.pendingCount === 1 && snapshot.acknowledgedCount === 1 && snapshot.eventCount === 1,
+      assert(snapshot.pendingCount === 2 && snapshot.acknowledgedCount === 1 && snapshot.eventCount === 2,
         'Pending, acknowledged, and event records must migrate as one logical state');
-      assert(ready.length === 1 && ready[0].attemptCount === 2 && ready[0].lastErrorCode === 'NETWORK',
+      assert(ready.length === 2 && ready[0].attemptCount === 2 && ready[0].lastErrorCode === 'NETWORK',
         'Retry metadata must be preserved during migration');
-      assert(events[0].mutationId === 'legacy-pending', 'The legacy pending mutation must become an immutable event');
+      assert(events.some(event => event.mutationId === 'legacy-pending'), 'The legacy pending mutation must become an immutable event');
       journal.close();
     });
 
