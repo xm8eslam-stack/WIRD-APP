@@ -72,6 +72,30 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Weak-verse recording rejects out-of-range Quran coordinates before changing data', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-coordinate');
+    const before = JSON.stringify(RetentionService.getPortions());
+    const result = recordWeakVerseFailure({
+      surahNumber: 114, surahName: 'الناس', ayahNumber: 7, text: 'نص اختبار'
+    });
+    assert(!result.success, 'An ayah beyond the Surah verse count must be rejected');
+    assert(JSON.stringify(RetentionService.getPortions()) === before, 'Invalid coordinates must not mutate memorization portions');
+    assert(RetentionService.getWeakVerses().length === 0, 'Invalid coordinates must not create weak-verse records');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Weak-verse recording uses canonical Surah metadata instead of caller-supplied labels', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-canonical-name');
+    const result = recordWeakVerseFailure({
+      surahNumber: 114, surahName: 'اسم غير صحيح', ayahNumber: 6, text: 'نص اختبار'
+    });
+    assert(result.success, 'A valid Quran coordinate should be accepted');
+    assert(RetentionService.getWeakVerses()[0]?.surahName === 'الناس', 'Stored Surah name must come from canonical metadata');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Successful weak-verse recording saves both the weak portion and counter', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:weak-verse-success');

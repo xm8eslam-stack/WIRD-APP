@@ -1,6 +1,7 @@
 import type { PortionStatusRecord } from '../types/quran';
 import { RetentionService } from './retentionService';
 import { getLocalDateString } from './unifiedPortionService';
+import { ALL_SURAHS } from '../data/quranMeta';
 
 export interface RecordWeakVerseFailureInput {
   surahNumber: number;
@@ -16,6 +17,16 @@ export type RecordWeakVerseFailureResult =
 
 /** Save the canonical weak portion and its mistake counter without leaving a half-written result. */
 export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): RecordWeakVerseFailureResult {
+  const surah = Number.isSafeInteger(input.surahNumber)
+    ? ALL_SURAHS.find(item => item.number === input.surahNumber)
+    : undefined;
+  if (!surah || !Number.isSafeInteger(input.ayahNumber) || input.ayahNumber < 1 || input.ayahNumber > surah.versesCount) {
+    return { success: false, messageAr: 'رقم السورة أو الآية غير صحيح؛ لم يتم تعديل سجل الحفظ أو المراجعة.' };
+  }
+  if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 4000 ||
+      (input.notes !== undefined && (typeof input.notes !== 'string' || input.notes.length > 2000))) {
+    return { success: false, messageAr: 'نص الآية أو الملاحظة غير صالح؛ لم يتم حفظ التغيير.' };
+  }
   const previousPortions = RetentionService.getPortions();
   const existingExactPortion = previousPortions.find(portion =>
     portion.surahNumber === input.surahNumber &&
@@ -27,7 +38,7 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     RetentionService.addPortion({
       type: 'passage',
       surahNumber: input.surahNumber,
-      surahName: input.surahName,
+      surahName: surah.name,
       startAyah: input.ayahNumber,
       endAyah: input.ayahNumber,
       status: 'weak',
@@ -42,7 +53,7 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     RetentionService.addOrIncrementWeakVerse(
       input.surahNumber,
       input.ayahNumber,
-      input.surahName,
+      surah.name,
       input.text,
       input.notes
     );
