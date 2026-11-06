@@ -145,8 +145,10 @@ export default function App() {
     const result = await persistProfileSnapshot(updated);
     if (!result.success) {
       showToast(result.queued
-        ? 'تم حفظ تغيير المظهر في سجل الاستعادة، لكن تعذر إسقاطه محلياً. أعد المحاولة بعد استعادة التخزين.'
-        : 'تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
+        ? 'تم حفظ تغيير المظهر في سجل الاستعادة، لكن تعذر إسقاطه محلياً.'
+        : result.recoveryBlocked
+          ? 'هناك تغيير سابق لم تتم استعادته؛ أوقفنا حفظ التغيير الجديد لحماية بياناتك. أعد المحاولة بعد استعادة السجل.'
+          : 'تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
       return;
     }
     setProfile(updated);
@@ -260,8 +262,10 @@ export default function App() {
         const planResult = await persistEnginePlansSnapshot(updatedPlans);
         if (planResult.success) setEnginePlans(updatedPlans);
         else showToast(planResult.queued
-          ? 'تم حفظ التحديث في سجل الاستعادة، لكن تعذر تطبيقه على الخطة الذكية محلياً.'
-          : 'تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
+          ? 'تم حفظ تحديث الخطة الذكية في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
+          : planResult.recoveryBlocked
+            ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تحديث الخطة الجديد.'
+            : 'تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
       }
     }
     setLogs(StorageService.getLogsForDisplay());
@@ -294,8 +298,10 @@ export default function App() {
     const result = await persistPlansSnapshot(newPlans);
     if (!result.success) {
       showToast(result.queued
-        ? 'الخطة محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً. لا تكرر التعديل حتى استعادة التخزين.'
-        : 'تعذر حفظ الخطة في التخزين المحلي.', 'error');
+        ? 'الخطة محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
+        : result.recoveryBlocked
+          ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تعديل الخطة الجديد.'
+          : 'تعذر حفظ الخطة في التخزين المحلي.', 'error');
       return false;
     }
     setPlans(newPlans);
@@ -307,8 +313,10 @@ export default function App() {
     const result = await persistEnginePlansSnapshot(updatedEnginePlans);
     if (!result.success) {
       showToast(result.queued
-        ? 'الخطة الذكية محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً. لا تكرر التعديل حتى استعادة التخزين.'
-        : 'تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
+        ? 'الخطة الذكية محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
+        : result.recoveryBlocked
+          ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تعديل الخطة الذكية الجديد.'
+          : 'تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
       return false;
     }
     setEnginePlans(updatedEnginePlans);
@@ -320,7 +328,9 @@ export default function App() {
     if (!result.success) {
       showToast(result.queued
         ? 'تم حفظ الملف الشخصي في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
-        : 'تعذر حفظ إعدادات الملف الشخصي في التخزين الدائم.', 'error');
+        : result.recoveryBlocked
+          ? 'توجد عملية سابقة لم تتم استعادتها؛ لم نضف تعديل الملف الشخصي الجديد.'
+          : 'تعذر حفظ إعدادات الملف الشخصي في التخزين الدائم.', 'error');
       return false;
     }
     setProfile(updatedProfile);
