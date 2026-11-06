@@ -203,10 +203,13 @@ export function persistJournaledTransaction(
   options: JournaledSnapshotOptions = {},
   mutationId?: string
 ): Promise<JournaledSnapshotWriteResult> {
-  const transactionId = createSecureId();
+  // Keep the journal document ID stable with the mutation ID. IndexedDB
+  // fingerprints include documentId, so reusing a mutation ID with a fresh
+  // random document ID would turn a legitimate retry into a collision.
+  const transactionId = mutationId ?? 'transaction-' + createSecureId();
   return persistJournaledSnapshot(
     {
-      mutationId: mutationId ?? 'transaction-' + transactionId,
+      mutationId: transactionId,
       collection: 'syncMeta',
       documentId: transactionId,
       payload: { transaction: { version: 1, operations } }
