@@ -5,6 +5,7 @@ import { QURAN_DATA_SOURCE_INFO } from '../../data/quranDataInfo';
 import { QURAN_PAGE_INDEX } from '../../data/quranPageIndex.generated';
 import { QURAN_JUZ_STARTS, QURAN_HIZB_QUARTER_STARTS } from '../../data/quranNavigationIndex.generated';
 import { loadSurahVerses } from '../../data/quranDataLoader';
+import { findSurahStartPage } from '../../data/quranNavigation';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
 import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
 import type { PlaybackRate } from '../../services/audioPreferences';
@@ -15,6 +16,7 @@ import { TafsirSheet } from './TafsirSheet';
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
   onBack: () => void;
+  initialPage?: number;
 }
 
 interface PageSegment {
@@ -54,8 +56,8 @@ function readBookmarks(): number[] {
   }
 }
 
-export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack }) => {
-  const [page, setPage] = useState(readLastPage);
+export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack, initialPage }) => {
+  const [page, setPage] = useState(() => Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage());
   const [pageInput, setPageInput] = useState(String(readLastPage()));
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
@@ -215,7 +217,10 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const jumpToSurah = (surahNumber: number) => {
     const surah = ALL_SURAHS.find(item => item.number === surahNumber);
-    if (surah) jumpToNavigationPoint({ surahNumber, ayahNumber: 1, page: surah.pageStart });
+    const exactStartPage = findSurahStartPage(surahNumber, PAGE_INDEX);
+    if (surah && exactStartPage !== null) {
+      jumpToNavigationPoint({ surahNumber, ayahNumber: 1, page: exactStartPage });
+    }
   };
 
   const submitPageJump = () => changePage(Number(pageInput));
