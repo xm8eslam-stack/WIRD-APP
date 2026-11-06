@@ -256,7 +256,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
-    await test('Legacy localStorage outbox migrates before the source key is removed', async () => {
+    await test('Legacy localStorage outbox migrates while retaining a recovery copy', async () => {
       StorageService.__resetStorageForTests();
       StorageService.setStorageScope('user:legacy-migration-success');
       const legacy: LegacyOutboxState = {
@@ -281,7 +281,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const raw = JSON.stringify(legacy);
       assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy outbox fixture must be stored');
       assert(await LocalSyncOutbox.migrateLegacyToIndexedDb() === 'migrated', 'Legacy state must migrate to IndexedDB');
-      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, null), 'Legacy localStorage key must be removed only after commit');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy localStorage source must remain as a recovery copy after migration');
       const journal = new IndexedDbSyncJournal();
       const snapshot = await journal.getSnapshot();
       const events = await journal.listEvents();
