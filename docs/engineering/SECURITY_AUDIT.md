@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `543df246328faf305148d0a7274700dad81192bf`  
+**Audited HEAD:** `73eeb8b628ab5986a69a984105b89ecaecab759d`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -82,8 +82,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run: [42171658033](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171658033) — success.
-- Automated test suites: 231 passed, 0 failed.
+Latest Actions run: [42172283822](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42172283822) — success.
+- Automated test suites: 237 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.

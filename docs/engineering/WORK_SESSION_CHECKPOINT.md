@@ -3,9 +3,9 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `543df246328faf305148d0a7274700dad81192bf`  
+**Current HEAD:** `73eeb8b628ab5986a69a984105b89ecaecab759d`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42171658033 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171658033)
+**Latest CI run:** [42172283822 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42172283822)
 
 ## Resume instructions
 
@@ -16,6 +16,7 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `7f61e4f` + `e8a4ca7` + `73eeb8b` — harden outbox mutation validation: reject changed-payload ID collisions, validate UTF-8 byte limits/control characters, persist device identity on first read, and preserve numeric IDs. Two CI runs exposed false rejection of numeric IDs; final run `42172283822` passed 237 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `543df24` — backup import rollback now returns an explicit verification result. It verifies that scoped localStorage and memory keys were restored, and reports a recovery warning if readback fails. Added a failure-injection regression test. CI run `42171658033` passed 231 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `dc1f85f` — add `persistSessionCompletion` as a user-visible session persistence boundary. It validates exact Quran coordinates, saves canonical memorization progress and activity together, and rolls back the portion if activity/streak persistence fails. Added regression tests for failed-write rollback and review-only behavior. CI run `42171385088` passed 230 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `655d070` + `1efadca` — add a UID-scoped durable local outbox foundation with secure UUID/device IDs, idempotent enqueue/acknowledgement, retry backoff, bounded batches/payload/storage, corruption preservation, and quota-failure handling. The first CI run exposed a test-mock key-prefix mismatch; the test was corrected to target UID-scoped keys.

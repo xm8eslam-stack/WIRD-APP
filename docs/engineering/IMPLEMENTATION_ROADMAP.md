@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `543df246328faf305148d0a7274700dad81192bf`
+**Current audited HEAD:** `73eeb8b628ab5986a69a984105b89ecaecab759d`
 
 ## Operating rules
 
