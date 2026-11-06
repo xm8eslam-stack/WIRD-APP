@@ -21,7 +21,7 @@
 - [x] Grouped local projection transaction commits multiple archive operations under one IndexedDB event+outbox pair, with affected-key rollback verification (PR #43).
 - [x] Journal-first weak-verse failure recording groups the canonical weak portion and weak-verse counter; durable preflight reads and stable retry identity are covered (PR #44).
 - [x] Journal-first weak-verse resolution is idempotent and leaves canonical portion rating/schedule unchanged (PR #45).
-- [ ] Journal-first revision ratings, including grouped portion + optional weak-verse + activity/profile snapshots.
+- [x] Journal-first Revision Center ratings group canonical SM-2 portion, optional weak-verse, activity-log, and profile streak snapshots in one recoverable journal transaction (PR #47).
 - [ ] Journal-first memorization/session completion and remaining activity/profile mutations.
 - [x] Journal-first test-result snapshots with stable result IDs and conflicting-ID rejection (PR #42).
 - [ ] Journal backup import/reset and every remaining production mutation call site.
@@ -32,13 +32,14 @@
 - [x] Cross-tab atomic event+outbox writes in IndexedDB; legacy localStorage outbox data is retained as a migration/recovery source, not as the cloud-write path.
 - [x] Idempotent, non-destructive legacy outbox migration with source retention and conflict rejection (PR #31).
 
-## Latest verified main checkpoint — PR #45
-- Current main SHA: `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`.
-- PR #43 exact-head runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
-- PR #44 exact-head runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
-- PR #45 exact-head runs `42261861919` and `42261851120` passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`.
-- Post-merge main run `42262136009` **passed** on the current main SHA.
-- Vercel Production deployment is not confirmed. Phase 2 remains IN PROGRESS; PR #45 does not implement full cloud sync or release readiness.
+## Latest verified main checkpoint — PR #47
+- Current main SHA: `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
+- PR #43 exact-head runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed.
+- PR #44 exact-head runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed.
+- PR #45 exact-head runs `42261861919` and `42261851120` passed; post-merge main run `42262136009` passed.
+- PR #47 exact-head runs `42264220176` and `42264210902` passed on `7a476f5439091110bd3254b3498499335dd47be2`.
+- Post-merge main run `42264485087` is still **in progress** on the current main SHA; recheck before marking post-merge verification complete.
+- Vercel Production deployment is not confirmed. Phase 2 remains IN PROGRESS; session completion, remaining mutation paths, immutable event semantics, cloud sync, and manual release QA remain open.
 
 ## Cloud sync
 - [ ] Firestore client adapter.
