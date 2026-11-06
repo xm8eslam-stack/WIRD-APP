@@ -27,12 +27,14 @@ import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
 import { getLocalDateString } from '../../services/unifiedPortionService';
+import { importBackupJournaled } from '../../services/backupPersistence';
 
 interface SettingsViewProps {
   profile: UserProfile;
   onUpdateProfile: (profile: UserProfile) => void;
   onSaveProfile: (profile: UserProfile) => Promise<boolean>;
-  onResetAllData: () => boolean;
+  onResetAllData: () => Promise<boolean>;
+  onBackupImported?: () => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
@@ -41,6 +43,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onUpdateProfile,
   onSaveProfile,
   onResetAllData,
+  onBackupImported,
   onToast
 }) => {
   const [formData, setFormData] = useState<UserProfile>(profile);
@@ -51,6 +54,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,15 +68,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setIsSaved(false), 2500);
   };
 
-  const handleConfirmReset = () => {
-    const resetSucceeded = onResetAllData();
-    setFormData(StorageService.getProfile());
-    if (!resetSucceeded) {
-      onToast?.('تعذر التحقق من إعادة ضبط جميع البيانات؛ لم نغلق نافذة التأكيد ولم نعلن نجاح العملية.', 'error');
-      return;
+  const handleConfirmReset = async () => {
+    if (isResetting) return;
+    setIsResetting(true);
+    try {
+      const resetSucceeded = await onResetAllData();
+      setFormData(StorageService.getProfile());
+      if (!resetSucceeded) {
+        onToast?.('تعذر تأكيد إعادة الضبط؛ لم نغلق نافذة التأكيد ولم نعلن نجاح العملية.', 'error');
+        return;
+      }
+      setShowResetConfirm(false);
+      onToast?.("تمت إعادة ضبط البيانات وحفظها في سجل الاستعادة بنجاح", "info");
+    } finally {
+      setIsResetting(false);
     }
-    setShowResetConfirm(false);
-    onToast?.("تم التحقق من إعادة ضبط بيانات المنصة بنجاح", "info");
   };
 
   const handleExportBackup = () => {
@@ -90,27 +101,38 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || isImporting) return;
 
+    setIsImporting(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      const result = StorageService.importBackup(content);
-      if (result.success) {
-        const updated = StorageService.getProfile();
-        setFormData(updated);
-        onUpdateProfile(updated);
-        if (onToast) {
-          onToast(result.message, "success");
+    reader.onload = async (event) => {
+      try {
+        const content = event.target?.result;
+        if (typeof content !== 'string') throw new Error('تعذر قراءة ملف النسخة الاحتياطية كنص صالح.');
+        const result = await importBackupJournaled(content);
+        if (result.success) {
+          const updated = StorageService.getProfile();
+          setFormData(updated);
+          onUpdateProfile(updated);
+          onBackupImported?.();
+          onToast?.(result.message, "success");
+        } else {
+          if (result.recoveredPriorEvents) onBackupImported?.();
+          onToast?.(`فشل استيراد النسخة: ${result.message}`, "error");
         }
-      } else {
-        if (onToast) {
-          onToast(`فشل استيراد النسخة: ${result.message}`, "error");
-        }
+      } catch (error) {
+        onToast?.(`فشل استيراد النسخة: ${error instanceof Error ? error.message : 'خطأ غير متوقع'}`, "error");
+      } finally {
+        setIsImporting(false);
+        e.target.value = '';
       }
     };
+    reader.onerror = () => {
+      setIsImporting(false);
+      e.target.value = '';
+      onToast?.('تعذر قراءة ملف النسخة الاحتياطية من الجهاز.', 'error');
+    };
     reader.readAsText(file);
-    e.target.value = '';
   };
 
   const handleLoadDemoData = () => {
@@ -505,6 +527,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
+                disabled={isResetting}
                 className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
               >
                 إلغاء التراجع
@@ -512,6 +535,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmReset}
+                disabled={isResetting}
                 className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
               >
                 تأكيد إعادة الضبط
