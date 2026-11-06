@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageService';
-import type { WirdPortion, TestResult } from '../types/quran';
+import type { PortionStatusRecord, WirdPortion, TestResult } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
@@ -379,6 +379,172 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       const repeated = buildWeakVerseResolutionSnapshot(weakVerse.id);
       assert(repeated.success && !repeated.changed,
         'Resolving the same missing ID again must be a no-op');
+      journal.close();
+    });
+
+    await test('Revision rating prepares pure portion/activity/profile snapshots and persists them as one journal event', async () => {
+      const journal = createJournal();
+      const today = '2026-11-06';
+      const seeded = RetentionService.buildAddPortionSnapshot({
+        type: 'passage',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 5,
+        pageNumber: 562,
+        juzNumber: 29,
+        status: 'recently_memorized',
+        lastReviewedDate: today,
+        nextDueDate: today,
+        intervalDays: 1,
+        easeFactor: 2.5,
+        repetitionCount: 1,
+        mistakesCount: 0,
+        strength: 'medium'
+      });
+      assert(StorageService.saveUnifiedPortions(seeded.portions), 'The revision fixture portion must be saved');
+      const beforePortions = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      const beforeLogs = StorageService.getRawItem(STORAGE_KEYS.LOGS);
+      const beforeProfile = StorageService.getRawItem(STORAGE_KEYS.PROFILE);
+      const mutationId = 'revision-success-journal-001';
+      const prepared = RetentionService.buildRevisionPerformanceSnapshot(
+        seeded.record.id, 'successful', 'اختبار المراجعة', 3, mutationId
+      );
+      if (!prepared.success) throw new Error(prepared.messageAr);
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === beforePortions &&
+        StorageService.getRawItem(STORAGE_KEYS.LOGS) === beforeLogs &&
+        StorageService.getRawItem(STORAGE_KEYS.PROFILE) === beforeProfile,
+        'Preparing a revision rating must not write portions, activity, or profile data');
+
+      const first = await persistJournaledTransaction(
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const retry = await persistJournaledTransaction(
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const snapshot = await journal.getSnapshot();
+      const updated = RetentionService.getPortions().find(item => item.id === seeded.record.id);
+      const logs = StorageService.getLogs();
+      const profile = StorageService.getProfile();
+      assert(first.success && retry.success, 'The revision rating and its retry must both succeed');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'The revision, activity, and profile projections must share one event and one cursor step');
+      assert(updated?.history[0]?.id === 'log-' + mutationId,
+        'The revision history must use a stable ID derived from the mutation ID');
+      assert(logs.length === 1 && logs[0].reviewedPagesCount === prepared.reviewedPagesCount &&
+        logs[0].minutesSpent === 3,
+        'The activity projection must include the reviewed page count and measured minutes');
+      assert(profile.streakDays === 1 && profile.lastActiveDate === logs[0].date,
+        'The profile streak must advance in the same grouped transaction');
+      journal.close();
+    });
+
+    await test('Failed revision with a weak ayah groups the range and single-ayah portion without double counting', async () => {
+      const journal = createJournal();
+      const today = '2026-11-06';
+      const seeded = RetentionService.buildAddPortionSnapshot({
+        type: 'passage',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 5,
+        pageNumber: 562,
+        juzNumber: 29,
+        status: 'recently_memorized',
+        lastReviewedDate: today,
+        nextDueDate: today,
+        intervalDays: 1,
+        easeFactor: 2.5,
+        repetitionCount: 1,
+        mistakesCount: 0,
+        strength: 'medium'
+      });
+      assert(StorageService.saveUnifiedPortions(seeded.portions), 'The range fixture must be saved');
+      const mutationId = 'revision-failed-weak-journal-001';
+      const prepared = RetentionService.buildRevisionPerformanceSnapshot(
+        seeded.record.id, 'failed', 'اختبار تعثر', 2, mutationId
+      );
+      if (!prepared.success) throw new Error(prepared.messageAr);
+      const weakPrepared = buildWeakVerseFailureTransaction({
+        surahNumber: 67,
+        surahName: 'الملك',
+        ayahNumber: 3,
+        text: 'نص آية للاختبار',
+        notes: 'اختبار تعثر'
+      }, mutationId, prepared.operations[0].payload.records as PortionStatusRecord[]);
+      if (!weakPrepared.success) throw new Error(weakPrepared.messageAr);
+      const operations = [
+        weakPrepared.operations[0],
+        weakPrepared.operations[1],
+        ...prepared.operations.slice(1)
+      ];
+      const result = await persistJournaledTransaction(
+        operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const snapshot = await journal.getSnapshot();
+      const portions = RetentionService.getPortions();
+      const rangePortion = portions.find(item => item.id === seeded.record.id);
+      const weakPortion = portions.find(item =>
+        item.surahNumber === 67 && item.startAyah === 3 && item.endAyah === 3
+      );
+      const weakVerse = RetentionService.getWeakVerses().find(item => item.surahNumber === 67 && item.ayahNumber === 3);
+      assert(result.success && snapshot.eventCount === 1 && snapshot.projectionCursor === 1,
+        'A failed review, weak verse, activity, and profile must commit as one journal event');
+      assert(rangePortion?.status === 'weak' && rangePortion.mistakesCount === 1,
+        'The reviewed range must receive one SM-2 failure increment');
+      assert(weakPortion?.status === 'weak' && weakPortion.mistakesCount === 1,
+        'A distinct single-ayah weak portion must be created from the updated range snapshot');
+      assert(weakVerse?.mistakeCount === 1, 'The weak-verse archive must increment once');
+      journal.close();
+    });
+
+    await test('Failed review of a single-ayah portion does not double-increment its canonical mistake count', async () => {
+      const journal = createJournal();
+      const today = '2026-11-06';
+      const seeded = RetentionService.buildAddPortionSnapshot({
+        type: 'passage',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 3,
+        endAyah: 3,
+        pageNumber: 562,
+        juzNumber: 29,
+        status: 'recently_memorized',
+        lastReviewedDate: today,
+        nextDueDate: today,
+        intervalDays: 1,
+        easeFactor: 2.5,
+        repetitionCount: 1,
+        mistakesCount: 0,
+        strength: 'medium'
+      });
+      assert(StorageService.saveUnifiedPortions(seeded.portions), 'The single-ayah fixture must be saved');
+      const mutationId = 'revision-single-weak-journal-001';
+      const prepared = RetentionService.buildRevisionPerformanceSnapshot(
+        seeded.record.id, 'failed', 'اختبار تعثر', 1, mutationId
+      );
+      if (!prepared.success) throw new Error(prepared.messageAr);
+      const weakPrepared = buildWeakVerseFailureTransaction({
+        surahNumber: 67,
+        surahName: 'الملك',
+        ayahNumber: 3,
+        text: 'نص آية للاختبار',
+        notes: 'اختبار تعثر'
+      }, mutationId, prepared.operations[0].payload.records as PortionStatusRecord[]);
+      if (!weakPrepared.success) throw new Error(weakPrepared.messageAr);
+      const operations = [
+        prepared.operations[0],
+        weakPrepared.operations[1],
+        ...prepared.operations.slice(1)
+      ];
+      const result = await persistJournaledTransaction(
+        operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const updated = RetentionService.getPortions().find(item => item.id === seeded.record.id);
+      assert(result.success && updated?.mistakesCount === 1,
+        'A failed review of the same single-ayah portion must increment the canonical count only once');
+      assert(RetentionService.getWeakVerses().find(item => item.ayahNumber === 3)?.mistakeCount === 1,
+        'The separate weak-verse counter must still increment once');
       journal.close();
     });
 
