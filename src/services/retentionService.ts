@@ -406,7 +406,8 @@ export const RetentionService = {
     portionId: string, 
     rating: RevisionRating, 
     notes?: string,
-    weakAyahDetails?: { ayahNumber: number; text?: string; notes?: string }
+    weakAyahDetails?: { ayahNumber: number; text?: string; notes?: string },
+    minutesSpent: number = 0
   ): {
     updatedPortion: PortionStatusRecord;
     nextIntervalDays: number;
@@ -421,7 +422,14 @@ export const RetentionService = {
     }
 
     const todayStr = getLocalDateString();
-    
+    if (!Number.isSafeInteger(minutesSpent) || minutesSpent < 0) {
+      throw new Error('مدة المراجعة المسجلة غير صالحة؛ يجب أن تكون عدد دقائق صحيحاً غير سالب.');
+    }
+    const reviewedPagesCount = getPagesForAyahRange(target.surahNumber, target.startAyah, target.endAyah).length;
+    if (reviewedPagesCount === 0) {
+      throw new Error('تعذر تحديد صفحات المقطع بدقة؛ لم يتم تسجيل عدد صفحات تقريبي ولم يتغير تقييم المراجعة.');
+    }
+
     // Execute canonical SM-2 algorithm
     const sm2Result = calculateCanonicalSM2(target, rating, {
       customTodayStr: todayStr,
@@ -474,15 +482,11 @@ export const RetentionService = {
       }
     }
 
-    // Activity aggregation is a separate durable write; report its status explicitly.
-    const reviewedPagesCount = getPagesForAyahRange(target.surahNumber, target.startAyah, target.endAyah).length;
-    if (reviewedPagesCount === 0) {
-      throw new Error('تعذر تحديد صفحات المقطع بدقة؛ لم يتم تسجيل عدد صفحات تقريبي.');
-    }
+    // Activity aggregation is a separate durable write; record only measured time.
     const activitySaved = StorageService.recordSessionCompletion(
       0,
       reviewedPagesCount,
-      15,
+      minutesSpent,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
 
