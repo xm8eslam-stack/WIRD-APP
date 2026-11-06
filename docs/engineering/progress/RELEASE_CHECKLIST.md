@@ -128,6 +128,6 @@
 - [x] Import legacy data before each facade operation and retain source as a recovery copy.
 - [x] Verify UID isolation, retry/acknowledgement, stale-tab merges, and invalid-input rejection.
 - [x] Exact-head Quality Gate passed on PR SHA `d97d8cf10cd076a726dbf377c8a4078b8c2dec2c` (346 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
-- [ ] Verify post-merge main Quality Gate run `42240305979` on exact SHA `f3a207844020494ebf6a350ae9cb27d6db62398e`.
+- [x] Post-merge main Quality Gate run `42240305979` passed on exact SHA `f3a207844020494ebf6a350ae9cb27d6db62398e`.
 - [ ] Connect domain mutation call sites and implement deterministic local projection replay.
 - [ ] Implement Firestore sync worker and two-device/offline integration tests.
