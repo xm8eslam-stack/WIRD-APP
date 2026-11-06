@@ -69,7 +69,7 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     } catch {
       // The exact read-back below determines whether the archive was restored.
     }
-    const weakArchiveRestored = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === previousWeakArchive;
+    const weakArchiveRestored = StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
     const rollbackSucceeded = portionWriteRestored && portionReadbackRestored && weakArchiveRestored;
     return {
       success: false,
