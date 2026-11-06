@@ -1,4 +1,4 @@
-import { getPageAyahSegments, getPageProgressStatus } from './pageProgressService';
+import { getPageAyahSegments, getPageProgressStatus, getPagesForAyahRange } from './pageProgressService';
 import { PortionStatusRecord } from '../types/quran';
 
 export function runPageProgressServiceTests(): { passed: number; failed: number } {
@@ -91,6 +91,26 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     const result = getPageProgressStatus(1, [stable, weak]);
     assert(result.status === 'weak', 'Weak status must override a stronger overlapping status');
     assert(result.portionIds.length === 2, 'All overlapping page portions must be returned for coordinated updates');
+  });
+
+  test('Ayah ranges resolve to exact canonical pages, including cross-page ranges', () => {
+    assert(JSON.stringify(getPagesForAyahRange(1, 1, 7)) === '[1]', 'Al-Fatihah 1-7 must map to page 1');
+    const pages = getPagesForAyahRange(2, 1, 25);
+    assert(pages.length > 1, 'A range spanning multiple Mushaf pages must return every intersecting page');
+    assert(new Set(pages).size === pages.length, 'A range must not return duplicate pages');
+    assert(pages.every((page, index) => index === 0 || pages[index - 1] < page), 'Pages must be sorted');
+    for (const page of pages) {
+      assert(getPageAyahSegments(page).some(segment =>
+        segment.surahNumber === 2 && segment.startAyah <= 25 && segment.endAyah >= 1
+      ), 'Every returned page must intersect the requested range');
+    }
+  });
+
+  test('Invalid Surah and ayah ranges return no pages', () => {
+    assert(getPagesForAyahRange(0, 1, 7).length === 0, 'Invalid Surah must be rejected');
+    assert(getPagesForAyahRange(1, 0, 7).length === 0, 'Ayah zero must be rejected');
+    assert(getPagesForAyahRange(1, 7, 1).length === 0, 'Reversed ranges must be rejected');
+    assert(getPagesForAyahRange(1, 1, 8).length === 0, 'Ayah beyond the Surah boundary must be rejected');
   });
 
   return { passed, failed };

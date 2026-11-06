@@ -7,10 +7,12 @@ import {
   WirdPortion 
 } from '../types/quran';
 import { StorageService } from './storageService';
+import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { 
-  calculateUniqueMemorizedAyahs, 
-  calculateUniqueMemorizedPages, 
+  calculateUniqueMemorizedAyahs,
+  calculateUniqueMemorizedPages,
+  calculateUniqueRetentionScore, 
   getPrioritizedRevisionQueue, 
   getLocalDateString,
   calculateCanonicalSM2,
@@ -473,10 +475,13 @@ export const RetentionService = {
     }
 
     // Activity aggregation is a separate durable write; report its status explicitly.
-    const versesCount = (target.endAyah - target.startAyah + 1) || 10;
+    const reviewedPagesCount = getPagesForAyahRange(target.surahNumber, target.startAyah, target.endAyah).length;
+    if (reviewedPagesCount === 0) {
+      throw new Error('تعذر تحديد صفحات المقطع بدقة؛ لم يتم تسجيل عدد صفحات تقريبي.');
+    }
     const activitySaved = StorageService.recordSessionCompletion(
       0,
-      Math.max(1, Math.round(versesCount / 15)),
+      reviewedPagesCount,
       15,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
@@ -641,34 +646,15 @@ export const RetentionService = {
       not_memorized: 0
     };
 
-    let totalVerses = 0;
-    let weightedRetentionPoints = 0;
     let totalEase = 0;
-
-    portions.forEach(p => {
-      breakdown[p.status] = (breakdown[p.status] || 0) + 1;
-      const count = (p.endAyah - p.startAyah + 1) || 1;
-      totalEase += p.easeFactor;
-
-      if (p.status !== 'not_memorized') {
-        totalVerses += count;
-
-        // Weighted points for retention quality
-        if (p.status === 'stable') weightedRetentionPoints += count * 1.0;
-        else if (p.status === 'recently_memorized') weightedRetentionPoints += count * 0.8;
-        else if (p.status === 'needs_revision') weightedRetentionPoints += count * 0.5;
-        else if (p.status === 'weak') weightedRetentionPoints += count * 0.2;
-        else if (p.status === 'currently_memorizing') weightedRetentionPoints += count * 0.4;
-      }
+    portions.forEach(portion => {
+      breakdown[portion.status] = (breakdown[portion.status] || 0) + 1;
+      totalEase += portion.easeFactor;
     });
 
-    const memorizedPortionsCount = portions.filter(p => p.status !== 'not_memorized').length;
+    const memorizedPortionsCount = portions.filter(portion => portion.status !== 'not_memorized').length;
     const averageEase = portions.length > 0 ? Number((totalEase / portions.length).toFixed(2)) : 2.5;
-    
-    // Overall retention percentage calculated truthfully from real data
-    const retentionScore = totalVerses > 0 
-      ? Math.round((weightedRetentionPoints / totalVerses) * 100)
-      : 0;
+    const retentionScore = calculateUniqueRetentionScore(portions as WirdPortion[]);
 
     const totalActive = memorizedPortionsCount || 1;
     const statusPercentages = {
@@ -686,7 +672,7 @@ export const RetentionService = {
       totalTrackedPortions: portions.length,
       totalMemorizedAyahs: uniqueAyahsCount,
       totalMemorizedPages: uniquePagesCount,
-      retentionScorePercentage: totalVerses > 0 ? Math.min(100, Math.max(0, retentionScore)) : 0,
+      retentionScorePercentage: Math.min(100, Math.max(0, retentionScore)),
       statusBreakdown: breakdown,
       statusPercentages,
       totalReviewsCompleted: history.length,

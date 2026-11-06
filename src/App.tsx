@@ -247,8 +247,13 @@ export default function App() {
   };
 
   const handleRecordRevisionComplete = (pagesCount: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    const saved = StorageService.recordSessionCompletion(0, pagesCount, minutes, taskName);
+    if (!saved) {
+      showToast('تعذر حفظ سجل المراجعة أو تحديث سلسلة المواظبة.', 'error');
+      return;
+    }
     setLogs(StorageService.getLogs());
+    setProfile(StorageService.getProfile());
   };
 
   // Save preset plans
@@ -288,33 +293,36 @@ export default function App() {
 
   // Add verse to revision from test with canonical retention sync
   const handleAddVerseToRevision = (surahNumber: number, surahName: string, ayahNumber: number) => {
-    RetentionService.addPortion({
-      type: 'passage',
-      surahNumber,
-      surahName,
-      startAyah: ayahNumber,
-      endAyah: ayahNumber,
-      status: 'weak',
-      nextDueDate: getLocalDateString(),
-      intervalDays: 1,
-      easeFactor: 2.0,
-      repetitionCount: 1,
-      mistakesCount: 1,
-      strength: 'weak'
-    });
+    try {
+      RetentionService.addPortion({
+        type: 'passage',
+        surahNumber,
+        surahName,
+        startAyah: ayahNumber,
+        endAyah: ayahNumber,
+        status: 'weak',
+        nextDueDate: getLocalDateString(),
+        intervalDays: 1,
+        easeFactor: 2.0,
+        repetitionCount: 1,
+        mistakesCount: 1,
+        strength: 'weak'
+      });
 
-    setRevisionItems(StorageService.getRevisionItems());
+      RetentionService.addOrIncrementWeakVerse(
+        surahNumber,
+        ayahNumber,
+        surahName,
+        `الآية رقم ${ayahNumber} من سورة ${surahName}`,
+        'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
+      );
 
-    // Synchronize directly with Retention Service
-    RetentionService.addOrIncrementWeakVerse(
-      surahNumber,
-      ayahNumber,
-      surahName,
-      `الآية رقم ${ayahNumber} من سورة ${surahName}`,
-      'تم تسجيل خطأ أو التباس فيها أثناء اختبار الحفظ'
-    );
-
-    showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+      setRevisionItems(StorageService.getRevisionItems());
+      showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
+    } catch (error) {
+      setRevisionItems(StorageService.getRevisionItems());
+      showToast(error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة؛ لم يتم تأكيد التغيير.', 'error');
+    }
   };
 
   // Reset all data
