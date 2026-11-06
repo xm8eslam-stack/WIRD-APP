@@ -84,6 +84,27 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
+  test('First memorization completion does not create a review-history event', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:first-memorization-not-review');
+    try {
+      const result = persistSessionCompletion({
+        mode: 'memorize', memorizedAyahs: 5, reviewedPages: 0, minutes: 4,
+        taskName: 'حفظ أول مرة', surahNumber: 67, startAyah: 6, endAyah: 10
+      });
+      assert(result.success, 'First memorization session should save');
+      const created = RetentionService.getPortions().find(item =>
+        item.surahNumber === 67 && item.startAyah === 6 && item.endAyah === 10
+      );
+      assert(Boolean(created), 'The memorized portion should be created');
+      assert(created?.history?.length === 0, 'Initial memorization must not be recorded as a review event');
+      assert(RetentionService.getRetentionDashboardMetrics().totalReviewsCompleted === 0,
+        'A first memorization session must not increase completed-review statistics');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Successful review session never mutates memorization portions', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:review-only');
