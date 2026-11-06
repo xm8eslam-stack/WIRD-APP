@@ -41,6 +41,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         if (storageScope.startsWith('user:')) {
           await replayJournalProjection();
         }
+        if (cancelled || StorageService.getStorageScope() !== storageScope) return;
         const migration = await migrateLegacyPortionsJournaled();
         if (!migration.success) throw new Error(migration.message);
         if (!cancelled && StorageService.getStorageScope() === storageScope) {
@@ -73,6 +74,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     setScopeErrorMessage('');
     try {
       if (targetScope.startsWith('user:')) await replayJournalProjection();
+      if (StorageService.getStorageScope() !== targetScope) return;
       const migration = await migrateLegacyPortionsJournaled();
       if (!migration.success) throw new Error(migration.message);
       if (StorageService.getStorageScope() === targetScope) setReadyScope(targetScope);
