@@ -263,7 +263,7 @@ export const LocalSyncOutbox = {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
 
-    const mutationId = input.mutationId || createSecureId();
+    const mutationId = input.mutationId === undefined ? createSecureId() : input.mutationId;
     if (!isValidMutationId(mutationId)) throw new Error('معرّف العملية غير صالح.');
     const canonicalPayload = JSON.parse(payloadJson) as Record<string, unknown>;
     const fingerprint = createMutationFingerprint(input.collection, input.documentId, operation, canonicalPayload);
