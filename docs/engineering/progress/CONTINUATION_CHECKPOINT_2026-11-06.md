@@ -3,11 +3,12 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Current main SHA: `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f` (PR #45 merge).
-- PR #43 grouped transaction primitive: exact-head PR/push runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
-- PR #44 weak-verse failure journal integration: exact-head PR/push runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
-- PR #45 weak-verse resolution journal integration: exact-head PR/push runs `42261861919` and `42261851120` passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`; post-merge main run `42262136009` **passed** on the current main SHA.
-- Vercel Production deployment for current main is not confirmed. Green GitHub Actions is not a deployment receipt.
+- Current main SHA: `4fa6a1acffb0723c89bb963b237e67e6f4b7173f` (PR #47 merge).
+- PR #43 exact-head PR/push runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed.
+- PR #44 exact-head PR/push runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed.
+- PR #45 exact-head PR/push runs `42261861919` and `42261851120` passed; post-merge main run `42262136009` passed.
+- PR #47 exact-head PR/push runs `42264220176` and `42264210902` passed on `7a476f5439091110bd3254b3498499335dd47be2`; post-merge main run `42264485087` is **in progress** on the current main SHA.
+- Vercel Production deployment for current main is not confirmed. Recheck the exact main run before marking post-merge verification complete.
 
 ## Completed since the previous checkpoint
 1. PR #14 — c0390692d5f9ec7e81e04c8a674dbb035e0924ec
@@ -249,3 +250,25 @@
 6. Finish manual responsive/accessibility/audio QA and verify Production deployment for the exact main SHA.
 
 **Important boundary:** PR #43–#45 improve local write-ahead persistence and replay. They do not implement Firestore cloud sync, immutable remote event semantics, production rules deployment, or release readiness.
+
+
+## 2026-11-06 — PR #47 revision ratings journal-first
+
+- Merged as `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
+- Added pure `StorageService.buildSessionCompletionSnapshot` to prepare activity logs and profile streak without writing and with durable read verification.
+- Added pure `RetentionService.buildRevisionPerformanceSnapshot` using canonical SM-2 and stable revision-history IDs.
+- Revision Center now commits canonical portion, activity-log aggregate, profile streak, and optional weak-verse archive in one grouped journal event.
+- When the failed portion spans multiple ayahs, the selected weak ayah is added as a distinct single-ayah weak portion in the same grouped projection. When the target is already that single ayah, its canonical mistake count is not double-incremented.
+- Tests cover no-write preparation, idempotent retry, activity/profile update, failed rating with weak ayah, range/single-ayah behavior, and grouped transaction cursor semantics.
+- Exact-head PR/push Quality Gates `42264220176` and `42264210902` passed on SHA `7a476f5439091110bd3254b3498499335dd47be2`.
+- Post-merge main Quality Gate `42264485087` was still in progress when this checkpoint was written; verify its final result separately.
+
+## Updated next actions — Phase 2 remains IN PROGRESS
+1. Journal-first memorization/session completion and related activity/profile/plan changes.
+2. Audit and migrate remaining activity/profile mutation paths.
+3. Journal backup import/reset with pending-event ordering and crash recovery.
+4. Reconcile mutable activity, weak-verse, and test snapshots with immutable event-ledger semantics.
+5. Implement Firestore worker/repository, acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests.
+6. Finish manual responsive/accessibility/audio QA and verify Production deployment for the exact main SHA.
+
+**Important boundary:** PR #47 adds journal-first Revision Center ratings and local aggregate projections. It does not complete session completion, immutable remote event semantics, Firestore cloud sync, production rules deployment, or release readiness.
