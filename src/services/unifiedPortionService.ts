@@ -681,6 +681,7 @@ function mergeHistoryEntries(
     throw new Error('Revision history must be an array before migration.');
   }
   if (!existing.history) existing.history = [];
+  const historyById = new Map(existing.history.map(log => [log.id, log]));
 
   for (const incomingLog of incomingHistory) {
     if (!incomingLog || typeof incomingLog.id !== 'string' || !incomingLog.id.trim() ||
@@ -692,12 +693,14 @@ function mergeHistoryEntries(
       throw new Error('Malformed revision history entry; migration was stopped without modifying source archives.');
     }
 
-    const sameIdLog = existing.history.find(log => log.id === incomingLog.id);
+    const sameIdLog = historyById.get(incomingLog.id);
     if (!sameIdLog) {
       if (existing.history.length >= MAX_MIGRATED_HISTORY_ENTRIES) {
         throw new Error('Merged revision history exceeds the safe 10,000-entry limit; source archives remain unchanged.');
       }
-      existing.history.push({ ...incomingLog });
+      const preservedLog = { ...incomingLog };
+      existing.history.push(preservedLog);
+      historyById.set(preservedLog.id, preservedLog);
       continue;
     }
 
@@ -708,18 +711,20 @@ function mergeHistoryEntries(
     let preservedId = baseId;
     let collisionIndex = 1;
     while (true) {
-      const collision = existing.history.find(log => log.id === preservedId);
+      const collision = historyById.get(preservedId);
       if (!collision || sameRevisionLogContent(collision, incomingLog)) break;
       preservedId = baseId + '_' + collisionIndex++;
       if (preservedId.length > 160) {
         throw new Error('Unable to assign a unique deterministic ID to a conflicting revision log; source archives remain unchanged.');
       }
     }
-    if (!existing.history.some(log => log.id === preservedId)) {
+    if (!historyById.has(preservedId)) {
       if (existing.history.length >= MAX_MIGRATED_HISTORY_ENTRIES) {
         throw new Error('Merged revision history exceeds the safe 10,000-entry limit; source archives remain unchanged.');
       }
-      existing.history.push({ ...incomingLog, id: preservedId });
+      const preservedLog = { ...incomingLog, id: preservedId };
+      existing.history.push(preservedLog);
+      historyById.set(preservedId, preservedLog);
       addConflictAudit(existing, sourceName, 'history',
         'Conflicting history entry under ID ' + incomingLog.id + ' preserved as ' + preservedId);
     }
