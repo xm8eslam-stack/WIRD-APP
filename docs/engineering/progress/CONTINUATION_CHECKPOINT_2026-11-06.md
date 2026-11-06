@@ -72,7 +72,7 @@
 - `restoreStorageSnapshot` now judges success from the final memory and durable read-back, not a transient cleanup result when the final value already matches the snapshot.
 - Added failure-injection coverage for partial deletion rollback and snapshot-read preflight failure. Existing restore durable-readback coverage remains in place.
 - PR exact-head Quality Gate run `42232090692` (#883): **success** — automated suites, Firestore rules emulator, dependency audit, TypeScript, production build, and server smoke test.
-- Post-merge main Quality Gate run `42232397539` (#885) was pending at the time this checkpoint was written; verify its exact-head conclusion before treating main CI as confirmed.
+- Post-merge main Quality Gate run `42232397539` (#885) completed successfully on exact main SHA `753dbf7d95f6f577f022952f122280de69d8e074`.
 - Vercel reported its known free deployment-rate limit on the PR head. This is not a code-build failure and production deployment remains unconfirmed.
 
 ## Updated remaining work — do not claim release readiness
