@@ -412,11 +412,22 @@ export default function App() {
       return false;
     }
 
-    const result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
-    const projectionsMatch = JSON.stringify(StorageService.getUnifiedPortions()) ===
-        JSON.stringify(prepared.operations[0].payload.records) &&
-      JSON.stringify(RetentionService.getWeakVerses()) ===
-        JSON.stringify(prepared.operations[1].payload.records);
+    let result;
+    try {
+      result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.', 'error');
+      return false;
+    }
+    let projectionsMatch = false;
+    try {
+      projectionsMatch = JSON.stringify(StorageService.getUnifiedPortions()) ===
+          JSON.stringify(prepared.operations[0].payload.records) &&
+        JSON.stringify(RetentionService.getWeakVerses()) ===
+          JSON.stringify(prepared.operations[1].payload.records);
+    } catch {
+      projectionsMatch = false;
+    }
 
     if (!result.success && !(result.recoveredPriorEvents && projectionsMatch)) {
       showToast(result.recoveredPriorEvents
