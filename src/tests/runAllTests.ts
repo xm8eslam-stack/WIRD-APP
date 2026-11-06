@@ -18,6 +18,7 @@ import { runPageProgressServiceTests } from '../services/pageProgressService.tes
 import { runStorageScopeTests } from '../services/storageScope.test';
 import { runSessionCompletionTests } from './sessionCompletion.test';
 import { runStorageReliabilityTests } from './storageReliability.test';
+import { runLocalSyncOutboxTests } from '../services/localSyncOutbox.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
@@ -86,6 +87,7 @@ async function main() {
     { name: 'UID-Scoped Local Storage & Legacy Data Ownership', runner: runStorageScopeTests },
     { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
+    { name: 'UID-Scoped Durable Local Sync Outbox', runner: runLocalSyncOutboxTests },
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },

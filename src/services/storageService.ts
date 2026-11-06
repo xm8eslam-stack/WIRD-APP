@@ -24,7 +24,8 @@ export const STORAGE_KEYS = {
   PORTIONS: 'wird_portions_status',
   WEAK_VERSES: 'wird_weak_verses',
   UNIFIED_PORTIONS: 'wird_portions_v2',
-  SCHEMA_VERSION: 'wird_data_schema_version'
+  SCHEMA_VERSION: 'wird_data_schema_version',
+  SYNC_OUTBOX: 'wird_sync_outbox_v1'
 } as const;
 
 // In-memory fallback for test / Node / SSR environments where localStorage is not defined.
@@ -891,6 +892,7 @@ export const StorageService = {
     removeItem(STORAGE_KEYS.WEAK_VERSES);
     removeItem(STORAGE_KEYS.UNIFIED_PORTIONS);
     removeItem(STORAGE_KEYS.SCHEMA_VERSION);
+    removeItem(STORAGE_KEYS.SYNC_OUTBOX);
   },
 
   // Test-only Snapshot API
