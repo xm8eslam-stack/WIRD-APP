@@ -158,6 +158,45 @@ function needsLegacyDataDecision(scope: string): boolean {
     hasLegacyStorageData();
 }
 
+function readRawStorageValue(key: string): string | null | undefined {
+  if (typeof localStorage === 'undefined') return memoryStorage.get(key) ?? null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return undefined;
+  }
+}
+
+function restoreRawStorageValues(snapshot: Map<string, string | null>): boolean {
+  if (typeof localStorage === 'undefined') {
+    for (const [key, value] of snapshot) {
+      if (value === null) memoryStorage.delete(key);
+      else memoryStorage.set(key, value);
+    }
+    return true;
+  }
+
+  for (const [key, value] of snapshot) {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch {
+      // Some adapters throw after applying a mutation; verify the final bytes below.
+    }
+  }
+
+  let restored = true;
+  for (const [key, value] of snapshot) {
+    if (readRawStorageValue(key) !== value) {
+      restored = false;
+      continue;
+    }
+    if (value === null) memoryStorage.delete(key);
+    else memoryStorage.set(key, value);
+  }
+  return restored;
+}
+
 function setStorageScope(scope: string, legacyChoice?: 'import' | 'keep-guest'): boolean {
   const normalized = scope;
   if (normalized === 'legacy' || normalized === 'guest') {
@@ -166,41 +205,76 @@ function setStorageScope(scope: string, legacyChoice?: 'import' | 'keep-guest'):
   }
   if (!isUserStorageScope(normalized)) return false;
 
-  const owner = rawGetItem(STORAGE_OWNER_MARKER);
+  const owner = readRawStorageValue(STORAGE_OWNER_MARKER);
+  if (owner === undefined) return false;
   if (!owner) {
-    const legacyValues = Object.values(STORAGE_KEYS).map(key => ({
-      key,
-      value: rawGetItem(key)
-    }));
+    const legacyKeys = Object.values(STORAGE_KEYS);
+    const destinationKeys = legacyKeys.map(key => resolveStorageKey(key, normalized));
+    const snapshotKeys = [...new Set([STORAGE_OWNER_MARKER, ...legacyKeys, ...destinationKeys])];
+    const snapshot = new Map<string, string | null>();
+    for (const key of snapshotKeys) {
+      const value = readRawStorageValue(key);
+      if (value === undefined) return false;
+      snapshot.set(key, value);
+    }
+
+    const legacyValues = legacyKeys.map(key => ({ key, value: snapshot.get(key) ?? null }));
     const hasLegacyData = legacyValues.some(item => item.value !== null);
 
     // Existing unscoped data may belong to a guest or another person using
     // this browser. Require an explicit in-app choice before claiming it.
     if (hasLegacyData && !legacyChoice) return false;
 
+    const rollbackImport = (reason: string): false => {
+      const restored = restoreRawStorageValues(snapshot);
+      console.error(
+        '[WIRD Storage] Legacy account import failed; previous storage snapshot restored: ' + restored,
+        reason
+      );
+      return false;
+    };
+
     if (legacyChoice === 'import') {
+      // Reject conflicting destination data before changing either scope.
+      for (const item of legacyValues) {
+        if (item.value === null) continue;
+        const destinationKey = resolveStorageKey(item.key, normalized);
+        const destinationValue = snapshot.get(destinationKey) ?? null;
+        if (destinationValue !== null && destinationValue !== item.value) return false;
+      }
+
       // Copy and verify every legacy value before removing any source key.
       for (const item of legacyValues) {
         if (item.value === null) continue;
         const destinationKey = resolveStorageKey(item.key, normalized);
-        if (rawGetItem(destinationKey) === null && !rawSetItem(destinationKey, item.value)) return false;
-        if (rawGetItem(destinationKey) !== item.value) return false;
+        if (snapshot.get(destinationKey) === null) {
+          if (!rawSetItem(destinationKey, item.value) || readRawStorageValue(destinationKey) !== item.value) {
+            return rollbackImport('Account-scope copy failed for ' + item.key);
+          }
+        }
       }
 
       for (const item of legacyValues) {
-        if (item.value !== null && !rawRemoveItem(item.key)) return false;
+        if (item.value === null) continue;
+        rawRemoveItem(item.key);
+        if (readRawStorageValue(item.key) !== null) {
+          return rollbackImport('Legacy source removal failed for ' + item.key);
+        }
       }
     }
 
     // keep-guest leaves the legacy dataset untouched and prevents another
-    // account from silently claiming it on this device.
-    if (!rawSetItem(STORAGE_OWNER_MARKER, normalized)) return false;
+    // account from silently claiming it. Marker write is part of the same
+    // rollback boundary as import copies and source removals.
+    if (!rawSetItem(STORAGE_OWNER_MARKER, normalized) ||
+        readRawStorageValue(STORAGE_OWNER_MARKER) !== normalized) {
+      return rollbackImport('Storage ownership marker could not be committed');
+    }
   }
 
   activeStorageScope = normalized;
   return true;
 }
-
 function getItem(key: string): string | null {
   return rawGetItem(resolveStorageKey(key));
 }
