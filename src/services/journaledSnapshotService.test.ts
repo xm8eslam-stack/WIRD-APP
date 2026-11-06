@@ -5,6 +5,7 @@ import type { PortionStatusRecord, WirdPortion, TestResult } from '../types/qura
 import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
 import { persistJournaledSessionCompletion } from './sessionPersistence';
+import type { WirdDomainEvent } from './domainEvents';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
@@ -51,6 +52,8 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         taskName: 'جلسة حفظ اختبار', surahNumber: 67, startAyah: 1, endAyah: 5
       }, { journal, runExclusive: inlineLock });
       const snapshot = await journal.getSnapshot();
+      const journalEvents = await journal.listEvents();
+      const storedDomainEvent = (journalEvents[0]?.payload as Record<string, unknown> | undefined)?.domainEvent as WirdDomainEvent | undefined;
       const updated = RetentionService.getPortions().find(item => item.id === initial.id);
       assert(result.success, 'A valid memorization session must complete through the journal');
       assert(updated?.status === 'recently_memorized' && updated.repetitionCount === 1,
@@ -61,6 +64,8 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'The profile streak must be committed with the activity');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'Progress, activity, and profile must share one durable event/outbox pair');
+      assert(storedDomainEvent?.type === 'session.completed' && storedDomainEvent.id.startsWith('session-'),
+        'The journal envelope must retain a typed, immutable session-completed domain event');
       journal.close();
     });
 
@@ -76,6 +81,26 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'The activity/profile and smart-plan projections must share one event/outbox transaction');
       assert(StorageService.getEnginePlans().length === 0,
         'The empty smart-plan snapshot must be projected without creating a second journal event');
+      journal.close();
+    });
+
+    await test('Grouped journal transactions reject mismatched domain-event identities before enqueue', async () => {
+      const journal = createJournal();
+      const mutationId = 'transaction-event-identity';
+      const domainEvent: WirdDomainEvent = {
+        schemaVersion: 1,
+        id: 'different-mutation-id',
+        type: 'session.completed',
+        occurredAt: new Date().toISOString(),
+        payload: { mode: 'review', memorizedAyahs: 0, reviewedPages: 1, minutes: 2, taskName: 'اختبار', includesSmartPlanProjection: false }
+      };
+      const result = await persistJournaledTransaction([
+        { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: { ...CLEAN_INITIAL_PROFILE } } }
+      ], { journal, runExclusive: inlineLock }, mutationId, domainEvent);
+      const snapshot = await journal.getSnapshot();
+      assert(!result.success, 'Mismatched event identity must be rejected');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'Invalid domain event must not enter the journal or outbox');
       journal.close();
     });
 
