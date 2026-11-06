@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `b549a29f9a9052bb0b93c993907727420e65c674`  
+**Audited HEAD:** `f342b4bc7e02a48f88b90646098eea178901c8ea`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -20,7 +20,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Local account isolation | Authenticated local data is scoped by exact Firebase UID; guest data remains separate |
 | Legacy local data | First authenticated account receives an explicit import-or-keep-as-guest decision |
 | Weak-verse persistence | Uses centralized StorageService; malformed/corrupt archives are preserved and block writes rather than becoming an empty list; coordinates are checked against canonical Surah metadata |
-| Durable local writes | Failed localStorage writes no longer leak through memory fallback as successful writes |
+| Durable local writes | Failed localStorage writes no longer leak through memory fallback as successful writes; corrupt profile/log/plan/revision/test/portion archives are preserved and normal writes are blocked |
 | Activity/streak write | Session log/profile write reports failure and attempts rollback rather than silently claiming success |
 | Session completion boundary | `persistSessionCompletion` validates exact Quran coordinates and rolls back the newly saved portion if activity/streak persistence fails |
 | Revision rating transaction | Portion rating and weak-verse writes roll back together if weak-verse or activity/streak persistence fails; restoration is verified |
@@ -32,6 +32,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Page status updates | Prepares all Surah segments and persists the whole page update in one canonical write |
 | Backup import UI | Checks `result.success`; failed imports and file-read errors no longer display false success |
 | Backup rollback | Snapshot restoration verifies memory and durable localStorage readback; failed recovery is surfaced rather than silently reported as attempted success |
+| Corrupt archive handling | Daily logs, profile, plans, engine plans, revision items, tests, and canonical portions are not silently normalized and overwritten; validated legacy recovery remains available |
 | Daily plan selection | Does not start future engine tasks or silently escape a plan's explicit scope |
 | Firestore rules | UID ownership, verified-user check, allowlist, generic envelope, tombstone-only delete model, default deny |
 | Rules tests | Firebase Emulator rules tests run in CI |

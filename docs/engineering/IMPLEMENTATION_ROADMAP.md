@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `b549a29f9a9052bb0b93c993907727420e65c674`
+**Current audited HEAD:** `f342b4bc7e02a48f88b90646098eea178901c8ea`
 
 ## Operating rules
 
@@ -52,6 +52,7 @@
 - Weak-verse reads now validate the archive and throw a recovery-safe error on malformed/corrupt data instead of returning `[]`; saves validate bounded fields. This prevents a later mistake update from overwriting a damaged archive.
 - Weak-verse writes validate Surah/ayah coordinates against canonical Quran metadata. The revision center degrades safely if the weak-verse archive is damaged, and revision rating now restores its portion/archive snapshot when dependent writes fail.
 - Shared Web Crypto UUIDv4 IDs now replace timestamp-derived IDs for outbox mutations/device identity and revision/weak-verse records, avoiding same-millisecond history collisions.
+- Corrupt/malformed local archives for profile, daily activity, plans, engine plans, revision items, tests, and canonical portions are protected from normal overwrite. Safe display reads remain available where needed; validated legacy portion recovery is still permitted.
 - Retention mutations fail visibly if canonical progress cannot be persisted.
 - Overlapping memorization portions count each ayah once in the retention score; the weakest overlapping status wins.
 - Review page counts use canonical Mushaf page/ayah mappings rather than an estimate.

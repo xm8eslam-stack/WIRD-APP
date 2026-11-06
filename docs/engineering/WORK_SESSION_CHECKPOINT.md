@@ -3,9 +3,9 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `b549a29f9a9052bb0b93c993907727420e65c674`  
+**Current HEAD:** `f342b4bc7e02a48f88b90646098eea178901c8ea`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42178884028 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42178884028)
+**Latest CI run:** [42180258989 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42180258989)
 
 ## Resume instructions
 
@@ -16,6 +16,9 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `cceed62` + `d013fe6` — daily activity archives now validate dates/counters, reject invalid session metrics, preserve corrupt source bytes, and expose a safe read-only display projection so the app can remain usable while writes/exports stay strict. Rollback of activity/profile snapshots is read-back verified.
+- `52306b4` + `ec32f8b` — validate user profile schema and preserve corrupt profile bytes; first CI run exposed an over-escaped date pattern, corrected in the follow-up. Final CI passed.
+- `d2d5f8f` + `67eaefe` + `f342b4b` — protect plans, engine plans, revision items, test results, and canonical portions from normal writes when their stored JSON is corrupt or malformed. Keep display reads safe, and explicitly allow canonical recovery only when validated legacy records are available. CI run `42180258989` passed 256 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `b549a29` — introduce a shared Web Crypto UUIDv4 generator and use it for outbox device IDs/mutations plus revision-history and weak-verse record IDs. Added tests proving unique review history IDs even with identical wall-clock timestamps. CI run `42178884028` passed 250 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `59ba288` — validate weak-verse failure coordinates against canonical Surah metadata, reject out-of-range ayahs before mutation, and store canonical Surah labels. Added coordinate-boundary tests.
 - `1ba7f0e` — keep the revision center and unrelated retention metrics available when the weak-verse archive is damaged; surface a warning while preserving the raw archive. Added a regression test.
@@ -58,7 +61,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 1. Daily activity is still stored as aggregate per-day logs; concurrent device updates would be lossy.
 2. Weak-verse mistake counts are aggregated; they need immutable events or a transaction-safe model.
 3. Portion review history needs stable unique event IDs before merging across devices.
-4. Session completion and revision rating now roll back ordinary localStorage failures; revision rollback verifies portion and weak-verse archive restoration. Backup import rollback verifies restoration. Crash-atomicity still requires a journal/transactional store before sync.
+4. Session completion and revision rating now roll back ordinary localStorage failures; revision rollback verifies portion and weak-verse archive restoration. Backup import rollback verifies restoration. Corrupt profile/log/plan/revision/test/portion archives are no longer silently normalized and overwritten by ordinary writes. Crash-atomicity still requires a journal/transactional store before sync.
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
 6. Revision-history IDs now use collision-resistant UUIDs rather than millisecond timestamps, preparing the data model for safe cross-device event identity.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
