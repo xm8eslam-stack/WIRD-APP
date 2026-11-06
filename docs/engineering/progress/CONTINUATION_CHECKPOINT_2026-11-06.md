@@ -1,28 +1,32 @@
 # WIRD — Continuation Checkpoint (2026-11-06)
 
-## Latest verified position — PRs #49–#55 merged
+## Latest verified position — PRs #49–#57 merged; PR #58 in progress
 
 - Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
-- Latest main SHA: `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`.
+- Latest main SHA: `a6a4eabf2572f1c0f7812fe891ddbaec27b3536d`.
 - PR #49 merged: Tafsir Express route and direct Surah Mushaf navigation; merge SHA `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`; exact-head run `42267849373` passed.
 - PR #50 merged: journal-first session progress/activity/profile; merge SHA `dacba8298db954392f7fbcbbf10af9f18ecc31dc`; exact-head run `42276148126` passed.
 - PR #51 merged: matching smart-plan task in same session transaction; merge SHA `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head run `42276561011` and post-merge run `42276748346` passed.
 - PR #52 merged: journal-ordered backup import/reset; merge SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head run `42277464313` and post-merge run `42277666291` passed.
 - PR #53 merged: removed unused direct-write App handlers; merge SHA `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge run `42278457062` passed.
 - PR #54 merged: typed, validated local domain-event envelopes; merge SHA `6cc1d20e63257387044334da45e38bc204961c09`; exact-head run `42280361752` and post-merge run `42280564932` passed.
-- PR #55 merged: development demo loader now uses one journaled grouped transaction for authenticated users and one rollback-safe local transaction for guests; merge SHA `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`; exact-head runs `42281993489` and `42281999065` passed; post-merge main run `42282206155` passed.
-- Main also contains direct Quran Library tabs/Juz navigation commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
-- Vercel status is not a merge gate per owner instruction; production deployment/live browser verification remain unconfirmed.
+- PR #55 merged: journaled demo data for authenticated users and rollback-safe local demo data for guests; merge SHA `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`; exact-head runs `42281993489`/`42281999065` and post-merge run `42282206155` passed.
+- PR #56 merged: engineering checkpoint documentation; merge SHA `6ef5671f9400ab5db6fcecda8b94659a01319dad`; exact-head and post-merge run `42282789263` passed.
+- PR #57 merged: read-only profile/portion getters and journaled legacy portion migration before app mount; merge SHA `a6a4eabf2572f1c0f7812fe891ddbaec27b3536d`; exact-head runs `42283803166`/`42283813448` and post-merge run `42284039747` passed.
+- PR #58 branch: `fix/journal-scope-guard-20261106`; binds migration to its original storage scope and aborts if the active account changes during lock wait. Latest exact head before documentation update: `154fc8f1e45f0d9451e201737abc726bec774ca4`; run `42284417182` was running.
+- Quran Library tabs/Juz navigation from direct commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6` remains preserved.
+- Vercel is not a merge gate per owner instruction; production deployment/live browser verification remain unconfirmed.
 - Firestore client/sync worker/remote acknowledgements/tombstones/two-device sync remain unimplemented and inactive.
 
 ## Next work
-1. Finish the remaining local mutation audit: legacy outbox migration/reset, device-local preferences, and remaining multi-key mutation callers.
-2. Add failure-injection coverage for any remaining IndexedDB blocked/quota/read/write cases and rollback verification gaps.
-3. Derive daily aggregates and streaks deterministically from the typed domain-event ledger.
-4. Define Firestore record/event mapping and conflict semantics.
-5. Implement Firestore adapter/sync coordinator behind a disabled feature gate.
-6. Test offline replay, duplicate delivery, account isolation, tombstones, and two-device conflicts.
-7. Keep production sync inactive until backup review and explicit approval.
+1. Finish PR #58 exact-head Quality Gate and second review; merge only after all jobs pass.
+2. Complete remaining local mutation audit: legacy outbox migration/reset and multi-key mutation callers.
+3. Add failure-injection coverage for any remaining IndexedDB blocked/quota/read/write/rollback gaps.
+4. Derive daily aggregates and streaks deterministically from the typed domain-event ledger.
+5. Define Firestore record/event mapping and conflict semantics.
+6. Implement Firestore adapter/sync coordinator behind a disabled feature gate.
+7. Test offline replay, duplicate delivery, account isolation, tombstones, and two-device conflicts.
+8. Keep production sync inactive until backup review and explicit approval.
 
 ## Required process
 - Work from freshly fetched `main` on a separate branch.
