@@ -3,7 +3,7 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Current main SHA: 1de59512e61e359ba001eeaae663e50597b6f58f
+- Last verified application-code main SHA before this documentation checkpoint: 1de59512e61e359ba001eeaae663e50597b6f58f
 - Main Quality Gate: run 42221103563 — success (tests, Firestore emulator, dependency audit, TypeScript, production build, server smoke).
 - Production deployment: not confirmed. Vercel reports the free daily deployment cap and asks to retry in 24 hours.
 
