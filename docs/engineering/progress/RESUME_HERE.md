@@ -3,7 +3,7 @@
 **Start here after every interruption. Updated 2026-11-06.**
 
 1. Open repository `xm8eslam-stack/WIRD-APP`.
-2. Fetch `main` and confirm its current HEAD; the last observed main commit was `d9737e0e16ea1f87b9811621dce42d8f6d4e8450`. Do not assume it is still current.
+2. Fetch `main` and confirm its current HEAD; the latest confirmed main HEAD before this resume-file update is `1f7f4cc1031cf4bde7b1cf9b6d5c9ac40af5779b`; this update creates a further documentation commit, so re-fetch main HEAD before any work. Do not assume it is still current.
 3. Read, in order:
    - `docs/engineering/progress/CURRENT_STATUS.md`
    - `docs/engineering/progress/MASTER_ROADMAP.md`
@@ -19,7 +19,7 @@
    - add strict validators for each record in plans, engine plans, revision items, test results, logs, and weak-verse archives;
    - make backup import/export use the same strict validators and reject malformed nested records before any writes;
    - add legacy-compatibility and invalid-record regression tests; preserve original bytes on failure.
-   - then continue M4, not cloud sync:
+   - then complete Phase 2 mutation/range validation and review/session correctness before M4; M4 is not the next immediate phase.
    - audit `src/services/localSyncOutbox.ts` and its test file;
    - identify every session, review, weak-verse, test, plan, and profile mutation call site;
    - reproduce and fix the confirmed bug where reusing an acknowledged mutation ID with different content returns `already_acknowledged` without comparing payload/document/collection/operation; also validate pending/acknowledged uniqueness and disjointness;
@@ -31,7 +31,7 @@
 11. Do not deploy production Firestore rules, enable production cloud sync, or change secrets/project settings without explicit user approval.
 
 ## Last known exact state
-- Latest confirmed main commit before the post-merge checkpoint update: `82efeacd9118406d850336fa3c862fd5016bed14` (PR #3 squash merge). Re-fetch current main HEAD before making any changes.
+- Latest confirmed main HEAD before this resume-file update: `1f7f4cc1031cf4bde7b1cf9b6d5c9ac40af5779b`. Re-fetch current main HEAD before making any changes.
 - Documentation PR #3: https://github.com/xm8eslam-stack/WIRD-APP/pull/3 — merged as `82efeacd9118406d850336fa3c862fd5016bed14`.
 - CI run `42184381262` on the PR head passed all steps, including Firestore emulator, TypeScript, production build, and server smoke test.
 - Vercel still reports the free deployment rate limit; production deployment is not confirmed.
