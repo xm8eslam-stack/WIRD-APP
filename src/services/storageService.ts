@@ -1186,8 +1186,11 @@ export const StorageService = {
       allowRecoveryOverwrite: false
     });
     try {
-      const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
-      const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      const currentVersion = readRawStorageValue(resolveStorageKey(STORAGE_KEYS.SCHEMA_VERSION));
+      const unifiedData = readRawStorageValue(resolveStorageKey(STORAGE_KEYS.UNIFIED_PORTIONS));
+      if (currentVersion === undefined || unifiedData === undefined) {
+        return failure('تعذرت قراءة أرشيف المقاطع الموحد بشكل موثوق؛ لم يتم تنفيذ الترحيل.');
+      }
       const hasInvalidCanonicalPayload = currentVersion === '2';
 
       if (currentVersion === '2' && unifiedData) {
@@ -1210,8 +1213,11 @@ export const StorageService = {
         }
       }
 
-      const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
-      const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
+      const legacyPortionsRaw = readRawStorageValue(resolveStorageKey(STORAGE_KEYS.PORTIONS));
+      const legacyRevsRaw = readRawStorageValue(resolveStorageKey(STORAGE_KEYS.REVISION));
+      if (legacyPortionsRaw === undefined || legacyRevsRaw === undefined) {
+        return failure('تعذرت قراءة الأرشيف القديم بشكل موثوق؛ لم يتم تنفيذ الترحيل.');
+      }
       if (!hasInvalidCanonicalPayload && legacyPortionsRaw === null && legacyRevsRaw === null) {
         return {
           report: {
