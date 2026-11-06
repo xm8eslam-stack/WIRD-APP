@@ -448,139 +448,168 @@ function getStableHistoryConflictSuffix(log: RevisionLogEntry): string {
   return (hash >>> 0).toString(36);
 }
 
+const MAX_MIGRATED_HISTORY_ENTRIES = 10000;
+const MAX_CONFLICT_AUDIT_ENTRIES = 1000;
+
+function assertValidQuranRange(surahNumber: number, startAyah: number, endAyah: number): void {
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  if (!Number.isSafeInteger(surahNumber) || !surah ||
+      !Number.isSafeInteger(startAyah) || startAyah < 1 ||
+      !Number.isSafeInteger(endAyah) || endAyah < startAyah || endAyah > surah.versesCount) {
+    throw new RangeError('Invalid Quran portion coordinates; migration and calculations require a valid integer Surah/ayah range.');
+  }
+}
+
+function addConflictAudit(
+  existing: WirdPortion,
+  source: string,
+  field: string,
+  value: string
+): void {
+  if (!existing.conflictAudit) existing.conflictAudit = [];
+  const normalizedValue = value.slice(0, 2000);
+  const duplicate = existing.conflictAudit.some(item =>
+    item.source === source && item.field === field && item.value === normalizedValue
+  );
+  if (duplicate) return;
+  if (existing.conflictAudit.length >= MAX_CONFLICT_AUDIT_ENTRIES) {
+    throw new Error('Conflict audit limit exceeded; original legacy archives must remain unchanged for manual recovery.');
+  }
+  existing.conflictAudit.push({
+    source: source.slice(0, 160),
+    field: field.slice(0, 160),
+    value: normalizedValue
+  });
+}
+
+function sameRevisionLogContent(a: RevisionLogEntry, b: RevisionLogEntry): boolean {
+  return a.date === b.date && a.rating === b.rating &&
+    a.intervalDaysBefore === b.intervalDaysBefore &&
+    a.intervalDaysAfter === b.intervalDaysAfter &&
+    a.notes === b.notes;
+}
+
+/**
+ * Deduplicate only by stable event ID. Two different IDs represent two distinct
+ * review attempts even when date, grade, intervals, and notes happen to match.
+ */
+function mergeHistoryEntries(
+  existing: WirdPortion,
+  incomingHistory: RevisionLogEntry[],
+  sourceName: string
+): void {
+  if (!Array.isArray(incomingHistory)) {
+    throw new Error('Revision history must be an array before migration.');
+  }
+  if (!existing.history) existing.history = [];
+
+  for (const incomingLog of incomingHistory) {
+    if (!incomingLog || typeof incomingLog.id !== 'string' || !incomingLog.id.trim() ||
+        incomingLog.id.length > 160 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(incomingLog.date) ||
+        !['successful', 'difficult', 'failed'].includes(incomingLog.rating) ||
+        !Number.isSafeInteger(incomingLog.intervalDaysBefore) || incomingLog.intervalDaysBefore < 0 ||
+        !Number.isSafeInteger(incomingLog.intervalDaysAfter) || incomingLog.intervalDaysAfter < 0 ||
+        (incomingLog.notes !== undefined && (typeof incomingLog.notes !== 'string' || incomingLog.notes.length > 2000))) {
+      throw new Error('Malformed revision history entry; migration was stopped without modifying source archives.');
+    }
+
+    const sameIdLog = existing.history.find(log => log.id === incomingLog.id);
+    if (!sameIdLog) {
+      if (existing.history.length >= MAX_MIGRATED_HISTORY_ENTRIES) {
+        throw new Error('Merged revision history exceeds the safe 10,000-entry limit; source archives remain unchanged.');
+      }
+      existing.history.push({ ...incomingLog });
+      continue;
+    }
+
+    if (sameRevisionLogContent(sameIdLog, incomingLog)) continue;
+
+    const suffix = getStableHistoryConflictSuffix(incomingLog);
+    const baseId = incomingLog.id.slice(0, 100) + '_conflict_' + suffix;
+    let preservedId = baseId;
+    let collisionIndex = 1;
+    while (true) {
+      const collision = existing.history.find(log => log.id === preservedId);
+      if (!collision || sameRevisionLogContent(collision, incomingLog)) break;
+      preservedId = baseId + '_' + collisionIndex++;
+      if (preservedId.length > 160) {
+        throw new Error('Unable to assign a unique deterministic ID to a conflicting revision log; source archives remain unchanged.');
+      }
+    }
+    if (!existing.history.some(log => log.id === preservedId)) {
+      existing.history.push({ ...incomingLog, id: preservedId });
+      addConflictAudit(existing, sourceName, 'history',
+        'Conflicting history entry under ID ' + incomingLog.id + ' preserved as ' + preservedId);
+    }
+  }
+}
+
 function mergePortionRecords(
   existing: WirdPortion,
   incoming: Partial<WirdPortion> & { notes?: string },
   sourceName: string
 ): void {
-  if (!existing.conflictAudit) {
-    existing.conflictAudit = [];
-  }
-
-  // Preserve metadata disagreements in conflictAudit
   const metaFields: (keyof WirdPortion)[] = [
     'type', 'surahName', 'pageNumber', 'pageStart', 'pageEnd', 'juzNumber',
     'revisionType', 'strength', 'createdAt', 'updatedAt'
   ];
 
   metaFields.forEach(field => {
-    if (
-      incoming[field] !== undefined && 
-      existing[field] !== undefined && 
-      incoming[field] !== existing[field]
-    ) {
-      existing.conflictAudit!.push({
-        source: sourceName,
-        field: String(field),
-        value: `Metadata conflict: existing '${existing[field]}' vs incoming '${incoming[field]}'`,
-        timestamp: new Date().toISOString()
-      });
+    if (incoming[field] !== undefined &&
+        existing[field] !== undefined &&
+        incoming[field] !== existing[field]) {
+      addConflictAudit(existing, sourceName, String(field),
+        'Metadata conflict: existing ' + String(existing[field]) + ' vs incoming ' + String(incoming[field]));
     }
   });
 
-  // 1. Status: Weakest/most urgent state wins to prevent forgotten lapses
+  // Conservative status merge: the weakest state wins.
   if (incoming.status) {
     const existingRank = STATUS_SEVERITY_HIERARCHY[existing.status] ?? 3;
     const incomingRank = STATUS_SEVERITY_HIERARCHY[incoming.status] ?? 3;
     if (incomingRank < existingRank) {
       if (existing.status !== incoming.status) {
-        existing.conflictAudit.push({
-          source: sourceName,
-          field: 'status',
-          value: `Overridden ${existing.status} with higher priority ${incoming.status}`,
-          timestamp: new Date().toISOString()
-        });
+        addConflictAudit(existing, sourceName, 'status',
+          'Overridden ' + existing.status + ' with higher priority ' + incoming.status);
       }
       existing.status = incoming.status;
     }
   }
 
-  // 2. Repetition count: highest verified count
   if (incoming.repetitionCount !== undefined) {
     existing.repetitionCount = Math.max(existing.repetitionCount || 0, incoming.repetitionCount);
   }
 
-  // 3. Interval: if weak, interval is 1; otherwise take maximum interval
   if (existing.status === 'weak') {
     existing.intervalDays = 1;
   } else if (incoming.intervalDays !== undefined) {
     existing.intervalDays = Math.max(existing.intervalDays || 1, incoming.intervalDays);
   }
 
-  // 4. Ease Factor: preserve conservative factor (lower EF means safer, more frequent revision)
   if (incoming.easeFactor !== undefined && incoming.easeFactor > 0) {
     existing.easeFactor = Math.min(existing.easeFactor || 2.5, incoming.easeFactor);
   }
 
-  // 5. Due date: earlier due date wins (ensures no overdue revision is missed)
-  if (incoming.nextDueDate) {
-    if (!existing.nextDueDate || incoming.nextDueDate < existing.nextDueDate) {
-      existing.nextDueDate = incoming.nextDueDate;
-    }
+  if (incoming.nextDueDate &&
+      (!existing.nextDueDate || incoming.nextDueDate < existing.nextDueDate)) {
+    existing.nextDueDate = incoming.nextDueDate;
   }
 
-  // 6. Last reviewed date: more recent date wins
-  if (incoming.lastReviewedDate) {
-    if (!existing.lastReviewedDate || incoming.lastReviewedDate > existing.lastReviewedDate) {
-      existing.lastReviewedDate = incoming.lastReviewedDate;
-    }
+  if (incoming.lastReviewedDate &&
+      (!existing.lastReviewedDate || incoming.lastReviewedDate > existing.lastReviewedDate)) {
+    existing.lastReviewedDate = incoming.lastReviewedDate;
   }
 
-  // 7. Mistakes count: accumulate or take maximum
   if (incoming.mistakesCount !== undefined) {
     existing.mistakesCount = Math.max(existing.mistakesCount || 0, incoming.mistakesCount);
   }
 
-  // 8. History: Lossless union of revision logs with duplicate ID content-disagreement handling
   if (Array.isArray(incoming.history) && incoming.history.length > 0) {
-    if (!existing.history) existing.history = [];
-    
-    incoming.history.forEach(incLog => {
-      const sameIdLog = existing.history!.find(h => h.id && incLog.id && h.id === incLog.id);
-      if (sameIdLog) {
-        // Check if content differs
-        const contentDiff = sameIdLog.date !== incLog.date ||
-          sameIdLog.rating !== incLog.rating ||
-          sameIdLog.intervalDaysBefore !== incLog.intervalDaysBefore ||
-          sameIdLog.intervalDaysAfter !== incLog.intervalDaysAfter ||
-          sameIdLog.notes !== incLog.notes;
-
-        if (contentDiff) {
-          // Preserve conflicting history entry under a modified ID so no log is lost!
-          const preservedId = `${incLog.id}_conflict_${getStableHistoryConflictSuffix(incLog)}`;
-          const alreadyPreserved = existing.history!.some(log => log.id === preservedId);
-          if (!alreadyPreserved) {
-            const preservedLog = { ...incLog, id: preservedId };
-            existing.history!.push(preservedLog);
-            existing.conflictAudit!.push({
-              source: sourceName,
-              field: 'history',
-              value: `Conflicting history entry under ID '${incLog.id}' preserved as '${preservedLog.id}'`,
-              timestamp: new Date().toISOString()
-            });
-          }
-        }
-      } else {
-        // Check exact content signature
-        const contentSig = `${incLog.date}_${incLog.rating}_${incLog.intervalDaysBefore}_${incLog.intervalDaysAfter}_${incLog.notes || ''}`;
-        const existsExact = existing.history!.some(h => 
-          `${h.date}_${h.rating}_${h.intervalDaysBefore}_${h.intervalDaysAfter}_${h.notes || ''}` === contentSig
-        );
-        if (!existsExact) {
-          existing.history!.push(incLog);
-        }
-      }
-    });
+    mergeHistoryEntries(existing, incoming.history, sourceName);
   }
 
-  // 9. Unreconciled notes
   if (incoming.notes) {
-    existing.conflictAudit.push({
-      source: sourceName,
-      field: 'notes',
-      value: incoming.notes,
-      timestamp: new Date().toISOString()
-    });
+    addConflictAudit(existing, sourceName, 'notes', incoming.notes);
   }
 }
 
