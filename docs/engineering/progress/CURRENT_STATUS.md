@@ -1,9 +1,29 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06  
+**Updated:** 2026-11-06 (PR #37 checkpoint)  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, and #20 merged; PR #7 was closed without merge as superseded.
+**Recent milestone PRs:** #14, #15, #16, #18, #20, #24–#28, #30–#32, and #34–#37 merged. Older superseded PRs remain historical only; compare every open branch with current main before considering reuse.
+
+## Latest verified position — after PR #37
+
+- Current main SHA: `60d475d1f4f06ea4a852751e1548297d9c7dc6de` (PR #37 merge).
+- PR #36 merged as `9b76227b9498b23fa79fb39264d4b4be98fa16e4`: deterministic UID-scoped IndexedDB journal replay runs before authenticated app state initializes; legacy already-projected events are skipped safely; new snapshots are validated and cursor advancement follows successful local projection.
+- PR #37 merged as `60d475d1f4f06ea4a852751e1548297d9c7dc6de`: authenticated profile settings/theme, preset-plan snapshots, and engine-plan snapshots use journal-first event+outbox persistence. Cross-tab snapshot writes are serialized with Web Locks; older pending events are replayed before new snapshots, and stale writes are blocked after recovery changes local state.
+- PR #37 exact-head Quality Gate runs `42251723375` (PR) and `42251711748` (push) both passed on exact head `d45dd9e7284101e332f15b2f408cd62001a961be`: automated suites, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
+- Post-merge main Quality Gate run `42251976734` is pending/in progress at this checkpoint on exact main SHA `60d475d1f4f06ea4a852751e1548297d9c7dc6de`; verify its final result before treating the merge as fully main-gated.
+- Vercel production deployment for this main SHA is not confirmed. Green GitHub Actions is not a deployment receipt.
+- Phase 2 remains **IN PROGRESS**. PR #37 is a first slice, not full journal integration: session profile/activity aggregation, canonical portions/revision, weak verses, tests, backup import/reset, and remaining mutation paths are not yet journal-first.
+- Open PR #8 compares as 21 ahead / 62 behind and PR #2 as 115 ahead / 191 behind; both are divergent and must not be merged wholesale.
+
+### Next implementation sequence
+
+1. Add journal-first canonical portion/revision mutations without weakening existing multi-key rollback verification.
+2. Add grouped event+outbox transaction and grouped projection/rollback semantics for logically atomic multi-archive operations such as session completion and weak-verse recording.
+3. Connect test results, activity/session records, and backup import/reset with deterministic recovery semantics.
+4. Align Firestore payloads with immutable event semantics for activity, tests, and weak-verse records; aggregate daily logs/counters locally.
+5. Implement Firestore adapter/worker, acknowledgements, retries, tombstones, collection-specific rules, and two-device/offline tests.
+6. Complete manual UI/audio/accessibility QA and confirm a real Vercel Production deployment for the exact main SHA before release.
 
 ## Latest continuation checkpoint — 2026-11-06
 
