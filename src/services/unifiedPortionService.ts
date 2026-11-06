@@ -759,6 +759,19 @@ function mergePortionRecords(
     }
   }
 
+  // Strength is also merged conservatively so a weaker status can never retain
+  // a contradictory stronger label from another legacy projection.
+  if (incoming.strength) {
+    const strengthPriority: Record<'weak' | 'medium' | 'strong', number> = {
+      weak: 0, medium: 1, strong: 2
+    };
+    const currentStrength = existing.strength;
+    if (!currentStrength || strengthPriority[incoming.strength] < strengthPriority[currentStrength]) {
+      existing.strength = incoming.strength;
+    }
+  }
+  if (existing.status === 'weak') existing.strength = 'weak';
+
   if (incoming.repetitionCount !== undefined) {
     existing.repetitionCount = Math.max(existing.repetitionCount || 0, incoming.repetitionCount);
   }
