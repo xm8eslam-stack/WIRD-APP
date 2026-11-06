@@ -135,6 +135,27 @@ export function runBackupTests(): { passed: number; failed: number } {
       'Malformed nested engine schedule days must be rejected');
   });
 
+  test('Duplicate daily activity dates are rejected without overwriting the original archive', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const duplicateLogs = [
+      { date: '2026-11-06', memorizedAyahsCount: 1, reviewedPagesCount: 0, minutesSpent: 5, completedTasks: ['حفظ'] },
+      { date: '2026-11-06', memorizedAyahsCount: 2, reviewedPagesCount: 0, minutesSpent: 7, completedTasks: ['مراجعة'] }
+    ];
+    const raw = JSON.stringify(duplicateLogs);
+    try {
+      StorageService.resetAllData();
+      assert(StorageService.setRawItem(STORAGE_KEYS.LOGS, raw), 'Duplicate log fixture should be stored');
+      assert(StorageService.getLogs().length === 0, 'Safe read must not expose duplicate daily log records');
+      assert(!StorageService.recordSessionCompletion(1, 0, 1, 'محاولة جديدة'),
+        'Session completion must refuse to overwrite a duplicate-date archive');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === raw, 'Duplicate-date archive bytes must remain unchanged');
+      assert(!validateBackupPayload({ version: 3, logs: duplicateLogs }).valid,
+        'Backup import must reject duplicate daily activity dates');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
   test('Version 4 rejects divergent legacy and canonical backup projections', () => {
     const mismatchedPortions = validateBackupPayload({
       version: 4,
