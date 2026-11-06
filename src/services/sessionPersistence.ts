@@ -4,10 +4,13 @@ import { getSessionCompletionMetrics, SessionMode, SessionCompletionMetrics } fr
 import { ALL_SURAHS } from '../data/quranMeta';
 import { createSecureId } from './secureId';
 import { persistJournaledTransaction, type JournaledSnapshotOptions } from './journaledSnapshotService';
+import type { EngineGeneratedPlan } from './planningEngine';
 
 export interface PersistSessionCompletionInput {
   mode: SessionMode; memorizedAyahs: number; reviewedPages: number;
   minutes: number; taskName: string; surahNumber?: number; startAyah?: number; endAyah?: number;
+  /** Optional smart-plan projection committed with the same session event. */
+  enginePlansSnapshot?: EngineGeneratedPlan[];
 }
 export type PersistSessionCompletionResult =
   | { success: true; memorizedAyahs: number; reviewedPages: number; shouldRecordMemorization: boolean }
@@ -70,6 +73,15 @@ export async function persistJournaledSessionCompletion(
     { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs } },
     { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: activity.profile } }
   );
+  if (input.enginePlansSnapshot !== undefined) {
+    if (!Array.isArray(input.enginePlansSnapshot) || input.enginePlansSnapshot.length > 100) {
+      return { success: false, messageAr: 'بيانات الخطة الذكية غير صالحة؛ لم يتم حفظ الجلسة أو تحديث الخطة.' };
+    }
+    operations.push({
+      collection: 'enginePlans', documentId: 'snapshot', operation: 'upsert',
+      payload: { records: input.enginePlansSnapshot }
+    });
+  }
 
   try {
     const result = await persistJournaledTransaction(operations, options, 'session-' + createSecureId());
