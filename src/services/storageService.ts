@@ -358,7 +358,7 @@ function isValidRevisionItem(value: unknown): value is RevisionItem {
 
 function isValidLegacyRevisionItem(value: unknown): boolean {
   if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
-  return (value.id === undefined || (typeof value.id === 'string' && value.id.length <= 160)) &&
+  return (value.id === undefined || (typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160)) &&
     (value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100)) &&
     (value.type === undefined || ['minor', 'major'].includes(value.type)) &&
     (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
@@ -713,7 +713,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
   }> = [
     { field: 'plans', max: 500, validate: isValidMemorizationPlan, label: 'خطط الحفظ' },
     { field: 'enginePlans', max: 100, validate: isValidEngineGeneratedPlan, label: 'الخطط الذكية' },
-    { field: 'revisionItems', max: 10000, validate: payload.version < 4 ? isValidLegacyRevisionItem : isValidRevisionItem, label: 'عناصر المراجعة' },
+    { field: 'revisionItems', max: 10000, validate: isValidLegacyRevisionItem, label: 'عناصر المراجعة' },
     { field: 'logs', max: 10000, validate: isValidDailyLog, label: 'سجل النشاط اليومي' },
     { field: 'tests', max: 50, validate: isValidTestResultRecord, label: 'نتائج الاختبارات' },
     { field: 'portions', max: 10000, validate: value => isValidPortionRecord(value, false), label: 'المقاطع القديمة' },
@@ -900,7 +900,7 @@ export const StorageService = {
       // If schema version is not 2, run migration first
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
-      if (legacyPortionsRaw || legacyRevsRaw) {
+      if (legacyPortionsRaw !== null || legacyRevsRaw !== null) {
         this.ensureDataMigrated();
         const migrated = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
         if (migrated) return JSON.parse(migrated);
@@ -1245,7 +1245,7 @@ export const StorageService = {
 
     const plans = readStrictJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
     const enginePlans = readStrictJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
-    const revisionItems = readStrictJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidRevisionItem);
+    const revisionItems = readStrictJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidLegacyRevisionItem);
     const logs = this.getLogs();
     const tests = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
 
