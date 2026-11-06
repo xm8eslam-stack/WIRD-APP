@@ -1550,19 +1550,33 @@ export const StorageService = {
     }
   },
 
-  // Complete Clean Reset — never report success unless every scoped key is absent.
+  // Complete Clean Reset — capture a trustworthy snapshot first and roll back
+  // every earlier removal if any durable deletion cannot be verified.
   resetAllData(): boolean {
+    let snapshot: Record<string, string | null>;
+    try {
+      snapshot = this.getStorageSnapshot();
+    } catch (error) {
+      console.error('[WIRD Storage] Reset stopped before deleting data because a complete snapshot was unavailable.', error);
+      return false;
+    }
+
     const keys = [
       STORAGE_KEYS.PROFILE, STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS,
       STORAGE_KEYS.PROGRESS, STORAGE_KEYS.REVISION, STORAGE_KEYS.LOGS,
       STORAGE_KEYS.TESTS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.WEAK_VERSES,
       STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.SCHEMA_VERSION, STORAGE_KEYS.SYNC_OUTBOX
     ];
-    let success = true;
     for (const key of keys) {
-      if (!removeItem(key)) success = false;
+      if (!removeItem(key) || !verifyItem(key, null) || memoryStorage.has(resolveStorageKey(key))) {
+        const rollbackVerified = this.restoreStorageSnapshot(snapshot);
+        console.error(
+          '[WIRD Storage] Reset failed; previous data restoration verified: ' + rollbackVerified
+        );
+        return false;
+      }
     }
-    return success;
+    return true;
   },
 
   // Test-only Snapshot API
@@ -1589,37 +1603,49 @@ export const StorageService = {
   },
 
   restoreStorageSnapshot(snapshot: Record<string, string | null>): boolean {
-    let restored = true;
     const scopedKeys = Object.values(STORAGE_KEYS).map(key => resolveStorageKey(key));
 
-    for (const key of scopedKeys) {
-      if (!rawRemoveItem(key)) restored = false;
-      if (memoryStorage.has(key)) restored = false;
-      try {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem(key) !== null) restored = false;
-      } catch { restored = false; }
-    }
+    // Clear the known scope first, but judge success from the final state rather
+    // than an intermediate remove result: a failed remove is harmless when the
+    // durable value already equals the snapshot value.
+    for (const key of scopedKeys) rawRemoveItem(key);
 
     for (const [fullKey, val] of Object.entries(snapshot)) {
       if (fullKey.startsWith('memory:')) {
         const key = fullKey.slice('memory:'.length);
         if (val === null) memoryStorage.delete(key);
         else memoryStorage.set(key, val);
-        if ((memoryStorage.get(key) ?? null) !== val) restored = false;
       } else if (fullKey.startsWith('local:')) {
         const key = fullKey.slice('local:'.length);
         try {
           if (typeof localStorage === 'undefined') {
-            if (val !== null) restored = false;
+            if (val !== null) return false;
           } else {
             if (val === null) localStorage.removeItem(key);
             else localStorage.setItem(key, val);
-            if (localStorage.getItem(key) !== val) restored = false;
           }
-        } catch { restored = false; }
+        } catch {
+          // The final durable read-back below decides whether restoration succeeded.
+        }
       }
     }
-    return restored;
+
+    for (const key of scopedKeys) {
+      const expectedMemory = snapshot['memory:' + key] ?? null;
+      if ((memoryStorage.get(key) ?? null) !== expectedMemory) return false;
+
+      const expectedDurable = snapshot['local:' + key] ?? null;
+      if (typeof localStorage === 'undefined') {
+        if (expectedDurable !== null) return false;
+      } else {
+        try {
+          if (localStorage.getItem(key) !== expectedDurable) return false;
+        } catch {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 };
 

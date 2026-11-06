@@ -132,11 +132,13 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
-  test('Full data reset reports failure when one scoped key cannot be removed', () => {
+  test('Full data reset rolls back earlier deletions when one scoped key cannot be removed', () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalProfile = JSON.stringify(CLEAN_INITIAL_PROFILE);
+    const originalPlans = JSON.stringify([{ id: 'keep-me' }]);
     const values = new Map<string, string>([
-      [STORAGE_KEYS.PROFILE, JSON.stringify(CLEAN_INITIAL_PROFILE)],
-      [STORAGE_KEYS.PLANS, JSON.stringify([{ id: 'keep-me' }])]
+      [STORAGE_KEYS.PROFILE, originalProfile],
+      [STORAGE_KEYS.PLANS, originalPlans]
     ]);
     StorageService.__resetStorageForTests();
     Object.defineProperty(globalThis, 'localStorage', {
@@ -153,8 +155,39 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     try {
       const reset = StorageService.resetAllData();
       assert(reset === false, 'Reset must return false when any durable key cannot be removed');
-      assert(values.has(STORAGE_KEYS.PLANS), 'The failed key should remain visible for recovery');
-      assert(!values.has(STORAGE_KEYS.PROFILE), 'Other keys may be removed but reset must not claim full success');
+      assert(values.get(STORAGE_KEYS.PLANS) === originalPlans, 'The failed key must remain unchanged');
+      assert(values.get(STORAGE_KEYS.PROFILE) === originalProfile,
+        'Earlier successful deletions must be rolled back to preserve the complete previous dataset');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Full data reset performs no deletions when its durable snapshot cannot be read', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalProfile = JSON.stringify(CLEAN_INITIAL_PROFILE);
+    const values = new Map<string, string>([[STORAGE_KEYS.PROFILE, originalProfile]]);
+    let readsBlocked = false;
+    let removals = 0;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => {
+          if (readsBlocked) throw new Error('simulated snapshot read failure');
+          return values.get(key) ?? null;
+        },
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => { removals++; values.delete(key); }
+      }
+    });
+    try {
+      readsBlocked = true;
+      assert(!StorageService.resetAllData(), 'Reset must stop if it cannot capture a trustworthy snapshot');
+      assert(removals === 0, 'No deletion may be attempted before snapshot capture succeeds');
+      assert(values.get(STORAGE_KEYS.PROFILE) === originalProfile, 'Existing durable data must remain untouched');
     } finally {
       if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
       else delete (globalThis as any).localStorage;
