@@ -99,8 +99,18 @@ function isValidMutation(value: unknown): value is OutboxMutation {
 }
 
 
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return item;
+    return Object.keys(item).sort().reduce<Record<string, unknown>>((sorted, key) => {
+      sorted[key] = item[key];
+      return sorted;
+    }, {});
+  });
+}
+
 function sameMutationIdentity(a: Pick<OutboxMutation, 'collection' | 'documentId' | 'operation' | 'payload'>, b: Pick<OutboxMutation, 'collection' | 'documentId' | 'operation' | 'payload'>): boolean {
-  return a.collection === b.collection && a.documentId === b.documentId && a.operation === b.operation && JSON.stringify(a.payload) === JSON.stringify(b.payload);
+  return a.collection === b.collection && a.documentId === b.documentId && a.operation === b.operation && stableJson(a.payload) === stableJson(b.payload);
 }
 
 function createEmptyState(): OutboxState {
@@ -192,7 +202,7 @@ export const LocalSyncOutbox = {
       const sameMutation = existing.collection === input.collection &&
         existing.documentId === input.documentId &&
         existing.operation === operation &&
-        JSON.stringify(existing.payload) === payloadJson;
+        stableJson(existing.payload) === stableJson(canonicalPayload);
       if (!sameMutation) throw new Error('معرّف المزامنة مستخدم مسبقاً لبيانات مختلفة؛ أوقفنا العملية لمنع إسقاط تعديل جديد.');
       return { status: 'already_pending', mutation: { ...existing } };
     }
