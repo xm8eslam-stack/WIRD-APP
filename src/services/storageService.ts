@@ -1122,7 +1122,7 @@ export const StorageService = {
       console.error('[WIRD Storage] Canonical portion write failed:', reason);
       const restored = this.restoreRawSnapshot(snapshot);
       if (!restored.success) {
-        console.error('[WIRD Storage] Canonical portion rollback requires recovery:', restored.failedKeys);
+        throw new Error('تعذر التحقق من استعادة أرشيف المقاطع والإسقاطات القديمة (' + restored.failedKeys.join('، ') + '). صدّر نسخة احتياطية قبل أي تعديل آخر.');
       }
       return false;
     };
@@ -1210,7 +1210,14 @@ export const StorageService = {
 
       return true;
     } catch (error) {
-      if (writeStarted) return failAndRestore(error instanceof Error ? error.message : 'unexpected write error');
+      if (writeStarted) {
+        const restored = this.restoreRawSnapshot(snapshot);
+        if (!restored.success) {
+          throw new Error('تعذر التحقق من استعادة أرشيف المقاطع والإسقاطات القديمة (' + restored.failedKeys.join('، ') + '). صدّر نسخة احتياطية قبل أي تعديل آخر.');
+        }
+        console.error('[WIRD Storage] saveUnifiedPortions write failed and was rolled back:', error);
+        return false;
+      }
       console.error('[WIRD Storage] saveUnifiedPortions validation failed before writes', error);
       return false;
     }
