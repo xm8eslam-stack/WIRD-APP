@@ -3,9 +3,9 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `dc1f85f0b1ee6a33df5c7562262be797b13eb8d7`  
+**Current HEAD:** `543df246328faf305148d0a7274700dad81192bf`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42171385088 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171385088)
+**Latest CI run:** [42171658033 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171658033)
 
 ## Resume instructions
 
@@ -16,6 +16,7 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `543df24` — backup import rollback now returns an explicit verification result. It verifies that scoped localStorage and memory keys were restored, and reports a recovery warning if readback fails. Added a failure-injection regression test. CI run `42171658033` passed 231 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `dc1f85f` — add `persistSessionCompletion` as a user-visible session persistence boundary. It validates exact Quran coordinates, saves canonical memorization progress and activity together, and rolls back the portion if activity/streak persistence fails. Added regression tests for failed-write rollback and review-only behavior. CI run `42171385088` passed 230 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `655d070` + `1efadca` — add a UID-scoped durable local outbox foundation with secure UUID/device IDs, idempotent enqueue/acknowledgement, retry backoff, bounded batches/payload/storage, corruption preservation, and quota-failure handling. The first CI run exposed a test-mock key-prefix mismatch; the test was corrected to target UID-scoped keys.
 - Latest CI run `42170716768` passed: 228 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
@@ -50,7 +51,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 1. Daily activity is still stored as aggregate per-day logs; concurrent device updates would be lossy.
 2. Weak-verse mistake counts are aggregated; they need immutable events or a transaction-safe model.
 3. Portion review history needs stable unique event IDs before merging across devices.
-4. Session completion now has rollback for ordinary localStorage failures; other multi-key operations still need equivalent journal/rollback behavior before outbox integration.
+4. Session completion now has rollback for ordinary localStorage failures; backup import rollback now verifies restoration. Other multi-key operations still need equivalent journal/rollback behavior before outbox integration.
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
 

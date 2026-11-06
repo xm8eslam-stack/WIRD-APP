@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `dc1f85f0b1ee6a33df5c7562262be797b13eb8d7`  
+**Audited HEAD:** `543df246328faf305148d0a7274700dad81192bf`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -29,6 +29,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | In-progress memorization | Resumes exact stored range; no clipped child range that leaves a repeating parent |
 | Page status updates | Prepares all Surah segments and persists the whole page update in one canonical write |
 | Backup import UI | Checks `result.success`; failed imports and file-read errors no longer display false success |
+| Backup rollback | Snapshot restoration verifies memory and durable localStorage readback; failed recovery is surfaced rather than silently reported as attempted success |
 | Daily plan selection | Does not start future engine tasks or silently escape a plan's explicit scope |
 | Firestore rules | UID ownership, verified-user check, allowlist, generic envelope, tombstone-only delete model, default deny |
 | Rules tests | Firebase Emulator rules tests run in CI |
@@ -81,8 +82,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run: [42171385088](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171385088) — success.
-- Automated test suites: 230 passed, 0 failed.
+Latest Actions run: [42171658033](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42171658033) — success.
+- Automated test suites: 231 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.

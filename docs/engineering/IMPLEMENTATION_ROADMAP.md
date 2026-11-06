@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `dc1f85f0b1ee6a33df5c7562262be797b13eb8d7`
+**Current audited HEAD:** `543df246328faf305148d0a7274700dad81192bf`
 
 ## Operating rules
 
@@ -48,6 +48,7 @@
 - A failed localStorage write no longer leaks through the in-memory fallback as if it had been saved.
 - Save methods return explicit success/failure; important UI paths surface failures.
 - Backup import UI checks the explicit result flag and reports read/import failures accurately.
+- Failed backup imports verify the previous localStorage/memory snapshot was restored; failure to restore is reported distinctly.
 - Retention mutations fail visibly if canonical progress cannot be persisted.
 - Overlapping memorization portions count each ayah once in the retention score; the weakest overlapping status wins.
 - Review page counts use canonical Mushaf page/ayah mappings rather than an estimate.
