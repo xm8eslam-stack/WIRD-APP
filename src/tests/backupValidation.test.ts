@@ -408,6 +408,45 @@ export function runBackupTests(): { passed: number; failed: number } {
     }
   });
 
+  test('Backup export and import refuse unreadable durable storage before creating or changing data', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let readsBlocked = false;
+    let writes = 0;
+    const fakeStorage = {
+      getItem: (key: string) => {
+        if (readsBlocked) throw new Error('simulated durable read failure');
+        return values.get(key) ?? null;
+      },
+      setItem: (key: string, value: string) => { writes++; values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+      clear: () => { values.clear(); }
+    };
+    try {
+      Object.defineProperty(globalThis, 'localStorage', { value: fakeStorage, configurable: true, writable: true });
+      StorageService.resetAllData();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'الحساب الأصلي' });
+      const validBackup = StorageService.exportFullBackup();
+      const writesBeforeBlockedRead = writes;
+      readsBlocked = true;
+
+      let exportRejected = false;
+      try { StorageService.exportFullBackup(); } catch { exportRejected = true; }
+      assert(exportRejected, 'Export must refuse to create a potentially incomplete backup when durable reads fail');
+
+      const importResult = StorageService.importBackup(validBackup);
+      assert(!importResult.success, 'Import must stop when it cannot capture a trustworthy pre-import snapshot');
+      assert(importResult.message.includes('قبل تعديل أي بيانات'), 'Import must explain that it stopped before writing');
+      assert(writes === writesBeforeBlockedRead, 'Import must not attempt any writes after durable snapshot capture fails');
+    } finally {
+      readsBlocked = false;
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
   // 5. Atomic protection: Failed import never overwrites existing data
   test('Failed import returns error and preserves existing user data', () => {
     const malformedJson = '{"version": 3, "profile": {"name": "جديد"}, "plans": "broken"}';
