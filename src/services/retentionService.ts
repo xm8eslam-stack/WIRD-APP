@@ -425,16 +425,38 @@ export const RetentionService = {
     activitySaved: boolean;
     messageAr: string;
   } {
+    if (typeof portionId !== 'string' || !portionId.trim() || portionId.length > 180) {
+      throw new Error('معرّف مقطع المراجعة غير صالح.');
+    }
+    if (!['successful', 'difficult', 'failed'].includes(rating)) {
+      throw new Error('تقييم المراجعة غير صالح؛ اختر تقييمًا معتمدًا.');
+    }
+    if (notes !== undefined && (typeof notes !== 'string' || notes.length > 2000)) {
+      throw new Error('ملاحظات المراجعة تتجاوز الحد المسموح أو تحتوي على قيمة غير صالحة.');
+    }
+    if (!Number.isSafeInteger(minutesSpent) || minutesSpent < 0 || minutesSpent > 1440) {
+      throw new Error('مدة المراجعة المسجلة غير صالحة؛ يجب أن تكون عدد دقائق صحيحاً من 0 إلى 1440.');
+    }
+    if (weakAyahDetails !== undefined) {
+      if (rating !== 'failed' || !weakAyahDetails || typeof weakAyahDetails !== 'object' ||
+          !Number.isSafeInteger(weakAyahDetails.ayahNumber) || weakAyahDetails.ayahNumber < 1 ||
+          (weakAyahDetails.text !== undefined && (typeof weakAyahDetails.text !== 'string' || weakAyahDetails.text.length > 4000)) ||
+          (weakAyahDetails.notes !== undefined && (typeof weakAyahDetails.notes !== 'string' || weakAyahDetails.notes.length > 2000))) {
+        throw new Error('بيانات الآية المتعثرة غير صالحة أو لا تتوافق مع تقييم المراجعة.');
+      }
+    }
+
     const portions = this.getPortions();
     const target = portions.find(p => p.id === portionId);
     if (!target) {
       throw new Error(`Portion with id ${portionId} not found`);
     }
+    if (weakAyahDetails &&
+        (weakAyahDetails.ayahNumber < target.startAyah || weakAyahDetails.ayahNumber > target.endAyah)) {
+      throw new Error('الآية المتعثرة يجب أن تقع داخل نطاق المقطع الذي تتم مراجعته.');
+    }
 
     const todayStr = getLocalDateString();
-    if (!Number.isSafeInteger(minutesSpent) || minutesSpent < 0) {
-      throw new Error('مدة المراجعة المسجلة غير صالحة؛ يجب أن تكون عدد دقائق صحيحاً غير سالب.');
-    }
     const reviewedPagesCount = getPagesForAyahRange(target.surahNumber, target.startAyah, target.endAyah).length;
     if (reviewedPagesCount === 0) {
       throw new Error('تعذر تحديد صفحات المقطع بدقة؛ لم يتم تسجيل عدد صفحات تقريبي ولم يتغير تقييم المراجعة.');
