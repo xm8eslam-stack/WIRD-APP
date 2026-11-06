@@ -314,6 +314,16 @@ function isValidRevisionLogRecord(value: unknown): boolean {
     (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
 }
 
+function isValidLegacyRevisionLogRecord(value: unknown): boolean {
+  if (!isPlainRecord(value)) return false;
+  return (value.id === undefined || (typeof value.id === 'string' && value.id.length <= 160)) &&
+    isValidDateOnly(value.date) &&
+    ['successful', 'difficult', 'failed'].includes(value.rating) &&
+    isIntegerBetween(value.intervalDaysBefore, 0, 100000) &&
+    isIntegerBetween(value.intervalDaysAfter, 0, 100000) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
 function isValidMemorizationPlan(value: unknown): value is MemorizationPlan {
   if (!isPlainRecord(value)) return false;
   const validTypes = ['whole_quran', 'juz', 'surahs', 'custom'];
@@ -419,8 +429,9 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
   const repetitionValid = requireCanonicalId
     ? isIntegerBetween(value.repetitionCount, 0, 100000)
     : value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000);
+  const historyValidator = requireCanonicalId ? isValidRevisionLogRecord : isValidLegacyRevisionLogRecord;
   const historyValid = value.history === undefined ||
-    (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(isValidRevisionLogRecord));
+    (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(historyValidator));
   const auditValid = value.conflictAudit === undefined ||
     (Array.isArray(value.conflictAudit) && value.conflictAudit.length <= 1000 &&
       value.conflictAudit.every((item: unknown) => isPlainRecord(item) &&
@@ -738,6 +749,11 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     }
   }
 
+  if (Array.isArray(payload.unifiedPortions) &&
+      new Set(payload.unifiedPortions.map((portion: WirdPortion) => portion.id)).size !== payload.unifiedPortions.length) {
+    return { valid: false, error: 'تحتوي المقاطع الموحدة على معرفات مكررة؛ يلزم دمجها قبل الاستيراد.' };
+  }
+
   if (Array.isArray(payload.logs) &&
       new Set(payload.logs.map((log: DailyLog) => log.date)).size !== payload.logs.length) {
     return { valid: false, error: 'يحتوي سجل النشاط اليومي على أكثر من سجل للتاريخ نفسه' };
@@ -937,9 +953,19 @@ export const StorageService = {
       const legacyPortionsRaw = getItem(STORAGE_KEYS.PORTIONS);
       const legacyRevsRaw = getItem(STORAGE_KEYS.REVISION);
       if (legacyPortionsRaw !== null || legacyRevsRaw !== null) {
-        this.ensureDataMigrated();
+        const migrationReport = this.ensureDataMigrated();
+        if (!migrationReport.success) return [];
         const migrated = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-        if (migrated) return JSON.parse(migrated);
+        if (migrated) {
+          try {
+            const parsed = JSON.parse(migrated);
+            if (Array.isArray(parsed) && validateBackupPayload({ version: 4, unifiedPortions: parsed }).valid) {
+              return parsed;
+            }
+          } catch {
+            console.warn('[WIRD Storage] Integrity Error: migrated canonical portions failed read-back validation.');
+          }
+        }
       }
       return [];
     } catch {
