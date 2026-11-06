@@ -1,67 +1,97 @@
-# Firebase Unauthorized Domain Resolution Plan
+# خطة العمل المتكاملة والبرومبت التنفيذي لتطوير منصة وِرد (WIRD)
+## استناداً إلى بوابة مطوري Quran.com وحل مشكلة أكواد التفسير والارتقاء بالتصميم العام
 
-## Title & Summary
-# WIRD App Firebase Unauthorized Domain Error Resolution
-This implementation plan provides a complete, developer-friendly resolution for the `auth/unauthorized-domain` error in Firebase Authentication. When a user attempts cloud sign-in from an unapproved domain, WIRD will display a dedicated, interactive Arabic alert displaying the current domain (`window.location.hostname`), a one-click copy button, step-by-step instructions for adding the domain in Firebase Console (Authentication → Settings → Authorized Domains), and an instant 1-click Guest Mode fallback button.
+---
 
-## User Review & Critical Decisions
+### ملخص الهدف والمشكلات المعالجة
 
-> [!IMPORTANT]
-> The user confirmed the following preferences:
-> 1. **Primary Issue**: `Firebase: Error (auth/unauthorized-domain)`.
-> 2. **Desired Handling**: Display the current domain (`window.location.hostname`) with a one-click copy button, clear Arabic instructions for authorizing it in Firebase Console, and an instant Guest Mode button to continue locally without blockage.
+1. **مشكلة ظهور الأكواد والتنسيق المشوه في التفسير:**
+   - **السبب الجذري:** خوادم التفسير (سواء Quran.com API v4 أو المصادر المعتمدة) تُعيد نصوص التفسير محتوية على وسوم HTML مثل `<span class="blue">...</span>` و`<p>` و`<b>` وتفريغات أقواس الآيات. يتم حالياً عرض النص في الواجهة كنص خام (`whitespace-pre-wrap`) دون تفكيك أو تنقية آمنة، مما يجعل الوسوم البرمجية ظاهرة كـ "أكواد مشوهة" للمستخدم.
+   - **الحل الجذري:**
+     - بناء أداة تنقية وتنسيق ذكية `tafsirSanitizer.ts` تقوم بتحويل وسوم الآيات والألفاظ القرآنية داخل التفسير إلى نص قرآني منسق بأقواس المصحف ﴿ ... ﴾ وبخط عثماني مُميز ولون ذهبي/زمردي أنيق.
+     - استخراج الشروح والأقوال بهوامش وفقرات نقية تماماً من أي وسوم مشوهة، مع فك شفرات الرموز (HTML Entities).
+     - توفير قائمة متعددة لأمهات كتب التفسير الموثوقة من Quran.com API v4:
+       - **التفسير الميسر** (مجمع الملك فهد - ID: 16)
+       - **تفسير السعدي** (تيسير الكريم الرحمن - ID: 91)
+       - **تفسير ابن كثير** (عمدة التفسير - ID: 14)
+       - **تفسير القرطبي** (الجامع لأحكام القرآن - ID: 90)
+       - **تفسير البغوي** (معالم التنزيل - ID: 94)
 
-- **Confirmed Decision 1**: Handle `auth/unauthorized-domain` explicitly in `mapAuthError` with clear Arabic guidance.
-- **Confirmed Decision 2**: Render a dedicated interactive helper card in `AuthScreen.tsx` whenever `auth/unauthorized-domain` occurs, complete with domain copying and immediate Guest Mode fallback.
+2. **مشكلة الواجهة والتصميم ("واجهة التطبيق شكلها وحش"):**
+   - **السبب الجذري:** الاعتماد على بطاقات قياسية ذات حواف عريضة متباينة، وتدرجات ألوان غير متناسقة، وغياب الهوية البصرية الإسلامية الروحانية الراقية (فوضى الأزرار والرموز، وتباعدات غير مريحة في عرض الآيات).
+   - **الحل الجذري المتبع من معايير `frontend-design` العالمية:**
+     - **لوحة الألوان الملكية القرآنية:**
+       - الأخضر الزمردي العميق (`#064e3b` / `#047857`) رمزاً للهوية القرآنية.
+       - الذهبي المصحفي المعتّق (`#b45309` / `#d97706` / `#f59e0b`) لفواصل الآيات والإطارات الزخرفية.
+       - الورق المصحفي الطبيعي الدافئ (Parchment/Eggshell `#faf8f5` / `#f7f4ed`) في الوضع النهاري، والسبج الحجري الفاخر (`#0c0a09` / `#1c1917`) في الوضع الليلي.
+     - **الإطار المصحفي الشريف (Royal Quranic Border):**
+       - تصميم إطار الصفحة القرآنية بحلية وزخرفة مصحفية إسلامية هندسية دقيقة تحاكي صفحات مصحف المدينة المنورة.
+       - ترقيم الآيات عبر زهور مصحفية دائرية متناسقة مع خط عثماني واضح ومريح للعين (`Amiri Quran` و`Cairo` للواجهة).
+     - **نافذة التفسير الفاخرة (Quranic Tafsir Drawer/Modal):**
+       - شاشة عرض تفسير عصرية وسلسة: تتضمن نص الآية الكريمة بخط عثماني كبير مع تشكيل كامل، يليه مبدل كتب التفسير، ومتحكم بحجم الخط (تكبير/تصغير)، وزر مشاركة/نسخ التفسير، وشارة حفظ بدون إنترنت.
 
-## 1. Overview & Core Concept
-- **What It Does**: Enhances `AuthService` and `AuthScreen` to handle `auth/unauthorized-domain` errors seamlessly. Displays an interactive alert box containing the exact active domain (`window.location.hostname`), a copy button, guidance on how to authorize the domain in Firebase Console, and a quick-action button to proceed in Guest Mode.
-- **Target Audience / Persona**: Developers, testers, and end users accessing WIRD from preview URLs, Vercel deployments, or custom domains.
-- **Key Value**: Eliminates cryptic Firebase error messages, guides administrators on authorizing domains in Firebase Console in 30 seconds, and ensures end users are never blocked from accessing WIRD in Guest Mode.
+3. **التكامل التام وضمان النشر على Vercel عبر GitHub:**
+   - الحفاظ التام على وظيفة Serverless Proxy في `/api/tafsir.ts` لضمان عملها تلقائياً على Vercel بدون الحاجة لسيرفر Node مخصص.
+   - التوافق التام مع بيئة التخزين المحلي والـ PWA والـ IndexedDB Offline-First وسجل الاستعادة.
+   - حماية خوارزمية الحفظ والمراجعة التكرارية SM-2 وكافة اختبارات الحفظ (317+ فحصاً واختباراً برمجياً).
 
-## 2. User Experience & Visual Design
-- **Key User Flows**:
-  1. User attempts to sign in via Google or Email/Password on an unlisted domain.
-  2. Firebase returns `auth/unauthorized-domain`.
-  3. `AuthScreen` captures the error and displays a high-visibility amber/emerald helper box:
-     - Title: *"عفواً، هذا النطاق غير مصرح به في Firebase"*
-     - Active Domain Box: `ais-dev-hmf6x7enk7svd65t7ier2e-240287315640.europe-west2.run.app`
-     - One-click "نسخ النطاق" (Copy Domain) button with feedback toast ("تم نسخ النطاق بنجاح").
-     - Step-by-step guidance: *"أضف هذا النطاق إلى: Firebase Console ← Authentication ← Settings ← Authorized Domains"*
-     - Instant Fallback Button: *"المتابعة فوراً كزائر (Guest Mode)"*
-- **Visual Identity & Theme**:
-  - *Color Palette*: Amber alert container (`bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800`), monospace domain tag (`bg-white dark:bg-stone-900`), emerald action button (`bg-emerald-800 hover:bg-emerald-900`).
-  - *Typography*: Monospace for domain names, Cairo/quran display face for titles.
+---
 
-## 3. Key Product Decisions & Trade-Offs
-
-- **Decision 1**: Explicit Domain Copy Tool
-  - *Chosen Approach*: Extract `window.location.hostname` dynamically and present it inside a code block with `navigator.clipboard.writeText`.
-  - *Why*: Allows admins to copy the exact origin instantly and paste it directly into Firebase Console without typing errors.
-
-- **Decision 2**: Unblocked Local Access
-  - *Chosen Approach*: Provide a prominent "Continue as Guest" CTA inside the error card.
-  - *Why*: Ensures users are never locked out of WIRD even if domain authorization in Firebase Console is delayed.
-
-## 4. Technical Architecture & Data Strategy
+### الهيكل التقني وخريطة التعديلات المخططة
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      AuthScreen                         │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-             ┌─────────────┴─────────────┐
-             ▼                           ▼
-  [Standard Error Box]     [auth/unauthorized-domain]
-             │                           │
-  ┌──────────┴──────────┐       ┌────────┴────────────────┐
-  │ Generic Error Text  │       │ Dedicated Domain Card   │
-  └─────────────────────┘       │ - Domain Copy Button    │
-                                │ - Firebase Console Steps│
-                                │ - Guest Mode Shortcut  │
-                                └─────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    واجهة المستخدم (React 19)                │
+├──────────────────────────────┬──────────────────────────────┤
+│    إطار المصحف الملكي الرفيع   │   عارض التفسير المنسق النقي  │
+│    (Mushaf Gold/Emerald Frame)│   (Rich Islamic Tafsir View) │
+└──────────────┬───────────────┴──────────────┬───────────────┘
+               │                              │
+               ▼                              ▼
+┌──────────────────────────────┐ ┌─────────────────────────────┐
+│    tafsirSanitizer.ts        │ │     tafsirService.ts        │
+│    - فك وسوم HTML بالكامل    │ │     - ذاكرة تخزين محلية     │
+│    - تمييز الآيات ﴿ ﴾ بخط ذهبي │ │     - دعم تفاسير Quran.com  │
+└──────────────┬───────────────┘ └─────────────┬───────────────┘
+               │                               │
+               └───────────────┬───────────────┘
+                               ▼
+        ┌──────────────────────────────────────────────┐
+        │        Vercel Serverless Function            │
+        │        /api/tafsir?surah=X&ayah=Y&id=Z       │
+        │        (جلب فوري من api.quran.com v4)        │
+        └──────────────────────────────────────────────┘
 ```
 
-- **Entities & Services**:
-  - `src/services/authService.ts`: Maps `auth/unauthorized-domain` to a friendly Arabic message and domain guidance.
-  - `src/components/auth/AuthScreen.tsx`: Detects `auth/unauthorized-domain` code and renders the interactive domain copy box and Guest Mode shortcut.
+---
+
+### مراحل التنفيذ خطوة بخطوة
+
+#### المرحلة الأولى: معالجة نصوص التفسير وتكامل Quran.com API v4
+1. تحديث خادم `/api/tafsir.ts` ليدعم:
+   - الاستعلام المباشر من `https://api.quran.com/api/v4/tafsirs/{tafsir_id}/by_ayah/{surah}:{ayah}`.
+   - خيارات متعددة للتفاسير المعتمدة (الميسر 16، السعدي 91، ابن كثير 14، القرطبي 90، البغوي 94).
+   - حماية ضد تجاوز المعدل ومصادقة إحداثيات الآيات بدقة مع ترويسات Cache قوية لـ Vercel CDN.
+2. إنشاء وحدة `src/utils/tafsirSanitizer.ts`:
+   - تحويل أكواد `<span class="blue">` و`<span class="green">` و`<b>` إلى مقتبسات مقدسة منسقة.
+   - تفريغ أي وسوم برمجية تالفة وتنسيق الفقرات بعلامات الوقف المعتمدة.
+
+#### المرحلة الثانية: الارتقاء بواجهة وتصميم عارض التفسير (Tafsir Sheet / Modal)
+1. إعادة كتابة `src/components/library/TafsirSheet.tsx`:
+   - بطاقة الآية القرآنية: خلفية رقيقة من العاج المطفي مع خط أميري عثماني مشكول.
+   - محول مصادر التفسير: إمكانية التبديل بين التفسير الميسر، السعدي، وابن كثير بنقرة واحدة.
+   - شريط أدوات عملي: تكبير وتصغير حجم خط التفسير، نسخ النص مع الآية، وإغلاق سلس بحركات CSS هادئة.
+
+#### المرحلة الثالثة: الارتقاء البصري بالمصحف الشريف والواجهة العامة
+1. تحديث `src/components/library/QuranMushafReader.tsx`:
+   - إضافة إطار ذهبي مصحفي راقٍ مستوحى من مصاحف المدينة المنورة مع زخارف زوايا كلاسيكية لطيفة عبر SVG نقي.
+   - تنسيق علامات أرقام الآيات كزهور قرآنية متسقة في النص دون أي تشوه أو قفزات أسطر.
+   - شريط تحكم بالقراءة والاستماع فائق الأناقة يدمج القارئ والسرعة والتنقل بين الصفحات والأجزاء والأحزاب في مساحة منظمة.
+2. تحسين مظهر الواجهة الرئيسية والـ Header:
+   - ألوان متباينة ومريحة للعين بدون عناصر فجة أو بهتان.
+   - توافق كامل وتلقائي بين الوضعين الليلي والنهاري.
+
+#### المرحلة الرابعة: الفحص المزدوج والتحقق الكامل قبل النشر
+1. التحقق مرتين من خلو نصوص التفسير لآيات مختلفة من أي وسوم أو أكواد.
+2. تشغيل فحص البناء `npm run build` للتأكد من خلو المشروع تماماً من أي خطأ من شأنه تعطيل Vercel.
+3. تشغيل كافة الاختبارات الشاملة للتطبيق `npm test` لضمان تكامل جميع الميزات القديمة والجديدة.

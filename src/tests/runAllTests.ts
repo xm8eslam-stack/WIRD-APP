@@ -15,6 +15,7 @@ import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
 import { runMobileErgonomicsTests } from './mobileErgonomics.test';
 import { runTafsirServiceTests } from '../services/tafsirService.test';
 import { runTafsirProxyTests } from './tafsirProxy.test';
+import { runTafsirSanitizerTests } from '../utils/tafsirSanitizer.test';
 import { runPageProgressServiceTests } from '../services/pageProgressService.test';
 import { runStorageScopeTests } from '../services/storageScope.test';
 import { runSessionCompletionTests } from './sessionCompletion.test';
@@ -94,6 +95,7 @@ async function main() {
     { name: 'Mobile Mushaf Touch Ergonomics', runner: runMobileErgonomicsTests },
     { name: 'Tafsir Muyassar API Validation & Cache', runner: runTafsirServiceTests },
     { name: 'Tafsir Serverless Proxy Security & Cache', runner: runTafsirProxyTests },
+    { name: 'Tafsir Text Sanitization and Quranic Formatting', runner: runTafsirSanitizerTests },
     { name: 'Truthful 604-Page Progress Mapping', runner: runPageProgressServiceTests },
     { name: 'UID-Scoped Local Storage & Legacy Data Ownership', runner: runStorageScopeTests },
     { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
