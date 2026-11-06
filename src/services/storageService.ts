@@ -976,6 +976,11 @@ export const StorageService = {
   saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false): boolean {
     try {
       const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+      const existingCanonicalRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      if (currentSchemaVersion !== '2' && existingCanonicalRaw !== null && !allowRecoveryOverwrite) {
+        console.error('[WIRD Storage] Refusing to overwrite an unversioned canonical portions archive; reconciliation is required first.');
+        return false;
+      }
       if (currentSchemaVersion === '2' && !allowRecoveryOverwrite) {
         const currentRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
         if (currentRaw === null) {
@@ -1064,6 +1069,19 @@ export const StorageService = {
       const currentVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const unifiedData = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
       const hasInvalidCanonicalPayload = currentVersion === '2';
+
+      if (currentVersion !== '2' && unifiedData !== null) {
+        return {
+          success: false,
+          legacyPortionsCount: 0,
+          legacyRevisionCount: 0,
+          migratedPortionsCount: 0,
+          totalPreservedLogsCount: 0,
+          conflictAuditCount: 0,
+          alreadyMigrated: false,
+          error: 'يوجد أرشيف موحد دون علامة إصدار موثوقة؛ تم إيقاف الترحيل والكتابة للحفاظ عليه حتى تتم تسوية النسخ.'
+        };
+      }
 
       if (currentVersion === '2' && unifiedData) {
         try {
