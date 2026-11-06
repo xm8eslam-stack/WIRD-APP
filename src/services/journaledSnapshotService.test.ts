@@ -110,6 +110,21 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'Guest demo data must apply all local projections together');
     });
 
+    await test('Profile reads compute streak display state without bypassing the journal', async () => {
+      const journal = createJournal();
+      const staleProfile = { ...CLEAN_INITIAL_PROFILE, name: 'قارئ قديم', streakDays: 99, lastActiveDate: '2000-01-01' };
+      const originalBytes = JSON.stringify(staleProfile);
+      assert(StorageService.setRawItem(STORAGE_KEYS.PROFILE, originalBytes), 'Stale profile fixture must persist');
+      const readProfile = StorageService.getProfile();
+      const snapshot = await journal.getSnapshot();
+      assert(readProfile.streakDays !== 99, 'The displayed streak must be calculated from its last active date');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) === originalBytes,
+        'Reading the profile must not directly rewrite its durable archive');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'A profile getter must never create a mutation outside the journal');
+      journal.close();
+    });
+
     await test('Legacy portion migration is read-only during access and commits through one journal event', async () => {
       const journal = createJournal();
       const legacyPortion: PortionStatusRecord = {
