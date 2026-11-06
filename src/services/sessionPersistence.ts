@@ -1,5 +1,5 @@
 import { RetentionService } from './retentionService';
-import { StorageService } from './storageService';
+import { StorageService, STORAGE_KEYS } from './storageService';
 import { getSessionCompletionMetrics, SessionMode, SessionCompletionMetrics } from './sessionCompletion';
 import { ALL_SURAHS } from '../data/quranMeta';
 
@@ -47,24 +47,47 @@ export function persistSessionCompletion(input: PersistSessionCompletionInput): 
     }
   }
 
-  const previousPortions = shouldSavePortion ? RetentionService.getPortions() : null;
+  const transactionSnapshot = StorageService.captureRawSnapshot([
+    STORAGE_KEYS.UNIFIED_PORTIONS,
+    STORAGE_KEYS.SCHEMA_VERSION,
+    STORAGE_KEYS.PORTIONS,
+    STORAGE_KEYS.REVISION,
+    STORAGE_KEYS.LOGS,
+    STORAGE_KEYS.PROFILE
+  ]);
+  if (!transactionSnapshot.available) {
+    return { success: false, messageAr: 'تعذر قراءة جميع سجلات التخزين الأصلية والتحقق منها؛ لم تبدأ عملية الحفظ لحماية بياناتك.' };
+  }
+
+  const restoreTransaction = (): boolean => StorageService.restoreRawSnapshot(transactionSnapshot).success;
 
   if (shouldSavePortion) {
     try {
       RetentionService.recordMemorizationCompletion(input.surahNumber!, input.startAyah!, input.endAyah!);
     } catch (error) {
-      return { success: false, messageAr: error instanceof Error ? error.message : 'تعذر حفظ تقدم الحفظ؛ لم يتم تأكيد إتمام الجلسة.' };
+      const rollbackSucceeded = restoreTransaction();
+      return {
+        success: false,
+        messageAr: rollbackSucceeded
+          ? (error instanceof Error ? error.message : 'تعذر حفظ تقدم الحفظ؛ أُعيدت الأرشيفات إلى حالتها السابقة.')
+          : 'تعذر حفظ تقدم الحفظ، كما تعذر التحقق من استعادة جميع الأرشيفات. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل أي محاولة أخرى.'
+      };
     }
   }
 
-  const activitySaved = StorageService.recordSessionCompletion(metrics.memorizedAyahs, metrics.reviewedPages, input.minutes, input.taskName);
-  if (!activitySaved) {
-    const rollbackSucceeded = previousPortions ? RetentionService.savePortions(previousPortions) : true;
+  const activityResult = StorageService.recordSessionCompletionDetailed(
+    metrics.memorizedAyahs,
+    metrics.reviewedPages,
+    input.minutes,
+    input.taskName
+  );
+  if (!activityResult.success) {
+    const rollbackSucceeded = restoreTransaction();
     return {
       success: false,
       messageAr: rollbackSucceeded
-        ? 'تعذر حفظ سجل النشاط أو سلسلة المواظبة؛ أُعيد تقدم المقطع إلى حالته السابقة. لم يتم تأكيد الجلسة، ويمكنك المحاولة مجددًا.'
-        : 'تعذر حفظ سجل النشاط، كما تعذر التحقق من استعادة حالة المقطع السابقة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل أي محاولة أخرى.'
+        ? 'تعذر حفظ سجل النشاط أو سلسلة المواظبة؛ أُعيدت جميع سجلات الجلسة إلى حالتها السابقة. لم يتم تأكيد الجلسة، ويمكنك المحاولة مجددًا.'
+        : 'تعذر حفظ سجل النشاط، كما تعذر التحقق من استعادة جميع الأرشيفات (المقطع والنشاط والملف الشخصي). لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل أي محاولة أخرى.'
     };
   }
   return { success: true, memorizedAyahs: metrics.memorizedAyahs, reviewedPages: metrics.reviewedPages, shouldRecordMemorization: metrics.shouldRecordMemorization };
