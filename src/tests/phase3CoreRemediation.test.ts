@@ -23,6 +23,9 @@ import {
   calculateUniqueMemorizedPages,
   calculateCanonicalSM2,
   getPrioritizedRevisionQueue,
+  getPlanTargetSurahNumbers,
+  findNextUnmemorizedRange,
+  calculateUniqueRetentionScore,
   migrateLegacyDataLosslessly,
 } from '../services/unifiedPortionService';
 import { StorageService, STORAGE_KEYS } from '../services/storageService';
@@ -325,6 +328,53 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const normalized = migrateLegacyDataLosslessly([mismatchedId], []);
     assert(normalized.report.success, 'Migration must recover valid coordinates despite a mismatched legacy ID');
     assert(normalized.portions[0].id === 's18_a1_a10', 'Canonical ID must be derived from actual Surah and ayah coordinates');
+  }
+
+  console.log('\n--- 4B. Strict Range, Queue, and Scheduling Input Validation ---');
+  {
+    const validPortion: WirdPortion = {
+      id: 's1_a1_a7', type: 'passage', surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: 1, endAyah: 7, status: 'stable', nextDueDate: '2026-05-10',
+      intervalDays: 7, easeFactor: 2.5, repetitionCount: 3
+    };
+
+    let invalidDateRejected = false;
+    try { addDaysToLocalDate('2026-02-30', 1); } catch { invalidDateRejected = true; }
+    assert(invalidDateRejected, 'Invalid calendar dates must not silently roll into another month');
+
+    let invalidGradeRejected = false;
+    try { calculateCanonicalSM2(validPortion, 'excellent' as any, { customTodayStr: '2026-05-10' }); }
+    catch { invalidGradeRejected = true; }
+    assert(invalidGradeRejected, 'Unsupported SM-2 grades must be rejected instead of becoming a strong grade');
+
+    let invalidQueueLimitRejected = false;
+    try { getPrioritizedRevisionQueue([validPortion], { todayStr: '2026-05-10', maxDailyLimit: 21 }); }
+    catch { invalidQueueLimitRejected = true; }
+    assert(invalidQueueLimitRejected, 'Daily revision queue must never exceed the hard 20-item limit');
+
+    let invalidMaxVersesRejected = false;
+    try { findNextUnmemorizedRange([], [1], 1.5); } catch { invalidMaxVersesRejected = true; }
+    assert(invalidMaxVersesRejected, 'Daily memorization targets must be whole numbers');
+
+    let invalidPlanSurahRejected = false;
+    try { getPlanTargetSurahNumbers({ targetSurahs: [115] }); } catch { invalidPlanSurahRejected = true; }
+    assert(invalidPlanSurahRejected, 'Plan target Surahs outside 1..114 must be rejected');
+
+    let invalidPlanPageRejected = false;
+    try { getPlanTargetSurahNumbers({ startPage: 0, endPage: 10 }); } catch { invalidPlanPageRejected = true; }
+    assert(invalidPlanPageRejected, 'Plan page ranges outside 1..604 must be rejected');
+
+    let invalidPortionRejected = false;
+    try {
+      calculateUniqueMemorizedAyahs([{ ...validPortion, startAyah: 1.5 }]);
+    } catch { invalidPortionRejected = true; }
+    assert(invalidPortionRejected, 'Unique ayah calculations must reject fractional Quran coordinates');
+
+    let infiniteRangeRejected = false;
+    try {
+      calculateUniqueRetentionScore([{ ...validPortion, endAyah: Number.POSITIVE_INFINITY }]);
+    } catch { infiniteRangeRejected = true; }
+    assert(infiniteRangeRejected, 'Retention calculations must reject infinite ranges instead of entering an unbounded loop');
   }
 
   console.log('\n--- 5. Verified Quran Coordinates Boundary Validation ---');
