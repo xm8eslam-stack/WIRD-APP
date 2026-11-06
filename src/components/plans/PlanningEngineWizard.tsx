@@ -24,7 +24,7 @@ import { QuranMath } from '../../services/quranMath';
 
 interface PlanningEngineWizardProps {
   enginePlans: EngineGeneratedPlan[];
-  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => boolean;
+  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => boolean | Promise<boolean>;
   onStartSession: (surahNumber: number, startAyah: number, endAyah: number) => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
@@ -108,7 +108,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   };
 
   // Submit and generate plan
-  const handleGeneratePlan = (e: React.FormEvent) => {
+  const handleGeneratePlan = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const existingPortions = selectedExistingSurahs.map(sNum => {
@@ -141,13 +141,13 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
     const newPlan = PlanningEngine.generatePlan(input);
     const updated = [newPlan, ...enginePlans];
-    if (!onUpdateEnginePlans(updated)) return;
+    if (!await onUpdateEnginePlans(updated)) return;
     setSelectedPlanId(newPlan.id);
     setIsCreatingNew(false);
   };
 
   // Plan Pause / Resume toggle
-  const handleTogglePause = () => {
+  const handleTogglePause = async () => {
     if (!activePlan) return;
     let updated: EngineGeneratedPlan;
     if (activePlan.isPaused) {
@@ -155,15 +155,15 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
     } else {
       updated = PlanLifecycle.pausePlan(activePlan);
     }
-    if (!onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
+    if (!await onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
     onToast?.(activePlan.isPaused ? "تم استئناف الخطة بنجاح" : "تم إيقاف الخطة مؤقتاً", activePlan.isPaused ? "success" : "info");
   };
 
   // Plan Recalculate without window.alert/confirm
-  const handleConfirmRecalculate = () => {
+  const handleConfirmRecalculate = async () => {
     if (!activePlan) return;
     const updated = PlanLifecycle.recalculatePlan(activePlan);
-    if (!onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
+    if (!await onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
     setShowRecalculateConfirm(false);
     if (onToast) {
       onToast("تمت إعادة جدولة المهام القادمة بنجاح مع الاحتفاظ بكامل سجلاتك المنجزة.", "success");
