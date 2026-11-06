@@ -12,6 +12,9 @@ export interface PersistSessionCompletionInput {
   minutes: number; taskName: string; surahNumber?: number; startAyah?: number; endAyah?: number;
   /** Optional smart-plan projection committed with the same session event. */
   enginePlansSnapshot?: EngineGeneratedPlan[];
+  /** Stable across retries of the same UI session completion. */
+  mutationId?: string;
+  occurredAt?: string;
 }
 export type PersistSessionCompletionResult =
   | { success: true; memorizedAyahs: number; reviewedPages: number; shouldRecordMemorization: boolean }
@@ -85,12 +88,12 @@ export async function persistJournaledSessionCompletion(
   }
 
   try {
-    const mutationId = 'session-' + createSecureId();
+    const mutationId = input.mutationId || 'session-' + createSecureId();
     const domainEvent: SessionCompletedEvent = {
       schemaVersion: 1,
       id: mutationId,
       type: 'session.completed',
-      occurredAt: new Date().toISOString(),
+      occurredAt: input.occurredAt || new Date().toISOString(),
       payload: {
         mode: input.mode,
         memorizedAyahs: metrics.memorizedAyahs,
