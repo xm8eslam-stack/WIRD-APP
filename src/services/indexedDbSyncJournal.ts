@@ -395,9 +395,23 @@ export class IndexedDbSyncJournal {
         for (const id of state.acknowledgedIds) {
           const key = uid + ':' + id;
           const existingAck = acknowledgementsByKey.get(key);
-          if (existingAck) continue;
+          const incomingFingerprint = fingerprints.get(id);
+          if (existingAck) {
+            if (incomingFingerprint && existingAck.fingerprint !== incomingFingerprint &&
+                existingAck.fingerprint !== 'legacy-unknown') {
+              failure = new Error('بصمة الإقرار القديم تختلف عن الإقرار المحفوظ؛ أوقفنا الترحيل دون استبدال البيانات.');
+              transaction.abort();
+              return;
+            }
+            continue;
+          }
           const existingOutbox = outboxByKey.get(key);
           if (existingOutbox) {
+            if (!incomingFingerprint || existingOutbox.fingerprint !== incomingFingerprint) {
+              failure = new Error('لا يمكن تأكيد أن العملية المعلقة تطابق الإقرار القديم؛ تم الحفاظ على العملية دون حذفها.');
+              transaction.abort();
+              return;
+            }
             outbox.delete(key);
             pendingCount--;
           }
