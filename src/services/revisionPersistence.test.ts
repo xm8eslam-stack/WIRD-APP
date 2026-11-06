@@ -1,5 +1,5 @@
 import { RetentionService } from './retentionService';
-import { StorageService } from './storageService';
+import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
 
 export function runRevisionPersistenceTests(): { passed: number; failed: number } {
