@@ -72,3 +72,15 @@ Do not add a validator dependency in this documentation/audit pass. First map al
 | UmmahLibrary/ummah-library | https://github.com/UmmahLibrary/ummah-library | AGPL-3.0 | Quran-first architecture, offline reader, Uthmani text, tafsir/Hifz feature organization | Architecture-only reference; do not copy code into WIRD without separate AGPL compatibility/legal review |
 
 No third-party source code or dependencies were copied/added in this Phase 2 continuation. The current fixes use WIRD's existing domain model and storage abstractions.
+
+
+## Phase 2 queue and spaced-repetition research — 2026-11-06
+
+| Project / source | URL | License / terms | Reviewed for | WIRD decision |
+|---|---|---|---|---|
+| open-spaced-repetition/ts-fsrs | https://github.com/open-spaced-repetition/ts-fsrs | MIT; current v6 requires Node >=24 and was released 2026-10-28 with breaking API changes | TypeScript scheduler architecture, immutable review results, preview/rollback, FSRS-7 migration | Reference only. WIRD's Node >=24.12 is compatible, but do not replace current SM-2 or reschedule existing users without a separately approved migration and backup plan |
+| open-spaced-repetition/fsrs.js | https://github.com/open-spaced-repetition/fsrs.js | License not relied upon or code copied | Alternative JS FSRS implementation and maintenance status | Not adopted; repository README recommends transition to ts-fsrs because fsrs.js is less actively maintained |
+| Anki Manual — Deck Options / FSRS | https://docs.ankiweb.net/deck-options.html | Documentation reference; no code copied | Workload management and safe algorithm-switch behavior | Preserve existing due dates by default; avoid bulk rescheduling that can create an immediate backlog |
+| open-spaced-repetition/fsrs4anki-helper | https://github.com/open-spaced-repetition/fsrs4anki-helper | License not relied upon or code copied | Queue balancing, flattening, postpone/advance, easy days | UX/algorithm reference only; WIRD's queue remains deterministic and does not adopt an external scheduler |
+
+No source code, package, or algorithm implementation was copied or added in this slice.
