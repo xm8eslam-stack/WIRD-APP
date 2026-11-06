@@ -768,6 +768,7 @@ function mergePortionRecords(
   });
 
   // Conservative status merge: the weakest state wins.
+  let weakerStatusApplied = false;
   if (incoming.status) {
     const existingRank = STATUS_SEVERITY_HIERARCHY[existing.status] ?? 3;
     const incomingRank = STATUS_SEVERITY_HIERARCHY[incoming.status] ?? 3;
@@ -777,6 +778,7 @@ function mergePortionRecords(
           'Overridden ' + existing.status + ' with higher priority ' + incoming.status);
       }
       existing.status = incoming.status;
+      weakerStatusApplied = true;
     }
   }
 
@@ -800,7 +802,9 @@ function mergePortionRecords(
   if (existing.status === 'weak') {
     existing.intervalDays = 1;
   } else if (incoming.intervalDays !== undefined) {
-    existing.intervalDays = Math.max(existing.intervalDays || 1, incoming.intervalDays);
+    existing.intervalDays = weakerStatusApplied
+      ? Math.min(existing.intervalDays || 1, incoming.intervalDays)
+      : Math.max(existing.intervalDays || 1, incoming.intervalDays);
   }
 
   if (incoming.easeFactor !== undefined && incoming.easeFactor > 0) {
@@ -831,6 +835,21 @@ function mergePortionRecords(
   if (incoming.notes) {
     addConflictAudit(existing, sourceName, 'notes', incoming.notes);
   }
+}
+
+/** Clone and conservatively merge one runtime record using the same rules as legacy migration. */
+export function mergeCanonicalPortionRecords(
+  existing: WirdPortion,
+  incoming: Partial<WirdPortion> & { notes?: string },
+  sourceName = 'runtime'
+): WirdPortion {
+  const merged: WirdPortion = {
+    ...existing,
+    history: [...(existing.history || [])],
+    conflictAudit: [...(existing.conflictAudit || [])]
+  };
+  mergePortionRecords(merged, incoming, sourceName);
+  return merged;
 }
 
 export function migrateLegacyDataLosslessly(
