@@ -18,7 +18,7 @@
 7. Continue M4, not cloud sync:
    - audit `src/services/localSyncOutbox.ts` and its test file;
    - identify every session, review, weak-verse, test, plan, and profile mutation call site;
-   - verify whether acknowledged mutation ID reuse with different payload can silently drop a mutation;
+   - reproduce and fix the confirmed bug where reusing an acknowledged mutation ID with different content returns `already_acknowledged` without comparing payload/document/collection/operation; also validate pending/acknowledged uniqueness and disjointness;
    - design append-only event schemas and a transactional local event+outbox journal;
    - compare Dexie, idb, and native IndexedDB before adding a dependency.
 8. Preserve all local/legacy data. Do not perform destructive migrations.
@@ -28,6 +28,7 @@
 
 ## Last known exact state
 - Latest observed main ref: `d9737e0e16ea1f87b9811621dce42d8f6d4e8450`.
+- Documentation PR #3: https://github.com/xm8eslam-stack/WIRD-APP/pull/3 — open; branch head after audit-note updates must be re-fetched before review. CI result is not yet verified; Vercel status reports the free deployment rate limit.
 - Latest audited code commit: `f342b4bc7e02a48f88b90646098eea178901c8ea`.
 - CI run `42180258989`: documented successful for the audited code commit.
 - Vercel: latest observed status was rate-limited; production deployment not confirmed.
