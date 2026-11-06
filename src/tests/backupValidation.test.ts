@@ -1,5 +1,6 @@
-import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE, STORAGE_KEYS } from '../services/storageService';
-import { WirdPortion } from '../types/quran';
+import { validateBackupPayload, StorageService, CLEAN_INITIAL_PROFILE, STORAGE_KEYS, buildDemoEnginePlan } from '../services/storageService';
+import { WirdPortion, RevisionItem, TestResult, WeakVerseItem, DailyLog } from '../types/quran';
+import { PRESET_PLANS } from '../data/presetPlans';
 
 const SAMPLE_PORTION: WirdPortion = {
   id: 's67_a1_a3', type: 'passage', surahNumber: 67, surahName: 'الملك',
@@ -55,6 +56,82 @@ export function runBackupTests(): { passed: number; failed: number } {
     };
     const res = validateBackupPayload(valid);
     assert(res.valid === true, 'Valid payload should pass');
+  });
+
+  test('Deep validation accepts representative valid records across every backup collection', () => {
+    const revisionItem: RevisionItem = {
+      id: 'revision-valid-1', surahNumber: 67, surahName: 'الملك',
+      startAyah: 1, endAyah: 5, type: 'minor',
+      lastReviewedDate: '2026-11-05', nextDueDate: '2026-11-06',
+      intervalDays: 1, easeFactor: 2.5, repetitionCount: 1, strength: 'weak'
+    };
+    const testResult: TestResult = {
+      id: 'test-valid-1', date: '2026-11-06', type: 'complete_verse',
+      surahName: 'الملك', score: 8, totalQuestions: 10, weakVerses: ['67:3']
+    };
+    const weakVerse: WeakVerseItem = {
+      id: 'weak-valid-1', surahNumber: 67, surahName: 'الملك', ayahNumber: 3,
+      text: 'نص تجريبي صالح', mistakeCount: 1, lastFailedDate: '2026-11-06'
+    };
+    const log: DailyLog = {
+      date: '2026-11-06', memorizedAyahsCount: 3, reviewedPagesCount: 1,
+      minutesSpent: 15, completedTasks: ['جلسة حفظ']
+    };
+    const payload = {
+      version: 4,
+      profile: { ...CLEAN_INITIAL_PROFILE },
+      plans: [PRESET_PLANS[0]],
+      enginePlans: [buildDemoEnginePlan()],
+      revisionItems: [revisionItem],
+      logs: [log],
+      tests: [testResult],
+      portions: [{ ...SAMPLE_PORTION, id: 'legacy-portion-67-1' }],
+      unifiedPortions: [SAMPLE_PORTION],
+      weakVerses: [weakVerse]
+    };
+    const result = validateBackupPayload(payload);
+    assert(result.valid, 'All valid nested records should pass strict backup validation: ' + (result.error || ''));
+  });
+
+  test('Backup rejects malformed records inside arrays, not only malformed array roots', () => {
+    const badPlan = { ...PRESET_PLANS[0], dailyTarget: -1 };
+    const badRevision = {
+      id: 'revision-bad', surahNumber: 67, surahName: 'الملك', startAyah: 0, endAyah: 5,
+      type: 'minor', nextDueDate: '2026-11-06', intervalDays: 1, easeFactor: 2.5,
+      repetitionCount: 1, strength: 'weak'
+    };
+    const badTest = {
+      id: 'test-bad', date: '2026-11-06', type: 'complete_verse', surahName: 'الملك',
+      score: 101, totalQuestions: 10, weakVerses: []
+    };
+    const badWeakVerse = {
+      id: 'weak-bad', surahNumber: 1, surahName: 'الفاتحة', ayahNumber: 8,
+      text: 'آية خارج حدود السورة', mistakeCount: 1, lastFailedDate: '2026-11-06'
+    };
+    const cases = [
+      { plans: [badPlan] },
+      { revisionItems: [badRevision] },
+      { tests: [badTest] },
+      { weakVerses: [badWeakVerse] },
+      { logs: [{ date: '2026-11-06', memorizedAyahsCount: -1, reviewedPagesCount: 0, minutesSpent: 1, completedTasks: [] }] },
+      { portions: [{ ...SAMPLE_PORTION, id: 'legacy-bad', endAyah: 999 }] },
+      { unifiedPortions: [{ ...SAMPLE_PORTION, id: 'not-canonical' }] }
+    ];
+    for (const invalidCollection of cases) {
+      const result = validateBackupPayload({ version: 4, ...invalidCollection });
+      assert(!result.valid, 'Malformed nested records must be rejected');
+    }
+    const badEnginePlan = buildDemoEnginePlan();
+    badEnginePlan.schedule[0].dayOfWeek = 7;
+    assert(!validateBackupPayload({ version: 4, enginePlans: [badEnginePlan] }).valid,
+      'Malformed nested engine schedule days must be rejected');
+  });
+
+  test('Malformed backup metadata is rejected when supplied', () => {
+    assert(!validateBackupPayload({ version: 3, timestamp: 'not-a-date' }).valid,
+      'Invalid backup timestamp must be rejected');
+    assert(!validateBackupPayload({ version: 3, format: 'other-format' }).valid,
+      'Unknown backup format must be rejected');
   });
 
   // 2. Unsupported version
