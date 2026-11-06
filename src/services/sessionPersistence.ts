@@ -57,14 +57,22 @@ export function persistSessionCompletion(input: PersistSessionCompletionInput): 
     }
   }
 
-  const activitySaved = StorageService.recordSessionCompletion(metrics.memorizedAyahs, metrics.reviewedPages, input.minutes, input.taskName);
-  if (!activitySaved) {
-    const rollbackSucceeded = previousPortions ? RetentionService.savePortions(previousPortions) : true;
+  const activityResult = StorageService.recordSessionCompletionDetailed(
+    metrics.memorizedAyahs,
+    metrics.reviewedPages,
+    input.minutes,
+    input.taskName
+  );
+  if (!activityResult.success) {
+    const portionWriteRestored = previousPortions ? RetentionService.savePortions(previousPortions) : true;
+    const portionReadbackRestored = previousPortions === null ||
+      JSON.stringify(RetentionService.getPortions()) === JSON.stringify(previousPortions);
+    const rollbackSucceeded = portionWriteRestored && portionReadbackRestored && activityResult.rollbackVerified;
     return {
       success: false,
       messageAr: rollbackSucceeded
-        ? 'تعذر حفظ سجل النشاط أو سلسلة المواظبة؛ أُعيد تقدم المقطع إلى حالته السابقة. لم يتم تأكيد الجلسة، ويمكنك المحاولة مجددًا.'
-        : 'تعذر حفظ سجل النشاط، كما تعذر التحقق من استعادة حالة المقطع السابقة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل أي محاولة أخرى.'
+        ? 'تعذر حفظ سجل النشاط أو سلسلة المواظبة؛ تم التحقق من استعادة تقدم المقطع وسجل النشاط إلى ما قبل المحاولة. لم يتم تأكيد الجلسة، ويمكنك المحاولة مجددًا.'
+        : 'تعذر حفظ سجل النشاط، ولم ينجح التحقق من استعادة جميع البيانات السابقة. لا تغلق الصفحة ولا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة حالة البيانات.'
     };
   }
   return { success: true, memorizedAyahs: metrics.memorizedAyahs, reviewedPages: metrics.reviewedPages, shouldRecordMemorization: metrics.shouldRecordMemorization };

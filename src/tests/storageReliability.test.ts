@@ -187,6 +187,37 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
   });
 
 
+  test('Rollback verification never treats memory fallback as durable read-back', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let readsBlocked = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => {
+          if (readsBlocked) throw new Error('simulated durable storage read failure');
+          return values.get(key) ?? null;
+        },
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:durable-rollback-verification');
+      assert(StorageService.setRawItem(STORAGE_KEYS.LOGS, '[]'), 'Initial durable archive should be saved');
+      readsBlocked = true;
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === '[]',
+        'Ordinary reads may still use the in-memory fallback');
+      assert(!StorageService.verifyRawItem(STORAGE_KEYS.LOGS, '[]'),
+        'Rollback verification must fail when durable localStorage cannot be read');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Silent or mismatched durable writes are rejected and restore the previous raw value', () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const values = new Map<string, string>();

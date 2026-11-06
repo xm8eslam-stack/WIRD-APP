@@ -51,6 +51,58 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
+  test('Partially applied profile write that cannot be restored surfaces recovery-required state', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let blockProfileRollback = false;
+    let originalProfileRaw: string | null = null;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (blockProfileRollback && key.endsWith(STORAGE_KEYS.PROFILE)) {
+          if (value !== originalProfileRaw) {
+            values.set(key, value);
+            throw new Error('simulated write applied before quota error');
+          }
+          return; // Simulate a storage adapter that refuses the restoration write.
+        }
+        values.set(key, value);
+      },
+      removeItem: (key: string) => values.delete(key)
+    }});
+    try {
+      StorageService.setStorageScope('user:session-rollback-unverified');
+      const today = getLocalDateString();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, lastActiveDate: today, streakDays: 0 });
+      originalProfileRaw = StorageService.getRawItem(STORAGE_KEYS.PROFILE);
+      const original = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'currently_memorizing', nextDueDate: today, intervalDays: 1, easeFactor: 2.5,
+        repetitionCount: 0, mistakesCount: 0
+      });
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      blockProfileRollback = true;
+      const result = persistSessionCompletion({
+        mode: 'memorize', memorizedAyahs: 5, reviewedPages: 0, minutes: 6,
+        taskName: 'جلسة فشل استعادة', surahNumber: 67, startAyah: 1, endAyah: 5
+      });
+      if (!('messageAr' in result)) throw new Error('Session must fail when the profile write cannot be restored');
+      assert(result.messageAr.includes('لم ينجح التحقق'), 'The user must receive an explicit recovery-required warning');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'The memorization portion must still be restored even when profile rollback fails');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === null, 'The activity log must be restored to its original absence');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) !== originalProfileRaw,
+        'The injected durable mismatch must remain observable so rollback failure cannot be reported as success');
+      assert(RetentionService.getPortions().some(item => item.id === original.id && item.status === 'currently_memorizing'),
+        'The original portion state must be retained');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Repeated memorization completion preserves review history and does not upgrade weak status', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:repeat-memorization-history');
