@@ -170,5 +170,168 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
+  test('Failed weak-verse write restores the revision portion before activity is recorded', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let failWeakVerseWrites = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (failWeakVerseWrites && key.endsWith(STORAGE_KEYS.WEAK_VERSES)) {
+          const quotaError = new Error('simulated weak-verse quota failure');
+          quotaError.name = 'QuotaExceededError';
+          throw quotaError;
+        }
+        values.set(key, value);
+      },
+      removeItem: (key: string) => values.delete(key)
+    }});
+    try {
+      StorageService.setStorageScope('user:weak-verse-write-failure');
+      const today = getLocalDateString();
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'stable', nextDueDate: today, intervalDays: 7, easeFactor: 2.5,
+        repetitionCount: 4, mistakesCount: 0
+      });
+      assert(StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, '[]'), 'Initial weak-verse archive should be writable');
+      const beforePortions = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      const beforeWeak = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+      const beforeLogs = StorageService.getRawItem(STORAGE_KEYS.LOGS);
+      failWeakVerseWrites = true;
+      let rejected = false;
+      try {
+        RetentionService.recordRevisionPerformance(portion.id, 'failed', undefined, {
+          ayahNumber: 2, text: 'نص آية موثوق للاختبار'
+        }, 3);
+      } catch { rejected = true; }
+      assert(rejected, 'Revision must fail when the weak-verse archive cannot be written');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === beforePortions,
+        'The revision portion archive must be restored byte-for-byte');
+      assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === beforeWeak,
+        'The weak-verse archive must retain its original bytes');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === beforeLogs,
+        'Activity must not be written before the weak-verse write succeeds');
+      assert(RetentionService.getPortions().find(item => item.id === portion.id)?.repetitionCount === 4,
+        'The failed review must not advance the repetition count');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Failed rollback after weak-verse quota error surfaces recovery-required state', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let failWeakVerseWrites = false;
+    let portionWrites = 0;
+    let failPortionRollback = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (failWeakVerseWrites && key.endsWith(STORAGE_KEYS.WEAK_VERSES)) {
+          const quotaError = new Error('simulated weak-verse quota failure');
+          quotaError.name = 'QuotaExceededError';
+          throw quotaError;
+        }
+        if (key.endsWith(STORAGE_KEYS.UNIFIED_PORTIONS)) {
+          portionWrites++;
+          if (failPortionRollback && portionWrites >= 2) {
+            const quotaError = new Error('simulated rollback quota failure');
+            quotaError.name = 'QuotaExceededError';
+            throw quotaError;
+          }
+        }
+        values.set(key, value);
+      },
+      removeItem: (key: string) => values.delete(key)
+    }});
+    try {
+      StorageService.setStorageScope('user:weak-verse-rollback-failure');
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'stable', nextDueDate: getLocalDateString(), intervalDays: 7, easeFactor: 2.5,
+        repetitionCount: 4, mistakesCount: 0
+      });
+      assert(StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, '[]'), 'Initial weak-verse archive should be writable');
+      portionWrites = 0;
+      failWeakVerseWrites = true;
+      failPortionRollback = true;
+      let message = '';
+      try {
+        RetentionService.recordRevisionPerformance(portion.id, 'failed', undefined, {
+          ayahNumber: 2, text: 'نص آية موثوق للاختبار'
+        }, 3);
+      } catch (error: any) { message = error?.message || String(error); }
+      assert(message.includes('لا تغلق الصفحة') && message.includes('نسخة احتياطية'),
+        'An unverified rollback must surface a recovery-required warning');
+      assert(portionWrites >= 2, 'The test must exercise both the original portion write and failed rollback write');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === null,
+        'Activity must not be recorded after an earlier write and rollback both fail');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Profile quota failure after a weak-verse write rolls back portions, weak verses, and activity', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let failProfileWrites = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (failProfileWrites && key.endsWith(STORAGE_KEYS.PROFILE)) {
+          const quotaError = new Error('simulated profile quota failure after weak-verse write');
+          quotaError.name = 'QuotaExceededError';
+          throw quotaError;
+        }
+        values.set(key, value);
+      },
+      removeItem: (key: string) => values.delete(key)
+    }});
+    try {
+      StorageService.setStorageScope('user:review-profile-quota-failure');
+      const today = getLocalDateString();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, lastActiveDate: today, streakDays: 0 });
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'stable', nextDueDate: today, intervalDays: 7, easeFactor: 2.5,
+        repetitionCount: 4, mistakesCount: 0
+      });
+      assert(StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, '[]'), 'Initial weak-verse archive should be writable');
+      const beforePortions = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      const beforeWeak = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+      const beforeProfile = StorageService.getRawItem(STORAGE_KEYS.PROFILE);
+      const beforeLogs = StorageService.getRawItem(STORAGE_KEYS.LOGS);
+      failProfileWrites = true;
+      let rejected = false;
+      try {
+        RetentionService.recordRevisionPerformance(portion.id, 'failed', undefined, {
+          ayahNumber: 2, text: 'نص آية موثوق للاختبار'
+        }, 3);
+      } catch { rejected = true; }
+      assert(rejected, 'Review must fail when profile persistence fails after earlier writes');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === beforePortions,
+        'Portion archive must be restored after profile failure');
+      assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === beforeWeak,
+        'Weak-verse archive must be restored after profile failure');
+      assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === beforeLogs,
+        'Activity archive must be restored after profile failure');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) === beforeProfile,
+        'Profile archive must retain its original bytes');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+
   return { passed, failed };
 }
