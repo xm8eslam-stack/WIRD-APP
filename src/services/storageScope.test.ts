@@ -29,6 +29,53 @@ export function runStorageScopeTests(): { passed: number; failed: number } {
       assert(!StorageService.needsLegacyDataDecision('user:beta'), 'A second account must not be offered the first account legacy data');
     });
 
+    test('Different accounts receive isolated profile and weak-verse records', () => {
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'ملف ألفا' });
+      const weakVerse: WeakVerseItem = {
+        id: 's1_a1',
+        surahNumber: 1,
+        surahName: 'الفاتحة',
+        ayahNumber: 1,
+        text: 'بِسْمِ اللَّهِ',
+        mistakeCount: 2,
+        lastFailedDate: '2026-11-05'
+      };
+      RetentionService.saveWeakVerses([weakVerse]);
+
+      assert(StorageService.setStorageScope('user:beta'), 'Second account scope should activate');
+      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Beta must start with a clean profile');
+      assert(RetentionService.getWeakVerses().length === 0, 'Beta must not see Alpha weak verses');
+
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'ملف بيتا' });
+      RetentionService.saveWeakVerses([{ ...weakVerse, id: 's2_a1', surahNumber: 2, surahName: 'البقرة', ayahNumber: 1 }]);
+
+      assert(StorageService.setStorageScope('user:alpha'), 'Switching back to Alpha should succeed');
+      assert(StorageService.getProfile().name === 'ملف ألفا', 'Alpha profile should be restored');
+      assert(RetentionService.getWeakVerses().length === 1 && RetentionService.getWeakVerses()[0].surahNumber === 1, 'Alpha weak verses should remain isolated');
+    });
+
+    test('Resetting one account does not clear another account in-memory or durable data', () => {
+      assert(StorageService.setStorageScope('user:beta'), 'Switching to Beta should succeed');
+      StorageService.resetAllData();
+      assert(StorageService.setStorageScope('user:alpha'), 'Switching to Alpha should succeed');
+      assert(StorageService.getProfile().name === 'ملف ألفا', 'Resetting Beta must not erase Alpha profile');
+      assert(RetentionService.getWeakVerses().length === 1, 'Resetting Beta must not erase Alpha weak verses');
+    });
+
+    test('Keep-as-guest choice preserves legacy data without importing it into the account', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'بيانات ضيف محفوظة' });
+      assert(StorageService.needsLegacyDataDecision('user:delta'), 'Legacy guest data should require a choice');
+      assert(StorageService.setStorageScope('user:delta', 'keep-guest'), 'Keep-as-guest choice should activate the account');
+      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Account should start clean');
+      assert(StorageService.setStorageScope('guest'), 'Guest scope should remain accessible');
+      assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Legacy data should remain in guest scope');
+
+      assert(StorageService.setStorageScope('user:gamma'), 'A later account should activate');
+      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Gamma must not inherit guest data');
+      assert(StorageService.setStorageScope('guest'), 'Guest scope should be recoverable');
+      assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Guest data should remain available to guest mode');
+    });
     test('Failed legacy import restores copied destinations and all previously removed sources', () => {
       const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
       const values = new Map<string, string>();
@@ -99,53 +146,6 @@ export function runStorageScopeTests(): { passed: number; failed: number } {
       }
     });
 
-    test('Different accounts receive isolated profile and weak-verse records', () => {
-      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'ملف ألفا' });
-      const weakVerse: WeakVerseItem = {
-        id: 's1_a1',
-        surahNumber: 1,
-        surahName: 'الفاتحة',
-        ayahNumber: 1,
-        text: 'بِسْمِ اللَّهِ',
-        mistakeCount: 2,
-        lastFailedDate: '2026-11-05'
-      };
-      RetentionService.saveWeakVerses([weakVerse]);
-
-      assert(StorageService.setStorageScope('user:beta'), 'Second account scope should activate');
-      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Beta must start with a clean profile');
-      assert(RetentionService.getWeakVerses().length === 0, 'Beta must not see Alpha weak verses');
-
-      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'ملف بيتا' });
-      RetentionService.saveWeakVerses([{ ...weakVerse, id: 's2_a1', surahNumber: 2, surahName: 'البقرة', ayahNumber: 1 }]);
-
-      assert(StorageService.setStorageScope('user:alpha'), 'Switching back to Alpha should succeed');
-      assert(StorageService.getProfile().name === 'ملف ألفا', 'Alpha profile should be restored');
-      assert(RetentionService.getWeakVerses().length === 1 && RetentionService.getWeakVerses()[0].surahNumber === 1, 'Alpha weak verses should remain isolated');
-    });
-
-    test('Resetting one account does not clear another account in-memory or durable data', () => {
-      assert(StorageService.setStorageScope('user:beta'), 'Switching to Beta should succeed');
-      StorageService.resetAllData();
-      assert(StorageService.setStorageScope('user:alpha'), 'Switching to Alpha should succeed');
-      assert(StorageService.getProfile().name === 'ملف ألفا', 'Resetting Beta must not erase Alpha profile');
-      assert(RetentionService.getWeakVerses().length === 1, 'Resetting Beta must not erase Alpha weak verses');
-    });
-
-    test('Keep-as-guest choice preserves legacy data without importing it into the account', () => {
-      StorageService.__resetStorageForTests();
-      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'بيانات ضيف محفوظة' });
-      assert(StorageService.needsLegacyDataDecision('user:delta'), 'Legacy guest data should require a choice');
-      assert(StorageService.setStorageScope('user:delta', 'keep-guest'), 'Keep-as-guest choice should activate the account');
-      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Account should start clean');
-      assert(StorageService.setStorageScope('guest'), 'Guest scope should remain accessible');
-      assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Legacy data should remain in guest scope');
-
-      assert(StorageService.setStorageScope('user:gamma'), 'A later account should activate');
-      assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Gamma must not inherit guest data');
-      assert(StorageService.setStorageScope('guest'), 'Guest scope should be recoverable');
-      assert(StorageService.getProfile().name === 'بيانات ضيف محفوظة', 'Guest data should remain available to guest mode');
-    });
   } finally {
     StorageService.__resetStorageForTests();
   }
