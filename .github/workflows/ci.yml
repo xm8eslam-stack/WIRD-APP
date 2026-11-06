@@ -51,3 +51,25 @@ jobs:
         run: npm run build
       - name: Production server startup smoke test
         run: npm run smoke:server
+  tafsir-verify:
+    name: Tafsir API regression, TypeScript, build, and runtime smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run focused tafsir regression suites
+        run: npm run test:tafsir
+      - name: TypeScript validation
+        run: npm run lint
+      - name: Production build
+        run: npm run build
+      - name: Production and development API route smoke tests
+        run: npm run smoke:server
