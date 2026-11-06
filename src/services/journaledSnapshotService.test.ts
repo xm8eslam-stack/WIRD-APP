@@ -256,6 +256,9 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       const result = await persistJournaledTransaction(
         prepared.operations, { journal, runExclusive: inlineLock }, mutationId
       );
+      const retry = await persistJournaledTransaction(
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+      );
       const snapshot = await journal.getSnapshot();
       const portion = RetentionService.getPortions().find(item =>
         item.surahNumber === 67 && item.startAyah === 8 && item.endAyah === 8
@@ -263,7 +266,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       const weakVerse = RetentionService.getWeakVerses().find(item =>
         item.surahNumber === 67 && item.ayahNumber === 8
       );
-      assert(result.success && result.mode === 'journal', 'The weak-verse action must persist through the journal');
+      assert(result.success && retry.success && result.mode === 'journal', 'The weak-verse action and its retry must persist through the journal');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'Both archives must share one event/outbox pair and one cursor step');
       assert(portion?.status === 'weak' && portion.mistakesCount === 1,
