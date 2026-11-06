@@ -537,6 +537,9 @@ function mergeHistoryEntries(
       }
     }
     if (!existing.history.some(log => log.id === preservedId)) {
+      if (existing.history.length >= MAX_MIGRATED_HISTORY_ENTRIES) {
+        throw new Error('Merged revision history exceeds the safe 10,000-entry limit; source archives remain unchanged.');
+      }
       existing.history.push({ ...incomingLog, id: preservedId });
       addConflictAudit(existing, sourceName, 'history',
         'Conflicting history entry under ID ' + incomingLog.id + ' preserved as ' + preservedId);
@@ -618,19 +621,24 @@ export function migrateLegacyDataLosslessly(
   legacyRevisionItems: RevisionItem[] = []
 ): { portions: WirdPortion[]; report: MigrationReport } {
   try {
+    if (!Array.isArray(legacyPortions) || legacyPortions.length > 10000 ||
+        !Array.isArray(legacyRevisionItems) || legacyRevisionItems.length > 10000) {
+      throw new Error('Legacy portion and revision archives must be valid arrays within the 10,000-record safety limit.');
+    }
     const mergedMap = new Map<string, WirdPortion>();
-    let totalSourceLogs = 0;
     const sourceCoordinateKeys = new Set<string>();
 
     // 1. Deterministic Ingestion of legacyPortions (handles internal duplicates)
     legacyPortions.forEach((p, idx) => {
+      if (!p || typeof p !== 'object') throw new Error('Malformed legacy portion at index ' + idx + '.');
+      assertValidQuranRange(p.surahNumber, p.startAyah, p.endAyah);
       const canonicalId = createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
 
       const coordKey = `${p.surahNumber}:${p.startAyah}:${p.endAyah}`;
       sourceCoordinateKeys.add(coordKey);
 
-      if (Array.isArray(p.history)) {
-        totalSourceLogs += p.history.length;
+      if (p.history !== undefined && !Array.isArray(p.history)) {
+        throw new Error('Malformed revision history in legacy portion at index ' + idx + '.');
       }
 
       const existing = mergedMap.get(canonicalId);
@@ -661,16 +669,19 @@ export function migrateLegacyDataLosslessly(
           easeFactor: p.easeFactor || 2.5,
           repetitionCount: p.repetitionCount || 0,
           mistakesCount: p.mistakesCount || 0,
-          history: Array.isArray(p.history) ? [...p.history] : [],
+          history: [],
           revisionType: p.revisionType || 'minor',
           strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium'),
           conflictAudit: Array.isArray(p.conflictAudit) ? [...p.conflictAudit] : []
         });
+        mergeHistoryEntries(mergedMap.get(canonicalId)!, p.history || [], `legacyPortions[${idx}]`);
       }
     });
 
     // 2. Deterministic Ingestion of legacyRevisionItems
     legacyRevisionItems.forEach((rev, idx) => {
+      if (!rev || typeof rev !== 'object') throw new Error('Malformed legacy revision item at index ' + idx + '.');
+      assertValidQuranRange(rev.surahNumber, rev.startAyah, rev.endAyah);
       const canonicalId = createCanonicalPortionId(rev.surahNumber, rev.startAyah, rev.endAyah);
       const coordKey = `${rev.surahNumber}:${rev.startAyah}:${rev.endAyah}`;
       sourceCoordinateKeys.add(coordKey);
@@ -734,10 +745,10 @@ export function migrateLegacyDataLosslessly(
       if (!surahMeta) {
         throw new Error(`Invalid Quran Surah number: ${p.surahNumber}`);
       }
-      if (p.startAyah < 1 || p.startAyah > surahMeta.versesCount) {
+      if (!Number.isSafeInteger(p.startAyah) || p.startAyah < 1 || p.startAyah > surahMeta.versesCount) {
         throw new Error(`Invalid startAyah ${p.startAyah} for Surah ${p.surahNumber} (${surahMeta.name}, max ${surahMeta.versesCount})`);
       }
-      if (p.endAyah < p.startAyah || p.endAyah > surahMeta.versesCount) {
+      if (!Number.isSafeInteger(p.endAyah) || p.endAyah < p.startAyah || p.endAyah > surahMeta.versesCount) {
         throw new Error(`Invalid endAyah ${p.endAyah} for Surah ${p.surahNumber} (${surahMeta.name}, max ${surahMeta.versesCount})`);
       }
       if (p.easeFactor < 1.3) {
