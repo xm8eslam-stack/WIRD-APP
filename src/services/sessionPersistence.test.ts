@@ -66,5 +66,55 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     assert(StorageService.getLogs()[0]?.reviewedPagesCount === 1, 'Review page activity should be recorded');
     StorageService.__resetStorageForTests();
   });
+  test('Invalid session counters, durations, task names, and Quran ranges are rejected before writes', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:invalid-session-inputs');
+    try {
+      const invalidInputs: any[] = [
+        { mode: 'memorize', memorizedAyahs: -1, reviewedPages: 0, minutes: 5, taskName: 'حفظ', surahNumber: 67, startAyah: 1, endAyah: 3 },
+        { mode: 'memorize', memorizedAyahs: 1.5, reviewedPages: 0, minutes: 5, taskName: 'حفظ', surahNumber: 67, startAyah: 1, endAyah: 3 },
+        { mode: 'review', memorizedAyahs: 0, reviewedPages: -1, minutes: 5, taskName: 'مراجعة' },
+        { mode: 'review', memorizedAyahs: 0, reviewedPages: 1.5, minutes: 5, taskName: 'مراجعة' },
+        { mode: 'review', memorizedAyahs: 0, reviewedPages: 1, minutes: -1, taskName: 'مراجعة' },
+        { mode: 'review', memorizedAyahs: 0, reviewedPages: 1, minutes: 1441, taskName: 'مراجعة' },
+        { mode: 'review', memorizedAyahs: 0, reviewedPages: 1, minutes: 5, taskName: '   ' },
+        { mode: 'memorize', memorizedAyahs: 3, reviewedPages: 0, minutes: 5, taskName: 'حفظ', surahNumber: 1, startAyah: 1, endAyah: 8 },
+        { mode: 'unknown', memorizedAyahs: 0, reviewedPages: 0, minutes: 5, taskName: 'مهمة' }
+      ];
+      for (const input of invalidInputs) {
+        const result = persistSessionCompletion(input);
+        assert(!result.success, 'Invalid session input must be rejected');
+        assert(RetentionService.getPortions().length === 0, 'Rejected input must not create or alter memorization portions');
+        assert(StorageService.getLogs().length === 0, 'Rejected input must not create an activity log');
+      }
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Retention service rejects invalid Quran ranges before creating portions', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:invalid-quran-range');
+    try {
+      let rejected = false;
+      try { RetentionService.recordMemorizationCompletion(1, 1, 8); } catch { rejected = true; }
+      assert(rejected, 'An ayah beyond Al-Fatiha must be rejected');
+      assert(RetentionService.getPortions().length === 0, 'Invalid Quran coordinates must not create a portion');
+
+      let addRejected = false;
+      try {
+        RetentionService.addPortion({
+          type: 'passage', surahNumber: 1, surahName: 'الفاتحة', startAyah: 1, endAyah: 8,
+          status: 'stable', nextDueDate: getLocalDateString(), intervalDays: 7,
+          easeFactor: 2.5, repetitionCount: 1, mistakesCount: 0
+        });
+      } catch { addRejected = true; }
+      assert(addRejected, 'addPortion must enforce Quran verse bounds at the service boundary');
+      assert(RetentionService.getPortions().length === 0, 'Invalid addPortion input must not change stored portions');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
