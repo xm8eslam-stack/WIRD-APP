@@ -61,5 +61,5 @@
 
 **Current release status:** NOT READY — Phase 1 data integrity is complete, but Phase 2 mutation/statistics audit, local event ledger, cloud sync, and Vercel production confirmation remain incomplete.
 
-- [ ] Verify Phase 2 queue/metrics regression tests in CI: legacy initial-memorization history, unique review event totals, average ease denominator, daily/weekly priority consistency, 20-item cap, impossible dates, and required weak-ayah text.
+- [x] Verify Phase 2 queue/metrics regression tests in CI: legacy initial-memorization history, unique review event totals, average ease denominator, daily/weekly priority consistency, 20-item cap, impossible dates, future-record validation, and required weak-ayah text (PR #11, Actions #708).
 - [ ] Complete multi-key rollback failure-injection tests for weak-verse archive writes and activity persistence before marking Phase 2 complete.
