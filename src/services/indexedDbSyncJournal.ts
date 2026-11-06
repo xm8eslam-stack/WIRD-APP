@@ -229,7 +229,7 @@ export class IndexedDbSyncJournal {
       try { request = this.factory!.open(this.databaseName, DATABASE_VERSION); }
       catch (error) { reject(normalizeError(error)); return; }
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (upgradeEvent) => {
         const database = request.result;
         const upgradeTransaction = request.transaction!;
         let events: IDBObjectStore;
@@ -260,48 +260,45 @@ export class IndexedDbSyncJournal {
           metadataStore = upgradeTransaction.objectStore(STORE_METADATA);
         }
 
-        // Version 1 events had no monotonic sequence. Backfill in deterministic
-        // order before opening the upgraded database to normal read/write work.
-        const eventsRequest = events.getAll();
-        eventsRequest.onsuccess = () => {
-          const allEvents = (eventsRequest.result as Array<JournalEvent & { sequence?: number }>)
-            .sort((a, b) => a.uid.localeCompare(b.uid) ||
-              a.createdAtMs - b.createdAtMs || a.eventId.localeCompare(b.eventId));
-          const nextByUid = new Map<string, number>();
-          for (const event of allEvents) {
-            const next = nextByUid.get(event.uid) ?? 1;
-            if (!Number.isSafeInteger(event.sequence) || event.sequence < 1) {
-              event.sequence = next;
+        // Version 1 events had no monotonic sequence. Backfill only for the
+        // v1 -> v2 upgrade; future upgrades must preserve the durable cursor.
+        if (upgradeEvent.oldVersion < 2) {
+          const eventsRequest = events.getAll();
+          eventsRequest.onsuccess = () => {
+            const allEvents = (eventsRequest.result as JournalEvent[])
+              .sort((a, b) => a.uid.localeCompare(b.uid) ||
+                a.createdAtMs - b.createdAtMs || a.eventId.localeCompare(b.eventId));
+            const nextByUid = new Map<string, number>();
+            for (const event of allEvents) {
+              const sequence = nextByUid.get(event.uid) ?? 1;
+              event.sequence = sequence;
               events.put(event);
-              nextByUid.set(event.uid, next + 1);
-            } else {
-              nextByUid.set(event.uid, Math.max(next, event.sequence + 1));
+              nextByUid.set(event.uid, sequence + 1);
             }
-          }
 
-          const metadataRequest = metadataStore.getAll();
-          metadataRequest.onsuccess = () => {
-            const existing = metadataRequest.result as DeviceMetadata[];
-            const existingUids = new Set<string>();
-            for (const metadata of existing) {
-              existingUids.add(metadata.uid);
-              const nextSequence = Math.max(metadata.nextSequence || 1, nextByUid.get(metadata.uid) || 1);
-              metadataStore.put({
-                ...metadata,
-                nextSequence,
-                lastProjectedSequence: metadata.lastProjectedSequence || 0
-              });
-            }
-            for (const [uid, nextSequence] of nextByUid) {
-              if (!existingUids.has(uid)) {
+            const metadataRequest = metadataStore.getAll();
+            metadataRequest.onsuccess = () => {
+              const existing = metadataRequest.result as DeviceMetadata[];
+              const existingUids = new Set<string>();
+              for (const metadata of existing) {
+                existingUids.add(metadata.uid);
                 metadataStore.put({
-                  uid, deviceId: createSecureId(), schemaVersion: 1,
-                  nextSequence, lastProjectedSequence: 0
-                } satisfies DeviceMetadata);
+                  ...metadata,
+                  nextSequence: nextByUid.get(metadata.uid) || 1,
+                  lastProjectedSequence: 0
+                });
               }
-            }
+              for (const [uid, nextSequence] of nextByUid) {
+                if (!existingUids.has(uid)) {
+                  metadataStore.put({
+                    uid, deviceId: createSecureId(), schemaVersion: 1,
+                    nextSequence, lastProjectedSequence: 0
+                  } satisfies DeviceMetadata);
+                }
+              }
+            };
           };
-        };
+        }
       };
       request.onsuccess = () => {
         const database = request.result;
