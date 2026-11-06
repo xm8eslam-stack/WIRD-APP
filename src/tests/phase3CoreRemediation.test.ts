@@ -356,9 +356,9 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     try { findNextUnmemorizedRange([], [1], 1.5); } catch { invalidMaxVersesRejected = true; }
     assert(invalidMaxVersesRejected, 'Daily memorization targets must be whole numbers');
 
-    let invalidPlanSurahRejected = false;
-    try { getPlanTargetSurahNumbers({ targetSurahs: [115] }); } catch { invalidPlanSurahRejected = true; }
-    assert(invalidPlanSurahRejected, 'Plan target Surahs outside 1..114 must be rejected');
+    const invalidPlanSurahScope = getPlanTargetSurahNumbers({ targetSurahs: [115] });
+    assert(invalidPlanSurahScope.length === 0,
+      'Invalid explicit Surah targets must be filtered without widening the scope to all Surahs');
 
     let invalidPlanPageRejected = false;
     try { getPlanTargetSurahNumbers({ startPage: 0, endPage: 10 }); } catch { invalidPlanPageRejected = true; }
