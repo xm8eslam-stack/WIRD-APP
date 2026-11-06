@@ -5,6 +5,21 @@
 **Canonical branch:** `main` (Google AI Studio source)
 **Current main SHA:** `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`
 
+
+
+## 2026-11-06 — Active Quran reader and Tafsir repair (PR #49)
+
+- Working branch: `fix/quran-reader-tafsir-navigation-20261106`; base main SHA: `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
+- Root cause found for the reported `Unexpected token 'i', "import { A"...` failure: the client calls `/api/tafsir`, but the custom Express server did not register that route. In development, the request fell through to Vite middleware and could return the TypeScript module source instead of JSON.
+- Fixed by mounting the existing `api/tafsir.ts` handler in `server.ts` before Vite middleware; the Vercel serverless handler remains in place.
+- Added production and development server smoke checks that assert `/api/tafsir` returns JSON for invalid coordinates, rather than source code.
+- Added a direct Mushaf-opening action for every Surah row and the selected-Surah panel. The selected Surah opens at its first Mushaf page; the general Mushaf entry continues to resume the saved reading position.
+- In-reader Surah jumps now resolve the first-ayah page from the generated 604-page index. Added a regression test validating all 114 Surah start pages against the generated page index.
+- Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed exact-head GitHub Actions PR run `42267248254` and push run `42267243769`: automated suites, Firestore emulator tests, TypeScript, production build, and development+production server smoke tests all passed.
+- Vercel deployment is blocked by the Free-plan daily deployment limit (`api-deployments-free-per-day`, retry after 24 hours). This is a deployment gate, not a successful deployment. Do not merge or claim production availability while this required check remains failed.
+- PR #49 remains open as a draft; main has not been modified.
+- Next: inspect current PR head and all checks after documentation checkpoint commits; wait for a valid deployment opportunity, verify the deployed preview/production endpoint, then decide merge only when all required checks are green.
+
 ## Latest verified position — after PR #45
 
 - PR #36 merged: deterministic UID-scoped IndexedDB journal replay runs before authenticated app state initializes; replay is sequence-ordered, protected by Web Locks, and advances the cursor only after verified local projection.
