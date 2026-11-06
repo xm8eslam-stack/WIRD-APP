@@ -249,3 +249,14 @@
 6. Finish manual responsive/accessibility/audio QA and verify Production deployment for the exact main SHA.
 
 **Important boundary:** PR #43–#45 improve local write-ahead persistence and replay. They do not implement Firestore cloud sync, immutable remote event semantics, production rules deployment, or release readiness.
+
+
+## 2026-11-06 — Quran reader and Tafsir repair (PR #49)
+
+- Branch: `fix/quran-reader-tafsir-navigation-20261106`; base: main SHA `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
+- Root cause: `server.ts` did not mount `/api/tafsir`; requests in Vite development could fall through and return `api/tafsir.ts` source beginning with `import`, which the client attempted to parse as JSON.
+- Fix: mount the existing Tafsir handler before Vite middleware; preserve the Vercel serverless route.
+- Navigation: add direct Mushaf opening from Surah list/details, initial page selection, and page resolution from the generated page index. The general Mushaf entry still resumes the saved page.
+- Regression coverage validates all 114 Surah starts against the 604-page index; smoke tests validate the Tafsir JSON route in development and production.
+- Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed PR run `42267248254` and push run `42267243769` (tests, Firestore emulator, TypeScript, build, server smoke).
+- Vercel deployment is blocked by the Free-plan daily deployment cap. PR #49 remains open/draft; no merge or production deployment is claimed.
