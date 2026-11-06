@@ -23,9 +23,9 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 
 ## M4 detailed sequence
 
-1. Complete file-by-file audit of mutation boundaries and all call sites.
-2. Harden outbox idempotency, acknowledged-ID semantics, and validation.
-3. Select transactional IndexedDB wrapper only after comparing real package APIs, licensing, compatibility, bundle cost, and migration impact.
+1. Finish file-by-file audit of `unifiedPortionService.ts` merge/dedup/conflict behavior, history preservation, and every remaining mutation call site.
+2. Outbox idempotency, acknowledged-ID semantics, state validation, device identity, retry bounds, and regression coverage are implemented in PR #6; do not repeat this milestone.
+3. Compare Dexie, idb, and native IndexedDB for transaction semantics, licensing, compatibility, bundle cost, and migration impact; do not add a dependency until a representative prototype proves the benefit.
 4. Define append-only event schemas for activity, revision attempts, weak-verse mistakes, and tests.
 5. Implement transaction/journal semantics for domain event + outbox mutation.
 6. Derive daily logs, streaks, and weak-verse counts from deduplicated events.
