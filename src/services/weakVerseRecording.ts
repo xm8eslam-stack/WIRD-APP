@@ -1,4 +1,4 @@
-import type { PortionStatusRecord } from '../types/quran';
+import type { PortionStatusRecord, WeakVerseItem } from '../types/quran';
 import { RetentionService } from './retentionService';
 import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
@@ -141,7 +141,7 @@ export function buildWeakVerseFailureTransaction(
 }
 
 export type BuildWeakVerseResolutionSnapshotResult =
-  | { success: true; records: import('../types/quran').WeakVerseItem[]; changed: boolean }
+  | { success: true; records: WeakVerseItem[]; changed: boolean }
   | { success: false; messageAr: string };
 
 /** Prepare an idempotent weak-verse resolution without writing to local storage. */
