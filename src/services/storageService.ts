@@ -1166,23 +1166,75 @@ export const StorageService = {
 
   // Export with Unencrypted Warning Label
   exportFullBackup(): string {
+    const profileRaw = getItem(STORAGE_KEYS.PROFILE);
+    let profile: UserProfile;
+    if (profileRaw === null) {
+      profile = { ...CLEAN_INITIAL_PROFILE };
+    } else {
+      try {
+        const parsed: unknown = JSON.parse(profileRaw);
+        if (!isValidUserProfile(parsed)) throw new Error('الملف الشخصي يحتوي على سجل غير صالح.');
+        profile = parsed;
+      } catch (error) {
+        throw new Error('تعذر تصدير النسخة الاحتياطية: بيانات الملف الشخصي تالفة أو غير صالحة. تم الحفاظ على البيانات الأصلية.');
+      }
+    }
+
+    const plans = readStrictJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans', isValidMemorizationPlan);
+    const enginePlans = readStrictJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans', isValidEngineGeneratedPlan);
+    const revisionItems = readStrictJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items', isValidRevisionItem);
+    const logs = this.getLogs();
+    const tests = readStrictJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results', isValidTestResultRecord);
+
     const canonicalPortions = this.getUnifiedPortions();
+    const canonicalRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+    const schemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+    if (schemaVersion === '2' && canonicalRaw === null) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد مفقود رغم إعلان الإصدار الثاني؛ لم يتم إنشاء نسخة ناقصة.');
+    }
+    if (canonicalRaw !== null) {
+      let parsedCanonical: unknown;
+      try { parsedCanonical = JSON.parse(canonicalRaw); }
+      catch { throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد تالف وتم الحفاظ عليه.'); }
+      if (!Array.isArray(parsedCanonical) || parsedCanonical.length > 10000 ||
+          !parsedCanonical.every((item: unknown) => isValidPortionRecord(item, true)) ||
+          JSON.stringify(parsedCanonical) !== JSON.stringify(canonicalPortions)) {
+        throw new Error('تعذر تصدير النسخة الاحتياطية: سجل المقاطع الموحد يحتوي على بيانات غير صالحة أو تعذر قراءته بالكامل.');
+      }
+    }
+
+    const weakRaw = getItem(STORAGE_KEYS.WEAK_VERSES);
+    let weakVerses: WeakVerseItem[] = [];
+    if (weakRaw !== null) {
+      let parsedWeak: unknown;
+      try { parsedWeak = JSON.parse(weakRaw); }
+      catch { throw new Error('تعذر تصدير النسخة الاحتياطية: سجل الآيات المتعثرة تالف وتم الحفاظ عليه.'); }
+      if (!Array.isArray(parsedWeak) || parsedWeak.length > 10000 || !parsedWeak.every(isValidWeakVerseRecord)) {
+        throw new Error('تعذر تصدير النسخة الاحتياطية: سجل الآيات المتعثرة يحتوي على عناصر غير صالحة.');
+      }
+      weakVerses = parsedWeak;
+    }
+
     const backup: BackupPayload = {
       format: 'wird_backup',
       version: 4,
       timestamp: new Date().toISOString(),
       isEncrypted: false,
       unencryptedWarning: "تنبيه أمني: هذا الملف نصي غير مشفر بصيغة JSON صريحة ويحتوي على سجلات الحفظ والإعدادات الشخصية. احتفظ به في مكان آمن.",
-      profile: this.getProfile(),
-      plans: this.getPlans(),
-      enginePlans: this.getEnginePlans(),
-      revisionItems: this.getRevisionItems(),
-      logs: this.getLogs(),
-      tests: this.getTests(),
+      profile,
+      plans,
+      enginePlans,
+      revisionItems,
+      logs,
+      tests,
       portions: canonicalPortions,
       unifiedPortions: canonicalPortions,
-      weakVerses: getItem(STORAGE_KEYS.WEAK_VERSES) ? JSON.parse(getItem(STORAGE_KEYS.WEAK_VERSES)!) : []
+      weakVerses
     };
+    const validation = validateBackupPayload(backup);
+    if (!validation.valid) {
+      throw new Error('تعذر إنشاء نسخة احتياطية مكتملة: ' + (validation.error || 'بيانات غير صالحة'));
+    }
     return JSON.stringify(backup, null, 2);
   },
 
