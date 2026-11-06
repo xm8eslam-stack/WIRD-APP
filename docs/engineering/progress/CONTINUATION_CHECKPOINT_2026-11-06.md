@@ -6,7 +6,7 @@
 - Current main SHA: `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f` (PR #45 merge).
 - PR #43 grouped transaction primitive: exact-head PR/push runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
 - PR #44 weak-verse failure journal integration: exact-head PR/push runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
-- PR #45 weak-verse resolution journal integration: exact-head PR/push runs `42261861919` and `42261851120` passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`; post-merge main run `42262136009` is **in progress** on the current main SHA. Recheck before marking post-merge verification complete.
+- PR #45 weak-verse resolution journal integration: exact-head PR/push runs `42261861919` and `42261851120` passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`; post-merge main run `42262136009` **passed** on the current main SHA.
 - Vercel Production deployment for current main is not confirmed. Green GitHub Actions is not a deployment receipt.
 
 ## Completed since the previous checkpoint
