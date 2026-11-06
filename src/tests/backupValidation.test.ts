@@ -612,8 +612,13 @@ export function runBackupTests(): { passed: number; failed: number } {
           intervalDaysAfter: 2
         }]
       };
-      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([legacyPortion]));
+      const legacyRaw = JSON.stringify([legacyPortion]);
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, legacyRaw);
       StorageService.setRawItem(STORAGE_KEYS.REVISION, JSON.stringify([]));
+      assert(!StorageService.saveUnifiedPortions([SAMPLE_PORTION]),
+        'A direct canonical write must not bypass pending legacy migration');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === legacyRaw,
+        'Legacy source bytes must remain intact until validated migration');
 
       const migrated = StorageService.getUnifiedPortions();
       assert(migrated.length === 1, 'Valid legacy portion should migrate');
