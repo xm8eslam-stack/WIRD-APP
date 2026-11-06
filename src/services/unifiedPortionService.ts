@@ -505,7 +505,7 @@ function mergeHistoryEntries(
 
   for (const incomingLog of incomingHistory) {
     if (!incomingLog || typeof incomingLog.id !== 'string' || !incomingLog.id.trim() ||
-        incomingLog.id.length > 160 || !/^\\d{4}-\\d{2}-\\d{2}$/.test(incomingLog.date) ||
+        incomingLog.id.length > 160 || !/^\d{4}-\d{2}-\d{2}$/.test(incomingLog.date) ||
         !['successful', 'difficult', 'failed'].includes(incomingLog.rating) ||
         !Number.isSafeInteger(incomingLog.intervalDaysBefore) || incomingLog.intervalDaysBefore < 0 ||
         !Number.isSafeInteger(incomingLog.intervalDaysAfter) || incomingLog.intervalDaysAfter < 0 ||
