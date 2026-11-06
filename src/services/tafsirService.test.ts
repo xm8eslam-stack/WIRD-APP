@@ -1,4 +1,4 @@
-import { buildTafsirCacheKey, getTafsirMuyassar } from './tafsirService';
+import { buildTafsirCacheKey, getTafsir, getTafsirMuyassar } from './tafsirService';
 
 export async function runTafsirServiceTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
