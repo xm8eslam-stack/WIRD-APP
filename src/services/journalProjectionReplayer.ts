@@ -41,8 +41,19 @@ export async function replayJournalProjection(
     return { uid: '', applied: 0, skippedAlreadyProjected: 0, cursor: 0 };
   }
 
-  const initialCursor = await journal.getProjectionCursor();
-  const initialEvents = await journal.listEventsAfter(initialCursor, 1);
+  let initialCursor: number;
+  let initialEvents;
+  try {
+    initialCursor = await journal.getProjectionCursor();
+    initialEvents = await journal.listEventsAfter(initialCursor, 1);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('IndexedDB غير متاح في هذا المتصفح')) {
+      // No IndexedDB means this browser cannot have a journal to replay. Keep
+      // the existing localStorage-only experience rather than blocking login.
+      return { uid, applied: 0, skippedAlreadyProjected: 0, cursor: 0 };
+    }
+    throw error;
+  }
   if (initialEvents.length === 0) {
     return { uid, applied: 0, skippedAlreadyProjected: 0, cursor: initialCursor };
   }
