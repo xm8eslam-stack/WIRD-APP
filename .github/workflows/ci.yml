@@ -67,9 +67,9 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run focused tafsir regression suites
         run: npm run test:tafsir
-      - name: TypeScript validation
-        run: npm run lint
       - name: Production build
         run: npm run build
       - name: Production and development API route smoke tests
         run: npm run smoke:server
+      - name: TypeScript validation
+        run: npm run lint
