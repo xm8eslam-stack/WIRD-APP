@@ -973,11 +973,11 @@ export const StorageService = {
     }
   },
 
-  saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false): boolean {
+  saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false, allowExplicitImportOverwrite = false): boolean {
     try {
       const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const existingCanonicalRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-      if (currentSchemaVersion !== '2' && existingCanonicalRaw !== null && !allowRecoveryOverwrite) {
+      if (currentSchemaVersion !== '2' && existingCanonicalRaw !== null && !allowExplicitImportOverwrite) {
         console.error('[WIRD Storage] Refusing to overwrite an unversioned canonical portions archive; reconciliation is required first.');
         return false;
       }
@@ -1443,11 +1443,11 @@ export const StorageService = {
       if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
 
       if (parsed.unifiedPortions !== undefined) {
-        if (!this.saveUnifiedPortions(parsed.unifiedPortions, true)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
+        if (!this.saveUnifiedPortions(parsed.unifiedPortions, true, true)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
         if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(parsed.unifiedPortions)) throw new Error('فشل التحقق من استعادة المقاطع القرآنية الموحدة');
       } else if (parsed.portions !== undefined || parsed.revisionItems !== undefined) {
         const migration = migrateLegacyDataLosslessly(parsed.portions || [], parsed.revisionItems || []);
-        if (!migration.report.success || !this.saveUnifiedPortions(migration.portions, true)) throw new Error(migration.report.error || 'تعذر ترحيل المقاطع من النسخة الاحتياطية القديمة');
+        if (!migration.report.success || !this.saveUnifiedPortions(migration.portions, true, true)) throw new Error(migration.report.error || 'تعذر ترحيل المقاطع من النسخة الاحتياطية القديمة');
         if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(migration.portions)) throw new Error('فشل التحقق من بيانات المقاطع بعد الترحيل');
       }
 
