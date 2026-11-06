@@ -306,7 +306,7 @@ function isValidOptionalJuz(value: unknown): boolean {
 
 function isValidRevisionLogRecord(value: unknown): boolean {
   if (!isPlainRecord(value)) return false;
-  return typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 160 &&
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
     isValidDateOnly(value.date) &&
     ['successful', 'difficult', 'failed'].includes(value.rating) &&
     isIntegerBetween(value.intervalDaysBefore, 0, 100000) &&
