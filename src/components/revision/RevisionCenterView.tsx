@@ -36,6 +36,7 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from '../../services/weakVerseRecording';
 import { createSecureId } from '../../services/secureId';
+import type { RevisionRatedEvent, WeakVerseFailedEvent, WeakVerseResolvedEvent } from '../../services/domainEvents';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
@@ -75,11 +76,14 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const ratingInFlightRef = useRef(false);
   const ratingMutationKeyRef = useRef<string | null>(null);
   const ratingMutationIdRef = useRef<string | null>(null);
+  const ratingMutationOccurredAtRef = useRef<string | null>(null);
   const weakVerseMutationIdRef = useRef<string | null>(null);
+  const weakVerseMutationOccurredAtRef = useRef<string | null>(null);
   const weakVerseMutationKeyRef = useRef<string | null>(null);
   const weakVerseInFlightRef = useRef(false);
   const [isSavingWeakVerse, setIsSavingWeakVerse] = useState(false);
   const weakVerseResolutionMutationIdsRef = useRef<Map<string, string>>(new Map());
+  const weakVerseResolutionOccurredAtRef = useRef<Map<string, string>>(new Map());
   const weakVerseResolutionInFlightRef = useRef<Set<string>>(new Set());
 
   // Add new portion modal
@@ -139,6 +143,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (ratingMutationKeyRef.current !== mutationKey) {
       ratingMutationKeyRef.current = mutationKey;
       ratingMutationIdRef.current = 'revision-' + createSecureId();
+      ratingMutationOccurredAtRef.current = new Date().toISOString();
     }
     const mutationId = ratingMutationIdRef.current || 'revision-' + createSecureId();
     ratingMutationIdRef.current = mutationId;
@@ -194,7 +199,22 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         ];
       }
 
-      const result = await persistJournaledTransaction(operations, {}, mutationId);
+      const domainEvent: RevisionRatedEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'revision.rated',
+        occurredAt: ratingMutationOccurredAtRef.current || new Date().toISOString(),
+        payload: {
+          portionId: selectedPortion.id,
+          surahNumber: selectedPortion.surahNumber,
+          startAyah: selectedPortion.startAyah,
+          endAyah: selectedPortion.endAyah,
+          rating,
+          ...(reviewNotes ? { notes: reviewNotes } : {}),
+          ...(weakDetails ? { weakAyahNumber: weakDetails.ayahNumber } : {})
+        }
+      };
+      const result = await persistJournaledTransaction(operations, {}, mutationId, domainEvent);
       const expectedPortions = operations.find(operation => operation.collection === 'portions')?.payload.records;
       const expectedWeakVerses = operations.find(operation => operation.collection === 'weakVerses')?.payload.records;
       const expectedActivity = operations.find(operation => operation.collection === 'activityEvents')?.payload.records;
@@ -227,6 +247,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
       ratingMutationKeyRef.current = null;
       ratingMutationIdRef.current = null;
+      ratingMutationOccurredAtRef.current = null;
       setActionFeedback({
         message: prepared.messageAr,
         type: rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
@@ -321,8 +342,17 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       return;
     }
 
-    const mutationId = weakVerseResolutionMutationIdsRef.current.get(id) || 'weak-resolve-' + createSecureId();
-    weakVerseResolutionMutationIdsRef.current.set(id, mutationId);
+    const resolvedWeakVerse = RetentionService.getWeakVerses().find(item => item.id === id);
+    if (!resolvedWeakVerse) {
+      setActionFeedback({ message: 'لم نعثر على بيانات الآية الأصلية؛ لم يتم تسجيل حدث إزالة غير مكتمل.', type: 'warn' });
+      return;
+    }
+    let mutationId = weakVerseResolutionMutationIdsRef.current.get(id);
+    if (!mutationId) {
+      mutationId = 'weak-resolve-' + createSecureId();
+      weakVerseResolutionMutationIdsRef.current.set(id, mutationId);
+      weakVerseResolutionOccurredAtRef.current.set(id, new Date().toISOString());
+    }
     weakVerseResolutionInFlightRef.current.add(id);
     let result: Awaited<ReturnType<typeof persistJournaledSnapshot>>;
     try {
@@ -332,7 +362,20 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           collection: 'weakVerses',
           documentId: 'snapshot',
           operation: 'upsert',
-          payload: { records: prepared.records }
+          payload: {
+            records: prepared.records,
+            domainEvent: {
+              schemaVersion: 1,
+              id: mutationId,
+              type: 'weak_verse.resolved' as const,
+              occurredAt: weakVerseResolutionOccurredAtRef.current.get(id) || new Date().toISOString(),
+              payload: {
+                weakVerseId: id,
+                surahNumber: resolvedWeakVerse.surahNumber,
+                ayahNumber: resolvedWeakVerse.ayahNumber
+              }
+            } satisfies WeakVerseResolvedEvent
+          }
         },
         () => RetentionService.saveWeakVerses(prepared.records)
       );
@@ -366,6 +409,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
 
     weakVerseResolutionMutationIdsRef.current.delete(id);
+    weakVerseResolutionOccurredAtRef.current.delete(id);
     refreshAll();
     setActionFeedback({
       message: `تمت إزالة ${ayahRef} من قائمة الآيات الملتبسة فقط؛ لم يتغير تقييم المقطع أو موعد مراجعته.`,
@@ -397,6 +441,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (weakVerseMutationKeyRef.current !== mutationKey) {
       weakVerseMutationKeyRef.current = mutationKey;
       weakVerseMutationIdRef.current = 'weak-' + createSecureId();
+      weakVerseMutationOccurredAtRef.current = new Date().toISOString();
     }
     const mutationId = weakVerseMutationIdRef.current || 'weak-' + createSecureId();
     weakVerseMutationIdRef.current = mutationId;
@@ -410,6 +455,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (!prepared.success) {
       weakVerseMutationIdRef.current = null;
       weakVerseMutationKeyRef.current = null;
+      weakVerseMutationOccurredAtRef.current = null;
       setActionFeedback({ message: prepared.messageAr, type: 'warn' });
       return;
     }
@@ -418,7 +464,18 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     setIsSavingWeakVerse(true);
     let result: Awaited<ReturnType<typeof persistJournaledTransaction>>;
     try {
-      result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+      const domainEvent: WeakVerseFailedEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'weak_verse.failed',
+        occurredAt: weakVerseMutationOccurredAtRef.current || new Date().toISOString(),
+        payload: {
+          surahNumber: weakSurahNum,
+          ayahNumber: manualWeakAyahNum,
+          ...(manualWeakNotes ? { notes: manualWeakNotes } : {})
+        }
+      };
+      result = await persistJournaledTransaction(prepared.operations, {}, mutationId, domainEvent);
     } catch (error) {
       weakVerseInFlightRef.current = false;
       setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.', type: 'warn' });
@@ -454,6 +511,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
     weakVerseMutationIdRef.current = null;
     weakVerseMutationKeyRef.current = null;
+    weakVerseMutationOccurredAtRef.current = null;
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');
     setManualWeakNotes('');
