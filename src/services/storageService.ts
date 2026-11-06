@@ -1027,11 +1027,15 @@ export const StorageService = {
       const previousValues = new Map(keysToRestore.map(key => [key, getItem(key)]));
       const restorePreviousState = (): boolean => {
         let restored = true;
-        // Restore canonical first to release any quota consumed by a partial new write.
+        // Remove the partial generation first so the previous generation can fit even after quota pressure.
+        for (const key of keysToRestore) {
+          if (!removeItem(key)) restored = false;
+        }
         for (const key of keysToRestore) {
           const previousValue = previousValues.get(key) ?? null;
-          const writeOk = previousValue === null ? removeItem(key) : setItem(key, previousValue);
-          if (!writeOk || getItem(key) !== previousValue) restored = false;
+          if (previousValue !== null && (!setItem(key, previousValue) || getItem(key) !== previousValue)) {
+            restored = false;
+          }
         }
         if (!restored) console.error('[WIRD Storage] CRITICAL: saveUnifiedPortions rollback could not verify every previous archive.');
         return restored;
