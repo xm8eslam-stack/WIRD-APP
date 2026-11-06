@@ -45,6 +45,47 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     }
   });
 
+  test('Weak-verse recording warns when a partially written counter cannot be removed during rollback', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key.endsWith(STORAGE_KEYS.WEAK_VERSES)) {
+            values.set(key, value);
+            throw new Error('simulated post-write weak archive failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => {
+          if (key.endsWith(STORAGE_KEYS.WEAK_VERSES)) throw new Error('simulated weak archive rollback failure');
+          values.delete(key);
+        }
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:weak-verse-rollback-unverified');
+      const result = recordWeakVerseFailure({
+        surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
+        text: 'نص آية اختبار', notes: 'فشل بعد الكتابة'
+      });
+      assert(!result.success, 'A weak-verse write with an unverified rollback must not report success');
+      assert(result.messageAr.includes('لا تغلق الصفحة') && result.messageAr.includes('نسخة احتياطية'),
+        'The user must receive an explicit recovery-required warning');
+      assert(RetentionService.getPortions().length === 0,
+        'The canonical portion archive should still be restored');
+      assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) !== null,
+        'The injected failed rollback should leave the weak archive visibly pending recovery');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Corrupt weak-verse JSON is preserved and blocks a new mistake write', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:weak-verse-corrupt');
