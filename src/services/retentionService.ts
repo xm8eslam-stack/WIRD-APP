@@ -33,7 +33,7 @@ function isValidWeakVerseItem(value: unknown): value is WeakVerseItem {
   if (!Number.isSafeInteger(item.ayahNumber) || Number(item.ayahNumber) < 1 || Number(item.ayahNumber) > 286) return false;
   if (typeof item.text !== 'string' || !item.text.trim() || item.text.length > 4000) return false;
   if (!Number.isSafeInteger(item.mistakeCount) || Number(item.mistakeCount) < 1 || Number(item.mistakeCount) > 1_000_000) return false;
-  if (typeof item.lastFailedDate !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(item.lastFailedDate)) return false;
+  if (typeof item.lastFailedDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(item.lastFailedDate)) return false;
   const [year, month, day] = item.lastFailedDate.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
   if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== item.lastFailedDate) return false;
