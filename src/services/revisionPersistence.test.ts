@@ -174,6 +174,67 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
     }
   });
 
+  test('Revision rating surfaces recovery-required when activity rollback cannot be verified', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const today = getLocalDateString();
+    const originalLogs = JSON.stringify([{
+      date: today, memorizedAyahsCount: 0, reviewedPagesCount: 1,
+      minutesSpent: 3, completedTasks: ['مراجعة سابقة']
+    }]);
+    const values = new Map<string, string>();
+    let logWrites = 0;
+    let failProfileWrites = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key.endsWith(STORAGE_KEYS.LOGS)) {
+            logWrites++;
+            if (logWrites >= 2) throw new Error('persistent activity rollback quota failure');
+          }
+          if (failProfileWrites && key.endsWith(STORAGE_KEYS.PROFILE)) {
+            throw new Error('simulated profile quota failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:revision-rollback-unverified');
+      assert(StorageService.saveLogs([{
+        date: today, memorizedAyahsCount: 0, reviewedPagesCount: 1,
+        minutesSpent: 3, completedTasks: ['مراجعة سابقة']
+      }]), 'Original daily activity fixture should save');
+      assert(StorageService.saveProfile({ ...StorageService.getProfile(), lastActiveDate: today, streakDays: 0 }),
+        'Original profile fixture should save');
+      const portion = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 21, endAyah: 25,
+        status: 'recently_memorized', nextDueDate: today, intervalDays: 2, easeFactor: 2.5,
+        repetitionCount: 1, mistakesCount: 0
+      });
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      failProfileWrites = true;
+      let message = '';
+      try {
+        RetentionService.recordRevisionPerformance(portion.id, 'successful', undefined, undefined, 5);
+      } catch (error) { message = error instanceof Error ? error.message : String(error); }
+      assert(message.includes('لا تغلق الصفحة') && message.includes('نسخة احتياطية'),
+        'An unverified multi-key rollback must return an explicit recovery warning');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'The revision portion must be restored even when the activity log cannot be restored');
+      const storedLogs = values.get('wird_scope_v1:user:revision-rollback-unverified:' + STORAGE_KEYS.LOGS);
+      assert(storedLogs !== originalLogs,
+        'The test must retain the partial activity write to prove the recovery warning is necessary');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Corrupt weak-verse archive blocks a failed rating and restores the prior portion', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:revision-corrupt-weak');
