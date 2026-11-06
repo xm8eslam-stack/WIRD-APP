@@ -21,3 +21,16 @@
 - RxDB Apache-2.0 is declared in the inspected package metadata; verify the exact release license and any plugin-specific terms before adopting optional modules.
 - Ummah Library AGPL-3.0-only: no source copied.
 - No dependency has been added based on this research alone.
+
+
+## Runtime record-validation library comparison — 2026-11-06
+
+| Project | URL | Inspected version / license | Strengths | Trade-offs for WIRD |
+|---|---|---|---|---|
+| Zod | https://github.com/colinhacks/zod | 4.6.7; MIT | TypeScript-first schemas, inferred types, safeParse, strict object support, JSON Schema conversion, no runtime dependencies | Ergonomic and widely adopted; core is reported around 2 KB gzipped; ensure strict objects so unknown fields are rejected rather than silently stripped |
+| Valibot | https://github.com/open-circle/valibot | Official docs inspected; MIT; docs state TypeScript >=5.0.2 | Modular API, inferred types, small tree-shaken bundle, no dependencies, safeParse | Smaller footprint; API is more granular and team familiarity should be evaluated |
+| Ajv | https://github.com/ajv-validator/ajv | 8.20.0; MIT | JSON Schema standard, strict object properties, compiled validators, strong interoperability for backups and Firestore contracts | Several runtime dependencies; schemas are less directly aligned with TypeScript interfaces without generated/inferred typing layer |
+
+### Provisional decision
+
+Do not add a validator dependency in this documentation/audit pass. First map all persisted record interfaces and define exact compatibility rules for legacy versions. Then prototype Zod 4 and Valibot on the same representative schemas (UserProfile, DailyLog, MemorizationPlan, EngineGeneratedPlan, RevisionItem, TestResult, WeakVerseItem, WirdPortion, BackupPayload). Compare strict unknown-key behavior, precise error paths, bundle impact, TypeScript compatibility, and legacy migration behavior. Ajv remains a candidate if shared JSON Schema definitions across client and server become a concrete requirement. No third-party code copied.
