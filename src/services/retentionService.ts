@@ -330,7 +330,8 @@ export const RetentionService = {
     const updated = portions.map((portion, currentIndex) => currentIndex !== index ? portion : {
       ...portion,
       status: newStatus,
-      strength: newStatus === 'weak' ? 'weak' : portion.strength
+      strength: newStatus === 'weak' ? 'weak' : newStatus === 'stable' ? 'strong' :
+        ['currently_memorizing', 'recently_memorized', 'needs_revision'].includes(newStatus) ? 'medium' : portion.strength
     });
     if (!this.savePortions(updated)) throw new Error('تعذر حفظ تحديث حالة المقطع في التخزين المحلي.');
     return updated;
