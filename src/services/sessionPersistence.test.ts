@@ -282,6 +282,8 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const values = new Map<string, string>();
     let failProfileWrites = false;
+    let successfulWeakVerseWrites = 0;
+    let successfulActivityWrites = 0;
     StorageService.__resetStorageForTests();
     Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
       getItem: (key: string) => values.get(key) ?? null,
@@ -291,6 +293,8 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
           quotaError.name = 'QuotaExceededError';
           throw quotaError;
         }
+        if (key.endsWith(STORAGE_KEYS.WEAK_VERSES)) successfulWeakVerseWrites++;
+        if (key.endsWith(STORAGE_KEYS.LOGS)) successfulActivityWrites++;
         values.set(key, value);
       },
       removeItem: (key: string) => values.delete(key)
@@ -317,6 +321,8 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
         }, 3);
       } catch { rejected = true; }
       assert(rejected, 'Review must fail when profile persistence fails after earlier writes');
+      assert(successfulWeakVerseWrites > 0, 'The weak-verse write must succeed before the later profile failure is injected');
+      assert(successfulActivityWrites > 0, 'The activity write must succeed before the later profile failure is injected');
       assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === beforePortions,
         'Portion archive must be restored after profile failure');
       assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === beforeWeak,
