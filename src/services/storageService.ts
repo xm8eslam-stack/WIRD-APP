@@ -1550,19 +1550,33 @@ export const StorageService = {
     }
   },
 
-  // Complete Clean Reset — never report success unless every scoped key is absent.
+  // Complete Clean Reset — capture a trustworthy snapshot first and roll back
+  // every earlier removal if any durable deletion cannot be verified.
   resetAllData(): boolean {
+    let snapshot: Record<string, string | null>;
+    try {
+      snapshot = this.getStorageSnapshot();
+    } catch (error) {
+      console.error('[WIRD Storage] Reset stopped before deleting data because a complete snapshot was unavailable.', error);
+      return false;
+    }
+
     const keys = [
       STORAGE_KEYS.PROFILE, STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS,
       STORAGE_KEYS.PROGRESS, STORAGE_KEYS.REVISION, STORAGE_KEYS.LOGS,
       STORAGE_KEYS.TESTS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.WEAK_VERSES,
       STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.SCHEMA_VERSION, STORAGE_KEYS.SYNC_OUTBOX
     ];
-    let success = true;
     for (const key of keys) {
-      if (!removeItem(key)) success = false;
+      if (!removeItem(key) || !verifyItem(key, null) || memoryStorage.has(resolveStorageKey(key))) {
+        const rollbackVerified = this.restoreStorageSnapshot(snapshot);
+        console.error(
+          '[WIRD Storage] Reset failed; previous data restoration verified: ' + rollbackVerified
+        );
+        return false;
+      }
     }
-    return success;
+    return true;
   },
 
   // Test-only Snapshot API
