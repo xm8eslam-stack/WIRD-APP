@@ -5,9 +5,9 @@
 - [x] Backup import validation and rollback verification covered by regression tests.
 - [x] Session completion and revision rating ordinary-failure rollback implemented.
 - [x] Outbox acknowledged-ID content fingerprints, pending/acknowledged uniqueness and disjointness, device identity, and retry-bound regression tests.
-- [ ] Strict per-record validation for every persisted archive and every backup-import collection.
-- [ ] Reject malformed nested records before any partial import; preserve original archive bytes on failure.
-- [ ] Complete audit of every domain mutation call site.
+- [x] Strict per-record validation for plans, engine plans, revision items, tests, logs, weak verses, portions, profiles, and every backup-import collection covered by the current schema.
+- [x] Reject malformed nested records before any partial import; preserve original archive bytes on failure.
+- [ ] Complete audit of every domain mutation call site, including remaining merge/dedup and statistics paths.
 - [ ] Append-only local activity/revision/weak-verse/test event ledger.
 - [ ] Event + outbox transaction/journal and deterministic replay.
 - [ ] Crash/reload recovery and quota/blocked-storage tests.
