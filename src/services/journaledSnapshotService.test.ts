@@ -3,6 +3,8 @@ import { IDBFactory } from 'fake-indexeddb';
 import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageService';
 import type { WirdPortion, TestResult } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
+import { RetentionService } from './retentionService';
+import { buildWeakVerseFailureTransaction } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
   persistEnginePlansSnapshot,
@@ -234,6 +236,41 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(first.success && retry.success, 'The original grouped write and its retry must both succeed');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'Reusing one mutation ID must not create a second event or outbox record');
+      journal.close();
+    });
+
+    await test('Weak-verse failure commits its canonical portion and counter in one journal event', async () => {
+      const journal = createJournal();
+      const mutationId = 'weak-failure-journal-001';
+      const prepared = buildWeakVerseFailureTransaction({
+        surahNumber: 67,
+        surahName: 'اسم غير معتمد',
+        ayahNumber: 8,
+        text: 'نص آية للاختبار',
+        notes: 'اختبار تسجيل متعثر'
+      }, mutationId);
+      assert(prepared.success, 'A valid weak-verse action must produce grouped projections');
+      assert(RetentionService.getPortions().length === 0 && RetentionService.getWeakVerses().length === 0,
+        'Preparing the action must not mutate either local archive');
+
+      const result = await persistJournaledTransaction(
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const snapshot = await journal.getSnapshot();
+      const portion = RetentionService.getPortions().find(item =>
+        item.surahNumber === 67 && item.startAyah === 8 && item.endAyah === 8
+      );
+      const weakVerse = RetentionService.getWeakVerses().find(item =>
+        item.surahNumber === 67 && item.ayahNumber === 8
+      );
+      assert(result.success && result.mode === 'journal', 'The weak-verse action must persist through the journal');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'Both archives must share one event/outbox pair and one cursor step');
+      assert(portion?.status === 'weak' && portion.mistakesCount === 1,
+        'The canonical portion must record the weak status and mistake count');
+      assert(weakVerse?.surahName === 'الملك' && weakVerse.mistakeCount === 1 &&
+        weakVerse.text === 'نص آية للاختبار',
+        'The weak-verse counter must use canonical Surah metadata and preserve the supplied verse text');
       journal.close();
     });
 
