@@ -589,14 +589,14 @@ function assertValidLegacyPortionInput(value: unknown, index: number): asserts v
       (value.mistakesCount !== undefined && (!Number.isSafeInteger(value.mistakesCount) || value.mistakesCount < 0 || value.mistakesCount > 100000)) ||
       (value.revisionType !== undefined && !['minor', 'major'].includes(value.revisionType)) ||
       (value.strength !== undefined && !['strong', 'medium', 'weak'].includes(value.strength)) ||
-      (value.createdAt !== undefined && (typeof value.createdAt !== 'string' || value.createdAt.length > 64 || !/^\\d{4}-\\d{2}-\\d{2}T/.test(value.createdAt) || !Number.isFinite(Date.parse(value.createdAt)))) ||
-      (value.updatedAt !== undefined && (typeof value.updatedAt !== 'string' || value.updatedAt.length > 64 || !/^\\d{4}-\\d{2}-\\d{2}T/.test(value.updatedAt) || !Number.isFinite(Date.parse(value.updatedAt)))) ||
+      (value.createdAt !== undefined && (typeof value.createdAt !== 'string' || value.createdAt.length > 64 || !/^\d{4}-\d{2}-\d{2}T/.test(value.createdAt) || !Number.isFinite(Date.parse(value.createdAt)))) ||
+      (value.updatedAt !== undefined && (typeof value.updatedAt !== 'string' || value.updatedAt.length > 64 || !/^\d{4}-\d{2}-\d{2}T/.test(value.updatedAt) || !Number.isFinite(Date.parse(value.updatedAt)))) ||
       (value.history !== undefined && (!Array.isArray(value.history) || value.history.length > MAX_MIGRATED_HISTORY_ENTRIES || !value.history.every(isValidRevisionHistoryEntry))) ||
       (value.conflictAudit !== undefined && (!Array.isArray(value.conflictAudit) || value.conflictAudit.length > MAX_CONFLICT_AUDIT_ENTRIES ||
         !value.conflictAudit.every((item: unknown) => isPlainObject(item) &&
           typeof item.source === 'string' && item.source.length <= 160 &&
           typeof item.field === 'string' && item.field.length <= 160 &&
-          (item.timestamp === undefined || (typeof item.timestamp === 'string' && item.timestamp.length <= 64 && /^\\d{4}-\\d{2}-\\d{2}T/.test(item.timestamp) && Number.isFinite(Date.parse(item.timestamp))))))) {
+          (item.timestamp === undefined || (typeof item.timestamp === 'string' && item.timestamp.length <= 64 && /^\d{4}-\d{2}-\d{2}T/.test(item.timestamp) && Number.isFinite(Date.parse(item.timestamp))))))) {
     throw new TypeError('Legacy portion record is invalid at index ' + index + '; source archive must be preserved.');
   }
 }
