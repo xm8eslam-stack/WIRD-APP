@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { PRESET_PLANS } from '../../data/presetPlans';
+import { PRESET_PLANS } from '../data/presetPlans';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import type { LegacyOutboxState } from './indexedDbSyncJournal';
 import { replayJournalProjection } from './journalProjectionReplayer';
