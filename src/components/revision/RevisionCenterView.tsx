@@ -125,9 +125,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       let weakDetails = undefined;
       if (rating === 'failed' && weakAyahNum) {
         const foundAyah = await loadAyahByCoordinate(selectedPortion.surahNumber, Number(weakAyahNum)).catch(() => undefined);
+        if (!foundAyah?.text) {
+          throw new Error('تعذر تحميل نص الآية من مصدر القرآن؛ لم يتم تسجيل نص بديل أو تعديل تقييم المراجعة.');
+        }
         weakDetails = {
           ayahNumber: Number(weakAyahNum),
-          text: foundAyah?.text || `الآية رقم ${weakAyahNum}`,
+          text: foundAyah.text,
           notes: reviewNotes || 'خطأ متكرر أثناء المراجعة'
         };
       }
@@ -920,7 +923,6 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 type="button"
-                disabled={isSavingRating}
                 disabled={isSavingRating}
                 onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }}
                 className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold"
