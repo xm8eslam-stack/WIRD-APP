@@ -76,11 +76,14 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const ratingInFlightRef = useRef(false);
   const ratingMutationKeyRef = useRef<string | null>(null);
   const ratingMutationIdRef = useRef<string | null>(null);
+  const ratingMutationOccurredAtRef = useRef<string | null>(null);
   const weakVerseMutationIdRef = useRef<string | null>(null);
+  const weakVerseMutationOccurredAtRef = useRef<string | null>(null);
   const weakVerseMutationKeyRef = useRef<string | null>(null);
   const weakVerseInFlightRef = useRef(false);
   const [isSavingWeakVerse, setIsSavingWeakVerse] = useState(false);
   const weakVerseResolutionMutationIdsRef = useRef<Map<string, string>>(new Map());
+  const weakVerseResolutionOccurredAtRef = useRef<Map<string, string>>(new Map());
   const weakVerseResolutionInFlightRef = useRef<Set<string>>(new Set());
 
   // Add new portion modal
@@ -140,6 +143,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (ratingMutationKeyRef.current !== mutationKey) {
       ratingMutationKeyRef.current = mutationKey;
       ratingMutationIdRef.current = 'revision-' + createSecureId();
+      ratingMutationOccurredAtRef.current = new Date().toISOString();
     }
     const mutationId = ratingMutationIdRef.current || 'revision-' + createSecureId();
     ratingMutationIdRef.current = mutationId;
@@ -199,7 +203,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         schemaVersion: 1,
         id: mutationId,
         type: 'revision.rated',
-        occurredAt: new Date().toISOString(),
+        occurredAt: ratingMutationOccurredAtRef.current || new Date().toISOString(),
         payload: {
           portionId: selectedPortion.id,
           surahNumber: selectedPortion.surahNumber,
@@ -243,6 +247,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
       ratingMutationKeyRef.current = null;
       ratingMutationIdRef.current = null;
+      ratingMutationOccurredAtRef.current = null;
       setActionFeedback({
         message: prepared.messageAr,
         type: rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
@@ -337,8 +342,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       return;
     }
 
-    const mutationId = weakVerseResolutionMutationIdsRef.current.get(id) || 'weak-resolve-' + createSecureId();
-    weakVerseResolutionMutationIdsRef.current.set(id, mutationId);
+    let mutationId = weakVerseResolutionMutationIdsRef.current.get(id);
+    if (!mutationId) {
+      mutationId = 'weak-resolve-' + createSecureId();
+      weakVerseResolutionMutationIdsRef.current.set(id, mutationId);
+      weakVerseResolutionOccurredAtRef.current.set(id, new Date().toISOString());
+    }
     weakVerseResolutionInFlightRef.current.add(id);
     let result: Awaited<ReturnType<typeof persistJournaledSnapshot>>;
     try {
@@ -356,7 +365,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 schemaVersion: 1,
                 id: mutationId,
                 type: 'weak_verse.resolved' as const,
-                occurredAt: new Date().toISOString(),
+                occurredAt: weakVerseResolutionOccurredAtRef.current.get(id) || new Date().toISOString(),
                 payload: {
                   weakVerseId: id,
                   surahNumber: resolved?.surahNumber ?? 0,
@@ -429,6 +438,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (weakVerseMutationKeyRef.current !== mutationKey) {
       weakVerseMutationKeyRef.current = mutationKey;
       weakVerseMutationIdRef.current = 'weak-' + createSecureId();
+      weakVerseMutationOccurredAtRef.current = new Date().toISOString();
     }
     const mutationId = weakVerseMutationIdRef.current || 'weak-' + createSecureId();
     weakVerseMutationIdRef.current = mutationId;
@@ -442,6 +452,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (!prepared.success) {
       weakVerseMutationIdRef.current = null;
       weakVerseMutationKeyRef.current = null;
+      weakVerseMutationOccurredAtRef.current = null;
       setActionFeedback({ message: prepared.messageAr, type: 'warn' });
       return;
     }
@@ -454,7 +465,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         schemaVersion: 1,
         id: mutationId,
         type: 'weak_verse.failed',
-        occurredAt: new Date().toISOString(),
+        occurredAt: weakVerseMutationOccurredAtRef.current || new Date().toISOString(),
         payload: {
           surahNumber: weakSurahNum,
           ayahNumber: manualWeakAyahNum,
