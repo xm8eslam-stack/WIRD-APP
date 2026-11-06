@@ -223,10 +223,17 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const surah = ALL_SURAHS.find(s => s.number === weakSurahNum);
     if (!surah) return;
 
-    let text = manualWeakText;
+    let text = manualWeakText.trim();
     if (!text) {
       const found = await loadAyahByCoordinate(weakSurahNum, manualWeakAyahNum).catch(() => undefined);
-      text = found?.text || `آية رقم ${manualWeakAyahNum}`;
+      if (!found?.text) {
+        setActionFeedback({
+          message: 'تعذر تحميل نص الآية من مصدر القرآن؛ أدخل النص القرآني الصحيح أو حاول مجددًا. لم يتم تسجيل نص بديل.',
+          type: 'warn'
+        });
+        return;
+      }
+      text = found.text;
     }
 
     const result = recordWeakVerseFailure({
