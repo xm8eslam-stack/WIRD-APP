@@ -27,7 +27,7 @@ interface MemorizationSessionViewProps {
   initialEndAyah?: number;
   mode?: 'memorize' | 'review';
   profile: UserProfile;
-  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => boolean;
+  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => boolean | Promise<boolean>;
   onExit: () => void;
   onProgressChange?: (inProgress: boolean) => void;
 }
@@ -198,7 +198,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   };
 
   // Next / Previous Ayah (Semantic RTL: Next is on Left, Prev is on Right)
-  const handleNextAyah = () => {
+  const handleNextAyah = async () => {
     if (currentAyahIndex < sessionAyahs.length - 1) {
       setCurrentAyahIndex(prev => prev + 1);
     } else {
@@ -206,7 +206,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       completionInProgressRef.current = true;
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
       try {
-        const saved = onCompleteSession(
+        const saved = await onCompleteSession(
           mode === 'memorize' ? sessionAyahs.length : 0,
           mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
           minutesSpent,
