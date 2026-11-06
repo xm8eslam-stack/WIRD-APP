@@ -59,7 +59,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="flex items-center gap-2 text-stone-600 dark:text-stone-400">
           <BookOpen className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-          <span>الورد المقرر: <strong className="text-stone-900 dark:text-stone-200 font-bold font-quran text-sm">سورة الملك (1-10)</strong></span>
+          <span>الورد اليومي يتحدد وفق خطتك والمراجعات المستحقة</span>
         </div>
       </div>
 
@@ -95,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-700 dark:hover:bg-emerald-600 rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-600"
         >
           <Play className="w-3.5 h-3.5 fill-white" />
-          <span>جلسة الحفظ اليومية</span>
+          <span>جلسة اليوم</span>
         </button>
       </div>
     </header>

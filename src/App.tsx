@@ -10,6 +10,7 @@ import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { persistSessionCompletion } from './services/sessionPersistence';
+import { getDailySessionSelection } from './services/dailySessionSelection';
 import { getLocalDateString } from './services/unifiedPortionService';
 
 // Lazy loaded views for optimal chunking and initial load performance
@@ -200,6 +201,20 @@ export default function App() {
     });
   };
 
+  const handleStartDailySession = () => {
+    const selection = getDailySessionSelection(
+      plans,
+      StorageService.getEnginePlans(),
+      RetentionService.getPortions(),
+      getLocalDateString()
+    );
+    if (selection.kind === 'blocked') {
+      showToast(selection.messageAr, 'warn');
+      return;
+    }
+    handleStartSession(selection.surahNumber, selection.startAyah, selection.endAyah, selection.mode);
+  };
+
   // A session is complete only after canonical progress and activity both persist.
   const handleCompleteSession = (
     memorizedAyahs: number,
@@ -267,21 +282,23 @@ export default function App() {
   };
 
   // Save preset plans
-  const handleUpdatePlans = (newPlans: MemorizationPlan[]) => {
+  const handleUpdatePlans = (newPlans: MemorizationPlan[]): boolean => {
     if (!StorageService.savePlans(newPlans)) {
       showToast('تعذر حفظ الخطة في التخزين المحلي.', 'error');
-      return;
+      return false;
     }
     setPlans(newPlans);
+    return true;
   };
 
   // Save engine plans
-  const handleUpdateEnginePlans = (updatedEnginePlans: EngineGeneratedPlan[]) => {
+  const handleUpdateEnginePlans = (updatedEnginePlans: EngineGeneratedPlan[]): boolean => {
     if (!StorageService.saveEnginePlans(updatedEnginePlans)) {
       showToast('تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
-      return;
+      return false;
     }
     setEnginePlans(updatedEnginePlans);
+    return true;
   };
 
   // Test result saved
@@ -370,7 +387,7 @@ export default function App() {
           profile={profile}
           onToggleTheme={handleToggleTheme}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
-          onStartDailySession={() => handleStartSession(67, 1, 10)}
+          onStartDailySession={handleStartDailySession}
           pwaInstallPrompt={pwaInstallPrompt}
           isStandalone={isStandalone}
           onInstallPwa={handleTriggerPwaInstall}

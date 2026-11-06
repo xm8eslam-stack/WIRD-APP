@@ -24,7 +24,7 @@ import { QuranMath } from '../../services/quranMath';
 
 interface PlanningEngineWizardProps {
   enginePlans: EngineGeneratedPlan[];
-  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
+  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => boolean;
   onStartSession: (surahNumber: number, startAyah: number, endAyah: number) => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
@@ -141,7 +141,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
     const newPlan = PlanningEngine.generatePlan(input);
     const updated = [newPlan, ...enginePlans];
-    onUpdateEnginePlans(updated);
+    if (!onUpdateEnginePlans(updated)) return;
     setSelectedPlanId(newPlan.id);
     setIsCreatingNew(false);
   };
@@ -156,11 +156,15 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
       status: !currentStatus ? 'completed' : 'pending',
       memorizationTask: {
         ...task.memorizationTask,
-        completed: !currentStatus
+        completed: !currentStatus,
+        completedAt: !currentStatus ? new Date().toISOString() : undefined
       }
     });
 
-    onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p));
+    if (!onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
+    onToast?.(!currentStatus
+      ? 'تم تحديث حالة المهمة في الجدول. ملاحظة: هذا الإجراء لا يضيف الآيات إلى سجل محفوظك.'
+      : 'أُعيدت المهمة إلى قائمة الانتظار؛ سجل الحفظ المحفوظ لم يتغير.', 'info');
   };
 
   // Plan Pause / Resume toggle
@@ -169,19 +173,18 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
     let updated: EngineGeneratedPlan;
     if (activePlan.isPaused) {
       updated = PlanLifecycle.resumePlan(activePlan);
-      if (onToast) onToast("تم استئناف الخطة بنجاح", "success");
     } else {
       updated = PlanLifecycle.pausePlan(activePlan);
-      if (onToast) onToast("تم إيقاف الخطة مؤقتاً", "info");
     }
-    onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p));
+    if (!onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
+    onToast?.(activePlan.isPaused ? "تم استئناف الخطة بنجاح" : "تم إيقاف الخطة مؤقتاً", activePlan.isPaused ? "success" : "info");
   };
 
   // Plan Recalculate without window.alert/confirm
   const handleConfirmRecalculate = () => {
     if (!activePlan) return;
     const updated = PlanLifecycle.recalculatePlan(activePlan);
-    onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p));
+    if (!onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
     setShowRecalculateConfirm(false);
     if (onToast) {
       onToast("تمت إعادة جدولة المهام القادمة بنجاح مع الاحتفاظ بكامل سجلاتك المنجزة.", "success");

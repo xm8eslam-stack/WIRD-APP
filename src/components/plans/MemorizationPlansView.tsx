@@ -12,13 +12,15 @@ import {
 import { MemorizationPlan } from '../../types/quran';
 import { EngineGeneratedPlan } from '../../services/planningEngine';
 import { PlanningEngineWizard } from './PlanningEngineWizard';
+import { RetentionService } from '../../services/retentionService';
+import { getNextPresetMemorizationRange, isPresetAutoStartSupported } from '../../services/dailySessionSelection';
 
 interface MemorizationPlansViewProps {
   plans: MemorizationPlan[];
-  onUpdatePlans: (plans: MemorizationPlan[]) => void;
+  onUpdatePlans: (plans: MemorizationPlan[]) => boolean;
   enginePlans: EngineGeneratedPlan[];
-  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => void;
-  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number) => void;
+  onUpdateEnginePlans: (plans: EngineGeneratedPlan[]) => boolean;
+  onStartSession: (surahNumber?: number, startAyah?: number, endAyah?: number, mode?: 'memorize' | 'review') => void;
   onToast?: (message: string, type?: 'success' | 'warn' | 'error' | 'info') => void;
 }
 
@@ -39,7 +41,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
       ...p,
       isActive: p.id === planId
     }));
-    onUpdatePlans(updated);
+    if (!onUpdatePlans(updated)) return;
     if (onToast) {
       onToast("تم تفعيل الخطة المحددة بنجاح", "success");
     }
@@ -51,7 +53,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     if (updated.length > 0 && !updated.some(p => p.isActive)) {
       updated[0].isActive = true;
     }
-    onUpdatePlans(updated);
+    if (!onUpdatePlans(updated)) return;
     setPlanToDelete(null);
     if (onToast) {
       onToast("تم حذف الخطة من قائمتك بنجاح", "info");
@@ -113,7 +115,11 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {plans.map((plan) => {
-              const percent = Math.min(100, Math.round((plan.completedUnits / plan.totalUnits) * 100));
+              const percent = plan.totalUnits > 0
+                ? Math.min(100, Math.max(0, Math.round((plan.completedUnits / plan.totalUnits) * 100)))
+                : 0;
+              const nextRange = getNextPresetMemorizationRange(plan, RetentionService.getPortions(), plan.dailyTarget);
+              const quickStartSupported = isPresetAutoStartSupported(plan);
 
               return (
                 <div
@@ -189,11 +195,17 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                   <div className="flex items-center justify-between gap-3 mt-5 pt-4 border-t border-stone-100 dark:border-stone-700">
                     {plan.isActive ? (
                       <button
-                        onClick={() => onStartSession(plan.targetSurahs?.[0])}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
+                        disabled={!nextRange}
+                        onClick={() => {
+                          if (nextRange) onStartSession(nextRange.surahNumber, nextRange.startAyah, nextRange.endAyah, 'memorize');
+                        }}
+                        title={!quickStartSupported
+                          ? 'البدء السريع غير متاح لخطط الصفحات والأجزاء حتى يتوفر تحديد آيات دقيق.'
+                          : !nextRange ? 'اكتملت نطاقات الحفظ المحددة في هذه الخطة.' : 'ابدأ من أول آية غير مسجلة في نطاق الخطة'}
+                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
-                        <span>متابعة جلسة اليوم</span>
+                        <span>{nextRange ? 'متابعة جلسة اليوم' : quickStartSupported ? 'اكتملت نطاقات الخطة' : 'البدء السريع غير متاح'}</span>
                       </button>
                     ) : (
                       <button
