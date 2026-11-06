@@ -97,6 +97,18 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       }
     });
 
+    await test('Demo fixture remains available to guests through one local rollback-safe transaction', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('guest');
+      const result = await loadDemoDataJournaled();
+      assert(result.success && result.mode === 'local-only' && !result.queued,
+        'Guest demo data must not require IndexedDB or enqueue cloud mutations');
+      assert(StorageService.getPlans().length > 0 && StorageService.getEnginePlans().length === 1 &&
+        RetentionService.getPortions().length > 0 && StorageService.getWeakVerses().length > 0 &&
+        StorageService.getLogs().length > 0,
+        'Guest demo data must apply all local projections together');
+    });
+
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
       const journal = createJournal();
       const today = new Date().toISOString().slice(0, 10);
