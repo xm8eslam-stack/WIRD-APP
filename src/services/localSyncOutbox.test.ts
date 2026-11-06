@@ -129,6 +129,46 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
       assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) === rawOverlap, 'Overlapping archive must remain unchanged');
     });
 
+    test('Retry counter and timestamp overflow are rejected without changing the queued mutation', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      const base = {
+        mutationId: 'retry-overflow', collection: 'plans', documentId: 'plan-1', operation: 'upsert',
+        schemaVersion: 1, clientUpdatedAtMs: 100, deviceId: 'device-a', payload: { title: 'A' },
+        queuedAtMs: 100, attemptCount: Number.MAX_SAFE_INTEGER, nextAttemptAtMs: 0
+      };
+      const rawCounter = JSON.stringify({ schemaVersion: 1, deviceId: 'device-a', pending: [base], acknowledgedIds: [] });
+      StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, rawCounter);
+      let counterRejected = false;
+      try { LocalSyncOutbox.markFailed('retry-overflow', 'NETWORK', 200); } catch { counterRejected = true; }
+      assert(counterRejected, 'Unsafe retry counter increment must be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) === rawCounter, 'Retry counter overflow must not mutate the archive');
+
+      const safeAttempt = { ...base, mutationId: 'retry-time-overflow', attemptCount: 0 };
+      const rawTime = JSON.stringify({ schemaVersion: 1, deviceId: 'device-a', pending: [safeAttempt], acknowledgedIds: [] });
+      StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, rawTime);
+      let timeRejected = false;
+      try { LocalSyncOutbox.markFailed('retry-time-overflow', 'NETWORK', Number.MAX_SAFE_INTEGER); } catch { timeRejected = true; }
+      assert(timeRejected, 'Unsafe next retry timestamp must be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) === rawTime, 'Retry timestamp overflow must not mutate the archive');
+    });
+
+    test('Pending mutations must match the outbox device identity', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      const mutation = {
+        mutationId: 'wrong-device', collection: 'plans', documentId: 'plan-1', operation: 'upsert',
+        schemaVersion: 1, clientUpdatedAtMs: 100, deviceId: 'device-b', payload: { title: 'A' },
+        queuedAtMs: 100, attemptCount: 0, nextAttemptAtMs: 0
+      };
+      const raw = JSON.stringify({ schemaVersion: 1, deviceId: 'device-a', pending: [mutation], acknowledgedIds: [] });
+      StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw);
+      let rejected = false;
+      try { LocalSyncOutbox.listReady(200); } catch { rejected = true; }
+      assert(rejected, 'Mutation from a different device identity must be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) === raw, 'Mismatched device archive must remain unchanged');
+    });
+
     test('Outbox data is isolated between Firebase UIDs', () => {
       reset();
       StorageService.setStorageScope('user:alpha');
