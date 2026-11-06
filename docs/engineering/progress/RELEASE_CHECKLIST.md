@@ -82,5 +82,5 @@
 - [x] Roll back earlier deletions when a later scoped-key removal fails; never report a partial reset as success.
 - [x] Verify snapshot restoration from final memory and durable values.
 - [x] Failure-injection tests for partial deletion rollback and unreadable-snapshot preflight (PR #24; exact-head Quality Gate run 42232090692 passed).
-- [ ] Verify post-merge main Quality Gate run 42232397539 before release sign-off.
+- [x] Post-merge main Quality Gate run 42232397539 (#885) passed on exact SHA `753dbf7d95f6f577f022952f122280de69d8e074`.
 - [ ] Complete the remaining mutation-path and cross-tab/outbox audit.
