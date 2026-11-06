@@ -13,6 +13,7 @@ import { persistSessionCompletion } from './services/sessionPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
 import { recordWeakVerseFailure } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
+import { persistEnginePlansSnapshot, persistPlansSnapshot, persistProfileSnapshot } from './services/journaledSnapshotService';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -138,11 +139,14 @@ export default function App() {
   };
 
   // Toggle Theme handler
-  const handleToggleTheme = () => {
+  const handleToggleTheme = async () => {
     const newTheme: 'light' | 'dark' = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: newTheme };
-    if (!StorageService.saveProfile(updated)) {
-      showToast('تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
+    const result = await persistProfileSnapshot(updated);
+    if (!result.success) {
+      showToast(result.queued
+        ? 'تم حفظ تغيير المظهر في سجل الاستعادة، لكن تعذر إسقاطه محلياً. أعد المحاولة بعد استعادة التخزين.'
+        : 'تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
       return;
     }
     setProfile(updated);
@@ -217,13 +221,13 @@ export default function App() {
   };
 
   // A session is complete only after canonical progress and activity both persist.
-  const handleCompleteSession = (
+  const handleCompleteSession = async (
     memorizedAyahs: number,
     reviewedPages: number,
     minutes: number,
     taskName: string,
     mode: 'memorize' | 'review' = sessionParams.mode
-  ): boolean => {
+  ): Promise<boolean> => {
     const result = persistSessionCompletion({
       mode, memorizedAyahs, reviewedPages, minutes, taskName,
       surahNumber: sessionParams.surahNumber,
@@ -253,8 +257,11 @@ export default function App() {
           memorizationTask: { ...matchingDay.memorizationTask, completed: true, completedAt: new Date().toISOString() }
         });
         const updatedPlans = currentEnginePlans.map(plan => plan.id === activeEnginePlan.id ? updatedPlan : plan);
-        if (StorageService.saveEnginePlans(updatedPlans)) setEnginePlans(updatedPlans);
-        else showToast('تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
+        const planResult = await persistEnginePlansSnapshot(updatedPlans);
+        if (planResult.success) setEnginePlans(updatedPlans);
+        else showToast(planResult.queued
+          ? 'تم حفظ التحديث في سجل الاستعادة، لكن تعذر تطبيقه على الخطة الذكية محلياً.'
+          : 'تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
       }
     }
     setLogs(StorageService.getLogsForDisplay());
@@ -283,9 +290,12 @@ export default function App() {
   };
 
   // Save preset plans
-  const handleUpdatePlans = (newPlans: MemorizationPlan[]): boolean => {
-    if (!StorageService.savePlans(newPlans)) {
-      showToast('تعذر حفظ الخطة في التخزين المحلي.', 'error');
+  const handleUpdatePlans = async (newPlans: MemorizationPlan[]): Promise<boolean> => {
+    const result = await persistPlansSnapshot(newPlans);
+    if (!result.success) {
+      showToast(result.queued
+        ? 'الخطة محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً. لا تكرر التعديل حتى استعادة التخزين.'
+        : 'تعذر حفظ الخطة في التخزين المحلي.', 'error');
       return false;
     }
     setPlans(newPlans);
@@ -293,12 +303,27 @@ export default function App() {
   };
 
   // Save engine plans
-  const handleUpdateEnginePlans = (updatedEnginePlans: EngineGeneratedPlan[]): boolean => {
-    if (!StorageService.saveEnginePlans(updatedEnginePlans)) {
-      showToast('تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
+  const handleUpdateEnginePlans = async (updatedEnginePlans: EngineGeneratedPlan[]): Promise<boolean> => {
+    const result = await persistEnginePlansSnapshot(updatedEnginePlans);
+    if (!result.success) {
+      showToast(result.queued
+        ? 'الخطة الذكية محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً. لا تكرر التعديل حتى استعادة التخزين.'
+        : 'تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
       return false;
     }
     setEnginePlans(updatedEnginePlans);
+    return true;
+  };
+
+  const handleSaveProfile = async (updatedProfile: UserProfile): Promise<boolean> => {
+    const result = await persistProfileSnapshot(updatedProfile);
+    if (!result.success) {
+      showToast(result.queued
+        ? 'تم حفظ الملف الشخصي في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
+        : 'تعذر حفظ إعدادات الملف الشخصي في التخزين الدائم.', 'error');
+      return false;
+    }
+    setProfile(updatedProfile);
     return true;
   };
 
@@ -517,6 +542,7 @@ export default function App() {
               <SettingsView
                 profile={profile}
                 onUpdateProfile={setProfile}
+                onSaveProfile={handleSaveProfile}
                 onResetAllData={handleResetAllData}
                 onToast={showToast}
               />
