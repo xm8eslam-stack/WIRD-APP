@@ -173,7 +173,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const surah = ALL_SURAHS.find(s => s.number === newSurahNum);
     if (!surah) return;
 
-    let updatedPortions;
+    let updatedPortions: PortionStatusRecord[];
     try {
       const snapshot = RetentionService.buildAddPortionSnapshot({
         type: 'passage',
