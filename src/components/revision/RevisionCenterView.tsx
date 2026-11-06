@@ -920,6 +920,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <button
                 type="button"
                 disabled={isSavingRating}
+                disabled={isSavingRating}
                 onClick={() => setRatingPortion(null)}
                 className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold"
               >
@@ -927,6 +928,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </button>
               <button
                 type="button"
+                disabled={isSavingRating}
                 onClick={() => handleRatePortion('failed')}
                 className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors"
               >
