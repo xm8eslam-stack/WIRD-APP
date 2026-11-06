@@ -6,7 +6,7 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { StorageService, STORAGE_KEYS } from './storageService';
+import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS } from './storageService';
 import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { 
@@ -484,14 +484,14 @@ export const RetentionService = {
     };
 
     const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
-    const previousWeakArchive = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+    const previousWeakArchive = StorageService.getRawItem(APP_STORAGE_KEYS.WEAK_VERSES);
     const restoreAttempt = (): boolean => {
       const portionsRestored = this.savePortions(portions) &&
         JSON.stringify(this.getPortions()) === JSON.stringify(portions);
       if (previousWeakArchive === null) {
-        StorageService.removeRawItem(STORAGE_KEYS.WEAK_VERSES);
+        StorageService.removeRawItem(APP_STORAGE_KEYS.WEAK_VERSES);
       } else {
-        StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
+        StorageService.setRawItem(APP_STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
       }
       const weakArchiveRestored = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === previousWeakArchive;
       return portionsRestored && weakArchiveRestored;
