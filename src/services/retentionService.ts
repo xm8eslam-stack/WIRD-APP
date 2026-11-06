@@ -548,7 +548,13 @@ export const RetentionService = {
     }
     const restoreAttempt = (): boolean => StorageService.restoreRawSnapshot(transactionSnapshot).success;
 
-    if (!this.savePortions(updatedList)) {
+    let portionWriteSucceeded = false;
+    try {
+      portionWriteSucceeded = this.savePortions(updatedList);
+    } catch {
+      portionWriteSucceeded = false;
+    }
+    if (!portionWriteSucceeded) {
       if (!restoreAttempt()) {
         throw new Error('فشل حفظ تقييم المراجعة، كما تعذر التحقق من استعادة جميع الأرشيفات السابقة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
       }
