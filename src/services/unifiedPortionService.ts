@@ -465,7 +465,8 @@ export function getPrioritizedRevisionQueue(
     throw new RangeError('Revision queue grace period must be a whole number from 0 to 30 days.');
   }
   for (const portion of portions) {
-    if (!isValidLocalDateString(portion.nextDueDate) || !Number.isFinite(portion.easeFactor) || portion.easeFactor < 1.3 || portion.easeFactor > 3) {
+    if ((portion.status !== 'not_memorized' && !isValidLocalDateString(portion.nextDueDate)) ||
+        !Number.isFinite(portion.easeFactor) || portion.easeFactor < 1.3 || portion.easeFactor > 3) {
       throw new RangeError('Revision queue contains an invalid due date or ease factor.');
     }
   }
