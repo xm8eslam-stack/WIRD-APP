@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
+import { ALL_SURAHS } from '../data/quranMeta';
+import { findSurahStartPage } from '../data/quranNavigation';
 import { QURAN_JUZ_STARTS, QURAN_HIZB_QUARTER_STARTS } from '../data/quranNavigationIndex.generated';
 
 function assert(condition: boolean, message: string): void {
@@ -25,6 +27,14 @@ export function runQuranMushafReaderTests(): { passed: number; failed: number } 
         assert(segment.surahNumber >= 1 && segment.surahNumber <= 114, 'Invalid Surah coordinate on page ' + page);
         assert(segment.startAyah >= 1 && segment.endAyah >= segment.startAyah, 'Invalid ayah range on page ' + page);
       }
+    }
+  });
+
+  test('Every Surah opens on the exact page containing its first ayah', () => {
+    for (const surah of ALL_SURAHS) {
+      const exactPage = findSurahStartPage(surah.number, QURAN_PAGE_INDEX as unknown as Record<string, Array<{ surahNumber: number; startAyah: number; endAyah: number }>>);
+      assert(exactPage !== null, 'Missing page for Surah ' + surah.number);
+      assert(exactPage === surah.pageStart, 'Surah ' + surah.number + ' metadata page does not match its first ayah');
     }
   });
 

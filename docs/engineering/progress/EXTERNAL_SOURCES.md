@@ -108,3 +108,12 @@ No source code, snippets, or dependencies were copied or added in PR #12.
 | OWASP Web Security Testing Guide — Browser Storage | https://github.com/OWASP/www-project-web-security-testing-guide/blob/master/v41/4-Web_Application_Security_Testing/11-Client_Side_Testing/12-Testing_Browser_Storage.md | Documentation; no code copied | Client-side storage inspection and security test coverage | Retained as a storage security review checklist |
 
 No third-party source code, snippets, or dependencies were copied or added in PR #13.
+
+
+## Quran reader and Tafsir UX reference — 2026-11-06
+
+| Source | URL | Reviewed for | WIRD decision |
+|---|---|---|---|
+| IslamBook Arabic Azkar page (user-provided) | https://www.islambook.com/app/ar/azkr/2 | Calm daily-use organization and reading flow | Use as a UX reference only; do not copy branding or source code. The exact Azkar route could not be rendered by the available inspection path; the site's public About page describes its principles as readable content, simple navigation, and tools supporting daily practice (https://www.islambook.com/app/ar/about). Apply those principles conservatively to WIRD while retaining its own identity. |
+
+No third-party code, stylesheets, logos, or assets were copied.

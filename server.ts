@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import tafsirHandler from './api/tafsir';
 
 dotenv.config();
 
@@ -13,6 +14,12 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '1mb' }));
+
+// Keep the same read-only tafsir endpoint available in Google AI Studio/Vite
+// development and in the production Express server. Register before Vite's SPA fallback.
+app.all('/api/tafsir', (req: Request, res: Response) => {
+  void tafsirHandler(req, res);
+});
 
 // In-memory rate limiter for Gemini Free Tier (15 requests/minute)
 interface RateLimitRecord {

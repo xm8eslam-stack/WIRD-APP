@@ -1,15 +1,15 @@
 # WIRD Work Session Checkpoint
 
-**Last updated:** 2026-11-06  
+**Last updated:** 2026-11-06 — active Quran/Tafsir PR #49 checkpoint  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
-**Branch:** `main`  
-**Current HEAD:** `f342b4bc7e02a48f88b90646098eea178901c8ea`  
+**Branch:** `fix/quran-reader-tafsir-navigation-20261106` (PR #49; `main` remains unchanged)  
+**Current HEAD:** `6d56580e2d2477ded76f1425d97e968f4b317eeb`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42180258989 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42180258989)
+**Latest CI run:** [42267565615 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42267565615). Vercel deployment is blocked by the Free-plan build/deployment rate limit; no Preview or Production deployment is verified.
 
 ## Resume instructions
 
-Continue from the current `main` HEAD. Do not reset, force-push, or merge the divergent Phase 5 branch wholesale. Before every write, fetch the current main SHA and use a non-forced compare-and-swap update. Commit one reviewed milestone at a time.
+For the active Quran/Tafsir task, continue on `fix/quran-reader-tafsir-navigation-20261106`; do not modify `main`. PR #49 is Draft and must remain unmerged until Vercel can deploy the exact head and the deployed experience is verified. For any new independent task, fetch the latest `main` SHA and create a fresh branch. Do not reset, force-push, or merge divergent branches wholesale.
 
 ## User goal
 
@@ -137,3 +137,15 @@ Only after explicit user approval:
 - `docs/engineering/FIRESTORE_SYNC_DESIGN.md`
 - `docs/engineering/SECURITY_AUDIT.md`
 - `docs/engineering/OPEN_SOURCE_RESEARCH.md`
+
+
+## Quran reader and Tafsir repair — 2026-11-06
+
+- Active PR: https://github.com/xm8eslam-stack/WIRD-APP/pull/49
+- Branch: `fix/quran-reader-tafsir-navigation-20261106`; base main SHA `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
+- Root cause identified: Express did not register `/api/tafsir`; Vite middleware could serve the TypeScript source module instead of JSON in development.
+- Fixed by mounting the existing Tafsir handler before Vite middleware. Added server smoke checks for both production and development.
+- Added direct opening of selected Surahs at their first Mushaf page and exact first-ayah page resolution from the generated page index. General Mushaf entry retains saved-page resume behavior.
+- All 114 Surah page starts have regression coverage.
+- Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed PR Quality Gate `42267248254` and push Quality Gate `42267243769`.
+- Vercel deployment was blocked by the daily Free-plan deployment cap. Do not claim production deployment or merge until the deployment gate is resolved and the deployed app is verified.

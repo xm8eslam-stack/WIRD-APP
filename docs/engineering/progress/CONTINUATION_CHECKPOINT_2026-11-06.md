@@ -1,5 +1,15 @@
 # WIRD — Continuation Checkpoint (2026-11-06)
 
+## Active work — Quran reader and Tafsir repair (PR #49)
+- Branch: `fix/quran-reader-tafsir-navigation-20261106`; PR: https://github.com/xm8eslam-stack/WIRD-APP/pull/49 (Draft, open, not merged).
+- Latest exact head: `6d56580e2d2477ded76f1425d97e968f4b317eeb`.
+- Exact-head Quality Gate run `42267565615` (run #1217) **passed**, including tests, Firestore emulator, TypeScript, production build, and both development/production server smoke tests.
+- Vercel status is still `failure` with `build-rate-limit` / `api-deployments-free-per-day`. No deployment is confirmed; do not merge until a Preview or Production deployment for the exact reviewed head can be verified.
+- Fix: register existing `/api/tafsir` handler in Express before Vite middleware; test JSON response in both server modes.
+- Fix: direct Mushaf-opening action from Surah rows and selected-Surah detail; use the generated page index for first-ayah page resolution; regression test checks all 114 Surahs.
+- Next: wait for Vercel quota reset, redeploy exact head, verify `/api/tafsir` returns JSON and Surah navigation in browser at desktop/mobile sizes. Keep `main` untouched.
+
+
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
@@ -249,3 +259,14 @@
 6. Finish manual responsive/accessibility/audio QA and verify Production deployment for the exact main SHA.
 
 **Important boundary:** PR #43–#45 improve local write-ahead persistence and replay. They do not implement Firestore cloud sync, immutable remote event semantics, production rules deployment, or release readiness.
+
+
+## 2026-11-06 — Quran reader and Tafsir repair (PR #49)
+
+- Branch: `fix/quran-reader-tafsir-navigation-20261106`; base: main SHA `4fa6a1acffb0723c89bb963b237e67e6f4b7173f`.
+- Root cause: `server.ts` did not mount `/api/tafsir`; requests in Vite development could fall through and return `api/tafsir.ts` source beginning with `import`, which the client attempted to parse as JSON.
+- Fix: mount the existing Tafsir handler before Vite middleware; preserve the Vercel serverless route.
+- Navigation: add direct Mushaf opening from Surah list/details, initial page selection, and page resolution from the generated page index. The general Mushaf entry still resumes the saved page.
+- Regression coverage validates all 114 Surah starts against the 604-page index; smoke tests validate the Tafsir JSON route in development and production.
+- Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed PR run `42267248254` and push run `42267243769` (tests, Firestore emulator, TypeScript, build, server smoke).
+- Vercel deployment is blocked by the Free-plan daily deployment cap. PR #49 remains open/draft; no merge or production deployment is claimed.
