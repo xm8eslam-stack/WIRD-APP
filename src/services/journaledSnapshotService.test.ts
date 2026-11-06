@@ -180,7 +180,11 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       };
       const first = await persistTestResultSnapshot(testResult, { journal, runExclusive: inlineLock });
       const firstSnapshot = await journal.getSnapshot();
+      const testJournalEvents = await journal.listEvents();
+      const testDomainEvent = (testJournalEvents[0]?.payload as Record<string, unknown> | undefined)?.domainEvent as WirdDomainEvent | undefined;
       assert(first.success && first.mode === 'journal', 'A new test result must use the journal');
+      assert(testDomainEvent?.type === 'test.completed' && testDomainEvent.id === 'test-' + testResult.id,
+        'Test result journal entries must include a stable typed completion event');
       assert(firstSnapshot.eventCount === 1 && firstSnapshot.pendingCount === 1 && firstSnapshot.projectionCursor === 1,
         'The test result must commit one durable event/outbox pair before projection');
 
@@ -366,13 +370,22 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(RetentionService.getPortions().length === 0 && RetentionService.getWeakVerses().length === 0,
         'Preparing the action must not mutate either local archive');
 
+      const weakEvent: WirdDomainEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'weak_verse.failed',
+        occurredAt: '2026-11-06T12:00:00.000Z',
+        payload: { surahNumber: 67, ayahNumber: 8, notes: 'اختبار تسجيل متعثر' }
+      };
       const result = await persistJournaledTransaction(
-        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId, weakEvent
       );
       const retry = await persistJournaledTransaction(
-        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId, weakEvent
       );
       const snapshot = await journal.getSnapshot();
+      const weakJournalEvents = await journal.listEvents();
+      const weakDomainEvent = (weakJournalEvents[0]?.payload as Record<string, unknown> | undefined)?.domainEvent as WirdDomainEvent | undefined;
       const portion = RetentionService.getPortions().find(item =>
         item.surahNumber === 67 && item.startAyah === 8 && item.endAyah === 8
       );
@@ -382,6 +395,8 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(result.success && retry.success && result.mode === 'journal', 'The weak-verse action and its retry must persist through the journal');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'Both archives must share one event/outbox pair and one cursor step');
+      assert(weakDomainEvent?.type === 'weak_verse.failed' && weakDomainEvent.id === mutationId,
+        'Weak-verse failure must be represented by an immutable typed domain event');
       assert(portion?.status === 'weak' && portion.mistakesCount === 1,
         'The canonical portion must record the weak status and mistake count');
       assert(weakVerse?.surahName === 'الملك' && weakVerse.mistakeCount === 1 &&
@@ -486,19 +501,30 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         StorageService.getRawItem(STORAGE_KEYS.PROFILE) === beforeProfile,
         'Preparing a revision rating must not write portions, activity, or profile data');
 
+      const revisionEvent: WirdDomainEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'revision.rated',
+        occurredAt: '2026-11-06T12:00:00.000Z',
+        payload: { portionId: seeded.record.id, surahNumber: 67, startAyah: 1, endAyah: 5, rating: 'successful', notes: 'اختبار المراجعة' }
+      };
       const first = await persistJournaledTransaction(
-        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId, revisionEvent
       );
       const retry = await persistJournaledTransaction(
-        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId, revisionEvent
       );
       const snapshot = await journal.getSnapshot();
+      const revisionJournalEvents = await journal.listEvents();
+      const revisionDomainEvent = (revisionJournalEvents[0]?.payload as Record<string, unknown> | undefined)?.domainEvent as WirdDomainEvent | undefined;
       const updated = RetentionService.getPortions().find(item => item.id === seeded.record.id);
       const logs = StorageService.getLogs();
       const profile = StorageService.getProfile();
       assert(first.success && retry.success, 'The revision rating and its retry must both succeed');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'The revision, activity, and profile projections must share one event and one cursor step');
+      assert(revisionDomainEvent?.type === 'revision.rated' && revisionDomainEvent.id === mutationId,
+        'Revision ratings must be represented by an immutable typed domain event');
       assert(updated?.history?.[0]?.id === 'log-' + mutationId,
         'The revision history must use a stable ID derived from the mutation ID');
       assert(logs.length === 1 && logs[0].reviewedPagesCount === prepared.reviewedPagesCount &&
