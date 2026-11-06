@@ -52,7 +52,17 @@ try {
     throw new Error('Advisor status did not return the expected no-key/free fallback state.');
   }
 
-  console.log('Production server smoke test passed: server started and /api/advisor/status responded.');
+  const tafsirResponse = await fetch(`${baseUrl}/api/tafsir?surah=115&ayah=1`, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(2_000)
+  });
+  const tafsirContentType = tafsirResponse.headers.get('content-type') || '';
+  const tafsirPayload = await tafsirResponse.json();
+  if (tafsirResponse.status !== 400 || !tafsirContentType.includes('application/json') || tafsirPayload.error !== 'INVALID_QURAN_COORDINATES') {
+    throw new Error('Tafsir API route did not return the expected JSON validation response.');
+  }
+
+  console.log('Production server smoke test passed: advisor and tafsir API routes responded with JSON.');
 } finally {
   if (!exited) {
     server.kill('SIGTERM');
