@@ -310,6 +310,11 @@ export class IndexedDbSyncJournal {
       }
       acknowledgedIds.add(id);
     }
+    for (const id of fingerprints.keys()) {
+      if (!acknowledgedIds.has(id)) {
+        throw new Error('توجد بصمة إقرار لا تقابل معرفاً محفوظاً في صندوق المزامنة القديم.');
+      }
+    }
 
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
