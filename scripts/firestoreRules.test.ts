@@ -161,6 +161,41 @@ try {
     await assertSucceeds(getDoc(eventRef));
   });
 
+  await test('Versioned journal events require a server-assigned timestamp and valid mutation envelope', async () => {
+    const { serverTimestamp } = await import('firebase/firestore');
+    const validV2 = {
+      ...validEvent,
+      eventId: 'event-alice-v2-001',
+      eventType: 'domain-mutation.v2',
+      payload: {
+        journalEvent: {
+          schemaVersion: 1,
+          collection: 'plans',
+          documentId: 'snapshot',
+          operation: 'upsert',
+          clientUpdatedAtMs: 1_799_000_000_000,
+          createdAtMs: 1_799_000_000_000,
+          fingerprint: '0123456789abcdef',
+          payload: { records: [] },
+          serverCreatedAt: serverTimestamp()
+        }
+      }
+    };
+    await assertSucceeds(setDoc(doc(alice, 'users/alice/events/event-alice-v2-001'), validV2));
+
+    const forgedTimestamp = {
+      ...validV2,
+      eventId: 'event-alice-v2-forged',
+      payload: {
+        journalEvent: {
+          ...validV2.payload.journalEvent,
+          serverCreatedAt: new Date('2026-11-06T00:00:00.000Z')
+        }
+      }
+    };
+    await assertFails(setDoc(doc(alice, 'users/alice/events/event-alice-v2-forged'), forgedTimestamp));
+  });
+
   await test('Domain events are immutable: update and delete are strictly denied', async () => {
     const eventRef = doc(alice, 'users/alice/events/event-alice-001');
     await assertFails(setDoc(eventRef, { ...validEvent, eventType: 'tampered' }));
