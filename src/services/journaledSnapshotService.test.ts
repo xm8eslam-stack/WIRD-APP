@@ -3,6 +3,8 @@ import { IDBFactory } from 'fake-indexeddb';
 import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageService';
 import type { WirdPortion, TestResult } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
+import { RetentionService } from './retentionService';
+import { buildWeakVerseFailureTransaction } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
   persistEnginePlansSnapshot,
@@ -234,6 +236,87 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(first.success && retry.success, 'The original grouped write and its retry must both succeed');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'Reusing one mutation ID must not create a second event or outbox record');
+      journal.close();
+    });
+
+    await test('Weak-verse preparation rejects an inconsistent canonical archive before enqueue', async () => {
+      const journal = createJournal();
+      const corrupt = '{broken canonical portions';
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, corrupt);
+      const prepared = buildWeakVerseFailureTransaction({
+        surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص اختبار'
+      }, 'weak-corrupt-preflight-001');
+      const snapshot = await journal.getSnapshot();
+      assert(!prepared.success, 'An inconsistent canonical archive must block preparation');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'A corrupt source archive must not create a permanently blocked journal event');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === corrupt,
+        'The original corrupt canonical bytes must remain unchanged');
+      journal.close();
+    });
+
+    await test('Weak-verse preparation refuses enqueue when durable storage reads are unavailable', async () => {
+      const journal = createJournal();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: () => { throw new Error('simulated durable read failure'); },
+          setItem: () => { throw new Error('simulated durable write failure'); },
+          removeItem: () => { throw new Error('simulated durable remove failure'); }
+        }
+      });
+      try {
+        const prepared = buildWeakVerseFailureTransaction({
+          surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص اختبار'
+        }, 'weak-storage-unavailable-001');
+        const snapshot = await journal.getSnapshot();
+        assert(!prepared.success, 'Unavailable durable reads must block weak-verse preparation');
+        assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+          'A storage-read failure must not queue an event that cannot be projected');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        journal.close();
+      }
+    });
+
+    await test('Weak-verse failure commits its canonical portion and counter in one journal event', async () => {
+      const journal = createJournal();
+      const mutationId = 'weak-failure-journal-001';
+      const prepared = buildWeakVerseFailureTransaction({
+        surahNumber: 67,
+        surahName: 'اسم غير معتمد',
+        ayahNumber: 8,
+        text: 'نص آية للاختبار',
+        notes: 'اختبار تسجيل متعثر'
+      }, mutationId);
+      if (!prepared.success) throw new Error(prepared.messageAr);
+      assert(RetentionService.getPortions().length === 0 && RetentionService.getWeakVerses().length === 0,
+        'Preparing the action must not mutate either local archive');
+
+      const result = await persistJournaledTransaction(
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const retry = await persistJournaledTransaction(
+        prepared.operations, { journal, runExclusive: inlineLock }, mutationId
+      );
+      const snapshot = await journal.getSnapshot();
+      const portion = RetentionService.getPortions().find(item =>
+        item.surahNumber === 67 && item.startAyah === 8 && item.endAyah === 8
+      );
+      const weakVerse = RetentionService.getWeakVerses().find(item =>
+        item.surahNumber === 67 && item.ayahNumber === 8
+      );
+      assert(result.success && retry.success && result.mode === 'journal', 'The weak-verse action and its retry must persist through the journal');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'Both archives must share one event/outbox pair and one cursor step');
+      assert(portion?.status === 'weak' && portion.mistakesCount === 1,
+        'The canonical portion must record the weak status and mistake count');
+      assert(weakVerse?.surahName === 'الملك' && weakVerse.mistakeCount === 1 &&
+        weakVerse.text === 'نص آية للاختبار',
+        'The weak-verse counter must use canonical Surah metadata and preserve the supplied verse text');
       journal.close();
     });
 

@@ -3,6 +3,7 @@ import { RetentionService } from './retentionService';
 import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
 import { ALL_SURAHS } from '../data/quranMeta';
+import type { JournaledTransactionOperation } from './journaledSnapshotService';
 
 export interface RecordWeakVerseFailureInput {
   surahNumber: number;
@@ -15,6 +16,129 @@ export interface RecordWeakVerseFailureInput {
 export type RecordWeakVerseFailureResult =
   | { success: true }
   | { success: false; messageAr: string };
+
+export type BuildWeakVerseFailureTransactionResult =
+  | { success: true; operations: JournaledTransactionOperation[] }
+  | { success: false; messageAr: string };
+
+/**
+ * Build the two full-snapshot projections for one weak-verse action without
+ * mutating storage. The caller supplies and retains a stable mutation ID so a
+ * retry can reuse the same journal identity.
+ */
+export function buildWeakVerseFailureTransaction(
+  input: RecordWeakVerseFailureInput,
+  mutationId: string
+): BuildWeakVerseFailureTransactionResult {
+  const surah = Number.isSafeInteger(input?.surahNumber)
+    ? ALL_SURAHS.find(item => item.number === input.surahNumber)
+    : undefined;
+  if (!surah || !Number.isSafeInteger(input.ayahNumber) || input.ayahNumber < 1 ||
+      input.ayahNumber > surah.versesCount) {
+    return { success: false, messageAr: 'رقم السورة أو الآية غير صحيح؛ لم يتم تعديل سجل الحفظ أو المراجعة.' };
+  }
+  if (typeof input.text !== 'string' || !input.text.trim() || input.text.length > 4000 ||
+      (input.notes !== undefined && (typeof input.notes !== 'string' || input.notes.length > 2000)) ||
+      typeof mutationId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(mutationId)) {
+    return { success: false, messageAr: 'نص الآية أو الملاحظة أو معرّف العملية غير صالح؛ لم يتم حفظ التغيير.' };
+  }
+
+  try {
+    const previousPortions = RetentionService.getPortions();
+    const schemaVersion = StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION);
+    const canonicalRaw = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+    const portionStorageKeys = [
+      STORAGE_KEYS.SCHEMA_VERSION,
+      STORAGE_KEYS.UNIFIED_PORTIONS,
+      STORAGE_KEYS.PORTIONS,
+      STORAGE_KEYS.REVISION
+    ];
+    if (portionStorageKeys.some(key =>
+      !StorageService.verifyRawItem(key, StorageService.getRawItem(key))
+    ) || !StorageService.verifyRawItem(
+      STORAGE_KEYS.WEAK_VERSES,
+      StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES)
+    )) {
+      return { success: false, messageAr: 'تعذر التحقق من القراءة الدائمة لجميع سجلات الآية والمقاطع؛ لم يتم إنشاء عملية استعادة.' };
+    }
+    if ((schemaVersion === '2' && canonicalRaw === null) ||
+        (schemaVersion !== '2' && canonicalRaw !== null)) {
+      return { success: false, messageAr: 'سجل المقاطع الموحد غير متسق؛ تم إيقاف التسجيل لحماية البيانات الأصلية.' };
+    }
+    if (schemaVersion === '2' && canonicalRaw !== null) {
+      let canonicalParsed: unknown;
+      try { canonicalParsed = JSON.parse(canonicalRaw); }
+      catch {
+        return { success: false, messageAr: 'سجل المقاطع الموحد تالف؛ تم الحفاظ عليه دون إنشاء عملية استعادة جديدة.' };
+      }
+      if (!Array.isArray(canonicalParsed) || JSON.stringify(canonicalParsed) !== JSON.stringify(previousPortions)) {
+        return { success: false, messageAr: 'تعذر التحقق من سجل المقاطع الحالي؛ لم يتم إنشاء عملية استعادة جديدة.' };
+      }
+    }
+    const existingExactPortion = previousPortions.find(portion =>
+      portion.surahNumber === input.surahNumber &&
+      portion.startAyah === input.ayahNumber &&
+      portion.endAyah === input.ayahNumber
+    );
+    const today = getLocalDateString();
+    const portionSnapshot = RetentionService.buildAddPortionSnapshot({
+      type: 'passage',
+      surahNumber: input.surahNumber,
+      surahName: surah.name,
+      startAyah: input.ayahNumber,
+      endAyah: input.ayahNumber,
+      status: 'weak',
+      lastReviewedDate: today,
+      nextDueDate: today,
+      intervalDays: 1,
+      easeFactor: existingExactPortion?.easeFactor ?? 2.0,
+      repetitionCount: (existingExactPortion?.repetitionCount ?? 0) + 1,
+      mistakesCount: (existingExactPortion?.mistakesCount ?? 0) + 1,
+      strength: 'weak'
+    } as Omit<PortionStatusRecord, 'id' | 'history'>);
+
+    const weakVerses = RetentionService.getWeakVerses().map(item => ({ ...item }));
+    const existingIndex = weakVerses.findIndex(item =>
+      item.surahNumber === input.surahNumber && item.ayahNumber === input.ayahNumber
+    );
+    if (existingIndex >= 0) {
+      if (weakVerses[existingIndex].mistakeCount >= 1000000) {
+        return { success: false, messageAr: 'وصل عداد تعثر الآية إلى الحد الآمن؛ لم يتم تغيير السجل.' };
+      }
+      weakVerses[existingIndex] = {
+        ...weakVerses[existingIndex],
+        mistakeCount: weakVerses[existingIndex].mistakeCount + 1,
+        lastFailedDate: today,
+        surahName: surah.name,
+        ...(input.notes ? { notes: input.notes } : {})
+      };
+    } else {
+      weakVerses.unshift({
+        id: `weak-${input.surahNumber}-${input.ayahNumber}-${mutationId}`,
+        surahNumber: input.surahNumber,
+        surahName: surah.name,
+        ayahNumber: input.ayahNumber,
+        text: input.text,
+        mistakeCount: 1,
+        lastFailedDate: today,
+        notes: input.notes
+      });
+    }
+
+    return {
+      success: true,
+      operations: [
+        { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: portionSnapshot.portions } },
+        { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: weakVerses } }
+      ]
+    };
+  } catch (error) {
+    return {
+      success: false,
+      messageAr: error instanceof Error ? error.message : 'تعذر تجهيز سجل الآية المتعثرة؛ لم يتم تعديل أي بيانات.'
+    };
+  }
+}
 
 /** Save the canonical weak portion and its mistake counter without leaving a half-written result. */
 export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): RecordWeakVerseFailureResult {

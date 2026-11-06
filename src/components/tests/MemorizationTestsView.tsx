@@ -22,7 +22,7 @@ import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/
 
 interface MemorizationTestsViewProps {
   onSaveTestResult: (result: TestResult) => boolean | Promise<boolean>;
-  onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number, text: string, notes: string) => boolean;
+  onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number, text: string, notes: string, mutationId: string) => boolean | Promise<boolean>;
 }
 
 type TestType = 'complete_verse' | 'bidirectional_recall' | 'random_recall' | 'mutashabihat';
@@ -43,6 +43,9 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [testSaveError, setTestSaveError] = useState<string | null>(null);
   const [pendingTestResult, setPendingTestResult] = useState<TestResult | null>(null);
   const [isSavingTestResult, setIsSavingTestResult] = useState(false);
+  const [isSavingWeakVerse, setIsSavingWeakVerse] = useState(false);
+  const weakVerseMutationIdsRef = useRef<Map<string, string>>(new Map());
+  const weakVerseSaveInFlightRef = useRef(false);
   const saveInProgressRef = useRef(false);
   const [sessionKey, setSessionKey] = useState(0);
 
@@ -107,7 +110,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   const handleResetTest = () => {
-    if (pendingTestResult || saveInProgressRef.current) return;
+    if (pendingTestResult || saveInProgressRef.current || weakVerseSaveInFlightRef.current) return;
     setCurrentQuestionIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
@@ -119,23 +122,39 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     setSessionKey(k => k + 1);
   };
 
-  const handleAddCurrentToWeakVerses = () => {
+  const handleAddCurrentToWeakVerses = async () => {
+    if (weakVerseSaveInFlightRef.current || isSavingWeakVerse) return;
     const notes = `تعثر في اختبار: ${
       selectedTestType === 'complete_verse' ? 'إكمال الآية التالية' :
       selectedTestType === 'bidirectional_recall' ? 'الآية السابقة والتالية' :
       selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
     }`;
-    const saved = onAddVerseToRevision(
-      currentQ.surahNumber,
-      currentQ.surahName,
-      currentQ.targetAyahNumber,
-      currentQ.options[currentQ.correctIndex],
-      notes
-    );
+    const actionKey = [selectedTestType, currentQ.surahNumber, currentQ.targetAyahNumber, notes].join('|');
+    const mutationId = weakVerseMutationIdsRef.current.get(actionKey) || 'weak-' + createSecureId();
+    weakVerseMutationIdsRef.current.set(actionKey, mutationId);
+    weakVerseSaveInFlightRef.current = true;
+    setIsSavingWeakVerse(true);
+    let saved = false;
+    try {
+      saved = await onAddVerseToRevision(
+        currentQ.surahNumber,
+        currentQ.surahName,
+        currentQ.targetAyahNumber,
+        currentQ.options[currentQ.correctIndex],
+        notes,
+        mutationId
+      );
+    } catch (error) {
+      console.error('[WIRD Tests] Weak-verse journal persistence failed:', error);
+    } finally {
+      weakVerseSaveInFlightRef.current = false;
+      setIsSavingWeakVerse(false);
+    }
+    if (saved) weakVerseMutationIdsRef.current.delete(actionKey);
     setWeakVerseFeedback({
       message: saved
         ? `تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} في قائمة الالتباس والمراجعة المستعجلة.`
-        : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.',
+        : 'تعذر تأكيد حفظ الآية المتعثرة. إذا كانت العملية في سجل الاستعادة فحدّث الصفحة قبل إعادة المحاولة.',
       success: saved
     });
   };
@@ -158,7 +177,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-semibold">
           <button
             onClick={() => {
-              if (pendingTestResult || saveInProgressRef.current) return;
+              if (pendingTestResult || saveInProgressRef.current || weakVerseSaveInFlightRef.current) return;
               setSelectedTestType('complete_verse');
               handleResetTest();
             }}
@@ -401,10 +420,11 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleAddCurrentToWeakVerses}
+                  disabled={isSavingWeakVerse}
                   className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 transition-colors"
                 >
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                  <span>تسجيل هذه الآية في قائمة الآيات الملتبسة</span>
+                  <span>{isSavingWeakVerse ? 'جارٍ حفظ الآية...' : 'تسجيل هذه الآية في قائمة الآيات الملتبسة'}</span>
                 </button>
               </div>
 
