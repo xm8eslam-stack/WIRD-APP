@@ -196,6 +196,20 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Concurrent cross-tab mutations receive unique monotonic event sequences', async () => {
+      const { factory, databaseName, journal } = createJournal();
+      const secondTab = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      await Promise.all([
+        journal.enqueue({ mutationId: 'sequence-tab-a', collection: 'activityEvents', documentId: 's-a', payload: { minutes: 1 }, nowMs: 500 }),
+        secondTab.enqueue({ mutationId: 'sequence-tab-b', collection: 'activityEvents', documentId: 's-b', payload: { minutes: 2 }, nowMs: 500 })
+      ]);
+      const events = await journal.listEvents();
+      assert(events.length === 2 && events[0].sequence === 1 && events[1].sequence === 2,
+        'Overlapping read/write transactions must allocate unique contiguous sequences');
+      journal.close();
+      secondTab.close();
+    });
+
     await test('Journal snapshot creates and preserves a stable device identity', async () => {
       const { journal } = createJournal();
       const first = await journal.getSnapshot();
