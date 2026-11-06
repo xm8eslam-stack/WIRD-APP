@@ -253,7 +253,12 @@ function persistState(state: OutboxState): void {
   }
 }
 
-const indexedDbJournal = new IndexedDbSyncJournal();
+let indexedDbJournal: IndexedDbSyncJournal | null = null;
+
+function getIndexedDbJournal(): IndexedDbSyncJournal {
+  if (!indexedDbJournal) indexedDbJournal = new IndexedDbSyncJournal();
+  return indexedDbJournal;
+}
 
 async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 'already_migrated'> {
   getActiveUid();
@@ -280,7 +285,7 @@ async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 
     throw new Error('بنية صندوق المزامنة القديم غير صالحة؛ تم الاحتفاظ بالنسخة الأصلية دون تعديل.');
   }
 
-  const result = await indexedDbJournal.importLegacyState(normalized as LegacyOutboxState);
+  const result = await getIndexedDbJournal().importLegacyState(normalized as LegacyOutboxState);
   // Keep the source as a recovery copy. Older tabs may still write the v1 key;
   // later imports merge new entries by fingerprint without deleting that source.
   if (!StorageService.verifyRawItem(key, raw)) {
