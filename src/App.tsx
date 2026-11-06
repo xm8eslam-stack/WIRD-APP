@@ -143,6 +143,8 @@ export default function App() {
     setProfile(StorageService.getProfile());
     setPlans(StorageService.getPlans());
     setEnginePlans(StorageService.getEnginePlans());
+    setRevisionItems(StorageService.getRevisionItems());
+    setLogs(StorageService.getLogsForDisplay());
   };
 
   // Toggle Theme handler
