@@ -11,7 +11,9 @@ import {
   KeyRound, 
   LogOut, 
   Sparkles,
-  Loader2
+  Loader2,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -41,6 +43,16 @@ export const AuthScreen: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [isCopiedDomain, setIsCopiedDomain] = useState(false);
+
+  const handleCopyDomain = () => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      navigator.clipboard.writeText(hostname);
+      setIsCopiedDomain(true);
+      setTimeout(() => setIsCopiedDomain(false), 2500);
+    }
+  };
 
   // If user is logged in via email/password but not yet verified
   const needsEmailVerification = Boolean(user && !isEmailVerified);
@@ -279,12 +291,70 @@ export const AuthScreen: React.FC = () => {
         )}
 
         {/* Error Feedback */}
-        {authError && (
+        {authError && (authError.includes('unauthorized-domain') || authError.includes('غير مصرح') || authError.includes('unauthorized')) ? (
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-800 rounded-2xl text-amber-950 dark:text-amber-100 text-xs space-y-3 dir-rtl shadow-xs">
+            <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-200">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>هذا النطاق غير مصرح به في Firebase</span>
+            </div>
+            
+            <p className="text-[11px] leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+              يتطلب Firebase Authentication إضافة نطاق الموقع الحالي إلى القائمة المسموح بها (Authorized Domains) في لوحة التحكم.
+            </p>
+
+            {/* Domain Box with 1-click Copy */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-stone-600 dark:text-stone-400 block">
+                نطاق الموقع الحالي المطلوب إضافته:
+              </label>
+              <div className="flex items-center gap-2 bg-white dark:bg-stone-900 p-2 rounded-xl border border-amber-200 dark:border-stone-700">
+                <code className="flex-1 font-mono text-[11px] text-emerald-800 dark:text-emerald-400 truncate dir-ltr text-left px-1">
+                  {typeof window !== 'undefined' ? window.location.hostname : ''}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopyDomain}
+                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shrink-0 transition-colors"
+                >
+                  {isCopiedDomain ? (
+                    <>
+                      <Check className="w-3 h-3 text-emerald-200" />
+                      <span>تم النسخ!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      <span>نسخ النطاق</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Instruction Steps */}
+            <div className="text-[10px] text-stone-700 dark:text-stone-300 bg-amber-100/60 dark:bg-stone-900/60 p-2.5 rounded-xl border border-amber-200/70 dark:border-stone-800 leading-relaxed space-y-1">
+              <div className="font-bold text-stone-900 dark:text-stone-100">خطوات إضافة النطاق في Firebase:</div>
+              <div>1. افتح Firebase Console ← مشروعك</div>
+              <div>2. اذهب إلى Authentication ← Settings ← Authorized Domains</div>
+              <div>3. انقر "Add Domain" وألصق النطاق المنسوخ أعلاه</div>
+            </div>
+
+            {/* Instant Guest Mode Fallback */}
+            <button
+              type="button"
+              onClick={continueAsGuest}
+              className="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-amber-300" />
+              <span>المتابعة فوراً كزائر دون انتظار (Guest Mode)</span>
+            </button>
+          </div>
+        ) : authError ? (
           <div className="p-3.5 bg-rose-50 dark:bg-rose-950/80 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-200 text-xs rounded-xl flex items-start gap-2.5">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div className="flex-1 leading-relaxed">{authError}</div>
           </div>
-        )}
+        ) : null}
 
         {/* Success Feedback */}
         {successMessage && (

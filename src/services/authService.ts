@@ -41,6 +41,8 @@ export function mapAuthError(error: unknown): string {
       return 'تعذر الاتصال بالشبكة، يرجى التأكد من اتصالك بالإنترنت.';
     case 'auth/requires-recent-login':
       return 'يتطلب هذا الإجراء تسجيل الدخول الحديث للأمان.';
+    case 'auth/unauthorized-domain':
+      return 'هذا النطاق غير مصرح به في إعدادات Firebase Authentication. أضف النطاق في لوحة تحكم Firebase، أو تابع كزائر.';
     case 'auth/api-key-not-valid':
     case 'auth/invalid-api-key':
       return 'مفتاح Firebase غير مهيأ بعد في بيئة التشغيل. يمكنك المتابعة كزائر دون عائق.';

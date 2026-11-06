@@ -1,6 +1,6 @@
 {
-  "summary": "Implementation plan for resolving Firebase sign-in configuration issues and adding a clear Arabic notification with seamless Guest Mode fallback.",
-  "updatedAt": "2026-11-06T04:40:28.217038789Z",
+  "summary": "Implementation plan for handling Firebase auth/unauthorized-domain error with a current hostname copy tool and instant Guest Mode fallback.",
+  "updatedAt": "2026-11-06T04:57:01.216492788Z",
   "requestFeedback": true,
   "userFacing": true
 }
