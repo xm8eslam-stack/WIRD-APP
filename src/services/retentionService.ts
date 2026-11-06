@@ -340,12 +340,17 @@ export const RetentionService = {
 
   // Record memorization session completion into canonical portions
   recordMemorizationCompletion(surahNumber: number, startAyah: number, endAyah: number): PortionStatusRecord {
+    const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber);
+    if (!Number.isSafeInteger(surahNumber) || !surahMeta ||
+        !Number.isSafeInteger(startAyah) || startAyah < 1 ||
+        !Number.isSafeInteger(endAyah) || endAyah < startAyah || endAyah > surahMeta.versesCount) {
+      throw new Error('نطاق الحفظ غير صالح؛ تحقق من رقم السورة وبداية الآية ونهايتها قبل تسجيل التقدم.');
+    }
     const portions = this.getPortions();
     const canonicalId = createCanonicalPortionId(surahNumber, startAyah, endAyah);
     const today = getLocalDateString();
     const tomorrow = addDaysToLocalDate(today, 1);
-    const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber);
-    const surahName = surahMeta?.name || `سورة ${surahNumber}`;
+    const surahName = surahMeta.name;
 
     const existingIndex = portions.findIndex(p => 
       p.id === canonicalId || 
