@@ -95,6 +95,97 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Canonical portion save rolls back the canonical archive when schema-version commit fails', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    const originalCanonical = '[{"old":"canonical"}]';
+    const originalSchema = '1';
+    const originalLegacyPortions = '[{"old":"legacy-portions"}]';
+    const originalLegacyRevision = '[{"old":"legacy-revision"}]';
+    let failSchemaWrite = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (failSchemaWrite && key.endsWith(STORAGE_KEYS.SCHEMA_VERSION) && value === '2') {
+            throw new Error('simulated schema-version quota failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      assert(StorageService.setStorageScope('user:canonical-transaction'), 'Account scope should activate');
+      assert(StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, originalCanonical), 'Canonical fixture should persist');
+      assert(StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, originalSchema), 'Schema fixture should persist');
+      assert(StorageService.setRawItem(STORAGE_KEYS.PORTIONS, originalLegacyPortions), 'Legacy portions fixture should persist');
+      assert(StorageService.setRawItem(STORAGE_KEYS.REVISION, originalLegacyRevision), 'Legacy revision fixture should persist');
+      failSchemaWrite = true;
+      assert(!StorageService.saveUnifiedPortions([]), 'Save must fail when schema-version commit fails');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === originalCanonical,
+        'Canonical archive must be restored after schema-version failure');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === originalSchema,
+        'Schema version must retain its previous bytes');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === originalLegacyPortions,
+        'Legacy portions projection must remain unchanged');
+      assert(StorageService.getRawItem(STORAGE_KEYS.REVISION) === originalLegacyRevision,
+        'Legacy revision projection must remain unchanged');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Canonical portion save rolls back all projections when a legacy mirror write fails after applying', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    const originalCanonical = '[{"old":"canonical"}]';
+    const originalSchema = '1';
+    const originalLegacyPortions = '[{"old":"legacy-portions"}]';
+    const originalLegacyRevision = '[{"old":"legacy-revision"}]';
+    let failRevisionWrite = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (failRevisionWrite && key.endsWith(STORAGE_KEYS.REVISION) && value !== originalLegacyRevision) {
+            values.set(key, value);
+            throw new Error('simulated revision projection write applied before failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      assert(StorageService.setStorageScope('user:legacy-projection-transaction'), 'Account scope should activate');
+      assert(StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, originalCanonical), 'Canonical fixture should persist');
+      assert(StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, originalSchema), 'Schema fixture should persist');
+      assert(StorageService.setRawItem(STORAGE_KEYS.PORTIONS, originalLegacyPortions), 'Legacy portions fixture should persist');
+      assert(StorageService.setRawItem(STORAGE_KEYS.REVISION, originalLegacyRevision), 'Legacy revision fixture should persist');
+      failRevisionWrite = true;
+      assert(!StorageService.saveUnifiedPortions([]), 'Save must fail when legacy revision projection cannot be verified');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === originalCanonical,
+        'Canonical archive must roll back after a later compatibility projection failure');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === originalSchema,
+        'Schema version must roll back after a later compatibility projection failure');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === originalLegacyPortions,
+        'Legacy portions projection must roll back');
+      assert(StorageService.getRawItem(STORAGE_KEYS.REVISION) === originalLegacyRevision,
+        'Partially applied legacy revision projection must roll back');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Corrupt profile data is preserved and blocks ordinary profile writes', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:corrupt-profile');
