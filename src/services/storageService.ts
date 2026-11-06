@@ -248,6 +248,251 @@ function isValidDailyLogArray(value: unknown): value is DailyLog[] {
   return Array.isArray(value) && value.length <= 10000 && value.every(isValidDailyLog);
 }
 
+function isPlainRecord(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isValidDateOnly(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function isValidTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && value.length <= 64 &&
+    /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
+}
+
+function isIntegerBetween(value: unknown, min: number, max: number): value is number {
+  return Number.isSafeInteger(value) && Number(value) >= min && Number(value) <= max;
+}
+
+function isFiniteBetween(value: unknown, min: number, max: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function isValidSurahRange(surahNumber: unknown, startAyah: unknown, endAyah: unknown): boolean {
+  if (!isIntegerBetween(surahNumber, 1, 114) || !isIntegerBetween(startAyah, 1, 286) ||
+      !isIntegerBetween(endAyah, Number(startAyah), 286)) return false;
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  return Boolean(surah && Number(startAyah) <= surah.versesCount && Number(endAyah) <= surah.versesCount);
+}
+
+function isValidOptionalPage(value: unknown): boolean {
+  return value === undefined || isIntegerBetween(value, 1, 604);
+}
+
+function isValidOptionalJuz(value: unknown): boolean {
+  return value === undefined || isIntegerBetween(value, 1, 30);
+}
+
+function isValidRevisionLogRecord(value: unknown): boolean {
+  if (!isPlainRecord(value)) return false;
+  return typeof value.id === 'string' && value.id.length > 0 && value.id.length <= 160 &&
+    isValidDateOnly(value.date) &&
+    ['successful', 'difficult', 'failed'].includes(value.rating) &&
+    isIntegerBetween(value.intervalDaysBefore, 0, 100000) &&
+    isIntegerBetween(value.intervalDaysAfter, 0, 100000) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
+function isValidMemorizationPlan(value: unknown): value is MemorizationPlan {
+  if (!isPlainRecord(value)) return false;
+  const validTypes = ['whole_quran', 'juz', 'surahs', 'custom'];
+  const validUnits = ['ayah', 'page'];
+  const validNumberArray = (items: unknown, max: number) =>
+    items === undefined || (Array.isArray(items) && items.length <= max &&
+      items.every(item => isIntegerBetween(item, 1, max)) && new Set(items).size === items.length);
+  if (typeof value.id !== 'string' || !value.id.trim() || value.id.length > 160 ||
+      typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 ||
+      typeof value.description !== 'string' || value.description.length > 2000 ||
+      !validTypes.includes(value.type) ||
+      !validNumberArray(value.targetSurahs, 114) ||
+      !validNumberArray(value.targetJuz, 30) ||
+      !isValidOptionalPage(value.startPage) || !isValidOptionalPage(value.endPage) ||
+      (value.startPage !== undefined && value.endPage !== undefined && value.startPage > value.endPage) ||
+      !isIntegerBetween(value.totalUnits, 1, 6236) ||
+      !isIntegerBetween(value.completedUnits, 0, value.totalUnits) ||
+      !validUnits.includes(value.unitType) ||
+      !isIntegerBetween(value.dailyTarget, 1, 6236) ||
+      !isIntegerBetween(value.memorizationDaysPerWeek, 1, 7) ||
+      !isIntegerBetween(value.revisionDaysPerWeek, 0, 7) ||
+      !isValidDateOnly(value.startDate) || !isValidDateOnly(value.targetEndDate) ||
+      value.targetEndDate < value.startDate ||
+      typeof value.isActive !== 'boolean' ||
+      (value.color !== undefined && (typeof value.color !== 'string' || value.color.length > 64))) return false;
+  return true;
+}
+
+function isValidRevisionItem(value: unknown): value is RevisionItem {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    ['minor', 'major'].includes(value.type) &&
+    (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
+    isValidDateOnly(value.nextDueDate) &&
+    isValidOptionalPage(value.pageNumber) && isValidOptionalJuz(value.juzNumber) &&
+    isIntegerBetween(value.intervalDays, 0, 100000) &&
+    isFiniteBetween(value.easeFactor, 1.3, 3) &&
+    isIntegerBetween(value.repetitionCount, 0, 100000) &&
+    ['strong', 'medium', 'weak'].includes(value.strength);
+}
+
+function isValidTestResultRecord(value: unknown): value is TestResult {
+  if (!isPlainRecord(value)) return false;
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
+    isValidDateOnly(value.date) &&
+    ['complete_verse', 'order_words', 'mutashabihat', 'surah_beginnings', 'random_recall', 'bidirectional_recall'].includes(value.type) &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    isFiniteBetween(value.score, 0, 100) &&
+    isIntegerBetween(value.totalQuestions, 1, 1000) &&
+    Array.isArray(value.weakVerses) && value.weakVerses.length <= 200 &&
+    value.weakVerses.every((item: unknown) => typeof item === 'string' && item.length <= 300);
+}
+
+function isValidWeakVerseRecord(value: unknown): value is WeakVerseItem {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.ayahNumber, value.ayahNumber)) return false;
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    typeof value.text === 'string' && value.text.trim().length > 0 && value.text.length <= 4000 &&
+    isIntegerBetween(value.mistakeCount, 1, 100000) &&
+    isValidDateOnly(value.lastFailedDate) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
+function isValidPortionRecord(value: unknown, requireCanonicalId = false): value is PortionStatusRecord {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  const expectedId = 's' + value.surahNumber + '_a' + value.startAyah + '_a' + value.endAyah;
+  const validStatuses = ['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak'];
+  const validTypes = ['passage', 'surah', 'page'];
+  const nextDueValid = (value.nextDueDate === '' && value.status === 'not_memorized') || isValidDateOnly(value.nextDueDate);
+  const historyValid = value.history === undefined ||
+    (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(isValidRevisionLogRecord));
+  const auditValid = value.conflictAudit === undefined ||
+    (Array.isArray(value.conflictAudit) && value.conflictAudit.length <= 1000 &&
+      value.conflictAudit.every((item: unknown) => isPlainRecord(item) &&
+        typeof item.source === 'string' && item.source.length <= 160 &&
+        typeof item.field === 'string' && item.field.length <= 160 &&
+        (item.timestamp === undefined || isValidTimestamp(item.timestamp))));
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
+    (!requireCanonicalId || value.id === expectedId) &&
+    (value.type === undefined || validTypes.includes(value.type)) &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    validStatuses.includes(value.status) && nextDueValid &&
+    (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
+    isIntegerBetween(value.intervalDays, 0, 100000) &&
+    isFiniteBetween(value.easeFactor, 1.3, 3) &&
+    isIntegerBetween(value.repetitionCount, 0, 100000) &&
+    (value.mistakesCount === undefined || isIntegerBetween(value.mistakesCount, 0, 100000)) &&
+    isValidOptionalPage(value.pageNumber) && isValidOptionalPage(value.pageStart) && isValidOptionalPage(value.pageEnd) &&
+    (value.pageStart === undefined || value.pageEnd === undefined || value.pageStart <= value.pageEnd) &&
+    isValidOptionalJuz(value.juzNumber) &&
+    (value.revisionType === undefined || ['minor', 'major'].includes(value.revisionType)) &&
+    (value.strength === undefined || ['strong', 'medium', 'weak'].includes(value.strength)) &&
+    (value.createdAt === undefined || isValidTimestamp(value.createdAt)) &&
+    (value.updatedAt === undefined || isValidTimestamp(value.updatedAt)) &&
+    historyValid && auditValid;
+}
+
+function isValidPlanGenerationInput(value: unknown): boolean {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.startSurah, value.startAyah, value.startAyah) ||
+      !isValidSurahRange(value.endSurah, value.endAyah, value.endAyah)) return false;
+  const startKey = Number(value.startSurah) * 1000 + Number(value.startAyah);
+  const endKey = Number(value.endSurah) * 1000 + Number(value.endAyah);
+  const validDays = (days: unknown, allowEmpty: boolean) =>
+    Array.isArray(days) && days.length <= 7 && (allowEmpty || days.length > 0) &&
+    days.every(day => isIntegerBetween(day, 0, 6)) && new Set(days).size === days.length;
+  const existingValid = value.existingMemorized === undefined ||
+    (Array.isArray(value.existingMemorized) && value.existingMemorized.length <= 6236 &&
+      value.existingMemorized.every((range: unknown) => isPlainRecord(range) &&
+        isValidSurahRange(range.surahNumber, range.startAyah, range.endAyah)));
+  return typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
+    startKey <= endKey &&
+    isValidDateOnly(value.startDate) &&
+    (value.targetEndDate === undefined || (isValidDateOnly(value.targetEndDate) && value.targetEndDate >= value.startDate)) &&
+    ['beginner', 'intermediate', 'advanced', 'hafiz'].includes(value.level) &&
+    isIntegerBetween(value.dailyAvailableMinutes, 1, 1440) &&
+    isIntegerBetween(value.dailyRevisionMinutes, 0, 1440) &&
+    ['verses_per_day', 'pages_per_day', 'by_target_date'].includes(value.paceType) &&
+    isIntegerBetween(value.paceQuantity, 1, 6236) &&
+    (value.paceType !== 'by_target_date' || value.targetEndDate !== undefined) &&
+    validDays(value.activeDays, false) && validDays(value.restDays, true) &&
+    ['morning_evening', 'single_session'].includes(value.schedulePreference) &&
+    existingValid;
+}
+
+function isValidScheduledTaskUnit(value: unknown): boolean {
+  return isPlainRecord(value) &&
+    isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah) &&
+    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
+    isIntegerBetween(value.versesCount, 1, 6236) &&
+    value.versesCount === value.endAyah - value.startAyah + 1 &&
+    isFiniteBetween(value.estimatedMinutes, 0, 1440) &&
+    typeof value.completed === 'boolean' &&
+    (value.completedAt === undefined || isValidTimestamp(value.completedAt)) &&
+    (value.userRating === undefined || ['strong', 'medium', 'weak'].includes(value.userRating));
+}
+
+function isValidScheduledRevisionUnit(value: unknown): boolean {
+  if (!isPlainRecord(value) || typeof value.description !== 'string' || value.description.length > 500 ||
+      !isIntegerBetween(value.versesCount, 0, 6236) ||
+      !isFiniteBetween(value.estimatedMinutes, 0, 1440) ||
+      typeof value.completed !== 'boolean' || !['minor', 'major'].includes(value.type)) return false;
+  const hasAnyCoordinate = value.surahNumber !== undefined || value.startAyah !== undefined || value.endAyah !== undefined;
+  if (hasAnyCoordinate && !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100);
+}
+
+function isValidEngineGeneratedPlan(value: unknown): value is EngineGeneratedPlan {
+  if (!isPlainRecord(value) || !isPlainRecord(value.meta) || !isPlainRecord(value.feasibility) ||
+      !isPlainRecord(value.actualVsPlanned) || !Array.isArray(value.schedule) ||
+      value.schedule.length > 10000 || !isValidPlanGenerationInput(value.input)) return false;
+  const meta = value.meta;
+  const feasibility = value.feasibility;
+  const actual = value.actualVsPlanned;
+  const validCoordinate = (coordinate: unknown) =>
+    isPlainRecord(coordinate) && isValidSurahRange(coordinate.surahNumber, coordinate.ayahNumber, coordinate.ayahNumber);
+  const scheduleValid = value.schedule.every((day: unknown) => {
+    if (!isPlainRecord(day) || typeof day.id !== 'string' || !day.id.trim() || day.id.length > 160 ||
+        !isValidDateOnly(day.date) || !isIntegerBetween(day.dayOfWeek, 0, 6) ||
+        typeof day.dayNameAr !== 'string' || day.dayNameAr.length > 40 ||
+        typeof day.isRestDay !== 'boolean' ||
+        !['pending', 'completed', 'skipped', 'partially_completed'].includes(day.status) ||
+        (day.notes !== undefined && (typeof day.notes !== 'string' || day.notes.length > 1000))) return false;
+    return (day.memorizationTask === undefined || isValidScheduledTaskUnit(day.memorizationTask)) &&
+      (day.minorRevisionTask === undefined || isValidScheduledRevisionUnit(day.minorRevisionTask)) &&
+      (day.majorRevisionTask === undefined || isValidScheduledRevisionUnit(day.majorRevisionTask));
+  });
+  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
+    typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
+    typeof value.rationale === 'string' && value.rationale.length <= 4000 &&
+    validCoordinate(meta.startCoordinate) && validCoordinate(meta.endCoordinate) &&
+    isIntegerBetween(meta.totalVerses, 1, 6236) &&
+    isIntegerBetween(meta.activeStudyDaysCount, 0, 10000) &&
+    isIntegerBetween(meta.restDaysCount, 0, 10000) &&
+    isIntegerBetween(meta.totalCalendarDays, 1, 10000) &&
+    isValidDateOnly(meta.projectedEndDate) &&
+    isFiniteBetween(meta.weeklyWorkloadHours, 0, 168) &&
+    typeof feasibility.isFeasible === 'boolean' &&
+    ['optimal', 'light', 'strenuous', 'impossible'].includes(feasibility.cognitiveLoadScore) &&
+    isFiniteBetween(feasibility.requiredMinutesNew, 0, 100000) &&
+    isFiniteBetween(feasibility.requiredMinutesRevision, 0, 100000) &&
+    isFiniteBetween(feasibility.totalRequiredMinutes, 0, 200000) &&
+    isFiniteBetween(feasibility.availableMinutes, 0, 100000) &&
+    isIntegerBetween(feasibility.dailyPaceVerses, 1, 6236) &&
+    (feasibility.warningMessage === undefined || (typeof feasibility.warningMessage === 'string' && feasibility.warningMessage.length <= 2000)) &&
+    scheduleValid &&
+    isIntegerBetween(actual.plannedVersesToDate, 0, 6236) &&
+    isIntegerBetween(actual.actualVersesMemorized, 0, 6236) &&
+    isIntegerBetween(actual.varianceVerses, -6236, 6236) &&
+    ['ahead', 'on_track', 'behind'].includes(actual.status) &&
+    typeof value.isActive === 'boolean' && typeof value.isPaused === 'boolean' &&
+    (value.pausedAt === undefined || isValidTimestamp(value.pausedAt)) &&
+    isValidTimestamp(value.createdAt);
+}
+
+
 
 export const DEMO_REVISION_ITEMS: RevisionItem[] = [
   {
