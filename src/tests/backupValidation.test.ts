@@ -158,7 +158,7 @@ export function runBackupTests(): { passed: number; failed: number } {
   test('Corrupted field (string instead of array for plans) is rejected', () => {
     const corruptedPlans = {
       version: 3,
-      profile: { name: 'عمر', streakDays: 1 },
+      profile: { ...CLEAN_INITIAL_PROFILE, name: 'عمر' },
       plans: 'not-an-array'
     };
     const res = validateBackupPayload(corruptedPlans);
