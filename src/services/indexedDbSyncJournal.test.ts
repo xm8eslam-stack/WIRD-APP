@@ -119,8 +119,8 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const { journal } = createJournal();
       await journal.enqueue({ mutationId: 'retry-event', collection: 'plans', documentId: 'plan-retry', payload: { pages: 2 }, nowMs: 10000 });
       assert(await journal.markFailed('retry-event', 'NETWORK', 10000), 'A queued mutation must accept retry metadata');
-      assert((await journal.listReady(12999)).length === 0, 'A mutation must remain hidden before its next retry time');
-      const ready = await journal.listReady(13000);
+      assert((await journal.listReady(11999)).length === 0, 'A mutation must remain hidden before its next retry time');
+      const ready = await journal.listReady(12000);
       assert(ready.length === 1 && ready[0].attemptCount === 1 && ready[0].lastErrorCode === 'NETWORK',
         'The retry must be due with an incremented attempt count and error code');
       assert((await journal.listEvents()).length === 1, 'Retry metadata must not mutate or remove the journal event');
