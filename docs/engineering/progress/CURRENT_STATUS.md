@@ -1,9 +1,9 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06 after PR #55 merge and post-merge verification  
+**Updated:** 2026-11-06 after PR #57 merge and PR #58 scope-isolation hardening  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Latest main SHA:** `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`
+**Latest main SHA:** `a6a4eabf2572f1c0f7812fe891ddbaec27b3536d`
 
 ## Latest completed work
 
@@ -15,6 +15,7 @@
 - **PR #54** — Typed, semantically validated local domain-event envelopes; merged as `6cc1d20e63257387044334da45e38bc204961c09`; exact-head run `42280361752` and post-merge main run `42280564932` passed.
 - Main includes direct Quran Library navigation/Juz-index commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
 - **PR #55** — Journaled development demo data and rollback/restart recovery coverage; merged as `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`; exact-head runs `42281993489` and `42281999065` passed; post-merge main run `42282206155` passed.
+- **PR #57** — Removed read-side writes from profile/portion getters and moved legacy portion migration into AuthGate through the journal; merged as `a6a4eabf2572f1c0f7812fe891ddbaec27b3536d`; exact-head runs `42283803166` and `42283813448` passed; post-merge main run `42284039747` passed.
 
 ## Deployment status
 
@@ -52,12 +53,14 @@ Still open:
 
 ## Current status
 
-- PR #55 is merged and verified on `main`; its grouped demo transaction works for authenticated and guest scopes.
-- The local mutation audit is still in progress for remaining legacy migration and device-local preference paths; core memorization/revision/backup flows remain journal-first.
+- PR #55 and PR #57 are merged and verified on `main`.
+- PR #57 makes profile and portion getters read-only and moves legacy portion migration to a journaled startup step after pending-event replay.
+- PR #58 is in progress to guard the migration against account-scope changes while it waits for the journal lock.
+- The local mutation audit continues for legacy outbox migration and any remaining multi-key mutation callers; device-local reader/Tafsir/audio preferences are intentionally local and guarded against storage exceptions.
 
 ## Next implementation sequence
 
-1. Finish the remaining local mutation audit, including legacy outbox migration/reset and device-local preferences; add failure-injection coverage where gaps remain.
+1. Finish the remaining local mutation audit, including legacy outbox migration/reset and any remaining multi-key mutation callers; add failure-injection coverage where gaps remain.
 2. Derive daily aggregates and streaks deterministically from the merged domain-event ledger.
 3. Define record-level Firestore document mapping and conflict semantics.
 4. Implement Firestore adapter and sync coordinator behind an inactive feature gate.
