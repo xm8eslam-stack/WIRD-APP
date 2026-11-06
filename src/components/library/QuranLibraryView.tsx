@@ -17,6 +17,10 @@ import { loadSurahVerses } from '../../data/quranDataLoader';
 import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
+import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
+import type { PlaybackRate } from '../../services/audioPreferences';
+import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
+import { QuranMushafReader } from './QuranMushafReader';
 
 interface QuranLibraryViewProps {
   onStartSession: (surahNumber: number, startAyah?: number, endAyah?: number) => void;
@@ -40,9 +44,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   // Font size adjustment for Quran text
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'huge'>('large');
   const [verseFilter, setVerseFilter] = useState('');
+  const [showMushafReader, setShowMushafReader] = useState(false);
 
   // Audio state
   const [activeReciter, setActiveReciter] = useState<ReciterId>(initialReciter || 'alafasy');
+  const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(() => getSavedPlaybackRate());
   const [playingAyah, setPlayingAyah] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -63,6 +69,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   // Load only the selected surah; never import the 2 MB complete dataset here.
   useEffect(() => {
     let cancelled = false;
+    if (showMushafReader) return () => { cancelled = true; };
     setCurrentAyahs([]);
     setIsLoadingSurah(true);
     setSurahLoadError(false);
@@ -85,7 +92,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
       });
 
     return () => { cancelled = true; };
-  }, [selectedSurah.number, loadRetry]);
+  }, [selectedSurah.number, loadRetry, showMushafReader]);
 
   // Audio play handler
   const handlePlayAyah = (ayahNumberInSurah: number) => {
@@ -102,6 +109,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     }
 
     const audio = new Audio(audioUrl);
+    audio.playbackRate = getSavedPlaybackRate();
     audioRef.current = audio;
     setPlayingAyah(ayahNumberInSurah);
     setIsPlaying(true);
@@ -123,6 +131,12 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     };
   };
 
+  const handlePlaybackRateChange = (rate: PlaybackRate) => {
+    const savedRate = savePlaybackRate(rate);
+    setPlaybackRate(savedRate);
+    if (audioRef.current) audioRef.current.playbackRate = savedRate;
+  };
+
   const handleStopAudio = () => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -138,6 +152,10 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
       }
     };
   }, []);
+
+  if (showMushafReader) {
+    return <QuranMushafReader preferredReciter={activeReciter} onBack={() => setShowMushafReader(false)} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -171,6 +189,10 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
               ))}
             </select>
           </div>
+          <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
+          <button type="button" onClick={() => { handleStopAudio(); setShowMushafReader(true); }} className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-900">
+            <BookOpen className="h-4 w-4" /> المصحف بالصفحات
+          </button>
         </div>
 
         {/* Search & Filter Bar */}

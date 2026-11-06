@@ -19,6 +19,8 @@ if (!dataset || typeof dataset !== 'object' || Array.isArray(dataset)) {
 fs.mkdirSync(outputDir, { recursive: true });
 let totalAyahs = 0;
 const pageIndex = Object.create(null);
+const juzStarts = Object.create(null);
+const hizbQuarterStarts = Object.create(null);
 
 for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
   const ayahs = dataset[String(surahNumber)] ?? dataset[surahNumber];
@@ -38,6 +40,12 @@ for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
     const pageNumber = ayah.page;
     if (!Number.isInteger(pageNumber) || pageNumber < 1 || pageNumber > 604) {
       throw new Error('[WIRD Quran] Invalid page number in Surah ' + surahNumber + ', ayah ' + (index + 1));
+    }
+    if (Number.isInteger(ayah.juz) && ayah.juz >= 1 && ayah.juz <= 30 && !juzStarts[ayah.juz]) {
+      juzStarts[ayah.juz] = { surahNumber, ayahNumber: index + 1, page: pageNumber };
+    }
+    if (Number.isInteger(ayah.hizbQuarter) && ayah.hizbQuarter >= 1 && ayah.hizbQuarter <= 240 && !hizbQuarterStarts[ayah.hizbQuarter]) {
+      hizbQuarterStarts[ayah.hizbQuarter] = { surahNumber, ayahNumber: index + 1, page: pageNumber };
     }
     const segments = pageIndex[pageNumber] || (pageIndex[pageNumber] = []);
     const lastSegment = segments[segments.length - 1];
@@ -64,6 +72,17 @@ for (let pageNumber = 1; pageNumber <= 604; pageNumber++) {
   if (!Array.isArray(pageIndex[pageNumber]) || pageIndex[pageNumber].length === 0) {
     throw new Error('[WIRD Quran] Missing page index data for Mushaf page ' + pageNumber);
   }
+}
+
+if (Object.keys(juzStarts).length !== 30 || Object.keys(hizbQuarterStarts).length !== 240) {
+  throw new Error('[WIRD Quran] Expected 30 Juz starts and 240 Hizb-quarter starts.');
+}
+
+const navigationIndexPath = path.join(projectRoot, 'src/data/quranNavigationIndex.generated.ts');
+const navigationIndexSource = 'export const QURAN_JUZ_STARTS = ' + JSON.stringify(juzStarts) + ' as const;\n' +
+  'export const QURAN_HIZB_QUARTER_STARTS = ' + JSON.stringify(hizbQuarterStarts) + ' as const;\n';
+if (!fs.existsSync(navigationIndexPath) || fs.readFileSync(navigationIndexPath, 'utf8') !== navigationIndexSource) {
+  fs.writeFileSync(navigationIndexPath, navigationIndexSource, 'utf8');
 }
 
 const pageIndexPath = path.join(projectRoot, 'src/data/quranPageIndex.generated.ts');

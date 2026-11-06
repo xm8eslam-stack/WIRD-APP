@@ -26,6 +26,8 @@ import { runSecureIdTests } from '../services/secureId.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
+import { runAudioPreferencesTests } from '../services/audioPreferences.test';
+import { runQuranMushafReaderTests } from './quranMushafReader.test';
 
 export interface SuiteResult {
   passed: number;
@@ -99,6 +101,8 @@ async function main() {
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
+    { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
+    { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);

@@ -49,6 +49,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     assert(generator.includes('totalAyahs !== 6236'), 'Generator must enforce the 6,236-ayah total');
     assert(generator.includes('ayah.numberInSurah !== index + 1'), 'Generator must validate verse coordinates');
     assert(generator.includes('quranPageIndex.generated.ts'), 'Generator must emit the page-to-ayah coordinate index');
+    assert(generator.includes('quranNavigationIndex.generated.ts') && generator.includes('hizbQuarterStarts'), 'Generator must emit exact Juz and Hizb-quarter navigation coordinates');
     assert(generator.includes('pageNumber <= 604'), 'Generator must validate all 604 Mushaf pages');
   });
 
