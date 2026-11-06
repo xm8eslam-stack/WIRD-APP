@@ -665,7 +665,7 @@ export const RetentionService = {
   addOrIncrementWeakVerse(
     surahNumber: number,
     ayahNumber: number,
-    surahName: string,
+    _surahName: string,
     text: string,
     notes?: string
   ): WeakVerseItem[] {
