@@ -129,6 +129,15 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Journal snapshot creates and preserves a stable device identity', async () => {
+      const { journal } = createJournal();
+      const first = await journal.getSnapshot();
+      const second = await journal.getSnapshot();
+      assert(Boolean(first.deviceId) && first.deviceId === second.deviceId,
+        'The device identity must be created once and remain stable before any enqueue');
+      journal.close();
+    });
+
     await test('Legacy localStorage outbox migrates pending, acknowledged, and device state atomically', async () => {
       const { journal } = createJournal();
       const legacy: LegacyOutboxState = {
