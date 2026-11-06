@@ -76,3 +76,15 @@ Finish targeted outbox audit and design M4 event ledger/transaction boundary bef
 
 ### Next exact action
 Add an async-safe/transaction-safe idempotency design that preserves enough acknowledged mutation identity to reject changed-content reuse, handles old v1 acknowledgements without data loss, validates pending/acknowledged uniqueness, and has regression tests for each case. Then continue the event-journal transaction design.
+
+
+## 2026-11-06 — Phase 1 record-level validation audit correction
+
+- Inspected `storageService.ts` and backup validation flow.
+- `readJsonArrayArchive<T>()` validates JSON parse and array root only; it does not validate every element against the domain schema.
+- `savePlans()`, `saveEnginePlans()`, and `saveRevisionItems()` check only array shape and archive-root writability, not each record's fields/ranges.
+- `saveTest()` checks archive root but does not validate the incoming test result object before inserting it.
+- `validateBackupPayload()` checks that several collection fields are arrays; the inspected validator performs deep per-record validation for canonical unified portions and profile, but the same complete record-level validation is not present for all plan/revision/test/log/weak-verse records. This leaves malformed nested backup records able to pass the initial array checks and be written.
+- Correction to milestone status: Phase 1 is **IN PROGRESS**, not complete. Phase 2 remains **IN PROGRESS** pending full mutation-path validation. The roadmap and resume instructions were updated accordingly.
+- Required next work: define shared strict validators for every persisted record type; apply them to read/write/import/export boundaries; preserve invalid original archives; add malformed-record, boundary, legacy-compatibility, and backup no-partial-write tests.
+- No application code changed and no code tests were run during this static audit.
