@@ -159,7 +159,15 @@ export function persistTestResultSnapshot(
 ): Promise<JournaledSnapshotWriteResult> {
   const existing = StorageService.getTests();
   const existingMatch = existing.find(item => item.id === test.id);
-  if (existingMatch && JSON.stringify(existingMatch) !== JSON.stringify(test)) {
+  const sameResult = (left: TestResult, right: TestResult) =>
+    left.id === right.id &&
+    left.date === right.date &&
+    left.type === right.type &&
+    left.surahName === right.surahName &&
+    left.score === right.score &&
+    left.totalQuestions === right.totalQuestions &&
+    JSON.stringify(left.weakVerses) === JSON.stringify(right.weakVerses);
+  if (existingMatch && !sameResult(existingMatch, test)) {
     return Promise.resolve({
       success: false,
       mode: StorageService.getStorageScope().startsWith('user:') ? 'journal' : 'local-only',
