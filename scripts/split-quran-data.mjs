@@ -80,7 +80,7 @@ if (Object.keys(juzStarts).length !== 30 || Object.keys(hizbQuarterStarts).lengt
 
 const navigationIndexPath = path.join(projectRoot, 'src/data/quranNavigationIndex.generated.ts');
 const navigationIndexSource = 'export const QURAN_JUZ_STARTS = ' + JSON.stringify(juzStarts) + ' as const;\n' +
-  'export const QURAN_HIZB_QUARTER_STARTS = ' + JSON.stringify(hizbQuarterStarts) + ' as const;\\n';
+  'export const QURAN_HIZB_QUARTER_STARTS = ' + JSON.stringify(hizbQuarterStarts) + ' as const;\n';
 if (!fs.existsSync(navigationIndexPath) || fs.readFileSync(navigationIndexPath, 'utf8') !== navigationIndexSource) {
   fs.writeFileSync(navigationIndexPath, navigationIndexSource, 'utf8');
 }
