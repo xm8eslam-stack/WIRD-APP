@@ -737,6 +737,36 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     }
   }
 
+  if (payload.version === 4 && Array.isArray(payload.unifiedPortions)) {
+    if (payload.portions !== undefined &&
+        JSON.stringify(payload.portions) !== JSON.stringify(payload.unifiedPortions)) {
+      return { valid: false, error: 'نسخة المقاطع القديمة لا تطابق المقاطع الموحدة؛ يلزم إصلاح التعارض قبل الاستيراد.' };
+    }
+    if (payload.revisionItems !== undefined) {
+      const expectedRevisionItems: RevisionItem[] = payload.unifiedPortions
+        .filter((portion: WirdPortion) => portion.status !== 'not_memorized')
+        .map((portion: WirdPortion) => ({
+          id: portion.id,
+          surahNumber: portion.surahNumber,
+          surahName: portion.surahName,
+          startAyah: portion.startAyah,
+          endAyah: portion.endAyah,
+          pageNumber: portion.pageNumber,
+          juzNumber: portion.juzNumber,
+          type: portion.revisionType || 'minor',
+          lastReviewedDate: portion.lastReviewedDate,
+          nextDueDate: portion.nextDueDate,
+          intervalDays: portion.intervalDays,
+          easeFactor: portion.easeFactor,
+          repetitionCount: portion.repetitionCount,
+          strength: portion.strength || (portion.status === 'weak' ? 'weak' : portion.status === 'stable' ? 'strong' : 'medium')
+        }));
+      if (JSON.stringify(payload.revisionItems) !== JSON.stringify(expectedRevisionItems)) {
+        return { valid: false, error: 'سجل المراجعة لا يطابق المقاطع الموحدة؛ يلزم إصلاح التعارض قبل الاستيراد.' };
+      }
+    }
+  }
+
   return { valid: true };
 }
 export const StorageService = {
