@@ -246,6 +246,7 @@ export default function App() {
       endAyah: sessionParams.endAyah
     });
     if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
       showToast(result.messageAr, 'error');
       setRevisionItems(StorageService.getRevisionItems());
       return false;
