@@ -1261,19 +1261,47 @@ export const StorageService = {
     }
   },
 
-  // Session Completion with rollback if either durable write fails.
-  recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
+  // Detailed result lets callers report when a multi-key rollback could not be verified.
+  recordSessionCompletionDetailed(
+    memorizedAyahs: number,
+    reviewedPages: number,
+    minutes: number,
+    taskName: string
+  ): { success: boolean; rollbackVerified: boolean } {
     if (!Number.isSafeInteger(memorizedAyahs) || memorizedAyahs < 0 || memorizedAyahs > 6236 ||
         !Number.isSafeInteger(reviewedPages) || reviewedPages < 0 || reviewedPages > 604 ||
         !Number.isSafeInteger(minutes) || minutes < 0 || minutes > 1440 ||
-        typeof taskName !== 'string' || !taskName.trim() || taskName.length > 200) return false;
+        typeof taskName !== 'string' || !taskName.trim() || taskName.length > 200) {
+      return { success: false, rollbackVerified: true };
+    }
+
     const today = getLocalDateString();
     const previousLogs = getItem(STORAGE_KEYS.LOGS);
     const previousProfile = getItem(STORAGE_KEYS.PROFILE);
+    const restorePreviousSnapshot = (): boolean => {
+      const restoreKey = (key: string, previous: string | null): boolean => {
+        try {
+          if (previous === null) removeItem(key);
+          else setItem(key, previous);
+          return getItem(key) === previous;
+        } catch {
+          return false;
+        }
+      };
+      const logsRestored = restoreKey(STORAGE_KEYS.LOGS, previousLogs);
+      const profileRestored = restoreKey(STORAGE_KEYS.PROFILE, previousProfile);
+      if (!logsRestored || !profileRestored) {
+        console.error('[WIRD Storage] Session activity rollback could not be verified. Export a backup before further edits.');
+      }
+      return logsRestored && profileRestored;
+    };
+
     let logs: DailyLog[];
-    try { logs = this.getLogs(); } catch (error) {
+    try {
+      logs = this.getLogs();
+    } catch (error) {
       console.warn('[WIRD Storage] Refusing to overwrite an invalid daily activity archive:', error);
-      return false;
+      return { success: false, rollbackVerified: true };
     }
     const existingIndex = logs.findIndex(log => log.date === today);
 
@@ -1294,32 +1322,24 @@ export const StorageService = {
       });
     }
 
-    if (!this.saveLogs(logs)) return false;
+    if (!this.saveLogs(logs)) {
+      return { success: false, rollbackVerified: restorePreviousSnapshot() };
+    }
 
     const profile = this.getProfile();
     const { newStreak, newDate } = advanceStreakOnCompletion(profile.lastActiveDate, profile.streakDays, today);
     profile.streakDays = newStreak;
     profile.lastActiveDate = newDate;
     if (!this.saveProfile(profile)) {
-      // Restore and verify both durable snapshots; never silently claim rollback succeeded.
-      const restoreSnapshot = (key: string, previous: string | null): boolean => {
-        try {
-          if (previous === null) removeItem(key);
-          else if (!setItem(key, previous)) return false;
-          return getItem(key) === previous;
-        } catch {
-          return false;
-        }
-      };
-      const logsRestored = restoreSnapshot(STORAGE_KEYS.LOGS, previousLogs);
-      const profileRestored = restoreSnapshot(STORAGE_KEYS.PROFILE, previousProfile);
-      if (!logsRestored || !profileRestored) {
-        console.error('[WIRD Storage] Session activity rollback could not be verified. Export a backup before further edits.');
-      }
-      return false;
+      return { success: false, rollbackVerified: restorePreviousSnapshot() };
     }
 
-    return true;
+    return { success: true, rollbackVerified: true };
+  },
+
+  // Backward-compatible boolean API for callers that do not need rollback detail.
+  recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
+    return this.recordSessionCompletionDetailed(memorizedAyahs, reviewedPages, minutes, taskName).success;
   },
 
   // Explicit Demo Data Loader (for demo mode only)
