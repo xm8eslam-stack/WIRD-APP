@@ -46,6 +46,11 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
 
+## Additional progress-range defect found
+
+- The file-by-file review found that resuming a saved `currently_memorizing` portion clipped it to the daily target. Completion only updates exact coordinate matches, leaving the larger parent portion in-progress; the next dashboard selection therefore repeats the same starting ayah. The fix now resumes the exact persisted passage and clamps only to the canonical Surah verse count. Regression tests cover exact resumption and malformed overlong endpoints.
+- This patch is committed separately and its CI result must be checked before marking the fix complete.
+
 ## Mandatory next sequence
 
 ### Step A — finish the file-by-file audit

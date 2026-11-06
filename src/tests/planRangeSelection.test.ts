@@ -36,9 +36,15 @@ export function runPlanRangeSelectionTests(): { passed: number; failed: number }
     assert(result.length === 1 && result[0] === 1, 'Page one should resolve to Al-Fatihah only');
   });
 
-  test('An in-progress passage is resumed before a new gap', () => {
+  test('An in-progress passage is resumed as the exact persisted range', () => {
     const result = findNextUnmemorizedRange([makePortion(2, 10, 20, 'currently_memorizing')], [2], 5);
-    assert(result?.surahNumber === 2 && result.startAyah === 10 && result.endAyah === 14, 'Resume must stay inside the in-progress passage and daily limit');
+    assert(result?.surahNumber === 2 && result.startAyah === 10 && result.endAyah === 20, 'Resume must preserve the exact saved passage instead of creating an untracked child range');
+  });
+
+  test('An in-progress passage is safely clamped to the Surah verse count', () => {
+    const lastAyah = ALL_SURAHS.find(surah => surah.number === 2)!.versesCount;
+    const result = findNextUnmemorizedRange([makePortion(2, lastAyah - 2, lastAyah + 8, 'currently_memorizing')], [2], 2);
+    assert(result?.startAyah === lastAyah - 2 && result.endAyah === lastAyah, 'Invalid persisted end coordinates must not exceed the Surah verse count');
   });
 
   test('Next range stops before an already covered memorized passage', () => {
