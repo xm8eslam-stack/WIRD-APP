@@ -867,6 +867,17 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
 
   return { valid: true };
 }
+export interface RawStorageSnapshot {
+  available: boolean;
+  values: Record<string, string | null>;
+  unavailableKeys: string[];
+}
+
+export interface RawStorageRestoreResult {
+  success: boolean;
+  failedKeys: string[];
+}
+
 export interface SessionCompletionWriteResult {
   success: boolean;
   rollbackVerified: boolean;
@@ -899,6 +910,45 @@ export const StorageService = {
   verifyRawItem(key: string, expected: string | null): boolean {
     const readback = readDurableValue(resolveStorageKey(key));
     return readback.available && readback.value === expected;
+  },
+
+  captureRawSnapshot(keys: readonly string[]): RawStorageSnapshot {
+    const values: Record<string, string | null> = {};
+    const unavailableKeys: string[] = [];
+    for (const key of [...new Set(keys)]) {
+      if (typeof key !== 'string' || !key.trim()) {
+        unavailableKeys.push(String(key));
+        continue;
+      }
+      const readback = readDurableValue(resolveStorageKey(key));
+      if (!readback.available) unavailableKeys.push(key);
+      else values[key] = readback.value;
+    }
+    return { available: unavailableKeys.length === 0, values, unavailableKeys };
+  },
+
+  restoreRawSnapshot(snapshot: RawStorageSnapshot): RawStorageRestoreResult {
+    if (!snapshot || typeof snapshot !== 'object' || !snapshot.values || typeof snapshot.values !== 'object') {
+      return { success: false, failedKeys: ['<invalid-snapshot>'] };
+    }
+    const failedKeys = [...(Array.isArray(snapshot.unavailableKeys) ? snapshot.unavailableKeys : [])];
+    const keys = Object.keys(snapshot.values).reverse();
+    for (const key of keys) {
+      const expected = snapshot.values[key];
+      const resolvedKey = resolveStorageKey(key);
+      const current = readDurableValue(resolvedKey);
+      if (!current.available) {
+        failedKeys.push(key);
+        continue;
+      }
+      if (current.value !== expected) {
+        if (expected === null) rawRemoveItem(resolvedKey);
+        else rawSetItem(resolvedKey, expected);
+      }
+      const restored = readDurableValue(resolvedKey);
+      if (!restored.available || restored.value !== expected) failedKeys.push(key);
+    }
+    return { success: failedKeys.length === 0, failedKeys: [...new Set(failedKeys)] };
   },
 
   setRawItem(key: string, value: string): boolean {
