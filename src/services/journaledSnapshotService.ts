@@ -1,4 +1,4 @@
-import type { UserProfile, MemorizationPlan } from '../types/quran';
+import type { UserProfile, MemorizationPlan, WirdPortion } from '../types/quran';
 import type { EngineGeneratedPlan } from './planningEngine';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal, type JournalMutationInput } from './indexedDbSyncJournal';
@@ -138,6 +138,17 @@ export function persistEnginePlansSnapshot(
   return persistJournaledSnapshot(
     { collection: 'enginePlans', documentId: 'snapshot', payload: { records: plans } },
     () => StorageService.saveEnginePlans(plans),
+    options
+  );
+}
+
+export function persistPortionsSnapshot(
+  portions: WirdPortion[],
+  options: JournaledSnapshotOptions = {}
+): Promise<JournaledSnapshotWriteResult> {
+  return persistJournaledSnapshot(
+    { collection: 'portions', documentId: 'snapshot', payload: { records: portions } },
+    () => StorageService.saveUnifiedPortions(portions),
     options
   );
 }

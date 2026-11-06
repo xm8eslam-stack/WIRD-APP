@@ -1,12 +1,14 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { CLEAN_INITIAL_PROFILE, StorageService } from './storageService';
+import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageService';
+import type { WirdPortion } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
   persistEnginePlansSnapshot,
   persistJournaledSnapshot,
   persistPlansSnapshot,
+  persistPortionsSnapshot,
   persistProfileSnapshot
 } from './journaledSnapshotService';
 
@@ -53,6 +55,41 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       const snapshot = await journal.getSnapshot();
       assert(snapshot.eventCount === 2 && snapshot.pendingCount === 2 && snapshot.projectionCursor === 2,
         'Each plan snapshot must have a durable event/outbox pair and contiguous projection');
+      journal.close();
+    });
+
+    await test('Canonical portion snapshots replay through the transactional compatibility projection', async () => {
+      const journal = createJournal();
+      const portion: WirdPortion = {
+        id: 's1_a1_a7',
+        type: 'passage',
+        surahNumber: 1,
+        surahName: 'الفاتحة',
+        startAyah: 1,
+        endAyah: 7,
+        pageNumber: 1,
+        status: 'recently_memorized',
+        lastReviewedDate: '2026-11-06',
+        nextDueDate: '2026-11-07',
+        intervalDays: 1,
+        easeFactor: 2.5,
+        repetitionCount: 1,
+        mistakesCount: 0,
+        history: [],
+        createdAt: '2026-11-06T12:00:00.000Z'
+      };
+      const result = await persistPortionsSnapshot([portion], { journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      assert(result.success && result.mode === 'journal', 'Portion snapshot must commit and replay');
+      assert(JSON.stringify(StorageService.getUnifiedPortions()) === JSON.stringify([portion]),
+        'The canonical portion archive must match the journal payload');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === '2',
+        'The canonical schema version must be committed with the portion projection');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) !== null &&
+        StorageService.getRawItem(STORAGE_KEYS.REVISION) !== null,
+        'Both legacy compatibility projections must be preserved in the same local transaction');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'The portion event/outbox pair must be durable before the projection cursor advances');
       journal.close();
     });
 

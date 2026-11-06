@@ -21,6 +21,7 @@ import {
 import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, JUZ_NAMES, ALL_SURAHS } from '../../data/quranMeta';
 import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord } from '../../types/quran';
 import { StorageService } from '../../services/storageService';
+import { persistPortionsSnapshot } from '../../services/journaledSnapshotService';
 import { RetentionService } from '../../services/retentionService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { buildPageStatusUpdate, getPageAyahSegments, getPageProgressStatus, PageAyahSegment } from '../../services/pageProgressService';
@@ -83,7 +84,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   const getPageStatus = (page: number) => getPageProgressStatus(page, portions);
 
   // Change page status
-  const handleUpdatePageStatus = (pageNumber: number, newStatus: PortionMemorizationStatus) => {
+  const handleUpdatePageStatus = async (pageNumber: number, newStatus: PortionMemorizationStatus) => {
     const updatedPortions = buildPageStatusUpdate(
       portions,
       pageNumber,
@@ -95,9 +96,21 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
       return;
     }
 
-    // Persist the complete page change once; never leave half a page updated.
-    if (!RetentionService.savePortions(updatedPortions)) {
-      onToast?.('تعذر حفظ تقدم الصفحة بالكامل في التخزين المحلي؛ لم يتم تأكيد التغيير.', 'error');
+    // Persist the complete page snapshot through the journal before projecting
+    // it to the canonical archive and its two legacy compatibility views.
+    const result = await persistPortionsSnapshot(updatedPortions);
+    if (!result.success) {
+      if (result.recoveredPriorEvents) {
+        setPortions(RetentionService.getPortions());
+        onRefreshData();
+      }
+      onToast?.(result.recoveredPriorEvents
+        ? 'استعدنا تقدمًا سابقًا وحدّثنا البيانات؛ لم ننفذ تغيير الصفحة الجديد. راجع الحالة ثم أعد المحاولة.'
+        : result.queued
+          ? 'تم حفظ تقدم الصفحة في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
+          : result.recoveryBlocked
+            ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تغيير الصفحة الجديد.'
+            : 'تعذر حفظ تقدم الصفحة في التخزين المحلي؛ لم يتم تأكيد التغيير.', 'error');
       return;
     }
 
