@@ -96,3 +96,15 @@ No source code, package, or algorithm implementation was copied or added in this
 | OWASP Web Security Testing Guide — Browser Storage | https://github.com/OWASP/www-project-web-security-testing-guide/blob/master/v41/4-Web_Application_Security_Testing/11-Client_Side_Testing/12-Testing_Browser_Storage.md | Documentation; no code copied | Browser storage inspection, client-side storage threat review | Security test checklist reference; no code copied |
 
 No source code, snippets, or dependencies were copied or added in PR #12.
+
+
+## Phase 2 durable readback verification research — 2026-11-06
+
+| Project / source | URL | License / terms | Reviewed for | WIRD decision |
+|---|---|---|---|---|
+| MDN — Using the Web Storage API | https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API/Using_the_Web_Storage_API | Documentation; no code copied | Correct `getItem()` / `setItem()` use and string storage semantics | Use the standard Storage methods and explicit readback to verify WIRD's durable writes |
+| MDN — Storage.setItem() | https://developer.mozilla.org/en-US/docs/Web/API/Storage/setItem | Documentation; no code copied | Return semantics and `QuotaExceededError` behavior | A void return is not used as a substitute for WIRD-level payload verification; quota exceptions remain failure paths |
+| WHATWG HTML — Web Storage | https://html.spec.whatwg.org/multipage/webstorage.html | Living standard | Atomicity of individual set/remove operations and quota exception semantics | The standard defines each key operation; WIRD still verifies the requested value and multi-key caller-level rollback because app operations span multiple keys |
+| OWASP Web Security Testing Guide — Browser Storage | https://github.com/OWASP/www-project-web-security-testing-guide/blob/master/v41/4-Web_Application_Security_Testing/11-Client_Side_Testing/12-Testing_Browser_Storage.md | Documentation; no code copied | Client-side storage inspection and security test coverage | Retained as a storage security review checklist |
+
+No third-party source code, snippets, or dependencies were copied or added in PR #13.
