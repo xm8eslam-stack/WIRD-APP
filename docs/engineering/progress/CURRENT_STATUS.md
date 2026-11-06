@@ -3,7 +3,7 @@
 **Updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PRs:** #3, #4, #5, #6, and #9 merged; PR #7 was closed without merge as superseded.
+**Checkpoint PRs:** #3, #4, #5, #6, #9, and #10 merged; PR #7 was closed without merge as superseded.
 
 ## Verified repository position
 
@@ -20,9 +20,9 @@
 **PHASE 2 — Memorization/revision correctness audit**  
 **Status:** IN PROGRESS on `main`; PR #10 merged and its code gates passed. Remaining daily queue/statistics/rollback audit is still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
-**Last code milestone:** PR #9 merge `f8e0cef`; all code gates passed in CI run `42190653101`.  
+**Last code milestone:** PR #10 merge `e698718`; all code gates passed in Actions run `42194241711`.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
-**Remaining outside Phase 1:** cross-tab atomicity belongs to the event-journal milestone; review scheduling, duplicate operations, and statistics remain Phase 2 work. M4 follows after both gates.
+**Remaining:** daily revision queue/weekly overview, aggregate statistics, and complete multi-key rollback audit remain Phase 2 work. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
 
 ## Completed and verified foundations
 
@@ -75,6 +75,7 @@
 
 - `fix/phase2-session-counter-validation`: superseded; PR #7 closed without merge because PRs #5/#6 already contain stronger versions.
 - `fix/phase1-unified-portion-merge`: merged by PR #9 as `f8e0cef`.
+- `fix/phase2-retention-mutation-audit`: merged by PR #10 as `e698718`.
 
 - `main`: canonical.
 - `feat/phase4-data-integrity-backup-v4`: previously merged by PR #1; do not merge again.
