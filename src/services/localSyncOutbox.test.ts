@@ -166,6 +166,91 @@ export async function runLocalSyncOutboxTests(): Promise<{ passed: number; faile
       journal.close();
     });
 
+    await test('Invalid payloads, operations, document IDs, and oversized payloads are rejected', async () => {
+      activate();
+      const base = { mutationId: 'invalid-input', collection: 'plans' as const, documentId: 'plan-1', payload: { pages: 1 } };
+      const invalidInputs: any[] = [
+        { ...base, operation: 'delete' },
+        { ...base, documentId: 'folder/plan' },
+        { ...base, documentId: 'x'.repeat(1501) },
+        { ...base, payload: [] },
+        { ...base, payload: { text: 'x'.repeat(128_100) } }
+      ];
+      let rejected = 0;
+      for (const input of invalidInputs) {
+        try { await LocalSyncOutbox.enqueue(input); } catch { rejected++; }
+      }
+      assert(rejected === invalidInputs.length, 'Every malformed or oversized mutation must be rejected');
+      assert((await LocalSyncOutbox.getSnapshot()).pendingCount === 0, 'Invalid mutations must not create outbox records');
+    });
+
+    await test('Acknowledged legacy IDs without fingerprints stay reserved', async () => {
+      activate();
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'legacy-no-fingerprint',
+        pending: [],
+        acknowledgedIds: ['old-ack-without-fingerprint'],
+        acknowledgedFingerprints: []
+      };
+      const raw = JSON.stringify(legacy);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy acknowledged fixture must persist');
+      await LocalSyncOutbox.getSnapshot();
+      let rejected = false;
+      try {
+        await LocalSyncOutbox.enqueue({
+          mutationId: 'old-ack-without-fingerprint',
+          collection: 'plans',
+          documentId: 'plan-old',
+          payload: { pages: 1 }
+        });
+      } catch { rejected = true; }
+      assert(rejected, 'Unknown historical content must never be treated as an identical retry');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy acknowledgement source must remain preserved');
+    });
+
+    await test('Malformed legacy outbox is preserved and never silently reset', async () => {
+      activate();
+      const corrupt = '{"schemaVersion":1,"pending":';
+      assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, corrupt), 'Corrupt source fixture must persist');
+      let rejected = false;
+      try { await LocalSyncOutbox.getSnapshot(); } catch { rejected = true; }
+      assert(rejected, 'Corrupt legacy source must stop the adapter');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, corrupt), 'Corrupt source bytes must remain unchanged');
+    });
+
+    await test('Stable payload fingerprints ignore object key order', async () => {
+      activate();
+      const first = await LocalSyncOutbox.enqueue({
+        mutationId: 'stable-fingerprint',
+        collection: 'profile',
+        documentId: 'profile',
+        payload: { displayName: 'Reader', timezone: 'Africa/Cairo' }
+      });
+      const second = await LocalSyncOutbox.enqueue({
+        mutationId: 'stable-fingerprint',
+        collection: 'profile',
+        documentId: 'profile',
+        payload: { timezone: 'Africa/Cairo', displayName: 'Reader' }
+      });
+      assert(first.status === 'queued' && second.status === 'already_pending',
+        'Equivalent JSON objects with different key order must share one fingerprint');
+    });
+
+    await test('Invalid batch limits, acknowledgement IDs, and retry timestamp overflow are rejected', async () => {
+      activate();
+      await LocalSyncOutbox.enqueue({ mutationId: 'limits-mutation', collection: 'plans', documentId: 'plan-limits', payload: { pages: 1 }, nowMs: 8000 });
+      let rejected = 0;
+      for (const limit of [0, 1.5, 101]) {
+        try { await LocalSyncOutbox.listReady(8000, limit); } catch { rejected++; }
+      }
+      try { await LocalSyncOutbox.acknowledge(['bad/id']); } catch { rejected++; }
+      try { await LocalSyncOutbox.markFailed('limits-mutation', 'NETWORK'.repeat(20), 8000); } catch { rejected++; }
+      try { await LocalSyncOutbox.markFailed('limits-mutation', 'NETWORK', Number.MAX_SAFE_INTEGER); } catch { rejected++; }
+      assert(rejected === 6, 'All invalid batch, ID, error-code, and overflow inputs must reject');
+      assert((await LocalSyncOutbox.getSnapshot()).pendingCount === 1, 'Rejected operations must not remove the queued mutation');
+    });
+
     await test('UID scoping isolates identical mutation IDs between accounts', async () => {
       const alpha = activate();
       await LocalSyncOutbox.enqueue({ mutationId: 'account-shared-id', collection: 'profile', documentId: 'profile', payload: { name: 'A' }, nowMs: 7000 });
