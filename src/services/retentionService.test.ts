@@ -48,6 +48,37 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
       'Every demo portion ID must match its exact Quran coordinates');
   });
 
+  runTest('RetentionService: add-portion snapshot builder is pure and preserves canonical identity', () => {
+    const before = RetentionService.getPortions();
+    const range = { surahNumber: 114, startAyah: 2, endAyah: 6 };
+    const alreadyExists = before.some(portion =>
+      portion.surahNumber === range.surahNumber &&
+      portion.startAyah === range.startAyah &&
+      portion.endAyah === range.endAyah
+    );
+    const snapshot = RetentionService.buildAddPortionSnapshot({
+      type: 'passage',
+      surahNumber: range.surahNumber,
+      surahName: 'الناس',
+      startAyah: range.startAyah,
+      endAyah: range.endAyah,
+      status: 'recently_memorized',
+      nextDueDate: getLocalDateString(),
+      intervalDays: 2,
+      easeFactor: 2.5,
+      repetitionCount: 1,
+      mistakesCount: 0
+    });
+    assert(snapshot.record.id === createCanonicalPortionId(range.surahNumber, range.startAyah, range.endAyah),
+      'The builder must generate the canonical coordinate ID');
+    assert(snapshot.portions.some(portion => portion.id === snapshot.record.id),
+      'The full returned snapshot must contain the built portion');
+    assert(snapshot.portions.length === before.length + (alreadyExists ? 0 : 1),
+      'The builder must add or merge exactly one canonical range');
+    assert(JSON.stringify(RetentionService.getPortions()) === JSON.stringify(before),
+      'Building a snapshot must not persist or mutate the current canonical archive');
+  });
+
   // 2. Performance Rating: Successful
   runTest('RetentionService: "successful" rating extends interval and reinforces ease factor', () => {
     // Add temporary portion

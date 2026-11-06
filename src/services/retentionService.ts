@@ -365,8 +365,11 @@ export const RetentionService = {
     return updated;
   },
 
-  // Add a new portion to track
-  addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
+  // Build a validated full snapshot without writing it. Journal-first UI
+  // flows use this to commit the event before the canonical local projection.
+  buildAddPortionSnapshot(
+    portion: Omit<PortionStatusRecord, 'id' | 'history'>
+  ): { record: PortionStatusRecord; portions: PortionStatusRecord[] } {
     if (!portion || typeof portion !== 'object') throw new Error('بيانات المقطع غير صالحة.');
     assertValidQuranRange(portion.surahNumber, portion.startAyah, portion.endAyah);
     const surahMeta = ALL_SURAHS.find(surah => surah.number === portion.surahNumber)!;
@@ -399,6 +402,13 @@ export const RetentionService = {
       };
       portions.unshift(record);
     }
+    return { record, portions };
+  },
+
+  // Backward-compatible local-only API for existing callers. New authenticated
+  // UI mutation paths should use buildAddPortionSnapshot + journal persistence.
+  addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
+    const { record, portions } = this.buildAddPortionSnapshot(portion);
     const saveResult = this.savePortionsDetailed(portions);
     if (!saveResult.success) throw new Error(saveResult.rollbackVerified
       ? 'تعذر حفظ المقطع الجديد؛ تم التحقق من بقاء سجل المقاطع السابق دون تغيير.'
