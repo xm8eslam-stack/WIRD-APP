@@ -80,6 +80,31 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Recovered prior snapshots block stale writes until the caller refreshes its state', async () => {
+      const journal = createJournal();
+      await journal.enqueue({
+        mutationId: 'crash-before-projection',
+        collection: 'plans',
+        documentId: 'snapshot',
+        payload: { records: [] },
+        nowMs: 500
+      });
+
+      const firstAttempt = await persistPlansSnapshot(PRESET_PLANS, { journal, runExclusive: inlineLock });
+      const recovered = await journal.getSnapshot();
+      assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents && firstAttempt.recoveryBlocked,
+        'A write must stop after replay changes the local projection behind the caller');
+      assert(recovered.eventCount === 1 && recovered.projectionCursor === 1,
+        'Recovery must advance the old event cursor without appending the stale new snapshot');
+      assert(StorageService.getPlans().length === 0, 'The recovered prior snapshot must be visible locally');
+
+      const retryAfterRefresh = await persistPlansSnapshot(PRESET_PLANS, { journal, runExclusive: inlineLock });
+      assert(retryAfterRefresh.success, 'A fresh caller snapshot may be committed after prior recovery');
+      assert(JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+        'The fresh snapshot must replace the recovered projection after retry');
+      journal.close();
+    });
+
     await test('Guest writes remain local-only and do not open a journal', async () => {
       StorageService.__resetStorageForTests();
       StorageService.setStorageScope('guest');
