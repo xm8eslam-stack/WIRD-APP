@@ -1,4 +1,4 @@
-import type { UserProfile, MemorizationPlan, WirdPortion } from '../types/quran';
+import type { UserProfile, MemorizationPlan, WirdPortion, TestResult } from '../types/quran';
 import type { EngineGeneratedPlan } from './planningEngine';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal, type JournalMutationInput } from './indexedDbSyncJournal';
@@ -41,7 +41,7 @@ export interface JournaledSnapshotOptions {
  * An IndexedDB failure is never silently downgraded to a localStorage-only write.
  */
 export async function persistJournaledSnapshot(
-  input: Omit<JournalMutationInput, 'mutationId'>,
+  input: JournalMutationInput,
   localOnlyWrite: () => boolean,
   options: JournaledSnapshotOptions = {}
 ): Promise<JournaledSnapshotWriteResult> {
@@ -78,7 +78,7 @@ export async function persistJournaledSnapshot(
         return 'recovered-prior-events' as const;
       }
 
-      await journal.enqueue({ ...input, mutationId: createSecureId() });
+      await journal.enqueue({ ...input, mutationId: input.mutationId ?? createSecureId() });
       queued = true;
       await replayJournalProjection(journal, inlineProjectionLock);
       return 'saved' as const;
@@ -149,6 +149,36 @@ export function persistPortionsSnapshot(
   return persistJournaledSnapshot(
     { collection: 'portions', documentId: 'snapshot', payload: { records: portions } },
     () => StorageService.saveUnifiedPortions(portions),
+    options
+  );
+}
+
+export function persistTestResultSnapshot(
+  test: TestResult,
+  options: JournaledSnapshotOptions = {}
+): Promise<JournaledSnapshotWriteResult> {
+  const existing = StorageService.getTests();
+  const existingMatch = existing.find(item => item.id === test.id);
+  if (existingMatch && JSON.stringify(existingMatch) !== JSON.stringify(test)) {
+    return Promise.resolve({
+      success: false,
+      mode: StorageService.getStorageScope().startsWith('user:') ? 'journal' : 'local-only',
+      queued: false,
+      recoveryBlocked: false,
+      recoveredPriorEvents: false,
+      error: 'معرّف نتيجة الاختبار مستخدم بالفعل بمحتوى مختلف؛ لم يتم استبدال النتيجة السابقة.'
+    });
+  }
+
+  const records = existingMatch ? existing : [test, ...existing].slice(0, 50);
+  return persistJournaledSnapshot(
+    {
+      mutationId: 'test-' + test.id,
+      collection: 'tests',
+      documentId: test.id,
+      payload: { records }
+    },
+    () => StorageService.saveTests(records),
     options
   );
 }
