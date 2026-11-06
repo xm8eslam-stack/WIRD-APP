@@ -429,7 +429,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(first.success && retry.success, 'The revision rating and its retry must both succeed');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'The revision, activity, and profile projections must share one event and one cursor step');
-      assert(updated?.history[0]?.id === 'log-' + mutationId,
+      assert(updated?.history?.[0]?.id === 'log-' + mutationId,
         'The revision history must use a stable ID derived from the mutation ID');
       assert(logs.length === 1 && logs[0].reviewedPagesCount === prepared.reviewedPagesCount &&
         logs[0].minutesSpent === 3,
