@@ -216,6 +216,27 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'The local archive must remain untouched when IndexedDB cannot commit the event');
     });
 
+    await test('Grouped transaction retries reuse one stable journal identity', async () => {
+      const journal = createJournal();
+      const operations = [
+        { collection: 'profile' as const, documentId: 'main', operation: 'upsert' as const,
+          payload: { profile: { ...CLEAN_INITIAL_PROFILE, name: 'إعادة محاولة ذرية' } } },
+        { collection: 'plans' as const, documentId: 'snapshot', operation: 'upsert' as const,
+          payload: { records: PRESET_PLANS } }
+      ];
+      const first = await persistJournaledTransaction(
+        operations, { journal, runExclusive: inlineLock }, 'grouped-stable-retry-001'
+      );
+      const retry = await persistJournaledTransaction(
+        operations, { journal, runExclusive: inlineLock }, 'grouped-stable-retry-001'
+      );
+      const snapshot = await journal.getSnapshot();
+      assert(first.success && retry.success, 'The original grouped write and its retry must both succeed');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'Reusing one mutation ID must not create a second event or outbox record');
+      journal.close();
+    });
+
     await test('Grouped profile and plan projections commit as one journal event', async () => {
       const journal = createJournal();
       const profile = { ...CLEAN_INITIAL_PROFILE, name: 'مجموعة ذرية' };
