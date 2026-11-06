@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { CLEAN_INITIAL_PROFILE, PRESET_PLANS, StorageService, STORAGE_KEYS } from './storageService';
+import { CLEAN_INITIAL_PROFILE, StorageService } from './storageService';
+import { PRESET_PLANS } from '../data/presetPlans';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import { importBackupJournaled, resetAllDataJournaled } from './backupPersistence';
 import { RetentionService } from './retentionService';
@@ -68,16 +69,24 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
       date: today, memorizedAyahsCount: 5, reviewedPagesCount: 0, minutesSpent: 5, completedTasks: ['حفظ']
     }]);
 
+    await journal.enqueue({
+      mutationId: 'pending-before-reset',
+      collection: 'profile', documentId: 'main',
+      payload: { profile: { ...CLEAN_INITIAL_PROFILE, name: 'تغيير سابق قبل إعادة الضبط' } }
+    });
+    const firstAttempt = await resetAllDataJournaled({ journal, runExclusive: inlineLock });
+    assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents,
+      'Reset must replay older pending events first and require a fresh confirmation attempt');
     const result = await resetAllDataJournaled({ journal, runExclusive: inlineLock });
-    assert(result.success, 'Reset snapshot must commit through the journal');
+    assert(result.success, 'Reset snapshot must commit after older events are recovered');
     assert(StorageService.getProfile().name === CLEAN_INITIAL_PROFILE.name, 'Profile must return to clean initial state');
     assert(StorageService.getPlans().length === 0 && StorageService.getEnginePlans().length === 0,
       'Preset and engine plans must be cleared');
     assert(StorageService.getUnifiedPortions().length === 0 && StorageService.getLogs().length === 0,
       'Canonical portions and activity logs must be cleared');
     const snapshot = await journal.getSnapshot();
-    assert(snapshot.eventCount === 1 && snapshot.projectionCursor === 1,
-      'The reset must be one durable event with a completed local projection');
+    assert(snapshot.eventCount === 2 && snapshot.projectionCursor === 2,
+      'The prior event and reset must remain ordered with a completed local projection');
     journal.close();
   });
 
