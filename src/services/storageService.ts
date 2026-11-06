@@ -977,7 +977,7 @@ export const StorageService = {
     try {
       const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const existingCanonicalRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-      if (currentSchemaVersion !== '2' && existingCanonicalRaw !== null && !allowRecoveryOverwrite) {
+      if (currentSchemaVersion !== '2' && existingCanonicalRaw !== null) {
         console.error('[WIRD Storage] Refusing to overwrite an unversioned canonical portions archive; reconciliation is required first.');
         return false;
       }
