@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   CheckCircle, 
   RotateCcw, 
@@ -16,11 +16,12 @@ import {
 import { MUTASHABIHAT_DATA } from '../../data/mutashabihatData';
 import { TestResult, WirdPortion } from '../../types/quran';
 import { RetentionService } from '../../services/retentionService';
+import { createSecureId } from '../../services/secureId';
 import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
 import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
-  onSaveTestResult: (result: TestResult) => boolean;
+  onSaveTestResult: (result: TestResult) => boolean | Promise<boolean>;
   onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number, text: string, notes: string) => boolean;
 }
 
@@ -40,6 +41,9 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [isFinished, setIsFinished] = useState(false);
   const [weakVerseFeedback, setWeakVerseFeedback] = useState<{ message: string; success: boolean } | null>(null);
   const [testSaveError, setTestSaveError] = useState<string | null>(null);
+  const [pendingTestResult, setPendingTestResult] = useState<TestResult | null>(null);
+  const [isSavingTestResult, setIsSavingTestResult] = useState(false);
+  const saveInProgressRef = useRef(false);
   const [sessionKey, setSessionKey] = useState(0);
 
   // Load user portions and dynamically generate verified test questions
@@ -61,7 +65,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQuestionIndex < currentQuestions.length - 1) {
       setCurrentQuestionIndex(i => i + 1);
       setSelectedOption(null);
@@ -69,25 +73,41 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
       setWeakVerseFeedback(null);
     } else {
       const finalScore = score + (selectedOption === currentQ.correctIndex ? 1 : 0);
-      const saved = onSaveTestResult({
-        id: `test-${Date.now()}`,
+      const resultToSave: TestResult = pendingTestResult || {
+        id: `test-${createSecureId()}`,
         date: new Date().toISOString().split('T')[0],
         type: selectedTestType,
         surahName: currentQ.surahName,
         score: finalScore,
         totalQuestions: currentQuestions.length,
         weakVerses: []
-      });
+      };
+      if (saveInProgressRef.current) return;
+      if (!pendingTestResult) setPendingTestResult(resultToSave);
+
+      saveInProgressRef.current = true;
+      setIsSavingTestResult(true);
+      let saved = false;
+      try {
+        saved = await onSaveTestResult(resultToSave);
+      } catch (error) {
+        console.error('[WIRD Tests] Test result persistence failed:', error);
+      } finally {
+        saveInProgressRef.current = false;
+        setIsSavingTestResult(false);
+      }
       if (!saved) {
         setTestSaveError('تعذر حفظ نتيجة الاختبار. لم نعلن اكتماله؛ اضغط «إعادة محاولة حفظ النتيجة» للمحاولة مجدداً.');
         return;
       }
+      setPendingTestResult(null);
       setTestSaveError(null);
       setIsFinished(true);
     }
   };
 
   const handleResetTest = () => {
+    if (pendingTestResult || saveInProgressRef.current) return;
     setCurrentQuestionIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
@@ -95,6 +115,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     setIsFinished(false);
     setWeakVerseFeedback(null);
     setTestSaveError(null);
+    setPendingTestResult(null);
     setSessionKey(k => k + 1);
   };
 
@@ -137,6 +158,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-semibold">
           <button
             onClick={() => {
+              if (pendingTestResult || saveInProgressRef.current) return;
               setSelectedTestType('complete_verse');
               handleResetTest();
             }}
@@ -155,6 +177,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
           <button
             onClick={() => {
+              if (pendingTestResult) return;
               setSelectedTestType('bidirectional_recall');
               handleResetTest();
             }}
@@ -173,6 +196,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
           <button
             onClick={() => {
+              if (pendingTestResult) return;
               setSelectedTestType('random_recall');
               handleResetTest();
             }}
@@ -191,6 +215,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
           <button
             onClick={() => {
+              if (pendingTestResult) return;
               setSelectedTestType('mutashabihat');
               handleResetTest();
             }}
@@ -385,6 +410,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
               <button
                 onClick={handleNext}
+                disabled={isSavingTestResult}
                 className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
               >
                 <span>{currentQuestionIndex === currentQuestions.length - 1 && testSaveError ? 'إعادة محاولة حفظ النتيجة' : 'السؤال التالي'}</span>

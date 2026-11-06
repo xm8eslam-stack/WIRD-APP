@@ -13,7 +13,7 @@ import { persistSessionCompletion } from './services/sessionPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
 import { recordWeakVerseFailure } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
-import { persistEnginePlansSnapshot, persistPlansSnapshot, persistProfileSnapshot } from './services/journaledSnapshotService';
+import { persistEnginePlansSnapshot, persistPlansSnapshot, persistProfileSnapshot, persistTestResultSnapshot } from './services/journaledSnapshotService';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -360,10 +360,17 @@ export default function App() {
     return true;
   };
 
-  // Test result saved — the test view must not announce completion on failure.
-  const handleSaveTestResult = (result: TestResult): boolean => {
-    if (!StorageService.saveTest(result)) {
-      showToast('تعذر حفظ نتيجة الاختبار في التخزين المحلي.', 'error');
+  // Test results are append-only journal mutations with a stable result ID.
+  const handleSaveTestResult = async (result: TestResult): Promise<boolean> => {
+    const write = await persistTestResultSnapshot(result);
+    if (!write.success) {
+      showToast(write.recoveredPriorEvents
+        ? 'استعدنا نتيجة اختبار سابقة وحدّثنا السجل؛ لم نضف النتيجة الجديدة. راجع الحالة ثم أعد المحاولة.'
+        : write.queued
+          ? 'تم حفظ نتيجة الاختبار في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
+          : write.recoveryBlocked
+            ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف نتيجة الاختبار.'
+            : write.error || 'تعذر حفظ نتيجة الاختبار في التخزين المحلي.', 'error');
       return false;
     }
     return true;

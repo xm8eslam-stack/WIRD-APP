@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageService';
-import type { WirdPortion } from '../types/quran';
+import type { WirdPortion, TestResult } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
@@ -9,7 +9,8 @@ import {
   persistJournaledSnapshot,
   persistPlansSnapshot,
   persistPortionsSnapshot,
-  persistProfileSnapshot
+  persistProfileSnapshot,
+  persistTestResultSnapshot
 } from './journaledSnapshotService';
 
 export async function runJournaledSnapshotServiceTests(): Promise<{ passed: number; failed: number }> {
@@ -90,6 +91,39 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'Both legacy compatibility projections must be preserved in the same local transaction');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
         'The portion event/outbox pair must be durable before the projection cursor advances');
+      journal.close();
+    });
+
+    await test('Test results use stable mutation IDs and idempotent journal snapshots', async () => {
+      const journal = createJournal();
+      const testResult: TestResult = {
+        id: 'test-journal-result-001',
+        date: '2026-11-06',
+        type: 'complete_verse',
+        surahName: 'الفاتحة',
+        score: 4,
+        totalQuestions: 5,
+        weakVerses: []
+      };
+      const first = await persistTestResultSnapshot(testResult, { journal, runExclusive: inlineLock });
+      const firstSnapshot = await journal.getSnapshot();
+      assert(first.success && first.mode === 'journal', 'A new test result must use the journal');
+      assert(firstSnapshot.eventCount === 1 && firstSnapshot.pendingCount === 1 && firstSnapshot.projectionCursor === 1,
+        'The test result must commit one durable event/outbox pair before projection');
+
+      const retry = await persistTestResultSnapshot(testResult, { journal, runExclusive: inlineLock });
+      const retrySnapshot = await journal.getSnapshot();
+      assert(retry.success, 'Retrying the same test result must succeed idempotently');
+      assert(retrySnapshot.eventCount === 1 && retrySnapshot.pendingCount === 1,
+        'A stable test ID must not create duplicate journal events');
+      assert(JSON.stringify(StorageService.getTests()) === JSON.stringify([testResult]),
+        'The local test archive must contain exactly one copy of the result');
+
+      const collision = await persistTestResultSnapshot({ ...testResult, score: 1 }, { journal, runExclusive: inlineLock });
+      const afterCollision = await journal.getSnapshot();
+      assert(!collision.success, 'A reused test ID with different content must be rejected');
+      assert(afterCollision.eventCount === 1 && JSON.stringify(StorageService.getTests()) === JSON.stringify([testResult]),
+        'A conflicting retry must not overwrite the stored result or append another event');
       journal.close();
     });
 
