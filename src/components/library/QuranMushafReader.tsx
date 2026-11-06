@@ -69,6 +69,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [tafsirAyah, setTafsirAyah] = useState<Ayah | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const autoPlayNextPageRef = useRef(false);
+  const pendingTargetRef = useRef<{ surahNumber: number; ayahNumber: number } | null>(null);
 
   const pageSegments = useMemo(() => PAGE_INDEX[String(page)] || [], [page]);
 
@@ -190,19 +191,29 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setPage(nextPage);
   };
 
+  const jumpToNavigationPoint = (point: NavigationPoint) => {
+    pendingTargetRef.current = { surahNumber: point.surahNumber, ayahNumber: point.ayahNumber };
+    if (point.page === page && ayahs.length) {
+      document.getElementById('wird-ayah-' + point.surahNumber + '-' + point.ayahNumber)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      pendingTargetRef.current = null;
+      return;
+    }
+    changePage(point.page);
+  };
+
   const jumpToJuz = (juz: number) => {
     const point = JUZ_INDEX[String(juz)];
-    if (point) changePage(point.page);
+    if (point) jumpToNavigationPoint(point);
   };
 
   const jumpToHizbQuarter = (quarter: number) => {
     const point = HIZB_INDEX[String(quarter)];
-    if (point) changePage(point.page);
+    if (point) jumpToNavigationPoint(point);
   };
 
   const jumpToSurah = (surahNumber: number) => {
     const surah = ALL_SURAHS.find(item => item.number === surahNumber);
-    if (surah) changePage(surah.pageStart);
+    if (surah) jumpToNavigationPoint({ surahNumber, ayahNumber: 1, page: surah.pageStart });
   };
 
   const submitPageJump = () => changePage(Number(pageInput));
@@ -214,6 +225,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
       return next;
     });
   };
+
+  useEffect(() => {
+    const target = pendingTargetRef.current;
+    if (!target || isLoading || !ayahs.length) return;
+    if (!ayahs.some(ayah => ayah.surahNumber === target.surahNumber && ayah.numberInSurah === target.ayahNumber)) return;
+    document.getElementById('wird-ayah-' + target.surahNumber + '-' + target.ayahNumber)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    pendingTargetRef.current = null;
+  }, [ayahs, isLoading]);
 
   const handlePlaybackRateChange = (rate: PlaybackRate) => {
     const savedRate = savePlaybackRate(rate);
@@ -306,7 +325,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                       {ayah.surahNumber !== 1 && ayah.surahNumber !== 9 && <p className="mt-3 text-xl text-stone-700 dark:text-stone-300">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>}
                     </div>
                   )}
-                  <button type="button" onClick={() => setTafsirAyah(ayah)} title={`عرض تفسير سورة ${surah?.name || ayah.surahNumber} الآية ${ayah.numberInSurah}`} className={`inline rounded-lg px-1 text-right transition-colors hover:bg-amber-100/70 dark:hover:bg-stone-800 ${isCurrent ? 'bg-amber-100 dark:bg-amber-950/60' : ''}`}>
+                  <button id={\`wird-ayah-\${ayah.surahNumber}-\${ayah.numberInSurah}\`} type="button" onClick={() => setTafsirAyah(ayah)} title={`عرض تفسير سورة ${surah?.name || ayah.surahNumber} الآية ${ayah.numberInSurah}`} className={`inline rounded-lg px-1 text-right transition-colors hover:bg-amber-100/70 dark:hover:bg-stone-800 ${isCurrent ? 'bg-amber-100 dark:bg-amber-950/60' : ''}`}>
                     {ayah.text}{' '}
                     <span className="inline-flex h-7 w-7 translate-y-[-2px] items-center justify-center rounded-full border border-amber-400/70 text-[10px] font-sans text-amber-800 dark:text-amber-300">{ayah.numberInSurah}</span>
                   </button>
