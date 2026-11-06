@@ -96,12 +96,12 @@ function isValidMutation(value: unknown): value is OutboxMutation {
   if (!isRecord(value)) return false;
   return typeof value.mutationId === 'string' && value.mutationId.length > 0 && value.mutationId.length <= 128
     && typeof value.collection === 'string' && ALLOWED_COLLECTIONS.has(value.collection as SyncCollection)
-    && typeof value.documentId === 'string' && value.documentId.length > 0 && value.documentId.length <= 1500 && !value.documentId.includes('/')
+    && typeof value.documentId === 'string' && value.documentId.length > 0 && byteLength(value.documentId) <= 1500 && !value.documentId.includes('/') && !/[\\u0000-\\u001f]/.test(value.documentId)
     && (value.operation === 'upsert' || value.operation === 'tombstone')
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
     && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128
-    && isRecord(value.payload)
+    && isRecord(value.payload) && byteLength(JSON.stringify(value.payload)) <= MAX_MUTATION_PAYLOAD_BYTES
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
     && Number.isSafeInteger(value.nextAttemptAtMs) && Number(value.nextAttemptAtMs) >= 0
@@ -114,7 +114,11 @@ function createEmptyState(): OutboxState {
 
 function readState(): OutboxState {
   const raw = StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX);
-  if (raw === null) return createEmptyState();
+  if (raw === null) {
+    const empty = createEmptyState();
+    persistState(empty);
+    return empty;
+  }
   if (byteLength(raw) > MAX_OUTBOX_BYTES) {
     throw new Error('صندوق المزامنة أكبر من الحد الآمن؛ تم إيقاف التعديل لحماية البيانات الموجودة.');
   }
@@ -124,7 +128,7 @@ function readState(): OutboxState {
   catch { throw new Error('بيانات صندوق المزامنة تالفة؛ لم يتم استبدالها أو حذفها.'); }
 
   if (!isRecord(parsed) || parsed.schemaVersion !== 1 ||
-      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 ||
+      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 || parsed.deviceId.length > 128 ||
       !Array.isArray(parsed.pending) || parsed.pending.length > MAX_PENDING_MUTATIONS ||
       !Array.isArray(parsed.acknowledgedIds) || parsed.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS ||
       !parsed.pending.every(isValidMutation) ||
@@ -154,20 +158,32 @@ export const LocalSyncOutbox = {
     getActiveUid();
 
     if (!ALLOWED_COLLECTIONS.has(input.collection)) throw new Error('مجموعة مزامنة غير مسموح بها.');
-    if (!input.documentId || input.documentId.length > 1500 || input.documentId.includes('/')) {
+    if (!input.documentId || byteLength(input.documentId) > 1500 || input.documentId.includes('/') || /[\\u0000-\\u001f]/.test(input.documentId)) {
       throw new Error('معرّف مستند المزامنة غير صالح.');
     }
-    const operation = input.operation || 'upsert';
-    const payloadJson = JSON.stringify(input.payload);
+    const operation = input.operation ?? 'upsert';
+    if (operation !== 'upsert' && operation !== 'tombstone') throw new Error('نوع عملية المزامنة غير مسموح به.');
+    if (!isRecord(input.payload)) throw new Error('حمولة عملية المزامنة يجب أن تكون كائناً صالحاً.');
+    let payloadJson: string;
+    try { payloadJson = JSON.stringify(input.payload); }
+    catch { throw new Error('تعذر تحويل بيانات العملية إلى صيغة قابلة للحفظ.'); }
     if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
     const mutationId = input.mutationId || createUuid();
-    if (!mutationId || mutationId.length > 128) throw new Error('معرّف العملية غير صالح.');
+    if (!mutationId || mutationId.length > 128 || /[\\u0000-\\u001f/]/.test(mutationId)) throw new Error('معرّف العملية غير صالح.');
+    const canonicalPayload = JSON.parse(payloadJson) as Record<string, unknown>;
 
     const state = readState();
     const existing = state.pending.find(item => item.mutationId === mutationId);
-    if (existing) return { status: 'already_pending', mutation: { ...existing } };
+    if (existing) {
+      const sameMutation = existing.collection === input.collection &&
+        existing.documentId === input.documentId &&
+        existing.operation === operation &&
+        JSON.stringify(existing.payload) === payloadJson;
+      if (!sameMutation) throw new Error('معرّف المزامنة مستخدم مسبقاً لبيانات مختلفة؛ أوقفنا العملية لمنع إسقاط تعديل جديد.');
+      return { status: 'already_pending', mutation: { ...existing } };
+    }
     if (state.acknowledgedIds.includes(mutationId)) {
       return { status: 'already_acknowledged', mutationId };
     }
@@ -185,7 +201,7 @@ export const LocalSyncOutbox = {
       schemaVersion: 1,
       clientUpdatedAtMs: now,
       deviceId: state.deviceId,
-      payload: input.payload,
+      payload: canonicalPayload,
       queuedAtMs: now,
       attemptCount: 0,
       nextAttemptAtMs: 0

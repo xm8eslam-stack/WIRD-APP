@@ -34,6 +34,37 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
       assert(LocalSyncOutbox.getSnapshot().pendingCount === 1, 'Duplicate enqueue must not duplicate the queue');
     });
 
+    test('A mutation ID collision with different data is rejected, never silently ignored', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      LocalSyncOutbox.enqueue({ mutationId: 'collision-id', collection: 'activityEvents', documentId: 'event-1', payload: { ayahs: 5 }, nowMs: 1100 });
+      let rejected = false;
+      try {
+        LocalSyncOutbox.enqueue({ mutationId: 'collision-id', collection: 'activityEvents', documentId: 'event-1', payload: { ayahs: 8 }, nowMs: 1200 });
+      } catch { rejected = true; }
+      assert(rejected, 'Same ID with changed payload must be rejected');
+      assert(LocalSyncOutbox.listReady(1300)[0].payload.ayahs === 5, 'Original queued payload must remain unchanged');
+    });
+
+    test('Outbox device identity is stable even before the first mutation', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      const first = LocalSyncOutbox.getSnapshot();
+      const second = LocalSyncOutbox.getSnapshot();
+      assert(first.deviceId === second.deviceId, 'Reading an empty outbox must persist its device identity');
+    });
+
+    test('Invalid payloads, operations, and oversized UTF-8 document IDs are rejected', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      let invalidPayload = false, invalidOperation = false, oversizedUtf8Id = false;
+      try { LocalSyncOutbox.enqueue({ collection: 'activityEvents', documentId: 'null-payload', payload: null as any }); } catch { invalidPayload = true; }
+      try { LocalSyncOutbox.enqueue({ collection: 'activityEvents', documentId: 'bad-operation', operation: 'delete' as any, payload: {} }); } catch { invalidOperation = true; }
+      try { LocalSyncOutbox.enqueue({ collection: 'activityEvents', documentId: 'é'.repeat(800), payload: {} }); } catch { oversizedUtf8Id = true; }
+      assert(invalidPayload && invalidOperation && oversizedUtf8Id, 'Malformed values must be rejected before changing persistent state');
+      assert(LocalSyncOutbox.getSnapshot().pendingCount === 0, 'Rejected inputs must not corrupt or enqueue into the outbox');
+    });
+
     test('Acknowledged mutation IDs cannot be re-enqueued', () => {
       reset();
       StorageService.setStorageScope('user:alpha');
