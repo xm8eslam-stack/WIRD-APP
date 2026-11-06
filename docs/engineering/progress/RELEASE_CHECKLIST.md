@@ -63,4 +63,5 @@
 
 - [x] Verify Phase 2 queue/metrics regression tests in CI: legacy initial-memorization history, unique review event totals, average ease denominator, daily/weekly priority consistency, 20-item cap, impossible dates, future-record validation, and required weak-ayah text (PR #11, Actions #708).
 - [x] Verify weak-verse quota failure, rollback failure/recovery warning, and profile quota failure after successful portion/weak-verse/activity writes in CI (PR #12, Actions #741).
-- [ ] Verify silent-write/read-back mismatch handling and remaining multi-key mutation paths before marking Phase 2 complete.
+- [x] Verify silent no-op write, mismatched write, silent removal, and weak-verse rollback behavior in CI (PR #13, Actions #759).
+- [ ] Audit remaining multi-key mutation paths for rollback completeness and recovery-state reporting before marking Phase 2 complete.
