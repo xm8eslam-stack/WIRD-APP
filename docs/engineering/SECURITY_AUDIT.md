@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `ef694d8c244e7b616f65b81af462a94b8005ade6`  
+**Audited HEAD:** `00543fd826f4e03ae14cf9eacd5dd018e6e9af34`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -19,10 +19,11 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Auth gating | Verified-user gating exists in AuthGate; unauthenticated/guest/verified account states are separated |
 | Local account isolation | Authenticated local data is scoped by exact Firebase UID; guest data remains separate |
 | Legacy local data | First authenticated account receives an explicit import-or-keep-as-guest decision |
-| Weak-verse persistence | Uses centralized StorageService; malformed/corrupt archives are preserved and block writes rather than becoming an empty list |
+| Weak-verse persistence | Uses centralized StorageService; malformed/corrupt archives are preserved and block writes rather than becoming an empty list; coordinates are checked against canonical Surah metadata |
 | Durable local writes | Failed localStorage writes no longer leak through memory fallback as successful writes |
 | Activity/streak write | Session log/profile write reports failure and attempts rollback rather than silently claiming success |
 | Session completion boundary | `persistSessionCompletion` validates exact Quran coordinates and rolls back the newly saved portion if activity/streak persistence fails |
+| Revision rating transaction | Portion rating and weak-verse writes roll back together if weak-verse or activity/streak persistence fails; restoration is verified |
 | Review vs memorization | Review sessions no longer add memorized ayahs or create memorization portions |
 | Retention score | Overlapping ranges count each ayah once; weakest overlapping status wins |
 | Review page count | Uses canonical Mushaf page mapping rather than an ayah-count estimate |
@@ -82,8 +83,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run: [42172283822](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42172283822) — success.
-- Automated test suites: 237 passed, 0 failed.
+Latest Actions run: [42178408517](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42178408517) — success.
+- Automated test suites: 248 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.

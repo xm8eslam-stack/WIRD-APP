@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `ef694d8c244e7b616f65b81af462a94b8005ade6`
+**Current audited HEAD:** `00543fd826f4e03ae14cf9eacd5dd018e6e9af34`
 
 ## Operating rules
 
@@ -50,6 +50,7 @@
 - Backup import UI checks the explicit result flag and reports read/import failures accurately.
 - Failed backup imports verify the previous localStorage/memory snapshot was restored; failure to restore is reported distinctly.
 - Weak-verse reads now validate the archive and throw a recovery-safe error on malformed/corrupt data instead of returning `[]`; saves validate bounded fields. This prevents a later mistake update from overwriting a damaged archive.
+- Weak-verse writes validate Surah/ayah coordinates against canonical Quran metadata. The revision center degrades safely if the weak-verse archive is damaged, and revision rating now restores its portion/archive snapshot when dependent writes fail.
 - Retention mutations fail visibly if canonical progress cannot be persisted.
 - Overlapping memorization portions count each ayah once in the retention score; the weakest overlapping status wins.
 - Review page counts use canonical Mushaf page/ayah mappings rather than an estimate.
