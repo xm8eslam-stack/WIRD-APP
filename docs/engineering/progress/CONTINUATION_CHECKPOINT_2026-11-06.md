@@ -7,7 +7,7 @@
 - PR #43 exact-head PR/push runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed.
 - PR #44 exact-head PR/push runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed.
 - PR #45 exact-head PR/push runs `42261861919` and `42261851120` passed; post-merge main run `42262136009` passed.
-- PR #47 exact-head PR/push runs `42264220176` and `42264210902` passed on `7a476f5439091110bd3254b3498499335dd47be2`; post-merge main run `42264485087` is **in progress** on the current main SHA.
+- PR #47 exact-head PR/push runs `42264220176` and `42264210902` passed on `7a476f5439091110bd3254b3498499335dd47be2`; post-merge main run `42264485087` **passed** on the current main SHA.
 - Vercel Production deployment for current main is not confirmed. Recheck the exact main run before marking post-merge verification complete.
 
 ## Completed since the previous checkpoint
