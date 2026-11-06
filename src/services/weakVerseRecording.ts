@@ -1,5 +1,6 @@
 import type { PortionStatusRecord } from '../types/quran';
 import { RetentionService } from './retentionService';
+import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
 import { ALL_SURAHS } from '../data/quranMeta';
 
@@ -28,6 +29,16 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     return { success: false, messageAr: 'نص الآية أو الملاحظة غير صالح؛ لم يتم حفظ التغيير.' };
   }
   const previousPortions = RetentionService.getPortions();
+  const transactionSnapshot = StorageService.captureRawSnapshot([
+    STORAGE_KEYS.UNIFIED_PORTIONS,
+    STORAGE_KEYS.SCHEMA_VERSION,
+    STORAGE_KEYS.PORTIONS,
+    STORAGE_KEYS.REVISION,
+    STORAGE_KEYS.WEAK_VERSES
+  ]);
+  if (!transactionSnapshot.available) {
+    return { success: false, messageAr: 'تعذر قراءة أرشيفات الحفظ والآيات المتعثرة والتحقق منها؛ لم يبدأ التسجيل لحماية بياناتك.' };
+  }
   const existingExactPortion = previousPortions.find(portion =>
     portion.surahNumber === input.surahNumber &&
     portion.startAyah === input.ayahNumber &&
@@ -59,12 +70,12 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     );
     return { success: true };
   } catch (error) {
-    const rollbackSucceeded = RetentionService.savePortions(previousPortions);
+    const rollback = StorageService.restoreRawSnapshot(transactionSnapshot);
     return {
       success: false,
-      messageAr: rollbackSucceeded
-        ? (error instanceof Error ? error.message : 'تعذر تسجيل الآية المتعثرة؛ أُعيد سجل المقاطع إلى حالته السابقة.')
-        : 'تعذر تسجيل الآية المتعثرة، كما تعذر التحقق من استعادة سجل المقاطع السابق. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.'
+      messageAr: rollback.success
+        ? (error instanceof Error ? error.message : 'تعذر تسجيل الآية المتعثرة؛ أُعيدت جميع الأرشيفات إلى حالتها السابقة.')
+        : 'تعذر تسجيل الآية المتعثرة، كما تعذر التحقق من استعادة بعض الأرشيفات (' + rollback.failedKeys.join('، ') + '). لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.'
     };
   }
 }
