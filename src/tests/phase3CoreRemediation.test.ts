@@ -268,6 +268,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(migrated.length === 1, 'Migration coalesces duplicate portions and revisions into 1 canonical record');
     assert(migrated[0].id === 's18_a1_a10', 'Migrated record uses canonical ID (s18_a1_a10)');
     assert(migrated[0].status === 'weak', 'Conflict resolution: weakest status (weak) wins');
+    assert(migrated[0].strength === 'weak', 'Conflict resolution must not retain a stronger label after a weaker status wins');
     assert(migrated[0].repetitionCount === 5, 'Conflict resolution: highest repetition count (5) preserved');
     assert(migrated[0].nextDueDate === '2026-04-12', 'Conflict resolution: earliest nextDueDate preserved');
     assert(migrated[0].history?.length === 2, 'Lossless history: duplicate log ID with differing content is preserved with modified ID');
