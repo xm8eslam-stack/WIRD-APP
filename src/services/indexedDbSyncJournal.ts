@@ -79,6 +79,30 @@ interface DeviceMetadata {
   uid: string;
   deviceId: string;
   schemaVersion: 1;
+  legacyOutboxMigrated?: boolean;
+}
+
+export interface LegacyOutboxMutation {
+  mutationId: string;
+  collection: SyncCollection;
+  documentId: string;
+  operation: SyncOperation;
+  schemaVersion: 1;
+  clientUpdatedAtMs: number;
+  deviceId: string;
+  payload: Record<string, unknown>;
+  queuedAtMs: number;
+  attemptCount: number;
+  nextAttemptAtMs: number;
+  lastErrorCode?: string;
+}
+
+export interface LegacyOutboxState {
+  schemaVersion: 1;
+  deviceId: string;
+  pending: LegacyOutboxMutation[];
+  acknowledgedIds: string[];
+  acknowledgedFingerprints: Array<{ mutationId: string; fingerprint: string }>;
 }
 
 export type JournalEnqueueResult =
@@ -236,6 +260,181 @@ export class IndexedDbSyncJournal {
       };
     });
     return this.databasePromise;
+  }
+
+  /**
+   * Import the v1 localStorage outbox as one IndexedDB transaction. The caller
+   * removes the legacy localStorage key only after this method commits.
+   */
+  async importLegacyState(state: LegacyOutboxState): Promise<'migrated' | 'already_migrated'> {
+    const uid = activeUid();
+    if (!state || state.schemaVersion !== 1 || typeof state.deviceId !== 'string' ||
+        !state.deviceId || state.deviceId.length > 128 || /[\u0000-\u001f]/.test(state.deviceId) ||
+        !Array.isArray(state.pending) || state.pending.length > MAX_PENDING_MUTATIONS ||
+        !Array.isArray(state.acknowledgedIds) || state.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS ||
+        !Array.isArray(state.acknowledgedFingerprints)) {
+      throw new Error('بنية صندوق المزامنة القديم غير صالحة؛ تم الحفاظ على النسخة الأصلية دون تعديل.');
+    }
+
+    const fingerprints = new Map<string, string>();
+    for (const item of state.acknowledgedFingerprints) {
+      if (!item || !validMutationId(item.mutationId) || typeof item.fingerprint !== 'string' ||
+          !/^[0-9a-f]{16}$/.test(item.fingerprint) || fingerprints.has(item.mutationId)) {
+        throw new Error('بصمات صندوق المزامنة القديم غير صالحة؛ لم يتم بدء الترحيل.');
+      }
+      fingerprints.set(item.mutationId, item.fingerprint);
+    }
+
+    const pendingIds = new Set<string>();
+    for (const item of state.pending) {
+      if (!item || !validMutationId(item.mutationId) || pendingIds.has(item.mutationId) ||
+          !ALLOWED_COLLECTIONS.has(item.collection) || typeof item.documentId !== 'string' ||
+          !item.documentId || item.documentId.includes('/') || byteLength(item.documentId) > 1500 ||
+          (item.operation !== 'upsert' && item.operation !== 'tombstone') || item.schemaVersion !== 1 ||
+          item.deviceId !== state.deviceId || !isRecord(item.payload) ||
+          byteLength(JSON.stringify(item.payload)) > MAX_MUTATION_PAYLOAD_BYTES ||
+          !Number.isSafeInteger(item.clientUpdatedAtMs) || item.clientUpdatedAtMs < 0 ||
+          !Number.isSafeInteger(item.queuedAtMs) || item.queuedAtMs < 0 ||
+          !Number.isSafeInteger(item.attemptCount) || item.attemptCount < 0 ||
+          !Number.isSafeInteger(item.nextAttemptAtMs) || item.nextAttemptAtMs < 0 ||
+          (item.lastErrorCode !== undefined && (typeof item.lastErrorCode !== 'string' || item.lastErrorCode.length > 64))) {
+        throw new Error('تحتوي قائمة العمليات القديمة على سجل غير صالح؛ لم يتم بدء الترحيل.');
+      }
+      pendingIds.add(item.mutationId);
+    }
+
+    const acknowledgedIds = new Set<string>();
+    for (const id of state.acknowledgedIds) {
+      if (!validMutationId(id) || acknowledgedIds.has(id) || pendingIds.has(id)) {
+        throw new Error('معرفات الإقرار في صندوق المزامنة القديم متكررة أو متعارضة؛ لم يتم بدء الترحيل.');
+      }
+      acknowledgedIds.add(id);
+    }
+
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_EVENTS, STORE_OUTBOX, STORE_ACKNOWLEDGEMENTS, STORE_METADATA],
+        'readwrite'
+      );
+      const events = transaction.objectStore(STORE_EVENTS);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const acknowledgements = transaction.objectStore(STORE_ACKNOWLEDGEMENTS);
+      const metadata = transaction.objectStore(STORE_METADATA);
+      const metadataRequest = metadata.get(uid);
+      const outboxRequest = outbox.index('uid').getAll(IDBKeyRange.only(uid));
+      const eventRequest = events.index('uid').getAll(IDBKeyRange.only(uid));
+      const acknowledgementRequest = acknowledgements.index('uid').getAll(IDBKeyRange.only(uid));
+      let readsRemaining = 4;
+      let result: 'migrated' | 'already_migrated' | undefined;
+      let failure: Error | undefined;
+      let currentMetadata: DeviceMetadata | undefined;
+      let currentOutbox: JournalOutboxEntry[] = [];
+      let currentEvents: JournalEvent[] = [];
+      let currentAcknowledgements: AcknowledgementRecord[] = [];
+
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure || result) return;
+        if (currentMetadata?.legacyOutboxMigrated) {
+          result = 'already_migrated';
+          return;
+        }
+
+        const outboxByKey = new Map(currentOutbox.map(item => [item.key, item]));
+        const eventsByKey = new Map(currentEvents.map(item => [item.key, item]));
+        const acknowledgementsByKey = new Map(currentAcknowledgements.map(item => [item.key, item]));
+        let pendingCount = currentOutbox.length;
+
+        for (const legacy of state.pending) {
+          const key = uid + ':' + legacy.mutationId;
+          const fingerprint = fingerprintMutation(legacy.collection, legacy.documentId, legacy.operation, legacy.payload);
+          const existingOutbox = outboxByKey.get(key);
+          const existingAck = acknowledgementsByKey.get(key);
+          const existingEvent = eventsByKey.get(key);
+          if (existingOutbox && existingOutbox.fingerprint !== fingerprint) {
+            failure = new Error('يوجد تعارض بين صندوق المزامنة القديم والحديث لنفس المعرف؛ أوقفنا الترحيل لحماية البيانات.');
+            return;
+          }
+          if (existingAck && existingAck.fingerprint !== fingerprint) {
+            failure = new Error('يتعارض سجل قديم مع عملية أُقرّت سابقاً؛ لم يتم استبدال أي سجل.');
+            return;
+          }
+          if (existingEvent && existingEvent.fingerprint !== fingerprint) {
+            failure = new Error('سجل الأحداث يحتوي على محتوى مختلف لنفس المعرف؛ تم إيقاف الترحيل.');
+            return;
+          }
+          if (existingAck) continue;
+
+          const mutation: JournalOutboxEntry = {
+            ...legacy,
+            key,
+            uid,
+            eventId: legacy.mutationId,
+            fingerprint
+          };
+          if (!existingEvent) {
+            events.add({
+              key, uid, eventId: legacy.mutationId, mutationId: legacy.mutationId,
+              eventType: 'domain-mutation', collection: legacy.collection,
+              documentId: legacy.documentId, operation: legacy.operation,
+              schemaVersion: 1, clientUpdatedAtMs: legacy.clientUpdatedAtMs,
+              createdAtMs: legacy.queuedAtMs, deviceId: legacy.deviceId,
+              payload: legacy.payload, fingerprint
+            } satisfies JournalEvent);
+          }
+          if (!existingOutbox) {
+            outbox.add(mutation);
+            pendingCount++;
+          }
+        }
+
+        for (const id of state.acknowledgedIds) {
+          const key = uid + ':' + id;
+          const existingAck = acknowledgementsByKey.get(key);
+          if (existingAck) continue;
+          const existingOutbox = outboxByKey.get(key);
+          if (existingOutbox) {
+            outbox.delete(key);
+            pendingCount--;
+          }
+          acknowledgements.put({
+            key, uid, mutationId: id,
+            fingerprint: fingerprints.get(id) || 'legacy-unknown',
+            acknowledgedAtMs: Date.now()
+          } satisfies AcknowledgementRecord);
+        }
+
+        if (pendingCount > MAX_PENDING_MUTATIONS) {
+          failure = new Error('ترحيل صندوق المزامنة سيتجاوز السعة الآمنة؛ احتفظ بالنسخة القديمة كما هي.');
+          transaction.abort();
+          return;
+        }
+
+        metadata.put({
+          uid,
+          deviceId: currentMetadata?.deviceId || state.deviceId,
+          schemaVersion: 1,
+          legacyOutboxMigrated: true
+        } satisfies DeviceMetadata);
+        result = 'migrated';
+      };
+
+      metadataRequest.onsuccess = () => { currentMetadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      outboxRequest.onsuccess = () => { currentOutbox = outboxRequest.result as JournalOutboxEntry[]; finishRead(); };
+      eventRequest.onsuccess = () => { currentEvents = eventRequest.result as JournalEvent[]; finishRead(); };
+      acknowledgementRequest.onsuccess = () => { currentAcknowledgements = acknowledgementRequest.result as AcknowledgementRecord[]; finishRead(); };
+
+      transaction.oncomplete = () => {
+        if (failure) reject(failure);
+        else if (result) resolve(result);
+        else reject(new Error('اكتملت معاملة ترحيل صندوق المزامنة دون نتيجة مؤكدة.'));
+      };
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Legacy outbox migration transaction aborted.')));
+      transaction.onerror = () => {
+        // IndexedDB aborts the complete migration if any add/put/delete request fails.
+      };
+    });
   }
 
   async enqueue(input: JournalMutationInput): Promise<JournalEnqueueResult> {
