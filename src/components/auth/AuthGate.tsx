@@ -3,6 +3,7 @@ import { BookOpen, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StorageService } from '../../services/storageService';
 import { replayJournalProjection } from '../../services/journalProjectionReplayer';
+import { migrateLegacyPortionsJournaled } from '../../services/backupPersistence';
 import { AuthScreen } from './AuthScreen';
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -40,6 +41,8 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         if (storageScope.startsWith('user:')) {
           await replayJournalProjection();
         }
+        const migration = await migrateLegacyPortionsJournaled();
+        if (!migration.success) throw new Error(migration.message);
         if (!cancelled && StorageService.getStorageScope() === storageScope) {
           setReadyScope(storageScope);
         }
@@ -70,6 +73,8 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     setScopeErrorMessage('');
     try {
       if (targetScope.startsWith('user:')) await replayJournalProjection();
+      const migration = await migrateLegacyPortionsJournaled();
+      if (!migration.success) throw new Error(migration.message);
       if (StorageService.getStorageScope() === targetScope) setReadyScope(targetScope);
     } catch (error) {
       setScopeErrorMessage(error instanceof Error ? error.message : 'تعذر استعادة سجل المزامنة المحلي.');
