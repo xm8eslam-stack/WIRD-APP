@@ -51,6 +51,60 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
+  test('Session persistence warns when a partial activity write cannot be rolled back', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const today = getLocalDateString();
+    const originalLogs = JSON.stringify([{
+      date: today, memorizedAyahsCount: 1, reviewedPagesCount: 0,
+      minutesSpent: 2, completedTasks: ['نشاط سابق']
+    }]);
+    const values = new Map<string, string>();
+    let logWrites = 0;
+    let failProfileWrites = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key.endsWith(STORAGE_KEYS.LOGS)) {
+            logWrites++;
+            if (logWrites >= 2) throw new Error('persistent activity rollback quota failure');
+          }
+          if (failProfileWrites && key.endsWith(STORAGE_KEYS.PROFILE)) {
+            throw new Error('simulated profile quota failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:session-rollback-unverified');
+      values.set('wird_scope_v1:user:session-rollback-unverified:' + STORAGE_KEYS.LOGS, originalLogs);
+      assert(StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, lastActiveDate: today, streakDays: 0 }),
+        'Original profile fixture should save');
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      failProfileWrites = true;
+      const result = persistSessionCompletion({
+        mode: 'memorize', memorizedAyahs: 5, reviewedPages: 0, minutes: 6,
+        taskName: 'جلسة لا يمكن التراجع عنها', surahNumber: 67, startAyah: 1, endAyah: 5
+      });
+      assert(!result.success, 'A partially persisted session must not report success');
+      assert(result.messageAr.includes('لا تغلق الصفحة') && result.messageAr.includes('نسخة احتياطية'),
+        'The user must receive an explicit recovery-required warning when rollback cannot be verified');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'The portion archive should still be restored when the activity archive cannot be restored');
+      const storedLogs = values.get('wird_scope_v1:user:session-rollback-unverified:' + STORAGE_KEYS.LOGS);
+      assert(storedLogs !== originalLogs,
+        'The fixture must retain the partial activity write to prove the recovery warning is necessary');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Repeated memorization completion preserves review history and does not upgrade weak status', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:repeat-memorization-history');
