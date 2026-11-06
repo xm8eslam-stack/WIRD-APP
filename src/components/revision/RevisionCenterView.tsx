@@ -75,6 +75,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const weakVerseMutationIdRef = useRef<string | null>(null);
   const weakVerseMutationKeyRef = useRef<string | null>(null);
   const weakVerseInFlightRef = useRef(false);
+  const [isSavingWeakVerse, setIsSavingWeakVerse] = useState(false);
 
   // Add new portion modal
   const [isAddPortionModalOpen, setIsAddPortionModalOpen] = useState(false);
@@ -267,7 +268,6 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
     const mutationId = weakVerseMutationIdRef.current || 'weak-' + createSecureId();
     weakVerseMutationIdRef.current = mutationId;
-    weakVerseMutationIdRef.current = mutationId;
     const prepared = buildWeakVerseFailureTransaction({
       surahNumber: weakSurahNum,
       surahName: surah.name,
@@ -277,6 +277,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }, mutationId);
     if (!prepared.success) {
       weakVerseMutationIdRef.current = null;
+      weakVerseMutationKeyRef.current = null;
       setActionFeedback({ message: prepared.messageAr, type: 'warn' });
       return;
     }
@@ -291,6 +292,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       return;
     }
     weakVerseInFlightRef.current = false;
+    setIsSavingWeakVerse(false);
     let projectionsMatch = false;
     try {
       projectionsMatch = JSON.stringify(RetentionService.getPortions()) ===
@@ -1213,9 +1215,10 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-bold"
+                  disabled={isSavingWeakVerse}
+                  className="px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-bold disabled:opacity-60"
                 >
-                  تسجيل الآية الملتبسة
+                  {isSavingWeakVerse ? 'جارٍ حفظ الآية...' : 'تسجيل الآية الملتبسة'}
                 </button>
               </div>
             </form>
