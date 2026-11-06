@@ -87,7 +87,7 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
         mode: 'memorize', memorizedAyahs: 5, reviewedPages: 0, minutes: 6,
         taskName: 'جلسة فشل استعادة', surahNumber: 67, startAyah: 1, endAyah: 5
       });
-      assert(!result.success, 'Session must fail when the profile write cannot be restored');
+      if (result.success) throw new Error('Session must fail when the profile write cannot be restored');
       assert(result.messageAr.includes('لم ينجح التحقق'), 'The user must receive an explicit recovery-required warning');
       assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
         'The memorization portion must still be restored even when profile rollback fails');
