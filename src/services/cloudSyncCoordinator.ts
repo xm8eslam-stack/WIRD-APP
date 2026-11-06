@@ -207,8 +207,8 @@ class CloudSyncCoordinator {
               const existingEvent = await getDoc(eventRef);
               if (existingEvent.exists()) {
                 const remote = existingEvent.data();
-                const matches = Object.keys(eventRecord).every((key) =>
-                  stableSerialize(remote[key]) === stableSerialize(eventRecord[key])
+                const matches = Object.entries(eventRecord).every(([key, value]) =>
+                  stableSerialize(remote[key]) === stableSerialize(value)
                 );
                 if (!matches) {
                   throw new Error('يوجد تعارض في سجل المزامنة لنفس معرف العملية؛ تم الاحتفاظ بالعملية المحلية دون استبدال السجل السحابي.');
