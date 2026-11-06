@@ -356,6 +356,19 @@ function isValidRevisionItem(value: unknown): value is RevisionItem {
     ['strong', 'medium', 'weak'].includes(value.strength);
 }
 
+function isValidLegacyRevisionItem(value: unknown): boolean {
+  if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return (value.id === undefined || (typeof value.id === 'string' && value.id.length <= 160)) &&
+    (value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100)) &&
+    (value.type === undefined || ['minor', 'major'].includes(value.type)) &&
+    (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
+    (value.nextDueDate === undefined || value.nextDueDate === '' || isValidDateOnly(value.nextDueDate)) &&
+    isValidOptionalPage(value.pageNumber) && isValidOptionalJuz(value.juzNumber) &&
+    (value.intervalDays === undefined || isIntegerBetween(value.intervalDays, 0, 100000)) &&
+    (value.easeFactor === undefined || isFiniteBetween(value.easeFactor, 0.1, 3)) &&
+    (value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000)) &&
+    (value.strength === undefined || ['strong', 'medium', 'weak'].includes(value.strength));
+}
 function isValidTestResultRecord(value: unknown): value is TestResult {
   if (!isPlainRecord(value)) return false;
   return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
@@ -383,7 +396,28 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
   const expectedId = 's' + value.surahNumber + '_a' + value.startAyah + '_a' + value.endAyah;
   const validStatuses = ['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak'];
   const validTypes = ['passage', 'surah', 'page'];
-  const nextDueValid = (value.nextDueDate === '' && value.status === 'not_memorized') || isValidDateOnly(value.nextDueDate);
+  const idValid = requireCanonicalId
+    ? value.id === expectedId
+    : value.id === undefined || (typeof value.id === 'string' && value.id.length <= 180);
+  const nameValid = requireCanonicalId
+    ? typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100
+    : value.surahName === undefined || value.surahName === '' ||
+      (typeof value.surahName === 'string' && value.surahName.length <= 100);
+  const statusValid = requireCanonicalId
+    ? validStatuses.includes(value.status)
+    : value.status === undefined || validStatuses.includes(value.status);
+  const nextDueValid = requireCanonicalId
+    ? isValidDateOnly(value.nextDueDate)
+    : value.nextDueDate === undefined || value.nextDueDate === '' || isValidDateOnly(value.nextDueDate);
+  const intervalValid = requireCanonicalId
+    ? isIntegerBetween(value.intervalDays, 1, 100000)
+    : value.intervalDays === undefined || isIntegerBetween(value.intervalDays, 0, 100000);
+  const easeValid = requireCanonicalId
+    ? isFiniteBetween(value.easeFactor, 1.3, 3)
+    : value.easeFactor === undefined || isFiniteBetween(value.easeFactor, 0.1, 3);
+  const repetitionValid = requireCanonicalId
+    ? isIntegerBetween(value.repetitionCount, 0, 100000)
+    : value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000);
   const historyValid = value.history === undefined ||
     (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(isValidRevisionLogRecord));
   const auditValid = value.conflictAudit === undefined ||
@@ -392,15 +426,9 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
         typeof item.source === 'string' && item.source.length <= 160 &&
         typeof item.field === 'string' && item.field.length <= 160 &&
         (item.timestamp === undefined || isValidTimestamp(item.timestamp))));
-  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
-    (!requireCanonicalId || (value.id === expectedId && value.type !== undefined && isValidDateOnly(value.nextDueDate) && isIntegerBetween(value.intervalDays, 1, 100000))) &&
-    (value.type === undefined || validTypes.includes(value.type)) &&
-    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
-    validStatuses.includes(value.status) && nextDueValid &&
+  return idValid && nameValid && statusValid && nextDueValid && intervalValid && easeValid && repetitionValid &&
+    (value.type === undefined ? !requireCanonicalId : validTypes.includes(value.type)) &&
     (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidDateOnly(value.lastReviewedDate)) &&
-    isIntegerBetween(value.intervalDays, 0, 100000) &&
-    isFiniteBetween(value.easeFactor, 1.3, 3) &&
-    isIntegerBetween(value.repetitionCount, 0, 100000) &&
     (value.mistakesCount === undefined || isIntegerBetween(value.mistakesCount, 0, 100000)) &&
     isValidOptionalPage(value.pageNumber) && isValidOptionalPage(value.pageStart) && isValidOptionalPage(value.pageEnd) &&
     (value.pageStart === undefined || value.pageEnd === undefined || value.pageStart <= value.pageEnd) &&
@@ -411,7 +439,6 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
     (value.updatedAt === undefined || isValidTimestamp(value.updatedAt)) &&
     historyValid && auditValid;
 }
-
 function isValidPlanGenerationInput(value: unknown): boolean {
   if (!isPlainRecord(value) || !isValidSurahRange(value.startSurah, value.startAyah, value.startAyah) ||
       !isValidSurahRange(value.endSurah, value.endAyah, value.endAyah)) return false;
@@ -671,7 +698,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
   }> = [
     { field: 'plans', max: 500, validate: isValidMemorizationPlan, label: 'خطط الحفظ' },
     { field: 'enginePlans', max: 100, validate: isValidEngineGeneratedPlan, label: 'الخطط الذكية' },
-    { field: 'revisionItems', max: 10000, validate: isValidRevisionItem, label: 'عناصر المراجعة' },
+    { field: 'revisionItems', max: 10000, validate: payload.version < 4 ? isValidLegacyRevisionItem : isValidRevisionItem, label: 'عناصر المراجعة' },
     { field: 'logs', max: 10000, validate: isValidDailyLog, label: 'سجل النشاط اليومي' },
     { field: 'tests', max: 50, validate: isValidTestResultRecord, label: 'نتائج الاختبارات' },
     { field: 'portions', max: 10000, validate: value => isValidPortionRecord(value, false), label: 'المقاطع القديمة' },
