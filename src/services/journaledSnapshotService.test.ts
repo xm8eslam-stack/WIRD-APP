@@ -66,7 +66,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'Progress, activity, and profile must share one durable event/outbox pair');
       assert(storedDomainEvent !== undefined && storedDomainEvent.type === 'session.completed' && storedDomainEvent.id.startsWith('session-'),
         'The journal envelope must retain a typed, immutable session-completed domain event');
-      assert(storedDomainEvent?.occurredAt === new Date(storedDomainEvent.occurredAt).toISOString(),
+      assert(storedDomainEvent !== undefined && storedDomainEvent.occurredAt === new Date(storedDomainEvent.occurredAt).toISOString(),
         'Session domain-event timestamps must be stable ISO timestamps');
       journal.close();
     });
