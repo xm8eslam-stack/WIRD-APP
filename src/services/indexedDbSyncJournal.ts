@@ -413,6 +413,8 @@ export class IndexedDbSyncJournal {
         const eventsByKey = new Map(currentEvents.map(item => [item.key, item]));
         const acknowledgementsByKey = new Map(currentAcknowledgements.map(item => [item.key, item]));
         let pendingCount = currentOutbox.length;
+        let nextSequence = currentMetadata?.nextSequence ||
+          (Math.max(0, ...currentEvents.map(event => event.sequence || 0)) + 1);
 
         for (const legacy of state.pending) {
           const key = uid + ':' + legacy.mutationId;
@@ -451,7 +453,7 @@ export class IndexedDbSyncJournal {
               documentId: legacy.documentId, operation: legacy.operation,
               schemaVersion: 1, clientUpdatedAtMs: legacy.clientUpdatedAtMs,
               createdAtMs: legacy.queuedAtMs, deviceId: legacy.deviceId,
-              payload: legacy.payload, fingerprint
+              payload: legacy.payload, fingerprint, sequence: nextSequence++
             } satisfies JournalEvent);
           }
           if (!existingOutbox) {
@@ -500,6 +502,8 @@ export class IndexedDbSyncJournal {
           uid,
           deviceId: currentMetadata?.deviceId || state.deviceId,
           schemaVersion: 1,
+          nextSequence,
+          lastProjectedSequence: currentMetadata?.lastProjectedSequence ?? 0,
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
@@ -599,6 +603,7 @@ export class IndexedDbSyncJournal {
         }
 
         const deviceId = deviceMetadata?.deviceId || createSecureId();
+        const sequence = deviceMetadata?.nextSequence ?? 1;
         const mutation: JournalOutboxEntry = {
           key,
           uid,
@@ -630,11 +635,19 @@ export class IndexedDbSyncJournal {
           createdAtMs: now,
           deviceId,
           payload,
-          fingerprint
+          fingerprint,
+          sequence
         };
         events.add(event);
         outbox.add(mutation);
-        metadata.put({ uid, deviceId, schemaVersion: 1 } satisfies DeviceMetadata);
+        metadata.put({
+          ...(deviceMetadata || {}),
+          uid,
+          deviceId,
+          schemaVersion: 1,
+          nextSequence: sequence + 1,
+          lastProjectedSequence: deviceMetadata?.lastProjectedSequence ?? 0
+        } satisfies DeviceMetadata);
         result = { status: 'queued', mutation: { ...mutation } };
       };
 
@@ -772,7 +785,7 @@ export class IndexedDbSyncJournal {
     const request = transaction.objectStore(STORE_EVENTS).index('uid').getAll(IDBKeyRange.only(uid));
     const events = await requestResult(request) as JournalEvent[];
     await completed;
-    return events.sort((a, b) => a.createdAtMs - b.createdAtMs || a.eventId.localeCompare(b.eventId));
+    return events.sort((a, b) => a.sequence - b.sequence);
   }
 
   async getSnapshot(): Promise<JournalSnapshot> {
@@ -786,13 +799,15 @@ export class IndexedDbSyncJournal {
     const metadataStore = transaction.objectStore(STORE_METADATA);
     const metadataRequest = metadataStore.get(uid);
     let deviceId = '';
+    let projectionCursor = 0;
     metadataRequest.onsuccess = () => {
       const metadata = metadataRequest.result as DeviceMetadata | undefined;
       if (metadata?.deviceId) {
         deviceId = metadata.deviceId;
+        projectionCursor = metadata.lastProjectedSequence ?? 0;
       } else {
         deviceId = createSecureId();
-        metadataStore.put({ uid, deviceId, schemaVersion: 1 } satisfies DeviceMetadata);
+        metadataStore.put({ uid, deviceId, schemaVersion: 1, nextSequence: 1, lastProjectedSequence: 0 } satisfies DeviceMetadata);
       }
     };
     const [pending, acknowledged, events] = await Promise.all([
@@ -804,7 +819,8 @@ export class IndexedDbSyncJournal {
       deviceId,
       pendingCount: (pending as JournalOutboxEntry[]).length,
       acknowledgedCount: (acknowledged as AcknowledgementRecord[]).length,
-      eventCount: (events as JournalEvent[]).length
+      eventCount: (events as JournalEvent[]).length,
+      projectionCursor
     };
   }
 
