@@ -47,6 +47,20 @@ export function buildWeakVerseFailureTransaction(
     const previousPortions = RetentionService.getPortions();
     const schemaVersion = StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION);
     const canonicalRaw = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+    const portionStorageKeys = [
+      STORAGE_KEYS.SCHEMA_VERSION,
+      STORAGE_KEYS.UNIFIED_PORTIONS,
+      STORAGE_KEYS.PORTIONS,
+      STORAGE_KEYS.REVISION
+    ];
+    if (portionStorageKeys.some(key =>
+      !StorageService.verifyRawItem(key, StorageService.getRawItem(key))
+    ) || !StorageService.verifyRawItem(
+      STORAGE_KEYS.WEAK_VERSES,
+      StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES)
+    )) {
+      return { success: false, messageAr: 'تعذر التحقق من القراءة الدائمة لجميع سجلات الآية والمقاطع؛ لم يتم إنشاء عملية استعادة.' };
+    }
     if ((schemaVersion === '2' && canonicalRaw === null) ||
         (schemaVersion !== '2' && canonicalRaw !== null)) {
       return { success: false, messageAr: 'سجل المقاطع الموحد غير متسق؛ تم إيقاف التسجيل لحماية البيانات الأصلية.' };
