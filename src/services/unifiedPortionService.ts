@@ -490,6 +490,13 @@ export function getPrioritizedRevisionQueue(
   if (!Number.isSafeInteger(maxLimit) || maxLimit < 1 || maxLimit > 20) {
     throw new RangeError('Daily revision queue limit must be a whole number from 1 to 20.');
   }
+  // Validate the complete collection, including future-due portions, before filtering.
+  for (const portion of portions) {
+    if ((portion.status !== 'not_memorized' && !isValidLocalDateString(portion.nextDueDate)) ||
+        !Number.isFinite(portion.easeFactor) || portion.easeFactor < 1.3 || portion.easeFactor > 3) {
+      throw new RangeError('Revision queue contains an invalid due date or ease factor.');
+    }
+  }
 
   // Filter portions due today or overdue (excluding unmemorized)
   const dueItems = portions.filter(p => p.nextDueDate <= today && p.status !== 'not_memorized');
