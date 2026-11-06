@@ -73,6 +73,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const [isSavingRating, setIsSavingRating] = useState(false);
   const ratingInFlightRef = useRef(false);
   const weakVerseMutationIdRef = useRef<string | null>(null);
+  const weakVerseMutationKeyRef = useRef<string | null>(null);
+  const weakVerseInFlightRef = useRef(false);
 
   // Add new portion modal
   const [isAddPortionModalOpen, setIsAddPortionModalOpen] = useState(false);
@@ -257,7 +259,14 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       text = found.text;
     }
 
+    if (weakVerseInFlightRef.current) return;
+    const mutationKey = [weakSurahNum, manualWeakAyahNum, text, manualWeakNotes].join('|');
+    if (weakVerseMutationKeyRef.current !== mutationKey) {
+      weakVerseMutationKeyRef.current = mutationKey;
+      weakVerseMutationIdRef.current = 'weak-' + createSecureId();
+    }
     const mutationId = weakVerseMutationIdRef.current || 'weak-' + createSecureId();
+    weakVerseMutationIdRef.current = mutationId;
     weakVerseMutationIdRef.current = mutationId;
     const prepared = buildWeakVerseFailureTransaction({
       surahNumber: weakSurahNum,
@@ -272,7 +281,16 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       return;
     }
 
-    const result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+    weakVerseInFlightRef.current = true;
+    let result;
+    try {
+      result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+    } catch (error) {
+      weakVerseInFlightRef.current = false;
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.', type: 'warn' });
+      return;
+    }
+    weakVerseInFlightRef.current = false;
     let projectionsMatch = false;
     try {
       projectionsMatch = JSON.stringify(RetentionService.getPortions()) ===
@@ -285,6 +303,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     if (!result.success && !(result.recoveredPriorEvents && projectionsMatch)) {
       if (result.recoveredPriorEvents) {
         weakVerseMutationIdRef.current = null;
+        weakVerseMutationKeyRef.current = null;
         refreshAll();
       }
       setActionFeedback({
@@ -299,6 +318,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
 
     weakVerseMutationIdRef.current = null;
+    weakVerseMutationKeyRef.current = null;
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');
     setManualWeakNotes('');
