@@ -283,6 +283,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
 
     weakVerseInFlightRef.current = true;
+    setIsSavingWeakVerse(true);
     let result: Awaited<ReturnType<typeof persistJournaledTransaction>>;
     try {
       result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
