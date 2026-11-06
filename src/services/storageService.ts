@@ -367,7 +367,7 @@ function isValidTestResultRecord(value: unknown): value is TestResult {
     value.weakVerses.every((item: unknown) => typeof item === 'string' && item.length <= 300);
 }
 
-function isValidWeakVerseRecord(value: unknown): value is WeakVerseItem {
+export function isValidWeakVerseRecord(value: unknown): value is WeakVerseItem {
   if (!isPlainRecord(value) || !isValidSurahRange(value.surahNumber, value.ayahNumber, value.ayahNumber)) return false;
   return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 180 &&
     typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
