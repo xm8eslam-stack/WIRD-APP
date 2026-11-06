@@ -118,3 +118,24 @@ If any current evidence differs from these notes, current GitHub state wins. Upd
 3. Fix any failures, perform a separate second review, then merge only after all required checks pass.
 4. Continue rollback failure-injection tests for review + weak-verse + activity multi-key writes.
 5. Keep cloud sync disabled until a transactional IndexedDB event/outbox design is tested.
+
+
+## 2026-11-06 — Latest verified main checkpoint (PR #11 merged)
+
+- Canonical branch: `main`.
+- Latest application-code merge: `84aac72c9d3489f93d200e331c35760eb754462e` (PR #11 squash merge). Re-fetch main HEAD before new work because documentation commits may advance it.
+- PR #11 head before merge: `1c7e57e6beeed1327900acc38c5642298ba37aad`.
+- GitHub Actions WIRD Quality Gate #708 / run `42195579600`: PASS — 312 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, server smoke test.
+- Vercel still reports the Free-plan daily deployment cap; production deployment of this merge is not confirmed.
+- Phase 1 remains COMPLETED. Phase 2 remains IN PROGRESS; PR #10 and #11 merged only the mutation-integrity and queue/metrics slices.
+- Daily/weekly queue ordering is shared and deterministic; legacy first-memorization init- history is filtered from review counts without deleting stored entries; duplicate review event IDs count once; average ease excludes not_memorized portions; missing weak-ayah text is rejected before writes.
+- No external code or dependency copied; no SM-2-to-FSRS migration or rescheduling performed.
+- No production migration, production Firestore rules deployment, or live cloud sync activation occurred.
+
+### Exact next action
+
+1. Read CURRENT_STATUS.md, MASTER_ROADMAP.md, WORK_LOG.md, RELEASE_CHECKLIST.md.
+2. Fetch latest main HEAD and inspect the merged rollback implementation in retentionService.ts and StorageService multi-key write helpers.
+3. Add failure-injection tests for weak-verse write failure, activity/profile write failure, quota errors, and read-back mismatch; assert all touched archives are restored or a recovery-required state is surfaced.
+4. Run the complete quality gate and a second independent review; merge only after all checks pass.
+5. Keep cloud sync disabled until a transactional IndexedDB event/outbox design and multi-tab tests are complete.
