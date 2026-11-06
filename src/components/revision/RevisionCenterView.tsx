@@ -305,8 +305,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
     if (!result.success && !(result.recoveredPriorEvents && projectionsMatch)) {
       if (result.recoveredPriorEvents) {
-        weakVerseMutationIdRef.current = null;
-        weakVerseMutationKeyRef.current = null;
+        // Retain the mutation ID: if this action was part of the recovered batch,
+        // reusing it prevents a second increment from being recorded.
         refreshAll();
       }
       setActionFeedback({
