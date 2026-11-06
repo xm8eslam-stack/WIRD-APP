@@ -3,7 +3,7 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `0831e01fcebd79e15978437bd0f702259c3d02d7`  
+**Current HEAD:** `275e39b64845792f1e0e74d3bac605b48ecde085`  
 **Google AI Studio source branch:** `main`  
 **Latest CI run:** [42169105813 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813)
 
@@ -16,6 +16,10 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `162e847` — preserve exact coordinates when resuming an in-progress memorization passage; regression tests cover range repeat prevention and Surah boundary clamping.
+- `0710e27` — correct backup import UI to inspect the returned `success` flag, surface the actual result message, and handle file-read failures.
+- `fdd00a2` + `7e01502` + `275e39b` — prepare whole-page progress changes in memory and persist once; add tests for multi-Surah pages, history preservation, invalid pages, and TypeScript-safe assertions.
+- Latest CI run `42170371186` passed: 220 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - `162e847` — fix repeated in-progress passage selection by resuming the exact saved coordinates; add tests for exact resumption and Surah-boundary clamping. CI run `42169589580` passed.
 
 Commits on main (in order):
@@ -46,6 +50,11 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 4. Multi-key local operations need explicit transaction/rollback behavior before outbox integration.
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
+
+## Additional verified local reliability fixes
+
+- Backup import previously treated the returned result object as a boolean; because objects are truthy, the UI displayed success even when import failed. It now branches on `result.success`, shows the actual failure message, and handles FileReader errors.
+- Whole-page status changes previously wrote portions one by one, allowing partial-page persistence on quota/error. They are now assembled and validated in memory, then saved once through the canonical storage service.
 
 ## Additional progress-range defect found
 

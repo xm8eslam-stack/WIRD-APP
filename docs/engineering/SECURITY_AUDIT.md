@@ -2,13 +2,13 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `0831e01fcebd79e15978437bd0f702259c3d02d7`  
+**Audited HEAD:** `275e39b64845792f1e0e74d3bac605b48ecde085`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
 ## Executive summary
 
-WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped local storage and a legacy-data ownership decision are implemented. Several correctness and persistence bugs affecting memorization/revision were fixed and regression-tested in this session.
+WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped local storage and a legacy-data ownership decision are implemented. Several correctness and persistence bugs affecting memorization/revision were fixed and regression-tested in this session, including review/memorization separation, repeat-loop prevention for in-progress passages, single-write page updates, and truthful backup-import feedback.
 
 **Cloud sync is not implemented yet.** Firestore rules and emulator tests exist, but there is no Firestore client adapter, local outbox, merge engine, or live rules deployment confirmation. Do not tell users their progress is cloud-synced until the M4–M7 gates in `IMPLEMENTATION_ROADMAP.md` pass.
 
@@ -25,6 +25,9 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Review vs memorization | Review sessions no longer add memorized ayahs or create memorization portions |
 | Retention score | Overlapping ranges count each ayah once; weakest overlapping status wins |
 | Review page count | Uses canonical Mushaf page mapping rather than an ayah-count estimate |
+| In-progress memorization | Resumes exact stored range; no clipped child range that leaves a repeating parent |
+| Page status updates | Prepares all Surah segments and persists the whole page update in one canonical write |
+| Backup import UI | Checks `result.success`; failed imports and file-read errors no longer display false success |
 | Daily plan selection | Does not start future engine tasks or silently escape a plan's explicit scope |
 | Firestore rules | UID ownership, verified-user check, allowlist, generic envelope, tombstone-only delete model, default deny |
 | Rules tests | Firebase Emulator rules tests run in CI |
@@ -76,8 +79,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run:
-- Automated test suites: passed.
+Latest Actions run: [42170371186](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42170371186) — success.
+- Automated test suites: 220 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.

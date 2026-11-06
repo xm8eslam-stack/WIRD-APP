@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `162e847279a3106c8a4e2672f1334695511e34dd`
+**Current audited HEAD:** `275e39b64845792f1e0e74d3bac605b48ecde085`
 
 ## Operating rules
 
@@ -47,6 +47,7 @@
 - Session activity + streak update reports failure and rolls back the activity log if the profile write fails.
 - A failed localStorage write no longer leaks through the in-memory fallback as if it had been saved.
 - Save methods return explicit success/failure; important UI paths surface failures.
+- Backup import UI checks the explicit result flag and reports read/import failures accurately.
 - Retention mutations fail visibly if canonical progress cannot be persisted.
 - Overlapping memorization portions count each ayah once in the retention score; the weakest overlapping status wins.
 - Review page counts use canonical Mushaf page/ayah mappings rather than an estimate.
@@ -61,6 +62,8 @@
 - Page/Juz plans are not silently widened to whole Surahs when no exact ayah resolver exists.
 - The next uncovered range is selected instead of repeatedly starting at the first ayah.
 - Review selections open in review mode.
+- In-progress passages resume at their exact stored coordinates instead of clipping to a daily target and repeating the same start ayah.
+- Whole-page status changes are prepared as one canonical update and persisted with a single write.
 - Completing a memorization task updates the matching engine-plan task without marking other pending revision tasks complete.
 
 ### M4 — Local event ledger and durable outbox
