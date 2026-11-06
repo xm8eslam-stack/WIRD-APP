@@ -555,7 +555,7 @@ export const StorageService = {
   },
 
   // Unified Portions (Canonical schema v2)
-
+  getUnifiedPortions(): WirdPortion[] {
     try {
       const version = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const data = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
