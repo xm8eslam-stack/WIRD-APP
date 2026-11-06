@@ -3,11 +3,11 @@
 **Updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, #11, and #12 merged; PR #7 was closed without merge as superseded.
+**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, #11, #12, and #13 merged; PR #7 was closed without merge as superseded.
 
 ## Verified repository position
 
-- Latest application-code merge on `main`: `84aac72c9d3489f93d200e331c35760eb754462e` — PR #11 (Phase 2 queue/metrics slice). Latest test-only merge: `1ffd6c23363d636a6b395620e7f9c7cd15828827` — PR #12 (multi-key rollback failure injection). Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
+- Latest application-code merge on `main`: `84aac72c9d3489f93d200e331c35760eb754462e` — PR #11 (Phase 2 queue/metrics slice). Latest storage-integrity merge: `346b725ae76a177372375f5045e7816eb09a0d1c` — PR #13 (verified durable writes/removals). Previous test-only merge: `1ffd6c23363d636a6b395620e7f9c7cd15828827` — PR #12. Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
 - Previous merges: PR #6 `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`; PR #5 `fd480526dd3eac728f60b3554e83309354903ad8`; PR #4 `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - GitHub Actions run `42190653101` on PR #9 head `2b520ebcf6c51ae155de508ddf49e49d421ba7ab` passed automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test. The merged code is `f8e0cef`.
@@ -18,11 +18,11 @@
 ## Current milestone
 
 **PHASE 2 — Memorization/revision correctness audit**  
-**Status:** IN PROGRESS on `main`; PR #10 and #11 code slices and PR #12 rollback tests merged. PR #12's complete quality gate passed; remaining read-back mismatch and full mutation-path audit are still open.  
+**Status:** IN PROGRESS on `main`; PR #10/#11 code slices, PR #12 rollback tests, and PR #13 durable readback verification are merged. Their quality gates passed; remaining multi-key mutation-path audit is still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
-**Last code milestone:** PR #11 merge `84aac72`; latest rollback-test checkpoint PR #12 merge `1ffd6c2`, Actions run `42216315142` (PR head `522bbc5`) passed.  
+**Last storage-integrity milestone:** PR #13 merge `346b725`; Actions #759 / run `42217300654` on PR head `d675383` passed 317 assertions, 10 Firestore emulator tests, audit, TypeScript, build, and server smoke.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
-**Remaining:** test read-back mismatch/silent-write failure, inspect each durable mutation path for rollback completeness, and verify profile/activity/weak-verse failure combinations. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
+**Remaining:** inspect every multi-key mutation path (memorization, revision, activity/profile, weak-verse, backup/restore, outbox) for verified rollback and failure-state reporting. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
 
 ## Completed and verified foundations
 
@@ -133,3 +133,13 @@
 - Added three regression cases for weak-verse quota failure, failed rollback with explicit recovery-required warning, and profile quota failure after successful portion/weak-verse/activity writes.
 - Vercel check passed for the PR head before merge; post-merge Vercel status on merge SHA was still pending at the last check. Production deployment is not yet confirmed.
 - Phase 2 remains IN PROGRESS; next audit targets silent-write/read-back mismatch and all remaining multi-key mutation paths.
+
+
+## 2026-11-06 — PR #13 durable readback verification checkpoint
+
+- PR #13 merged to main as `346b725ae76a177372375f5045e7816eb09a0d1c`.
+- PR head `d6753835d70a71b7f3a5f15a7f3512d9f92bf843`; GitHub Actions WIRD Quality Gate #759 / run `42217300654` passed: **317 passed / 0 failed**, 10 Firestore Security Rules Emulator tests, dependency audit, TypeScript, production build, and server smoke test.
+- Durable writes now snapshot the previous raw value, verify exact readback, attempt and verify restoration after mismatch/exception, and update memory fallback only after successful durable verification. Durable removal is also verified; `removeRawItem` now exposes its boolean result.
+- Regression coverage includes silent no-op writes, mismatched/corrupted writes, silent removal failure, and weak-verse mutation rollback after silent write mismatch.
+- Vercel check failed with `build-rate-limit` on the PR head; GitHub Actions quality gate passed. Production deployment remains unconfirmed.
+- Phase 2 remains IN PROGRESS. Next task is auditing all multi-key mutation callers and failure/recovery behavior beyond the weak-verse path.
