@@ -76,15 +76,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     todayStr
   );
 
+  const selectedPages = selection.kind === 'session'
+    ? getPagesForAyahRange(selection.surahNumber, selection.startAyah, selection.endAyah)
+    : [];
   const dailyTask = selection.kind === 'session'
     ? {
         ...selection,
         surahName: ALL_SURAHS.find(surah => surah.number === selection.surahNumber)?.name || `سورة ${selection.surahNumber}`,
         versesCount: selection.endAyah - selection.startAyah + 1,
-        pageNumber: ALL_SURAHS.find(surah => surah.number === selection.surahNumber)?.pageStart || 1,
-        pagesCount: selection.mode === 'review'
-          ? getPagesForAyahRange(selection.surahNumber, selection.startAyah, selection.endAyah).length
-          : 0
+        pageNumber: selectedPages[0] || 1,
+        pagesCount: selectedPages.length
       }
     : {
         kind: 'blocked' as const,
@@ -119,7 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         }
       });
     return () => { cancelled = true; };
-  }, [dailyTask.surahNumber, dailyTask.startAyah]);
+  }, [dailyTask.source, dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.label]);
 
   // Weekly stats
   const last7Logs = logs.slice(-7);
@@ -151,7 +152,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               disabled={dailyTask.source === 'blocked'}
               onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300"
+              className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-4 h-4 fill-emerald-950" />
               <span>{dailyTask.source === 'blocked' ? 'افتح تفاصيل الخطة' : dailyTask.mode === 'review' ? `ابدأ مراجعة اليوم (سورة ${dailyTask.surahName})` : `ابدأ ورد اليوم (سورة ${dailyTask.surahName})`}</span>
@@ -220,7 +221,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>المدة: <strong className="text-stone-800 dark:text-stone-200">تختلف حسب مقدار الورد وسرعة التسميع</strong></span>
               </div>
               <div>
-                <span>طريقة الجلسة: <strong className="text-emerald-700 dark:text-emerald-400">{dailyTask.mode === 'review' ? 'مراجعة وتسميع وتثبيت' : `التكرار ${profile.repetitionTarget} مرات مع الإخفاء`}</strong></span>
+                <span>طريقة الجلسة: <strong className="text-emerald-700 dark:text-emerald-400">{dailyTask.source === 'blocked' ? 'لا توجد جلسة تلقائية' : dailyTask.mode === 'review' ? 'مراجعة وتسميع وتثبيت' : `التكرار ${profile.repetitionTarget} مرات مع الإخفاء`}</strong></span>
               </div>
             </div>
           </div>
@@ -229,7 +230,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               disabled={dailyTask.source === 'blocked'}
               onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors"
+              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>{dailyTask.source === 'blocked' ? 'اختر نطاق الخطة' : dailyTask.mode === 'review' ? 'بدء جلسة المراجعة التفاعلية' : 'بدء جلسة الحفظ التفاعلية'}</span>

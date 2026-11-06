@@ -245,7 +245,10 @@ export default function App() {
       );
       if (activeEnginePlan && matchingDay?.memorizationTask) {
         const updatedPlan = PlanLifecycle.updateTask(activeEnginePlan, matchingDay.id, {
-          status: 'completed',
+          status: (
+            (matchingDay.minorRevisionTask && !matchingDay.minorRevisionTask.completed) ||
+            (matchingDay.majorRevisionTask && !matchingDay.majorRevisionTask.completed)
+          ) ? 'partially_completed' : 'completed',
           memorizationTask: {
             ...matchingDay.memorizationTask,
             completed: true,
