@@ -5,6 +5,7 @@ import { ALL_SURAHS } from '../data/quranMeta';
 import { createSecureId } from './secureId';
 import { persistJournaledTransaction, type JournaledSnapshotOptions } from './journaledSnapshotService';
 import type { EngineGeneratedPlan } from './planningEngine';
+import type { SessionCompletedEvent } from './domainEvents';
 
 export interface PersistSessionCompletionInput {
   mode: SessionMode; memorizedAyahs: number; reviewedPages: number;
@@ -84,7 +85,27 @@ export async function persistJournaledSessionCompletion(
   }
 
   try {
-    const result = await persistJournaledTransaction(operations, options, 'session-' + createSecureId());
+    const mutationId = 'session-' + createSecureId();
+    const domainEvent: SessionCompletedEvent = {
+      schemaVersion: 1,
+      id: mutationId,
+      type: 'session.completed',
+      occurredAt: new Date().toISOString(),
+      payload: {
+        mode: input.mode,
+        memorizedAyahs: metrics.memorizedAyahs,
+        reviewedPages: metrics.reviewedPages,
+        minutes: input.minutes,
+        taskName: input.taskName,
+        ...(metrics.shouldRecordMemorization ? {
+          surahNumber: input.surahNumber!,
+          startAyah: input.startAyah!,
+          endAyah: input.endAyah!
+        } : {}),
+        includesSmartPlanProjection: input.enginePlansSnapshot !== undefined
+      }
+    };
+    const result = await persistJournaledTransaction(operations, options, mutationId, domainEvent);
     if (!result.success) {
       return {
         success: false,
