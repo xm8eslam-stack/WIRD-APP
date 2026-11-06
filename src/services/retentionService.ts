@@ -25,6 +25,15 @@ const STORAGE_KEYS = {
   WEAK_VERSES: 'wird_weak_verses'
 };
 
+function assertValidQuranRange(surahNumber: number, startAyah: number, endAyah: number): void {
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  if (!Number.isSafeInteger(surahNumber) || !surah ||
+      !Number.isSafeInteger(startAyah) || startAyah < 1 ||
+      !Number.isSafeInteger(endAyah) || endAyah < startAyah || endAyah > surah.versesCount) {
+    throw new Error('نطاق الآيات غير صالح؛ تحقق من رقم السورة وبداية الآية ونهايتها.');
+  }
+}
+
 function isValidWeakVerseArray(value: unknown): value is WeakVerseItem[] {
   return Array.isArray(value) && value.length <= 6236 && value.every(isValidWeakVerseRecord);
 }
@@ -313,6 +322,7 @@ export const RetentionService = {
 
   // Add a new portion to track
   addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
+    assertValidQuranRange(portion.surahNumber, portion.startAyah, portion.endAyah);
     const portions = this.getPortions();
     const canonicalId = createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah);
     const existingIndex = portions.findIndex(p => p.id === canonicalId || (p.surahNumber === portion.surahNumber && p.startAyah === portion.startAyah && p.endAyah === portion.endAyah));
@@ -340,12 +350,8 @@ export const RetentionService = {
 
   // Record memorization session completion into canonical portions
   recordMemorizationCompletion(surahNumber: number, startAyah: number, endAyah: number): PortionStatusRecord {
-    const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber);
-    if (!Number.isSafeInteger(surahNumber) || !surahMeta ||
-        !Number.isSafeInteger(startAyah) || startAyah < 1 ||
-        !Number.isSafeInteger(endAyah) || endAyah < startAyah || endAyah > surahMeta.versesCount) {
-      throw new Error('نطاق الحفظ غير صالح؛ تحقق من رقم السورة وبداية الآية ونهايتها قبل تسجيل التقدم.');
-    }
+    assertValidQuranRange(surahNumber, startAyah, endAyah);
+    const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber)!;
     const portions = this.getPortions();
     const canonicalId = createCanonicalPortionId(surahNumber, startAyah, endAyah);
     const today = getLocalDateString();
