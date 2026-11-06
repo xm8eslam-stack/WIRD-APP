@@ -203,6 +203,56 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Guest legacy portion migration remains local-only and does not require IndexedDB', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('guest');
+      const legacyPortion: PortionStatusRecord = {
+        id: 'legacy-guest-migration',
+        type: 'passage',
+        surahNumber: 109,
+        surahName: 'الكافرون',
+        startAyah: 1,
+        endAyah: 6,
+        status: 'stable',
+        nextDueDate: '2026-11-06',
+        intervalDays: 7,
+        easeFactor: 2.6,
+        repetitionCount: 3
+      };
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '1');
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([legacyPortion]));
+      StorageService.setRawItem(STORAGE_KEYS.REVISION, '[]');
+      const result = await migrateLegacyPortionsJournaled();
+      assert(result.success && result.migrated && !result.queued,
+        'Guest migration must commit locally without an IndexedDB/cloud outbox');
+      assert(StorageService.getUnifiedPortions()[0]?.id === 's109_a1_a6',
+        'Guest migration must expose the canonical Quran range after the local commit');
+    });
+
+    await test('Legacy migration refuses to enqueue when durable storage reads are unavailable', async () => {
+      const journal = createJournal();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: () => { throw new Error('simulated legacy migration read failure'); },
+          setItem: () => { throw new Error('simulated legacy migration write failure'); },
+          removeItem: () => { throw new Error('simulated legacy migration remove failure'); }
+        }
+      });
+      try {
+        const result = await migrateLegacyPortionsJournaled({ journal, runExclusive: inlineLock });
+        const snapshot = await journal.getSnapshot();
+        assert(!result.success, 'A failed durable source read must stop migration');
+        assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+          'Migration must not enqueue an event when the source archive could not be read reliably');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        journal.close();
+      }
+    });
+
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
       const journal = createJournal();
       const today = new Date().toISOString().slice(0, 10);
