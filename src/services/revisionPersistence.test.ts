@@ -16,7 +16,7 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
     try {
       const today = getLocalDateString();
       const original = RetentionService.addPortion({
-        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 31, endAyah: 35,
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 21, endAyah: 25,
         status: 'weak', strength: 'weak', nextDueDate: today, intervalDays: 1, easeFactor: 1.8,
         repetitionCount: 8, mistakesCount: 4
       });
@@ -54,7 +54,7 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
     StorageService.setStorageScope('user:manual-status-strength');
     try {
       const portion = RetentionService.addPortion({
-        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 40, endAyah: 42,
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 26, endAyah: 28,
         status: 'weak', strength: 'weak', nextDueDate: getLocalDateString(), intervalDays: 1,
         easeFactor: 1.8, repetitionCount: 1, mistakesCount: 2
       });
