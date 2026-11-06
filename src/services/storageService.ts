@@ -189,7 +189,7 @@ export const DEMO_PROFILE: UserProfile = {
 function isValidDailyLog(value: unknown): value is DailyLog {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const log = value as Record<string, unknown>;
-  if (typeof log.date !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(log.date)) return false;
+  if (typeof log.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(log.date)) return false;
   const [year, month, day] = log.date.split('-').map(Number);
   const parsedDate = new Date(Date.UTC(year, month - 1, day));
   if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== log.date) return false;
