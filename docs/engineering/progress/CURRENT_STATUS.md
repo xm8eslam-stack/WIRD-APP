@@ -57,6 +57,13 @@
 - Final PR head before merge: `958067b1b1e3c64513b1732c947e81c18a830a52`. Squash merge SHA on main: `e69871897c2561e7aa75c6e31f9005169ed08c23`.
 - The reviewed Phase 2 mutation-integrity slice is merged. Phase 2 itself remains IN PROGRESS; do not mark it completed until daily queue, aggregate statistics, and remaining rollback/mutation-path audits are complete.
 
+## Phase 2 queue/metrics audit — in progress on branch
+
+- Working branch: `fix/phase2-queue-metrics-audit`, based on main code/docs checkpoint `0de185af757cfecead14beb98a465cf088200fff`.
+- Current code work: shared deterministic priority sorting for daily and weekly queues; removal of the unused gracePeriodDays queue option; legacy `init-` first-memorization entries filtered from review history without deleting stored history; duplicate review event IDs counted once across portion records; average ease excludes not-memorized portions; weak-ayah text is mandatory at the review-service boundary to prevent placeholder Quran text.
+- Added regression coverage for legacy history preservation/filtering, duplicate event identity, average ease denominator, weekly ordering, 20-item daily cap/backlog metrics, invalid dates, and missing weak-ayah text.
+- Tests are added but not yet run in CI. Current branch head before checkpoint docs: `c2d5ab906bc66443f63bdc049595d0504e303937`. No PR opened yet.
+
 ## Not yet implemented / not verified
 
 - No Firestore client adapter or live cloud sync coordinator.
@@ -113,8 +120,8 @@
 
 ## Next exact action
 
-1. Continue Phase 2 audit on `main`: daily revision queue, weekly overview, dashboard statistics, review-history integrity, and multi-key rollback.
-2. Add tests for invalid dates, duplicate completion paths, aggregate counts, and rollback under storage quota/read-back failures.
-3. Keep localStorage outbox disconnected from cloud writes; cross-tab atomicity still requires an IndexedDB event+outbox transaction.
-4. After Phase 2 gates, prototype the append-only event ledger and compare Dexie, idb, and native IndexedDB transaction semantics.
+1. Re-fetch main and `fix/phase2-queue-metrics-audit`; inspect the complete diff and current head.
+2. Open a draft PR to trigger the full quality gate; fix any failures and perform an independent second review.
+3. Continue multi-key rollback tests under weak-verse write failure, profile write failure, quota, and read-back mismatch.
+4. Keep localStorage outbox disconnected from cloud writes; cross-tab atomicity still requires an IndexedDB event+outbox transaction.
 5. Do not activate Firestore production writes or deploy production rules without explicit approval.
