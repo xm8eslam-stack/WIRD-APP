@@ -581,16 +581,22 @@ function assertValidLegacyPortionInput(value: unknown, index: number): asserts v
       (value.pageNumber !== undefined && (!Number.isSafeInteger(value.pageNumber) || value.pageNumber < 1 || value.pageNumber > 604)) ||
       (value.pageStart !== undefined && (!Number.isSafeInteger(value.pageStart) || value.pageStart < 1 || value.pageStart > 604)) ||
       (value.pageEnd !== undefined && (!Number.isSafeInteger(value.pageEnd) || value.pageEnd < 1 || value.pageEnd > 604)) ||
+      (value.pageStart !== undefined && value.pageEnd !== undefined && value.pageStart > value.pageEnd) ||
       (value.juzNumber !== undefined && (!Number.isSafeInteger(value.juzNumber) || value.juzNumber < 1 || value.juzNumber > 30)) ||
       (value.intervalDays !== undefined && (!Number.isSafeInteger(value.intervalDays) || value.intervalDays < 0 || value.intervalDays > 100000)) ||
       (value.easeFactor !== undefined && (typeof value.easeFactor !== 'number' || !Number.isFinite(value.easeFactor) || value.easeFactor < 0.1 || value.easeFactor > 3)) ||
       (value.repetitionCount !== undefined && (!Number.isSafeInteger(value.repetitionCount) || value.repetitionCount < 0 || value.repetitionCount > 100000)) ||
       (value.mistakesCount !== undefined && (!Number.isSafeInteger(value.mistakesCount) || value.mistakesCount < 0 || value.mistakesCount > 100000)) ||
+      (value.revisionType !== undefined && !['minor', 'major'].includes(value.revisionType)) ||
+      (value.strength !== undefined && !['strong', 'medium', 'weak'].includes(value.strength)) ||
+      (value.createdAt !== undefined && (typeof value.createdAt !== 'string' || value.createdAt.length > 64 || !/^\\d{4}-\\d{2}-\\d{2}T/.test(value.createdAt) || !Number.isFinite(Date.parse(value.createdAt)))) ||
+      (value.updatedAt !== undefined && (typeof value.updatedAt !== 'string' || value.updatedAt.length > 64 || !/^\\d{4}-\\d{2}-\\d{2}T/.test(value.updatedAt) || !Number.isFinite(Date.parse(value.updatedAt)))) ||
       (value.history !== undefined && (!Array.isArray(value.history) || value.history.length > MAX_MIGRATED_HISTORY_ENTRIES || !value.history.every(isValidRevisionHistoryEntry))) ||
       (value.conflictAudit !== undefined && (!Array.isArray(value.conflictAudit) || value.conflictAudit.length > MAX_CONFLICT_AUDIT_ENTRIES ||
         !value.conflictAudit.every((item: unknown) => isPlainObject(item) &&
           typeof item.source === 'string' && item.source.length <= 160 &&
-          typeof item.field === 'string' && item.field.length <= 160)))) {
+          typeof item.field === 'string' && item.field.length <= 160 &&
+          (item.timestamp === undefined || (typeof item.timestamp === 'string' && item.timestamp.length <= 64 && /^\\d{4}-\\d{2}-\\d{2}T/.test(item.timestamp) && Number.isFinite(Date.parse(item.timestamp))))))) {
     throw new TypeError('Legacy portion record is invalid at index ' + index + '; source archive must be preserved.');
   }
 }
