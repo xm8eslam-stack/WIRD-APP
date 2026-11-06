@@ -409,6 +409,7 @@ export const RetentionService = {
     updatedPortion: PortionStatusRecord;
     nextIntervalDays: number;
     nextDueDate: string;
+    activitySaved: boolean;
     messageAr: string;
   } {
     const portions = this.getPortions();
