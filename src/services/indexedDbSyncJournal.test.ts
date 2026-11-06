@@ -80,7 +80,9 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       (IDBObjectStore.prototype as any).add = function(value: unknown, key?: IDBValidKey) {
         if (this.name === 'outbox' && !injected) {
           injected = true;
-          const request = originalAdd.call(this, value, key);
+          const request = key === undefined
+            ? originalAdd.call(this, value)
+            : originalAdd.call(this, value, key);
           this.transaction.abort();
           return request;
         }
