@@ -277,6 +277,61 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(report.success === true, 'Migration report reports success');
   }
 
+  console.log('\n--- 4B. Distinct Review Attempt Identity and Stable Legacy IDs ---');
+  {
+    const sameContentLog = {
+      date: '2026-04-10', rating: 'successful' as const,
+      intervalDaysBefore: 2, intervalDaysAfter: 4, notes: 'مراجعة متقنة'
+    };
+    const basePortion: PortionStatusRecord = {
+      id: 'legacy-history-a',
+      type: 'passage',
+      surahNumber: 67,
+      surahName: 'الملك',
+      startAyah: 1,
+      endAyah: 5,
+      pageNumber: 562,
+      status: 'stable',
+      nextDueDate: '2026-04-20',
+      intervalDays: 4,
+      easeFactor: 2.5,
+      repetitionCount: 2,
+      history: [{ id: 'attempt-a', ...sameContentLog }]
+    };
+    const secondPortion: PortionStatusRecord = {
+      ...basePortion,
+      id: 'legacy-history-b',
+      history: [{ id: 'attempt-b', ...sameContentLog }]
+    };
+    const distinctAttempts = migrateLegacyDataLosslessly([basePortion, secondPortion], []);
+    assert(distinctAttempts.report.success, 'Distinct attempt migration should succeed');
+    assert(distinctAttempts.portions[0].history?.length === 2,
+      'Different event IDs must preserve two attempts even when all review content is identical');
+    assert(distinctAttempts.portions[0].history?.some(log => log.id === 'attempt-a') &&
+      distinctAttempts.portions[0].history?.some(log => log.id === 'attempt-b'),
+      'Both distinct attempt IDs must remain in the canonical history');
+
+    const duplicateDelivery = migrateLegacyDataLosslessly([
+      basePortion,
+      { ...basePortion, id: 'legacy-duplicate-delivery' }
+    ], []);
+    assert(duplicateDelivery.portions[0].history?.length === 1,
+      'The same event ID with identical content should still be deduplicated');
+
+    const missingIdPortion: PortionStatusRecord = {
+      ...basePortion,
+      id: 'legacy-missing-history-id',
+      history: [{ id: '', ...sameContentLog }]
+    };
+    const firstMigration = migrateLegacyDataLosslessly([missingIdPortion], []);
+    const secondMigration = migrateLegacyDataLosslessly([missingIdPortion], []);
+    const generatedId = firstMigration.portions[0].history?.[0]?.id;
+    assert(firstMigration.report.success && typeof generatedId === 'string' && generatedId.startsWith('legacy_'),
+      'Legacy history without an ID must receive a deterministic ID');
+    assert(generatedId === secondMigration.portions[0].history?.[0]?.id,
+      'Generated legacy history IDs must remain stable across repeated migrations');
+  }
+
   console.log('\n--- 4A. Canonical ID Recovery from Untrusted Legacy IDs ---');
   {
     const mismatchedId = {
