@@ -210,6 +210,26 @@ function isValidUserProfile(value: unknown): value is UserProfile {
   return true;
 }
 
+function readJsonArrayArchive<T>(key: string, label: string): T[] {
+  const raw = getItem(key);
+  if (raw === null) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Archive root is not an array.');
+    return parsed as T[];
+  } catch (error) {
+    console.error('[WIRD Storage] ' + label + ' archive needs recovery; preserving original bytes:', error);
+    return [];
+  }
+}
+
+function canWriteJsonArrayArchive(key: string): boolean {
+  const raw = getItem(key);
+  if (raw === null) return true;
+  try { return Array.isArray(JSON.parse(raw)); }
+  catch { return false; }
+}
+
 function isValidDailyLog(value: unknown): value is DailyLog {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const log = value as Record<string, unknown>;
@@ -506,63 +526,36 @@ export const StorageService = {
 
   // Plans (Returns clean empty array by default)
   getPlans(): MemorizationPlan[] {
-    try {
-      const data = getItem(STORAGE_KEYS.PLANS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return readJsonArrayArchive<MemorizationPlan>(STORAGE_KEYS.PLANS, 'Plans');
   },
 
   savePlans(plans: MemorizationPlan[]): boolean {
-    try {
-      return setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
-    } catch (e) {
-      console.warn("Storage write failed", e);
-      return false;
-    }
+    if (!Array.isArray(plans) || !canWriteJsonArrayArchive(STORAGE_KEYS.PLANS)) return false;
+    return setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
   },
 
-  // Engine Plans (Returns clean empty array by default)
+  // Engine Plans
   getEnginePlans(): EngineGeneratedPlan[] {
-    try {
-      const data = getItem(STORAGE_KEYS.ENGINE_PLANS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return readJsonArrayArchive<EngineGeneratedPlan>(STORAGE_KEYS.ENGINE_PLANS, 'Engine plans');
   },
 
   saveEnginePlans(plans: EngineGeneratedPlan[]): boolean {
-    try {
-      return setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
-    } catch (e) {
-      console.warn("Storage write failed", e);
-      return false;
-    }
+    if (!Array.isArray(plans) || !canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS)) return false;
+    return setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
   },
 
-  // Revision Items (Returns clean empty array by default)
+  // Revision Items
   getRevisionItems(): RevisionItem[] {
-    try {
-      const data = getItem(STORAGE_KEYS.REVISION);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return readJsonArrayArchive<RevisionItem>(STORAGE_KEYS.REVISION, 'Revision items');
   },
 
   saveRevisionItems(items: RevisionItem[]): boolean {
-    try {
-      return setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
-    } catch (e) {
-      console.warn("Storage write failed", e);
-      return false;
-    }
+    if (!Array.isArray(items) || !canWriteJsonArrayArchive(STORAGE_KEYS.REVISION)) return false;
+    return setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
   },
 
   // Unified Portions (Canonical schema v2)
-  getUnifiedPortions(): WirdPortion[] {
+
     try {
       const version = getItem(STORAGE_KEYS.SCHEMA_VERSION);
       const data = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
@@ -617,6 +610,24 @@ export const StorageService = {
 
   saveUnifiedPortions(portions: WirdPortion[]): boolean {
     try {
+      const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+      if (currentSchemaVersion === '2') {
+        const currentRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+        if (currentRaw === null) {
+          console.error('[WIRD Storage] Refusing to replace a missing canonical portions archive under schema version 2.');
+          return false;
+        }
+        try {
+          const currentParsed: unknown = JSON.parse(currentRaw);
+          if (!Array.isArray(currentParsed) || !validateBackupPayload({ version: 4, unifiedPortions: currentParsed }).valid) {
+            console.error('[WIRD Storage] Refusing to overwrite a damaged canonical portions archive.');
+            return false;
+          }
+        } catch {
+          console.error('[WIRD Storage] Refusing to overwrite a corrupt canonical portions archive.');
+          return false;
+        }
+      }
       const validation = validateBackupPayload({ version: 4, unifiedPortions: portions });
       if (!validation.valid) {
         console.error('[WIRD Storage] Refusing to persist invalid canonical portions:', validation.error);
@@ -814,15 +825,11 @@ export const StorageService = {
 
   // Tests
   getTests(): TestResult[] {
-    try {
-      const data = getItem(STORAGE_KEYS.TESTS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
+    return readJsonArrayArchive<TestResult>(STORAGE_KEYS.TESTS, 'Test results');
   },
 
   saveTest(test: TestResult): boolean {
+    if (!canWriteJsonArrayArchive(STORAGE_KEYS.TESTS)) return false;
     try {
       const current = this.getTests();
       current.unshift(test);

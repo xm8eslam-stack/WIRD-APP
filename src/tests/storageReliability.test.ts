@@ -65,6 +65,36 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Corrupt plan, revision, and test archives cannot be overwritten by normal writes', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:corrupt-arrays');
+    const cases = [
+      { key: STORAGE_KEYS.PLANS, read: () => StorageService.getPlans(), write: () => StorageService.savePlans([]) },
+      { key: STORAGE_KEYS.ENGINE_PLANS, read: () => StorageService.getEnginePlans(), write: () => StorageService.saveEnginePlans([]) },
+      { key: STORAGE_KEYS.REVISION, read: () => StorageService.getRevisionItems(), write: () => StorageService.saveRevisionItems([]) },
+      { key: STORAGE_KEYS.TESTS, read: () => StorageService.getTests(), write: () => StorageService.saveTest({} as any) }
+    ];
+    for (const item of cases) {
+      const corrupt = '{broken:' + item.key;
+      StorageService.setRawItem(item.key, corrupt);
+      assert(item.read().length === 0, 'Display read should remain safe for ' + item.key);
+      assert(item.write() === false, 'Normal write must be blocked for ' + item.key);
+      assert(StorageService.getRawItem(item.key) === corrupt, 'Original bytes must remain unchanged for ' + item.key);
+    }
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Corrupt canonical portions cannot be replaced by a normal progress write', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:corrupt-canonical-portions');
+    StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+    const corrupt = '{broken canonical portions';
+    StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, corrupt);
+    assert(StorageService.saveUnifiedPortions([]) === false, 'A normal canonical save must be blocked');
+    assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === corrupt, 'Original canonical portion bytes must remain unchanged');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Corrupt profile data is preserved and blocks ordinary profile writes', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:corrupt-profile');
