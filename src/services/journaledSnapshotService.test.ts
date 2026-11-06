@@ -4,7 +4,7 @@ import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageSe
 import type { WirdPortion, TestResult } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
-import { buildWeakVerseFailureTransaction } from './weakVerseRecording';
+import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
   persistEnginePlansSnapshot,
@@ -317,6 +317,54 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(weakVerse?.surahName === 'الملك' && weakVerse.mistakeCount === 1 &&
         weakVerse.text === 'نص آية للاختبار',
         'The weak-verse counter must use canonical Surah metadata and preserve the supplied verse text');
+      journal.close();
+    });
+
+    await test('Weak-verse resolution is journal-first, idempotent, and leaves portions unchanged', async () => {
+      const journal = createJournal();
+      const weakVerse = {
+        id: 'weak-67-8-existing',
+        surahNumber: 67,
+        surahName: 'الملك',
+        ayahNumber: 8,
+        text: 'نص آية للاختبار',
+        mistakeCount: 2,
+        lastFailedDate: '2026-11-06',
+        notes: 'اختبار'
+      };
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      assert(RetentionService.saveWeakVerses([weakVerse]), 'The fixture weak-verse record must be valid');
+      const prepared = buildWeakVerseResolutionSnapshot(weakVerse.id);
+      if (!prepared.success) throw new Error(prepared.messageAr);
+      assert(prepared.changed && prepared.records.length === 0, 'Resolving an existing ID must prepare an empty archive');
+      assert(RetentionService.getWeakVerses().length === 1,
+        'Preparing a resolution must not mutate the weak-verse archive');
+
+      const input = {
+        mutationId: 'weak-resolve-journal-001',
+        collection: 'weakVerses' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        payload: { records: prepared.records }
+      };
+      const first = await persistJournaledSnapshot(
+        input, () => RetentionService.saveWeakVerses(prepared.records),
+        { journal, runExclusive: inlineLock }
+      );
+      const retry = await persistJournaledSnapshot(
+        input, () => RetentionService.saveWeakVerses(prepared.records),
+        { journal, runExclusive: inlineLock }
+      );
+      const snapshot = await journal.getSnapshot();
+      assert(first.success && retry.success, 'The resolution and its retry must both succeed');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'The same resolution retry must not create a duplicate journal event');
+      assert(RetentionService.getWeakVerses().length === 0, 'The weak-verse record must be removed');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'Resolving a weak verse must not change the canonical portion rating or schedule');
+      const repeated = buildWeakVerseResolutionSnapshot(weakVerse.id);
+      assert(repeated.success && !repeated.changed,
+        'Resolving the same missing ID again must be a no-op');
       journal.close();
     });
 
