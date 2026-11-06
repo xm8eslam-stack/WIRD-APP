@@ -24,7 +24,8 @@
     "predev": "node scripts/split-quran-data.mjs",
     "prebuild": "node scripts/split-quran-data.mjs",
     "pretest": "node scripts/split-quran-data.mjs",
-    "prelint": "node scripts/split-quran-data.mjs"
+    "prelint": "node scripts/split-quran-data.mjs",
+    "test:tafsir": "tsx scripts/runTafsirTests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
