@@ -9,6 +9,7 @@ export interface JournaledSnapshotWriteResult {
   success: boolean;
   mode: 'journal' | 'local-only';
   queued: boolean;
+  recoveryBlocked: boolean;
   error?: string;
 }
 
@@ -39,6 +40,7 @@ export async function persistJournaledSnapshot(
       success,
       mode: 'local-only',
       queued: false,
+      recoveryBlocked: false,
       ...(success ? {} : { error: 'تعذر حفظ البيانات محلياً.' })
     };
   }
@@ -46,22 +48,25 @@ export async function persistJournaledSnapshot(
   const journal = options.journal ?? new IndexedDbSyncJournal();
   const ownsJournal = !options.journal;
   let queued = false;
+  let preflightPassed = false;
   try {
     // Drain older committed events first. If recovery is blocked, do not append
     // a newer full snapshot that may have been derived from stale local state.
     if (options.runExclusive) await replayJournalProjection(journal, options.runExclusive);
     else await replayJournalProjection(journal);
+    preflightPassed = true;
 
     await journal.enqueue({ ...input, mutationId: createSecureId() });
     queued = true;
     if (options.runExclusive) await replayJournalProjection(journal, options.runExclusive);
     else await replayJournalProjection(journal);
-    return { success: true, mode: 'journal', queued: true };
+    return { success: true, mode: 'journal', queued: true, recoveryBlocked: false };
   } catch (error) {
     return {
       success: false,
       mode: 'journal',
       queued,
+      recoveryBlocked: !preflightPassed || queued,
       error: error instanceof Error ? error.message : 'تعذر حفظ سجل التغيير أو إسقاطه محلياً.'
     };
   } finally {
