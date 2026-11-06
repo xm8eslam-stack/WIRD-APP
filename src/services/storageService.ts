@@ -1325,6 +1325,7 @@ export const StorageService = {
       if (parsed.logs !== undefined) writeAndVerify(STORAGE_KEYS.LOGS, parsed.logs);
       if (parsed.tests !== undefined) writeAndVerify(STORAGE_KEYS.TESTS, parsed.tests);
       if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
+      if (parsed.portions !== undefined) writeAndVerify(STORAGE_KEYS.PORTIONS, parsed.portions);
 
       if (parsed.unifiedPortions !== undefined) {
         if (!this.saveUnifiedPortions(parsed.unifiedPortions)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
