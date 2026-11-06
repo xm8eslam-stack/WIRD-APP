@@ -48,6 +48,36 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
     } finally { globalThis.fetch = originalFetch; }
   });
 
+  await test('HTML returned by a missing API route produces a clear Arabic error, not a JSON parser exception', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '<!doctype html><html><body>Not Found</body></html>',
+      { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    )) as typeof fetch;
+    try {
+      let message = '';
+      try { await getTafsir(113, 1, 16); }
+      catch (error: any) { message = error?.message || ''; }
+      assert(message.includes('صفحة HTML') && message.includes('مسار API'), 'HTML fallback must be identified as an API routing failure');
+      assert(!message.includes('Unexpected token'), 'Raw JSON parser errors must never reach the user');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('Malformed non-HTML API responses are reported without leaking parser internals', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '{not-json',
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )) as typeof fetch;
+    try {
+      let message = '';
+      try { await getTafsir(113, 2, 16); }
+      catch (error: any) { message = error?.message || ''; }
+      assert(message.includes('ليست JSON صالحاً'), 'Malformed JSON must produce a stable localized error');
+      assert(!message.includes('Unexpected token'), 'Native parser details must not leak into the UI');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
   await test('Unexpected book IDs are rejected instead of showing unrelated tafsir', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = (async () => new Response(JSON.stringify({ book: { id: 1 }, content: [{ text: 'wrong book' }] }), { status: 200 })) as typeof fetch;
