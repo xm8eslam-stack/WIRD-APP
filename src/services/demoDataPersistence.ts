@@ -2,7 +2,6 @@ import { PRESET_PLANS } from '../data/presetPlans';
 import {
   DEMO_LOGS,
   DEMO_PROFILE,
-  StorageService,
   buildDemoEnginePlan,
   type JournalProjectionOperation
 } from './storageService';
