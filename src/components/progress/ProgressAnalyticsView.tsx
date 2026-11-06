@@ -151,18 +151,28 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content && StorageService.importBackup(content)) {
-        if (onToast) {
-          onToast("تم استعادة نسختك الاحتياطية وسجلات الحفظ بنجاح!", "success");
-        }
+      const content = event.target?.result;
+      if (typeof content !== 'string' || content.length === 0) {
+        onToast?.('تعذر قراءة ملف النسخة الاحتياطية؛ لم يتم تغيير بياناتك.', 'error');
+        e.target.value = '';
+        return;
+      }
+
+      const result = StorageService.importBackup(content);
+      if (result.success) {
+        onToast?.(result.message, 'success');
         setPortions(RetentionService.getPortions());
         onRefreshData();
       } else {
-        if (onToast) {
-          onToast("الملف غير صالح، يرجى اختيار ملف نسخة احتياطية سليم بصيغة JSON من منصة وِرد.", "warn");
-        }
+        // importBackup returns a result object; testing the object itself is
+        // always truthy and previously showed false success for failed imports.
+        onToast?.(result.message, 'warn');
       }
+      e.target.value = '';
+    };
+    reader.onerror = () => {
+      onToast?.('تعذر قراءة ملف النسخة الاحتياطية؛ لم يتم تغيير بياناتك.', 'error');
+      e.target.value = '';
     };
     reader.readAsText(file);
   };
