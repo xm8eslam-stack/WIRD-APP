@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   CheckCircle, 
   RotateCcw, 
@@ -42,6 +42,8 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [weakVerseFeedback, setWeakVerseFeedback] = useState<{ message: string; success: boolean } | null>(null);
   const [testSaveError, setTestSaveError] = useState<string | null>(null);
   const [pendingTestResult, setPendingTestResult] = useState<TestResult | null>(null);
+  const [isSavingTestResult, setIsSavingTestResult] = useState(false);
+  const saveInProgressRef = useRef(false);
   const [sessionKey, setSessionKey] = useState(0);
 
   // Load user portions and dynamically generate verified test questions
@@ -80,13 +82,19 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         totalQuestions: currentQuestions.length,
         weakVerses: []
       };
+      if (saveInProgressRef.current) return;
       if (!pendingTestResult) setPendingTestResult(resultToSave);
 
+      saveInProgressRef.current = true;
+      setIsSavingTestResult(true);
       let saved = false;
       try {
         saved = await onSaveTestResult(resultToSave);
       } catch (error) {
         console.error('[WIRD Tests] Test result persistence failed:', error);
+      } finally {
+        saveInProgressRef.current = false;
+        setIsSavingTestResult(false);
       }
       if (!saved) {
         setTestSaveError('تعذر حفظ نتيجة الاختبار. لم نعلن اكتماله؛ اضغط «إعادة محاولة حفظ النتيجة» للمحاولة مجدداً.');
@@ -99,7 +107,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   };
 
   const handleResetTest = () => {
-    if (pendingTestResult) return;
+    if (pendingTestResult || saveInProgressRef.current) return;
     setCurrentQuestionIndex(0);
     setSelectedOption(null);
     setIsAnswered(false);
@@ -150,7 +158,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-semibold">
           <button
             onClick={() => {
-              if (pendingTestResult) return;
+              if (pendingTestResult || saveInProgressRef.current) return;
               setSelectedTestType('complete_verse');
               handleResetTest();
             }}
@@ -402,6 +410,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
               <button
                 onClick={handleNext}
+                disabled={isSavingTestResult}
                 className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
               >
                 <span>{currentQuestionIndex === currentQuestions.length - 1 && testSaveError ? 'إعادة محاولة حفظ النتيجة' : 'السؤال التالي'}</span>
