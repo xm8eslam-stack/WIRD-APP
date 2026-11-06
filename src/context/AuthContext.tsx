@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
+import { User, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '../lib/firebase';
 import { AuthService, mapAuthError } from '../services/authService';
 import { calculateVerificationState } from '../services/authUtils';
-
 
 const GUEST_PREFERENCE_KEY = 'wird_guest_mode_preference';
 const memoryGuestStore = new Map<string, string>();
@@ -158,6 +157,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let unsubscribe: () => void = () => {};
 
     if (isFirebaseReady && auth) {
+      getRedirectResult(auth).then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+          setIsGuest(false);
+          removeStorageItem(GUEST_PREFERENCE_KEY);
+        }
+      }).catch((err) => {
+        console.warn('[WIRD Auth] getRedirectResult error:', err);
+      });
+
       unsubscribe = onAuthStateChanged(auth, (currentUser) => {
         setUser(currentUser);
         
@@ -186,9 +195,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWithGoogle = async () => {
     setAuthError(null);
     try {
-      await AuthService.loginWithGoogle();
-      setIsGuest(false);
-      removeStorageItem(GUEST_PREFERENCE_KEY);
+      const loggedUser = await AuthService.loginWithGoogle();
+      if (loggedUser) {
+        setIsGuest(false);
+        removeStorageItem(GUEST_PREFERENCE_KEY);
+      }
     } catch (err) {
       const msg = mapAuthError(err);
       setAuthError(msg);

@@ -1,5 +1,7 @@
 import { 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
   sendEmailVerification, 
@@ -30,9 +32,9 @@ export function mapAuthError(error: unknown): string {
     case 'auth/invalid-email':
       return 'صيغة البريد الإلكتروني غير صحيحة.';
     case 'auth/popup-closed-by-user':
-      return 'تم إغلاق نافذة التسجيل بـ Google قبل اكتمال العملية.';
+      return 'تم إغلاق نافذة التسجيل بـ Google قبل اكتمال العملية. يمكنك المحاولة مجدداً أو التسجيل بالبريد أو المتابعة كزائر.';
     case 'auth/popup-blocked':
-      return 'متصفحك حظر النافذة المنبثقة، يرجى السماح بالنوافذ المنبثقة وإعادة المحاولة.';
+      return 'متصفحك حظر النافذة المنبثقة. تم إطلاق التحويل التلقائي لتسجيل الدخول، أو يمكنك استخدام البريد الإلكتروني أو المتابعة كزائر.';
     case 'auth/too-many-requests':
       return 'تم تجميد المحاولات مؤقتاً بسبب محاولات متكررة. يرجى الانتظار القليل ثم المحاولة.';
     case 'auth/network-request-failed':
@@ -71,12 +73,31 @@ export const AuthService = {
     createUserStub = fn;
   },
 
-  async loginWithGoogle(): Promise<User> {
+  async loginWithGoogle(): Promise<User | null> {
     if (!isFirebaseConfigured() || !auth || !googleAuthProvider) {
       throw new Error('auth/api-key-not-valid');
     }
-    const result = await signInWithPopup(auth, googleAuthProvider);
-    return result.user;
+    try {
+      const result = await signInWithPopup(auth, googleAuthProvider);
+      return result.user;
+    } catch (popupError: any) {
+      const code = popupError?.code || '';
+      if (
+        code === 'auth/popup-blocked' ||
+        code === 'auth/popup-closed-by-user' ||
+        code === 'auth/cancelled-popup-request' ||
+        code === 'auth/operation-not-supported-in-this-environment'
+      ) {
+        console.warn('[WIRD Auth] Popup blocked or failed, falling back to signInWithRedirect:', popupError);
+        try {
+          await signInWithRedirect(auth, googleAuthProvider);
+          return null;
+        } catch (redirectError: any) {
+          throw redirectError || popupError;
+        }
+      }
+      throw popupError;
+    }
   },
 
   async signUpWithEmail(email: string, password: string): Promise<{ user: User; verificationSent: boolean; verificationError?: string }> {
