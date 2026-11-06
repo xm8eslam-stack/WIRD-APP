@@ -45,6 +45,22 @@ export function buildWeakVerseFailureTransaction(
 
   try {
     const previousPortions = RetentionService.getPortions();
+    const schemaVersion = StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION);
+    const canonicalRaw = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+    if ((schemaVersion === '2' && canonicalRaw === null) ||
+        (schemaVersion !== '2' && canonicalRaw !== null)) {
+      return { success: false, messageAr: 'سجل المقاطع الموحد غير متسق؛ تم إيقاف التسجيل لحماية البيانات الأصلية.' };
+    }
+    if (schemaVersion === '2' && canonicalRaw !== null) {
+      let canonicalParsed: unknown;
+      try { canonicalParsed = JSON.parse(canonicalRaw); }
+      catch {
+        return { success: false, messageAr: 'سجل المقاطع الموحد تالف؛ تم الحفاظ عليه دون إنشاء عملية استعادة جديدة.' };
+      }
+      if (!Array.isArray(canonicalParsed) || JSON.stringify(canonicalParsed) !== JSON.stringify(previousPortions)) {
+        return { success: false, messageAr: 'تعذر التحقق من سجل المقاطع الحالي؛ لم يتم إنشاء عملية استعادة جديدة.' };
+      }
+    }
     const existingExactPortion = previousPortions.find(portion =>
       portion.surahNumber === input.surahNumber &&
       portion.startAyah === input.ayahNumber &&
