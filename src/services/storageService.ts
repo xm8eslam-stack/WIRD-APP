@@ -1106,10 +1106,31 @@ export const StorageService = {
   },
 
   saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false): boolean {
+    const snapshotKeys = [
+      STORAGE_KEYS.UNIFIED_PORTIONS,
+      STORAGE_KEYS.SCHEMA_VERSION,
+      STORAGE_KEYS.PORTIONS,
+      STORAGE_KEYS.REVISION
+    ];
+    const snapshot = this.captureRawSnapshot(snapshotKeys);
+    if (!snapshot.available) {
+      console.error('[WIRD Storage] Refusing canonical portion write because one or more rollback snapshots could not be read:', snapshot.unavailableKeys);
+      return false;
+    }
+    let writeStarted = false;
+    const failAndRestore = (reason: string): false => {
+      console.error('[WIRD Storage] Canonical portion write failed:', reason);
+      const restored = this.restoreRawSnapshot(snapshot);
+      if (!restored.success) {
+        console.error('[WIRD Storage] Canonical portion rollback requires recovery:', restored.failedKeys);
+      }
+      return false;
+    };
+
     try {
-      const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+      const currentSchemaVersion = snapshot.values[STORAGE_KEYS.SCHEMA_VERSION];
       if (currentSchemaVersion === '2' && !allowRecoveryOverwrite) {
-        const currentRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+        const currentRaw = snapshot.values[STORAGE_KEYS.UNIFIED_PORTIONS];
         if (currentRaw === null) {
           console.error('[WIRD Storage] Refusing to replace a missing canonical portions archive under schema version 2.');
           return false;
@@ -1125,83 +1146,72 @@ export const StorageService = {
           return false;
         }
       }
+
       const validation = validateBackupPayload({ version: 4, unifiedPortions: portions });
       if (!validation.valid) {
         console.error('[WIRD Storage] Refusing to persist invalid canonical portions:', validation.error);
         return false;
       }
       const serialized = JSON.stringify(portions);
-      
-      // Attempt durable write
-      const writeOk = setItem(STORAGE_KEYS.UNIFIED_PORTIONS, serialized);
-      if (!writeOk) {
-        console.error('[WIRD Storage] Write failed: Durable localStorage write failed (quota or storage error)');
-        return false;
+
+      writeStarted = true;
+      if (!setItem(STORAGE_KEYS.UNIFIED_PORTIONS, serialized) ||
+          !this.verifyRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, serialized)) {
+        return failAndRestore('canonical archive write/readback failed');
       }
 
-      // Verified Readback
-      const readback = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
-      if (!readback) {
-        console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS readback is null');
-        return false;
+      const canonicalReadback = this.readRawItemForVerification(STORAGE_KEYS.UNIFIED_PORTIONS);
+      if (!canonicalReadback.available || canonicalReadback.value === null) {
+        return failAndRestore('canonical archive could not be read back');
+      }
+      let parsed: unknown;
+      try { parsed = JSON.parse(canonicalReadback.value); }
+      catch { return failAndRestore('canonical archive readback is invalid JSON'); }
+      if (!Array.isArray(parsed) || parsed.length !== portions.length ||
+          JSON.stringify(parsed) !== serialized) {
+        return failAndRestore('canonical archive payload mismatch on readback');
       }
 
-      let parsed: any[];
-      try {
-        parsed = JSON.parse(readback);
-      } catch {
-        console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS readback is corrupt');
-        return false;
+      if (!setItem(STORAGE_KEYS.SCHEMA_VERSION, '2') ||
+          !this.verifyRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2')) {
+        return failAndRestore('schema version write/readback failed');
       }
 
-      if (!Array.isArray(parsed) || parsed.length !== portions.length) {
-        console.error('[WIRD Storage] Write verification failed: UNIFIED_PORTIONS record count mismatch');
-        return false;
+      // Legacy projections are part of the same local commit: a partial projection
+      // must never be reported as a successful canonical write.
+      if (!setItem(STORAGE_KEYS.PORTIONS, serialized) ||
+          !this.verifyRawItem(STORAGE_KEYS.PORTIONS, serialized)) {
+        return failAndRestore('legacy portions projection write/readback failed');
       }
 
-      // Verify the complete serialized payload, including nested history and metadata.
-      const isCompletePayloadValid = JSON.stringify(parsed) === serialized;
-
-      if (!isCompletePayloadValid) {
-        console.error('[WIRD Storage] Write verification failed: Complete payload content mismatch on readback');
-        return false;
-      }
-
-      // Update schema version only after persistence and complete payload readback are verified
-      const versionOk = setItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
-      if (!versionOk) {
-        return false;
-      }
-
-      // Keep legacy keys in sync for backward compatibility
-      try {
-        setItem(STORAGE_KEYS.PORTIONS, serialized);
-        const revItems: RevisionItem[] = portions
-          .filter(p => p.status !== 'not_memorized')
-          .map(p => ({
-            id: p.id,
-            surahNumber: p.surahNumber,
-            surahName: p.surahName,
-            startAyah: p.startAyah,
-            endAyah: p.endAyah,
-            pageNumber: p.pageNumber,
-            juzNumber: p.juzNumber,
-            type: p.revisionType || 'minor',
-            lastReviewedDate: p.lastReviewedDate,
-            nextDueDate: p.nextDueDate,
-            intervalDays: p.intervalDays,
-            easeFactor: p.easeFactor,
-            repetitionCount: p.repetitionCount,
-            strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium')
-          }));
-        setItem(STORAGE_KEYS.REVISION, JSON.stringify(revItems));
-      } catch (e) {
-        console.warn('[WIRD Storage] Legacy backward-sync warning', e);
+      const revisionItems: RevisionItem[] = portions
+        .filter(portion => portion.status !== 'not_memorized')
+        .map(portion => ({
+          id: portion.id,
+          surahNumber: portion.surahNumber,
+          surahName: portion.surahName,
+          startAyah: portion.startAyah,
+          endAyah: portion.endAyah,
+          pageNumber: portion.pageNumber,
+          juzNumber: portion.juzNumber,
+          type: portion.revisionType || 'minor',
+          lastReviewedDate: portion.lastReviewedDate,
+          nextDueDate: portion.nextDueDate,
+          intervalDays: portion.intervalDays,
+          easeFactor: portion.easeFactor,
+          repetitionCount: portion.repetitionCount,
+          strength: portion.strength || (portion.status === 'weak' ? 'weak' : portion.status === 'stable' ? 'strong' : 'medium')
+        }));
+      const serializedRevision = JSON.stringify(revisionItems);
+      if (!setItem(STORAGE_KEYS.REVISION, serializedRevision) ||
+          !this.verifyRawItem(STORAGE_KEYS.REVISION, serializedRevision)) {
+        return failAndRestore('legacy revision projection write/readback failed');
       }
 
       return true;
-    } catch (e) {
-      console.error("[WIRD Storage] saveUnifiedPortions write failed", e);
+    } catch (error) {
+      if (writeStarted) return failAndRestore(error instanceof Error ? error.message : 'unexpected write error');
+      console.error('[WIRD Storage] saveUnifiedPortions validation failed before writes', error);
       return false;
     }
   },
