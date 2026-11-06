@@ -592,6 +592,7 @@ function assertValidLegacyPortionInput(value: unknown, index: number): asserts v
     (value.id === undefined || (typeof value.id === 'string' && value.id.length <= 180)) &&
     (value.type === undefined || ['passage', 'surah', 'page'].includes(value.type)) &&
     (value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100)) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000)) &&
     (value.status === undefined || VALID_PORTION_STATUSES.includes(value.status)) &&
     (value.lastReviewedDate === undefined || value.lastReviewedDate === '' || isValidLocalDateString(value.lastReviewedDate)) &&
     (value.nextDueDate === undefined || value.nextDueDate === '' || isValidLocalDateString(value.nextDueDate)) &&
