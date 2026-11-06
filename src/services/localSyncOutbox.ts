@@ -90,7 +90,7 @@ function isValidMutation(value: unknown): value is OutboxMutation {
     && (value.operation === 'upsert' || value.operation === 'tombstone')
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
-    && typeof value.deviceId === 'string' && value.deviceId.length > 0 && byteLength(value.deviceId) <= 128 && !/[\\u0000-\\u001f]/.test(value.deviceId)
+    && typeof value.deviceId === 'string' && value.deviceId.length > 0 && byteLength(value.deviceId) <= 128 && !/[\u0000-\u001f]/.test(value.deviceId)
     && isRecord(value.payload) && byteLength(JSON.stringify(value.payload) || '') <= MAX_MUTATION_PAYLOAD_BYTES
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
@@ -133,7 +133,7 @@ function readState(): OutboxState {
   catch { throw new Error('بيانات صندوق المزامنة تالفة؛ لم يتم استبدالها أو حذفها.'); }
 
   if (!isRecord(parsed) || parsed.schemaVersion !== 1 ||
-      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 || byteLength(parsed.deviceId) > 128 || /[\\u0000-\\u001f]/.test(parsed.deviceId) ||
+      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 || byteLength(parsed.deviceId) > 128 || /[\u0000-\u001f]/.test(parsed.deviceId) ||
       !Array.isArray(parsed.pending) || parsed.pending.length > MAX_PENDING_MUTATIONS ||
       !Array.isArray(parsed.acknowledgedIds) || parsed.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS ||
       !parsed.pending.every(isValidMutation) ||
