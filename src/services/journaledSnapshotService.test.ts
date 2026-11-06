@@ -65,7 +65,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         payload: { records: [{ id: 'invalid-plan' }] }
       }, () => { fallbackCalled = true; return true; }, { journal, runExclusive: inlineLock });
       const snapshot = await journal.getSnapshot();
-      assert(!result.success && result.queued, 'A failed projection must report the already-committed event');
+      assert(!result.success && result.queued && result.recoveryBlocked, 'A failed projection must report the committed event and blocked recovery');
       assert(!fallbackCalled, 'The local-only fallback must never run after a journal commit');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1, 'The event must remain available for a later recovery attempt');
       assert(snapshot.projectionCursor === 0, 'The cursor must remain before the invalid event');
@@ -73,7 +73,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
 
       const laterWrite = await persistPlansSnapshot(PRESET_PLANS, { journal, runExclusive: inlineLock });
       const afterLaterWrite = await journal.getSnapshot();
-      assert(!laterWrite.success && !laterWrite.queued,
+      assert(!laterWrite.success && !laterWrite.queued && laterWrite.recoveryBlocked,
         'A later snapshot must be blocked while an earlier committed event cannot be replayed');
       assert(afterLaterWrite.eventCount === 1 && afterLaterWrite.projectionCursor === 0,
         'Blocked later writes must not append an event behind an unrecovered snapshot');
