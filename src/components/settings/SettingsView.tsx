@@ -34,6 +34,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCloudSync } from '../../hooks/useCloudSync';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupJournaled } from '../../services/backupPersistence';
+import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -163,15 +164,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleLoadDemoData = () => {
+  const handleLoadDemoData = async () => {
     if (!import.meta.env.DEV) return;
     if (!isGuest && user) {
       setShowDemoConfirm(false);
       onToast?.("تحميل البيانات التجريبية مقتصر على وضع الزائر لحماية حسابك السحابي من التداخل.", "warn");
       return;
     }
-    StorageService.loadDemoData();
-    RetentionService.loadDemoPortions();
+    await loadDemoDataJournaled();
     const updated = StorageService.getProfile();
     setFormData(updated);
     onUpdateProfile(updated);

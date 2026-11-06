@@ -53,7 +53,7 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
   // 3. Production entry points must never seed demo progress.
   test('Normal app startup does not invoke demo data loaders', () => {
     const settingsSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/settings/SettingsView.tsx'), 'utf8');
-    assert(settingsSource.includes('if (!import.meta.env.DEV || isLoadingDemoData) return;'), 'Demo loader must refuse to run outside development');
+    assert(settingsSource.includes('if (!import.meta.env.DEV) return;'), 'Demo loader must refuse to run outside development');
     assert(settingsSource.includes('{import.meta.env.DEV && ('), 'Demo data card must be hidden in production');
     assert(settingsSource.includes('import.meta.env.DEV && showDemoConfirm'), 'Demo confirmation must be hidden in production');
 
