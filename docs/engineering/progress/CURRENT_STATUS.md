@@ -7,7 +7,7 @@
 
 ## Verified repository position
 
-- Latest application-code merge on `main`: `e69871897c2561e7aa75c6e31f9005169ed08c23` — PR #10 (Phase 2 retention mutation-integrity slice). Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
+- Latest application-code merge on `main`: `84aac72c9d3489f93d200e331c35760eb754462e` — PR #11 (Phase 2 queue/metrics slice). Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
 - Previous merges: PR #6 `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`; PR #5 `fd480526dd3eac728f60b3554e83309354903ad8`; PR #4 `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - GitHub Actions run `42190653101` on PR #9 head `2b520ebcf6c51ae155de508ddf49e49d421ba7ab` passed automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test. The merged code is `f8e0cef`.
@@ -18,11 +18,11 @@
 ## Current milestone
 
 **PHASE 2 — Memorization/revision correctness audit**  
-**Status:** IN PROGRESS on `main`; PR #10 merged and its code gates passed. Remaining daily queue/statistics/rollback audit is still open.  
+**Status:** IN PROGRESS on `main`; PR #10 and #11 merged and their code gates passed. Remaining multi-key rollback failure-injection audit is still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
 **Last code milestone:** PR #11 merge `84aac72`; all code gates passed in Actions run `42195579600`.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
-**Remaining:** daily revision queue/weekly overview, aggregate statistics, and complete multi-key rollback audit remain Phase 2 work. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
+**Remaining:** complete multi-key rollback failure-injection audit for review, weak-verse, and activity writes. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
 
 ## Completed and verified foundations
 
