@@ -3,6 +3,7 @@ import { RetentionService } from './retentionService';
 import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
 import { ALL_SURAHS } from '../data/quranMeta';
+import type { JournaledTransactionOperation } from './journaledSnapshotService';
 
 export interface RecordWeakVerseFailureInput {
   surahNumber: number;
@@ -17,7 +18,7 @@ export type RecordWeakVerseFailureResult =
   | { success: false; messageAr: string };
 
 export type BuildWeakVerseFailureTransactionResult =
-  | { success: true; operations: import('./journaledSnapshotService').JournaledTransactionOperation[] }
+  | { success: true; operations: JournaledTransactionOperation[] }
   | { success: false; messageAr: string };
 
 /**
