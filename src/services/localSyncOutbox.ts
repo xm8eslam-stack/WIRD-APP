@@ -90,7 +90,7 @@ function isValidMutation(value: unknown): value is OutboxMutation {
     && (value.operation === 'upsert' || value.operation === 'tombstone')
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
-    && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128
+    && typeof value.deviceId === 'string' && value.deviceId.length > 0 && byteLength(value.deviceId) <= 128 && !/[\\u0000-\\u001f]/.test(value.deviceId)
     && isRecord(value.payload) && byteLength(JSON.stringify(value.payload) || '') <= MAX_MUTATION_PAYLOAD_BYTES
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
@@ -133,7 +133,7 @@ function readState(): OutboxState {
   catch { throw new Error('بيانات صندوق المزامنة تالفة؛ لم يتم استبدالها أو حذفها.'); }
 
   if (!isRecord(parsed) || parsed.schemaVersion !== 1 ||
-      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 || parsed.deviceId.length > 128 ||
+      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 || byteLength(parsed.deviceId) > 128 || /[\\u0000-\\u001f]/.test(parsed.deviceId) ||
       !Array.isArray(parsed.pending) || parsed.pending.length > MAX_PENDING_MUTATIONS ||
       !Array.isArray(parsed.acknowledgedIds) || parsed.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS ||
       !parsed.pending.every(isValidMutation) ||
@@ -154,7 +154,9 @@ function readState(): OutboxState {
       new Set(fingerprintIds).size !== fingerprintIds.length ||
       pendingIds.some(id => acknowledgedIds.includes(id)) ||
       fingerprintIds.some(id => !acknowledgedIds.includes(id)) ||
-      fingerprintIds.some((id, index) => fingerprintIds.indexOf(id) !== index)) {
+      fingerprintIds.some((id, index) => fingerprintIds.indexOf(id) !== index) ||
+      (parsed.pending as OutboxMutation[]).some(item => item.deviceId !== parsed.deviceId) ||
+      acknowledgedMutations.some(item => item.deviceId !== parsed.deviceId)) {
     throw new Error('صندوق المزامنة يحتوي على معرفات مكررة أو متعارضة بين العمليات المعلقة والمؤكدة؛ تم إيقافه دون تعديل.');
   }
 
@@ -282,12 +284,19 @@ export const LocalSyncOutbox = {
     if (index < 0) return false;
     if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت إعادة المحاولة غير صالح.');
     const current = state.pending[index];
+    if (current.attemptCount >= Number.MAX_SAFE_INTEGER) {
+      throw new Error('تجاوز عداد محاولات المزامنة الحد الآمن؛ تم الحفاظ على العملية دون تعديل.');
+    }
     const attemptCount = current.attemptCount + 1;
     const delay = Math.min(MAX_BACKOFF_MS, 1000 * (2 ** Math.min(attemptCount, 16)));
+    const nextAttemptAtMs = nowMs + delay;
+    if (!Number.isSafeInteger(nextAttemptAtMs)) {
+      throw new Error('وقت إعادة المحاولة يتجاوز الحد الآمن؛ تم الحفاظ على العملية دون تعديل.');
+    }
     state.pending[index] = {
       ...current,
       attemptCount,
-      nextAttemptAtMs: nowMs + delay,
+      nextAttemptAtMs,
       lastErrorCode: String(errorCode || 'UNKNOWN').slice(0, 64)
     };
     persistState(state);
