@@ -17,7 +17,7 @@
 
 ## Deployment status
 
-- Vercel still reports `build-rate-limit` / `api-deployments-free-per-day`.
+- The latest Vercel check on PR #54 reported success, but the production URL has not been independently verified against the latest main SHA. Treat deployment as unconfirmed; this does not block merging tested changes.
 - Per the owner's explicit instruction, this is not a merge blocker for tested changes.
 - It is not a successful deployment receipt. Production deployment and live browser verification remain unconfirmed.
 
@@ -55,7 +55,7 @@ Still open:
 - Replaces direct demo writes with one journaled transaction for signed-in users and one rollback-safe local transaction for guests.
 - Removes direct demo writer methods from StorageService and RetentionService.
 - Adds authenticated/guest demo persistence tests and a QuotaExceededError rollback test. Existing suites already cover IndexedDB enqueue failure, durable read failure, and projection rollback.
-- Latest head: `25a04513b26aff04f0cfffa93c0d36d5b170d1b9`; exact-head Quality Gate run `42281736462` is pending.
+- Latest head: `9d1352c65e371d36a84a1e136912f3835a3925e3`; exact-head Quality Gate run `42281919337` is pending. Added simulated restart/replay coverage for an event committed before local projection.
 
 ## Next implementation sequence
 
