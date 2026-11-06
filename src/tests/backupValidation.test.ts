@@ -65,6 +65,12 @@ export function runBackupTests(): { passed: number; failed: number } {
       lastReviewedDate: '2026-11-05', nextDueDate: '2026-11-06',
       intervalDays: 1, easeFactor: 2.5, repetitionCount: 1, strength: 'weak'
     };
+    const projectedRevision: RevisionItem = {
+      id: SAMPLE_PORTION.id, surahNumber: SAMPLE_PORTION.surahNumber, surahName: SAMPLE_PORTION.surahName,
+      startAyah: SAMPLE_PORTION.startAyah, endAyah: SAMPLE_PORTION.endAyah, type: 'minor',
+      nextDueDate: SAMPLE_PORTION.nextDueDate, intervalDays: SAMPLE_PORTION.intervalDays,
+      easeFactor: SAMPLE_PORTION.easeFactor, repetitionCount: SAMPLE_PORTION.repetitionCount, strength: 'strong'
+    };
     const testResult: TestResult = {
       id: 'test-valid-1', date: '2026-11-06', type: 'complete_verse',
       surahName: 'الملك', score: 8, totalQuestions: 10, weakVerses: ['67:3']
@@ -82,7 +88,7 @@ export function runBackupTests(): { passed: number; failed: number } {
       profile: { ...CLEAN_INITIAL_PROFILE },
       plans: [PRESET_PLANS[0]],
       enginePlans: [buildDemoEnginePlan()],
-      revisionItems: [revisionItem],
+      revisionItems: [projectedRevision],
       logs: [log],
       tests: [testResult],
       portions: [SAMPLE_PORTION],
@@ -91,6 +97,8 @@ export function runBackupTests(): { passed: number; failed: number } {
     };
     const result = validateBackupPayload(payload);
     assert(result.valid, 'All valid nested records should pass strict backup validation: ' + (result.error || ''));
+    assert(validateBackupPayload({ version: 3, revisionItems: [revisionItem] }).valid,
+      'Complete legacy revision item should pass its migration-compatible schema');
   });
 
   test('Backup rejects malformed records inside arrays, not only malformed array roots', () => {
