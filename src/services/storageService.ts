@@ -1385,7 +1385,9 @@ export const StorageService = {
    * Tombstones are intentionally rejected until collection-specific delete semantics exist.
    */
   applyJournalEvent(event: JournalEvent): boolean {
-    if (!isPlainRecord(event) || event.operation !== 'upsert' || !isPlainRecord(event.payload)) return false;
+    if (!isPlainRecord(event) || event.eventType !== 'domain-mutation' || event.schemaVersion !== 1 ||
+        !Number.isSafeInteger(event.sequence) || event.sequence < 1 ||
+        event.operation !== 'upsert' || !isPlainRecord(event.payload)) return false;
     const scope = this.getStorageScope();
     const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
     if (!uid || event.uid !== uid) return false;
