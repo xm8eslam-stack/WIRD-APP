@@ -16,12 +16,23 @@
 - [x] Complete `unifiedPortionService.ts` migration/merge/history/conflict audit (PR #9).
 - [ ] Complete audit of every remaining domain mutation call site, including review scheduling, duplicate operations, and statistics paths.
 - [x] Verify Phase 2 tests for duplicate portion adds, weak-verse archive uniqueness, idempotent resolution, review-history classification, and rapid UI double submission in CI (PR #10, Actions #681).
+- [x] Deterministic journal projection replay before authenticated app initialization, with UID scoping, ordered cursor advancement, and safe legacy-event handling (PR #36).
+- [x] Journal-first authenticated profile settings/theme, preset plans, and engine-plan snapshots; serialize enqueue+replay under one per-UID lock and block stale snapshots after recovery (PR #37).
+- [ ] Journal-first canonical portion/revision mutations and grouped atomic semantics for session completion, weak-verse recording, and activity/profile updates.
+- [ ] Journal-first test results, backup import/reset, and every remaining production mutation call site.
 - [ ] Independently review all Phase 2 mutation paths and confirm rollback/aggregate semantics before merging to main.
-- [ ] Append-only local activity/revision/weak-verse/test event ledger.
-- [ ] Event + outbox transaction/journal and deterministic replay.
-- [ ] Crash/reload recovery and quota/blocked-storage tests.
-- [ ] Cross-tab atomic event+outbox writes; current localStorage outbox is not cross-tab transactional and must remain disconnected from cloud sync.
-- [ ] Idempotent, non-destructive migration with export/restore.
+- [ ] Append-only immutable activity/revision/weak-verse/test event semantics with derived local aggregates.
+- [x] Atomic append-only IndexedDB event + outbox transaction and deterministic UID-scoped local projection replay before authenticated app startup (PR #30 and PR #36).
+- [ ] Complete crash/reload recovery and quota/blocked-storage tests for every domain mutation; PR #36/#37 cover replay and the first profile/plan snapshot paths only.
+- [x] Cross-tab atomic event+outbox writes in IndexedDB; legacy localStorage outbox data is retained as a migration/recovery source, not as the cloud-write path.
+- [x] Idempotent, non-destructive legacy outbox migration with source retention and conflict rejection (PR #31).
+
+## Latest verified main checkpoint — PR #37
+- Current main SHA: `60d475d1f4f06ea4a852751e1548297d9c7dc6de`.
+- PR #36 exact-head runs `42242635765` (PR) and the corresponding push run passed; post-merge main run `42249998978` passed on SHA `9b76227b9498b23fa79fb39264d4b4be98fa16e4`.
+- PR #37 exact-head runs `42251723375` and `42251711748` passed on SHA `d45dd9e7284101e332f15b2f408cd62001a961be`.
+- Post-merge main run `42251976734` is still in progress at checkpoint preparation. Vercel Production deployment is not confirmed.
+- Phase 2 remains IN PROGRESS; PR #37 does not implement full cloud sync.
 
 ## Cloud sync
 - [ ] Firestore client adapter.
