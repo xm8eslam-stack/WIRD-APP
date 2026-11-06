@@ -1,6 +1,6 @@
 {
-  "summary": "خطة شاملة وبرومبت تنفيذي متكامل لحل مشكلة ظهور الأكواد في التفسير والارتقاء الجذري بتصميم واجهة تطبيق وِرد بالاعتماد المباشر على منصة مطوري Quran.com (API v4) مع ضمان التوافق التام مع النشر على Vercel عبر GitHub.",
-  "updatedAt": "2026-11-06T19:10:26.515403597Z",
+  "summary": "خطة العمل الهندسية الشاملة لتنفيذ المزامنة السحابية الحقيقية (WIRD CLOUD SYNC)، وربط Firebase Auth وCloud Firestore مع نظام IndexedDB Offline-First وضمان النشر الآمن على Vercel عبر GitHub.",
+  "updatedAt": "2026-11-06T19:47:00.121612928Z",
   "requestFeedback": true,
   "userFacing": true
 }

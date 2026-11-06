@@ -143,6 +143,38 @@ try {
       deletedAt: 'not-a-timestamp'
     }));
   });
+
+  const validEvent = {
+    schemaVersion: 1,
+    eventId: 'event-alice-001',
+    mutationId: 'mutation-test-0001',
+    uid: 'alice',
+    deviceId: 'test-device-01',
+    occurredAtMs: 1_799_000_000_000,
+    eventType: 'session.completed',
+    payload: { memorizedAyahs: 5 }
+  };
+
+  await test('Verified owner can append a valid domain event to the ledger', async () => {
+    const eventRef = doc(alice, 'users/alice/events/event-alice-001');
+    await assertSucceeds(setDoc(eventRef, validEvent));
+    await assertSucceeds(getDoc(eventRef));
+  });
+
+  await test('Domain events are immutable: update and delete are strictly denied', async () => {
+    const eventRef = doc(alice, 'users/alice/events/event-alice-001');
+    await assertFails(setDoc(eventRef, { ...validEvent, eventType: 'tampered' }));
+    await assertFails(deleteDoc(eventRef));
+  });
+
+  await test('Domain events with mismatched UID or eventId are denied', async () => {
+    await assertFails(setDoc(doc(alice, 'users/alice/events/mismatched-id'), validEvent));
+    await assertFails(setDoc(doc(alice, 'users/alice/events/event-alice-002'), {
+      ...validEvent,
+      eventId: 'event-alice-002',
+      uid: 'bob'
+    }));
+  });
 } finally {
   await testEnv.cleanup();
 }

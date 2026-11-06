@@ -5,6 +5,7 @@ import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal, type JournalMutationInput } from './indexedDbSyncJournal';
 import { replayJournalProjection, type ProjectionLockRunner } from './journalProjectionReplayer';
 import { StorageService, type JournalProjectionOperation } from './storageService';
+import { cloudSyncCoordinator } from './cloudSyncCoordinator';
 
 export interface JournaledSnapshotWriteResult {
   success: boolean;
@@ -127,6 +128,13 @@ export async function persistJournaledSnapshot(
         recoveredPriorEvents: true,
         error: 'تمت استعادة تغيير سابق إلى التخزين المحلي. حدّث بيانات الشاشة ثم أعد المحاولة.'
       };
+    }
+    if (outcome === 'saved') {
+      try {
+        cloudSyncCoordinator.notifyMutationEnqueued();
+      } catch {
+        // Notification should not block local write success
+      }
     }
     return { success: true, mode: 'journal', queued: true, recoveryBlocked: false, recoveredPriorEvents: false };
   } catch (error) {

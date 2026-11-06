@@ -59,6 +59,56 @@ service cloud.firestore {
         );
     }
 
+    function hasValidDomainEvent(uid, eventId) {
+      let data = request.resource.data;
+      return data.keys().hasAll([
+          'schemaVersion',
+          'eventId',
+          'mutationId',
+          'uid',
+          'deviceId',
+          'occurredAtMs',
+          'eventType',
+          'payload'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion',
+          'eventId',
+          'mutationId',
+          'uid',
+          'deviceId',
+          'occurredAtMs',
+          'eventType',
+          'payload'
+        ])
+        && data.schemaVersion is int
+        && data.schemaVersion == 1
+        && data.eventId == eventId
+        && data.eventId is string
+        && data.eventId.size() > 0
+        && data.eventId.size() <= 128
+        && data.mutationId is string
+        && data.mutationId.size() > 0
+        && data.mutationId.size() <= 128
+        && data.uid == uid
+        && data.deviceId is string
+        && data.deviceId.size() > 0
+        && data.deviceId.size() <= 128
+        && data.occurredAtMs is int
+        && data.occurredAtMs >= 0
+        && data.eventType is string
+        && data.eventType.size() > 0
+        && data.eventType.size() <= 64
+        && data.payload is map;
+    }
+
+    // Append-only immutable remote event ledger
+    match /users/{uid}/events/{eventId} {
+      allow read: if ownsUserPath(uid);
+      allow create: if ownsUserPath(uid) && hasValidDomainEvent(uid, eventId);
+      allow update, delete: if false;
+    }
+
     // Only verified users may access allowlisted documents inside their own UID path.
     match /users/{uid}/{collection}/{documentId} {
       allow read: if ownsUserPath(uid) && isAllowedCollection(collection);
@@ -75,3 +125,4 @@ service cloud.firestore {
     }
   }
 }
+

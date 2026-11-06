@@ -1,6 +1,7 @@
 import React from 'react';
-import { Flame, Play, Moon, Sun, Menu, BookOpen, ChevronLeft, Download, Smartphone } from 'lucide-react';
+import { Flame, Play, Moon, Sun, Menu, BookOpen, ChevronLeft, Download, Cloud, CloudCheck, CloudOff, CloudAlert, RefreshCw } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
+import { useCloudSync } from '../../hooks/useCloudSync';
 
 interface HeaderProps {
   currentTab: string;
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   isStandalone,
   onInstallPwa
 }) => {
+  const { status, pendingCount, triggerSync } = useCloudSync();
   return (
     <header className="sticky top-0 z-30 h-16 bg-[#faf8f5]/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
       {/* Zone 1: Mobile Menu & Semantic RTL Breadcrumb */}
@@ -76,6 +78,62 @@ export const Header: React.FC<HeaderProps> = ({
             <span>تثبيت التطبيق</span>
           </button>
         )}
+
+        {/* Cloud Sync Quick Status */}
+        <button
+          onClick={() => triggerSync()}
+          disabled={status === 'syncing'}
+          className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all ${
+            status === 'synced'
+              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
+              : status === 'syncing'
+              ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200/80 animate-pulse'
+              : status === 'offline'
+              ? 'bg-stone-100 dark:bg-stone-800 text-stone-500 border-stone-200 dark:border-stone-700'
+              : status === 'unverified'
+              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60'
+              : 'bg-stone-50 dark:bg-stone-850 text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700'
+          }`}
+          title={
+            status === 'synced'
+              ? 'المزامنة السحابية مكتملة (انقر لإعادة المزامنة)'
+              : status === 'syncing'
+              ? 'جاري المزامنة مع السحابة...'
+              : status === 'offline'
+              ? 'الجهاز غير متصل بالإنترنت'
+              : status === 'unverified'
+              ? 'بانتظار تفعيل البريد للمزامنة'
+              : 'نمط الزائر (محلي فقط)'
+          }
+        >
+          {status === 'syncing' ? (
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
+          ) : status === 'synced' ? (
+            <CloudCheck className="w-3.5 h-3.5 text-emerald-600" />
+          ) : status === 'offline' ? (
+            <CloudOff className="w-3.5 h-3.5 text-stone-400" />
+          ) : status === 'unverified' ? (
+            <CloudAlert className="w-3.5 h-3.5 text-amber-600" />
+          ) : (
+            <Cloud className="w-3.5 h-3.5 text-stone-500" />
+          )}
+          <span className="hidden sm:inline">
+            {status === 'synced'
+              ? 'مُزامن'
+              : status === 'syncing'
+              ? 'مزامنة...'
+              : status === 'offline'
+              ? 'أوفلاين'
+              : status === 'unverified'
+              ? 'تفعيل البريد'
+              : 'محلي'}
+          </span>
+          {pendingCount > 0 && (
+            <span className="bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 text-[10px] font-mono px-1 rounded-full">
+              {pendingCount}
+            </span>
+          )}
+        </button>
 
         <button
           onClick={onToggleTheme}

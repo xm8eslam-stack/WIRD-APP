@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "SyncEnvelope": {
+      "title": "SyncEnvelope",
+      "description": "Idempotent user-scoped document snapshot with monotonic audit metadata and tombstone support.",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "description": "Envelope schema format version (currently 1)"
+        },
+        "payload": {
+          "type": "object",
+          "description": "Domain data payload for the collection record"
+        },
+        "updatedAtMs": {
+          "type": "integer",
+          "description": "Client timestamp of the mutation in milliseconds since epoch"
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Unique client installation identity originating the mutation",
+          "maxLength": 128
+        },
+        "mutationId": {
+          "type": "string",
+          "description": "Idempotency key uniquely identifying this mutation",
+          "maxLength": 128
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Optional ISO timestamp indicating tombstone deletion"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "payload",
+        "updatedAtMs",
+        "deviceId",
+        "mutationId"
+      ]
+    },
+    "DomainEventRecord": {
+      "title": "DomainEventRecord",
+      "description": "Immutable append-only domain event in the remote cloud ledger.",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "description": "Event schema version (must be 1)"
+        },
+        "eventId": {
+          "type": "string",
+          "description": "Unique UUID identifying the event",
+          "maxLength": 128
+        },
+        "mutationId": {
+          "type": "string",
+          "description": "Matching mutation ID binding the event to the local outbox",
+          "maxLength": 128
+        },
+        "uid": {
+          "type": "string",
+          "description": "Firebase Authentication UID of the verified event owner",
+          "maxLength": 128
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Client device identifier originating the event",
+          "maxLength": 128
+        },
+        "occurredAtMs": {
+          "type": "integer",
+          "description": "Timestamp when the event occurred in milliseconds since epoch"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Domain event type tag (e.g. session.completed, revision.rated, test.completed, weak_verse.failed, weak_verse.resolved)",
+          "maxLength": 64
+        },
+        "payload": {
+          "type": "object",
+          "description": "Domain-specific typed event payload"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "eventId",
+        "mutationId",
+        "uid",
+        "deviceId",
+        "occurredAtMs",
+        "eventType",
+        "payload"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{uid}/profile/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "User profile, streak records, and memorization goal"
+    },
+    "/users/{uid}/plans/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "User memorization plans and preset configurations"
+    },
+    "/users/{uid}/enginePlans/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "Smart planning engine schedule and active tasks"
+    },
+    "/users/{uid}/portions/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "SM-2 memorization portions, intervals, ease factors, and repetitions"
+    },
+    "/users/{uid}/weakVerses/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "Weak verse and repetition focal records"
+    },
+    "/users/{uid}/tests/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "Assessment question and test score history"
+    },
+    "/users/{uid}/activityEvents/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "Daily activity logs and session timeline"
+    },
+    "/users/{uid}/syncMeta/{documentId}": {
+      "schema": "SyncEnvelope",
+      "description": "Device sync metadata, last sync cursor, and client capabilities"
+    },
+    "/users/{uid}/events/{eventId}": {
+      "schema": "DomainEventRecord",
+      "description": "Immutable append-only domain event ledger for multi-device replay and audit"
+    }
+  }
+}

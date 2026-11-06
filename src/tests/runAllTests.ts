@@ -33,6 +33,7 @@ import { runDailySessionSelectionTests } from '../services/dailySessionSelection
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runAudioPreferencesTests } from '../services/audioPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
+import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.test';
 
 export interface SuiteResult {
   passed: number;
@@ -113,6 +114,7 @@ async function main() {
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
+    { name: 'Cloud Sync Coordinator & Remote Reconciliation', runner: runCloudSyncCoordinatorTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);

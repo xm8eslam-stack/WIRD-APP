@@ -19,13 +19,19 @@ import {
   LogOut,
   CheckCircle2,
   KeyRound,
-  Shield
+  Shield,
+  Cloud,
+  CloudCheck,
+  CloudOff,
+  CloudAlert,
+  RefreshCw
 } from 'lucide-react';
 import { UserProfile, ReciterId } from '../../types/quran';
 import { RECITERS } from '../../services/audioService';
 import { StorageService } from '../../services/storageService';
-import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
+import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
+import { useCloudSync } from '../../hooks/useCloudSync';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupJournaled } from '../../services/backupPersistence';
 
@@ -56,7 +62,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [isLoadingDemoData, setIsLoadingDemoData] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,29 +141,45 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     reader.readAsText(file);
   };
 
-  const handleLoadDemoData = async () => {
-    if (!import.meta.env.DEV || isLoadingDemoData) return;
-    setIsLoadingDemoData(true);
+  const { user, isGuest, isEmailVerified, logout } = useAuth();
+  const { status: syncStatus, pendingCount, lastSyncAtMs, isOnline, triggerSync } = useCloudSync();
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+
+  const handleManualSync = async () => {
+    setIsManualSyncing(true);
     try {
-      const result = await loadDemoDataJournaled();
-      if (!result.success) {
-        onToast?.(result.error || 'تعذر تحميل البيانات التجريبية؛ لم يتم تأكيد أي تغيير.', 'error');
-        return;
+      const ok = await triggerSync();
+      if (ok) {
+        onToast?.("تمت المزامنة السحابية مع Cloud Firestore بنجاح", "success");
+      } else {
+        if (!isOnline) {
+          onToast?.("الجهاز غير متصل بالإنترنت حالياً؛ التغييرات محفوظة محلياً.", "info");
+        } else if (!isEmailVerified && !isGuest && user) {
+          onToast?.("يتطلب حفظ البيانات سحابياً تفعيل البريد الإلكتروني أولاً.", "warn");
+        }
       }
-      const updated = StorageService.getProfile();
-      setFormData(updated);
-      onUpdateProfile(updated);
-      setShowDemoConfirm(false);
-      onBackupImported?.();
-      onToast?.('تم تحميل البيانات التجريبية وحفظها في سجل الاستعادة بنجاح.', 'info');
-    } catch (error) {
-      onToast?.(error instanceof Error ? error.message : 'تعذر تحميل البيانات التجريبية.', 'error');
     } finally {
-      setIsLoadingDemoData(false);
+      setIsManualSyncing(false);
     }
   };
 
-  const { user, isGuest, isEmailVerified, logout } = useAuth();
+  const handleLoadDemoData = () => {
+    if (!import.meta.env.DEV) return;
+    if (!isGuest && user) {
+      setShowDemoConfirm(false);
+      onToast?.("تحميل البيانات التجريبية مقتصر على وضع الزائر لحماية حسابك السحابي من التداخل.", "warn");
+      return;
+    }
+    StorageService.loadDemoData();
+    RetentionService.loadDemoPortions();
+    const updated = StorageService.getProfile();
+    setFormData(updated);
+    onUpdateProfile(updated);
+    setShowDemoConfirm(false);
+    if (onToast) {
+      onToast("تم تحميل البيانات التجريبية بنجاح (سجلات استعراضية للملك والنبأ)", "info");
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -245,6 +266,88 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           </div>
         )}
+      </div>
+
+      {/* 1.6 Cloud Sync & Data Protection Card */}
+      <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">
+        <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-700 pb-3">
+          <div className="flex items-center gap-2 font-bold text-sm text-stone-900 dark:text-stone-100">
+            <Cloud className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+            <span>المزامنة السحابية وحماية البيانات (Cloud Firestore Sync)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {syncStatus === 'synced' ? (
+              <span className="text-[11px] bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold px-2.5 py-0.5 rounded-full border border-emerald-300/80 flex items-center gap-1">
+                <CloudCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>مُزامن بالكامل</span>
+              </span>
+            ) : syncStatus === 'syncing' || isManualSyncing ? (
+              <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80 flex items-center gap-1 animate-pulse">
+                <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />
+                <span>جاري المزامنة...</span>
+              </span>
+            ) : syncStatus === 'offline' ? (
+              <span className="text-[11px] bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-bold px-2.5 py-0.5 rounded-full border border-stone-300 dark:border-stone-700 flex items-center gap-1">
+                <CloudOff className="w-3.5 h-3.5 text-stone-500" />
+                <span>أوفلاين (محلي)</span>
+              </span>
+            ) : syncStatus === 'unverified' ? (
+              <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80 flex items-center gap-1">
+                <CloudAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>بانتظار تفعيل البريد</span>
+              </span>
+            ) : (
+              <span className="text-[11px] bg-stone-100 dark:bg-stone-850 text-stone-600 dark:text-stone-400 font-bold px-2.5 py-0.5 rounded-full border border-stone-200 dark:border-stone-700 flex items-center gap-1">
+                <Database className="w-3.5 h-3.5 text-stone-500" />
+                <span>محلي فقط</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
+            <span className="text-stone-500 dark:text-stone-400 block text-[11px]">حالة الاتصال والشبكة:</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-stone-400'}`} />
+              <span>{isOnline ? 'متصل بالإنترنت' : 'غير متصل (يعمل محلياً)'}</span>
+            </div>
+          </div>
+
+          <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
+            <span className="text-stone-500 dark:text-stone-400 block text-[11px]">التغييرات في انتظار الرفع:</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200 font-mono">
+              {pendingCount === 0 ? 'لا توجد تغييرات معلقة' : `${pendingCount} تغيير معلق`}
+            </div>
+          </div>
+
+          <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
+            <span className="text-stone-500 dark:text-stone-400 block text-[11px]">آخر مزامنة ناجحة:</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200">
+              {lastSyncAtMs ? new Date(lastSyncAtMs).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'لم تتم بعد'}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
+            تتم مزامنة بيانات حفظك ومراجعاتك وسجل الإنجازات اليومي تلقائياً عند توفر الإنترنت، مع حماية تامة ومطابقة خالية من تعارضات الحفظ.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={isManualSyncing || syncStatus === 'syncing' || !user || isGuest || !isEmailVerified}
+            className={`px-4 py-2 font-bold rounded-xl text-xs transition-colors flex items-center gap-2 shrink-0 ${
+              !user || isGuest || !isEmailVerified
+                ? 'bg-stone-100 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 cursor-not-allowed'
+                : 'bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs'
+            }`}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncing || syncStatus === 'syncing' ? 'animate-spin' : ''}`} />
+            <span>مزامنة الآن</span>
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -588,7 +691,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleLoadDemoData}
-                disabled={isLoadingDemoData}
                 className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors"
               >
                 تحميل البيانات الآن

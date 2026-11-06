@@ -17,6 +17,7 @@ export type SyncOperation = 'upsert' | 'tombstone';
 
 export interface OutboxMutation {
   mutationId: string;
+  eventId?: string;
   collection: SyncCollection;
   documentId: string;
   operation: SyncOperation;
@@ -298,7 +299,7 @@ async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 
 }
 
 function toOutboxMutation(entry: JournalOutboxEntry): OutboxMutation {
-  const { key: _key, uid: _uid, eventId: _eventId, fingerprint: _fingerprint, ...mutation } = entry;
+  const { key: _key, uid: _uid, fingerprint: _fingerprint, ...mutation } = entry;
   return mutation;
 }
 
@@ -318,6 +319,12 @@ export const LocalSyncOutbox = {
   async listReady(nowMs: number = Date.now(), limit: number = 25): Promise<OutboxMutation[]> {
     await migrateLegacyOutboxToIndexedDb();
     return (await getIndexedDbJournal().listReady(nowMs, limit)).map(toOutboxMutation);
+  },
+
+  /** Return ready journal outbox entries including eventId and fingerprint */
+  async listReadyEntries(nowMs: number = Date.now(), limit: number = 25): Promise<JournalOutboxEntry[]> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().listReady(nowMs, limit);
   },
 
   /** Acknowledge only after the remote server confirms the mutation. */
