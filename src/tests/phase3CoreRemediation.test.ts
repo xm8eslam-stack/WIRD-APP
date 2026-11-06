@@ -311,6 +311,15 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-b'),
       'Both original stable event IDs must remain unchanged');
 
+    const auditMerge = migrateLegacyDataLosslessly([
+      { ...identicalAttemptA, conflictAudit: [{ source: 'device-a', field: 'status', value: 'legacy status A' }] },
+      { ...identicalAttemptB, conflictAudit: [{ source: 'device-b', field: 'status', value: 'legacy status B' }] }
+    ], []);
+    assert(auditMerge.portions[0].conflictAudit?.length === 2 &&
+      auditMerge.portions[0].conflictAudit.some(item => item.source === 'device-a') &&
+      auditMerge.portions[0].conflictAudit.some(item => item.source === 'device-b'),
+      'Distinct existing conflict-audit entries must survive duplicate portion merges');
+
     const repeatedSameEvent = migrateLegacyDataLosslessly([
       identicalAttemptA,
       { ...identicalAttemptA, id: 'legacy-duplicate-source' }
