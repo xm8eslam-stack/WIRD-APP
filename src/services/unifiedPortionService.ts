@@ -193,32 +193,24 @@ export function getPlanTargetSurahNumbers(
 
   if (plan.targetSurahs !== undefined) {
     if (!Array.isArray(plan.targetSurahs)) throw new TypeError('Target Surahs must be an array.');
-    if (plan.targetSurahs.length === 0) {
-      // An empty explicit list means no Surah filter was selected.
-    } else if (plan.targetSurahs.some(number => !Number.isSafeInteger(number) || number < 1 || number > 114)) {
-      throw new RangeError('Target Surahs must contain integers from 1 to 114.');
-    }
     if (plan.targetSurahs.length > 0) {
-      if (new Set(plan.targetSurahs).size !== plan.targetSurahs.length) {
-        throw new RangeError('Target Surahs must not contain duplicate numbers.');
-      }
-      return [...plan.targetSurahs];
+      // Preserve the established preset behavior: keep only valid Surahs and
+      // remove duplicates, but never widen an explicitly supplied scope.
+      return Array.from(new Set(plan.targetSurahs.filter(number =>
+        Number.isSafeInteger(number) && number >= 1 && number <= 114
+      )));
     }
   }
 
   if (plan.targetJuz !== undefined) {
     if (!Array.isArray(plan.targetJuz)) throw new TypeError('Target Juz values must be an array.');
-    if (plan.targetJuz.length === 0) {
-      // An empty explicit list means no Juz filter was selected.
-    } else if (plan.targetJuz.some(juz => !Number.isSafeInteger(juz) || juz < 1 || juz > 30)) {
-      throw new RangeError('Target Juz values must be integers from 1 to 30.');
-    }
     if (plan.targetJuz.length > 0) {
-      if (new Set(plan.targetJuz).size !== plan.targetJuz.length) {
-        throw new RangeError('Target Juz values must not contain duplicates.');
-      }
+      const validJuz = Array.from(new Set(plan.targetJuz.filter(juz =>
+        Number.isSafeInteger(juz) && juz >= 1 && juz <= 30
+      )));
+      if (validJuz.length === 0) return [];
       return ALL_SURAHS
-        .filter(surah => plan.targetJuz!.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
+        .filter(surah => validJuz.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
         .map(surah => surah.number);
     }
   }
@@ -245,7 +237,18 @@ export function findNextUnmemorizedRange(
   surahNumbers: number[],
   maxVerses: number
 ): { surahNumber: number; startAyah: number; endAyah: number } | null {
-  assertValidPortionCollection(portions);
+  if (!Array.isArray(portions) || portions.length > 10000) throw new TypeError('Portions must be an array of at most 10,000 records.');
+  for (const portion of portions) {
+    if (!portion || typeof portion !== 'object') throw new TypeError('Malformed memorization portion.');
+    const surah = ALL_SURAHS.find(item => item.number === portion.surahNumber);
+    if (!Number.isSafeInteger(portion.surahNumber) || !surah ||
+        !Number.isSafeInteger(portion.startAyah) || portion.startAyah < 1 || portion.startAyah > surah.versesCount ||
+        !Number.isSafeInteger(portion.endAyah) || portion.endAyah < portion.startAyah ||
+        (portion.endAyah > surah.versesCount && portion.status !== 'currently_memorizing') ||
+        !VALID_PORTION_STATUSES.includes(portion.status)) {
+      throw new RangeError('Memorization portion contains invalid Quran coordinates or status.');
+    }
+  }
   if (!Number.isSafeInteger(maxVerses) || maxVerses < 1 || maxVerses > 6236) {
     throw new RangeError('maxVerses must be a whole number from 1 to 6,236.');
   }
@@ -266,7 +269,7 @@ export function findNextUnmemorizedRange(
       // Resume the exact persisted passage. Never clip it to the daily target:
       // completion updates exact coordinate matches, so a child range would
       // leave the parent in-progress and cause the same passage to repeat.
-      const endAyah = inProgress.endAyah;
+      const endAyah = Math.min(inProgress.endAyah, surah.versesCount);
       return {
         surahNumber,
         startAyah: inProgress.startAyah,
