@@ -15,12 +15,11 @@
 - Development demo data now uses one grouped journal transaction for authenticated users and a rollback-safe local transaction for guests.
 - Direct demo writer methods were removed from StorageService and RetentionService.
 - Added authenticated/guest demo tests and a QuotaExceededError rollback test; legacy test-only seed helpers were updated.
-- Latest head: `25a04513b26aff04f0cfffa93c0d36d5b170d1b9`; exact-head Quality Gate run `42281736462` pending. Do not merge until all jobs pass.
+- Latest head: `9d1352c65e371d36a84a1e136912f3835a3925e3`; exact-head Quality Gate run `42281919337` pending. Includes a simulated app-restart replay test. Do not merge until all jobs pass.
 
 ## Deployment interpretation
-- Vercel Free daily build limit remains `build-rate-limit`.
+- The latest PR #54 Vercel check reported success, but production deployment and live browser verification against current main remain unconfirmed.
 - Owner explicitly says Vercel is not a blocker for merging tested changes into main.
-- Production deployment and live browser verification remain unconfirmed.
 
 ## Completed reliability work
 - Journal-first profile/plans/page progress/manual portions/test snapshots/weak-verse failure and resolution/revision ratings.
