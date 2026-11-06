@@ -1,4 +1,5 @@
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
+import type { JournalEvent } from './indexedDbSyncJournal';
 import { StorageService } from './storageService';
 
 export interface JournalProjectionReplayResult {
@@ -42,7 +43,7 @@ export async function replayJournalProjection(
   }
 
   let initialCursor: number;
-  let initialEvents;
+  let initialEvents: JournalEvent[];
   try {
     initialCursor = await journal.getProjectionCursor();
     initialEvents = await journal.listEventsAfter(initialCursor, 1);
