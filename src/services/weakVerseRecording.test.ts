@@ -167,5 +167,44 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+
+  test('Silent weak-verse write mismatch rolls back the canonical weak portion', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let ignoreWeakVerseWrite = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (ignoreWeakVerseWrite && key.endsWith(STORAGE_KEYS.WEAK_VERSES)) return;
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:weak-verse-silent-write');
+      assert(StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, '[]'),
+        'Initial weak-verse archive should be saved');
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      ignoreWeakVerseWrite = true;
+      const result = recordWeakVerseFailure({
+        surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
+        text: 'نص اختبار موثوق', notes: 'اختبار الكتابة الصامتة'
+      });
+      assert(!result.success, 'A weak-verse write mismatch must not report successful recording');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'The canonical weak portion must be rolled back after a silent counter write');
+      assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === '[]',
+        'The original weak-verse archive must remain intact after the mismatch');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
