@@ -3,9 +3,9 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Last verified application-code main SHA before this documentation checkpoint: 7b6d43bc136f91a882ff12a3434b527ac25af1ec
-- Main Quality Gate: run 42221103563 — success (tests, Firestore emulator, dependency audit, TypeScript, production build, server smoke).
-- Production deployment: not confirmed. Vercel reports the free daily deployment cap and asks to retry in 24 hours.
+- Last verified application-code main SHA before this documentation checkpoint: e355acffc376b0af355e95926e6315dbf8083951
+- Main Quality Gate: run 42236088244 — success on exact main SHA e355acffc376b0af355e95926e6315dbf8083951 (tests, Firestore emulator, dependency audit, TypeScript, production build, server smoke).
+- Production deployment for current main SHA e355acffc376b0af355e95926e6315dbf8083951: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
 ## Completed since the previous checkpoint
 1. PR #14 — c0390692d5f9ec7e81e04c8a674dbb035e0924ec
@@ -81,3 +81,28 @@
 3. Connect domain mutations to UID-scoped Firestore only after the journal and replay tests pass.
 4. Complete collection-specific Firestore rules and two-account/two-device/offline tests.
 5. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; confirm a real production deployment.
+
+
+## 2026-11-06 — PR #25 progress checkpoint merged
+
+- PR #25 merged to `main` as `698c523c08d13e1b2f29e279fa7ecb65c086e31c`; all three progress/checklist files were updated after PR #24.
+- Exact-head Quality Gate runs `42232706103` (PR) and `42232700533` (push) passed on head `57c9e310daa3368e1f5d93c74532d6c73e578323`.
+- PR #25 was documentation-only; its merge did not mark Phase 2 or release readiness complete.
+
+## 2026-11-06 — PR #26 legacy account-import rollback merged
+
+- PR #26 merged to `main` as `e355acffc376b0af355e95926e6315dbf8083951` from exact PR head `24682b573b31240d23950ed7e92ddea69947ce24`.
+- First-account legacy import now captures a directly readable snapshot of legacy source keys, scoped destination keys, and the ownership marker before mutation. If snapshot reads are unavailable, import stops before any write.
+- Conflicting destination data is rejected before mutation. Copy, source removal, and ownership-marker commit failures trigger restoration of the previous snapshot; the active account scope is not switched on failure.
+- Added failure-injection tests for a multi-key import that fails during source removal and for unreadable snapshot preflight.
+- Exact-head Quality Gate: PR run `42235874739` and push run `42235863281` both passed on SHA `24682b573b31240d23950ed7e92ddea69947ce24`: **334 automated assertions passed, 0 failed; 10 Firestore rules emulator tests passed; dependency audit, TypeScript, production build, and server smoke test passed**.
+- Post-merge main Quality Gate run `42236088244` passed on exact main SHA `e355acffc376b0af355e95926e6315dbf8083951`.
+- Production deployment remains unconfirmed; green CI is not a Vercel deployment receipt.
+
+## Updated next actions — Phase 2 remains IN PROGRESS
+
+1. Continue the mutation-integrity audit, beginning with failure injection for `saveUnifiedPortions` across the canonical archive, schema version, and legacy compatibility projections.
+2. Complete the remaining multi-key domain mutation and durable rollback/recovery audit.
+3. Replace localStorage outbox read/modify/write with an IndexedDB append-only event journal and atomic event/outbox transaction; test cross-tab atomicity, crash recovery, quota handling, and deterministic replay.
+4. Connect domain mutations to UID-scoped Firestore only after the journal is tested; finish collection-specific rules and two-account/two-device/offline tests.
+5. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; verify an actual production deployment before release.
