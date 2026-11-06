@@ -1,4 +1,4 @@
-import type { PortionStatusRecord } from '../types/quran';
+import type { PortionStatusRecord, WeakVerseItem } from '../types/quran';
 import { RetentionService } from './retentionService';
 import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
@@ -136,6 +136,33 @@ export function buildWeakVerseFailureTransaction(
     return {
       success: false,
       messageAr: error instanceof Error ? error.message : 'تعذر تجهيز سجل الآية المتعثرة؛ لم يتم تعديل أي بيانات.'
+    };
+  }
+}
+
+export type BuildWeakVerseResolutionSnapshotResult =
+  | { success: true; records: WeakVerseItem[]; changed: boolean }
+  | { success: false; messageAr: string };
+
+/** Prepare an idempotent weak-verse resolution without writing to local storage. */
+export function buildWeakVerseResolutionSnapshot(
+  id: string
+): BuildWeakVerseResolutionSnapshotResult {
+  if (typeof id !== 'string' || !id.trim() || id.length > 180) {
+    return { success: false, messageAr: 'معرّف الآية المتعثرة غير صالح؛ لم يتم تعديل السجل.' };
+  }
+  try {
+    const weakArchiveRaw = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+    if (!StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, weakArchiveRaw)) {
+      return { success: false, messageAr: 'تعذر التحقق من القراءة الدائمة لقائمة الآيات المتعثرة؛ لم يتم إنشاء عملية استعادة.' };
+    }
+    const current = RetentionService.getWeakVerses();
+    const records = current.filter(item => item.id !== id);
+    return { success: true, records, changed: records.length !== current.length };
+  } catch (error) {
+    return {
+      success: false,
+      messageAr: error instanceof Error ? error.message : 'تعذر قراءة قائمة الآيات المتعثرة؛ لم يتم تعديل السجل.'
     };
   }
 }

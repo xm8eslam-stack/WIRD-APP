@@ -29,11 +29,11 @@ import {
   UserProfile 
 } from '../../types/quran';
 import { RetentionService, RetentionMetrics } from '../../services/retentionService';
-import { persistJournaledTransaction, persistPortionsSnapshot } from '../../services/journaledSnapshotService';
+import { persistJournaledSnapshot, persistJournaledTransaction, persistPortionsSnapshot } from '../../services/journaledSnapshotService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadAyahByCoordinate } from '../../data/quranDataLoader';
-import { buildWeakVerseFailureTransaction } from '../../services/weakVerseRecording';
+import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from '../../services/weakVerseRecording';
 import { createSecureId } from '../../services/secureId';
 
 interface RevisionCenterViewProps {
@@ -76,6 +76,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const weakVerseMutationKeyRef = useRef<string | null>(null);
   const weakVerseInFlightRef = useRef(false);
   const [isSavingWeakVerse, setIsSavingWeakVerse] = useState(false);
+  const weakVerseResolutionMutationIdsRef = useRef<Map<string, string>>(new Map());
+  const weakVerseResolutionInFlightRef = useRef<Set<string>>(new Set());
 
   // Add new portion modal
   const [isAddPortionModalOpen, setIsAddPortionModalOpen] = useState(false);
@@ -226,14 +228,68 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     });
   };
 
-  // Handle resolving a weak verse
-  const handleResolveWeakVerse = (id: string, ayahRef: string) => {
-    try {
-      RetentionService.resolveWeakVerse(id);
-    } catch (error) {
-      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ تحديث قائمة الآيات المتعثرة.', type: 'warn' });
+  // Resolve a weak verse through a stable, journal-first snapshot mutation.
+  const handleResolveWeakVerse = async (id: string, ayahRef: string) => {
+    if (weakVerseResolutionInFlightRef.current.has(id)) return;
+    const prepared = buildWeakVerseResolutionSnapshot(id);
+    if (!prepared.success) {
+      setActionFeedback({ message: prepared.messageAr, type: 'warn' });
       return;
     }
+    if (!prepared.changed) {
+      refreshAll();
+      setActionFeedback({
+        message: `الآية ${ayahRef} غير موجودة بالفعل في قائمة الآيات الملتبسة؛ لم يتم إنشاء تغيير جديد.`,
+        type: 'info'
+      });
+      return;
+    }
+
+    const mutationId = weakVerseResolutionMutationIdsRef.current.get(id) || 'weak-resolve-' + createSecureId();
+    weakVerseResolutionMutationIdsRef.current.set(id, mutationId);
+    weakVerseResolutionInFlightRef.current.add(id);
+    let result: Awaited<ReturnType<typeof persistJournaledSnapshot>>;
+    try {
+      result = await persistJournaledSnapshot(
+        {
+          mutationId,
+          collection: 'weakVerses',
+          documentId: 'snapshot',
+          operation: 'upsert',
+          payload: { records: prepared.records }
+        },
+        () => RetentionService.saveWeakVerses(prepared.records)
+      );
+    } catch (error) {
+      weakVerseResolutionInFlightRef.current.delete(id);
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ تحديث قائمة الآيات المتعثرة.',
+        type: 'warn'
+      });
+      return;
+    }
+    weakVerseResolutionInFlightRef.current.delete(id);
+
+    let projectionMatches = false;
+    try {
+      projectionMatches = JSON.stringify(RetentionService.getWeakVerses()) === JSON.stringify(prepared.records);
+    } catch {
+      projectionMatches = false;
+    }
+    if (!result.success && !(result.recoveredPriorEvents && projectionMatches)) {
+      if (result.recoveredPriorEvents) refreshAll();
+      setActionFeedback({
+        message: result.recoveredPriorEvents
+          ? 'استعدنا تغييرات سابقة وحدّثنا القائمة؛ تحقق من حالة الآية قبل إعادة المحاولة.'
+          : result.queued
+            ? 'حُفظ حذف الآية في سجل الاستعادة، لكن تعذر تطبيقه محلياً. حدّث الصفحة قبل أي محاولة أخرى.'
+            : result.error || 'تعذر حفظ تحديث قائمة الآيات المتعثرة.',
+        type: 'warn'
+      });
+      return;
+    }
+
+    weakVerseResolutionMutationIdsRef.current.delete(id);
     refreshAll();
     setActionFeedback({
       message: `تمت إزالة ${ayahRef} من قائمة الآيات الملتبسة فقط؛ لم يتغير تقييم المقطع أو موعد مراجعته.`,
