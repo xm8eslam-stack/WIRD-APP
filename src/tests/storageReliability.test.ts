@@ -54,5 +54,29 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     }
   });
 
+  test('A failed durable write is not exposed through the in-memory fallback', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const key = 'wird_storage_reliability_failure_probe';
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => { throw new Error('simulated quota failure'); },
+        removeItem: () => {}
+      }
+    });
+
+    try {
+      const saved = StorageService.setRawItem(key, 'must-not-appear-saved');
+      assert(saved === false, 'The failed durable write must report false');
+      assert(StorageService.getRawItem(key) === null, 'The failed value must not leak from memory fallback');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }

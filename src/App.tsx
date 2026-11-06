@@ -239,8 +239,11 @@ export default function App() {
 
   // Save revision rating or new items
   const handleUpdateRevisionItems = (items: RevisionItem[]) => {
+    if (!StorageService.saveRevisionItems(items)) {
+      showToast('تعذر حفظ تحديثات المراجعة في التخزين المحلي.', 'error');
+      return;
+    }
     setRevisionItems(items);
-    StorageService.saveRevisionItems(items);
   };
 
   const handleRecordRevisionComplete = (pagesCount: number, minutes: number, taskName: string) => {
@@ -250,19 +253,27 @@ export default function App() {
 
   // Save preset plans
   const handleUpdatePlans = (newPlans: MemorizationPlan[]) => {
+    if (!StorageService.savePlans(newPlans)) {
+      showToast('تعذر حفظ الخطة في التخزين المحلي.', 'error');
+      return;
+    }
     setPlans(newPlans);
-    StorageService.savePlans(newPlans);
   };
 
   // Save engine plans
   const handleUpdateEnginePlans = (updatedEnginePlans: EngineGeneratedPlan[]) => {
+    if (!StorageService.saveEnginePlans(updatedEnginePlans)) {
+      showToast('تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
+      return;
+    }
     setEnginePlans(updatedEnginePlans);
-    StorageService.saveEnginePlans(updatedEnginePlans);
   };
 
   // Test result saved
   const handleSaveTestResult = (result: TestResult) => {
-    StorageService.saveTest(result);
+    if (!StorageService.saveTest(result)) {
+      showToast('تعذر حفظ نتيجة الاختبار في التخزين المحلي.', 'error');
+    }
   };
 
   // In-app Toast Notification state

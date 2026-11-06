@@ -51,12 +51,19 @@ function rawGetItem(key: string): string | null {
 }
 
 function rawSetItem(key: string, value: string): boolean {
-  memoryStorage.set(key, value);
-  if (typeof localStorage === 'undefined') return true;
+  const previousMemoryValue = memoryStorage.get(key);
+  if (typeof localStorage === 'undefined') {
+    memoryStorage.set(key, value);
+    return true;
+  }
   try {
     localStorage.setItem(key, value);
+    memoryStorage.set(key, value);
     return true;
   } catch (error) {
+    // A failed durable write must not appear successful through the memory fallback.
+    if (previousMemoryValue === undefined) memoryStorage.delete(key);
+    else memoryStorage.set(key, previousMemoryValue);
     console.error(`[WIRD Storage] Durable write to localStorage failed for ${key}`, error);
     return false;
   }
@@ -455,11 +462,12 @@ export const StorageService = {
     }
   },
 
-  savePlans(plans: MemorizationPlan[]): void {
+  savePlans(plans: MemorizationPlan[]): boolean {
     try {
-      setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
+      return setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
     } catch (e) {
       console.warn("Storage write failed", e);
+      return false;
     }
   },
 
@@ -473,11 +481,12 @@ export const StorageService = {
     }
   },
 
-  saveEnginePlans(plans: EngineGeneratedPlan[]): void {
+  saveEnginePlans(plans: EngineGeneratedPlan[]): boolean {
     try {
-      setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
+      return setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
     } catch (e) {
       console.warn("Storage write failed", e);
+      return false;
     }
   },
 
@@ -491,11 +500,12 @@ export const StorageService = {
     }
   },
 
-  saveRevisionItems(items: RevisionItem[]): void {
+  saveRevisionItems(items: RevisionItem[]): boolean {
     try {
-      setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
+      return setItem(STORAGE_KEYS.REVISION, JSON.stringify(items));
     } catch (e) {
       console.warn("Storage write failed", e);
+      return false;
     }
   },
 
@@ -743,13 +753,14 @@ export const StorageService = {
     }
   },
 
-  saveTest(test: TestResult): void {
+  saveTest(test: TestResult): boolean {
     try {
       const current = this.getTests();
       current.unshift(test);
-      setItem(STORAGE_KEYS.TESTS, JSON.stringify(current.slice(0, 50)));
+      return setItem(STORAGE_KEYS.TESTS, JSON.stringify(current.slice(0, 50)));
     } catch (e) {
       console.warn("Storage write failed", e);
+      return false;
     }
   },
 

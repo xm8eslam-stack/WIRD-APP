@@ -112,16 +112,25 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       };
     }
 
-    const result = RetentionService.recordRevisionPerformance(
-      ratingPortion.id,
-      rating,
-      reviewNotes,
-      weakDetails
-    );
+    let result;
+    try {
+      result = RetentionService.recordRevisionPerformance(
+        ratingPortion.id,
+        rating,
+        reviewNotes,
+        weakDetails
+      );
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ تقييم المراجعة؛ لم يتم تأكيد التغيير.',
+        type: 'warn'
+      });
+      return;
+    }
 
     setActionFeedback({
       message: result.messageAr,
-      type: rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
+      type: !result.activitySaved ? 'warn' : rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
     });
 
     setRatingPortion(null);
@@ -140,22 +149,27 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const surah = ALL_SURAHS.find(s => s.number === newSurahNum);
     if (!surah) return;
 
-    RetentionService.addPortion({
-      type: 'passage',
-      surahNumber: newSurahNum,
-      surahName: surah.name,
-      startAyah: newStartAyah,
-      endAyah: newEndAyah,
-      pageNumber: surah.pageStart,
-      juzNumber: surah.juzStart,
-      status: newStatus,
-      lastReviewedDate: todayStr,
-      nextDueDate: todayStr,
-      intervalDays: newStatus === 'stable' ? 7 : newStatus === 'weak' ? 1 : 2,
-      easeFactor: 2.5,
-      repetitionCount: newStatus === 'stable' ? 4 : 1,
-      mistakesCount: newStatus === 'weak' ? 2 : 0
-    });
+    try {
+      RetentionService.addPortion({
+        type: 'passage',
+        surahNumber: newSurahNum,
+        surahName: surah.name,
+        startAyah: newStartAyah,
+        endAyah: newEndAyah,
+        pageNumber: surah.pageStart,
+        juzNumber: surah.juzStart,
+        status: newStatus,
+        lastReviewedDate: todayStr,
+        nextDueDate: todayStr,
+        intervalDays: newStatus === 'stable' ? 7 : newStatus === 'weak' ? 1 : 2,
+        easeFactor: 2.5,
+        repetitionCount: newStatus === 'stable' ? 4 : 1,
+        mistakesCount: newStatus === 'weak' ? 2 : 0
+      });
+    } catch (error) {
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ المقطع الجديد.', type: 'warn' });
+      return;
+    }
 
     setIsAddPortionModalOpen(false);
     refreshAll();
@@ -167,7 +181,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Handle resolving a weak verse
   const handleResolveWeakVerse = (id: string, ayahRef: string) => {
-    RetentionService.resolveWeakVerse(id);
+    try {
+      RetentionService.resolveWeakVerse(id);
+    } catch (error) {
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ تحديث قائمة الآيات المتعثرة.', type: 'warn' });
+      return;
+    }
     refreshAll();
     setActionFeedback({
       message: `تم تثبيت ${ayahRef} بنجاح وإزالتها من قائمة الآيات المتعثرة.`,
@@ -187,13 +206,18 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       text = found?.text || `آية رقم ${manualWeakAyahNum}`;
     }
 
-    RetentionService.addOrIncrementWeakVerse(
-      weakSurahNum,
-      manualWeakAyahNum,
-      surah.name,
-      text,
-      manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
-    );
+    try {
+      RetentionService.addOrIncrementWeakVerse(
+        weakSurahNum,
+        manualWeakAyahNum,
+        surah.name,
+        text,
+        manualWeakNotes || 'تمت إضافتها يدوياً للتركيز'
+      );
+    } catch (error) {
+      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ الآية في قائمة المراجعة.', type: 'warn' });
+      return;
+    }
 
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');

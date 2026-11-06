@@ -49,8 +49,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!StorageService.saveProfile(formData)) {
+      onToast?.('تعذر حفظ إعدادات الملف الشخصي في التخزين المحلي. لم يتم تأكيد التغيير.', 'error');
+      return;
+    }
     onUpdateProfile(formData);
-    StorageService.saveProfile(formData);
     setIsSaved(true);
     if (onToast) {
       onToast("تم حفظ التعديلات وإعدادات الملف الشخصي بنجاح", "success");

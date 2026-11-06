@@ -300,7 +300,7 @@ export const RetentionService = {
         status: newStatus
       };
     });
-    this.savePortions(updated);
+    if (!this.savePortions(updated)) throw new Error('تعذر حفظ تحديث حالة المقطع في التخزين المحلي.');
     return updated;
   },
 
@@ -327,7 +327,7 @@ export const RetentionService = {
       };
       portions.unshift(record);
     }
-    this.savePortions(portions);
+    if (!this.savePortions(portions)) throw new Error('تعذر حفظ المقطع الجديد في التخزين المحلي.');
     return record;
   },
 
@@ -451,25 +451,32 @@ export const RetentionService = {
       history: [logEntry, ...(target.history || [])]
     };
 
-    if (rating === 'failed' && weakAyahDetails) {
-      this.addOrIncrementWeakVerse(
-        target.surahNumber,
-        weakAyahDetails.ayahNumber,
-        target.surahName,
-        weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
-        weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
-      );
+    const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
+    if (!this.savePortions(updatedList)) {
+      throw new Error('تعذر حفظ تقييم المراجعة في التخزين المحلي؛ لم يتم تأكيد التغيير.');
     }
 
-    const updatedList = portions.map(p => p.id === portionId ? updatedPortion : p);
-    this.savePortions(updatedList);
+    if (rating === 'failed' && weakAyahDetails) {
+      try {
+        this.addOrIncrementWeakVerse(
+          target.surahNumber,
+          weakAyahDetails.ayahNumber,
+          target.surahName,
+          weakAyahDetails.text || `آية رقم ${weakAyahDetails.ayahNumber}`,
+          weakAyahDetails.notes || 'خطأ أثناء جلسة المراجعة'
+        );
+      } catch (error) {
+        this.savePortions(portions);
+        throw error;
+      }
+    }
 
-    // Record session completion in daily logs
+    // Activity aggregation is a separate durable write; report its status explicitly.
     const versesCount = (target.endAyah - target.startAyah + 1) || 10;
-    StorageService.recordSessionCompletion(
-      0, 
-      Math.max(1, Math.round(versesCount / 15)), 
-      15, 
+    const activitySaved = StorageService.recordSessionCompletion(
+      0,
+      Math.max(1, Math.round(versesCount / 15)),
+      15,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
 
@@ -477,7 +484,10 @@ export const RetentionService = {
       updatedPortion,
       nextIntervalDays: sm2Result.intervalDays,
       nextDueDate: sm2Result.nextDueDate,
-      messageAr: sm2Result.messageAr
+      activitySaved,
+      messageAr: activitySaved
+        ? sm2Result.messageAr
+        : `${sm2Result.messageAr} لكن تعذر حفظ سجل النشاط وسلسلة المواظبة.`
     };
   },
 
@@ -550,9 +560,8 @@ export const RetentionService = {
     }
   },
 
-  saveWeakVerses(items: WeakVerseItem[]): void {
-    const saved = StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
-    if (!saved) console.warn('Failed to persist weak verses durably; the in-memory fallback remains available for this session.');
+  saveWeakVerses(items: WeakVerseItem[]): boolean {
+    return StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
   },
 
   addOrIncrementWeakVerse(
@@ -585,13 +594,13 @@ export const RetentionService = {
       });
     }
 
-    this.saveWeakVerses(items);
+    if (!this.saveWeakVerses(items)) throw new Error('تعذر حفظ قائمة الآيات المتعثرة في التخزين المحلي.');
     return items;
   },
 
   resolveWeakVerse(id: string): WeakVerseItem[] {
     const items = this.getWeakVerses().filter(i => i.id !== id);
-    this.saveWeakVerses(items);
+    if (!this.saveWeakVerses(items)) throw new Error('تعذر تحديث قائمة الآيات المتعثرة في التخزين المحلي.');
     return items;
   },
 
