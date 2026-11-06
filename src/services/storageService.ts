@@ -1392,16 +1392,12 @@ export const StorageService = {
    * advances the journal cursor only after this method confirms the durable write.
    * Tombstones are intentionally rejected until collection-specific delete semantics exist.
    */
-  applyJournalEvent(event: JournalEvent): boolean {
-    if (!isPlainRecord(event) || event.eventType !== 'domain-mutation' || event.schemaVersion !== 1 ||
-        !Number.isSafeInteger(event.sequence) || event.sequence < 1 ||
-        event.operation !== 'upsert' || !isPlainRecord(event.payload)) return false;
-    const scope = this.getStorageScope();
-    const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
-    if (!uid || event.uid !== uid) return false;
-
-    const payload = event.payload;
-    switch (event.collection) {
+  applyJournalProjection(
+    collection: Exclude<SyncCollection, 'syncMeta'>,
+    payload: Record<string, unknown>
+  ): boolean {
+    if (!isPlainRecord(payload)) return false;
+    switch (collection) {
       case 'profile':
         return isValidUserProfile(payload.profile) && this.saveProfile(payload.profile);
       case 'plans':
@@ -1416,26 +1412,37 @@ export const StorageService = {
         return Array.isArray(payload.records) && this.saveTests(payload.records as TestResult[]);
       case 'activityEvents':
         return Array.isArray(payload.records) && this.saveLogs(payload.records as DailyLog[]);
-      case 'syncMeta':
-        if (payload.transaction === undefined) return true;
-        if (!isPlainRecord(payload.transaction) || payload.transaction.version !== 1 ||
-            !Array.isArray(payload.transaction.operations)) return false;
-        return this.applyJournalTransaction(payload.transaction.operations);
       default:
         return false;
     }
   },
 
+  applyJournalEvent(event: JournalEvent): boolean {
+    if (!isPlainRecord(event) || event.eventType !== 'domain-mutation' || event.schemaVersion !== 1 ||
+        !Number.isSafeInteger(event.sequence) || event.sequence < 1 ||
+        event.operation !== 'upsert' || !isPlainRecord(event.payload)) return false;
+    const scope = this.getStorageScope();
+    const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
+    if (!uid || event.uid !== uid) return false;
+
+    if (event.collection === 'syncMeta') {
+      const payload = event.payload;
+      if (payload.transaction === undefined) return true;
+      if (!isPlainRecord(payload.transaction) || payload.transaction.version !== 1 ||
+          !Array.isArray(payload.transaction.operations)) return false;
+      return this.applyJournalTransaction(payload.transaction.operations);
+    }
+    return this.applyJournalProjection(event.collection, event.payload);
+  },
+
   /**
    * Apply several projections as one logical local transaction. All affected
    * durable keys are snapshotted before the first write; any failed projection
-   * restores and verifies the complete pre-transaction byte set.
+   * restores and verifies the complete pre-transaction byte set. This method
+   * also supports guest/no-IndexedDB local-only operations.
    */
   applyJournalTransaction(operations: unknown): boolean {
     if (!Array.isArray(operations) || operations.length < 1 || operations.length > 8) return false;
-    const scope = this.getStorageScope();
-    const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
-    if (!uid) return false;
 
     const keysByCollection: Record<string, string[]> = {
       profile: [STORAGE_KEYS.PROFILE],
@@ -1485,28 +1492,8 @@ export const StorageService = {
     };
 
     try {
-      for (let index = 0; index < operations.length; index++) {
-        const operation = operations[index] as JournalProjectionOperation;
-        const now = Date.now();
-        const syntheticEvent: JournalEvent = {
-          key: 'journal-transaction:' + uid + ':' + index,
-          uid,
-          eventId: 'journal-transaction-' + index,
-          mutationId: 'journal-transaction-' + index,
-          eventType: 'domain-mutation',
-          collection: operation.collection,
-          documentId: operation.documentId,
-          operation: operation.operation,
-          schemaVersion: 1,
-          clientUpdatedAtMs: now,
-          createdAtMs: now,
-          deviceId: 'journal-transaction-projection',
-          payload: operation.payload,
-          fingerprint: 'journal-transaction-projection',
-          sequence: index + 1,
-          projectionRequired: true
-        };
-        if (!this.applyJournalEvent(syntheticEvent)) {
+      for (const operation of operations as JournalProjectionOperation[]) {
+        if (!this.applyJournalProjection(operation.collection, operation.payload)) {
           return rollback('A child projection rejected the grouped transaction.');
         }
       }
