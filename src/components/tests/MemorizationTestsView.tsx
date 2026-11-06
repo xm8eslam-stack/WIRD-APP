@@ -20,7 +20,7 @@ import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
 import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
-  onSaveTestResult: (result: TestResult) => void;
+  onSaveTestResult: (result: TestResult) => boolean;
   onAddVerseToRevision: (surahNumber: number, surahName: string, ayahNumber: number) => void;
 }
 
@@ -38,7 +38,8 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
-  const [weakVerseFeedback, setWeakVerseFeedback] = useState<string | null>(null);
+  const [weakVerseFeedback, setWeakVerseFeedback] = useState<{ message: string; success: boolean } | null>(null);
+  const [testSaveError, setTestSaveError] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
 
   // Load user portions and dynamically generate verified test questions
@@ -67,9 +68,8 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
       setIsAnswered(false);
       setWeakVerseFeedback(null);
     } else {
-      setIsFinished(true);
       const finalScore = score + (selectedOption === currentQ.correctIndex ? 1 : 0);
-      onSaveTestResult({
+      const saved = onSaveTestResult({
         id: `test-${Date.now()}`,
         date: new Date().toISOString().split('T')[0],
         type: selectedTestType,
@@ -78,6 +78,12 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         totalQuestions: currentQuestions.length,
         weakVerses: []
       });
+      if (!saved) {
+        setTestSaveError('تعذر حفظ نتيجة الاختبار. لم نعلن اكتماله؛ اضغط «إعادة محاولة حفظ النتيجة» للمحاولة مجدداً.');
+        return;
+      }
+      setTestSaveError(null);
+      setIsFinished(true);
     }
   };
 
@@ -88,6 +94,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
     setScore(0);
     setIsFinished(false);
     setWeakVerseFeedback(null);
+    setTestSaveError(null);
     setSessionKey(k => k + 1);
   };
 
@@ -104,9 +111,15 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
           selectedTestType === 'random_recall' ? 'اختبار عشوائي من المحفوظ' : 'المتشابهات اللفظية'
         }`
       );
-      setWeakVerseFeedback(`تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} بنجاح في قائمة الآيات الملتبسة.`);
+      setWeakVerseFeedback({
+        message: `تم تسجيل الآية ${currentQ.targetAyahNumber} من سورة ${currentQ.surahName} بنجاح في قائمة الآيات الملتبسة.`,
+        success: true
+      });
     } catch (error) {
-      setWeakVerseFeedback(error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.');
+      setWeakVerseFeedback({
+        message: error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.',
+        success: false
+      });
     }
   };
 
@@ -341,11 +354,23 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
             </div>
           )}
 
-          {/* Weak verse added feedback */}
+          {/* Weak verse persistence feedback */}
           {weakVerseFeedback && (
-            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-300 text-xs text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span>{weakVerseFeedback}</span>
+            <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+              weakVerseFeedback.success
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900 dark:text-emerald-200'
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-900 dark:text-rose-200'
+            }`}>
+              {weakVerseFeedback.success
+                ? <Check className="w-4 h-4 text-emerald-600" />
+                : <AlertTriangle className="w-4 h-4 text-rose-600" />}
+              <span>{weakVerseFeedback.message}</span>
+            </div>
+          )}
+
+          {testSaveError && (
+            <div role="alert" className="p-3 rounded-xl border border-rose-300 bg-rose-50 dark:bg-rose-950/40 text-xs text-rose-900 dark:text-rose-200">
+              {testSaveError}
             </div>
           )}
 
@@ -366,7 +391,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
                 onClick={handleNext}
                 className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
               >
-                <span>السؤال التالي</span>
+                <span>{currentQuestionIndex === currentQuestions.length - 1 && testSaveError ? 'إعادة محاولة حفظ النتيجة' : 'السؤال التالي'}</span>
                 <ArrowLeft className="w-4 h-4" />
               </button>
             </div>

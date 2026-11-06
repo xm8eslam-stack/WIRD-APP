@@ -302,11 +302,13 @@ export default function App() {
     return true;
   };
 
-  // Test result saved
-  const handleSaveTestResult = (result: TestResult) => {
+  // Test result saved — the test view must not announce completion on failure.
+  const handleSaveTestResult = (result: TestResult): boolean => {
     if (!StorageService.saveTest(result)) {
       showToast('تعذر حفظ نتيجة الاختبار في التخزين المحلي.', 'error');
+      return false;
     }
+    return true;
   };
 
   // In-app Toast Notification state
