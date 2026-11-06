@@ -16,7 +16,7 @@
 - PR #50 exact-head run `42276148126`: passed.
 - PR #51 exact-head run `42276561011`: passed; post-merge main run `42276748346` passed.
 - PR #52 exact-head run `42277464313`: passed (tests, Firestore emulator, TypeScript, build, server smoke).
-- Post-merge main run `42277666291` must be re-checked for the exact main SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`.
+- Post-merge main run `42277666291` passed on exact main SHA `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`.
 
 ## Deployment interpretation
 - Vercel Free daily build limit still returns `build-rate-limit`.
