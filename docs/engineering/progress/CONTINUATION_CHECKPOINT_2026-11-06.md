@@ -1,9 +1,9 @@
 # WIRD — Continuation Checkpoint (2026-11-06)
 
-## Latest verified position — PRs #49–#53 merged; PR #54 in progress
+## Latest verified position — PRs #49–#54 merged; PR #55 in progress
 
 - Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
-- Latest main SHA: `dee0e7a926700092e3d4b3e5fd63e74565428de0`.
+- Latest main SHA: `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
 - PR #49 merged: Tafsir Express route and direct Surah Mushaf navigation; merge SHA `15979e4a009ef0aa5b4981cbcbb4f2124f25dfc3`; exact-head run `42267849373` passed.
 - PR #50 merged: journal-first session progress/activity/profile; merge SHA `dacba8298db954392f7fbcbbf10af9f18ecc31dc`; exact-head run `42276148126` passed.
 - PR #51 merged: matching smart-plan task in same session transaction; merge SHA `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head run `42276561011` and post-merge run `42276748346` passed.
@@ -15,7 +15,7 @@
 - Firestore client/sync worker/remote acknowledgements/tombstones/two-device sync remain unimplemented.
 
 ## Next work
-1. Finish PR #54 exact-head Quality Gate and second review.
+1. Finish PR #55 exact-head Quality Gate and second review, merge, and verify post-merge main.
 2. Complete remaining local mutation audit and failure-injection coverage.
 3. Define deterministic aggregate derivation from domain events.
 4. Implement Firestore adapter/sync coordinator behind a disabled feature gate.
