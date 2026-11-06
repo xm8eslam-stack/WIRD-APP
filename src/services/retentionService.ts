@@ -6,7 +6,7 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS, isValidWeakVerseRecord } from './storageService';
+import { StorageService, STORAGE_KEYS as APP_STORAGE_KEYS, isValidWeakVerseRecord, type JournalProjectionOperation } from './storageService';
 import { createSecureId } from './secureId';
 import { getPagesForAyahRange } from './pageProgressService';
 import { ALL_SURAHS } from '../data/quranMeta';
@@ -482,6 +482,108 @@ export const RetentionService = {
         : 'تعذر حفظ تقدم الحفظ، ولم ينجح التحقق من استعادة سجل المقاطع السابق. لا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة البيانات.');
     }
     return updatedPortion;
+  },
+
+  /**
+   * Prepare a revision rating and its activity/profile projections without
+   * mutating storage. The UI commits the returned operations as one journal event.
+   */
+  buildRevisionPerformanceSnapshot(
+    portionId: string,
+    rating: RevisionRating,
+    notes: string | undefined,
+    minutesSpent: number,
+    mutationId: string
+  ):
+    | {
+        success: true;
+        updatedPortion: PortionStatusRecord;
+        nextIntervalDays: number;
+        nextDueDate: string;
+        messageAr: string;
+        reviewedPagesCount: number;
+        operations: JournalProjectionOperation[];
+      }
+    | { success: false; messageAr: string } {
+    if (typeof portionId !== 'string' || !portionId.trim() || portionId.length > 180 ||
+        !['successful', 'difficult', 'failed'].includes(rating) ||
+        (notes !== undefined && (typeof notes !== 'string' || notes.length > 2000)) ||
+        !Number.isSafeInteger(minutesSpent) || minutesSpent < 0 || minutesSpent > 1440 ||
+        typeof mutationId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(mutationId)) {
+      return { success: false, messageAr: 'بيانات تقييم المراجعة أو معرّف العملية غير صالح؛ لم يتم تعديل أي سجل.' };
+    }
+
+    try {
+      const portions = this.getPortions();
+      const target = portions.find(portion => portion.id === portionId);
+      if (!target) {
+        return { success: false, messageAr: 'المقطع المطلوب غير موجود؛ لم يتم حفظ تقييم المراجعة.' };
+      }
+
+      const todayStr = getLocalDateString();
+      const reviewedPagesCount = getPagesForAyahRange(target.surahNumber, target.startAyah, target.endAyah).length;
+      if (reviewedPagesCount === 0) {
+        return { success: false, messageAr: 'تعذر تحديد صفحات المقطع بدقة؛ لم يتم تسجيل عدد صفحات تقريبي أو تعديل التقييم.' };
+      }
+
+      const sm2Result = calculateCanonicalSM2(target, rating, {
+        customTodayStr: todayStr,
+        gracePeriodDays: 1
+      });
+      const mistakesCount = rating === 'failed'
+        ? (target.mistakesCount || 0) + 1
+        : (target.mistakesCount || 0);
+      const logEntry: RevisionLogEntry = {
+        id: 'log-' + mutationId,
+        date: todayStr,
+        rating,
+        intervalDaysBefore: target.intervalDays || 1,
+        intervalDaysAfter: sm2Result.intervalDays,
+        notes: notes || undefined
+      };
+      const updatedPortion: PortionStatusRecord = {
+        ...target,
+        status: sm2Result.status,
+        strength: sm2Result.strength,
+        lastReviewedDate: todayStr,
+        nextDueDate: sm2Result.nextDueDate,
+        intervalDays: sm2Result.intervalDays,
+        easeFactor: sm2Result.easeFactor,
+        repetitionCount: sm2Result.repetitionCount,
+        mistakesCount,
+        history: [logEntry, ...(target.history || [])]
+      };
+      const updatedList = portions.map(portion =>
+        portion.id === portionId ? updatedPortion : portion
+      );
+
+      const taskName = `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`;
+      const activity = StorageService.buildSessionCompletionSnapshot(
+        0, reviewedPagesCount, minutesSpent, taskName
+      );
+      if (!activity.success) {
+        return { success: false, messageAr: activity.error };
+      }
+
+      return {
+        success: true,
+        updatedPortion,
+        nextIntervalDays: sm2Result.intervalDays,
+        nextDueDate: sm2Result.nextDueDate,
+        messageAr: sm2Result.messageAr,
+        reviewedPagesCount,
+        operations: [
+          { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: updatedList } },
+          { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs } },
+          { collection: 'profile', documentId: 'profile', operation: 'upsert', payload: { profile: activity.profile } }
+        ]
+      };
+    } catch (error) {
+      return {
+        success: false,
+        messageAr: error instanceof Error ? error.message : 'تعذر إعداد تقييم المراجعة دون تعديل البيانات.'
+      };
+    }
   },
 
   // Record performance after a revision session using canonical SM-2
