@@ -75,6 +75,60 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
       assert(LocalSyncOutbox.getSnapshot().pendingCount === 0, 'Acknowledged mutation must remain out of pending');
     });
 
+    test('Acknowledged IDs reject changed payloads but accept an exact retry', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      const original = { mutationId: 'ack-fingerprint-1', collection: 'plans' as const, documentId: 'plan-1', payload: { title: 'خطة', count: 3 }, nowMs: 2500 };
+      LocalSyncOutbox.enqueue(original);
+      assert(LocalSyncOutbox.acknowledge(['ack-fingerprint-1']) === 1, 'Mutation should be acknowledged');
+      const exactRetry = LocalSyncOutbox.enqueue(original);
+      assert(exactRetry.status === 'already_acknowledged', 'Exact retry should remain idempotent');
+      let changedPayloadRejected = false;
+      let changedDocumentRejected = false;
+      try { LocalSyncOutbox.enqueue({ ...original, payload: { title: 'خطة', count: 4 } }); } catch { changedPayloadRejected = true; }
+      try { LocalSyncOutbox.enqueue({ ...original, documentId: 'plan-2' }); } catch { changedDocumentRejected = true; }
+      assert(changedPayloadRejected && changedDocumentRejected, 'Acknowledged ID reuse with changed business data must be rejected');
+      assert(LocalSyncOutbox.getSnapshot().pendingCount === 0, 'Rejected reuse must not enqueue a second operation');
+    });
+
+    test('Legacy acknowledged IDs without fingerprints fail closed', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      const legacy = { schemaVersion: 1, deviceId: 'legacy-device', pending: [], acknowledgedIds: ['legacy-ack-id'] };
+      StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, JSON.stringify(legacy));
+      let rejected = false;
+      try {
+        LocalSyncOutbox.enqueue({ mutationId: 'legacy-ack-id', collection: 'plans', documentId: 'plan-1', payload: { title: 'new' } });
+      } catch { rejected = true; }
+      assert(rejected, 'Legacy acknowledgements without payload fingerprints must fail closed');
+      assert(LocalSyncOutbox.getSnapshot().acknowledgedCount === 1, 'Legacy acknowledgement must remain preserved');
+    });
+
+    test('Duplicate pending IDs and pending/acknowledged overlap are rejected without rewriting storage', () => {
+      reset();
+      StorageService.setStorageScope('user:alpha');
+      const mutation = {
+        mutationId: 'duplicate-id', collection: 'plans', documentId: 'plan-1', operation: 'upsert',
+        schemaVersion: 1, clientUpdatedAtMs: 100, deviceId: 'device-a', payload: { title: 'A' },
+        queuedAtMs: 100, attemptCount: 0, nextAttemptAtMs: 0
+      };
+      const duplicatePending = { schemaVersion: 1, deviceId: 'device-a', pending: [mutation, mutation], acknowledgedIds: [] };
+      const rawDuplicate = JSON.stringify(duplicatePending);
+      StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, rawDuplicate);
+      let duplicateRejected = false;
+      try { LocalSyncOutbox.listReady(200); } catch { duplicateRejected = true; }
+      assert(duplicateRejected, 'Duplicate pending IDs must be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) === rawDuplicate, 'Duplicate pending archive must remain unchanged');
+
+      const overlap = { schemaVersion: 1, deviceId: 'device-a', pending: [mutation], acknowledgedIds: ['duplicate-id'] };
+      const rawOverlap = JSON.stringify(overlap);
+      StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, rawOverlap);
+      let overlapRejected = false;
+      try { LocalSyncOutbox.listReady(200); } catch { overlapRejected = true; }
+      assert(overlapRejected, 'Pending and acknowledged IDs must be disjoint');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) === rawOverlap, 'Overlapping archive must remain unchanged');
+    });
+
     test('Outbox data is isolated between Firebase UIDs', () => {
       reset();
       StorageService.setStorageScope('user:alpha');
