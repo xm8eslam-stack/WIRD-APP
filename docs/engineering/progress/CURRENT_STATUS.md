@@ -1,9 +1,9 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06 after PR #53 and the latest main Tafsir commit  
+**Updated:** 2026-11-06 after PR #54 merge and PR #55 local-mutation audit  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Latest main SHA:** `dee0e7a926700092e3d4b3e5fd63e74565428de0`
+**Latest main SHA:** `033b8abda6bbf4f5c58d9b20d835f3268230abb6`
 
 ## Latest completed work
 
@@ -12,11 +12,12 @@
 - **PR #51** — Matching smart-plan task included in the same session transaction; merged as `99c466b9de6ae977979f8989443fba5b94017a30`; exact-head Quality Gate `42276561011` and post-merge main run `42276748346` passed.
 - **PR #52** — Backup import and factory reset journal-ordered; merged as `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head run `42277464313` and post-merge main run `42277666291` passed.
 - **PR #53** — Removed unused direct-write handlers and refreshed engineering checkpoints; merged as `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge main run `42278457062` passed.
-- Latest main also contains commit `dee0e7a926700092e3d4b3e5fd63e74565428de0` adding multiple Tafsir sources/book IDs. No GitHub Actions workflow run was found for that exact direct main commit at checkpoint time; the PR #54 Quality Gate will test against this latest base.
+- **PR #54** — Typed, semantically validated local domain-event envelopes; merged as `6cc1d20e63257387044334da45e38bc204961c09`; exact-head run `42280361752` and post-merge main run `42280564932` passed.
+- Latest main also contains commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6` adding tab-based Quran Library navigation and Juz index support. PR #55 is based on this exact main SHA and will test the combined tree.
 
 ## Deployment status
 
-- Vercel still reports `build-rate-limit` / `api-deployments-free-per-day`.
+- The latest Vercel check on PR #54 reported success, but the production URL has not been independently verified against the latest main SHA. Treat deployment as unconfirmed; this does not block merging tested changes.
 - Per the owner's explicit instruction, this is not a merge blocker for tested changes.
 - It is not a successful deployment receipt. Production deployment and live browser verification remain unconfirmed.
 
@@ -29,14 +30,14 @@ Completed and merged:
 - App-level unused direct local-only session/revision handlers have been removed.
 
 Still open:
-- Finish file-by-file audit of legacy APIs and development-only demo loaders.
+- Finish the remaining file-by-file audit of legacy APIs and storage preferences. PR #55 routes the development demo loader through the journal; its exact-head CI is pending.
 - Review legacy localStorage outbox migration against explicit reset and IndexedDB-loss scenarios.
 - Add failure-injection coverage for IndexedDB unavailable/blocked states, quota/read failures, rollback verification, and reload recovery.
 - Define immutable domain-event semantics and deterministic aggregate derivation before cloud sync.
 
 ## Phase 3 — domain event model
 
-- Current PR branch introduces a versioned, typed `domainEvent` envelope attached to append-only IndexedDB journal entries.
+- PR #54 is merged. It introduced a versioned, typed `domainEvent` envelope attached to append-only IndexedDB journal entries.
 - Event types covered: `session.completed`, `revision.rated`, `test.completed`, `weak_verse.failed`, and `weak_verse.resolved`.
 - Event identity must equal the journal mutation ID; semantic payload validation rejects malformed records before enqueue.
 - Session/revision/weak-verse retry paths preserve event ID and timestamp; test event timestamps derive deterministically from the test date.
@@ -48,9 +49,17 @@ Still open:
 - Production Firestore rules deployment and Vercel Production deployment are not verified.
 - Do not enable cloud writes, deploy production rules, or perform destructive migrations without explicit approval.
 
+## Current in-progress change — PR #55
+
+- Branch: `fix/local-mutation-audit-demo-journal-fresh-20261106`.
+- Replaces direct demo writes with one journaled transaction for signed-in users and one rollback-safe local transaction for guests.
+- Removes direct demo writer methods from StorageService and RetentionService.
+- Adds authenticated/guest demo persistence tests and a QuotaExceededError rollback test. Existing suites already cover IndexedDB enqueue failure, durable read failure, and projection rollback.
+- Latest head: `9d1352c65e371d36a84a1e136912f3835a3925e3`; exact-head Quality Gate run `42281919337` is pending. Added simulated restart/replay coverage for an event committed before local projection.
+
 ## Next implementation sequence
 
-1. Complete remaining local mutation and recovery audit, including legacy outbox/reset behavior.
+1. Complete PR #55 exact-head Quality Gate, second review, merge, and post-merge verification.
 2. Finish and merge the typed domain-event envelope after exact-head Quality Gate and second review.
 3. Define event-ledger/aggregate derivation and record-level Firestore document mapping.
 4. Implement Firestore adapter and sync coordinator behind an inactive feature gate.

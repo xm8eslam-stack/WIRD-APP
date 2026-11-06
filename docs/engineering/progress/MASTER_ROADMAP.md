@@ -1,9 +1,9 @@
 # WIRD — Master Engineering Roadmap
 
-**Updated:** 2026-11-06 after PR #53 and current Tafsir commit  
+**Updated:** 2026-11-06 after PR #54 merge and PR #55 local mutation audit  
 **Source of truth:** `main`; Google AI Studio is connected to `main`.  
-**Latest main SHA:** `dee0e7a926700092e3d4b3e5fd63e74565428de0`.  
-**Post-merge main Quality Gates:** PR #52 run `42277666291` passed; PR #53 run `42278457062` passed on merge SHA `87c4ec4456c69e35e1d62a368c97a5992d0309ac`. The newer direct Tafsir commit has no recorded Actions run yet.  
+**Latest main SHA:** `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.  
+**Post-merge main Quality Gates:** PR #52 run `42277666291`, PR #53 run `42278457062`, and PR #54 run `42280564932` passed. Main then advanced via direct Quran Library/Juz commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`; PR #55 tests this base. Current PR #55 head `9d1352c65e371d36a84a1e136912f3835a3925e3` includes a simulated restart/replay test; exact-head Quality Gate run `42281919337` is pending.  
 **Owner instruction:** Vercel build-rate-limit does not block merging tested changes; production deployment must still be verified separately.
 
 Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVIEWED`, `VERIFIED`, `COMMITTED`, `COMPLETED`. Use `COMPLETED` only when independent review, relevant tests, commit verification, and CI evidence all exist.
@@ -12,9 +12,9 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 |---|---|---|---|
 | 0 | Repository baseline, branch audit, architecture map | VERIFIED | Main inspected; branch divergence recorded; continue file-by-file audit |
 | 1 | Local storage, backup, and portion merge integrity | COMPLETED | PR #4–#9 baseline plus PR #52 journal-ordered backup import/reset; exact-head CI passed |
-| 2 | Memorization/revision correctness | IN PROGRESS | Revision rating journal path audited; PR #50/#51 group session progress, activity, streak, and matching smart-plan task. Continue remaining failure/recovery audit |
+| 2 | Memorization/revision correctness | IN PROGRESS | PR #50/#51 group session progress, activity, streak, and matching smart-plan task. PR #55 closes the development demo direct-write path; continue remaining file-by-file failure/recovery audit |
 | 3 | Local outbox foundation and identity | IMPLEMENTED / partial | PR #6 now fingerprints acknowledged mutations, validates pending/acknowledged uniqueness and disjointness, binds pending records to device identity, and prevents retry overflow. Still localStorage-backed (not cross-tab transactional), not wired to domain writes, and no cloud sync is active |
-| 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | PR #54 adds typed immutable domain-event metadata to journal entries; deterministic aggregate derivation and remote event documents remain open |
+| 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | PR #54 merged typed immutable domain-event metadata; deterministic aggregate derivation and remote event documents remain open |
 | 5 | Firestore adapter and deterministic merge | NOT STARTED | No Firestore client, repository, sync coordinator, or merge engine |
 | 6 | Firestore rules hardening and emulator integration | IN PROGRESS | UID/verified-user/allowlist/generic envelope exists; per-collection schemas, immutable event create-only rules, two-client tests remain |
 | 7 | Controlled cloud rollout | BLOCKED pending approval | Requires backup, reviewed rules, explicit approval, two-device/two-account tests |

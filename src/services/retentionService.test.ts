@@ -1,7 +1,18 @@
-import { RetentionService, DEFAULT_PORTIONS } from './retentionService';
+import { RetentionService, DEFAULT_PORTIONS, DEFAULT_WEAK_VERSES } from './retentionService';
 import { StorageService } from './storageService';
 import { PortionMemorizationStatus, RevisionRating } from '../types/quran';
 import { addDaysToLocalDate, createCanonicalPortionId, getLocalDateString, getPrioritizedRevisionQueue } from './unifiedPortionService';
+
+/** Test-only seed helper; production demo loading goes through demoDataPersistence. */
+function seedDemoPortionsForTests(): void {
+  const portions = DEFAULT_PORTIONS.map(portion => ({
+    ...portion,
+    id: createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah)
+  }));
+  if (!StorageService.saveUnifiedPortions(portions) || !StorageService.saveWeakVerses(DEFAULT_WEAK_VERSES)) {
+    throw new Error('Failed to seed test-only demo portions.');
+  }
+}
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -30,7 +41,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
 
   // 1. Initial Portion Status Verification
   runTest('RetentionService: Seed portions contain verified portions and valid statuses', () => {
-    RetentionService.loadDemoPortions();
+    seedDemoPortionsForTests();
     const portions = RetentionService.getPortions();
     assert(portions.length >= 5, `Expected at least 5 portions, got ${portions.length}`);
     const validStatuses: PortionMemorizationStatus[] = [
@@ -42,7 +53,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
   });
 
   runTest('RetentionService: demo seed uses canonical coordinate IDs', () => {
-    RetentionService.loadDemoPortions();
+    seedDemoPortionsForTests();
     const portions = RetentionService.getPortions();
     assert(portions.every(portion => portion.id === createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah)),
       'Every demo portion ID must match its exact Quran coordinates');

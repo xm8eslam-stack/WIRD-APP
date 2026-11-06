@@ -71,6 +71,36 @@ export async function runJournalProjectionReplayerTests(): Promise<{ passed: num
       journal.close();
     });
 
+    await test('A committed journal event is replayed after a simulated app restart before local projection', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:projection-restart-recovery');
+      const factory = new IDBFactory();
+      const databaseName = 'wird-projection-restart-recovery';
+      const beforeRestart = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      await beforeRestart.enqueue({
+        mutationId: 'restart-recovery-plans',
+        collection: 'plans',
+        documentId: 'plans-snapshot',
+        payload: { records: PRESET_PLANS },
+        nowMs: 250
+      });
+      const beforeSnapshot = await beforeRestart.getSnapshot();
+      assert(beforeSnapshot.eventCount === 1 && beforeSnapshot.pendingCount === 1 && beforeSnapshot.projectionCursor === 0,
+        'A simulated interruption after enqueue must leave one durable pending event and an unchanged cursor');
+      beforeRestart.close();
+
+      const afterRestart = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      const replay = await replayJournalProjection(afterRestart, inlineLock);
+      const afterSnapshot = await afterRestart.getSnapshot();
+      assert(replay.applied === 1 && replay.cursor === 1,
+        'The next application startup must replay the committed event exactly once');
+      assert(afterSnapshot.pendingCount === 1 && afterSnapshot.projectionCursor === 1,
+        'Local projection recovery must not acknowledge remote delivery');
+      assert(JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+        'The recovered local projection must exactly match the committed snapshot');
+      afterRestart.close();
+    });
+
     await test('Invalid projection payload stops replay and leaves the cursor before the failed event', async () => {
       const journal = createJournal();
       await journal.enqueue({
