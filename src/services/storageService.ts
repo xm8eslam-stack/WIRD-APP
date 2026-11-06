@@ -587,7 +587,7 @@ export const StorageService = {
             return [];
           }
           const { portions, report } = migrateLegacyDataLosslessly(legacyPortions, legacyRevs);
-          if (report.success && this.saveUnifiedPortions(portions)) {
+          if (report.success && this.saveUnifiedPortions(portions, true)) {
             return portions;
           }
         }
@@ -608,10 +608,10 @@ export const StorageService = {
     }
   },
 
-  saveUnifiedPortions(portions: WirdPortion[]): boolean {
+  saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false): boolean {
     try {
       const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
-      if (currentSchemaVersion === '2') {
+      if (currentSchemaVersion === '2' && !allowRecoveryOverwrite) {
         const currentRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
         if (currentRaw === null) {
           console.error('[WIRD Storage] Refusing to replace a missing canonical portions archive under schema version 2.');
