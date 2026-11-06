@@ -34,6 +34,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCloudSync } from '../../hooks/useCloudSync';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupJournaled } from '../../services/backupPersistence';
+import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -60,6 +61,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
+  const [isLoadingDemoData, setIsLoadingDemoData] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -163,21 +165,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleLoadDemoData = () => {
-    if (!import.meta.env.DEV) return;
+  const handleLoadDemoData = async () => {
+    if (!import.meta.env.DEV || isLoadingDemoData) return;
     if (!isGuest && user) {
       setShowDemoConfirm(false);
       onToast?.("تحميل البيانات التجريبية مقتصر على وضع الزائر لحماية حسابك السحابي من التداخل.", "warn");
       return;
     }
-    StorageService.loadDemoData();
-    RetentionService.loadDemoPortions();
-    const updated = StorageService.getProfile();
-    setFormData(updated);
-    onUpdateProfile(updated);
-    setShowDemoConfirm(false);
-    if (onToast) {
-      onToast("تم تحميل البيانات التجريبية بنجاح (سجلات استعراضية للملك والنبأ)", "info");
+
+    setIsLoadingDemoData(true);
+    try {
+      const result = await loadDemoDataJournaled();
+      if (!result.success) {
+        if (result.recoveredPriorEvents) onBackupImported?.();
+        onToast?.(result.error || 'تعذر تحميل البيانات التجريبية دون تغيير السجلات الحالية.', 'error');
+        return;
+      }
+
+      const updated = StorageService.getProfile();
+      setFormData(updated);
+      onUpdateProfile(updated);
+      setShowDemoConfirm(false);
+      onToast?.("تم تحميل البيانات التجريبية بنجاح (سجلات استعراضية للملك والنبأ)", "info");
+    } catch (error) {
+      onToast?.(error instanceof Error ? error.message : 'تعذر تحميل البيانات التجريبية.', 'error');
+    } finally {
+      setIsLoadingDemoData(false);
     }
   };
 
@@ -691,9 +704,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleLoadDemoData}
-                className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors"
+                disabled={isLoadingDemoData}
+                className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                تحميل البيانات الآن
+                {isLoadingDemoData ? 'جارٍ التحميل...' : 'تحميل البيانات الآن'}
               </button>
             </div>
           </div>
