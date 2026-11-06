@@ -192,7 +192,7 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
     }
   });
 
-  runTest('RetentionService: duplicate review event IDs are counted only once across portions', () => {
+  runTest('RetentionService: duplicate review event IDs are counted only once across portion records', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:duplicate-review-event-id');
     try {
