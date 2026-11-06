@@ -681,15 +681,11 @@ function mergeHistoryEntries(
     throw new Error('Revision history must be an array before migration.');
   }
   if (!existing.history) existing.history = [];
-  const historyById = new Map(existing.history.map(log => [log.id, log]));
+  const historyById = new Map<string, RevisionLogEntry>();
+  existing.history.forEach(log => historyById.set(log.id, log));
 
   for (const incomingLog of incomingHistory) {
-    if (!incomingLog || typeof incomingLog.id !== 'string' || !incomingLog.id.trim() ||
-        incomingLog.id.length > 160 || !/^\d{4}-\d{2}-\d{2}$/.test(incomingLog.date) ||
-        !['successful', 'difficult', 'failed'].includes(incomingLog.rating) ||
-        !Number.isSafeInteger(incomingLog.intervalDaysBefore) || incomingLog.intervalDaysBefore < 0 ||
-        !Number.isSafeInteger(incomingLog.intervalDaysAfter) || incomingLog.intervalDaysAfter < 0 ||
-        (incomingLog.notes !== undefined && (typeof incomingLog.notes !== 'string' || incomingLog.notes.length > 2000))) {
+    if (!isValidRevisionHistoryEntry(incomingLog)) {
       throw new Error('Malformed revision history entry; migration was stopped without modifying source archives.');
     }
 
