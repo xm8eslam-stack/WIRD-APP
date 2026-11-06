@@ -3,7 +3,7 @@
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
-- Last verified application-code main SHA before this documentation checkpoint: bfff3969d510c49da6d0224a375b87ca2959c651
+- Last verified application-code main SHA before this documentation checkpoint: `60d475d1f4f06ea4a852751e1548297d9c7dc6de` (PR #37).
 - Main Quality Gate after PR #32: run 42240305979 — **success** on exact main SHA f3a207844020494ebf6a350ae9cb27d6db62398e. Main Quality Gate after PR #34: run 42241532674 — **success** on exact main SHA bfff3969d510c49da6d0224a375b87ca2959c651.
 - Production deployment for current main SHA bfff3969d510c49da6d0224a375b87ca2959c651: not confirmed. Earlier Vercel checks reported the free daily deployment cap; verify the current deployment directly before release.
 
@@ -182,3 +182,34 @@
 3. Connect real domain mutation paths to the journal with write-ahead and compensation/replay semantics.
 4. Implement Firestore sync worker, server acknowledgements, tombstones, retry/backoff, and collection-specific security rules.
 5. Run two-account/two-device/offline/online integration tests and verify actual production deployment before release.
+
+
+## 2026-11-06 — PR #36 journal projection replay merged
+
+- PR #36 merged to `main` as `9b76227b9498b23fa79fb39264d4b4be98fa16e4`.
+- IndexedDB journal schema v3 distinguishes already-projected legacy events from new write-ahead events.
+- Added deterministic local projection replay before authenticated app state initializes; replay is UID-scoped, sequence-ordered, and protected by the Web Locks API across tabs.
+- Validated full-snapshot projection handlers cover profile, plans, engine plans, canonical portions, weak verses, tests, and activity logs. Tombstones remain rejected.
+- Exact-head PR and push Quality Gate runs passed on SHA `964a5a55b91806acdb85fc29053f2cb720ee8d78`: automated tests, Firestore rules emulator, TypeScript, production build, and server smoke test. Post-merge main run `42249998978` passed on exact SHA `9b76227b9498b23fa79fb39264d4b4be98fa16e4`.
+- Scope limitation: journal replay is implemented, but domain mutation paths were still not generally writing events before PR #37.
+
+## 2026-11-06 — PR #37 journal-first profile and plan snapshots merged
+
+- PR #37 merged to `main` as `60d475d1f4f06ea4a852751e1548297d9c7dc6de` from exact PR head `d45dd9e7284101e332f15b2f408cd62001a961be`.
+- Authenticated profile settings/theme, preset plans, and engine-plan snapshots now append an IndexedDB event + outbox record before local projection. Session completion's engine-plan task update also uses the journal.
+- Guest mode and browsers without IndexedDB retain local-only writes. IndexedDB enqueue failures do not silently fall back to localStorage.
+- Snapshot enqueue and replay are serialized under one per-UID Web Lock. The service replays older events before accepting a new snapshot, blocks stale snapshots after recovery changes local state, and reports recovery-blocked outcomes.
+- Added tests for profile/plan projection, durable event/outbox pairs, invalid snapshots, blocking behind unrecovered events, stale-snapshot prevention after crash recovery, guest/local-only mode, and IndexedDB enqueue failure.
+- Exact-head PR run `42251723375` and push run `42251711748` passed on SHA `d45dd9e7284101e332f15b2f408cd62001a961be`: automated tests, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
+- Post-merge main Quality Gate run `42251976734` **passed** on exact SHA `60d475d1f4f06ea4a852751e1548297d9c7dc6de`.
+
+## Current remaining scope — Phase 2 remains IN PROGRESS
+
+1. Connect remaining canonical portion/revision mutations with write-ahead semantics; preserve the existing multi-key rollback guarantees.
+2. Design grouped journal transactions for logically atomic multi-archive actions (session completion, failed-review + weak-verse recording, activity/profile updates). Do not split one user action into independently acknowledged events if a later projection can fail.
+3. Connect weak-verse, test-result, activity/session, backup import, and reset paths with explicit replay/compensation behavior.
+4. Reconcile event semantics with the Firestore design: activity, tests, and weak-verse records are immutable events; daily logs and weak-verse counters are derived projections, not last-write-wins cloud snapshots.
+5. Implement the Firestore adapter/worker, server acknowledgement, retry/backoff, tombstones, collection-specific rules, and two-device/two-account/offline tests. Keep cloud writes inactive until all gates pass and production rules deployment is explicitly approved.
+6. Complete manual responsive, accessibility, Quran navigation/tafsir, and audio QA; verify an actual Vercel production deployment for the exact main SHA.
+
+**Important current-state distinction:** PR #37 journals profile settings/theme and plan snapshots, but profile streak/activity updates inside `recordSessionCompletionDetailed`, backup import/reset, canonical portions/revision, weak verses, and tests are not yet journal-first. This is not completed cloud sync or release readiness.
