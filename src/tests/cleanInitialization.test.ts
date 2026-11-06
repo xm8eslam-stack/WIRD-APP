@@ -53,7 +53,7 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
   // 3. Production entry points must never seed demo progress.
   test('Normal app startup does not invoke demo data loaders', () => {
     const settingsSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/settings/SettingsView.tsx'), 'utf8');
-    assert(settingsSource.includes('if (!import.meta.env.DEV) return;'), 'Demo loader must refuse to run outside development');
+    assert(settingsSource.includes('if (!import.meta.env.DEV || isLoadingDemoData) return;'), 'Demo loader must refuse to run outside development');
     assert(settingsSource.includes('{import.meta.env.DEV && ('), 'Demo data card must be hidden in production');
     assert(settingsSource.includes('import.meta.env.DEV && showDemoConfirm'), 'Demo confirmation must be hidden in production');
 
@@ -85,22 +85,14 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
     assert(metrics.totalTrackedPortions === 0, `Tracked portions should be 0, got ${metrics.totalTrackedPortions}`);
   });
 
-  // 5. Demo mode loads explicitly
-  test('Demo mode explicitly populates sample data on demand', () => {
-    StorageService.loadDemoData();
-    RetentionService.loadDemoPortions();
-
-    const demoPlans = StorageService.getPlans();
-    const demoLogs = StorageService.getLogs();
-    const demoPortions = RetentionService.getPortions();
-
-    assert(demoPlans.length > 0, 'Demo mode must load plans');
-    assert(demoLogs.length > 0, 'Demo mode must load logs');
-    assert(demoPortions.length > 0, 'Demo mode must load portions');
-
-    // Clean up
-    StorageService.resetAllData();
-    RetentionService.resetAll();
+  // 5. Demo mode loads explicitly through the journaled persistence boundary.
+  test('Demo mode exposes only the journaled loader and no direct archive writers', () => {
+    const settingsSource = fs.readFileSync(path.resolve(process.cwd(), 'src/components/settings/SettingsView.tsx'), 'utf8');
+    const storageSource = fs.readFileSync(path.resolve(process.cwd(), 'src/services/storageService.ts'), 'utf8');
+    const retentionSource = fs.readFileSync(path.resolve(process.cwd(), 'src/services/retentionService.ts'), 'utf8');
+    assert(settingsSource.includes('loadDemoDataJournaled()'), 'Demo action must call the journaled persistence service');
+    assert(!/\\bloadDemoData\\s*\\(/.test(storageSource), 'StorageService must not expose a direct demo archive writer');
+    assert(!/\\bloadDemoPortions\\s*\\(/.test(retentionSource), 'RetentionService must not expose a direct demo portions writer');
   });
 
   return { passed, failed };
