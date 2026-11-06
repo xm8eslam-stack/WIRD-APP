@@ -412,7 +412,7 @@ export default function App() {
       return false;
     }
 
-    let result;
+    let result: Awaited<ReturnType<typeof persistJournaledTransaction>>;
     try {
       result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
     } catch (error) {
