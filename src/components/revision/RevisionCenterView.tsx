@@ -407,6 +407,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     }
 
     weakVerseResolutionMutationIdsRef.current.delete(id);
+    weakVerseResolutionOccurredAtRef.current.delete(id);
     refreshAll();
     setActionFeedback({
       message: `تمت إزالة ${ayahRef} من قائمة الآيات الملتبسة فقط؛ لم يتغير تقييم المقطع أو موعد مراجعته.`,
@@ -508,6 +509,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
     weakVerseMutationIdRef.current = null;
     weakVerseMutationKeyRef.current = null;
+    weakVerseMutationOccurredAtRef.current = null;
     setIsAddWeakVerseModalOpen(false);
     setManualWeakText('');
     setManualWeakNotes('');
