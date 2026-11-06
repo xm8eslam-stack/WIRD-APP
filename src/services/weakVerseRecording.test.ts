@@ -238,7 +238,7 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
         surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
         text: 'نص اختبار موثوق', notes: 'فشل استعادة أرشيف الآيات'
       });
-      assert(!result.success, 'A weak-archive write/rollback mismatch must not report success');
+      if (result.success) throw new Error('A weak-archive write/rollback mismatch must not report success');
       assert(result.messageAr.includes('لم ينجح التحقق'), 'The user must receive a recovery-required warning');
       assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
         'The canonical portion must be restored even when the weak archive cannot be restored');
