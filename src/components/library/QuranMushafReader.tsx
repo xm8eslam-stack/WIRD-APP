@@ -186,19 +186,21 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const changePage = (nextPage: number) => {
     if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > 604) return;
+    pendingTargetRef.current = null;
     autoPlayNextPageRef.current = false;
     stopAudio();
     setPage(nextPage);
   };
 
   const jumpToNavigationPoint = (point: NavigationPoint) => {
-    pendingTargetRef.current = { surahNumber: point.surahNumber, ayahNumber: point.ayahNumber };
+    const target = { surahNumber: point.surahNumber, ayahNumber: point.ayahNumber };
     if (point.page === page && ayahs.length) {
       document.getElementById('wird-ayah-' + point.surahNumber + '-' + point.ayahNumber)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       pendingTargetRef.current = null;
       return;
     }
     changePage(point.page);
+    pendingTargetRef.current = target;
   };
 
   const jumpToJuz = (juz: number) => {
