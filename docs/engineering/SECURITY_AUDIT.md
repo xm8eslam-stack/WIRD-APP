@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `73eeb8b628ab5986a69a984105b89ecaecab759d`  
+**Audited HEAD:** `ef694d8c244e7b616f65b81af462a94b8005ade6`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -19,7 +19,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 | Auth gating | Verified-user gating exists in AuthGate; unauthenticated/guest/verified account states are separated |
 | Local account isolation | Authenticated local data is scoped by exact Firebase UID; guest data remains separate |
 | Legacy local data | First authenticated account receives an explicit import-or-keep-as-guest decision |
-| Weak-verse persistence | Uses the centralized StorageService raw-key adapter |
+| Weak-verse persistence | Uses centralized StorageService; malformed/corrupt archives are preserved and block writes rather than becoming an empty list |
 | Durable local writes | Failed localStorage writes no longer leak through memory fallback as successful writes |
 | Activity/streak write | Session log/profile write reports failure and attempts rollback rather than silently claiming success |
 | Session completion boundary | `persistSessionCompletion` validates exact Quran coordinates and rolls back the newly saved portion if activity/streak persistence fails |
@@ -54,7 +54,7 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 ### High — current activity and weak-verse data are aggregate projections
 
 - Daily logs are currently updated as per-day aggregates. A cross-device read-modify-write would lose concurrent increments; migrate to immutable activity events before sync.
-- Weak-verse mistake counts are aggregated; migrate to immutable mistake events before sync.
+- Weak-verse mistake counts are aggregated; migrate to immutable mistake events before sync. Local weak-verse archive validation now rejects malformed data without overwriting the original bytes.
 - Review history and portion state need unique event IDs and deterministic merge semantics.
 - Session completion now rolls back ordinary write failures across portion/activity. Other multi-key operations can still partially succeed; crash-atomicity requires the event journal and recovery replay.
 

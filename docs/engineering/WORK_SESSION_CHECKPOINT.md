@@ -3,9 +3,9 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `73eeb8b628ab5986a69a984105b89ecaecab759d`  
+**Current HEAD:** `ef694d8c244e7b616f65b81af462a94b8005ade6`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42172283822 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42172283822)
+**Latest CI run:** [42177659576 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42177659576)
 
 ## Resume instructions
 
@@ -16,11 +16,12 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `5cbbe88` + `ef694d8` — prevent corrupt or malformed weak-verse archives from being interpreted as an empty list and overwritten. Added schema/date/counter bounds and regression tests. First CI exposed an over-escaped date regex; corrected it in the follow-up commit. Final run `42177659576` passed 243 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `7f61e4f` + `e8a4ca7` + `73eeb8b` — harden outbox mutation validation: reject changed-payload ID collisions, validate UTF-8 byte limits/control characters, persist device identity on first read, and preserve numeric IDs. Two CI runs exposed false rejection of numeric IDs; final run `42172283822` passed 237 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `543df24` — backup import rollback now returns an explicit verification result. It verifies that scoped localStorage and memory keys were restored, and reports a recovery warning if readback fails. Added a failure-injection regression test. CI run `42171658033` passed 231 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `dc1f85f` — add `persistSessionCompletion` as a user-visible session persistence boundary. It validates exact Quran coordinates, saves canonical memorization progress and activity together, and rolls back the portion if activity/streak persistence fails. Added regression tests for failed-write rollback and review-only behavior. CI run `42171385088` passed 230 automated assertions, 10 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke test.
 - `655d070` + `1efadca` — add a UID-scoped durable local outbox foundation with secure UUID/device IDs, idempotent enqueue/acknowledgement, retry backoff, bounded batches/payload/storage, corruption preservation, and quota-failure handling. The first CI run exposed a test-mock key-prefix mismatch; the test was corrected to target UID-scoped keys.
-- Latest CI run `42170716768` passed: 228 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
+- Latest CI run `42177659576` passed: 243 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - `162e847` — preserve exact coordinates when resuming an in-progress memorization passage; regression tests cover range repeat prevention and Surah boundary clamping.
 - `0710e27` — correct backup import UI to inspect the returned `success` flag, surface the actual result message, and handle file-read failures.
 - `fdd00a2` + `7e01502` + `275e39b` — prepare whole-page progress changes in memory and persist once; add tests for multi-Surah pages, history preservation, invalid pages, and TypeScript-safe assertions.
@@ -43,7 +44,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 - UID-scoped local storage and guest separation exist.
 - Legacy data ownership decision exists.
 - Firestore rules, emulator configuration, and emulator tests exist.
-- Firestore client integration, merge engine, and cross-device sync do **not** exist yet. The UID-scoped outbox primitive exists but is not yet wired into the session persistence boundary.
+- Firestore client integration, merge engine, immutable activity/weak-verse event ledger, and cross-device sync do **not** exist yet. The UID-scoped outbox primitive exists but is not yet wired into domain mutations.
 - Firestore rules are not confirmed deployed to the production Firebase project.
 - User reports the Vercel app is live at `https://wird-app.vercel.app/#/dashboard`.
 
@@ -52,7 +53,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 1. Daily activity is still stored as aggregate per-day logs; concurrent device updates would be lossy.
 2. Weak-verse mistake counts are aggregated; they need immutable events or a transaction-safe model.
 3. Portion review history needs stable unique event IDs before merging across devices.
-4. Session completion now has rollback for ordinary localStorage failures; backup import rollback now verifies restoration. Other multi-key operations still need equivalent journal/rollback behavior before outbox integration.
+4. Session completion now has rollback for ordinary localStorage failures; backup import rollback verifies restoration; weak-verse recording preserves corrupt archives and rolls back partial writes. Other multi-key operations still need equivalent journal/rollback behavior before outbox integration.
 5. Firestore rules currently validate a generic envelope; collection-specific payload validation and immutable event restrictions remain.
 6. A green Vercel deployment does not prove Firebase rules deployment or sync.
 
@@ -64,7 +65,7 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 ## Additional progress-range defect found
 
 - The file-by-file review found that resuming a saved `currently_memorizing` portion clipped it to the daily target. Completion only updates exact coordinate matches, leaving the larger parent portion in-progress; the next dashboard selection therefore repeats the same starting ayah. The fix now resumes the exact persisted passage and clamps only to the canonical Surah verse count. Regression tests cover exact resumption and malformed overlong endpoints.
-- This patch is committed separately and its CI result must be checked before marking the fix complete.
+- CI run `42169589580` and later full quality gates passed.
 
 ## M4 implementation status
 

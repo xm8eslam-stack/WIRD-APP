@@ -2,7 +2,7 @@
 
 **Updated:** 2026-11-06  
 **Source of truth:** `main` — Google AI Studio is connected to this branch.  
-**Current audited HEAD:** `73eeb8b628ab5986a69a984105b89ecaecab759d`
+**Current audited HEAD:** `ef694d8c244e7b616f65b81af462a94b8005ade6`
 
 ## Operating rules
 
@@ -49,6 +49,7 @@
 - Save methods return explicit success/failure; important UI paths surface failures.
 - Backup import UI checks the explicit result flag and reports read/import failures accurately.
 - Failed backup imports verify the previous localStorage/memory snapshot was restored; failure to restore is reported distinctly.
+- Weak-verse reads now validate the archive and throw a recovery-safe error on malformed/corrupt data instead of returning `[]`; saves validate bounded fields. This prevents a later mistake update from overwriting a damaged archive.
 - Retention mutations fail visibly if canonical progress cannot be persisted.
 - Overlapping memorization portions count each ayah once in the retention score; the weakest overlapping status wins.
 - Review page counts use canonical Mushaf page/ayah mappings rather than an estimate.
@@ -68,15 +69,15 @@
 - Completing a memorization task updates the matching engine-plan task without marking other pending revision tasks complete.
 
 ### M4 — Local event ledger and durable outbox
-**Status: not started. Highest-priority next engineering milestone.**
+**Status: partially prepared; event ledger integration remains the highest-priority next engineering milestone.**
 
 Before Firestore writes are enabled:
 
-- Introduce stable UUID mutation/event IDs.
+- Introduce stable UUID mutation/event IDs (outbox/device identity primitive is already implemented and tested).
 - Convert session completion and review activity from one mutable per-day aggregate into append-only events; derive daily logs from the event ledger.
 - Represent weak-verse mistakes as immutable events or another concurrency-safe structure rather than a cross-device incrementing counter.
 - Ensure each local domain mutation and its outbox record are committed together, or rolled back together.
-- Add retry-safe, bounded outbox storage scoped by Firebase UID.
+- Add retry-safe, bounded outbox storage scoped by Firebase UID (foundation exists; wire it to domain writes).
 - Add tests for duplicate mutation IDs, crash/reload, quota errors, queue overflow, and account switching.
 
 ### M5 — Firestore adapter and conflict-safe merge
@@ -133,4 +134,4 @@ Still required before live rollout:
 
 ## Current next action
 
-Finish the remaining file-by-file audit, then implement M4 (local event ledger + durable outbox) with unit tests. Do not begin production Firestore writes until M4 and the merge tests pass.
+Continue the file-by-file audit, then implement M4's append-only local event ledger and atomic domain/outbox integration with unit tests. The outbox foundation exists, but no cloud sync is active. Do not begin production Firestore writes until M4 and the merge tests pass.
