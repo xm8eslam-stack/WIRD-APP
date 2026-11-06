@@ -253,6 +253,55 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
       }
     });
 
+    test('Partially applied outbox write with failed restoration is never reported as a verified rollback', () => {
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      const values = new Map<string, string>();
+      let allowOutboxWrites = true;
+      let previousRaw: string | null = null;
+      reset();
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: (key: string) => values.get(key) ?? null,
+          setItem: (key: string, value: string) => {
+            if (!allowOutboxWrites && key.endsWith(STORAGE_KEYS.SYNC_OUTBOX)) {
+              if (value !== previousRaw) {
+                values.set(key, value);
+                throw new Error('simulated outbox write applied before failure');
+              }
+              return; // Refuse to restore the previous outbox bytes.
+            }
+            values.set(key, value);
+          },
+          removeItem: (key: string) => values.delete(key)
+        }
+      });
+      try {
+        StorageService.setStorageScope('user:alpha');
+        LocalSyncOutbox.getSnapshot(); // Create and verify the empty outbox before injecting failure.
+        previousRaw = StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX);
+        allowOutboxWrites = false;
+        let message = '';
+        try {
+          LocalSyncOutbox.enqueue({
+            mutationId: 'partial-outbox-event',
+            collection: 'activityEvents',
+            documentId: 'partial-outbox-event',
+            payload: { type: 'session' },
+            nowMs: 16000
+          });
+        } catch (error: any) { message = error?.message || String(error); }
+        assert(message.includes('تعذر التحقق من استعادة الحالة السابقة'),
+          'A partially applied outbox write with failed restoration must surface a recovery-required error');
+        assert(StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) !== previousRaw,
+          'The injected durable mismatch must remain observable rather than being hidden by memory fallback');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        reset();
+      }
+    });
+
     test('Mutation payload and Firestore document IDs are bounded', () => {
       reset();
       StorageService.setStorageScope('user:alpha');
