@@ -1,7 +1,9 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
-import { StorageService } from './storageService';
+import type { LegacyOutboxState } from './indexedDbSyncJournal';
+import { STORAGE_KEYS, StorageService } from './storageService';
+import { LocalSyncOutbox } from './localSyncOutbox';
 
 export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -127,6 +129,119 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Journal snapshot creates and preserves a stable device identity', async () => {
+      const { journal } = createJournal();
+      const first = await journal.getSnapshot();
+      const second = await journal.getSnapshot();
+      assert(Boolean(first.deviceId) && first.deviceId === second.deviceId,
+        'The device identity must be created once and remain stable before any enqueue');
+      journal.close();
+    });
+
+    await test('Legacy localStorage outbox migrates pending, acknowledged, and device state atomically', async () => {
+      const { journal } = createJournal();
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'legacy-device-1',
+        pending: [{
+          mutationId: 'legacy-pending',
+          collection: 'activityEvents',
+          documentId: 'legacy-session',
+          operation: 'upsert',
+          schemaVersion: 1,
+          clientUpdatedAtMs: 8000,
+          deviceId: 'legacy-device-1',
+          payload: { minutes: 15 },
+          queuedAtMs: 8100,
+          attemptCount: 2,
+          nextAttemptAtMs: 9000,
+          lastErrorCode: 'NETWORK'
+        }],
+        acknowledgedIds: ['legacy-acknowledged'],
+        acknowledgedFingerprints: [{ mutationId: 'legacy-acknowledged', fingerprint: '0123456789abcdef' }]
+      };
+      assert(await journal.importLegacyState(legacy) === 'migrated', 'First migration must commit');
+      assert(await journal.importLegacyState(legacy) === 'already_migrated', 'Repeated identical migration must be idempotent');
+      const extended: LegacyOutboxState = {
+        ...legacy,
+        pending: [...legacy.pending, {
+          mutationId: 'legacy-pending-2',
+          collection: 'plans',
+          documentId: 'legacy-plan',
+          operation: 'upsert',
+          schemaVersion: 1,
+          clientUpdatedAtMs: 9300,
+          deviceId: 'legacy-device-1',
+          payload: { pages: 5 },
+          queuedAtMs: 9300,
+          attemptCount: 0,
+          nextAttemptAtMs: 0
+        }]
+      };
+      assert(await journal.importLegacyState(extended) === 'migrated',
+        'A changed legacy snapshot must safely merge newly queued operations');
+      assert(await journal.importLegacyState(extended) === 'already_migrated',
+        'The updated legacy snapshot must also become idempotent');
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      const ready = await journal.listReady(9300);
+      assert(snapshot.deviceId === 'legacy-device-1', 'Legacy device identity must be preserved');
+      assert(snapshot.pendingCount === 2 && snapshot.acknowledgedCount === 1 && snapshot.eventCount === 2,
+        'Pending, acknowledged, and event records must migrate as one logical state');
+      assert(ready.length === 2 && ready[0].attemptCount === 2 && ready[0].lastErrorCode === 'NETWORK',
+        'Retry metadata must be preserved during migration');
+      assert(events.some(event => event.mutationId === 'legacy-pending'), 'The legacy pending mutation must become an immutable event');
+      journal.close();
+    });
+
+    await test('Conflicting legacy migration aborts earlier queued writes without partial import', async () => {
+      const { journal } = createJournal();
+      await journal.enqueue({ mutationId: 'existing-conflict', collection: 'plans', documentId: 'plan-1', payload: { pages: 1 }, nowMs: 8500 });
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'legacy-device-2',
+        pending: [
+          {
+            mutationId: 'would-partially-import',
+            collection: 'activityEvents',
+            documentId: 'session-partial',
+            operation: 'upsert',
+            schemaVersion: 1,
+            clientUpdatedAtMs: 8600,
+            deviceId: 'legacy-device-2',
+            payload: { minutes: 3 },
+            queuedAtMs: 8600,
+            attemptCount: 0,
+            nextAttemptAtMs: 0
+          },
+          {
+            mutationId: 'existing-conflict',
+            collection: 'plans',
+            documentId: 'plan-1',
+            operation: 'upsert',
+            schemaVersion: 1,
+            clientUpdatedAtMs: 8601,
+            deviceId: 'legacy-device-2',
+            payload: { pages: 99 },
+            queuedAtMs: 8601,
+            attemptCount: 0,
+            nextAttemptAtMs: 0
+          }
+        ],
+        acknowledgedIds: [],
+        acknowledgedFingerprints: []
+      };
+      let rejected = false;
+      try { await journal.importLegacyState(legacy); } catch { rejected = true; }
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      assert(rejected, 'Different content for an existing event ID must reject migration');
+      assert(snapshot.pendingCount === 1 && snapshot.eventCount === 1 && events.length === 1,
+        'No earlier records from a failed migration may be committed');
+      assert(events[0].mutationId === 'existing-conflict', 'The original journal event must remain unchanged');
+      journal.close();
+    });
+
     await test('UID scoping isolates the same mutation ID between accounts', async () => {
       const { journal } = createJournal('alpha');
       await journal.enqueue({ mutationId: 'same-id', collection: 'profile', documentId: 'profile', payload: { name: 'A' }, nowMs: 6000 });
@@ -138,6 +253,94 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       StorageService.setStorageScope('user:alpha');
       const alpha = await journal.getSnapshot();
       assert(alpha.pendingCount === 1 && alpha.eventCount === 1, 'Switching back must reveal only the first account event');
+      journal.close();
+    });
+
+    await test('Legacy localStorage outbox migrates while retaining a recovery copy', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:legacy-migration-success');
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'legacy-device-migration',
+        pending: [{
+          mutationId: 'migration-pending',
+          collection: 'activityEvents',
+          documentId: 'legacy-session-2',
+          operation: 'upsert',
+          schemaVersion: 1,
+          clientUpdatedAtMs: 9100,
+          deviceId: 'legacy-device-migration',
+          payload: { minutes: 21 },
+          queuedAtMs: 9200,
+          attemptCount: 1,
+          nextAttemptAtMs: 9500
+        }],
+        acknowledgedIds: ['migration-ack'],
+        acknowledgedFingerprints: []
+      };
+      const raw = JSON.stringify(legacy);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy outbox fixture must be stored');
+      assert(await LocalSyncOutbox.migrateLegacyToIndexedDb() === 'migrated', 'Legacy state must migrate to IndexedDB');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy localStorage source must remain as a recovery copy after migration');
+      const journal = new IndexedDbSyncJournal();
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      assert(snapshot.pendingCount === 1 && snapshot.acknowledgedCount === 1 && snapshot.eventCount === 1,
+        'Migrated state must be present in IndexedDB');
+      assert(events[0].mutationId === 'migration-pending', 'The migrated event must retain its mutation ID');
+      journal.close();
+    });
+
+    await test('Conflicting legacy migration preserves the localStorage source and commits no partial records', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:legacy-migration-conflict');
+      const journal = new IndexedDbSyncJournal();
+      await journal.enqueue({ mutationId: 'migration-collision', collection: 'plans', documentId: 'plan-1', payload: { pages: 1 }, nowMs: 9300 });
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'legacy-device-conflict',
+        pending: [
+          {
+            mutationId: 'migration-first',
+            collection: 'activityEvents',
+            documentId: 'session-first',
+            operation: 'upsert',
+            schemaVersion: 1,
+            clientUpdatedAtMs: 9400,
+            deviceId: 'legacy-device-conflict',
+            payload: { minutes: 2 },
+            queuedAtMs: 9400,
+            attemptCount: 0,
+            nextAttemptAtMs: 0
+          },
+          {
+            mutationId: 'migration-collision',
+            collection: 'plans',
+            documentId: 'plan-1',
+            operation: 'upsert',
+            schemaVersion: 1,
+            clientUpdatedAtMs: 9401,
+            deviceId: 'legacy-device-conflict',
+            payload: { pages: 88 },
+            queuedAtMs: 9401,
+            attemptCount: 0,
+            nextAttemptAtMs: 0
+          }
+        ],
+        acknowledgedIds: [],
+        acknowledgedFingerprints: []
+      };
+      const raw = JSON.stringify(legacy);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy conflict fixture must be stored');
+      let rejected = false;
+      try { await LocalSyncOutbox.migrateLegacyToIndexedDb(); } catch { rejected = true; }
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      assert(rejected, 'Conflicting content must stop migration');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy source must remain untouched after conflict');
+      assert(snapshot.pendingCount === 1 && snapshot.eventCount === 1 && events.length === 1,
+        'No partial migration writes may commit');
+      assert(events[0].mutationId === 'migration-collision', 'The pre-existing event must remain intact');
       journal.close();
     });
 

@@ -1,5 +1,7 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
+import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
+import type { LegacyOutboxState } from './indexedDbSyncJournal';
 
 export type SyncCollection =
   | 'profile'
@@ -58,9 +60,9 @@ interface OutboxState {
   acknowledgedFingerprints: AcknowledgedMutationFingerprint[];
 }
 
+const MAX_OUTBOX_BYTES = 1_500_000;
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
-const MAX_OUTBOX_BYTES = 1_500_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -251,7 +253,50 @@ function persistState(state: OutboxState): void {
   }
 }
 
+let indexedDbJournal: IndexedDbSyncJournal | null = null;
+
+function getIndexedDbJournal(): IndexedDbSyncJournal {
+  if (!indexedDbJournal) indexedDbJournal = new IndexedDbSyncJournal();
+  return indexedDbJournal;
+}
+
+async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 'already_migrated'> {
+  getActiveUid();
+  const key = STORAGE_KEYS.SYNC_OUTBOX;
+  const raw = StorageService.getRawItem(key);
+  if (raw === null) {
+    if (!StorageService.verifyRawItem(key, null)) {
+      throw new Error('تعذرت قراءة صندوق المزامنة القديم بشكل موثوق؛ لم يتم افتراض أنه فارغ.');
+    }
+    return 'empty';
+  }
+  if (byteLength(raw) > MAX_OUTBOX_BYTES) {
+    throw new Error('صندوق المزامنة القديم أكبر من الحد الآمن؛ تم الحفاظ عليه دون تعديل.');
+  }
+  if (!StorageService.verifyRawItem(key, raw)) {
+    throw new Error('تعذرت مطابقة نسخة صندوق المزامنة مع التخزين الدائم؛ أوقفنا الترحيل قبل أي تغيير.');
+  }
+
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error('بيانات صندوق المزامنة القديم تالفة؛ لم يتم حذفها أو استبدالها.'); }
+  const normalized = normalizeOutboxState(parsed);
+  if (!normalized) {
+    throw new Error('بنية صندوق المزامنة القديم غير صالحة؛ تم الاحتفاظ بالنسخة الأصلية دون تعديل.');
+  }
+
+  const result = await getIndexedDbJournal().importLegacyState(normalized as LegacyOutboxState);
+  // Keep the source as a recovery copy. Older tabs may still write the v1 key;
+  // later imports merge new entries by fingerprint without deleting that source.
+  if (!StorageService.verifyRawItem(key, raw)) {
+    throw new Error('تغير صندوق المزامنة القديم أثناء الترحيل؛ تم الاحتفاظ بالمصدر وأُوقف تأكيد المزامنة حتى إعادة الدمج.');
+  }
+  return result;
+}
+
 export const LocalSyncOutbox = {
+  /** One-time, idempotent migration; normal outbox calls remain unchanged until the adapter cutover. */
+  migrateLegacyToIndexedDb: migrateLegacyOutboxToIndexedDb,
   /** Add one UID-scoped mutation. Reusing an ID never creates a second queue item. */
   enqueue(input: EnqueueMutationInput): EnqueueMutationResult {
     if (!input || typeof input !== 'object') throw new Error('بيانات عملية المزامنة غير صالحة.');
