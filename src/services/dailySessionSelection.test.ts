@@ -154,7 +154,7 @@ export function runDailySessionSelectionTests(): { passed: number; failed: numbe
 
   test('Preset scope resumes at the first uncovered ayah', () => {
     const plan = makePreset({ type: 'surahs', targetSurahs: [1], dailyTarget: 3 });
-    const saved = portion(1, 1, 2, 'stable');
+    const saved = { ...portion(1, 1, 2, 'stable'), nextDueDate: '2026-11-06' };
     const selection = getDailySessionSelection([plan], [], [saved], '2026-11-05');
     assert(selection.kind === 'session' && selection.mode === 'memorize', 'Preset plan should select memorization');
     assert(selection.kind === 'session' && selection.startAyah === 3 && selection.endAyah === 5, 'Preset should continue after the saved range');
