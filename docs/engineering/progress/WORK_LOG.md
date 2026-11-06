@@ -110,3 +110,14 @@ Reviewed Zod 4.6.7 (MIT), Valibot (MIT; official docs specify TypeScript 5.0.2+)
 
 ### Next exact action
 Complete Phase 1 record-level validators and backup import/export consistency first. Then continue Phase 2 mutation/range validation and outbox idempotency before event-ledger integration.
+
+
+## 2026-11-06 — Engineering checkpoint integrated into main
+
+- PR #3 (documentation-only) was squash-merged successfully into main.
+- Merge commit: `82efeacd9118406d850336fa3c862fd5016bed14`.
+- PR head CI run `42184381262` completed successfully: automated tests, dependency audit, Firestore Emulator tests, TypeScript validation, production build, and production server smoke test all passed.
+- The combined status for the merge commit still reports Vercel `failure` with a build-rate-limit target. This is a deployment quota issue; it does not negate the passing GitHub Actions quality gate. Production deployment for this merge commit remains unconfirmed.
+- The six progress files now exist on main under `docs/engineering/progress/`.
+- No application source, dependencies, Firestore rules, secrets, production data, or deployment configuration changed.
+- Next priority remains Phase 1 record-level validation; do not start cloud sync. Static audit found array-root-only validation in plans, engine plans, revision items, and test results, and incomplete deep backup validation. M4 outbox integration follows after Phase 1/2 gates.
