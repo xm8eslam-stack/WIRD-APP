@@ -417,30 +417,30 @@ export const RetentionService = {
     return record;
   },
 
-  // Record memorization session completion into canonical portions
-  recordMemorizationCompletion(surahNumber: number, startAyah: number, endAyah: number): PortionStatusRecord {
+  /** Build the memorization-progress projection without mutating storage. */
+  buildMemorizationCompletionSnapshot(
+    surahNumber: number,
+    startAyah: number,
+    endAyah: number
+  ): { updatedPortion: PortionStatusRecord; portions: PortionStatusRecord[] } {
     assertValidQuranRange(surahNumber, startAyah, endAyah);
-    const surahMeta = ALL_SURAHS.find(s => s.number === surahNumber)!;
+    const surahMeta = ALL_SURAHS.find(surah => surah.number === surahNumber)!;
     const portions = this.getPortions();
     const canonicalId = createCanonicalPortionId(surahNumber, startAyah, endAyah);
     const today = getLocalDateString();
     const tomorrow = addDaysToLocalDate(today, 1);
-    const surahName = surahMeta.name;
-
-    const existingIndex = portions.findIndex(p => 
-      p.id === canonicalId || 
-      (p.surahNumber === surahNumber && p.startAyah === startAyah && p.endAyah === endAyah)
+    const existingIndex = portions.findIndex(portion =>
+      portion.id === canonicalId ||
+      (portion.surahNumber === surahNumber &&
+        portion.startAyah === startAyah && portion.endAyah === endAyah)
     );
 
     let updatedPortion: PortionStatusRecord;
     if (existingIndex >= 0) {
       const existing = portions[existingIndex];
-      const newStatus = existing.status === 'not_memorized' || existing.status === 'currently_memorizing' 
-        ? 'recently_memorized' 
+      const newStatus = existing.status === 'not_memorized' || existing.status === 'currently_memorizing'
+        ? 'recently_memorized'
         : existing.status;
-      const nextIntervalDays = newStatus === 'weak'
-        ? 1
-        : Math.max(1, existing.intervalDays || 1);
       updatedPortion = {
         ...existing,
         id: canonicalId,
@@ -449,7 +449,7 @@ export const RetentionService = {
         lastReviewedDate: today,
         nextDueDate: tomorrow,
         repetitionCount: (existing.repetitionCount || 0) + 1,
-        intervalDays: nextIntervalDays,
+        intervalDays: newStatus === 'weak' ? 1 : Math.max(1, existing.intervalDays || 1),
         easeFactor: existing.easeFactor || 2.5,
         history: existing.history || []
       };
@@ -459,10 +459,10 @@ export const RetentionService = {
         id: canonicalId,
         type: 'passage',
         surahNumber,
-        surahName,
+        surahName: surahMeta.name,
         startAyah,
         endAyah,
-        pageNumber: surahMeta ? surahMeta.pageStart : 1,
+        pageNumber: surahMeta.pageStart,
         status: 'recently_memorized',
         lastReviewedDate: today,
         nextDueDate: tomorrow,
@@ -475,7 +475,12 @@ export const RetentionService = {
       };
       portions.unshift(updatedPortion);
     }
+    return { updatedPortion, portions };
+  },
 
+  // Backward-compatible local-only API. Authenticated UI uses the journal-first builder above.
+  recordMemorizationCompletion(surahNumber: number, startAyah: number, endAyah: number): PortionStatusRecord {
+    const { updatedPortion, portions } = this.buildMemorizationCompletionSnapshot(surahNumber, startAyah, endAyah);
     const saveResult = this.savePortionsDetailed(portions);
     if (!saveResult.success) {
       throw new Error(saveResult.rollbackVerified
