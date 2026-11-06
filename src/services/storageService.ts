@@ -874,8 +874,13 @@ export const StorageService = {
 
       return { success: true, message: 'تم استيراد البيانات والتحقق من حفظها بنجاح.' };
     } catch (e: any) {
-      this.restoreStorageSnapshot(snapshot);
-      return { success: false, message: 'تعذر إكمال الاستيراد؛ تمت محاولة استعادة البيانات السابقة: ' + (e?.message || 'خطأ غير متوقع') };
+      const rollbackVerified = this.restoreStorageSnapshot(snapshot);
+      return {
+        success: false,
+        message: rollbackVerified
+          ? 'تعذر إكمال الاستيراد؛ تم التحقق من استعادة البيانات السابقة: ' + (e?.message || 'خطأ غير متوقع')
+          : 'تعذر إكمال الاستيراد، ولم ينجح التحقق الكامل من استعادة البيانات السابقة. لا تتابع التعديل؛ احتفظ بالملف الحالي وصدّر ما يمكن استعادته فوراً. السبب: ' + (e?.message || 'خطأ غير متوقع')
+      };
     }
   },
 
@@ -909,23 +914,38 @@ export const StorageService = {
     return snapshot;
   },
 
-  restoreStorageSnapshot(snapshot: Record<string, string | null>): void {
+  restoreStorageSnapshot(snapshot: Record<string, string | null>): boolean {
+    let restored = true;
     const scopedKeys = Object.values(STORAGE_KEYS).map(key => resolveStorageKey(key));
-    scopedKeys.forEach(key => rawRemoveItem(key));
 
-    Object.entries(snapshot).forEach(([fullKey, val]) => {
+    for (const key of scopedKeys) {
+      if (!rawRemoveItem(key)) restored = false;
+      if (memoryStorage.has(key)) restored = false;
+      try {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem(key) !== null) restored = false;
+      } catch { restored = false; }
+    }
+
+    for (const [fullKey, val] of Object.entries(snapshot)) {
       if (fullKey.startsWith('memory:')) {
         const key = fullKey.slice('memory:'.length);
-        if (val !== null) memoryStorage.set(key, val);
+        if (val === null) memoryStorage.delete(key);
+        else memoryStorage.set(key, val);
+        if ((memoryStorage.get(key) ?? null) !== val) restored = false;
       } else if (fullKey.startsWith('local:')) {
         const key = fullKey.slice('local:'.length);
-        if (val !== null) {
-          try {
-            if (typeof localStorage !== 'undefined') localStorage.setItem(key, val);
-          } catch { /* ignore */ }
-        }
+        try {
+          if (typeof localStorage === 'undefined') {
+            if (val !== null) restored = false;
+          } else {
+            if (val === null) localStorage.removeItem(key);
+            else localStorage.setItem(key, val);
+            if (localStorage.getItem(key) !== val) restored = false;
+          }
+        } catch { restored = false; }
       }
-    });
+    }
+    return restored;
   }
 };
 

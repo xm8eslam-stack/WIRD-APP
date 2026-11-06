@@ -202,9 +202,36 @@ export function runBackupTests(): { passed: number; failed: number } {
       const payload = { version: 3, profile: { ...CLEAN_INITIAL_PROFILE, name: 'الحساب البديل' }, plans: [] };
       const result = StorageService.importBackup(JSON.stringify(payload));
       assert(!result.success, 'Import must fail when a durable storage write fails');
+      assert(result.message.includes('تم التحقق من استعادة البيانات السابقة'), 'Import must report that rollback was verified');
       assert(StorageService.getProfile().name === 'الحساب الأصلي', 'Rollback must restore the profile written before the failing key');
     } finally {
       StorageService.restoreStorageSnapshot(snapshot);
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+    }
+  });
+
+  test('Snapshot restoration reports a failed durable readback instead of silently succeeding', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key === STORAGE_KEYS.PROFILE) throw new Error('simulated restore quota failure');
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      const restored = StorageService.restoreStorageSnapshot({
+        [`local:${STORAGE_KEYS.PROFILE}`]: JSON.stringify({ ...CLEAN_INITIAL_PROFILE, name: 'نسخة سابقة' })
+      });
+      assert(!restored, 'A failed localStorage restoration must return false');
+      assert(!values.has(STORAGE_KEYS.PROFILE), 'The durable profile must remain absent after the simulated failure');
+    } finally {
       if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
       else delete (globalThis as any).localStorage;
     }
