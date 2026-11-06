@@ -687,7 +687,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
   }
 
   if (payload.profile !== undefined && !isValidUserProfile(payload.profile)) {
-    return { valid: false, error: 'بيانات الملف الشخصي غير مكتملة أو غير صالحة' };
+    return { valid: false, error: 'اسم الحافظ أو أحد حقول الملف الشخصي مفقود أو غير صالح' };
   }
 
   const arraySpecs: Array<{
@@ -702,7 +702,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     { field: 'logs', max: 10000, validate: isValidDailyLog, label: 'سجل النشاط اليومي' },
     { field: 'tests', max: 50, validate: isValidTestResultRecord, label: 'نتائج الاختبارات' },
     { field: 'portions', max: 10000, validate: value => isValidPortionRecord(value, false), label: 'المقاطع القديمة' },
-    { field: 'unifiedPortions', max: 10000, validate: value => isValidPortionRecord(value, true), label: 'المقاطع الموحدة' },
+    { field: 'unifiedPortions', max: 10000, validate: value => isValidPortionRecord(value, true), label: 'المقطع الموحد' },
     { field: 'weakVerses', max: 10000, validate: isValidWeakVerseRecord, label: 'الآيات المتعثرة' }
   ];
 
