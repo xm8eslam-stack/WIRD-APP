@@ -424,6 +424,10 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     };
     const res4 = migrateLegacyDataLosslessly([invalidHistory], []);
     assert(res4.report.success === false, 'Migration rejects malformed review history dates and preserves the source archive');
+
+    const malformedRoot = migrateLegacyDataLosslessly(null as any, []);
+    assert(malformedRoot.report.success === false && malformedRoot.portions.length === 0,
+      'Malformed non-array migration roots must return a safe failure report without throwing from the catch path');
   }
 
   console.log('\n--- 6. RetentionService & StorageService Unified Pipeline ---');
