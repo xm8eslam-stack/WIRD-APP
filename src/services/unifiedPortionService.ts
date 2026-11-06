@@ -910,7 +910,7 @@ export function migrateLegacyDataLosslessly(
           mistakesCount: 0,
           history: [],
           revisionType: rev.type || 'minor',
-          strength: rev.strength || 'strong',
+          strength: rev.strength || 'medium',
           conflictAudit: []
         });
       }
