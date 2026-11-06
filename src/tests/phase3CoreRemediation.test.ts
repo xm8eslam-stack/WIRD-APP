@@ -410,6 +410,20 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     };
     const res2 = migrateLegacyDataLosslessly([invalidAyahPortion], []);
     assert(res2.report.success === false, 'Migration rejects invalid Ayah number 99 in Al-Fatiha (max 7)');
+
+    const fractionalPortion = { ...invalidAyahPortion, surahNumber: 67, startAyah: 1.5, endAyah: 3 };
+    const res3 = migrateLegacyDataLosslessly([fractionalPortion], []);
+    assert(res3.report.success === false, 'Migration rejects fractional ayah coordinates instead of normalizing them');
+
+    const invalidHistory = {
+      ...invalidAyahPortion,
+      surahNumber: 67,
+      startAyah: 1,
+      endAyah: 3,
+      history: [{ id: 'bad-date', date: '2026-02-30', rating: 'successful' as const, intervalDaysBefore: 1, intervalDaysAfter: 2 }]
+    };
+    const res4 = migrateLegacyDataLosslessly([invalidHistory], []);
+    assert(res4.report.success === false, 'Migration rejects malformed review history dates and preserves the source archive');
   }
 
   console.log('\n--- 6. RetentionService & StorageService Unified Pipeline ---');
