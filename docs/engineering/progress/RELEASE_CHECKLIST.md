@@ -104,5 +104,5 @@
 - [x] Roll back all four keys when schema-version commit fails.
 - [x] Roll back all four keys when a legacy revision projection write applies and then throws.
 - [x] Exact-head Quality Gate runs `42236675217` / `42236639584` passed on PR head `bb5a5224671fc3d1ef83b619b01556f8c6c39c01` (336 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
-- [ ] Verify post-merge main Quality Gate run `42236977371` on exact SHA `f739b64aae61398c51769340f0e4182d51624fca`.
+- [x] Post-merge main Quality Gate run `42236977371` passed on exact SHA `f739b64aae61398c51769340f0e4182d51624fca`.
 - [ ] Continue the remaining multi-key mutation and outbox cross-tab audit.
