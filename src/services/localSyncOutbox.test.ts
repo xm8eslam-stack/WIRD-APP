@@ -84,7 +84,7 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
         value: {
           getItem: (key: string) => values.get(key) ?? null,
           setItem: (key: string, value: string) => {
-            if (key === STORAGE_KEYS.SYNC_OUTBOX) throw new Error('simulated quota failure');
+            if (key.endsWith(STORAGE_KEYS.SYNC_OUTBOX)) throw new Error('simulated quota failure');
             values.set(key, value);
           },
           removeItem: (key: string) => values.delete(key)
@@ -97,7 +97,7 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
           LocalSyncOutbox.enqueue({ mutationId: 'quota-event', collection: 'activityEvents', documentId: 'quota-event', payload: { type: 'session' }, nowMs: 15000 });
         } catch { rejected = true; }
         assert(rejected, 'A failed persistent write must reject the enqueue');
-        assert(values.get(STORAGE_KEYS.SYNC_OUTBOX) === undefined, 'A failed persistent write must not leave a phantom queue item');
+        assert(!Array.from(values.keys()).some(key => key.endsWith(STORAGE_KEYS.SYNC_OUTBOX)), 'A failed persistent write must not leave a phantom queue item');
       } finally {
         if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
         else delete (globalThis as any).localStorage;
