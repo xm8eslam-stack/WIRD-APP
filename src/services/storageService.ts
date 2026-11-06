@@ -365,7 +365,7 @@ function isValidLegacyRevisionItem(value: unknown): boolean {
     (value.nextDueDate === undefined || value.nextDueDate === '' || isValidDateOnly(value.nextDueDate)) &&
     isValidOptionalPage(value.pageNumber) && isValidOptionalJuz(value.juzNumber) &&
     (value.intervalDays === undefined || isIntegerBetween(value.intervalDays, 0, 100000)) &&
-    (value.easeFactor === undefined || isFiniteBetween(value.easeFactor, 0.1, 3)) &&
+    (value.easeFactor === undefined || isFiniteBetween(value.easeFactor, 0, 3)) &&
     (value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000)) &&
     (value.strength === undefined || ['strong', 'medium', 'weak'].includes(value.strength));
 }
