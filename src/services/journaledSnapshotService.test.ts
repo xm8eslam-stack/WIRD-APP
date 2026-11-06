@@ -51,7 +51,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'All demo projections must share one atomic journal/outbox event');
       assert(StorageService.getPlans().length > 0 && StorageService.getEnginePlans().length === 1,
         'Demo plans and the engine plan must be projected');
-      assert(RetentionService.getPortions().length > 0 && StorageService.getWeakVerses().length > 0,
+      assert(RetentionService.getPortions().length > 0 && RetentionService.getWeakVerses().length > 0,
         'Canonical demo portions and weak verses must be projected');
       assert(StorageService.getLogs().length > 0 && StorageService.getProfile().name.includes('تجريبي'),
         'Demo activity and profile must be projected');
@@ -104,7 +104,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(result.success && result.mode === 'local-only' && !result.queued,
         'Guest demo data must not require IndexedDB or enqueue cloud mutations');
       assert(StorageService.getPlans().length > 0 && StorageService.getEnginePlans().length === 1 &&
-        RetentionService.getPortions().length > 0 && StorageService.getWeakVerses().length > 0 &&
+        RetentionService.getPortions().length > 0 && RetentionService.getWeakVerses().length > 0 &&
         StorageService.getLogs().length > 0,
         'Guest demo data must apply all local projections together');
     });
