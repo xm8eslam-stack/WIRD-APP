@@ -145,7 +145,7 @@ export function runBackupTests(): { passed: number; failed: number } {
     try {
       StorageService.resetAllData();
       assert(StorageService.setRawItem(STORAGE_KEYS.LOGS, raw), 'Duplicate log fixture should be stored');
-      assert(StorageService.getLogs().length === 0, 'Safe read must not expose duplicate daily log records');
+      assert(StorageService.getLogsForDisplay().length === 0, 'Safe display projection must not expose duplicate daily log records');
       assert(!StorageService.recordSessionCompletion(1, 0, 1, 'محاولة جديدة'),
         'Session completion must refuse to overwrite a duplicate-date archive');
       assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === raw, 'Duplicate-date archive bytes must remain unchanged');
