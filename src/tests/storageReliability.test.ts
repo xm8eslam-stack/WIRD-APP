@@ -54,6 +54,28 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     }
   });
 
+  test('Corrupt daily activity archives are preserved and block session completion', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:corrupt-daily-log');
+    const corrupt = '{broken daily activity';
+    StorageService.setRawItem(STORAGE_KEYS.LOGS, corrupt);
+    const saved = StorageService.recordSessionCompletion(3, 0, 5, 'جلسة اختبار');
+    assert(saved === false, 'A corrupt activity archive must prevent a false successful completion');
+    assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === corrupt, 'Original corrupt activity bytes must remain unchanged');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Invalid session counters and labels are rejected before any activity write', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:invalid-session-metrics');
+    assert(!StorageService.recordSessionCompletion(-1, 0, 5, 'جلسة'), 'Negative memorized ayah counts must be rejected');
+    assert(!StorageService.recordSessionCompletion(1.5, 0, 5, 'جلسة'), 'Fractional ayah counts must be rejected');
+    assert(!StorageService.recordSessionCompletion(0, 605, 5, 'جلسة'), 'Impossible page counts must be rejected');
+    assert(!StorageService.recordSessionCompletion(0, 0, 5, '   '), 'Blank task labels must be rejected');
+    assert(StorageService.getRawItem(STORAGE_KEYS.LOGS) === null, 'Invalid session metrics must not create an activity archive');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Full data reset reports failure when one scoped key cannot be removed', () => {
     const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const values = new Map<string, string>([

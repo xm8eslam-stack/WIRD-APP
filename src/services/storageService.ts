@@ -186,6 +186,24 @@ export const DEMO_PROFILE: UserProfile = {
   streakDays: 3,
   lastActiveDate: getLocalDateString()
 };
+function isValidDailyLog(value: unknown): value is DailyLog {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const log = value as Record<string, unknown>;
+  if (typeof log.date !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(log.date)) return false;
+  const [year, month, day] = log.date.split('-').map(Number);
+  const parsedDate = new Date(Date.UTC(year, month - 1, day));
+  if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== log.date) return false;
+  if (!Number.isSafeInteger(log.memorizedAyahsCount) || Number(log.memorizedAyahsCount) < 0 || Number(log.memorizedAyahsCount) > 100_000) return false;
+  if (!Number.isSafeInteger(log.reviewedPagesCount) || Number(log.reviewedPagesCount) < 0 || Number(log.reviewedPagesCount) > 100_000) return false;
+  if (!Number.isSafeInteger(log.minutesSpent) || Number(log.minutesSpent) < 0 || Number(log.minutesSpent) > 1440) return false;
+  if (!Array.isArray(log.completedTasks) || log.completedTasks.length > 100) return false;
+  return log.completedTasks.every(task => typeof task === 'string' && task.trim().length > 0 && task.length <= 200);
+}
+
+function isValidDailyLogArray(value: unknown): value is DailyLog[] {
+  return Array.isArray(value) && value.length <= 10000 && value.every(isValidDailyLog);
+}
+
 
 export const DEMO_REVISION_ITEMS: RevisionItem[] = [
   {
@@ -728,21 +746,20 @@ export const StorageService = {
 
   // Logs (Returns clean empty array by default)
   getLogs(): DailyLog[] {
-    try {
-      const data = getItem(STORAGE_KEYS.LOGS);
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
+    const data = getItem(STORAGE_KEYS.LOGS);
+    if (data === null) return [];
+    let parsed: unknown;
+    try { parsed = JSON.parse(data); }
+    catch { throw new Error('سجل النشاط اليومي تالف؛ تم الحفاظ عليه دون استبدال.'); }
+    if (!isValidDailyLogArray(parsed)) {
+      throw new Error('بنية سجل النشاط اليومي غير صالحة؛ تم إيقاف التعديل لحماية بياناتك.');
     }
+    return parsed;
   },
 
   saveLogs(logs: DailyLog[]): boolean {
-    try {
-      return setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
-    } catch (e) {
-      console.warn("Storage write failed", e);
-      return false;
-    }
+    if (!isValidDailyLogArray(logs)) return false;
+    return setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
   },
 
   // Tests
@@ -768,10 +785,18 @@ export const StorageService = {
 
   // Session Completion with rollback if either durable write fails.
   recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
+    if (!Number.isSafeInteger(memorizedAyahs) || memorizedAyahs < 0 || memorizedAyahs > 6236 ||
+        !Number.isSafeInteger(reviewedPages) || reviewedPages < 0 || reviewedPages > 604 ||
+        !Number.isSafeInteger(minutes) || minutes < 0 || minutes > 1440 ||
+        typeof taskName !== 'string' || !taskName.trim() || taskName.length > 200) return false;
     const today = getLocalDateString();
     const previousLogs = getItem(STORAGE_KEYS.LOGS);
     const previousProfile = getItem(STORAGE_KEYS.PROFILE);
-    const logs = this.getLogs();
+    let logs: DailyLog[];
+    try { logs = this.getLogs(); } catch (error) {
+      console.warn('[WIRD Storage] Refusing to overwrite an invalid daily activity archive:', error);
+      return false;
+    }
     const existingIndex = logs.findIndex(log => log.date === today);
 
     if (existingIndex >= 0) {
@@ -798,11 +823,21 @@ export const StorageService = {
     profile.streakDays = newStreak;
     profile.lastActiveDate = newDate;
     if (!this.saveProfile(profile)) {
-      // Roll back the activity log if the streak/profile write fails.
-      if (previousLogs === null) removeItem(STORAGE_KEYS.LOGS);
-      else setItem(STORAGE_KEYS.LOGS, previousLogs);
-      if (previousProfile === null) removeItem(STORAGE_KEYS.PROFILE);
-      else setItem(STORAGE_KEYS.PROFILE, previousProfile);
+      // Restore and verify both durable snapshots; never silently claim rollback succeeded.
+      const restoreSnapshot = (key: string, previous: string | null): boolean => {
+        try {
+          if (previous === null) removeItem(key);
+          else if (!setItem(key, previous)) return false;
+          return getItem(key) === previous;
+        } catch {
+          return false;
+        }
+      };
+      const logsRestored = restoreSnapshot(STORAGE_KEYS.LOGS, previousLogs);
+      const profileRestored = restoreSnapshot(STORAGE_KEYS.PROFILE, previousProfile);
+      if (!logsRestored || !profileRestored) {
+        console.error('[WIRD Storage] Session activity rollback could not be verified. Export a backup before further edits.');
+      }
       return false;
     }
 
