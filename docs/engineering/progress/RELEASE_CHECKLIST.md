@@ -4,12 +4,14 @@
 - [x] Existing localStorage archives validated and corrupt bytes preserved for covered stores.
 - [x] Backup import validation and rollback verification covered by regression tests.
 - [x] Session completion and revision rating ordinary-failure rollback implemented.
+- [x] Outbox acknowledged-ID content fingerprints, pending/acknowledged uniqueness and disjointness, device identity, and retry-bound regression tests.
 - [ ] Strict per-record validation for every persisted archive and every backup-import collection.
 - [ ] Reject malformed nested records before any partial import; preserve original archive bytes on failure.
 - [ ] Complete audit of every domain mutation call site.
 - [ ] Append-only local activity/revision/weak-verse/test event ledger.
 - [ ] Event + outbox transaction/journal and deterministic replay.
 - [ ] Crash/reload recovery and quota/blocked-storage tests.
+- [ ] Cross-tab atomic event+outbox writes; current localStorage outbox is not cross-tab transactional and must remain disconnected from cloud sync.
 - [ ] Idempotent, non-destructive migration with export/restore.
 
 ## Cloud sync
