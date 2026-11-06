@@ -45,6 +45,33 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     }
   });
 
+  test('Corrupt weak-verse JSON is preserved and blocks a new mistake write', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-corrupt');
+    const corrupt = '{broken weak verse data';
+    StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, corrupt);
+    const beforePortions = JSON.stringify(RetentionService.getPortions());
+    const result = recordWeakVerseFailure({
+      surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص اختبار'
+    });
+    assert(!result.success, 'A corrupt weak-verse archive must not report a successful write');
+    assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === corrupt, 'Original corrupt bytes must remain unchanged');
+    assert(JSON.stringify(RetentionService.getPortions()) === beforePortions, 'The portion mutation must roll back when weak-verse data is corrupt');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Malformed weak-verse records are rejected without being normalized to an empty list', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-malformed');
+    const malformed = JSON.stringify([{ id: 'bad', surahNumber: 0, ayahNumber: 999, mistakeCount: -1 }]);
+    StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, malformed);
+    let rejected = false;
+    try { RetentionService.getWeakVerses(); } catch { rejected = true; }
+    assert(rejected, 'Invalid weak-verse records must raise a recoverable validation error');
+    assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === malformed, 'Invalid source data must remain intact');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Successful weak-verse recording saves both the weak portion and counter', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:weak-verse-success');
