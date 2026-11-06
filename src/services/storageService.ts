@@ -12,6 +12,7 @@ import { PRESET_PLANS } from '../data/presetPlans';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
+import type { JournalEvent } from './indexedDbSyncJournal';
 
 export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
@@ -1358,6 +1359,57 @@ export const StorageService = {
     } catch (e) {
       console.warn("Storage write failed", e);
       return false;
+    }
+  },
+
+  /** Replace the complete test-result snapshot during deterministic journal replay. */
+  saveTests(tests: TestResult[]): boolean {
+    if (!Array.isArray(tests) || tests.length > 50 ||
+        !tests.every(isValidTestResultRecord) ||
+        !canWriteJsonArrayArchive(STORAGE_KEYS.TESTS, isValidTestResultRecord)) return false;
+    return setItem(STORAGE_KEYS.TESTS, JSON.stringify(tests));
+  },
+
+  /** Replace the complete weak-verse snapshot after duplicate-coordinate validation. */
+  saveWeakVerses(items: WeakVerseItem[]): boolean {
+    if (!Array.isArray(items) || items.length > 10000 ||
+        !items.every(isValidWeakVerseRecord) ||
+        !validateBackupPayload({ version: 4, weakVerses: items }).valid ||
+        !canWriteJsonArrayArchive(STORAGE_KEYS.WEAK_VERSES, isValidWeakVerseRecord)) return false;
+    return setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
+  },
+
+  /**
+   * Apply one validated full-snapshot event to the local projection. The caller
+   * advances the journal cursor only after this method confirms the durable write.
+   * Tombstones are intentionally rejected until collection-specific delete semantics exist.
+   */
+  applyJournalEvent(event: JournalEvent): boolean {
+    if (!isPlainRecord(event) || event.operation !== 'upsert' || !isPlainRecord(event.payload)) return false;
+    const scope = this.getStorageScope();
+    const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
+    if (!uid || event.uid !== uid) return false;
+
+    const payload = event.payload;
+    switch (event.collection) {
+      case 'profile':
+        return isValidUserProfile(payload.profile) && this.saveProfile(payload.profile);
+      case 'plans':
+        return Array.isArray(payload.records) && this.savePlans(payload.records as MemorizationPlan[]);
+      case 'enginePlans':
+        return Array.isArray(payload.records) && this.saveEnginePlans(payload.records as EngineGeneratedPlan[]);
+      case 'portions':
+        return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[]);
+      case 'weakVerses':
+        return Array.isArray(payload.records) && this.saveWeakVerses(payload.records as WeakVerseItem[]);
+      case 'tests':
+        return Array.isArray(payload.records) && this.saveTests(payload.records as TestResult[]);
+      case 'activityEvents':
+        return Array.isArray(payload.records) && this.saveLogs(payload.records as DailyLog[]);
+      case 'syncMeta':
+        return true;
+      default:
+        return false;
     }
   },
 
