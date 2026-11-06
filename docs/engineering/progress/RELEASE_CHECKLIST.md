@@ -36,6 +36,8 @@
 - [ ] Verify page/surah/juz/hizb/ayah navigation and bookmarks.
 - [ ] Verify tafsir source attribution, response validation, and fallback behavior.
 - [ ] Verify audio source rights, reciter selection, repeat modes, current-ayah tracking, and background behavior.
+- [x] Add visible EveryAyah link-back attribution beside shared audio speed controls; document that audio rights are separate from the Tanzil text license and no blanket EveryAyah license is assumed.
+- [ ] Confirm reciter-specific permissions before any commercial use, offline bundling, mirroring, or redistribution; see `docs/engineering/AUDIO_SOURCE_ATTRIBUTION.md`.
 - [ ] Verify playback-rate behavior only where supported by source/browser.
 - [ ] Verify reading and audio preferences are centralized and consistent across views.
 - [ ] Verify listening never increments memorization/revision completion counters.
