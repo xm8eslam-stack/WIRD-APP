@@ -56,9 +56,9 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
     )) as typeof fetch;
     try {
       let message = '';
-      try { await getTafsir(113, 1, 16); }
+      try { await getTafsir(109, 1, 90); }
       catch (error: any) { message = error?.message || ''; }
-      assert(message.includes('صفحة HTML') && message.includes('مسار API'), 'HTML fallback must be identified as an API routing failure');
+      assert(message.includes('صفحة HTML') && message.includes('مسار API'), 'HTML fallback must be identified as an API routing failure. Received: ' + message);
       assert(!message.includes('Unexpected token'), 'Raw JSON parser errors must never reach the user');
     } finally { globalThis.fetch = originalFetch; }
   });
@@ -71,9 +71,9 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
     )) as typeof fetch;
     try {
       let message = '';
-      try { await getTafsir(113, 2, 16); }
+      try { await getTafsir(109, 2, 90); }
       catch (error: any) { message = error?.message || ''; }
-      assert(message.includes('ليست JSON صالحاً'), 'Malformed JSON must produce a stable localized error');
+      assert(message.includes('ليست JSON صالحاً'), 'Malformed JSON must produce a stable localized error. Received: ' + message);
       assert(!message.includes('Unexpected token'), 'Native parser details must not leak into the UI');
     } finally { globalThis.fetch = originalFetch; }
   });
