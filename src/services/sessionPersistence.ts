@@ -19,6 +19,9 @@ export function persistSessionCompletion(input: PersistSessionCompletionInput): 
   const metrics = getSessionCompletionMetrics(input.mode, input.memorizedAyahs, input.reviewedPages);
   const shouldSavePortion = metrics.shouldRecordMemorization &&
     Number.isInteger(input.surahNumber) && Number.isInteger(input.startAyah) && Number.isInteger(input.endAyah);
+  if (metrics.shouldRecordMemorization && !shouldSavePortion) {
+    return { success: false, messageAr: 'تعذر تحديد سورة وآيات جلسة الحفظ بدقة؛ لم يتم تسجيل إنجاز دون نطاق قرآني محدد.' };
+  }
   const previousPortions = shouldSavePortion ? RetentionService.getPortions() : null;
 
   if (shouldSavePortion) {
