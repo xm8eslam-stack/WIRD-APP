@@ -256,6 +256,32 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Weak-verse preparation refuses enqueue when durable storage reads are unavailable', async () => {
+      const journal = createJournal();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: () => { throw new Error('simulated durable read failure'); },
+          setItem: () => { throw new Error('simulated durable write failure'); },
+          removeItem: () => { throw new Error('simulated durable remove failure'); }
+        }
+      });
+      try {
+        const prepared = buildWeakVerseFailureTransaction({
+          surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص اختبار'
+        }, 'weak-storage-unavailable-001');
+        const snapshot = await journal.getSnapshot();
+        assert(!prepared.success, 'Unavailable durable reads must block weak-verse preparation');
+        assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+          'A storage-read failure must not queue an event that cannot be projected');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        journal.close();
+      }
+    });
+
     await test('Weak-verse failure commits its canonical portion and counter in one journal event', async () => {
       const journal = createJournal();
       const mutationId = 'weak-failure-journal-001';
