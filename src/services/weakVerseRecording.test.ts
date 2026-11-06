@@ -48,13 +48,21 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
   test('Successful weak-verse recording saves both the weak portion and counter', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:weak-verse-success');
+    const today = getLocalDateString();
+    RetentionService.addPortion({
+      type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 8, endAyah: 8,
+      status: 'stable', nextDueDate: today, intervalDays: 7, easeFactor: 2.6,
+      repetitionCount: 3, mistakesCount: 2
+    });
     const result = recordWeakVerseFailure({
       surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
       text: 'آية اختبار', notes: 'اختبار نجاح'
     });
     assert(result.success, 'Both records should save');
-    assert(RetentionService.getPortions().some(portion => portion.surahNumber === 67 && portion.startAyah === 8 && portion.status === 'weak'),
-      'The canonical weak portion should exist');
+    const updated = RetentionService.getPortions().find(portion => portion.surahNumber === 67 && portion.startAyah === 8 && portion.endAyah === 8);
+    assert(updated?.status === 'weak', 'The canonical portion should be marked weak');
+    assert(updated?.mistakesCount === 3 && updated?.repetitionCount === 4,
+      'Recording a new mistake must increment existing portion counters instead of resetting them');
     assert(RetentionService.getWeakVerses().some(verse => verse.surahNumber === 67 && verse.ayahNumber === 8),
       'The weak-verse counter should exist');
     StorageService.__resetStorageForTests();

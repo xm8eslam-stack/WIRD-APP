@@ -17,6 +17,12 @@ export type RecordWeakVerseFailureResult =
 /** Save the canonical weak portion and its mistake counter without leaving a half-written result. */
 export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): RecordWeakVerseFailureResult {
   const previousPortions = RetentionService.getPortions();
+  const existingExactPortion = previousPortions.find(portion =>
+    portion.surahNumber === input.surahNumber &&
+    portion.startAyah === input.ayahNumber &&
+    portion.endAyah === input.ayahNumber
+  );
+  const today = getLocalDateString();
   try {
     RetentionService.addPortion({
       type: 'passage',
@@ -25,11 +31,12 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
       startAyah: input.ayahNumber,
       endAyah: input.ayahNumber,
       status: 'weak',
-      nextDueDate: getLocalDateString(),
+      lastReviewedDate: today,
+      nextDueDate: today,
       intervalDays: 1,
-      easeFactor: 2.0,
-      repetitionCount: 1,
-      mistakesCount: 1,
+      easeFactor: existingExactPortion?.easeFactor ?? 2.0,
+      repetitionCount: (existingExactPortion?.repetitionCount ?? 0) + 1,
+      mistakesCount: (existingExactPortion?.mistakesCount ?? 0) + 1,
       strength: 'weak'
     } as Omit<PortionStatusRecord, 'id' | 'history'>);
     RetentionService.addOrIncrementWeakVerse(
