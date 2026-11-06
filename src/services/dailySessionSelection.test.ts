@@ -144,6 +144,14 @@ export function runDailySessionSelectionTests(): { passed: number; failed: numbe
     assert(selection.kind === 'session' && selection.source === 'revision', 'The selection must be labelled as revision');
   });
 
+  test('Due revision takes precedence over an active preset memorization range', () => {
+    const due = portion(2, 1, 5, 'weak');
+    const preset = makePreset({ type: 'surahs', targetSurahs: [67] });
+    const selection = getDailySessionSelection([preset], [], [due], '2026-11-05');
+    assert(selection.kind === 'session' && selection.mode === 'review', 'Overdue revision must be offered before a new memorization range');
+    assert(selection.kind === 'session' && selection.surahNumber === 2, 'The due revision portion must be selected');
+  });
+
   test('Preset scope resumes at the first uncovered ayah', () => {
     const plan = makePreset({ type: 'surahs', targetSurahs: [1], dailyTarget: 3 });
     const saved = portion(1, 1, 2, 'stable');

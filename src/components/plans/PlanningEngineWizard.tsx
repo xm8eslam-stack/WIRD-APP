@@ -146,27 +146,6 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
     setIsCreatingNew(false);
   };
 
-  // Task update handler
-  const handleToggleTaskCompleted = (taskId: string, currentStatus: boolean) => {
-    if (!activePlan) return;
-    const task = activePlan.schedule.find(t => t.id === taskId);
-    if (!task || !task.memorizationTask) return;
-
-    const updated = PlanLifecycle.updateTask(activePlan, taskId, {
-      status: !currentStatus ? 'completed' : 'pending',
-      memorizationTask: {
-        ...task.memorizationTask,
-        completed: !currentStatus,
-        completedAt: !currentStatus ? new Date().toISOString() : undefined
-      }
-    });
-
-    if (!onUpdateEnginePlans(enginePlans.map(p => p.id === activePlan.id ? updated : p))) return;
-    onToast?.(!currentStatus
-      ? 'تم تحديث حالة المهمة في الجدول. ملاحظة: هذا الإجراء لا يضيف الآيات إلى سجل محفوظك.'
-      : 'أُعيدت المهمة إلى قائمة الانتظار؛ سجل الحفظ المحفوظ لم يتغير.', 'info');
-  };
-
   // Plan Pause / Resume toggle
   const handleTogglePause = () => {
     if (!activePlan) return;
@@ -798,7 +777,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
                       {/* Task Action Buttons */}
                       <div className="flex items-center gap-2 shrink-0">
-                        {day.memorizationTask && (
+                        {day.memorizationTask && !isDone && (
                           <button
                             onClick={() => onStartSession(
                               day.memorizationTask!.surahNumber,
@@ -812,16 +791,11 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                           </button>
                         )}
 
-                        <button
-                          onClick={() => handleToggleTaskCompleted(day.id, !!isDone)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
-                            isDone
-                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
-                              : 'bg-stone-100 hover:bg-emerald-50 dark:bg-stone-700 text-stone-700 dark:text-stone-300 border-stone-200'
-                          }`}
-                        >
-                          {isDone ? '✓ مكتمل' : 'تحديد كمكتمل'}
-                        </button>
+                        {day.memorizationTask && isDone && (
+                          <span className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            ✓ مكتملة في الجدول
+                          </span>
+                        )}
                       </div>
                     </div>
                   );

@@ -98,6 +98,19 @@ export function getDailySessionSelection(
     };
   }
 
+  const duePortion = getPrioritizedRevisionQueue(portions, { todayStr, maxDailyLimit: 20 }).queue[0];
+  if (duePortion) {
+    return {
+      kind: 'session',
+      mode: 'review',
+      source: 'revision',
+      surahNumber: duePortion.surahNumber,
+      startAyah: duePortion.startAyah,
+      endAyah: duePortion.endAyah,
+      label: 'مراجعة مستحقة ذات أولوية'
+    };
+  }
+
   const activePreset = activeEnginePlan ? undefined : plans.find(plan => plan.isActive);
   if (activePreset) {
     if (!isPresetAutoStartSupported(activePreset)) {
@@ -125,19 +138,6 @@ export function getDailySessionSelection(
       mode: 'memorize',
       source: 'blocked',
       messageAr: 'اكتمل نطاق الحفظ المحدد في خطتك الحالية؛ راجع إنجازك أو عدّل الخطة.'
-    };
-  }
-
-  const duePortion = getPrioritizedRevisionQueue(portions, { todayStr, maxDailyLimit: 20 }).queue[0];
-  if (duePortion) {
-    return {
-      kind: 'session',
-      mode: 'review',
-      source: 'revision',
-      surahNumber: duePortion.surahNumber,
-      startAyah: duePortion.startAyah,
-      endAyah: duePortion.endAyah,
-      label: 'مراجعة مستحقة ذات أولوية'
     };
   }
 
