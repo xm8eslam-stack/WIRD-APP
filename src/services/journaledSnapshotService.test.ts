@@ -320,6 +320,20 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Weak-verse resolution preserves a corrupt archive and refuses to prepare a mutation', async () => {
+      const journal = createJournal();
+      const corrupt = '{broken weak-verse archive';
+      StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, corrupt);
+      const prepared = buildWeakVerseResolutionSnapshot('weak-67-8-existing');
+      const snapshot = await journal.getSnapshot();
+      assert(!prepared.success, 'A corrupt weak-verse archive must block resolution');
+      assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === corrupt,
+        'The original corrupt weak-verse bytes must remain unchanged');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'A corrupt source archive must not create a journal event');
+      journal.close();
+    });
+
     await test('Weak-verse resolution is journal-first, idempotent, and leaves portions unchanged', async () => {
       const journal = createJournal();
       const weakVerse = {
