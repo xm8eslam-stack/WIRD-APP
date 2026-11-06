@@ -43,10 +43,126 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     });
 
     try {
-      const saved = StorageService.recordSessionCompletion(5, 2, 12, 'جلسة اختبار');
-      assert(saved === false, 'Failed profile persistence must return false');
+      const saved = StorageService.recordSessionCompletionDetailed(5, 2, 12, 'جلسة اختبار');
+      assert(saved.success === false, 'Failed profile persistence must return false');
+      assert(saved.rollbackVerified, 'A profile write rejected before mutation must still verify the original activity/profile snapshot');
       assert(values.get(STORAGE_KEYS.LOGS) === originalLogs, 'Daily log must be restored after profile write failure');
       assert(values.get(STORAGE_KEYS.PROFILE) === originalProfile, 'Profile must remain unchanged after failed write');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Activity completion reports when rollback of a previously written daily log cannot be verified', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const today = getLocalDateString();
+    const originalLogs = JSON.stringify([{
+      date: today, memorizedAyahsCount: 1, reviewedPagesCount: 0,
+      minutesSpent: 2, completedTasks: ['الأصل']
+    }]);
+    const originalProfile = JSON.stringify({ ...CLEAN_INITIAL_PROFILE, streakDays: 0, lastActiveDate: today });
+    const values = new Map<string, string>([
+      [STORAGE_KEYS.LOGS, originalLogs],
+      [STORAGE_KEYS.PROFILE, originalProfile]
+    ]);
+    let logWrites = 0;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (key === STORAGE_KEYS.LOGS) {
+            logWrites++;
+            if (logWrites === 2) throw new Error('simulated rollback quota failure');
+          }
+          if (key === STORAGE_KEYS.PROFILE) throw new Error('simulated profile quota failure');
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      const result = StorageService.recordSessionCompletionDetailed(2, 0, 3, 'محاولة جديدة');
+      assert(!result.success, 'A failed profile write must reject session completion');
+      assert(!result.rollbackVerified, 'A failed restore of the already-written daily log must be surfaced');
+      assert(result.failureStage === 'profile-write', 'Failure stage must identify the profile write');
+      assert(values.get(STORAGE_KEYS.LOGS) !== originalLogs,
+        'The test must leave the partial daily log visible to prove rollback was not verified');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Durable reads do not resurrect a stale memory value after another tab removes a key', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => values.set(key, value),
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      const key = 'wird_external_tab_removal_probe';
+      assert(StorageService.setRawItem(key, 'durable-value'), 'Probe value should be stored durably');
+      values.delete(key); // Simulate another same-origin tab removing the key.
+      assert(StorageService.getRawItem(key) === null, 'A durable null must not fall back to stale in-memory data');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Silent durable write failures are detected instead of reported as successful memory writes', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {}
+      }
+    });
+    try {
+      const key = 'wird_silent_write_failure_probe';
+      assert(!StorageService.setRawItem(key, 'must-not-be-claimed-saved'),
+        'A write that does not appear in durable readback must return false');
+      assert(!StorageService.verifyRawItem(key, 'must-not-be-claimed-saved'),
+        'Strict durable verification must reject the missing value');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
+  test('Strict rollback verification reports unavailable durable reads instead of trusting memory fallback', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    StorageService.__resetStorageForTests();
+    const fakeStorage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key)
+    };
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: fakeStorage });
+    try {
+      const key = 'wird_strict_read_failure_probe';
+      assert(StorageService.setRawItem(key, 'known-value'), 'Probe value should be stored');
+      fakeStorage.getItem = () => { throw new Error('simulated durable read failure'); };
+      const read = StorageService.readRawItemForVerification(key);
+      assert(!read.available, 'Strict snapshot reads must expose unavailable durable storage');
+      assert(!StorageService.verifyRawItem(key, 'known-value'), 'Memory fallback must not count as durable verification');
     } finally {
       if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
       else delete (globalThis as any).localStorage;
