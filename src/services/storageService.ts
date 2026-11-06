@@ -39,13 +39,13 @@ function resolveStorageKey(key: string, scope = activeStorageScope): string {
   return `${STORAGE_SCOPE_PREFIX}:${scope}:${key}`;
 }
 
-interface DurableStorageRead {
+export interface RawStorageReadResult {
   available: boolean;
   value: string | null;
 }
 
 /** Reads the durable backend without silently substituting a stale memory cache. */
-function readDurableValue(key: string): DurableStorageRead {
+function readDurableValue(key: string): RawStorageReadResult {
   try {
     if (typeof localStorage === 'undefined') {
       return { available: true, value: memoryStorage.get(key) ?? null };
@@ -885,12 +885,22 @@ export const StorageService = {
     return getItem(key);
   },
 
+  /** Strict durable read for rollback snapshots; unlike getRawItem, never trusts memory when localStorage read fails. */
+  readRawItemForVerification(key: string): RawStorageReadResult {
+    return readDurableValue(resolveStorageKey(key));
+  },
+
+  verifyRawItem(key: string, expected: string | null): boolean {
+    const readback = readDurableValue(resolveStorageKey(key));
+    return readback.available && readback.value === expected;
+  },
+
   setRawItem(key: string, value: string): boolean {
     return setItem(key, value);
   },
 
-  removeRawItem(key: string): void {
-    removeItem(key);
+  removeRawItem(key: string): boolean {
+    return removeItem(key);
   },
 
   /** @internal Test-only reset; never call from application UI. */
