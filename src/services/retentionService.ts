@@ -971,16 +971,6 @@ export const RetentionService = {
     };
   },
 
-  // Explicit demo loader for demo mode
-  loadDemoPortions(): void {
-    const canonicalDemoPortions = DEFAULT_PORTIONS.map(portion => ({
-      ...portion,
-      id: createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah)
-    }));
-    this.savePortions(canonicalDemoPortions);
-    this.saveWeakVerses(DEFAULT_WEAK_VERSES);
-  },
-
   // Complete reset
   resetAll(): void {
     StorageService.removeRawItem(STORAGE_KEYS.WEAK_VERSES);
