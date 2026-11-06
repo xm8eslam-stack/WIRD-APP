@@ -1,0 +1,156 @@
+import type { BackupPayload, JournalProjectionOperation } from './storageService';
+import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService, validateBackupPayload } from './storageService';
+import { migrateLegacyDataLosslessly } from './unifiedPortionService';
+import { persistJournaledTransaction, type JournaledSnapshotOptions, type JournaledSnapshotWriteResult } from './journaledSnapshotService';
+
+export type BackupPersistenceResult = {
+  success: boolean;
+  message: string;
+  recoveredPriorEvents?: boolean;
+  queued?: boolean;
+};
+
+function stableBackupMutationId(json: string): string {
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
+  for (let index = 0; index < json.length; index++) {
+    const code = json.charCodeAt(index);
+    first = Math.imul(first ^ code, 0x01000193);
+    second = Math.imul(second ^ (code + index), 0x85ebca6b);
+  }
+  return 'backup-import-' + (first >>> 0).toString(36) + '-' + (second >>> 0).toString(36);
+}
+
+function toWriteResult(result: JournaledSnapshotWriteResult, successMessage: string): BackupPersistenceResult {
+  if (result.success) return { success: true, message: successMessage };
+  if (result.recoveredPriorEvents) {
+    return {
+      success: false,
+      recoveredPriorEvents: true,
+      message: 'استعدنا تغييرات أقدم من سجل الحفظ أولاً. لم نطبّق النسخة الاحتياطية بعد؛ راجع البيانات ثم أعد الاستيراد.'
+    };
+  }
+  return {
+    success: false,
+    queued: result.queued,
+    message: result.error || (result.queued
+      ? 'حُفظت العملية في سجل الاستعادة، لكن تعذر تطبيقها محلياً. حدّث الصفحة قبل أي محاولة أخرى.'
+      : 'تعذر تأمين العملية؛ لم يتم تأكيد أي استيراد أو إعادة ضبط.')
+  };
+}
+
+export function buildBackupImportOperations(
+  jsonString: string
+): { success: true; operations: JournalProjectionOperation[]; mutationId: string } |
+   { success: false; message: string } {
+  let parsed: BackupPayload;
+  try {
+    const value: unknown = JSON.parse(jsonString);
+    const validation = validateBackupPayload(value);
+    if (!validation.valid) return { success: false, message: validation.error || 'فشل التحقق من النسخة الاحتياطية.' };
+    parsed = value as BackupPayload;
+  } catch {
+    return { success: false, message: 'صيغة ملف النسخة الاحتياطية غير صالحة.' };
+  }
+
+  const operations: JournalProjectionOperation[] = [];
+  if (parsed.profile !== undefined) {
+    operations.push({ collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: parsed.profile } });
+  }
+  if (parsed.plans !== undefined) {
+    operations.push({ collection: 'plans', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.plans } });
+  }
+  if (parsed.enginePlans !== undefined) {
+    operations.push({ collection: 'enginePlans', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.enginePlans } });
+  }
+  if (parsed.logs !== undefined) {
+    operations.push({ collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.logs } });
+  }
+  if (parsed.tests !== undefined) {
+    operations.push({ collection: 'tests', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.tests } });
+  }
+  if (parsed.weakVerses !== undefined) {
+    operations.push({ collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.weakVerses } });
+  }
+
+  let canonicalPortions = parsed.unifiedPortions;
+  if (canonicalPortions === undefined && (parsed.portions !== undefined || parsed.revisionItems !== undefined)) {
+    const migration = migrateLegacyDataLosslessly(parsed.portions || [], parsed.revisionItems || []);
+    if (!migration.report.success) {
+      return { success: false, message: migration.report.error || 'تعذر ترحيل المقاطع القديمة دون فقد بيانات.' };
+    }
+    canonicalPortions = migration.portions;
+  }
+  if (canonicalPortions !== undefined) {
+    operations.push({
+      collection: 'portions', documentId: 'snapshot', operation: 'upsert',
+      payload: { records: canonicalPortions }
+    });
+  }
+
+  if (operations.length === 0) {
+    return { success: false, message: 'النسخة الاحتياطية لا تحتوي على أي بيانات قابلة للاستيراد.' };
+  }
+  if (operations.length > 8) {
+    return { success: false, message: 'تحتوي النسخة الاحتياطية على عدد مجموعات يتجاوز حد الاستيراد الآمن.' };
+  }
+
+  return { success: true, operations, mutationId: stableBackupMutationId(jsonString) };
+}
+
+/**
+ * Import only after older committed journal events have been replayed. The
+ * import itself is one grouped event, so local projections cannot be partially
+ * replaced and a reload can recover the complete import.
+ */
+export async function importBackupJournaled(
+  jsonString: string,
+  options: JournaledSnapshotOptions = {}
+): Promise<BackupPersistenceResult> {
+  const prepared = buildBackupImportOperations(jsonString);
+  if (!prepared.success) return { success: false, message: prepared.message };
+  try {
+    const result = await persistJournaledTransaction(prepared.operations, options, prepared.mutationId);
+    return toWriteResult(result, 'تم استيراد النسخة الاحتياطية والتحقق من حفظ جميع مجموعاتها بنجاح.');
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'تعذر استيراد النسخة الاحتياطية؛ لم يتم تأكيد التغيير.' };
+  }
+}
+
+/**
+ * Reset is an ordered snapshot mutation rather than a direct localStorage
+ * wipe. Older journal events are replayed first, then this reset event becomes
+ * the latest local projection and remains in the journal for crash recovery.
+ */
+export async function resetAllDataJournaled(
+  options: JournaledSnapshotOptions = {}
+): Promise<BackupPersistenceResult> {
+  const operations: JournalProjectionOperation[] = [
+    { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: { ...CLEAN_INITIAL_PROFILE } } },
+    { collection: 'plans', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'enginePlans', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'tests', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } }
+  ];
+  try {
+    const result = await persistJournaledTransaction(
+      operations, options, 'reset-' + Math.floor(Date.now()).toString(36)
+    );
+    const persisted = toWriteResult(result, 'تمت إعادة ضبط البيانات عبر سجل الحفظ القابل للاستعادة.');
+    if (persisted.success) {
+      // This key is a retired legacy projection and is not part of the journal schema.
+      if (!StorageService.removeRawItem(STORAGE_KEYS.PROGRESS) ||
+          !StorageService.verifyRawItem(STORAGE_KEYS.PROGRESS, null)) {
+        return {
+          success: false,
+          message: 'تم حفظ إعادة الضبط، لكن تعذر حذف مفتاح تقدم قديم غير مستخدم. لا تكرر العملية؛ أعد فتح التطبيق وراجع البيانات.'
+        };
+      }
+    }
+    return persisted;
+  } catch (error) {
+    return { success: false, message: error instanceof Error ? error.message : 'تعذر إعادة ضبط البيانات؛ لم يتم تأكيد العملية.' };
+  }
+}
