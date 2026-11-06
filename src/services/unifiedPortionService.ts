@@ -263,9 +263,9 @@ export function findNextUnmemorizedRange(
       .filter(portion => portion.surahNumber === surahNumber && portion.status === 'currently_memorizing')
       .sort((a, b) => a.startAyah - b.startAyah)[0];
     if (inProgress && inProgress.startAyah >= 1 && inProgress.startAyah <= surah.versesCount) {
-      // Resume the exact persisted passage. Clipping it to the daily target
-      // creates a child range, but completion updates only exact coordinate
-      // matches; the parent then remains in-progress and repeats forever.
+      // Resume the exact persisted passage. Never clip it to the daily target:
+      // completion updates exact coordinate matches, so a child range would
+      // leave the parent in-progress and cause the same passage to repeat.
       const endAyah = inProgress.endAyah;
       return {
         surahNumber,
