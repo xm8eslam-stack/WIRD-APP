@@ -8,7 +8,6 @@ import {
   WeakVerseItem,
   WirdPortion 
 } from '../types/quran';
-import { PRESET_PLANS } from '../data/presetPlans';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
