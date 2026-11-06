@@ -96,12 +96,12 @@ function isValidMutation(value: unknown): value is OutboxMutation {
   if (!isRecord(value)) return false;
   return typeof value.mutationId === 'string' && value.mutationId.length > 0 && value.mutationId.length <= 128
     && typeof value.collection === 'string' && ALLOWED_COLLECTIONS.has(value.collection as SyncCollection)
-    && typeof value.documentId === 'string' && value.documentId.length > 0 && byteLength(value.documentId) <= 1500 && !value.documentId.includes('/') && !/[\\u0000-\\u001f]/.test(value.documentId)
+    && typeof value.documentId === 'string' && value.documentId.length > 0 && byteLength(value.documentId) <= 1500 && !value.documentId.includes('/') && !/[\u0000-\u001f]/.test(value.documentId)
     && (value.operation === 'upsert' || value.operation === 'tombstone')
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
     && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128
-    && isRecord(value.payload) && byteLength(JSON.stringify(value.payload)) <= MAX_MUTATION_PAYLOAD_BYTES
+    && isRecord(value.payload) && byteLength(JSON.stringify(value.payload) || '') <= MAX_MUTATION_PAYLOAD_BYTES
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
     && Number.isSafeInteger(value.nextAttemptAtMs) && Number(value.nextAttemptAtMs) >= 0
@@ -158,7 +158,7 @@ export const LocalSyncOutbox = {
     getActiveUid();
 
     if (!ALLOWED_COLLECTIONS.has(input.collection)) throw new Error('مجموعة مزامنة غير مسموح بها.');
-    if (!input.documentId || byteLength(input.documentId) > 1500 || input.documentId.includes('/') || /[\\u0000-\\u001f]/.test(input.documentId)) {
+    if (typeof input.documentId !== 'string' || !input.documentId || byteLength(input.documentId) > 1500 || input.documentId.includes('/') || /[\u0000-\u001f]/.test(input.documentId)) {
       throw new Error('معرّف مستند المزامنة غير صالح.');
     }
     const operation = input.operation ?? 'upsert';
@@ -171,7 +171,7 @@ export const LocalSyncOutbox = {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
     const mutationId = input.mutationId || createUuid();
-    if (!mutationId || mutationId.length > 128 || /[\\u0000-\\u001f/]/.test(mutationId)) throw new Error('معرّف العملية غير صالح.');
+    if (typeof mutationId !== 'string' || !mutationId || mutationId.length > 128 || /[\\u0000-\\u001f/]/.test(mutationId)) throw new Error('معرّف العملية غير صالح.');
     const canonicalPayload = JSON.parse(payloadJson) as Record<string, unknown>;
 
     const state = readState();
