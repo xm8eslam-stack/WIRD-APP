@@ -38,7 +38,7 @@
 - [x] Document that recitation audio rights are separate from the Tanzil text license and no blanket EveryAyah license is assumed (PR #14).
 - [x] Verify complete generated page index and Juz/Hizb navigation index in automated tests (PR #14).
 - [ ] Independently verify the bundled full Quran text and source/version attribution.
-- [ ] Verify complete 114-surah/6,236-ayah structure and page mappings.
+- [x] Verify all 114 Surahs and 6,236 ayahs are present; automated integrity tests and generated page indexes cover all 604 pages and 30 Juz / 240 Hizb quarters (PR #14).
 - [ ] Verify page/surah/juz/hizb/ayah navigation and bookmarks.
 - [ ] Verify tafsir source attribution, response validation, and fallback behavior.
 - [ ] Verify audio source rights, reciter selection, repeat modes, current-ayah tracking, and background behavior.
