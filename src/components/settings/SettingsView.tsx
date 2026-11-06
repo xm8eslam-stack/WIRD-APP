@@ -24,6 +24,7 @@ import {
 import { UserProfile, ReciterId } from '../../types/quran';
 import { RECITERS } from '../../services/audioService';
 import { StorageService } from '../../services/storageService';
+import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
 import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
 import { getLocalDateString } from '../../services/unifiedPortionService';
@@ -56,6 +57,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isLoadingDemoData, setIsLoadingDemoData] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,16 +137,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     reader.readAsText(file);
   };
 
-  const handleLoadDemoData = () => {
-    if (!import.meta.env.DEV) return;
-    StorageService.loadDemoData();
-    RetentionService.loadDemoPortions();
-    const updated = StorageService.getProfile();
-    setFormData(updated);
-    onUpdateProfile(updated);
-    setShowDemoConfirm(false);
-    if (onToast) {
-      onToast("تم تحميل البيانات التجريبية بنجاح (سجلات استعراضية للملك والنبأ)", "info");
+  const handleLoadDemoData = async () => {
+    if (!import.meta.env.DEV || isLoadingDemoData) return;
+    setIsLoadingDemoData(true);
+    try {
+      const result = await loadDemoDataJournaled();
+      if (!result.success) {
+        onToast?.(result.error || 'تعذر تحميل البيانات التجريبية؛ لم يتم تأكيد أي تغيير.', 'error');
+        return;
+      }
+      const updated = StorageService.getProfile();
+      setFormData(updated);
+      onUpdateProfile(updated);
+      setShowDemoConfirm(false);
+      onBackupImported?.();
+      onToast?.('تم تحميل البيانات التجريبية وحفظها في سجل الاستعادة بنجاح.', 'info');
+    } catch (error) {
+      onToast?.(error instanceof Error ? error.message : 'تعذر تحميل البيانات التجريبية.', 'error');
+    } finally {
+      setIsLoadingDemoData(false);
     }
   };
 
@@ -578,6 +589,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={handleLoadDemoData}
+                disabled={isLoadingDemoData}
                 className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors"
               >
                 تحميل البيانات الآن
