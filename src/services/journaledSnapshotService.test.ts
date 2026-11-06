@@ -60,6 +60,43 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Demo fixture quota failure restores every prior archive and leaves one recoverable event', async () => {
+      const journal = createJournal();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      const values = new Map<string, string>();
+      let quotaThrown = false;
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: (key: string) => values.get(key) ?? null,
+          setItem: (key: string, value: string) => {
+            if (!quotaThrown && key.endsWith(STORAGE_KEYS.WEAK_VERSES)) {
+              quotaThrown = true;
+              const error = new Error('simulated browser storage quota exceeded');
+              error.name = 'QuotaExceededError';
+              throw error;
+            }
+            values.set(key, value);
+          },
+          removeItem: (key: string) => values.delete(key)
+        }
+      });
+      try {
+        const result = await loadDemoDataJournaled({ journal, runExclusive: inlineLock });
+        const snapshot = await journal.getSnapshot();
+        assert(!result.success && result.queued && result.recoveryBlocked,
+          'A quota failure after earlier demo projections must leave the journal event pending');
+        assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 0,
+          'A failed demo projection must not advance the journal cursor');
+        assert(values.size === 0,
+          'The profile, plans, engine plans, canonical portions, and weak-verse archives must all roll back');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        journal.close();
+      }
+    });
+
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
       const journal = createJournal();
       const today = new Date().toISOString().slice(0, 10);
