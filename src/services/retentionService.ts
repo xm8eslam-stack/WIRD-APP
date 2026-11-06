@@ -399,14 +399,6 @@ export const RetentionService = {
       const nextIntervalDays = newStatus === 'weak'
         ? 1
         : Math.max(1, existing.intervalDays || 1);
-      const memorizationLog: RevisionLogEntry = {
-        id: `mem-${createSecureId()}`,
-        date: today,
-        rating: 'successful',
-        intervalDaysBefore: existing.intervalDays || 0,
-        intervalDaysAfter: nextIntervalDays,
-        notes: 'إتمام جلسة الحفظ للمقطع'
-      };
       updatedPortion = {
         ...existing,
         id: canonicalId,
@@ -417,7 +409,7 @@ export const RetentionService = {
         repetitionCount: (existing.repetitionCount || 0) + 1,
         intervalDays: nextIntervalDays,
         easeFactor: existing.easeFactor || 2.5,
-        history: [memorizationLog, ...(existing.history || [])]
+        history: existing.history || []
       };
       portions[existingIndex] = updatedPortion;
     } else {
