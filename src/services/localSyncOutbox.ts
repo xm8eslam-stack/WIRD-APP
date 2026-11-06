@@ -1,4 +1,5 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
+import { createSecureId } from './secureId';
 
 export type SyncCollection =
   | 'profile'
@@ -40,11 +41,21 @@ export type EnqueueMutationResult =
   | { status: 'queued' | 'already_pending'; mutation: OutboxMutation }
   | { status: 'already_acknowledged'; mutationId: string };
 
+interface AcknowledgedMutationFingerprint {
+  mutationId: string;
+  fingerprint: string;
+}
+
 interface OutboxState {
   schemaVersion: 1;
   deviceId: string;
   pending: OutboxMutation[];
   acknowledgedIds: string[];
+  /**
+   * Additive to schema v1. Older entries without fingerprints remain reserved,
+   * but cannot be treated as idempotent retries because their content is unknown.
+   */
+  acknowledgedFingerprints: AcknowledgedMutationFingerprint[];
 }
 
 const MAX_PENDING_MUTATIONS = 1000;
@@ -58,10 +69,13 @@ const ALLOWED_COLLECTIONS = new Set<SyncCollection>([
   'weakVerses', 'tests', 'activityEvents', 'syncMeta'
 ]);
 
-import { createSecureId } from './secureId';
-
 function byteLength(value: string): number {
   return new TextEncoder().encode(value).byteLength;
+}
+
+function isValidMutationId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0 && byteLength(value) <= 128 &&
+    !/[\u0000-\u001f/]/.test(value);
 }
 
 function getActiveUid(): string {
@@ -82,22 +96,108 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidMutation(value: unknown): value is OutboxMutation {
   if (!isRecord(value)) return false;
-  return typeof value.mutationId === 'string' && value.mutationId.length > 0 && byteLength(value.mutationId) <= 128 && !/[\u0000-\u001f/]/.test(value.mutationId)
+  let payloadBytes = 0;
+  try { payloadBytes = byteLength(JSON.stringify(value.payload) || ''); }
+  catch { return false; }
+  return isValidMutationId(value.mutationId)
     && typeof value.collection === 'string' && ALLOWED_COLLECTIONS.has(value.collection as SyncCollection)
     && typeof value.documentId === 'string' && value.documentId.length > 0 && byteLength(value.documentId) <= 1500 && !value.documentId.includes('/') && !/[\u0000-\u001f]/.test(value.documentId)
     && (value.operation === 'upsert' || value.operation === 'tombstone')
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
-    && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128
-    && isRecord(value.payload) && byteLength(JSON.stringify(value.payload) || '') <= MAX_MUTATION_PAYLOAD_BYTES
+    && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128 && !/[\u0000-\u001f]/.test(value.deviceId)
+    && isRecord(value.payload) && payloadBytes <= MAX_MUTATION_PAYLOAD_BYTES
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
     && Number.isSafeInteger(value.nextAttemptAtMs) && Number(value.nextAttemptAtMs) >= 0
     && (value.lastErrorCode === undefined || (typeof value.lastErrorCode === 'string' && value.lastErrorCode.length <= 64));
 }
 
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(stableStringify).join(',') + ']';
+  if (isRecord(value)) {
+    return '{' + Object.keys(value).sort().map(key =>
+      JSON.stringify(key) + ':' + stableStringify(value[key])
+    ).join(',') + '}';
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+/**
+ * A compact non-cryptographic identity fingerprint. It detects accidental reuse
+ * of a mutation ID with changed content; it is not an authentication mechanism.
+ */
+function createMutationFingerprint(
+  collection: SyncCollection,
+  documentId: string,
+  operation: SyncOperation,
+  payload: Record<string, unknown>
+): string {
+  const source = stableStringify({ collection, documentId, operation, payload });
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    hashA = Math.imul(hashA ^ code, 0x01000193);
+    hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+  }
+  return (hashA >>> 0).toString(16).padStart(8, '0') +
+    (hashB >>> 0).toString(16).padStart(8, '0');
+}
+
+function normalizeOutboxState(value: unknown): OutboxState | null {
+  if (!isRecord(value) || value.schemaVersion !== 1 ||
+      typeof value.deviceId !== 'string' || value.deviceId.length === 0 ||
+      value.deviceId.length > 128 || /[\u0000-\u001f]/.test(value.deviceId) ||
+      !Array.isArray(value.pending) || value.pending.length > MAX_PENDING_MUTATIONS ||
+      !Array.isArray(value.acknowledgedIds) || value.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS) {
+    return null;
+  }
+
+  // Older v1 states did not store acknowledged payload fingerprints.
+  const fingerprintsRaw = value.acknowledgedFingerprints === undefined
+    ? []
+    : value.acknowledgedFingerprints;
+  if (!Array.isArray(fingerprintsRaw) || fingerprintsRaw.length > MAX_ACKNOWLEDGED_IDS) return null;
+
+  if (!value.pending.every(isValidMutation) ||
+      !value.pending.every((item: OutboxMutation) => item.deviceId === value.deviceId) ||
+      !value.acknowledgedIds.every(isValidMutationId)) return null;
+
+  const pendingIds = value.pending.map((item: OutboxMutation) => item.mutationId);
+  const acknowledgedIds = value.acknowledgedIds as string[];
+  if (new Set(pendingIds).size !== pendingIds.length ||
+      new Set(acknowledgedIds).size !== acknowledgedIds.length) return null;
+
+  const acknowledgedSet = new Set(acknowledgedIds);
+  if (pendingIds.some(id => acknowledgedSet.has(id))) return null;
+
+  const fingerprints: AcknowledgedMutationFingerprint[] = [];
+  for (const item of fingerprintsRaw) {
+    if (!isRecord(item) || !isValidMutationId(item.mutationId) ||
+        typeof item.fingerprint !== 'string' || !/^[0-9a-f]{16}$/.test(item.fingerprint) ||
+        !acknowledgedSet.has(item.mutationId)) return null;
+    fingerprints.push({ mutationId: item.mutationId, fingerprint: item.fingerprint });
+  }
+  if (new Set(fingerprints.map(item => item.mutationId)).size !== fingerprints.length) return null;
+
+  return {
+    schemaVersion: 1,
+    deviceId: value.deviceId,
+    pending: value.pending as OutboxMutation[],
+    acknowledgedIds,
+    acknowledgedFingerprints: fingerprints
+  };
+}
+
 function createEmptyState(): OutboxState {
-  return { schemaVersion: 1, deviceId: createSecureId(), pending: [], acknowledgedIds: [] };
+  return {
+    schemaVersion: 1,
+    deviceId: createSecureId(),
+    pending: [],
+    acknowledgedIds: [],
+    acknowledgedFingerprints: []
+  };
 }
 
 function readState(): OutboxState {
@@ -115,52 +215,58 @@ function readState(): OutboxState {
   try { parsed = JSON.parse(raw); }
   catch { throw new Error('بيانات صندوق المزامنة تالفة؛ لم يتم استبدالها أو حذفها.'); }
 
-  if (!isRecord(parsed) || parsed.schemaVersion !== 1 ||
-      typeof parsed.deviceId !== 'string' || parsed.deviceId.length === 0 || parsed.deviceId.length > 128 ||
-      !Array.isArray(parsed.pending) || parsed.pending.length > MAX_PENDING_MUTATIONS ||
-      !Array.isArray(parsed.acknowledgedIds) || parsed.acknowledgedIds.length > MAX_ACKNOWLEDGED_IDS ||
-      !parsed.pending.every(isValidMutation) ||
-      !parsed.acknowledgedIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128)) {
-    throw new Error('بنية صندوق المزامنة غير صالحة؛ تم الحفاظ على النسخة الحالية دون تعديل.');
+  const normalized = normalizeOutboxState(parsed);
+  if (!normalized) {
+    throw new Error('بنية صندوق المزامنة غير صالحة أو تحتوي على معرفات مكررة/متعارضة؛ تم الحفاظ على النسخة الحالية دون تعديل.');
   }
-
-  return parsed as unknown as OutboxState;
+  return normalized;
 }
 
 function persistState(state: OutboxState): void {
-  const serialized = JSON.stringify(state);
+  const normalized = normalizeOutboxState(state);
+  if (!normalized) throw new Error('رفض حفظ حالة صندوق مزامنة غير متسقة.');
+  const serialized = JSON.stringify(normalized);
   if (byteLength(serialized) > MAX_OUTBOX_BYTES) {
     throw new Error('امتلأ صندوق المزامنة المحلي؛ لم نحذف أي عملية قديمة ولم نؤكد إضافة العملية الجديدة.');
   }
+
+  const previousRaw = StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX);
   if (!StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, serialized)) {
     throw new Error('تعذر حفظ صندوق المزامنة في التخزين الدائم؛ لم يتم وضع العملية في قائمة الانتظار.');
   }
   if (StorageService.getRawItem(STORAGE_KEYS.SYNC_OUTBOX) !== serialized) {
-    throw new Error('تعذر التحقق من حفظ صندوق المزامنة؛ لم يتم تأكيد العملية.');
+    if (previousRaw === null) StorageService.removeRawItem(STORAGE_KEYS.SYNC_OUTBOX);
+    else StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, previousRaw);
+    throw new Error('تعذر التحقق من حفظ صندوق المزامنة؛ أُعيدت الحالة السابقة ولم يتم تأكيد العملية.');
   }
 }
 
 export const LocalSyncOutbox = {
   /** Add one UID-scoped mutation. Reusing an ID never creates a second queue item. */
   enqueue(input: EnqueueMutationInput): EnqueueMutationResult {
+    if (!input || typeof input !== 'object') throw new Error('بيانات عملية المزامنة غير صالحة.');
     getActiveUid();
 
     if (!ALLOWED_COLLECTIONS.has(input.collection)) throw new Error('مجموعة مزامنة غير مسموح بها.');
-    if (typeof input.documentId !== 'string' || !input.documentId || byteLength(input.documentId) > 1500 || input.documentId.includes('/') || /[\u0000-\u001f]/.test(input.documentId)) {
+    if (typeof input.documentId !== 'string' || !input.documentId || byteLength(input.documentId) > 1500 ||
+        input.documentId.includes('/') || /[\u0000-\u001f]/.test(input.documentId)) {
       throw new Error('معرّف مستند المزامنة غير صالح.');
     }
     const operation = input.operation ?? 'upsert';
     if (operation !== 'upsert' && operation !== 'tombstone') throw new Error('نوع عملية المزامنة غير مسموح به.');
     if (!isRecord(input.payload)) throw new Error('حمولة عملية المزامنة يجب أن تكون كائناً صالحاً.');
+
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تحويل بيانات العملية إلى صيغة قابلة للحفظ.'); }
     if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
+
     const mutationId = input.mutationId || createSecureId();
-    if (typeof mutationId !== 'string' || !mutationId || mutationId.length > 128 || /[\u0000-\u001f/]/.test(mutationId)) throw new Error('معرّف العملية غير صالح.');
+    if (!isValidMutationId(mutationId)) throw new Error('معرّف العملية غير صالح.');
     const canonicalPayload = JSON.parse(payloadJson) as Record<string, unknown>;
+    const fingerprint = createMutationFingerprint(input.collection, input.documentId, operation, canonicalPayload);
 
     const state = readState();
     const existing = state.pending.find(item => item.mutationId === mutationId);
@@ -168,13 +274,22 @@ export const LocalSyncOutbox = {
       const sameMutation = existing.collection === input.collection &&
         existing.documentId === input.documentId &&
         existing.operation === operation &&
-        JSON.stringify(existing.payload) === payloadJson;
+        stableStringify(existing.payload) === stableStringify(canonicalPayload);
       if (!sameMutation) throw new Error('معرّف المزامنة مستخدم مسبقاً لبيانات مختلفة؛ أوقفنا العملية لمنع إسقاط تعديل جديد.');
       return { status: 'already_pending', mutation: { ...existing } };
     }
+
     if (state.acknowledgedIds.includes(mutationId)) {
+      const previousFingerprint = state.acknowledgedFingerprints.find(item => item.mutationId === mutationId);
+      if (!previousFingerprint) {
+        throw new Error('هذا المعرّف أُقرّ سابقاً قبل حفظ بصمة محتواه؛ لا يمكن التحقق من تطابق العملية القديمة. استخدم معرّفاً جديداً.');
+      }
+      if (previousFingerprint.fingerprint !== fingerprint) {
+        throw new Error('معرّف المزامنة أُقرّ سابقاً بمحتوى مختلف؛ أوقفنا العملية لمنع إسقاط تعديل جديد.');
+      }
       return { status: 'already_acknowledged', mutationId };
     }
+
     if (state.pending.length >= MAX_PENDING_MUTATIONS) {
       throw new Error('وصل صندوق المزامنة إلى سعته الآمنة؛ لم نحذف أي عملية معلقة.');
     }
@@ -204,27 +319,46 @@ export const LocalSyncOutbox = {
   listReady(nowMs: number = Date.now(), limit: number = 25): OutboxMutation[] {
     getActiveUid();
     if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت قراءة صندوق المزامنة غير صالح.');
-    const boundedLimit = Math.max(1, Math.min(MAX_BATCH_SIZE, Math.floor(limit)));
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_BATCH_SIZE) {
+      throw new Error('حجم دفعة المزامنة يجب أن يكون عدداً صحيحاً من 1 إلى ' + MAX_BATCH_SIZE + '.');
+    }
     return readState().pending
       .filter(item => item.nextAttemptAtMs <= nowMs)
       .sort((a, b) => a.queuedAtMs - b.queuedAtMs || a.mutationId.localeCompare(b.mutationId))
-      .slice(0, boundedLimit)
+      .slice(0, limit)
       .map(item => ({ ...item, payload: { ...item.payload } }));
   },
 
   /** Acknowledge only after the remote server confirms the mutation. */
   acknowledge(mutationIds: string[]): number {
     getActiveUid();
-    if (!Array.isArray(mutationIds) || mutationIds.length === 0) return 0;
+    if (!Array.isArray(mutationIds)) throw new Error('قائمة معرفات الإقرار غير صالحة.');
+    if (mutationIds.length === 0) return 0;
+    if (!mutationIds.every(isValidMutationId)) throw new Error('تحتوي قائمة الإقرار على معرف عملية غير صالح.');
+
     const state = readState();
     const ids = new Set(mutationIds);
+    const acknowledgedNow = state.pending.filter(item => ids.has(item.mutationId));
+    if (acknowledgedNow.length === 0) return 0;
+
     const remaining = state.pending.filter(item => !ids.has(item.mutationId));
     const removedCount = state.pending.length - remaining.length;
-    const acknowledged = Array.from(new Set([...state.acknowledgedIds, ...state.pending.filter(item => ids.has(item.mutationId)).map(item => item.mutationId)]))
-      .slice(-MAX_ACKNOWLEDGED_IDS);
-    if (removedCount === 0) return 0;
+    const acknowledged = Array.from(new Set([
+      ...state.acknowledgedIds,
+      ...acknowledgedNow.map(item => item.mutationId)
+    ])).slice(-MAX_ACKNOWLEDGED_IDS);
+    const acknowledgedSet = new Set(acknowledged);
+    const fingerprintById = new Map(state.acknowledgedFingerprints.map(item => [item.mutationId, item.fingerprint]));
+    for (const item of acknowledgedNow) {
+      fingerprintById.set(item.mutationId, createMutationFingerprint(item.collection, item.documentId, item.operation, item.payload));
+    }
+    const acknowledgedFingerprints = acknowledged
+      .filter(id => fingerprintById.has(id))
+      .map(id => ({ mutationId: id, fingerprint: fingerprintById.get(id)! }));
+
     state.pending = remaining;
     state.acknowledgedIds = acknowledged;
+    state.acknowledgedFingerprints = acknowledgedFingerprints.filter(item => acknowledgedSet.has(item.mutationId));
     persistState(state);
     return removedCount;
   },
@@ -232,18 +366,30 @@ export const LocalSyncOutbox = {
   /** Record a retryable failure with capped exponential backoff; keep the mutation. */
   markFailed(mutationId: string, errorCode: string, nowMs: number = Date.now()): boolean {
     getActiveUid();
+    if (!isValidMutationId(mutationId)) throw new Error('معرّف العملية غير صالح.');
+    if (typeof errorCode !== 'string' || errorCode.length > 64) throw new Error('رمز خطأ المزامنة غير صالح.');
+    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت إعادة المحاولة غير صالح.');
+
     const state = readState();
     const index = state.pending.findIndex(item => item.mutationId === mutationId);
     if (index < 0) return false;
-    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت إعادة المحاولة غير صالح.');
+
     const current = state.pending[index];
+    if (current.attemptCount >= Number.MAX_SAFE_INTEGER) {
+      throw new Error('تعذر زيادة عداد محاولات المزامنة بأمان؛ لم يتم تعديل العملية.');
+    }
     const attemptCount = current.attemptCount + 1;
     const delay = Math.min(MAX_BACKOFF_MS, 1000 * (2 ** Math.min(attemptCount, 16)));
+    const nextAttemptAtMs = nowMs + delay;
+    if (!Number.isSafeInteger(nextAttemptAtMs)) {
+      throw new Error('وقت إعادة المحاولة يتجاوز الحد الآمن؛ لم يتم تعديل العملية.');
+    }
+
     state.pending[index] = {
       ...current,
       attemptCount,
-      nextAttemptAtMs: nowMs + delay,
-      lastErrorCode: String(errorCode || 'UNKNOWN').slice(0, 64)
+      nextAttemptAtMs,
+      lastErrorCode: errorCode.trim().slice(0, 64) || 'UNKNOWN'
     };
     persistState(state);
     return true;
