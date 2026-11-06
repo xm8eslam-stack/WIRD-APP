@@ -1,5 +1,7 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
+import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
+import type { LegacyOutboxState } from './indexedDbSyncJournal';
 
 export type SyncCollection =
   | 'profile'
@@ -58,6 +60,7 @@ interface OutboxState {
   acknowledgedFingerprints: AcknowledgedMutationFingerprint[];
 }
 
+const MAX_OUTBOX_BYTES = 1_500_000;
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_OUTBOX_BYTES = 1_500_000;
@@ -251,7 +254,46 @@ function persistState(state: OutboxState): void {
   }
 }
 
+const indexedDbJournal = new IndexedDbSyncJournal();
+
+async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 'already_migrated'> {
+  getActiveUid();
+  const key = STORAGE_KEYS.SYNC_OUTBOX;
+  const raw = StorageService.getRawItem(key);
+  if (raw === null) {
+    if (!StorageService.verifyRawItem(key, null)) {
+      throw new Error('تعذرت قراءة صندوق المزامنة القديم بشكل موثوق؛ لم يتم افتراض أنه فارغ.');
+    }
+    return 'empty';
+  }
+  if (byteLength(raw) > MAX_OUTBOX_BYTES) {
+    throw new Error('صندوق المزامنة القديم أكبر من الحد الآمن؛ تم الحفاظ عليه دون تعديل.');
+  }
+  if (!StorageService.verifyRawItem(key, raw)) {
+    throw new Error('تعذرت مطابقة نسخة صندوق المزامنة مع التخزين الدائم؛ أوقفنا الترحيل قبل أي تغيير.');
+  }
+
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch { throw new Error('بيانات صندوق المزامنة القديم تالفة؛ لم يتم حذفها أو استبدالها.'); }
+  const normalized = normalizeOutboxState(parsed);
+  if (!normalized) {
+    throw new Error('بنية صندوق المزامنة القديم غير صالحة؛ تم الاحتفاظ بالنسخة الأصلية دون تعديل.');
+  }
+
+  const result = await indexedDbJournal.importLegacyState(normalized as LegacyOutboxState);
+  // The IDB transaction commits the complete migration first. If this cleanup
+  // fails, the migration marker makes the next attempt idempotent and safe.
+  StorageService.removeRawItem(key);
+  if (!StorageService.verifyRawItem(key, null)) {
+    throw new Error('تم ترحيل الصندوق إلى IndexedDB، لكن تعذر حذف النسخة القديمة. لا تكرر العمليات؛ أعد محاولة تنظيف النسخة القديمة لاحقاً.');
+  }
+  return result;
+}
+
 export const LocalSyncOutbox = {
+  /** One-time, idempotent migration; normal outbox calls remain unchanged until the adapter cutover. */
+  migrateLegacyToIndexedDb: migrateLegacyOutboxToIndexedDb,
   /** Add one UID-scoped mutation. Reusing an ID never creates a second queue item. */
   enqueue(input: EnqueueMutationInput): EnqueueMutationResult {
     if (!input || typeof input !== 'object') throw new Error('بيانات عملية المزامنة غير صالحة.');
