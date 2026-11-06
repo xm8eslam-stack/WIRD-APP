@@ -191,28 +191,36 @@ export function getPlanTargetSurahNumbers(
 ): number[] {
   if (!plan || typeof plan !== 'object') throw new TypeError('A valid memorization plan scope is required.');
 
-  if (plan.targetSurahs !== undefined && plan.targetSurahs.length > 0) {
-    if (!Array.isArray(plan.targetSurahs) ||
-        plan.targetSurahs.some(number => !Number.isSafeInteger(number) || number < 1 || number > 114)) {
+  if (plan.targetSurahs !== undefined) {
+    if (!Array.isArray(plan.targetSurahs)) throw new TypeError('Target Surahs must be an array.');
+    if (plan.targetSurahs.length === 0) {
+      // An empty explicit list means no Surah filter was selected.
+    } else if (plan.targetSurahs.some(number => !Number.isSafeInteger(number) || number < 1 || number > 114)) {
       throw new RangeError('Target Surahs must contain integers from 1 to 114.');
     }
-    if (new Set(plan.targetSurahs).size !== plan.targetSurahs.length) {
-      throw new RangeError('Target Surahs must not contain duplicate numbers.');
+    if (plan.targetSurahs.length > 0) {
+      if (new Set(plan.targetSurahs).size !== plan.targetSurahs.length) {
+        throw new RangeError('Target Surahs must not contain duplicate numbers.');
+      }
+      return [...plan.targetSurahs];
     }
-    return [...plan.targetSurahs];
   }
 
-  if (plan.targetJuz !== undefined && plan.targetJuz.length > 0) {
-    if (!Array.isArray(plan.targetJuz) ||
-        plan.targetJuz.some(juz => !Number.isSafeInteger(juz) || juz < 1 || juz > 30)) {
+  if (plan.targetJuz !== undefined) {
+    if (!Array.isArray(plan.targetJuz)) throw new TypeError('Target Juz values must be an array.');
+    if (plan.targetJuz.length === 0) {
+      // An empty explicit list means no Juz filter was selected.
+    } else if (plan.targetJuz.some(juz => !Number.isSafeInteger(juz) || juz < 1 || juz > 30)) {
       throw new RangeError('Target Juz values must be integers from 1 to 30.');
     }
-    if (new Set(plan.targetJuz).size !== plan.targetJuz.length) {
-      throw new RangeError('Target Juz values must not contain duplicates.');
+    if (plan.targetJuz.length > 0) {
+      if (new Set(plan.targetJuz).size !== plan.targetJuz.length) {
+        throw new RangeError('Target Juz values must not contain duplicates.');
+      }
+      return ALL_SURAHS
+        .filter(surah => plan.targetJuz!.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
+        .map(surah => surah.number);
     }
-    return ALL_SURAHS
-      .filter(surah => plan.targetJuz!.some(juz => juz >= surah.juzStart && juz <= surah.juzEnd))
-      .map(surah => surah.number);
   }
 
   if (plan.startPage !== undefined || plan.endPage !== undefined) {
