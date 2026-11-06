@@ -6,6 +6,7 @@ import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
 import { persistJournaledSessionCompletion } from './sessionPersistence';
 import { loadDemoDataJournaled } from './demoDataPersistence';
+import { migrateLegacyPortionsJournaled } from './backupPersistence';
 import type { WirdDomainEvent } from './domainEvents';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
@@ -107,6 +108,149 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         RetentionService.getPortions().length > 0 && RetentionService.getWeakVerses().length > 0 &&
         StorageService.getLogs().length > 0,
         'Guest demo data must apply all local projections together');
+    });
+
+    await test('Profile reads compute streak display state without bypassing the journal', async () => {
+      const journal = createJournal();
+      const staleProfile = { ...CLEAN_INITIAL_PROFILE, name: 'قارئ قديم', streakDays: 99, lastActiveDate: '2000-01-01' };
+      const originalBytes = JSON.stringify(staleProfile);
+      assert(StorageService.setRawItem(STORAGE_KEYS.PROFILE, originalBytes), 'Stale profile fixture must persist');
+      const readProfile = StorageService.getProfile();
+      const snapshot = await journal.getSnapshot();
+      assert(readProfile.streakDays !== 99, 'The displayed streak must be calculated from its last active date');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) === originalBytes,
+        'Reading the profile must not directly rewrite its durable archive');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'A profile getter must never create a mutation outside the journal');
+      journal.close();
+    });
+
+    await test('Legacy portion migration is read-only during access and commits through one journal event', async () => {
+      const journal = createJournal();
+      const legacyPortion: PortionStatusRecord = {
+        id: 'legacy-portion-before-journal',
+        type: 'passage',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 3,
+        status: 'stable',
+        nextDueDate: '2026-11-06',
+        intervalDays: 3,
+        easeFactor: 2.5,
+        repetitionCount: 2
+      };
+      const legacyRaw = JSON.stringify([legacyPortion]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '1'), 'Legacy schema version must seed');
+      assert(StorageService.setRawItem(STORAGE_KEYS.PORTIONS, legacyRaw), 'Legacy portions must seed');
+      assert(StorageService.setRawItem(STORAGE_KEYS.REVISION, '[]'), 'Legacy revisions must seed');
+
+      const readOnlySnapshot = StorageService.getUnifiedPortions();
+      assert(readOnlySnapshot.length === 1 && readOnlySnapshot[0].id === 's67_a1_a3',
+        'A read-only getter may return a validated migration view');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === null &&
+        StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === '1',
+        'Reading legacy portions must not write canonical data or advance the schema version');
+
+      const migration = await migrateLegacyPortionsJournaled({ journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      assert(migration.success && migration.migrated && migration.queued !== false,
+        'Legacy migration must commit through the authenticated journal boundary');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'Legacy migration must create one recoverable journal/outbox transaction');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === '2' &&
+        StorageService.getUnifiedPortions()[0]?.id === 's67_a1_a3',
+        'Canonical schema and migrated portions must be projected after journal commit');
+      assert(events.length === 1 && events[0].collection === 'syncMeta',
+        'The migration must be represented by one append-only grouped journal event');
+      journal.close();
+    });
+
+    await test('Corrupt canonical portions recover from validated legacy data only through journal replay', async () => {
+      const journal = createJournal();
+      const legacyPortion: PortionStatusRecord = {
+        id: 'legacy-portion-recovery',
+        type: 'passage',
+        surahNumber: 112,
+        surahName: 'الإخلاص',
+        startAyah: 1,
+        endAyah: 4,
+        status: 'stable',
+        nextDueDate: '2026-11-06',
+        intervalDays: 14,
+        easeFactor: 2.8,
+        repetitionCount: 10
+      };
+      const invalidCanonical = JSON.stringify([{ ...legacyPortion, id: 's112_a1_a99', endAyah: 99 }]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2'), 'Corrupt canonical schema version must seed');
+      assert(StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, invalidCanonical), 'Corrupt canonical bytes must seed');
+      assert(StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([legacyPortion])), 'Validated recovery source must seed');
+      assert(StorageService.setRawItem(STORAGE_KEYS.REVISION, '[]'), 'Empty legacy revision archive must seed');
+
+      const readOnly = StorageService.getUnifiedPortions();
+      assert(readOnly.length === 1 && readOnly[0].id === 's112_a1_a4',
+        'Read-only access must prepare a lossless view from the valid legacy recovery source');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === invalidCanonical,
+        'The invalid canonical archive must remain byte-for-byte unchanged until journal commit');
+
+      const migration = await migrateLegacyPortionsJournaled({ journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      assert(migration.success && migration.migrated && snapshot.projectionCursor === 1,
+        'A validated legacy recovery must replace the corrupt canonical archive only after journal commit');
+      assert(StorageService.getUnifiedPortions()[0]?.id === 's112_a1_a4',
+        'The canonical archive must contain the recovered Quran coordinates');
+      journal.close();
+    });
+
+    await test('Guest legacy portion migration remains local-only and does not require IndexedDB', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('guest');
+      const legacyPortion: PortionStatusRecord = {
+        id: 'legacy-guest-migration',
+        type: 'passage',
+        surahNumber: 109,
+        surahName: 'الكافرون',
+        startAyah: 1,
+        endAyah: 6,
+        status: 'stable',
+        nextDueDate: '2026-11-06',
+        intervalDays: 7,
+        easeFactor: 2.6,
+        repetitionCount: 3
+      };
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '1');
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([legacyPortion]));
+      StorageService.setRawItem(STORAGE_KEYS.REVISION, '[]');
+      const result = await migrateLegacyPortionsJournaled();
+      assert(result.success && result.migrated && !result.queued,
+        'Guest migration must commit locally without an IndexedDB/cloud outbox');
+      assert(StorageService.getUnifiedPortions()[0]?.id === 's109_a1_a6',
+        'Guest migration must expose the canonical Quran range after the local commit');
+    });
+
+    await test('Legacy migration refuses to enqueue when durable storage reads are unavailable', async () => {
+      const journal = createJournal();
+      const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: {
+          getItem: () => { throw new Error('simulated legacy migration read failure'); },
+          setItem: () => { throw new Error('simulated legacy migration write failure'); },
+          removeItem: () => { throw new Error('simulated legacy migration remove failure'); }
+        }
+      });
+      try {
+        const result = await migrateLegacyPortionsJournaled({ journal, runExclusive: inlineLock });
+        const snapshot = await journal.getSnapshot();
+        assert(!result.success, 'A failed durable source read must stop migration');
+        assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+          'Migration must not enqueue an event when the source archive could not be read reliably');
+      } finally {
+        if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+        else delete (globalThis as any).localStorage;
+        journal.close();
+      }
     });
 
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {

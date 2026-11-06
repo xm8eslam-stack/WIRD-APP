@@ -516,9 +516,12 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       };
       StorageService.restoreStorageSnapshot(seedSnapshot);
 
+      const invalidCanonicalBeforeRead = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
       const recovered = StorageService.getUnifiedPortions();
-      assert(recovered.length === 1, 'getUnifiedPortions rejects valid-JSON payloads with invalid Quran coordinates and recovers from legacy keys');
+      assert(recovered.length === 1, 'Read-only portion access prepares a validated recovery view from preserved legacy keys');
       assert(recovered[0].id === 's112_a1_a4', 'Recovered portion has canonical ID s112_a1_a4');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === invalidCanonicalBeforeRead,
+        'A getter must never overwrite the invalid canonical archive; AuthGate commits recovery through the journal');
     } finally {
       StorageService.restoreStorageSnapshot(snap);
     }
