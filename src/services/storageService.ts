@@ -1379,27 +1379,10 @@ export const StorageService = {
       return fail('validation');
     }
 
-    const logsSnapshot = readDurableValue(resolveStorageKey(STORAGE_KEYS.LOGS));
-    const profileSnapshot = readDurableValue(resolveStorageKey(STORAGE_KEYS.PROFILE));
-    if (!logsSnapshot.available || !profileSnapshot.available) return fail('snapshot-read');
+    const activitySnapshot = this.captureRawSnapshot([STORAGE_KEYS.LOGS, STORAGE_KEYS.PROFILE]);
+    if (!activitySnapshot.available) return fail('snapshot-read');
 
-    const previousLogs = logsSnapshot.value;
-    const previousProfile = profileSnapshot.value;
-    const restoreSnapshot = (key: string, previous: string | null): boolean => {
-      const resolvedKey = resolveStorageKey(key);
-      const current = readDurableValue(resolvedKey);
-      if (!current.available) return false;
-      if (current.value === previous) return true;
-      if (previous === null) rawRemoveItem(resolvedKey);
-      else rawSetItem(resolvedKey, previous);
-      const restored = readDurableValue(resolvedKey);
-      return restored.available && restored.value === previous;
-    };
-    const restoreActivitySnapshots = (): boolean => {
-      const logsRestored = restoreSnapshot(STORAGE_KEYS.LOGS, previousLogs);
-      const profileRestored = restoreSnapshot(STORAGE_KEYS.PROFILE, previousProfile);
-      return logsRestored && profileRestored;
-    };
+    const restoreActivitySnapshots = (): boolean => this.restoreRawSnapshot(activitySnapshot).success;
 
     let logs: DailyLog[];
     try {
