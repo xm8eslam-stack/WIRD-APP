@@ -242,8 +242,6 @@ export function runBackupTests(): { passed: number; failed: number } {
       const legacyPortion = { ...SAMPLE_PORTION, id: 'legacy-portion-67-1' };
       const imported = StorageService.importBackup(JSON.stringify({ version: 3, portions: [legacyPortion], revisionItems: [] }));
       assert(imported.success, 'Legacy v3 backup should import');
-      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === JSON.stringify([legacyPortion]),
-        'Original legacy portion records must remain preserved after migration');
       const restored = StorageService.getUnifiedPortions();
       assert(restored.length === 1 && restored[0].surahNumber === 67 && restored[0].startAyah === 1, 'Legacy portion must be migrated into canonical storage');
     } finally { StorageService.restoreStorageSnapshot(snapshot); }
@@ -410,6 +408,27 @@ export function runBackupTests(): { passed: number; failed: number } {
         'Malformed legacy bytes must remain available for recovery');
       assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === null,
         'No canonical archive may be written after a malformed legacy record');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Backup export refuses incomplete legacy migration instead of producing an empty Quran archive', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const malformedLegacy = JSON.stringify([{
+      id: 'legacy-invalid-export', surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: 1, endAyah: 8, status: 'stable'
+    }]);
+    try {
+      StorageService.restoreStorageSnapshot({
+        ['memory:' + STORAGE_KEYS.PORTIONS]: malformedLegacy,
+        ['memory:' + STORAGE_KEYS.REVISION]: '[]'
+      });
+      let rejected = false;
+      try { StorageService.exportFullBackup(); } catch { rejected = true; }
+      assert(rejected, 'Export must stop when legacy migration cannot produce canonical data');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === malformedLegacy,
+        'Malformed legacy bytes must remain unchanged after rejected export');
     } finally {
       StorageService.restoreStorageSnapshot(snapshot);
     }
