@@ -4,6 +4,8 @@
 - [x] Existing localStorage archives validated and corrupt bytes preserved for covered stores.
 - [x] Backup import validation and rollback verification covered by regression tests.
 - [x] Session completion and revision rating ordinary-failure rollback implemented.
+- [x] Verify durable rollback status for activity/profile, portions, and weak-verse archives; recovery-required warning when any restore cannot be verified (PR #15).
+- [x] Verify local outbox write rollback against durable storage and reject partially applied writes that cannot be restored (PR #16).
 - [x] Outbox acknowledged-ID content fingerprints, pending/acknowledged uniqueness and disjointness, device identity, and retry-bound regression tests.
 - [x] Portion merge preserves distinct review events, same-ID conflicts, and pre-existing conflict-audit records; status/strength merge is conservative.
 - [x] Quran coordinate, calendar date, SM-2 grade, plan-scope, and revision queue boundaries are validated; unbounded numeric ranges are rejected.
@@ -31,8 +33,12 @@
 - [ ] Real two-device, two-account, offline replay verification.
 
 ## Quran reader and audio
+- [x] Implement a page-based 604-page Mushaf reader with generated exact navigation for all 30 Juz and 240 Hizb quarters, page bookmarks, last-read position, tafsir entry, and continuous recitation (PR #14; automated CI checks passed).
+- [x] Add shared playback-speed controls (0.75×–2×) across Quran Library, memorization sessions, and Mushaf reader, with visible EveryAyah link-back attribution (PR #14).
+- [x] Document that recitation audio rights are separate from the Tanzil text license and no blanket EveryAyah license is assumed (PR #14).
+- [x] Verify complete generated page index and Juz/Hizb navigation index in automated tests (PR #14).
 - [ ] Independently verify the bundled full Quran text and source/version attribution.
-- [ ] Verify complete 114-surah/6,236-ayah structure and page mappings.
+- [x] Verify all 114 Surahs and 6,236 ayahs are present; automated integrity tests and generated page indexes cover all 604 pages and 30 Juz / 240 Hizb quarters (PR #14).
 - [ ] Verify page/surah/juz/hizb/ayah navigation and bookmarks.
 - [ ] Verify tafsir source attribution, response validation, and fallback behavior.
 - [ ] Verify audio source rights, reciter selection, repeat modes, current-ayah tracking, and background behavior.
