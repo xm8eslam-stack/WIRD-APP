@@ -206,5 +206,50 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     }
   });
 
+  test('Weak-archive rollback mismatch surfaces recovery-required state', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    const originalWeakArchive = '[]';
+    let blockWeakArchiveRestore = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (blockWeakArchiveRestore && key.endsWith(STORAGE_KEYS.WEAK_VERSES)) {
+            if (value !== originalWeakArchive) {
+              values.set(key, value);
+              throw new Error('simulated weak archive write applied before failure');
+            }
+            return; // Refuse to restore the original archive.
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      StorageService.setStorageScope('user:weak-archive-rollback-unverified');
+      assert(StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, originalWeakArchive), 'Initial weak archive should be saved');
+      const beforePortions = JSON.stringify(RetentionService.getPortions());
+      blockWeakArchiveRestore = true;
+      const result = recordWeakVerseFailure({
+        surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
+        text: 'نص اختبار موثوق', notes: 'فشل استعادة أرشيف الآيات'
+      });
+      assert(!result.success, 'A weak-archive write/rollback mismatch must not report success');
+      assert(result.messageAr.includes('لم ينجح التحقق'), 'The user must receive a recovery-required warning');
+      assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+        'The canonical portion must be restored even when the weak archive cannot be restored');
+      assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) !== originalWeakArchive,
+        'The injected durable mismatch must remain observable to the caller');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   return { passed, failed };
 }
