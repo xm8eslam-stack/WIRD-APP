@@ -1,9 +1,9 @@
 # WIRD — Master Engineering Roadmap
 
-**Updated:** 2026-11-06 after PR #54 merge and PR #55 local mutation audit  
+**Updated:** 2026-11-06 after PR #55 merge and post-merge verification  
 **Source of truth:** `main`; Google AI Studio is connected to `main`.  
-**Latest main SHA:** `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.  
-**Post-merge main Quality Gates:** PR #52 run `42277666291`, PR #53 run `42278457062`, and PR #54 run `42280564932` passed. Main then advanced via direct Quran Library/Juz commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`; PR #55 tests this base. Current PR #55 head `9d1352c65e371d36a84a1e136912f3835a3925e3` includes a simulated restart/replay test; exact-head Quality Gate run `42281919337` is pending.  
+**Latest main SHA:** `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`.  
+**Post-merge main Quality Gates:** PR #52 run `42277666291`, PR #53 run `42278457062`, PR #54 run `42280564932`, and PR #55 run `42282206155` passed. PR #55 exact-head runs `42281993489` and `42281999065` passed before merge.  
 **Owner instruction:** Vercel build-rate-limit does not block merging tested changes; production deployment must still be verified separately.
 
 Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVIEWED`, `VERIFIED`, `COMMITTED`, `COMPLETED`. Use `COMPLETED` only when independent review, relevant tests, commit verification, and CI evidence all exist.
@@ -12,7 +12,7 @@ Status vocabulary: `NOT STARTED`, `IN PROGRESS`, `BLOCKED`, `IMPLEMENTED`, `REVI
 |---|---|---|---|
 | 0 | Repository baseline, branch audit, architecture map | VERIFIED | Main inspected; branch divergence recorded; continue file-by-file audit |
 | 1 | Local storage, backup, and portion merge integrity | COMPLETED | PR #4–#9 baseline plus PR #52 journal-ordered backup import/reset; exact-head CI passed |
-| 2 | Memorization/revision correctness | IN PROGRESS | PR #50/#51 group session progress, activity, streak, and matching smart-plan task. PR #55 closes the development demo direct-write path; continue remaining file-by-file failure/recovery audit |
+| 2 | Memorization/revision correctness | IN PROGRESS | PR #50/#51 group session progress, activity, streak, and matching smart-plan task. PR #55 closed the development demo direct-write path; continue the remaining legacy outbox/preferences failure/recovery audit |
 | 3 | Local outbox foundation and identity | IMPLEMENTED / partial | PR #6 now fingerprints acknowledged mutations, validates pending/acknowledged uniqueness and disjointness, binds pending records to device identity, and prevents retry overflow. Still localStorage-backed (not cross-tab transactional), not wired to domain writes, and no cloud sync is active |
 | 4 | Local event ledger + atomic mutation boundary | IN PROGRESS | PR #54 merged typed immutable domain-event metadata; deterministic aggregate derivation and remote event documents remain open |
 | 5 | Firestore adapter and deterministic merge | NOT STARTED | No Firestore client, repository, sync coordinator, or merge engine |
