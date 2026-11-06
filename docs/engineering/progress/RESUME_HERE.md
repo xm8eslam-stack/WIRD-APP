@@ -139,3 +139,24 @@ If any current evidence differs from these notes, current GitHub state wins. Upd
 3. Add failure-injection tests for weak-verse write failure, activity/profile write failure, quota errors, and read-back mismatch; assert all touched archives are restored or a recovery-required state is surfaced.
 4. Run the complete quality gate and a second independent review; merge only after all checks pass.
 5. Keep cloud sync disabled until a transactional IndexedDB event/outbox design and multi-tab tests are complete.
+
+
+## 2026-11-06 — Latest verified rollback-test checkpoint (PR #12 merged)
+
+- Canonical branch: `main`.
+- Latest test-only merge: `1ffd6c23363d636a6b395620e7f9c7cd15828827` (PR #12 squash merge). Re-fetch main HEAD before new work because progress-document commits may advance it.
+- PR head tested: `522bbc549074217af8e3d434538078cc5a8204bc`.
+- GitHub Actions WIRD Quality Gate #741 / run `42216315142`: PASS — 315 assertions, 0 failures; 10 Firestore rules emulator tests; dependency audit; TypeScript; production build; server startup smoke test.
+- PR #12 adds coverage for weak-verse quota failure, failed rollback warning, and profile quota failure after portion/weak-verse/activity writes. The third test explicitly asserts the earlier writes succeeded before the injected failure.
+- PR #12 is test-only. No app runtime behavior, data, migration, SM-2 schedule, Quran text, Firestore production rules, or cloud sync changed.
+- Vercel check passed for PR head before merge; post-merge deployment on merge SHA was pending at the last check.
+- Phase 2 remains IN PROGRESS; do not mark complete.
+
+### Exact next action
+
+1. Read CURRENT_STATUS.md, MASTER_ROADMAP.md, WORK_LOG.md, EXTERNAL_SOURCES.md, and RELEASE_CHECKLIST.md.
+2. Fetch latest `main` HEAD and inspect `StorageService.setItem`, `saveUnifiedPortions`, `restoreRawSnapshot`, and every multi-key mutation caller.
+3. Add a silent-write/read-back-mismatch failure-injection test where a storage adapter reports success but returns stale bytes; verify callers do not report a committed session and that recovery state is explicit.
+4. Audit weak-verse, review, memorization, activity, profile, backup/restore, and outbox mutation paths for missing checks or unverified rollback.
+5. Run full quality gate and an independent second review; merge only after success.
+6. Keep cloud sync disabled until IndexedDB transactional event/outbox design and multi-tab tests are complete.
