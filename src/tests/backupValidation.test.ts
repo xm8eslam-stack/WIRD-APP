@@ -516,6 +516,81 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(result.valid, 'Legacy revision records with fields normalized by migration must remain supported');
   });
 
+  test('Canonical portion archives reject duplicate IDs and noncanonical coordinate IDs', () => {
+    const duplicate = validateBackupPayload({
+      version: 4,
+      unifiedPortions: [SAMPLE_PORTION, SAMPLE_PORTION]
+    });
+    assert(!duplicate.valid, 'Canonical backup must reject duplicate portion IDs');
+
+    const wrongId = validateBackupPayload({
+      version: 4,
+      unifiedPortions: [{ ...SAMPLE_PORTION, id: 's67_a1_a4' }]
+    });
+    assert(!wrongId.valid, 'Canonical portion ID must exactly match its surah and ayah range');
+
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Single canonical portion should save');
+      const originalRaw = StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+      assert(!StorageService.saveUnifiedPortions([SAMPLE_PORTION, SAMPLE_PORTION]),
+        'Storage service must refuse duplicate canonical portions');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === originalRaw,
+        'Rejected duplicate save must preserve the previous canonical archive');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Failed legacy migration never returns an orphaned unversioned canonical archive', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const orphanedCanonical = JSON.stringify([SAMPLE_PORTION]);
+      const corruptLegacy = '[{"id":';
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '1');
+      StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, orphanedCanonical);
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, corruptLegacy);
+
+      const portions = StorageService.getUnifiedPortions();
+      assert(portions.length === 0, 'Failed migration must not expose a stale unversioned canonical archive');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === orphanedCanonical,
+        'Orphaned canonical bytes must remain untouched');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === corruptLegacy,
+        'Corrupt legacy bytes must remain untouched');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Legacy history rows without IDs are migrated with stable canonical IDs', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const legacyPortion = {
+        ...SAMPLE_PORTION,
+        id: 'legacy-portion-no-history-id',
+        history: [{
+          id: '',
+          date: '2026-11-05',
+          rating: 'successful',
+          intervalDaysBefore: 1,
+          intervalDaysAfter: 2
+        }]
+      };
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([legacyPortion]));
+      StorageService.setRawItem(STORAGE_KEYS.REVISION, JSON.stringify([]));
+
+      const migrated = StorageService.getUnifiedPortions();
+      assert(migrated.length === 1, 'Valid legacy portion should migrate');
+      assert(typeof migrated[0].history?.[0]?.id === 'string' && migrated[0].history[0].id.startsWith('legacy_'),
+        'Missing legacy history ID must be generated instead of dropping the review attempt');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
   return { passed, failed };
 }
 
