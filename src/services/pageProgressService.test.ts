@@ -22,7 +22,7 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     } as PortionStatusRecord;
     const updated = buildPageStatusUpdate([existing], 1, 'stable', '2026-11-06');
     assert(updated?.length === 1, 'An exact existing segment must be updated, not duplicated');
-    assert(updated?.[0].id === 's1_a1_a7' && updated[0].status === 'stable', 'The updated segment must use its canonical identity and selected status');
+    assert(Boolean(updated && updated[0].id === 's1_a1_a7' && updated[0].status === 'stable'), 'The updated segment must use its canonical identity and selected status');
     assert(updated?.[0].history?.[0]?.id === 'review-event-1', 'Existing revision history must be preserved');
     assert(updated?.[0].mistakesCount === 0, 'Existing mistake count must remain unchanged');
   });
