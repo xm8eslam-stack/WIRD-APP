@@ -54,7 +54,7 @@
 - `feat/phase4-data-integrity-backup-v4`: previously merged by PR #1; do not merge again.
 - `feat/phase5-premium-ui-ux`: diverged, 115 commits ahead and 104 behind at comparison time; do not merge wholesale.
 - `work/wird-audit-remediation`: diverged, 92 commits ahead and 228 behind at comparison time; do not merge wholesale.
-- `docs/engineering-progress-checkpoints`: documentation checkpoint work only; must be integrated to main after review.
+- `docs/engineering-progress-checkpoints`: six documentation commits; PR #3 is open against main. GitHub Actions result for this PR was not retrievable through the available workflow-run query; Vercel reports the known free deployment rate limit. Do not merge until required CI evidence is available.
 
 ## Current risk register
 
