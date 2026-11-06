@@ -3,11 +3,11 @@
 **Updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, and #11 merged; PR #7 was closed without merge as superseded.
+**Checkpoint PRs:** #3, #4, #5, #6, #9, #10, #11, and #12 merged; PR #7 was closed without merge as superseded.
 
 ## Verified repository position
 
-- Latest application-code merge on `main`: `84aac72c9d3489f93d200e331c35760eb754462e` — PR #11 (Phase 2 queue/metrics slice). Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
+- Latest application-code merge on `main`: `84aac72c9d3489f93d200e331c35760eb754462e` — PR #11 (Phase 2 queue/metrics slice). Latest test-only merge: `1ffd6c23363d636a6b395620e7f9c7cd15828827` — PR #12 (multi-key rollback failure injection). Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
 - Previous merges: PR #6 `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`; PR #5 `fd480526dd3eac728f60b3554e83309354903ad8`; PR #4 `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - GitHub Actions run `42190653101` on PR #9 head `2b520ebcf6c51ae155de508ddf49e49d421ba7ab` passed automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test. The merged code is `f8e0cef`.
@@ -18,11 +18,11 @@
 ## Current milestone
 
 **PHASE 2 — Memorization/revision correctness audit**  
-**Status:** IN PROGRESS on `main`; PR #10 and #11 merged and their code gates passed. Remaining multi-key rollback failure-injection audit is still open.  
+**Status:** IN PROGRESS on `main`; PR #10 and #11 code slices and PR #12 rollback tests merged. PR #12's complete quality gate passed; remaining read-back mismatch and full mutation-path audit are still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
-**Last code milestone:** PR #11 merge `84aac72`; all code gates passed in Actions run `42195579600`.  
+**Last code milestone:** PR #11 merge `84aac72`; latest rollback-test checkpoint PR #12 merge `1ffd6c2`, Actions run `42216315142` (PR head `522bbc5`) passed.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
-**Remaining:** complete multi-key rollback failure-injection audit for review, weak-verse, and activity writes. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
+**Remaining:** test read-back mismatch/silent-write failure, inspect each durable mutation path for rollback completeness, and verify profile/activity/weak-verse failure combinations. Cross-tab atomicity belongs to the event-journal milestone. M4 follows after both gates.
 
 ## Completed and verified foundations
 
@@ -124,3 +124,12 @@
 3. Add tests for failure after each durable write and confirm the original raw archives remain recoverable.
 4. Keep localStorage outbox disconnected from cloud writes; cross-tab atomicity still requires an IndexedDB event+outbox transaction.
 5. Do not activate Firestore production writes or deploy production rules without explicit approval.
+
+
+## 2026-11-06 — PR #12 rollback failure-injection checkpoint
+
+- PR #12 merged to main as `1ffd6c23363d636a6b395620e7f9c7cd15828827` (test-only).
+- PR head `522bbc549074217af8e3d434538078cc5a8204bc`; Actions WIRD Quality Gate #741 / run `42216315142` passed: **315 passed / 0 failed**, 10 Firestore Security Rules Emulator tests, dependency audit, TypeScript, production build, and server startup smoke test.
+- Added three regression cases for weak-verse quota failure, failed rollback with explicit recovery-required warning, and profile quota failure after successful portion/weak-verse/activity writes.
+- Vercel check passed for the PR head before merge; post-merge Vercel status on merge SHA was still pending at the last check. Production deployment is not yet confirmed.
+- Phase 2 remains IN PROGRESS; next audit targets silent-write/read-back mismatch and all remaining multi-key mutation paths.
