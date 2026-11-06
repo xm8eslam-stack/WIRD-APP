@@ -160,3 +160,25 @@ If any current evidence differs from these notes, current GitHub state wins. Upd
 4. Audit weak-verse, review, memorization, activity, profile, backup/restore, and outbox mutation paths for missing checks or unverified rollback.
 5. Run full quality gate and an independent second review; merge only after success.
 6. Keep cloud sync disabled until IndexedDB transactional event/outbox design and multi-tab tests are complete.
+
+
+## 2026-11-06 — Latest verified durable-storage checkpoint (PR #13 merged)
+
+- Canonical branch: `main`.
+- Latest storage-integrity merge: `346b725ae76a177372375f5045e7816eb09a0d1c` (PR #13 squash merge). Re-fetch main HEAD before new work because progress-document commits may advance it.
+- PR head tested: `d6753835d70a71b7f3a5f15a7f3512d9f92bf843`.
+- GitHub Actions WIRD Quality Gate #759 / run `42217300654`: PASS — 317 assertions, 0 failures; 10 Firestore rules emulator tests; dependency audit; TypeScript; production build; server startup smoke test.
+- Storage writes now verify exact durable readback and attempt to restore previous raw bytes after mismatch/exception. Removal verifies absence and returns a boolean from the public raw API.
+- Tests cover silent no-op writes, mismatched writes, silent removal failure, and weak-verse mutation rollback after a silent counter-write mismatch.
+- Vercel failed with `build-rate-limit`; production deployment remains unconfirmed.
+- No data migration, cloud sync activation, Firestore production rules deployment, or Quran text changes.
+- Phase 2 remains IN PROGRESS; do not mark complete.
+
+### Exact next action
+
+1. Read CURRENT_STATUS.md, MASTER_ROADMAP.md, WORK_LOG.md, EXTERNAL_SOURCES.md, and RELEASE_CHECKLIST.md.
+2. Fetch latest `main` HEAD and audit all multi-key write callers: `persistSessionCompletion`, `RetentionService.recordRevisionPerformance`, `recordWeakVerseFailure`, `StorageService.recordSessionCompletion`, backup import/restore, and outbox mutations.
+3. Identify any caller that ignores a false return, reports success before all writes are verified, or fails to verify rollback of every touched key.
+4. Add targeted failure-injection tests for each missing path, including quota errors, silent readback mismatch, and restoration failure.
+5. Run full quality gate and independent second review; merge only after success.
+6. Keep cloud sync disabled until IndexedDB transactional event/outbox design and multi-tab tests are complete.
