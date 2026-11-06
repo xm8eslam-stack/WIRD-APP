@@ -253,6 +253,43 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       }
     });
 
+    await test('Legacy migration aborts if the active account scope changes while waiting for the journal lock', async () => {
+      const journal = createJournal();
+      const originalScope = StorageService.getStorageScope();
+      const legacyPortion: PortionStatusRecord = {
+        id: 'legacy-scope-switch',
+        type: 'passage',
+        surahNumber: 110,
+        surahName: 'النصر',
+        startAyah: 1,
+        endAyah: 3,
+        status: 'stable',
+        nextDueDate: '2026-11-06',
+        intervalDays: 7,
+        easeFactor: 2.5,
+        repetitionCount: 1
+      };
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '1');
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([legacyPortion]));
+      StorageService.setRawItem(STORAGE_KEYS.REVISION, '[]');
+      try {
+        const result = await migrateLegacyPortionsJournaled({
+          journal,
+          runExclusive: async <T>(_name: string, task: () => Promise<T>) => {
+            StorageService.setStorageScope('user:another-account');
+            return task();
+          }
+        });
+        const snapshot = await journal.getSnapshot();
+        assert(!result.success, 'A migration must stop when its captured account scope is no longer active');
+        assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+          'A scope change before enqueue must not create a journal event for the wrong account');
+      } finally {
+        StorageService.setStorageScope(originalScope);
+        journal.close();
+      }
+    });
+
     await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
       const journal = createJournal();
       const today = new Date().toISOString().slice(0, 10);
