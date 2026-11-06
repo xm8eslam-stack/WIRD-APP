@@ -1,7 +1,7 @@
 import { RetentionService, DEFAULT_PORTIONS } from './retentionService';
 import { StorageService } from './storageService';
 import { PortionMemorizationStatus, RevisionRating } from '../types/quran';
-import { addDaysToLocalDate, createCanonicalPortionId, getLocalDateString } from './unifiedPortionService';
+import { addDaysToLocalDate, createCanonicalPortionId, getLocalDateString, getPrioritizedRevisionQueue } from './unifiedPortionService';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -315,6 +315,30 @@ export function runAllRetentionTests(): { passed: number; failed: number; result
     } finally {
       StorageService.__resetStorageForTests();
     }
+  });
+
+  runTest('RetentionService: daily queue validates future records before excluding them from today', () => {
+    const invalidFuture = {
+      id: 'future-invalid-date', type: 'passage' as const,
+      surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 1,
+      status: 'stable' as const, nextDueDate: '2026-02-30',
+      intervalDays: 1, easeFactor: 2.5, repetitionCount: 0
+    };
+    let rejectedDate = false;
+    try {
+      getPrioritizedRevisionQueue([invalidFuture], { todayStr: '2026-02-01' });
+    } catch { rejectedDate = true; }
+    assert(rejectedDate, 'Invalid future-due records must be rejected before queue filtering');
+
+    const invalidUnmemorizedEase = {
+      ...invalidFuture, status: 'not_memorized' as const,
+      nextDueDate: 'not-a-date', easeFactor: 0.5
+    };
+    let rejectedEase = false;
+    try {
+      getPrioritizedRevisionQueue([invalidUnmemorizedEase], { todayStr: '2026-02-01' });
+    } catch { rejectedEase = true; }
+    assert(rejectedEase, 'Invalid ease values must be rejected even on not-memorized records');
   });
 
   runTest('RetentionService: failed review cannot store a placeholder when weak-ayah text is missing', () => {
