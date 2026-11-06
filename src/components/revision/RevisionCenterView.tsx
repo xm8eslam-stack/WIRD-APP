@@ -36,6 +36,7 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from '../../services/weakVerseRecording';
 import { createSecureId } from '../../services/secureId';
+import type { RevisionRatedEvent, WeakVerseFailedEvent, WeakVerseResolvedEvent } from '../../services/domainEvents';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
@@ -194,7 +195,22 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         ];
       }
 
-      const result = await persistJournaledTransaction(operations, {}, mutationId);
+      const domainEvent: RevisionRatedEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'revision.rated',
+        occurredAt: new Date().toISOString(),
+        payload: {
+          portionId: selectedPortion.id,
+          surahNumber: selectedPortion.surahNumber,
+          startAyah: selectedPortion.startAyah,
+          endAyah: selectedPortion.endAyah,
+          rating,
+          ...(reviewNotes ? { notes: reviewNotes } : {}),
+          ...(weakDetails ? { weakAyahNumber: weakDetails.ayahNumber } : {})
+        }
+      };
+      const result = await persistJournaledTransaction(operations, {}, mutationId, domainEvent);
       const expectedPortions = operations.find(operation => operation.collection === 'portions')?.payload.records;
       const expectedWeakVerses = operations.find(operation => operation.collection === 'weakVerses')?.payload.records;
       const expectedActivity = operations.find(operation => operation.collection === 'activityEvents')?.payload.records;
@@ -332,7 +348,23 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           collection: 'weakVerses',
           documentId: 'snapshot',
           operation: 'upsert',
-          payload: { records: prepared.records }
+          payload: {
+            records: prepared.records,
+            domainEvent: (() => {
+              const resolved = RetentionService.getWeakVerses().find(item => item.id === id);
+              return {
+                schemaVersion: 1,
+                id: mutationId,
+                type: 'weak_verse.resolved' as const,
+                occurredAt: new Date().toISOString(),
+                payload: {
+                  weakVerseId: id,
+                  surahNumber: resolved?.surahNumber ?? 0,
+                  ayahNumber: resolved?.ayahNumber ?? 0
+                }
+              } satisfies WeakVerseResolvedEvent;
+            })()
+          }
         },
         () => RetentionService.saveWeakVerses(prepared.records)
       );
@@ -418,7 +450,18 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     setIsSavingWeakVerse(true);
     let result: Awaited<ReturnType<typeof persistJournaledTransaction>>;
     try {
-      result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+      const domainEvent: WeakVerseFailedEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'weak_verse.failed',
+        occurredAt: new Date().toISOString(),
+        payload: {
+          surahNumber: weakSurahNum,
+          ayahNumber: manualWeakAyahNum,
+          ...(manualWeakNotes ? { notes: manualWeakNotes } : {})
+        }
+      };
+      result = await persistJournaledTransaction(prepared.operations, {}, mutationId, domainEvent);
     } catch (error) {
       weakVerseInFlightRef.current = false;
       setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.', type: 'warn' });
