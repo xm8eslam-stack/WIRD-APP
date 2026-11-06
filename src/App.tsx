@@ -9,7 +9,7 @@ import { EngineGeneratedPlan } from './services/planningEngine';
 import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { persistSessionCompletion } from './services/sessionPersistence';
+import { persistJournaledSessionCompletion } from './services/sessionPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
 import { buildWeakVerseFailureTransaction } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
@@ -239,7 +239,7 @@ export default function App() {
     taskName: string,
     mode: 'memorize' | 'review' = sessionParams.mode
   ): Promise<boolean> => {
-    const result = persistSessionCompletion({
+    const result = await persistJournaledSessionCompletion({
       mode, memorizedAyahs, reviewedPages, minutes, taskName,
       surahNumber: sessionParams.surahNumber,
       startAyah: sessionParams.startAyah,
