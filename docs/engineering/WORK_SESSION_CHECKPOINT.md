@@ -3,7 +3,7 @@
 **Last updated:** 2026-11-06  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Branch:** `main`  
-**Current HEAD:** `275e39b64845792f1e0e74d3bac605b48ecde085`  
+**Current HEAD:** `1efadcac33a8c57ad8aa4fdb50f8e37fcef94e35`  
 **Google AI Studio source branch:** `main`  
 **Latest CI run:** [42169105813 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813)
 
@@ -16,6 +16,8 @@ Continue from the current `main` HEAD. Do not reset, force-push, or merge the di
 Build reliable, no-paid-mandatory-service cloud sync for Qur’an memorization/revision, while auditing and fixing all bugs that can damage the save/revision experience. Each substantial milestone must be tested twice and committed to `main` only after passing.
 
 ## Work completed in this session
+- `655d070` + `1efadca` — add a UID-scoped durable local outbox foundation with secure UUID/device IDs, idempotent enqueue/acknowledgement, retry backoff, bounded batches/payload/storage, corruption preservation, and quota-failure handling. The first CI run exposed a test-mock key-prefix mismatch; the test was corrected to target UID-scoped keys.
+- Latest CI run `42170716768` passed: 228 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - `162e847` — preserve exact coordinates when resuming an in-progress memorization passage; regression tests cover range repeat prevention and Surah boundary clamping.
 - `0710e27` — correct backup import UI to inspect the returned `success` flag, surface the actual result message, and handle file-read failures.
 - `fdd00a2` + `7e01502` + `275e39b` — prepare whole-page progress changes in memory and persist once; add tests for multi-Surah pages, history preservation, invalid pages, and TypeScript-safe assertions.
@@ -60,6 +62,11 @@ The exact full SHAs are available in the GitHub commit history. The current HEAD
 
 - The file-by-file review found that resuming a saved `currently_memorizing` portion clipped it to the daily target. Completion only updates exact coordinate matches, leaving the larger parent portion in-progress; the next dashboard selection therefore repeats the same starting ayah. The fix now resumes the exact persisted passage and clamps only to the canonical Surah verse count. Regression tests cover exact resumption and malformed overlong endpoints.
 - This patch is committed separately and its CI result must be checked before marking the fix complete.
+
+## M4 implementation status
+
+- The outbox primitive is implemented and tested, but no production domain mutation currently enqueues through it. It is not a sync engine and it does not contact Firestore.
+- Next: add immutable activity and weak-verse events to the same durable local mutation boundary; integrate session completion, review rating, test result, plan/profile writes; derive daily logs and mistake counts from deduplicated events; test crash/reload and replay semantics.
 
 ## Mandatory next sequence
 

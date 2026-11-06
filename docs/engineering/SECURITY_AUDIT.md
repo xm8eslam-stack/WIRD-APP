@@ -2,7 +2,7 @@
 
 **Audit date:** 2026-11-06  
 **Audited branch:** `main`  
-**Audited HEAD:** `275e39b64845792f1e0e74d3bac605b48ecde085`  
+**Audited HEAD:** `1efadcac33a8c57ad8aa4fdb50f8e37fcef94e35`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
 **Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
 
@@ -37,7 +37,8 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 ### Critical — cloud sync is absent
 
 - `src/lib/firebase.ts` initializes Firebase App/Auth only.
-- No application Firestore client, `onSnapshot` listener, cloud repository, sync engine, or durable mutation outbox is present.
+- No application Firestore client, `onSnapshot` listener, cloud repository, or sync engine is present.
+- `LocalSyncOutbox` exists but is not yet called by session, review, weak-verse, test, or plan mutation flows.
 - Firestore rules are not confirmed deployed to the live Firebase project.
 - Cross-device progress must be considered unavailable until sync is implemented and verified.
 
@@ -79,8 +80,8 @@ This model must be tightened per collection before production sync.
 
 ## Verification evidence
 
-Latest Actions run: [42170371186](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42170371186) — success.
-- Automated test suites: 220 passed, 0 failed.
+Latest Actions run: [42170716768](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42170716768) — success.
+- Automated test suites: 228 passed, 0 failed.
 - Firestore Emulator security-rule tests: passed.
 - TypeScript validation: passed.
 - Production build, including Quran chunk validation: passed.
