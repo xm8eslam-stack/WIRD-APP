@@ -538,6 +538,14 @@ export function runBackupTests(): { passed: number; failed: number } {
         'Storage service must refuse duplicate canonical portions');
       assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === originalRaw,
         'Rejected duplicate save must preserve the previous canonical archive');
+
+      const duplicateRaw = JSON.stringify([SAMPLE_PORTION, SAMPLE_PORTION]);
+      assert(StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, duplicateRaw), 'Duplicate canonical fixture should be stored');
+      const recovered = StorageService.getUnifiedPortions();
+      assert(recovered.length === 1 && recovered[0].id === SAMPLE_PORTION.id,
+        'A duplicate canonical archive should recover from the verified legacy projection');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === JSON.stringify(recovered),
+        'Successful recovery must persist the deduplicated canonical archive');
     } finally {
       StorageService.restoreStorageSnapshot(snapshot);
     }
