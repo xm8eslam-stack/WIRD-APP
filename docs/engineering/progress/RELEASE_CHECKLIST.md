@@ -11,7 +11,7 @@
 - [x] Reject malformed nested records before any partial import; preserve original archive bytes on failure.
 - [x] Complete `unifiedPortionService.ts` migration/merge/history/conflict audit (PR #9).
 - [ ] Complete audit of every remaining domain mutation call site, including review scheduling, duplicate operations, and statistics paths.
-- [ ] Verify Phase 2 branch tests for duplicate portion adds, weak-verse archive uniqueness, idempotent resolution, review-history classification, and rapid UI double submission in CI.
+- [x] Verify Phase 2 tests for duplicate portion adds, weak-verse archive uniqueness, idempotent resolution, review-history classification, and rapid UI double submission in CI (PR #10, Actions #681).
 - [ ] Independently review all Phase 2 mutation paths and confirm rollback/aggregate semantics before merging to main.
 - [ ] Append-only local activity/revision/weak-verse/test event ledger.
 - [ ] Event + outbox transaction/journal and deterministic replay.
