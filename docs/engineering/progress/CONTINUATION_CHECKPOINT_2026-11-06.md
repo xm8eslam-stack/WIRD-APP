@@ -201,7 +201,7 @@
 - Snapshot enqueue and replay are serialized under one per-UID Web Lock. The service replays older events before accepting a new snapshot, blocks stale snapshots after recovery changes local state, and reports recovery-blocked outcomes.
 - Added tests for profile/plan projection, durable event/outbox pairs, invalid snapshots, blocking behind unrecovered events, stale-snapshot prevention after crash recovery, guest/local-only mode, and IndexedDB enqueue failure.
 - Exact-head PR run `42251723375` and push run `42251711748` passed on SHA `d45dd9e7284101e332f15b2f408cd62001a961be`: automated tests, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
-- Post-merge main Quality Gate run `42251976734` is **in progress** at checkpoint preparation; do not mark it successful until its exact SHA `60d475d1f4f06ea4a852751e1548297d9c7dc6de` completes.
+- Post-merge main Quality Gate run `42251976734` **passed** on exact SHA `60d475d1f4f06ea4a852751e1548297d9c7dc6de`.
 
 ## Current remaining scope — Phase 2 remains IN PROGRESS
 
