@@ -56,7 +56,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<RevisionTab>('daily_queue');
   const [portions, setPortions] = useState<PortionStatusRecord[]>(() => RetentionService.getPortions());
-  const [weakVerses, setWeakVerses] = useState<WeakVerseItem[]>(() => RetentionService.getWeakVerses());
+  const [weakVerses, setWeakVerses] = useState<WeakVerseItem[]>(() => {
+    try { return RetentionService.getWeakVerses(); } catch { return []; }
+  });
   const [metrics, setMetrics] = useState<RetentionMetrics>(() => RetentionService.getRetentionDashboardMetrics());
   
   // Feedback toast banner
@@ -86,7 +88,15 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   const refreshAll = () => {
     setPortions(RetentionService.getPortions());
-    setWeakVerses(RetentionService.getWeakVerses());
+    try {
+      setWeakVerses(RetentionService.getWeakVerses());
+    } catch (error) {
+      // Keep the damaged archive untouched and make the recovery state visible.
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر قراءة سجل الآيات المتعثرة؛ لم يتم تغييره.',
+        type: 'warn'
+      });
+    }
     setMetrics(RetentionService.getRetentionDashboardMetrics());
   };
 

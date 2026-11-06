@@ -60,6 +60,17 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Retention metrics remain available while a corrupt weak-verse archive is preserved', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-metrics-corrupt');
+    const corrupt = '{damaged}';
+    StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, corrupt);
+    const metrics = RetentionService.getRetentionDashboardMetrics();
+    assert(metrics.weakVersesCount === 0, 'Unavailable weak-verse count should not block unrelated metrics');
+    assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === corrupt, 'Metrics must not normalize or overwrite the damaged archive');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Malformed weak-verse records are rejected without being normalized to an empty list', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:weak-verse-malformed');

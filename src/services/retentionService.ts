@@ -664,7 +664,10 @@ export const RetentionService = {
   // 5. Retention Dashboard Metrics
   getRetentionDashboardMetrics(): RetentionMetrics {
     const portions = this.getPortions();
-    const weakVerses = this.getWeakVerses();
+    let weakVersesCount = 0;
+    try { weakVersesCount = this.getWeakVerses().length; } catch {
+      // Metrics for memorization/revision must remain available if this separate archive needs recovery.
+    }
     const history = this.getRevisionHistory();
 
     const breakdown = {
@@ -706,7 +709,7 @@ export const RetentionService = {
       statusBreakdown: breakdown,
       statusPercentages,
       totalReviewsCompleted: history.length,
-      weakVersesCount: weakVerses.length,
+      weakVersesCount,
       averageEaseFactor: averageEase
     };
   },
