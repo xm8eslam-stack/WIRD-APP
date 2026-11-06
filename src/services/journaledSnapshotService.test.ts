@@ -239,6 +239,23 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Weak-verse preparation rejects an inconsistent canonical archive before enqueue', async () => {
+      const journal = createJournal();
+      const corrupt = '{broken canonical portions';
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
+      StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, corrupt);
+      const prepared = buildWeakVerseFailureTransaction({
+        surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص اختبار'
+      }, 'weak-corrupt-preflight-001');
+      const snapshot = await journal.getSnapshot();
+      assert(!prepared.success, 'An inconsistent canonical archive must block preparation');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'A corrupt source archive must not create a permanently blocked journal event');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === corrupt,
+        'The original corrupt canonical bytes must remain unchanged');
+      journal.close();
+    });
+
     await test('Weak-verse failure commits its canonical portion and counter in one journal event', async () => {
       const journal = createJournal();
       const mutationId = 'weak-failure-journal-001';
