@@ -368,13 +368,14 @@ export const RetentionService = {
   // Build a validated full snapshot without writing it. Journal-first UI
   // flows use this to commit the event before the canonical local projection.
   buildAddPortionSnapshot(
-    portion: Omit<PortionStatusRecord, 'id' | 'history'>
+    portion: Omit<PortionStatusRecord, 'id' | 'history'>,
+    basePortions?: PortionStatusRecord[]
   ): { record: PortionStatusRecord; portions: PortionStatusRecord[] } {
     if (!portion || typeof portion !== 'object') throw new Error('بيانات المقطع غير صالحة.');
     assertValidQuranRange(portion.surahNumber, portion.startAyah, portion.endAyah);
     const surahMeta = ALL_SURAHS.find(surah => surah.number === portion.surahNumber)!;
     const normalizedPortion = { ...portion, surahName: surahMeta.name };
-    const portions = this.getPortions();
+    const portions = [...(basePortions ?? this.getPortions())];
     const canonicalId = createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah);
     const existingIndex = portions.findIndex(existing =>
       existing.id === canonicalId ||
