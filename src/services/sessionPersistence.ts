@@ -1,6 +1,6 @@
 import { RetentionService } from './retentionService';
 import { StorageService } from './storageService';
-import { getSessionCompletionMetrics, SessionMode } from './sessionCompletion';
+import { getSessionCompletionMetrics, SessionMode, SessionCompletionMetrics } from './sessionCompletion';
 import { ALL_SURAHS } from '../data/quranMeta';
 
 export interface PersistSessionCompletionInput {
@@ -27,7 +27,7 @@ export function persistSessionCompletion(input: PersistSessionCompletionInput): 
     return { success: false, messageAr: 'اسم مهمة الجلسة غير صالح؛ لم يتم حفظ أي تغيير.' };
   }
 
-  let metrics;
+  let metrics: SessionCompletionMetrics;
   try {
     metrics = getSessionCompletionMetrics(input.mode, input.memorizedAyahs, input.reviewedPages);
   } catch (error) {
