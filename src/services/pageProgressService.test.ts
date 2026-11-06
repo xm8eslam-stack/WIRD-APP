@@ -1,4 +1,4 @@
-import { getPageAyahSegments, getPageProgressStatus, getPagesForAyahRange } from './pageProgressService';
+import { buildPageStatusUpdate, getPageAyahSegments, getPageProgressStatus, getPagesForAyahRange } from './pageProgressService';
 import { PortionStatusRecord } from '../types/quran';
 
 export function runPageProgressServiceTests(): { passed: number; failed: number } {
@@ -9,6 +9,43 @@ export function runPageProgressServiceTests(): { passed: number; failed: number 
     catch (error: any) { failed++; console.error('  ❌ ' + name + ': ' + (error?.message || error)); }
   };
   const assert = (condition: boolean, message: string) => { if (!condition) throw new Error(message); };
+
+  test('Page status update is prepared as one exact canonical record and preserves history', () => {
+    const segment = getPageAyahSegments(1)[0];
+    const existing = {
+      id: 'legacy-page-one', type: 'passage' as const,
+      surahNumber: segment.surahNumber, surahName: 'الفاتحة',
+      startAyah: segment.startAyah, endAyah: segment.endAyah,
+      status: 'weak' as const, nextDueDate: '2026-11-05',
+      intervalDays: 1, easeFactor: 2.1, repetitionCount: 2,
+      history: [{ id: 'review-event-1', date: '2026-11-05', rating: 'failed' as const, intervalDaysBefore: 2, intervalDaysAfter: 1 }]
+    } as PortionStatusRecord;
+    const updated = buildPageStatusUpdate([existing], 1, 'stable', '2026-11-06');
+    assert(updated?.length === 1, 'An exact existing segment must be updated, not duplicated');
+    assert(updated?.[0].id === 's1_a1_a7' && updated[0].status === 'stable', 'The updated segment must use its canonical identity and selected status');
+    assert(updated?.[0].history?.[0]?.id === 'review-event-1', 'Existing revision history must be preserved');
+    assert(updated?.[0].mistakesCount === 0, 'Existing mistake count must remain unchanged');
+  });
+
+  test('Multi-Surah Mushaf pages produce all segment updates in one prepared result', () => {
+    let multiSegmentPage = 0;
+    for (let page = 1; page <= 604; page++) {
+      if (getPageAyahSegments(page).length > 1) {
+        multiSegmentPage = page;
+        break;
+      }
+    }
+    assert(multiSegmentPage > 0, 'The canonical Mushaf index must include a page crossing Surah boundaries');
+    const segments = getPageAyahSegments(multiSegmentPage);
+    const updated = buildPageStatusUpdate([], multiSegmentPage, 'weak', '2026-11-06');
+    assert(updated?.length === segments.length, 'Every segment on a multi-Surah page must be represented');
+    assert(updated?.every(portion => portion.status === 'weak'), 'All page segments must receive the same requested status');
+  });
+
+  test('Invalid page status updates are rejected without producing a partial list', () => {
+    assert(buildPageStatusUpdate([], 0, 'stable', '2026-11-06') === null, 'Invalid page must return null');
+    assert(buildPageStatusUpdate([], 605, 'stable', '2026-11-06') === null, 'Page beyond the Mushaf must return null');
+  });
 
   test('Generated Mushaf page index maps Al-Fatihah page to its exact ayah range', () => {
     const segments = getPageAyahSegments(1);

@@ -1,6 +1,7 @@
 import { ALL_SURAHS } from '../data/quranMeta';
 import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
 import { PortionStatusRecord, PortionMemorizationStatus, SurahMeta } from '../types/quran';
+import { createCanonicalPortionId } from './unifiedPortionService';
 
 export interface PageAyahSegment {
   surahNumber: number;
@@ -53,6 +54,70 @@ export function getPagesForAyahRange(surahNumber: number, startAyah: number, end
     if (intersects) pages.push(pageNumber);
   }
   return pages;
+}
+
+/**
+ * Build a complete page-status update in memory so the caller can persist it
+ * with one canonical storage write. This avoids partial page updates when a
+ * page spans multiple Surah segments or storage quota is exhausted mid-loop.
+ */
+export function buildPageStatusUpdate(
+  portions: PortionStatusRecord[],
+  pageNumber: number,
+  status: PortionMemorizationStatus,
+  todayStr: string
+): PortionStatusRecord[] | null {
+  const segments = getPageAyahSegments(pageNumber);
+  if (segments.length === 0) return null;
+
+  const updated = [...portions];
+  const timestamp = new Date().toISOString();
+
+  for (const segment of segments) {
+    const surah = ALL_SURAHS.find(item => item.number === segment.surahNumber);
+    if (!surah) return null;
+
+    const canonicalId = createCanonicalPortionId(
+      segment.surahNumber,
+      segment.startAyah,
+      segment.endAyah
+    );
+    const existingIndex = updated.findIndex(portion =>
+      portion.id === canonicalId ||
+      (portion.surahNumber === segment.surahNumber &&
+        portion.startAyah === segment.startAyah &&
+        portion.endAyah === segment.endAyah)
+    );
+    const existing = existingIndex >= 0 ? updated[existingIndex] : undefined;
+
+    const record: PortionStatusRecord = {
+      ...(existing || {}),
+      id: canonicalId,
+      type: existing?.type || 'page',
+      surahNumber: segment.surahNumber,
+      surahName: surah.name,
+      startAyah: segment.startAyah,
+      endAyah: segment.endAyah,
+      pageNumber,
+      pageStart: pageNumber,
+      pageEnd: pageNumber,
+      status,
+      lastReviewedDate: todayStr,
+      nextDueDate: todayStr,
+      intervalDays: status === 'stable' ? 7 : 1,
+      easeFactor: existing?.easeFactor || 2.5,
+      repetitionCount: status === 'stable' ? 3 : 1,
+      mistakesCount: existing?.mistakesCount ?? 0,
+      history: existing?.history || [],
+      createdAt: existing?.createdAt || timestamp,
+      updatedAt: timestamp
+    };
+
+    if (existingIndex >= 0) updated[existingIndex] = record;
+    else updated.unshift(record);
+  }
+
+  return updated;
 }
 
 export function getPageProgressStatus(pageNumber: number, portions: PortionStatusRecord[]): PageProgressStatus {

@@ -23,7 +23,7 @@ import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord }
 import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
-import { getPageAyahSegments, getPageProgressStatus, PageAyahSegment } from '../../services/pageProgressService';
+import { buildPageStatusUpdate, getPageAyahSegments, getPageProgressStatus, PageAyahSegment } from '../../services/pageProgressService';
 
 interface ProgressAnalyticsViewProps {
   logs: DailyLog[];
@@ -84,51 +84,26 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
 
   // Change page status
   const handleUpdatePageStatus = (pageNumber: number, newStatus: PortionMemorizationStatus) => {
-    const segments = getPageAyahSegments(pageNumber);
-    if (segments.length === 0) {
+    const updatedPortions = buildPageStatusUpdate(
+      portions,
+      pageNumber,
+      newStatus,
+      getLocalDateString()
+    );
+    if (!updatedPortions) {
       onToast?.('تعذر تحديد نطاق الآيات لهذه الصفحة؛ لم يتم تسجيل تقدم غير دقيق.', 'error');
       return;
     }
 
-    try {
-      const exactPagePortions = portions.filter(portion =>
-        portion.type === 'page' && portion.pageStart === pageNumber && portion.pageEnd === pageNumber
-      );
-      exactPagePortions.forEach(portion => RetentionService.updatePortionStatus(portion.id, newStatus));
-
-      const missingSegments = segments.filter(segment => !exactPagePortions.some(portion =>
-        portion.surahNumber === segment.surahNumber &&
-        portion.startAyah <= segment.startAyah &&
-        portion.endAyah >= segment.endAyah
-      ));
-      missingSegments.forEach(segment => {
-        const segmentSurah = ALL_SURAHS.find(item => item.number === segment.surahNumber);
-        if (!segmentSurah) return;
-        RetentionService.addPortion({
-          type: 'page',
-          surahNumber: segment.surahNumber,
-          surahName: segmentSurah.name,
-          startAyah: segment.startAyah,
-          endAyah: segment.endAyah,
-          pageNumber,
-          pageStart: pageNumber,
-          pageEnd: pageNumber,
-          status: newStatus,
-          lastReviewedDate: getLocalDateString(),
-          nextDueDate: getLocalDateString(),
-          intervalDays: newStatus === 'stable' ? 7 : 1,
-          easeFactor: 2.5,
-          repetitionCount: newStatus === 'stable' ? 3 : 1,
-          mistakesCount: 0
-        });
-      });
-
-      setPortions(RetentionService.getPortions());
-      setInspectedPage(null);
-      onRefreshData();
-    } catch (error) {
-      onToast?.(error instanceof Error ? error.message : 'تعذر حفظ تقدم الصفحة؛ لم يتم تأكيد التغيير.', 'error');
+    // Persist the complete page change once; never leave half a page updated.
+    if (!RetentionService.savePortions(updatedPortions)) {
+      onToast?.('تعذر حفظ تقدم الصفحة بالكامل في التخزين المحلي؛ لم يتم تأكيد التغيير.', 'error');
+      return;
     }
+
+    setPortions(updatedPortions);
+    setInspectedPage(null);
+    onRefreshData();
   };
 
   // Handle Export Backup
