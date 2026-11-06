@@ -1,6 +1,6 @@
 # Firestore Sync Design
 
-**Status as of 2026-11-06:** Firestore security rules and emulator tests exist. IndexedDB event+outbox persistence, monotonic sequencing, deterministic local projection replay, and first journal-first profile/plan mutation paths are implemented. The Firestore client, sync worker, remote acknowledgement, and cross-device data flow are not implemented. No live rules deployment has been verified.
+**Status as of 2026-11-06 (PR #45 merged):** Firestore security rules and emulator tests exist. The UID-scoped IndexedDB event journal, atomic event+outbox persistence, monotonic sequencing, deterministic local projection replay, grouped local projection rollback, and journal-first writes for profile/plans, page status, manual portion additions, test-result snapshots, weak-verse failures, and weak-verse resolution are implemented. Revision ratings, session completion/activity-profile updates, backup import/reset, and remaining mutation paths are not yet journal-first. The Firestore client, sync worker, remote acknowledgement, and cross-device data flow are not implemented. No live rules deployment has been verified.
 
 ## 1. Non-negotiable invariants
 
@@ -20,16 +20,30 @@
 - Firebase Auth initialization and verified-user gating.
 - UID-scoped localStorage for authenticated users; guest storage remains separate.
 - A one-time decision for legacy local data ownership.
-- Centralized weak-verse persistence through StorageService.
+- UID-scoped IndexedDB append-only event journal, outbox delivery state, acknowledgements, device metadata, monotonic sequence allocation, and contiguous projection cursor.
+- Atomic IndexedDB event+outbox append and deterministic replay into validated local projections before authenticated app state initializes.
+- Cross-tab serialization of journal enqueue/replay through Web Locks; stale snapshots are blocked when replay recovers earlier events.
+- Journal-first authenticated profile settings/theme, preset-plan snapshots, and engine-plan snapshots (PR #37).
+- Journal-first canonical page-status snapshots in Progress Analytics (PR #40).
+- Journal-first manual canonical portion additions (PR #41).
+- Journal-first test-result snapshots with stable result IDs, idempotent retry, and conflicting-ID rejection (PR #42).
+- Versioned grouped transaction envelope and rollback-verified multi-archive local projection primitive; affected storage keys are snapshotted and restored as a group (PR #43).
+- Journal-first weak-verse failure recording: canonical weak portion + weak-verse counter are grouped under one event/outbox pair, with stable mutation identity and durable preflight reads (PR #44).
+- Journal-first weak-verse resolution with durable read preflight, stable retry identity, and idempotent repeated resolution (PR #45).
 - Firestore rules at `firestore.rules`, emulator configuration at `firebase.json`, and CI tests in `scripts/firestoreRules.test.ts`.
 - Rules currently require a verified authenticated user, enforce `request.auth.uid == uid`, allowlist subcollections, validate a generic schema-versioned envelope, deny physical deletes, and default-deny unknown paths.
 
 ### Not present / not verified
 
+- Revision ratings are not yet journal-first; the existing path still combines canonical portion updates, optional weak-verse changes, activity logs, and profile streak locally.
+- Memorization/session completion and activity/profile aggregate updates are not yet fully journal-first.
+- Backup import/reset do not yet coordinate with pending journal events.
+- Test results and weak-verse state are currently represented by journaled full-snapshot projections. This is not yet the final immutable remote event model required by the invariants below; daily logs and weak-verse counters must be derived from immutable events before cloud sync.
 - No Firestore instance exported by `src/lib/firebase.ts`.
 - No application `getFirestore`, `onSnapshot`, cloud repository, sync engine, or Firestore outbox drain/acknowledgement path.
 - No cloud migration or remote merge path.
 - Firestore rules have not been confirmed deployed to the production Firebase project.
+- Real two-device/two-account/offline synchronization has not been implemented or tested.
 
 ### Current rules limitation
 
@@ -190,57 +204,47 @@ The current rules satisfy the ownership/allowlist/generic-envelope foundation, b
 Cloud sync is not complete until the two-device emulator suite passes, production rules are reviewed and deployed with approval, and a real two-device test verifies offline replay and account isolation. A green frontend build or a Vercel deployment alone does not satisfy this gate.
 
 
-## 13. Implementation status — 2026-11-06
+## 13. Implementation status — 2026-11-06 (PR #45)
 
-The following foundation has been implemented and merged:
+### Completed local journal foundation and mutation slices
 
-- PR #30: UID-scoped IndexedDB stores for append-only events, outbox delivery state, acknowledgements, and device metadata. Each event/outbox pair commits in one IndexedDB read/write transaction.
-- PR #31: atomic and idempotent migration from the v1 localStorage outbox. The old localStorage value remains a recovery copy because older tabs may still write it; changed snapshots are merged by stable mutation fingerprints.
-- PR #32: the `LocalSyncOutbox` facade now exposes asynchronous IndexedDB enqueue, ready-list, acknowledgement, retry, and snapshot operations.
-- Automated coverage includes cross-tab duplicate enqueue, transaction abort atomicity, acknowledgement, retry scheduling, UID isolation, migration conflicts, incremental stale-tab migration, and database reopen recovery.
+- PR #30: UID-scoped IndexedDB event journal and atomic event+outbox transaction.
+- PR #31: non-destructive, idempotent migration from the legacy localStorage outbox.
+- PR #32: asynchronous IndexedDB outbox facade.
+- PR #34: monotonic per-UID event sequencing and contiguous projection cursor.
+- PR #36: deterministic UID-scoped local projection replay before authenticated app initialization.
+- PR #37: journal-first profile settings/theme, preset plans, and engine-plan snapshots.
+- PR #40: journal-first canonical page-status snapshots.
+- PR #41: journal-first manual canonical portion additions.
+- PR #42: journal-first test-result snapshots with stable IDs and idempotent retries.
+- PR #43: grouped transaction envelope, one event+outbox pair for multiple local projections, and rollback/read-back verification.
+- PR #44: grouped journal-first weak-verse failure recording across canonical portions and weak-verse counter snapshots.
+- PR #45: journal-first weak-verse resolution; idempotent and isolated from canonical portion rating/schedule.
 
-**Not implemented yet:**
+Exact-head PR and push Quality Gates passed for PRs #43, #44, and #45. Post-merge main Quality Gates passed after PR #43 (run `42258433095`) and PR #44 (run `42261020224`). Post-merge main run `42262136009` for PR #45 was still in progress when this document was prepared; verify it separately.
 
-- Production mutation paths do not yet invoke the legacy `LocalSyncOutbox` facade. PR #37 adds direct journal-first writes for authenticated profile settings/theme, preset plans, and engine-plan snapshots. Session activity/profile streak, canonical portions/revision, weak verses, tests, backup import/reset, and other mutation paths are not yet journal-first.
-- PR #36 adds deterministic UID-scoped journal-to-localStorage projection replay before authenticated app state initializes, with sequence-ordered cursor advancement after verified projection.
-- No Firestore repository, listener, sync worker, cloud outbox drain, or server acknowledgement flow is active.
-- Firestore rules have emulator coverage, but production deployment and two-device/offline integration remain unverified.
+### Remaining local mutation work
+
+- Journal-first revision ratings, grouping canonical portions, optional weak-verse changes, activity logs, and profile streak into one event.
+- Journal-first memorization/session completion and related activity/profile/plan changes.
+- Journal backup import/reset with pending-event ordering, crash recovery, and quota handling.
+- Audit every remaining domain mutation path and confirm that no stale snapshot can be appended behind an unreplayed event.
+- Add failure injection for durable-read failure, partial child projection failure, rollback-verification failure, quota exhaustion, blocked IndexedDB, and reload recovery across each mutation type.
+
+### Event-model work required before cloud sync
+
+- Current test-result and weak-verse flows journal full-snapshot local projections. The journal itself is append-only, but this does not yet satisfy the intended immutable remote event model.
+- Define immutable event records for sessions, revision attempts, tests, and weak-verse mistakes; derive daily logs, counters, and dashboard metrics locally.
+- Specify deterministic remote conflict handling, tombstones, bounded pull/push, acknowledgements, retry/backoff, and server-side idempotency.
+- Expand Firestore rules from generic-envelope validation to collection-specific schemas, size limits, create-only event rules, and validated tombstones.
 
 ### Next implementation sequence
 
-1. Define per-UID monotonic event sequencing and a durable projection cursor.
-2. Implement idempotent journal-to-local projection replay before connecting UI mutations. Advance the cursor only after the local projection is verified; a crash between projection and cursor update must safely replay the same event.
-3. Extend journal-first mutation adapters from profile/plans to canonical portions/revision, then design grouped atomic event+projection semantics for weak-verse, tests, and activity/session actions. Daily logs and weak-verse counters must remain derived from immutable events.
-4. Implement Firestore draining, server acknowledgements, tombstones, retry/backoff, and collection-specific security rules.
-5. Pass two-account/two-device/offline/online tests before enabling cloud sync for users.
+1. Complete journal-first revision ratings with a grouped portion + optional weak-verse + activity/profile transaction.
+2. Complete journal-first memorization/session completion and all remaining activity/profile aggregates.
+3. Journal backup import/reset and verify recovery with pending events.
+4. Reconcile local snapshots with immutable event semantics and finalize the Firestore document model.
+5. Implement Firestore adapter/worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests.
+6. Deploy production rules and activate cloud writes only after explicit approval and the full release gate passes.
 
-Do not describe the IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
-
-
-### PR #34 update — monotonic sequencing and projection cursor
-
-PR #34 has implemented the first item in the sequence above:
-
-- IndexedDB schema v2 stores a unique `(uid, sequence)` index.
-- v1 event history is deterministically backfilled during upgrade.
-- New event sequence allocation is transactionally coupled to the event/outbox append.
-- `listEventsAfter`, `getProjectionCursor`, and contiguous-only `markProjected` are available.
-
-The projection cursor is currently only a storage primitive. No event-to-localStorage projector is wired into `AuthGate` yet, and no domain mutation call sites are writing journal events. Do not advance the cursor until the corresponding local projection has been successfully written and verified.
-
-
-### PR #36 update — deterministic local projection replay
-
-- PR #36 merged as `9b76227b9498b23fa79fb39264d4b4be98fa16e4`.
-- Added a UID-scoped deterministic replay coordinator that runs before authenticated App state reads localStorage.
-- Legacy events marked as already projected are skipped; new journal-first events are applied through validated StorageService projection handlers, verified, then advance the contiguous cursor.
-- Replay is protected by Web Locks across tabs; the local-only browser fallback remains available when IndexedDB is unavailable.
-
-### PR #37 update — first journal-first domain writes
-
-- PR #37 merged as `60d475d1f4f06ea4a852751e1548297d9c7dc6de`.
-- Profile settings/theme, preset-plan snapshots, and engine-plan snapshots now commit an IndexedDB event/outbox pair before local projection. Snapshot enqueue and replay share one per-UID lock, and pre-existing events are replayed before a new snapshot can be appended.
-- If replay recovers an older event that changes local state, the current stale caller snapshot is blocked; the UI refreshes from the recovered local projection before the user retries.
-- Guest and no-IndexedDB paths remain local-only; an IndexedDB enqueue failure does not silently fall back to localStorage.
-
-**Remaining implementation boundary:** `recordSessionCompletionDetailed` still updates activity logs/profile streak locally, and the canonical portion/revision, weak-verse, test-result, backup import/reset, and multi-archive session flows are not yet journal-first. No Firestore sync worker, listener, cloud acknowledgement, production rules deployment, or two-device sync is active.
+Do not describe this IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
