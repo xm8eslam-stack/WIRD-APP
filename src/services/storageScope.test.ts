@@ -137,7 +137,7 @@ export function runStorageScopeTests(): { passed: number; failed: number } {
         assert(!StorageService.setStorageScope('user:unreadable-import', 'import'),
           'Import must reject when a trustworthy snapshot cannot be read');
         assert(writes === 0, 'No writes or removals may occur before the complete snapshot is readable');
-        assert(values.get('wird_profile')?.includes('Protected'), 'Legacy source data must remain untouched');
+        assert(values.get('wird_profile')?.includes('Protected') === true, 'Legacy source data must remain untouched');
         assert(StorageService.getStorageScope() === 'legacy', 'Scope must remain unchanged');
       } finally {
         if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
