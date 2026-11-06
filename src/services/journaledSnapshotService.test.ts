@@ -4,6 +4,7 @@ import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService } from './storageSe
 import type { PortionStatusRecord, WirdPortion, TestResult } from '../types/quran';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { RetentionService } from './retentionService';
+import { persistJournaledSessionCompletion } from './sessionPersistence';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from './weakVerseRecording';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
@@ -36,6 +37,33 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
   };
 
   try {
+    await test('Memorization session completion commits progress, activity, and streak in one journal event', async () => {
+      const journal = createJournal();
+      const today = new Date().toISOString().slice(0, 10);
+      StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, lastActiveDate: today, streakDays: 0 });
+      const initial = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'currently_memorizing', nextDueDate: today, intervalDays: 1, easeFactor: 2.5,
+        repetitionCount: 0, mistakesCount: 0
+      });
+      const result = await persistJournaledSessionCompletion({
+        mode: 'memorize', memorizedAyahs: 5, reviewedPages: 0, minutes: 6,
+        taskName: 'جلسة حفظ اختبار', surahNumber: 67, startAyah: 1, endAyah: 5
+      }, { journal, runExclusive: inlineLock });
+      const snapshot = await journal.getSnapshot();
+      const updated = RetentionService.getPortions().find(item => item.id === initial.id);
+      assert(result.success, 'A valid memorization session must complete through the journal');
+      assert(updated?.status === 'recently_memorized' && updated.repetitionCount === 1,
+        'The memorization progress projection must be applied');
+      assert(StorageService.getLogs().length === 1 && StorageService.getLogs()[0].memorizedAyahsCount === 5,
+        'The activity log must be committed with the progress');
+      assert(StorageService.getProfile().streakDays === 1,
+        'The profile streak must be committed with the activity');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'Progress, activity, and profile must share one durable event/outbox pair');
+      journal.close();
+    });
+
     await test('Authenticated profile writes commit to the journal before local projection', async () => {
       const journal = createJournal();
       const profile = { ...CLEAN_INITIAL_PROFILE, name: 'حافظ القرآن' };
