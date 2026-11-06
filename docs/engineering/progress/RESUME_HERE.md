@@ -31,8 +31,10 @@
 11. Do not deploy production Firestore rules, enable production cloud sync, or change secrets/project settings without explicit user approval.
 
 ## Last known exact state
-- Latest observed main ref: `d9737e0e16ea1f87b9811621dce42d8f6d4e8450`.
-- Documentation PR #3: https://github.com/xm8eslam-stack/WIRD-APP/pull/3 — open; branch head after audit-note updates must be re-fetched before review. CI result is not yet verified; Vercel status reports the free deployment rate limit.
+- Latest confirmed main commit before the post-merge checkpoint update: `82efeacd9118406d850336fa3c862fd5016bed14` (PR #3 squash merge). Re-fetch current main HEAD before making any changes.
+- Documentation PR #3: https://github.com/xm8eslam-stack/WIRD-APP/pull/3 — merged as `82efeacd9118406d850336fa3c862fd5016bed14`.
+- CI run `42184381262` on the PR head passed all steps, including Firestore emulator, TypeScript, production build, and server smoke test.
+- Vercel still reports the free deployment rate limit; production deployment is not confirmed.
 - Latest audited code commit: `f342b4bc7e02a48f88b90646098eea178901c8ea`.
 - CI run `42180258989`: documented successful for the audited code commit.
 - Vercel: latest observed status was rate-limited; production deployment not confirmed.
