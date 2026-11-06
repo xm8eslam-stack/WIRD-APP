@@ -5,9 +5,12 @@
 - [x] Backup import validation and rollback verification covered by regression tests.
 - [x] Session completion and revision rating ordinary-failure rollback implemented.
 - [x] Outbox acknowledged-ID content fingerprints, pending/acknowledged uniqueness and disjointness, device identity, and retry-bound regression tests.
+- [x] Portion merge preserves distinct review events, same-ID conflicts, and pre-existing conflict-audit records; status/strength merge is conservative.
+- [x] Quran coordinate, calendar date, SM-2 grade, plan-scope, and revision queue boundaries are validated; unbounded numeric ranges are rejected.
 - [x] Strict per-record validation for plans, engine plans, revision items, tests, logs, weak verses, portions, profiles, and every backup-import collection covered by the current schema.
 - [x] Reject malformed nested records before any partial import; preserve original archive bytes on failure.
-- [ ] Complete audit of every domain mutation call site, including remaining merge/dedup and statistics paths.
+- [x] Complete `unifiedPortionService.ts` migration/merge/history/conflict audit (PR #9).
+- [ ] Complete audit of every remaining domain mutation call site, including review scheduling, duplicate operations, and statistics paths.
 - [ ] Append-only local activity/revision/weak-verse/test event ledger.
 - [ ] Event + outbox transaction/journal and deterministic replay.
 - [ ] Crash/reload recovery and quota/blocked-storage tests.
@@ -54,4 +57,4 @@
 - [ ] No known data-loss or critical security issues.
 - [ ] No production data migration or rules deployment without explicit approval.
 
-**Current release status:** NOT READY — local event ledger and cloud sync are incomplete; Vercel production status for the latest observed commit is not confirmed.
+**Current release status:** NOT READY — Phase 1 data integrity is complete, but Phase 2 mutation/statistics audit, local event ledger, cloud sync, and Vercel production confirmation remain incomplete.
