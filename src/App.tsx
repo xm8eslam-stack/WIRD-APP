@@ -10,6 +10,7 @@ import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { persistJournaledSessionCompletion } from './services/sessionPersistence';
+import { resetAllDataJournaled } from './services/backupPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
 import { buildWeakVerseFailureTransaction } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
@@ -437,18 +438,20 @@ export default function App() {
     return true;
   };
 
-  // Reset all data and report whether every scoped key was durably removed.
-  const handleResetAllData = (): boolean => {
-    const resetSucceeded = StorageService.resetAllData();
+  // Reset all data as one ordered, recoverable journal transaction.
+  const handleResetAllData = async (): Promise<boolean> => {
+    const result = await resetAllDataJournaled();
+    if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.message, 'error');
+      return false;
+    }
     setProfile(StorageService.getProfile());
     setPlans(StorageService.getPlans());
     setEnginePlans(StorageService.getEnginePlans());
     setRevisionItems(StorageService.getRevisionItems());
     setLogs(StorageService.getLogsForDisplay());
-    if (!resetSucceeded) {
-      showToast('لم نتمكن من التحقق من حذف كل البيانات. لا تعتبر إعادة الضبط مكتملة؛ صدّر نسخة احتياطية وراجع التخزين قبل المتابعة.', 'error');
-    }
-    return resetSucceeded;
+    return true;
   };
 
   const todayStr = getLocalDateString();
@@ -609,6 +612,7 @@ export default function App() {
                 onUpdateProfile={setProfile}
                 onSaveProfile={handleSaveProfile}
                 onResetAllData={handleResetAllData}
+                onBackupImported={refreshJournaledSnapshots}
                 onToast={showToast}
               />
             )}
