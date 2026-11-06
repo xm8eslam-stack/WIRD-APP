@@ -95,3 +95,14 @@
 - [x] Failure-injection tests and exact-head Quality Gate runs `42235874739` / `42235863281` passed on PR head `24682b573b31240d23950ed7e92ddea69947ce24` (334 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
 - [x] Post-merge main Quality Gate run `42236088244` passed on `e355acffc376b0af355e95926e6315dbf8083951`.
 - [ ] Continue auditing remaining multi-key mutation paths, including canonical archive/schema-version/legacy projection writes.
+
+
+## Canonical portion transaction — verified in PR #28
+- [x] Capture directly readable snapshots of canonical portions, schema version, legacy portions, and legacy revision before mutation.
+- [x] Verify canonical archive write/read-back before advancing schema version.
+- [x] Verify schema-version and both legacy compatibility projection writes.
+- [x] Roll back all four keys when schema-version commit fails.
+- [x] Roll back all four keys when a legacy revision projection write applies and then throws.
+- [x] Exact-head Quality Gate runs `42236675217` / `42236639584` passed on PR head `bb5a5224671fc3d1ef83b619b01556f8c6c39c01` (336 automated assertions, 10 Firestore rules tests, TypeScript, production build, server smoke).
+- [ ] Verify post-merge main Quality Gate run `42236977371` on exact SHA `f739b64aae61398c51769340f0e4182d51624fca`.
+- [ ] Continue the remaining multi-key mutation and outbox cross-tab audit.
