@@ -42,3 +42,22 @@ Do not add a validator dependency in this documentation/audit pass. First map al
 - PR #6 uses a compact deterministic, non-cryptographic fingerprint only to detect accidental reuse of an acknowledged mutation ID with changed content. It is not an authentication or tamper-proofing mechanism.
 - The current outbox remains localStorage-backed. Its read-modify-write sequence is not an atomic cross-tab transaction; the queue is therefore not safe to activate for remote sync until an IndexedDB transaction-backed event/outbox journal and multi-tab concurrency tests are implemented.
 - Dexie and idb remain candidates for that future journal; RxDB remains an architectural reference for checkpoints, replication batches, multi-tab coordination, and conflict handling. No dependency or source code was added in PR #6.
+
+
+## Domain conflict and concurrent-merge review — 2026-11-06 (PR #9)
+
+| Project / source | URL | Inspected version / license | Reviewed for | WIRD decision |
+|---|---|---|---|---|
+| Automerge | https://github.com/automerge/automerge | Current repository; MIT | Concurrent document merge, deterministic conflict winners, access to preserved conflicting values | Architecture reference only. WIRD keeps explicit Quran-aware merge rules and audit entries; no CRDT package or code copied |
+| Automerge conflict documentation | https://automerge.org/docs/reference/documents/conflicts/ | Official docs | Multi-value conflict visibility and deterministic conflict ordering | Useful pattern for retaining conflicting source values; WIRD preserves source review events and audit metadata without adopting its document model |
+| RxDB | https://github.com/pubkey/rxdb | package metadata inspected; Apache-2.0 | Local-first replication and customizable conflict handlers | Architecture reference only. Its default master-wins behavior is not sufficient for WIRD's conservative memorization semantics; no dependency or code copied |
+| RxDB replication/conflict docs | https://rxdb.info/replication.html | Official docs | Master/fork replication, checkpointing, batching, custom conflict handler | Reference for future sync protocol and explicit conflict resolution; not adopted |
+| RxDB CRDT docs | https://rxdb.info/crdt.html | Official docs | Comparing deterministic operation merges with domain-specific conflict handlers | WIRD retains domain-specific merge logic; Quran ranges and review attempts need semantic validation rather than generic field merging |
+| Yjs | https://github.com/yjs/yjs | Current repository; MIT | CRDT shared data structures and concurrent edits | Reference only for future collaborative editing if needed; not suitable as a replacement for the current portion migration rules |
+| Yjs license/docs | https://docs.yjs.dev/license | Official docs | License and maintenance model | MIT; no source copied |
+
+### PR #9 decision record
+
+- The merge algorithm remains domain-specific and conservative: exact canonical Quran ranges are reconciled; distinct review attempts are deduplicated only by stable event ID; same-ID content conflicts are retained under deterministic alternate IDs; existing conflict-audit entries are unioned; weaker status/strength wins.
+- Generic last-write-wins and CRDT libraries were not adopted because they do not replace Quran-aware range validation, explicit status severity, or review-event identity.
+- No third-party source code, snippets, or dependencies were copied or added.
