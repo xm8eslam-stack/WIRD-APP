@@ -83,6 +83,43 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Weak-verse archives reject duplicate IDs and duplicate Surah/Ayah coordinates', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-duplicates');
+    const today = getLocalDateString();
+    const duplicateCoordinates = [
+      { id: 'weak-a', surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص', mistakeCount: 1, lastFailedDate: today },
+      { id: 'weak-b', surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص آخر', mistakeCount: 2, lastFailedDate: today }
+    ];
+    const raw = JSON.stringify(duplicateCoordinates);
+    StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, raw);
+    let rejected = false;
+    try { RetentionService.getWeakVerses(); } catch { rejected = true; }
+    assert(rejected, 'Two records for the same Quran coordinate must be rejected');
+    assert(StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === raw,
+      'Duplicate-coordinate source bytes must remain unchanged');
+    assert(!RetentionService.saveWeakVerses(duplicateCoordinates as any),
+      'saveWeakVerses must refuse duplicate coordinates');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Direct weak-verse mutation validates coordinates and is idempotent when resolving twice', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-direct-boundary');
+    let rejected = false;
+    try {
+      RetentionService.addOrIncrementWeakVerse(114, 7, 'الناس', 'نص غير صالح');
+    } catch { rejected = true; }
+    assert(rejected, 'The service boundary must reject invalid Quran coordinates even when bypassing the UI wrapper');
+    const added = RetentionService.addOrIncrementWeakVerse(114, 6, 'wrong label', 'نص اختبار');
+    assert(added[0].surahName === 'الناس', 'Stored Surah name must be canonical');
+    const resolved = RetentionService.resolveWeakVerse(added[0].id);
+    const repeatedResolve = RetentionService.resolveWeakVerse(added[0].id);
+    assert(resolved.length === 0 && repeatedResolve.length === 0,
+      'Repeated resolution must remain idempotent');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Weak-verse recording rejects out-of-range Quran coordinates before changing data', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:weak-verse-coordinate');
