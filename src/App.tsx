@@ -11,9 +11,9 @@ import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { persistSessionCompletion } from './services/sessionPersistence';
 import { getDailySessionSelection } from './services/dailySessionSelection';
-import { recordWeakVerseFailure } from './services/weakVerseRecording';
+import { buildWeakVerseFailureTransaction } from './services/weakVerseRecording';
 import { getLocalDateString } from './services/unifiedPortionService';
-import { persistEnginePlansSnapshot, persistPlansSnapshot, persistProfileSnapshot, persistTestResultSnapshot } from './services/journaledSnapshotService';
+import { persistEnginePlansSnapshot, persistJournaledTransaction, persistPlansSnapshot, persistProfileSnapshot, persistTestResultSnapshot } from './services/journaledSnapshotService';
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
@@ -394,20 +394,41 @@ export default function App() {
     }
   }, []);
 
-  // Record the weak-verse portion and its mistake counter as one recoverable operation.
-  const handleAddVerseToRevision = (
+  // Persist the weak portion and weak-verse counter as one journal event.
+  const handleAddVerseToRevision = async (
     surahNumber: number,
     surahName: string,
     ayahNumber: number,
     text: string,
-    notes: string
-  ): boolean => {
-    const result = recordWeakVerseFailure({ surahNumber, surahName, ayahNumber, text, notes });
-    setRevisionItems(StorageService.getRevisionItems());
-    if (!result.success) {
-      showToast(result.messageAr, 'error');
+    notes: string,
+    mutationId: string
+  ): Promise<boolean> => {
+    const prepared = buildWeakVerseFailureTransaction(
+      { surahNumber, surahName, ayahNumber, text, notes },
+      mutationId
+    );
+    if (!prepared.success) {
+      showToast(prepared.messageAr, 'error');
       return false;
     }
+
+    const result = await persistJournaledTransaction(prepared.operations, {}, mutationId);
+    const projectionsMatch = JSON.stringify(StorageService.getUnifiedPortions()) ===
+        JSON.stringify(prepared.operations[0].payload.records) &&
+      JSON.stringify(RetentionService.getWeakVerses()) ===
+        JSON.stringify(prepared.operations[1].payload.records);
+
+    if (!result.success && !(result.recoveredPriorEvents && projectionsMatch)) {
+      showToast(result.recoveredPriorEvents
+        ? 'استعدنا تغييرًا سابقًا وحدّثنا البيانات؛ راجع سجل الآية قبل إعادة المحاولة.'
+        : result.queued
+          ? 'حُفظت العملية في سجل الاستعادة، لكن تعذر تطبيقها محليًا. حدّث الصفحة قبل أي محاولة أخرى.'
+          : result.error || 'تعذر حفظ الآية المتعثرة؛ لم يتم تأكيد التغيير.', 'error');
+      if (result.recoveredPriorEvents) setRevisionItems(StorageService.getRevisionItems());
+      return false;
+    }
+
+    setRevisionItems(StorageService.getRevisionItems());
     showToast(`تمت إضافة الآية ${ayahNumber} من سورة ${surahName} إلى جدول المراجعة المستعجلة للتثبيت بنجاح.`, 'success');
     return true;
   };
