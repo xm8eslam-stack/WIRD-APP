@@ -19,6 +19,8 @@ import { runStorageScopeTests } from '../services/storageScope.test';
 import { runSessionCompletionTests } from './sessionCompletion.test';
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
+import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
+import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 
 export interface SuiteResult {
   passed: number;
@@ -85,6 +87,8 @@ async function main() {
     { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
+    { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
+    { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);

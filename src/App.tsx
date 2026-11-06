@@ -6,6 +6,7 @@ import { StorageService } from './services/storageService';
 import { RetentionService } from './services/retentionService';
 import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } from './types/quran';
 import { EngineGeneratedPlan } from './services/planningEngine';
+import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
 import { getSessionCompletionMetrics } from './services/sessionCompletion';
@@ -230,6 +231,36 @@ export default function App() {
     );
     if (!activitySaved) {
       showToast('تعذر حفظ سجل النشاط أو تحديث سلسلة المواظبة. لم يتم تأكيد تسجيل الجلسة؛ تحقّق من مساحة التخزين وصدّر نسخة احتياطية.', 'error');
+    }
+
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      const currentEnginePlans = StorageService.getEnginePlans();
+      const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused);
+      const matchingDay = activeEnginePlan?.schedule.find(day =>
+        day.memorizationTask &&
+        !day.memorizationTask.completed &&
+        day.memorizationTask.surahNumber === sessionParams.surahNumber &&
+        day.memorizationTask.startAyah === sessionParams.startAyah &&
+        day.memorizationTask.endAyah === sessionParams.endAyah
+      );
+      if (activeEnginePlan && matchingDay?.memorizationTask) {
+        const updatedPlan = PlanLifecycle.updateTask(activeEnginePlan, matchingDay.id, {
+          status: 'completed',
+          memorizationTask: {
+            ...matchingDay.memorizationTask,
+            completed: true,
+            completedAt: new Date().toISOString()
+          }
+        });
+        const updatedPlans = currentEnginePlans.map(plan =>
+          plan.id === activeEnginePlan.id ? updatedPlan : plan
+        );
+        if (StorageService.saveEnginePlans(updatedPlans)) {
+          setEnginePlans(updatedPlans);
+        } else {
+          showToast('تم حفظ المقطع، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
+        }
+      }
     }
 
     setLogs(StorageService.getLogs());
