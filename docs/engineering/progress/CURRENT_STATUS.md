@@ -207,5 +207,5 @@
 - Event writes allocate monotonic sequences atomically with outbox writes. Cross-tab transactions receive unique contiguous sequence numbers.
 - Durable projection cursor APIs now support bounded replay pages and contiguous-only advancement.
 - Exact-head Quality Gate on PR SHA `148e7b27873219f552edee41b819f7b08949e7a5`: 348 automated assertions, 10 Firestore rules tests, TypeScript, production build, dependency audit, and server smoke test all passed.
-- Post-merge main Quality Gate run `42241532674` is pending at checkpoint preparation.
+- Post-merge main Quality Gate run `42241532674` passed on exact main SHA `bfff3969d510c49da6d0224a375b87ca2959c651`.
 - Next: implement replay into localStorage before app state initialization, then connect actual domain mutation paths. Firestore sync remains inactive.
