@@ -106,6 +106,26 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Domain event payload validation rejects malformed semantic fields before enqueue', async () => {
+      const journal = createJournal();
+      const mutationId = 'invalid-domain-event-payload';
+      const domainEvent: WirdDomainEvent = {
+        schemaVersion: 1,
+        id: mutationId,
+        type: 'session.completed',
+        occurredAt: new Date().toISOString(),
+        payload: { mode: 'review', memorizedAyahs: -1, reviewedPages: 1, minutes: 2, taskName: 'اختبار', includesSmartPlanProjection: false }
+      };
+      const result = await persistJournaledTransaction([
+        { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: { ...CLEAN_INITIAL_PROFILE } } }
+      ], { journal, runExclusive: inlineLock }, mutationId, domainEvent);
+      const snapshot = await journal.getSnapshot();
+      assert(!result.success, 'Negative activity counters must fail semantic validation');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+        'Malformed domain event payloads must never enter the durable journal');
+      journal.close();
+    });
+
     await test('Authenticated profile writes commit to the journal before local projection', async () => {
       const journal = createJournal();
       const profile = { ...CLEAN_INITIAL_PROFILE, name: 'حافظ القرآن' };
