@@ -80,6 +80,7 @@ interface DeviceMetadata {
   deviceId: string;
   schemaVersion: 1;
   legacyOutboxMigrated?: boolean;
+  legacyOutboxFingerprint?: string;
 }
 
 export interface LegacyOutboxMutation {
@@ -316,6 +317,10 @@ export class IndexedDbSyncJournal {
       }
     }
 
+    const legacyOutboxFingerprint = fingerprintMutation(
+      'syncMeta', 'legacy-outbox-v1', 'upsert',
+      JSON.parse(JSON.stringify(state)) as Record<string, unknown>
+    );
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
@@ -341,7 +346,8 @@ export class IndexedDbSyncJournal {
       const finishRead = () => {
         readsRemaining--;
         if (readsRemaining !== 0 || failure || result) return;
-        if (currentMetadata?.legacyOutboxMigrated) {
+        if (currentMetadata?.legacyOutboxMigrated &&
+            currentMetadata.legacyOutboxFingerprint === legacyOutboxFingerprint) {
           result = 'already_migrated';
           return;
         }
@@ -437,7 +443,8 @@ export class IndexedDbSyncJournal {
           uid,
           deviceId: currentMetadata?.deviceId || state.deviceId,
           schemaVersion: 1,
-          legacyOutboxMigrated: true
+          legacyOutboxMigrated: true,
+          legacyOutboxFingerprint
         } satisfies DeviceMetadata);
         result = 'migrated';
       };
