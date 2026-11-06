@@ -51,6 +51,37 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
+  test('Repeated memorization completion appends a unique history event without upgrading weak status', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:repeat-memorization-history');
+    try {
+      const today = getLocalDateString();
+      const existing = RetentionService.addPortion({
+        type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
+        status: 'weak', strength: 'weak', nextDueDate: today, intervalDays: 1, easeFactor: 1.8,
+        repetitionCount: 3, mistakesCount: 2
+      });
+      const firstLog = {
+        id: 'existing-memorization-event', date: today, rating: 'successful' as const,
+        intervalDaysBefore: 0, intervalDaysAfter: 1
+      };
+      RetentionService.savePortions([{ ...existing, history: [firstLog] }]);
+      const result = persistSessionCompletion({
+        mode: 'memorize', memorizedAyahs: 5, reviewedPages: 0, minutes: 5,
+        taskName: 'إعادة حفظ', surahNumber: 67, startAyah: 1, endAyah: 5
+      });
+      assert(result.success, 'Repeat memorization should save');
+      const updated = RetentionService.getPortions().find(item => item.id === existing.id)!;
+      assert(updated.status === 'weak' && updated.strength === 'weak',
+        'A memorization session must not silently upgrade an unresolved weak portion');
+      assert(updated.history?.length === 2 && updated.history[0].id !== updated.history[1].id,
+        'Every successful repeat memorization must append a unique history event');
+      assert(updated.repetitionCount === 4, 'Repeat memorization count must increment exactly once');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Successful review session never mutates memorization portions', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:review-only');
