@@ -24,7 +24,7 @@ interface MemorizationSessionViewProps {
   initialEndAyah?: number;
   mode?: 'memorize' | 'review';
   profile: UserProfile;
-  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => void;
+  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => boolean;
   onExit: () => void;
   onProgressChange?: (inProgress: boolean) => void;
 }
@@ -86,6 +86,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const completionInProgressRef = useRef(false);
 
   // 2. Progressive word masking: 0 = none, 1 = 30%, 2 = 60%, 3 = 100% (hidden)
   const [maskLevel, setMaskLevel] = useState<number>(0);
@@ -190,15 +191,23 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     if (currentAyahIndex < sessionAyahs.length - 1) {
       setCurrentAyahIndex(prev => prev + 1);
     } else {
-      setIsCompleted(true);
+      if (completionInProgressRef.current) return;
+      completionInProgressRef.current = true;
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
-      onCompleteSession(
-        mode === 'memorize' ? sessionAyahs.length : 0,
-        mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
-        minutesSpent,
-        `${mode === 'review' ? 'مراجعة' : 'إتمام حفظ'} سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`,
-        mode
-      );
+      try {
+        const saved = onCompleteSession(
+          mode === 'memorize' ? sessionAyahs.length : 0,
+          mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
+          minutesSpent,
+          `${mode === 'review' ? 'مراجعة' : 'إتمام حفظ'} سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`,
+          mode
+        );
+        if (!saved) { completionInProgressRef.current = false; return; }
+        setIsCompleted(true);
+      } catch (error) {
+        completionInProgressRef.current = false;
+        console.error('[WIRD Session] Completion persistence failed:', error);
+      }
     }
   };
 
@@ -317,6 +326,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         <div className="flex items-center justify-center gap-3 pt-2">
           <button
             onClick={() => {
+              completionInProgressRef.current = false;
               setIsCompleted(false);
               setCurrentAyahIndex(0);
               setSecondsElapsed(0);

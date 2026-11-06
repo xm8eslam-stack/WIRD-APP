@@ -9,7 +9,7 @@ import { EngineGeneratedPlan } from './services/planningEngine';
 import { PlanLifecycle } from './services/planLifecycle';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
-import { getSessionCompletionMetrics } from './services/sessionCompletion';
+import { persistSessionCompletion } from './services/sessionPersistence';
 import { getLocalDateString } from './services/unifiedPortionService';
 
 // Lazy loaded views for optimal chunking and initial load performance
@@ -200,75 +200,51 @@ export default function App() {
     });
   };
 
-  // Review sessions must never be recorded as new memorization progress.
+  // A session is complete only after canonical progress and activity both persist.
   const handleCompleteSession = (
     memorizedAyahs: number,
     reviewedPages: number,
     minutes: number,
     taskName: string,
     mode: 'memorize' | 'review' = sessionParams.mode
-  ) => {
-    const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
-
-    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
-      try {
-        RetentionService.recordMemorizationCompletion(
-          sessionParams.surahNumber,
-          sessionParams.startAyah,
-          sessionParams.endAyah
-        );
-      } catch (error) {
-        showToast(error instanceof Error ? error.message : 'تعذر حفظ إنجاز جلسة الحفظ؛ لم يتم تسجيله كإنجاز مؤكد.', 'error');
-        return;
-      }
+  ): boolean => {
+    const result = persistSessionCompletion({
+      mode, memorizedAyahs, reviewedPages, minutes, taskName,
+      surahNumber: sessionParams.surahNumber,
+      startAyah: sessionParams.startAyah,
+      endAyah: sessionParams.endAyah
+    });
+    if (!result.success) {
+      showToast(result.messageAr, 'error');
+      setRevisionItems(StorageService.getRevisionItems());
+      return false;
     }
 
-    const activitySaved = StorageService.recordSessionCompletion(
-      completion.memorizedAyahs,
-      completion.reviewedPages,
-      minutes,
-      taskName
-    );
-    if (!activitySaved) {
-      showToast('تعذر حفظ سجل النشاط أو تحديث سلسلة المواظبة. لم يتم تأكيد تسجيل الجلسة؛ تحقّق من مساحة التخزين وصدّر نسخة احتياطية.', 'error');
-    }
-
-    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+    if (result.shouldRecordMemorization && sessionParams.surahNumber) {
       const currentEnginePlans = StorageService.getEnginePlans();
       const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused);
       const matchingDay = activeEnginePlan?.schedule.find(day =>
-        day.memorizationTask &&
-        !day.memorizationTask.completed &&
+        day.memorizationTask && !day.memorizationTask.completed &&
         day.memorizationTask.surahNumber === sessionParams.surahNumber &&
         day.memorizationTask.startAyah === sessionParams.startAyah &&
         day.memorizationTask.endAyah === sessionParams.endAyah
       );
       if (activeEnginePlan && matchingDay?.memorizationTask) {
         const updatedPlan = PlanLifecycle.updateTask(activeEnginePlan, matchingDay.id, {
-          status: (
-            (matchingDay.minorRevisionTask && !matchingDay.minorRevisionTask.completed) ||
-            (matchingDay.majorRevisionTask && !matchingDay.majorRevisionTask.completed)
-          ) ? 'partially_completed' : 'completed',
-          memorizationTask: {
-            ...matchingDay.memorizationTask,
-            completed: true,
-            completedAt: new Date().toISOString()
-          }
+          status: ((matchingDay.minorRevisionTask && !matchingDay.minorRevisionTask.completed) ||
+            (matchingDay.majorRevisionTask && !matchingDay.majorRevisionTask.completed))
+            ? 'partially_completed' : 'completed',
+          memorizationTask: { ...matchingDay.memorizationTask, completed: true, completedAt: new Date().toISOString() }
         });
-        const updatedPlans = currentEnginePlans.map(plan =>
-          plan.id === activeEnginePlan.id ? updatedPlan : plan
-        );
-        if (StorageService.saveEnginePlans(updatedPlans)) {
-          setEnginePlans(updatedPlans);
-        } else {
-          showToast('تم حفظ المقطع، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
-        }
+        const updatedPlans = currentEnginePlans.map(plan => plan.id === activeEnginePlan.id ? updatedPlan : plan);
+        if (StorageService.saveEnginePlans(updatedPlans)) setEnginePlans(updatedPlans);
+        else showToast('تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
       }
     }
-
     setLogs(StorageService.getLogs());
     setProfile(StorageService.getProfile());
     setRevisionItems(StorageService.getRevisionItems());
+    return true;
   };
 
   // Save revision rating or new items

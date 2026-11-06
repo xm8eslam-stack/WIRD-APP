@@ -17,6 +17,7 @@ import { runTafsirProxyTests } from './tafsirProxy.test';
 import { runPageProgressServiceTests } from '../services/pageProgressService.test';
 import { runStorageScopeTests } from '../services/storageScope.test';
 import { runSessionCompletionTests } from './sessionCompletion.test';
+import { runSessionPersistenceTests } from '../services/sessionPersistence.test';
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runLocalSyncOutboxTests } from '../services/localSyncOutbox.test';
 import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
@@ -86,6 +87,7 @@ async function main() {
     { name: 'Truthful 604-Page Progress Mapping', runner: runPageProgressServiceTests },
     { name: 'UID-Scoped Local Storage & Legacy Data Ownership', runner: runStorageScopeTests },
     { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
+    { name: 'Atomic User-Visible Session Persistence and Rollback', runner: runSessionPersistenceTests },
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'UID-Scoped Durable Local Sync Outbox', runner: runLocalSyncOutboxTests },
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
