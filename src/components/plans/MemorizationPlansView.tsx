@@ -53,7 +53,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     if (updated.length > 0 && !updated.some(p => p.isActive)) {
       updated[0].isActive = true;
     }
-    if (!onUpdatePlans(updated)) return;
+    if (!await onUpdatePlans(updated)) return;
     setPlanToDelete(null);
     if (onToast) {
       onToast("تم حذف الخطة من قائمتك بنجاح", "info");
