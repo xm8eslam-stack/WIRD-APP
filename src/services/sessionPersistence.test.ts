@@ -51,7 +51,7 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
-  test('Repeated memorization completion appends a unique history event without upgrading weak status', () => {
+  test('Repeated memorization completion preserves review history and does not upgrade weak status', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:repeat-memorization-history');
     try {
@@ -74,8 +74,10 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
       const updated = RetentionService.getPortions().find(item => item.id === existing.id)!;
       assert(updated.status === 'weak' && updated.strength === 'weak',
         'A memorization session must not silently upgrade an unresolved weak portion');
-      assert(updated.history?.length === 2 && updated.history[0].id !== updated.history[1].id,
-        'Every successful repeat memorization must append a unique history event');
+      assert(updated.history?.length === 1 && updated.history[0].id === firstLog.id,
+        'Memorization sessions must not be misclassified as review-history events');
+      assert(RetentionService.getRetentionDashboardMetrics().totalReviewsCompleted === 1,
+        'Memorization sessions must not inflate completed-review statistics');
       assert(updated.repetitionCount === 4, 'Repeat memorization count must increment exactly once');
     } finally {
       StorageService.__resetStorageForTests();
