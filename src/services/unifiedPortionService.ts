@@ -555,6 +555,63 @@ function assertValidQuranRange(surahNumber: number, startAyah: number, endAyah: 
   }
 }
 
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isValidRevisionHistoryEntry(value: unknown): value is RevisionLogEntry {
+  return isPlainObject(value) && typeof value.id === 'string' && value.id.trim().length > 0 &&
+    value.id.length <= 160 && isValidLocalDateString(value.date) &&
+    ['successful', 'difficult', 'failed'].includes(value.rating) &&
+    Number.isSafeInteger(value.intervalDaysBefore) && value.intervalDaysBefore >= 0 && value.intervalDaysBefore <= 100000 &&
+    Number.isSafeInteger(value.intervalDaysAfter) && value.intervalDaysAfter >= 0 && value.intervalDaysAfter <= 100000 &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
+function assertValidLegacyPortionInput(value: unknown, index: number): asserts value is PortionStatusRecord {
+  if (!isPlainObject(value)) throw new TypeError('Malformed legacy portion at index ' + index + '.');
+  assertValidQuranRange(value.surahNumber, value.startAyah, value.endAyah);
+  if ((value.id !== undefined && (typeof value.id !== 'string' || value.id.length > 180)) ||
+      (value.type !== undefined && !['passage', 'surah', 'page'].includes(value.type)) ||
+      (value.surahName !== undefined && (typeof value.surahName !== 'string' || value.surahName.length > 100)) ||
+      (value.status !== undefined && !VALID_PORTION_STATUSES.includes(value.status)) ||
+      (value.lastReviewedDate !== undefined && value.lastReviewedDate !== '' && !isValidLocalDateString(value.lastReviewedDate)) ||
+      (value.nextDueDate !== undefined && value.nextDueDate !== '' && !isValidLocalDateString(value.nextDueDate)) ||
+      (value.pageNumber !== undefined && (!Number.isSafeInteger(value.pageNumber) || value.pageNumber < 1 || value.pageNumber > 604)) ||
+      (value.pageStart !== undefined && (!Number.isSafeInteger(value.pageStart) || value.pageStart < 1 || value.pageStart > 604)) ||
+      (value.pageEnd !== undefined && (!Number.isSafeInteger(value.pageEnd) || value.pageEnd < 1 || value.pageEnd > 604)) ||
+      (value.juzNumber !== undefined && (!Number.isSafeInteger(value.juzNumber) || value.juzNumber < 1 || value.juzNumber > 30)) ||
+      (value.intervalDays !== undefined && (!Number.isSafeInteger(value.intervalDays) || value.intervalDays < 0 || value.intervalDays > 100000)) ||
+      (value.easeFactor !== undefined && (typeof value.easeFactor !== 'number' || !Number.isFinite(value.easeFactor) || value.easeFactor < 0.1 || value.easeFactor > 3)) ||
+      (value.repetitionCount !== undefined && (!Number.isSafeInteger(value.repetitionCount) || value.repetitionCount < 0 || value.repetitionCount > 100000)) ||
+      (value.mistakesCount !== undefined && (!Number.isSafeInteger(value.mistakesCount) || value.mistakesCount < 0 || value.mistakesCount > 100000)) ||
+      (value.history !== undefined && (!Array.isArray(value.history) || value.history.length > MAX_MIGRATED_HISTORY_ENTRIES || !value.history.every(isValidRevisionHistoryEntry))) ||
+      (value.conflictAudit !== undefined && (!Array.isArray(value.conflictAudit) || value.conflictAudit.length > MAX_CONFLICT_AUDIT_ENTRIES ||
+        !value.conflictAudit.every((item: unknown) => isPlainObject(item) &&
+          typeof item.source === 'string' && item.source.length <= 160 &&
+          typeof item.field === 'string' && item.field.length <= 160)))) {
+    throw new TypeError('Legacy portion record is invalid at index ' + index + '; source archive must be preserved.');
+  }
+}
+
+function assertValidLegacyRevisionInput(value: unknown, index: number): asserts value is RevisionItem {
+  if (!isPlainObject(value)) throw new TypeError('Malformed legacy revision item at index ' + index + '.');
+  assertValidQuranRange(value.surahNumber, value.startAyah, value.endAyah);
+  if ((value.id !== undefined && (typeof value.id !== 'string' || !value.id.trim() || value.id.length > 160)) ||
+      (value.surahName !== undefined && (typeof value.surahName !== 'string' || value.surahName.length > 100)) ||
+      (value.type !== undefined && !['minor', 'major'].includes(value.type)) ||
+      (value.lastReviewedDate !== undefined && value.lastReviewedDate !== '' && !isValidLocalDateString(value.lastReviewedDate)) ||
+      (value.nextDueDate !== undefined && value.nextDueDate !== '' && !isValidLocalDateString(value.nextDueDate)) ||
+      (value.pageNumber !== undefined && (!Number.isSafeInteger(value.pageNumber) || value.pageNumber < 1 || value.pageNumber > 604)) ||
+      (value.juzNumber !== undefined && (!Number.isSafeInteger(value.juzNumber) || value.juzNumber < 1 || value.juzNumber > 30)) ||
+      (value.intervalDays !== undefined && (!Number.isSafeInteger(value.intervalDays) || value.intervalDays < 0 || value.intervalDays > 100000)) ||
+      (value.easeFactor !== undefined && (typeof value.easeFactor !== 'number' || !Number.isFinite(value.easeFactor) || value.easeFactor < 0 || value.easeFactor > 3)) ||
+      (value.repetitionCount !== undefined && (!Number.isSafeInteger(value.repetitionCount) || value.repetitionCount < 0 || value.repetitionCount > 100000)) ||
+      (value.strength !== undefined && !['strong', 'medium', 'weak'].includes(value.strength))) {
+    throw new TypeError('Legacy revision record is invalid at index ' + index + '; source archive must be preserved.');
+  }
+}
+
 function addConflictAudit(
   existing: WirdPortion,
   source: string,
@@ -725,8 +782,7 @@ export function migrateLegacyDataLosslessly(
 
     // 1. Deterministic Ingestion of legacyPortions (handles internal duplicates)
     legacyPortions.forEach((p, idx) => {
-      if (!p || typeof p !== 'object') throw new Error('Malformed legacy portion at index ' + idx + '.');
-      assertValidQuranRange(p.surahNumber, p.startAyah, p.endAyah);
+      assertValidLegacyPortionInput(p, idx);
       const canonicalId = createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
 
       const coordKey = `${p.surahNumber}:${p.startAyah}:${p.endAyah}`;
@@ -775,8 +831,7 @@ export function migrateLegacyDataLosslessly(
 
     // 2. Deterministic Ingestion of legacyRevisionItems
     legacyRevisionItems.forEach((rev, idx) => {
-      if (!rev || typeof rev !== 'object') throw new Error('Malformed legacy revision item at index ' + idx + '.');
-      assertValidQuranRange(rev.surahNumber, rev.startAyah, rev.endAyah);
+      assertValidLegacyRevisionInput(rev, idx);
       const canonicalId = createCanonicalPortionId(rev.surahNumber, rev.startAyah, rev.endAyah);
       const coordKey = `${rev.surahNumber}:${rev.startAyah}:${rev.endAyah}`;
       sourceCoordinateKeys.add(coordKey);
