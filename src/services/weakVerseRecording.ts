@@ -28,7 +28,8 @@ export type BuildWeakVerseFailureTransactionResult =
  */
 export function buildWeakVerseFailureTransaction(
   input: RecordWeakVerseFailureInput,
-  mutationId: string
+  mutationId: string,
+  basePortions?: PortionStatusRecord[]
 ): BuildWeakVerseFailureTransactionResult {
   const surah = Number.isSafeInteger(input?.surahNumber)
     ? ALL_SURAHS.find(item => item.number === input.surahNumber)
@@ -75,7 +76,8 @@ export function buildWeakVerseFailureTransaction(
         return { success: false, messageAr: 'تعذر التحقق من سجل المقاطع الحالي؛ لم يتم إنشاء عملية استعادة جديدة.' };
       }
     }
-    const existingExactPortion = previousPortions.find(portion =>
+    const portionBase = basePortions ?? previousPortions;
+    const existingExactPortion = portionBase.find(portion =>
       portion.surahNumber === input.surahNumber &&
       portion.startAyah === input.ayahNumber &&
       portion.endAyah === input.ayahNumber
@@ -95,7 +97,7 @@ export function buildWeakVerseFailureTransaction(
       repetitionCount: (existingExactPortion?.repetitionCount ?? 0) + 1,
       mistakesCount: (existingExactPortion?.mistakesCount ?? 0) + 1,
       strength: 'weak'
-    } as Omit<PortionStatusRecord, 'id' | 'history'>);
+    } as Omit<PortionStatusRecord, 'id' | 'history'>, portionBase);
 
     const weakVerses = RetentionService.getWeakVerses().map(item => ({ ...item }));
     const existingIndex = weakVerses.findIndex(item =>

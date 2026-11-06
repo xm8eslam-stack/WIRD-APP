@@ -1503,6 +1503,88 @@ export const StorageService = {
     }
   },
 
+  /**
+   * Prepare the activity-log and profile projections for a session/revision
+   * without writing. Journal-first callers commit both snapshots together.
+   */
+  buildSessionCompletionSnapshot(
+    memorizedAyahs: number,
+    reviewedPages: number,
+    minutes: number,
+    taskName: string
+  ):
+    | { success: true; logs: DailyLog[]; profile: UserProfile }
+    | { success: false; error: string } {
+    if (!Number.isSafeInteger(memorizedAyahs) || memorizedAyahs < 0 || memorizedAyahs > 6236 ||
+        !Number.isSafeInteger(reviewedPages) || reviewedPages < 0 || reviewedPages > 604 ||
+        !Number.isSafeInteger(minutes) || minutes < 0 || minutes > 1440 ||
+        typeof taskName !== 'string' || !taskName.trim() || taskName.length > 200) {
+      return { success: false, error: 'بيانات جلسة الحفظ أو المراجعة غير صالحة؛ لم يتم إعداد أي تغيير.' };
+    }
+
+    const logsRaw = getItem(STORAGE_KEYS.LOGS);
+    const profileRaw = getItem(STORAGE_KEYS.PROFILE);
+    if (!verifyItem(STORAGE_KEYS.LOGS, logsRaw) || !verifyItem(STORAGE_KEYS.PROFILE, profileRaw)) {
+      return { success: false, error: 'تعذر التحقق من القراءة الدائمة لسجل النشاط والملف الشخصي؛ لم يتم إعداد التغيير.' };
+    }
+
+    let logs: DailyLog[];
+    let profile: UserProfile;
+    try {
+      logs = this.getLogs().map(log => ({ ...log, completedTasks: [...log.completedTasks] }));
+      if (profileRaw === null) {
+        profile = { ...CLEAN_INITIAL_PROFILE };
+      } else {
+        const parsed: unknown = JSON.parse(profileRaw);
+        if (!isValidUserProfile(parsed)) throw new Error('بنية الملف الشخصي غير صالحة.');
+        profile = { ...parsed };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'تعذر قراءة سجل النشاط أو الملف الشخصي؛ تم الحفاظ على البيانات الأصلية.'
+      };
+    }
+
+    const today = getLocalDateString();
+    const existingIndex = logs.findIndex(log => log.date === today);
+    if (existingIndex >= 0) {
+      logs[existingIndex] = {
+        ...logs[existingIndex],
+        memorizedAyahsCount: logs[existingIndex].memorizedAyahsCount + memorizedAyahs,
+        reviewedPagesCount: logs[existingIndex].reviewedPagesCount + reviewedPages,
+        minutesSpent: logs[existingIndex].minutesSpent + minutes,
+        completedTasks: logs[existingIndex].completedTasks.includes(taskName)
+          ? [...logs[existingIndex].completedTasks]
+          : [...logs[existingIndex].completedTasks, taskName]
+      };
+    } else {
+      logs.push({
+        date: today,
+        memorizedAyahsCount: memorizedAyahs,
+        reviewedPagesCount: reviewedPages,
+        minutesSpent: minutes,
+        completedTasks: [taskName]
+      });
+    }
+
+    if (!isValidDailyLogArray(logs)) {
+      return { success: false, error: 'نتيجة تجميع النشاط اليومي تجاوزت الحدود أو تحتوي على بيانات غير صالحة؛ لم يتم تعديل السجل.' };
+    }
+
+    const { newStreak, newDate } = advanceStreakOnCompletion(profile.lastActiveDate, profile.streakDays, today);
+    const updatedProfile: UserProfile = {
+      ...profile,
+      streakDays: newStreak,
+      lastActiveDate: newDate
+    };
+    if (!isValidUserProfile(updatedProfile)) {
+      return { success: false, error: 'نتيجة تحديث سلسلة النشاط غير صالحة؛ لم يتم تعديل الملف الشخصي.' };
+    }
+
+    return { success: true, logs, profile: updatedProfile };
+  },
+
   // Detailed result lets callers report when a multi-key rollback could not be verified.
   recordSessionCompletionDetailed(
     memorizedAyahs: number,

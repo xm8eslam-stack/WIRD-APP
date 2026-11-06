@@ -29,6 +29,7 @@ import {
   UserProfile 
 } from '../../types/quran';
 import { RetentionService, RetentionMetrics } from '../../services/retentionService';
+import { StorageService, STORAGE_KEYS } from '../../services/storageService';
 import { persistJournaledSnapshot, persistJournaledTransaction, persistPortionsSnapshot } from '../../services/journaledSnapshotService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
@@ -72,6 +73,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const [weakAyahNum, setWeakAyahNum] = useState<number | ''>('');
   const [isSavingRating, setIsSavingRating] = useState(false);
   const ratingInFlightRef = useRef(false);
+  const ratingMutationKeyRef = useRef<string | null>(null);
+  const ratingMutationIdRef = useRef<string | null>(null);
   const weakVerseMutationIdRef = useRef<string | null>(null);
   const weakVerseMutationKeyRef = useRef<string | null>(null);
   const weakVerseInFlightRef = useRef(false);
@@ -119,7 +122,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const weeklyOverview = RetentionService.getWeeklyRevisionOverview(todayStr);
   const revisionHistory = RetentionService.getRevisionHistory();
 
-  // Handle rating a portion. The ref blocks rapid double clicks before React re-renders.
+  // Journal the canonical portion, activity, profile, and optional weak-verse update as one action.
   const handleRatePortion = async (
     rating: RevisionRating,
     portionOverride?: PortionStatusRecord
@@ -127,34 +130,107 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
     const selectedPortion = portionOverride || ratingPortion;
     if (!selectedPortion || ratingInFlightRef.current) return;
 
+    const mutationKey = [
+      selectedPortion.id,
+      rating,
+      reviewNotes,
+      rating === 'failed' ? weakAyahNum : ''
+    ].join('|');
+    if (ratingMutationKeyRef.current !== mutationKey) {
+      ratingMutationKeyRef.current = mutationKey;
+      ratingMutationIdRef.current = 'revision-' + createSecureId();
+    }
+    const mutationId = ratingMutationIdRef.current || 'revision-' + createSecureId();
+    ratingMutationIdRef.current = mutationId;
+
     ratingInFlightRef.current = true;
     setIsSavingRating(true);
     try {
-      let weakDetails = undefined;
+      let weakDetails: { ayahNumber: number; text: string; notes: string } | undefined;
       if (rating === 'failed' && weakAyahNum) {
-        const foundAyah = await loadAyahByCoordinate(selectedPortion.surahNumber, Number(weakAyahNum)).catch(() => undefined);
+        const ayahNumber = Number(weakAyahNum);
+        if (!Number.isSafeInteger(ayahNumber) ||
+            ayahNumber < selectedPortion.startAyah || ayahNumber > selectedPortion.endAyah) {
+          throw new Error('الآية المتعثرة يجب أن تقع داخل نطاق المقطع الذي تتم مراجعته.');
+        }
+        const foundAyah = await loadAyahByCoordinate(selectedPortion.surahNumber, ayahNumber).catch(() => undefined);
         if (!foundAyah?.text) {
           throw new Error('تعذر تحميل نص الآية من مصدر القرآن؛ لم يتم تسجيل نص بديل أو تعديل تقييم المراجعة.');
         }
         weakDetails = {
-          ayahNumber: Number(weakAyahNum),
+          ayahNumber,
           text: foundAyah.text,
           notes: reviewNotes || 'خطأ متكرر أثناء المراجعة'
         };
       }
 
-      const result = RetentionService.recordRevisionPerformance(
+      const prepared = RetentionService.buildRevisionPerformanceSnapshot(
         selectedPortion.id,
         rating,
         reviewNotes,
-        weakDetails
+        0,
+        mutationId
       );
+      if (!prepared.success) throw new Error(prepared.messageAr);
 
+      let operations = prepared.operations;
+      if (weakDetails) {
+        const weakPrepared = buildWeakVerseFailureTransaction({
+          surahNumber: selectedPortion.surahNumber,
+          surahName: selectedPortion.surahName,
+          ayahNumber: weakDetails.ayahNumber,
+          text: weakDetails.text,
+          notes: weakDetails.notes
+        }, mutationId, prepared.operations[0].payload.records as PortionStatusRecord[]);
+        if (!weakPrepared.success) throw new Error(weakPrepared.messageAr);
+
+        const isSameSingleVerse =
+          selectedPortion.startAyah === weakDetails.ayahNumber &&
+          selectedPortion.endAyah === weakDetails.ayahNumber;
+        operations = [
+          isSameSingleVerse ? prepared.operations[0] : weakPrepared.operations[0],
+          weakPrepared.operations[1],
+          ...prepared.operations.slice(1)
+        ];
+      }
+
+      const result = await persistJournaledTransaction(operations, {}, mutationId);
+      const expectedPortions = operations.find(operation => operation.collection === 'portions')?.payload.records;
+      const expectedWeakVerses = operations.find(operation => operation.collection === 'weakVerses')?.payload.records;
+      const expectedActivity = operations.find(operation => operation.collection === 'activityEvents')?.payload.records;
+      const expectedProfile = operations.find(operation => operation.collection === 'profile')?.payload.profile;
+      let projectionsMatch = false;
+      try {
+        projectionsMatch = Boolean(
+          expectedPortions && StorageService.verifyRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, (JSON.stringify(expectedPortions) ?? '')) &&
+          expectedActivity && StorageService.verifyRawItem(STORAGE_KEYS.LOGS, (JSON.stringify(expectedActivity) ?? '')) &&
+          expectedProfile && StorageService.verifyRawItem(STORAGE_KEYS.PROFILE, (JSON.stringify(expectedProfile) ?? '')) &&
+          (expectedWeakVerses === undefined ||
+            StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, (JSON.stringify(expectedWeakVerses) ?? '')))
+        );
+      } catch {
+        projectionsMatch = false;
+      }
+
+      if (!result.success && !(result.recoveredPriorEvents && projectionsMatch)) {
+        if (result.recoveredPriorEvents) refreshAll();
+        setActionFeedback({
+          message: result.recoveredPriorEvents
+            ? 'استعدنا عمليات سابقة وحدّثنا بيانات المراجعة؛ تحقق من حالة المقطع قبل إعادة المحاولة.'
+            : result.queued
+              ? 'حُفظ تقييم المراجعة في سجل الاستعادة، لكن تعذر تطبيقه محلياً. حدّث الصفحة قبل أي محاولة أخرى.'
+              : result.error || 'تعذر حفظ تقييم المراجعة؛ لم يتم تأكيد التغيير.',
+          type: 'warn'
+        });
+        return;
+      }
+
+      ratingMutationKeyRef.current = null;
+      ratingMutationIdRef.current = null;
       setActionFeedback({
-        message: result.messageAr,
-        type: !result.activitySaved ? 'warn' : rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
+        message: prepared.messageAr,
+        type: rating === 'successful' ? 'success' : rating === 'difficult' ? 'info' : 'warn'
       });
-
       setRatingPortion(null);
       setReviewNotes('');
       setWeakAyahNum('');
