@@ -18,8 +18,13 @@
 - [x] Verify Phase 2 tests for duplicate portion adds, weak-verse archive uniqueness, idempotent resolution, review-history classification, and rapid UI double submission in CI (PR #10, Actions #681).
 - [x] Deterministic journal projection replay before authenticated app initialization, with UID scoping, ordered cursor advancement, and safe legacy-event handling (PR #36).
 - [x] Journal-first authenticated profile settings/theme, preset plans, and engine-plan snapshots; serialize enqueue+replay under one per-UID lock and block stale snapshots after recovery (PR #37).
-- [ ] Journal-first canonical portion/revision mutations and grouped atomic semantics for session completion, weak-verse recording, and activity/profile updates.
-- [ ] Journal-first test results, backup import/reset, and every remaining production mutation call site.
+- [x] Grouped local projection transaction commits multiple archive operations under one IndexedDB event+outbox pair, with affected-key rollback verification (PR #43).
+- [x] Journal-first weak-verse failure recording groups the canonical weak portion and weak-verse counter; durable preflight reads and stable retry identity are covered (PR #44).
+- [x] Journal-first weak-verse resolution is idempotent and leaves canonical portion rating/schedule unchanged (PR #45).
+- [ ] Journal-first revision ratings, including grouped portion + optional weak-verse + activity/profile snapshots.
+- [ ] Journal-first memorization/session completion and remaining activity/profile mutations.
+- [x] Journal-first test-result snapshots with stable result IDs and conflicting-ID rejection (PR #42).
+- [ ] Journal backup import/reset and every remaining production mutation call site.
 - [ ] Independently review all Phase 2 mutation paths and confirm rollback/aggregate semantics before merging to main.
 - [ ] Append-only immutable activity/revision/weak-verse/test event semantics with derived local aggregates.
 - [x] Atomic append-only IndexedDB event + outbox transaction and deterministic UID-scoped local projection replay before authenticated app startup (PR #30 and PR #36).
@@ -27,12 +32,13 @@
 - [x] Cross-tab atomic event+outbox writes in IndexedDB; legacy localStorage outbox data is retained as a migration/recovery source, not as the cloud-write path.
 - [x] Idempotent, non-destructive legacy outbox migration with source retention and conflict rejection (PR #31).
 
-## Latest verified main checkpoint — PR #37
-- Current main SHA: `60d475d1f4f06ea4a852751e1548297d9c7dc6de`.
-- PR #36 exact-head runs `42242635765` (PR) and the corresponding push run passed; post-merge main run `42249998978` passed on SHA `9b76227b9498b23fa79fb39264d4b4be98fa16e4`.
-- PR #37 exact-head runs `42251723375` and `42251711748` passed on SHA `d45dd9e7284101e332f15b2f408cd62001a961be`.
-- Post-merge main run `42251976734` passed on exact SHA `60d475d1f4f06ea4a852751e1548297d9c7dc6de`. Vercel Production deployment is not confirmed.
-- Phase 2 remains IN PROGRESS; PR #37 does not implement full cloud sync.
+## Latest verified main checkpoint — PR #45
+- Current main SHA: `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`.
+- PR #43 exact-head runs `42258043045` and `42258032606` passed; post-merge main run `42258433095` passed on `dc258764723b4d88635175c912d159e6adaacf4b`.
+- PR #44 exact-head runs `42260702702` and `42260691784` passed; post-merge main run `42261020224` passed on `0a24862e255946ea487e120cd6d82f5a3c81eb20`.
+- PR #45 exact-head runs `42261861919` and `42261851120` passed on `e2a28de43cc4f31176883af8022a34cb2e1ec773`.
+- Post-merge main run `42262136009` **passed** on the current main SHA.
+- Vercel Production deployment is not confirmed. Phase 2 remains IN PROGRESS; PR #45 does not implement full cloud sync or release readiness.
 
 ## Cloud sync
 - [ ] Firestore client adapter.
