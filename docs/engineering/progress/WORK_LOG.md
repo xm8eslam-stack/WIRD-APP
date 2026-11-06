@@ -1,0 +1,63 @@
+# WIRD — Engineering Work Log
+
+## 2026-11-06 — Repository resumption and engineering checkpoint
+
+### Repository state verified
+- Repository: `xm8eslam-stack/WIRD-APP`.
+- Canonical branch: `main`.
+- Latest observed main commit: `d9737e0e16ea1f87b9811621dce42d8f6d4e8450` (documentation checkpoint).
+- Latest code commit referenced by the audit: `f342b4bc7e02a48f88b90646098eea178901c8ea`.
+- PR #1 was previously merged; do not repeat.
+- Branch inventory: main, phase4 feature branch, divergent phase5 UI branch, divergent audit remediation branch.
+- Divergence: phase5 branch 115 ahead / 104 behind; work audit branch 92 ahead / 228 behind. No wholesale merges recommended.
+
+### Prior CI evidence
+- Run `42180258989` documented successful for `f342b4b`: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, server smoke test.
+- Vercel status lookup for `d9737e0` reported rate-limit failure. This is not a confirmed code build failure; production deployment is not confirmed.
+- No code tests were executed during this documentation-only resumption.
+
+### Engineering findings
+- Local archive hardening now protects multiple corrupt archives and permits validated legacy portion recovery.
+- UID-scoped outbox primitive exists but is not integrated into domain mutation paths.
+- Daily activity and weak-verse state remain aggregate projections and are unsafe for concurrent cross-device increments.
+- Multi-key localStorage writes are rollback-aware for ordinary failures but not crash-atomic.
+- Firestore rules are a tested generic-envelope foundation, not production-ready collection-specific authorization.
+- Potential outbox issue to verify: after acknowledgement, only mutation IDs remain; a reused ID with different content may be silently treated as already acknowledged.
+- No Firestore client/sync coordinator or real two-device sync exists.
+
+### External technical research (review only; no code copied)
+1. Dexie.js — https://github.com/dexie/Dexie.js — Apache-2.0; current inspected package metadata 4.4.7. Its documented read/write transactions abort and roll back on errors; transaction lifetime restrictions require avoiding unrelated awaited async APIs inside a transaction.
+2. idb — https://github.com/jakearchibald/idb — ISC; current inspected package metadata 8.0.4. Small promise wrapper around native IndexedDB; preserves native transaction semantics and requires more application-level schema/transaction design.
+3. RxDB — https://github.com/pubkey/rxdb — package metadata declares Apache-2.0; current inspected package metadata 17.6.0. Rich local-first replication, batching, checkpoints, and conflict handlers, but broader database/replication abstraction than needed for the first WIRD milestone.
+4. Design decision: do not add any dependency or copy implementation yet. Evaluate Dexie as the leading transactional IndexedDB candidate, compare against native IndexedDB/idb, and retain RxDB as an architectural reference rather than adopting its full replication stack.
+
+### Files inspected
+- `docs/DEVELOPMENT_CHECKPOINT.md`
+- `docs/engineering/WORK_SESSION_CHECKPOINT.md`
+- `docs/engineering/IMPLEMENTATION_ROADMAP.md`
+- `docs/engineering/OPEN_SOURCE_RESEARCH.md`
+- `docs/engineering/FIRESTORE_SYNC_DESIGN.md`
+- `docs/engineering/SECURITY_AUDIT.md`
+- `package.json`
+- `src/services/storageService.ts`
+- `src/services/localSyncOutbox.ts`
+- `src/services/sessionPersistence.ts`
+- `src/services/retentionService.ts`
+- `src/services/secureId.ts`
+- `src/tests/runAllTests.ts`
+- `src/tests/storageReliability.test.ts`
+- `firestore.rules`
+- `.github/workflows/ci.yml`
+
+### Files changed
+- Added the engineering progress checkpoint documents in this directory on a dedicated documentation branch.
+- No application source code, dependencies, Firebase configuration, or production settings changed.
+
+### Review results
+- First review: confirmed canonical branch, latest commit history, CI evidence, branch divergence, and known architecture boundaries.
+- Independent review: confirmed no evidence that cloud sync is live; Vercel status is rate-limit-related; branch divergence prohibits wholesale merges; no new code verification claimed.
+- Code test status: NOT RUN for this documentation-only change.
+- Documentation review: pending final readback and integration CI.
+
+### Next step
+Finish targeted outbox audit and design M4 event ledger/transaction boundary before implementing Firestore.
