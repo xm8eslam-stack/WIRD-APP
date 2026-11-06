@@ -642,7 +642,7 @@ export function migrateLegacyDataLosslessly(
           easeFactor: p.easeFactor || 2.5,
           repetitionCount: p.repetitionCount || 0,
           mistakesCount: p.mistakesCount || 0,
-          history: Array.isArray(p.history) ? [...p.history] : [],
+          history: Array.isArray(p.history) ? p.history.map((log, logIndex) => log.id && log.id.trim() ? { ...log } : { ...log, id: getStableMissingHistoryId(log, `legacyPortions[${idx}]`, logIndex) }) : [],
           revisionType: p.revisionType || 'minor',
           strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium'),
           conflictAudit: Array.isArray(p.conflictAudit) ? [...p.conflictAudit] : []
