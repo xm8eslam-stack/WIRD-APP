@@ -84,3 +84,15 @@ No third-party source code or dependencies were copied/added in this Phase 2 con
 | open-spaced-repetition/fsrs4anki-helper | https://github.com/open-spaced-repetition/fsrs4anki-helper | License not relied upon or code copied | Queue balancing, flattening, postpone/advance, easy days | UX/algorithm reference only; WIRD's queue remains deterministic and does not adopt an external scheduler |
 
 No source code, package, or algorithm implementation was copied or added in this slice.
+
+
+## Phase 2 multi-key rollback and browser transaction research — 2026-11-06
+
+| Project / source | URL | License / terms | Reviewed for | WIRD decision |
+|---|---|---|---|---|
+| MDN — Using IndexedDB | https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API/Using_IndexedDB | Documentation; no code copied | Transaction lifecycle, request errors, abort/complete events, and rollback | Use transaction completion as the commit boundary when the local event journal is implemented; do not confuse individual request success with durable transaction success |
+| W3C — Indexed Database API 3.0 | https://www.w3.org/TR/IndexedDB/ | W3C specification | Atomic commit and rollback semantics, including quota and I/O failures | IndexedDB is the intended atomic boundary for related domain/outbox writes; no current localStorage replacement in this test-only slice |
+| Dexie.js transaction documentation | https://dexie.org/docs/Dexie/Dexie.transaction%28%29 | Apache-2.0 (library); docs reference only | Multi-table readwrite transactions, rejection/abort semantics, transaction lifetime | Reference for possible future wrapper evaluation; not adopted and no dependency added |
+| OWASP Web Security Testing Guide — Browser Storage | https://github.com/OWASP/www-project-web-security-testing-guide/blob/master/v41/4-Web_Application_Security_Testing/11-Client_Side_Testing/12-Testing_Browser_Storage.md | Documentation; no code copied | Browser storage inspection, client-side storage threat review | Security test checklist reference; no code copied |
+
+No source code, snippets, or dependencies were copied or added in PR #12.
