@@ -7,7 +7,7 @@
 
 ## Verified repository position
 
-- Latest confirmed code merge before this status update: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` — PR #6 outbox integrity milestone. This status update itself is committed directly to main; re-fetch HEAD on resume. This status update itself is committed directly to main; re-fetch HEAD on resume.
+- Latest confirmed code merge before this status update: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` — PR #6 outbox integrity milestone. This status update itself is committed directly to main; re-fetch HEAD on resume.
 - Latest verified code merge: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` (PR #6). Previous session/range merge: `fd480526dd3eac728f60b3554e83309354903ad8` (PR #5).
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - The combined status lookup for `d9737e0` reports a failed Vercel status pointing to the free build/deployment rate limit. This is not evidence of a code build failure. A successful production deployment for this exact commit is not confirmed.
@@ -65,14 +65,14 @@
 
 ## Current risk register
 
-1. **High — confirmed:** outbox acknowledgement retains only bounded acknowledged IDs; reusing an acknowledged mutation ID with different content currently returns `already_acknowledged` without comparing payload. Add regression coverage and fix before relying on the outbox as a durable idempotency boundary.
+1. **Resolved in PR #6:** acknowledged mutation fingerprints now reject changed-content ID reuse while preserving exact retries; legacy acknowledgements without fingerprints fail closed.
 2. **Critical before cloud sync:** aggregate daily activity and weak-verse counters are not safe for concurrent multi-device merge.
 3. **High:** localStorage cannot atomically commit domain state plus outbox; a write-ahead event journal / transactional IndexedDB design is needed.
 4. **High:** Firestore rules are generic-envelope-only and not production complete.
 5. **High — remaining Phase 1:** `unifiedPortionService.ts` merge/dedup/conflict handling and final persistence-boundary audit remain open. The outbox's localStorage read-modify-write is not cross-tab atomic; do not enable cloud sync until a transactional IndexedDB design is in place.
 6. **High — Phase 2:** session counter clamping and basic Quran/revision range gaps were fixed in PR #5; review scheduling, duplicate-operation prevention, and remaining mutation/statistics paths still need audit.
 7. **Medium:** complete file-by-file audit of all mutation call sites, backup/restore, PWA, APIs, and Quran integrity remains open.
-6. **Release:** Vercel rate limit previously blocked a production deployment; retry only through the normal platform path when quota permits.
+8. **Release:** Vercel rate limit previously blocked a production deployment; retry only through the normal platform path when quota permits.
 
 ## Last verified tests
 
@@ -89,7 +89,7 @@
 ## Next exact action
 
 1. Finish Phase 1 audit of `unifiedPortionService.ts`: merge/dedup behavior, overlap handling, conflict audit, history preservation, and failure rollback.
-2. Complete cross-tab/concurrent-write analysis; keep current localStorage outbox disconnected from cloud writes until transactional IndexedDB event+outbox design is verified.
-3. Continue Phase 2 review-scheduling, duplicate-operation, and statistics audits; session counter and Quran/revision input checks are already merged in PR #5.
-4. Re-run full CI and independent review for each reliability slice.
-5. After Phase 1/2 pass, design the append-only event ledger and durable event+outbox transaction; do not activate Firestore production writes.
+2. Audit every remaining domain mutation path and confirm that no aggregate or manual operation can bypass the strict storage boundary.
+3. Continue Phase 2 review scheduling, duplicate-operation, and statistics audits; session validation is already merged in PR #5.
+4. Keep the localStorage outbox disconnected from cloud writes until the transactional IndexedDB event+outbox design is implemented and tested.
+5. Re-run full CI and independent review for each reliability slice; then design the append-only event ledger. Do not activate Firestore production writes.
