@@ -788,6 +788,68 @@ export class IndexedDbSyncJournal {
     return events.sort((a, b) => a.sequence - b.sequence);
   }
 
+  /** Read the next deterministic event page after the durable local-projection cursor. */
+  async listEventsAfter(sequence: number = 0, limit: number = 100): Promise<JournalEvent[]> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(sequence) || sequence < 0) throw new Error('رقم تسلسل سجل الأحداث غير صالح.');
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 500) throw new Error('حجم دفعة إعادة التشغيل يجب أن يكون من 1 إلى 500.');
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_EVENTS], 'readonly');
+    const completed = transactionComplete(transaction);
+    const range = IDBKeyRange.bound([uid, sequence + 1], [uid, Number.MAX_SAFE_INTEGER]);
+    const request = transaction.objectStore(STORE_EVENTS).index('uidSequence').getAll(range, limit);
+    const events = await requestResult(request) as JournalEvent[];
+    await completed;
+    return events.sort((a, b) => a.sequence - b.sequence);
+  }
+
+  async getProjectionCursor(): Promise<number> {
+    const uid = activeUid();
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    return metadata?.lastProjectedSequence ?? 0;
+  }
+
+  /**
+   * Advance only one committed sequence at a time and only after its local
+   * projection has been written and verified by the caller.
+   */
+  async markProjected(sequence: number): Promise<boolean> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(sequence) || sequence < 1) throw new Error('رقم تسلسل الإسقاط المحلي غير صالح.');
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_METADATA], 'readwrite');
+      const store = transaction.objectStore(STORE_METADATA);
+      const request = store.get(uid);
+      let advanced = false;
+      let failure: Error | undefined;
+      request.onsuccess = () => {
+        const metadata = request.result as DeviceMetadata | undefined;
+        if (!metadata) {
+          failure = new Error('لا توجد بيانات وصفية لسجل المزامنة؛ لم يتم تحريك مؤشر الإسقاط.');
+          transaction.abort();
+          return;
+        }
+        const cursor = metadata.lastProjectedSequence ?? 0;
+        if (sequence <= cursor) return;
+        if (sequence !== cursor + 1 || sequence >= (metadata.nextSequence ?? 1)) {
+          failure = new Error('لا يمكن تجاوز أحداث غير مسقطة أو مؤشر يتجاوز آخر حدث محفوظ.');
+          transaction.abort();
+          return;
+        }
+        store.put({ ...metadata, lastProjectedSequence: sequence } satisfies DeviceMetadata);
+        advanced = true;
+      };
+      transaction.oncomplete = () => resolve(advanced);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection cursor transaction aborted.')));
+    });
+  }
+
   async getSnapshot(): Promise<JournalSnapshot> {
     const uid = activeUid();
     const database = await this.openDatabase();
