@@ -436,11 +436,12 @@ export const StorageService = {
     }
   },
 
-  saveProfile(profile: UserProfile): void {
+  saveProfile(profile: UserProfile): boolean {
     try {
-      setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+      return setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
     } catch (e) {
       console.warn("Storage write failed", e);
+      return false;
     }
   },
 
@@ -723,11 +724,12 @@ export const StorageService = {
     }
   },
 
-  saveLogs(logs: DailyLog[]): void {
+  saveLogs(logs: DailyLog[]): boolean {
     try {
-      setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
+      return setItem(STORAGE_KEYS.LOGS, JSON.stringify(logs));
     } catch (e) {
       console.warn("Storage write failed", e);
+      return false;
     }
   },
 
@@ -751,11 +753,13 @@ export const StorageService = {
     }
   },
 
-  // Session Completion with True Streak Advancement
-  recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): void {
+  // Session Completion with rollback if either durable write fails.
+  recordSessionCompletion(memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string): boolean {
     const today = getLocalDateString();
+    const previousLogs = getItem(STORAGE_KEYS.LOGS);
+    const previousProfile = getItem(STORAGE_KEYS.PROFILE);
     const logs = this.getLogs();
-    const existingIndex = logs.findIndex(l => l.date === today);
+    const existingIndex = logs.findIndex(log => log.date === today);
 
     if (existingIndex >= 0) {
       logs[existingIndex].memorizedAyahsCount += memorizedAyahs;
@@ -774,14 +778,22 @@ export const StorageService = {
       });
     }
 
-    this.saveLogs(logs);
+    if (!this.saveLogs(logs)) return false;
 
-    // Update streak truthfully
     const profile = this.getProfile();
     const { newStreak, newDate } = advanceStreakOnCompletion(profile.lastActiveDate, profile.streakDays, today);
     profile.streakDays = newStreak;
     profile.lastActiveDate = newDate;
-    this.saveProfile(profile);
+    if (!this.saveProfile(profile)) {
+      // Roll back the activity log if the streak/profile write fails.
+      if (previousLogs === null) removeItem(STORAGE_KEYS.LOGS);
+      else setItem(STORAGE_KEYS.LOGS, previousLogs);
+      if (previousProfile === null) removeItem(STORAGE_KEYS.PROFILE);
+      else setItem(STORAGE_KEYS.PROFILE, previousProfile);
+      return false;
+    }
+
+    return true;
   },
 
   // Explicit Demo Data Loader (for demo mode only)

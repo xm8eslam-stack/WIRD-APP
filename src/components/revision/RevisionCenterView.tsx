@@ -35,7 +35,7 @@ import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 
 interface RevisionCenterViewProps {
   profile: UserProfile;
-  onStartSession?: (surahNumber: number, startAyah: number, endAyah: number) => void;
+  onStartSession?: (surahNumber: number, startAyah: number, endAyah: number, mode?: 'memorize' | 'review') => void;
 }
 
 type RevisionTab = 'daily_queue' | 'weekly_overview' | 'weak_verses' | 'history' | 'retention_dashboard';
@@ -460,7 +460,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                       {/* Launch Interactive Recitation / Session button */}
                       {onStartSession && (
                         <button
-                          onClick={() => onStartSession(item.surahNumber, item.startAyah, item.endAyah)}
+                          onClick={() => onStartSession(item.surahNumber, item.startAyah, item.endAyah, 'review')}
                           className="w-full mt-2 py-1.5 px-3 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-[11px] font-semibold border border-stone-200 dark:border-stone-700 transition-colors flex items-center justify-center gap-1.5"
                         >
                           <Play className="w-3 h-3 text-emerald-700" />
@@ -630,7 +630,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                     {onStartSession && (
                       <button
-                        onClick={() => onStartSession(item.surahNumber, item.ayahNumber, item.ayahNumber)}
+                        onClick={() => onStartSession(item.surahNumber, item.ayahNumber, item.ayahNumber, 'review')}
                         className="py-1.5 px-3 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
                       >
                         تكرار وسماع

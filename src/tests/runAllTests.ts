@@ -16,6 +16,8 @@ import { runTafsirServiceTests } from '../services/tafsirService.test';
 import { runTafsirProxyTests } from './tafsirProxy.test';
 import { runPageProgressServiceTests } from '../services/pageProgressService.test';
 import { runStorageScopeTests } from '../services/storageScope.test';
+import { runSessionCompletionTests } from './sessionCompletion.test';
+import { runStorageReliabilityTests } from './storageReliability.test';
 
 export interface SuiteResult {
   passed: number;
@@ -79,6 +81,8 @@ async function main() {
     { name: 'Tafsir Serverless Proxy Security & Cache', runner: runTafsirProxyTests },
     { name: 'Truthful 604-Page Progress Mapping', runner: runPageProgressServiceTests },
     { name: 'UID-Scoped Local Storage & Legacy Data Ownership', runner: runStorageScopeTests },
+    { name: 'Memorization vs Review Session Completion Isolation', runner: runSessionCompletionTests },
+    { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);

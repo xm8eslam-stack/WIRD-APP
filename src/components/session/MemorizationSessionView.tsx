@@ -22,8 +22,9 @@ interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
   initialStartAyah?: number;
   initialEndAyah?: number;
+  mode?: 'memorize' | 'review';
   profile: UserProfile;
-  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => void;
+  onCompleteSession: (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string, mode?: 'memorize' | 'review') => void;
   onExit: () => void;
   onProgressChange?: (inProgress: boolean) => void;
 }
@@ -32,6 +33,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   initialSurahNumber = 67, // Default Al-Mulk
   initialStartAyah = 1,
   initialEndAyah = 5,
+  mode = 'memorize',
   profile,
   onCompleteSession,
   onExit,
@@ -191,10 +193,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       setIsCompleted(true);
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
       onCompleteSession(
-        sessionAyahs.length,
-        1,
+        mode === 'memorize' ? sessionAyahs.length : 0,
+        mode === 'review' ? Math.max(1, new Set(sessionAyahs.map(ayah => ayah.page)).size) : 0,
         minutesSpent,
-        `إتمام حفظ سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`
+        `${mode === 'review' ? 'مراجعة' : 'إتمام حفظ'} سورة ${surahMeta.name} الآيات (${sessionAyahs[0]?.numberInSurah}-${sessionAyahs[sessionAyahs.length - 1]?.numberInSurah})`,
+        mode
       );
     }
   };
@@ -282,7 +285,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             مبارك الإنجاز القرآني
           </span>
           <h2 className="text-2xl font-bold font-quran text-stone-900 dark:text-stone-100">
-            أتممت وِرد الحفظ اليومي بنجاح!
+            {mode === 'review' ? 'أتممت جلسة المراجعة بنجاح!' : 'أتممت وِرد الحفظ اليومي بنجاح!'}
           </h2>
           <p className="text-xs text-stone-500 max-w-sm mx-auto leading-relaxed">
             تم حفظ وتكرار وتثبيت الآيات المقررة لسورة {surahMeta.name}. ثبّت الله القرآن في قلبك ونفعك به في الدنيا والآخرة.

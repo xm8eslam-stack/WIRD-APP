@@ -8,6 +8,7 @@ import { UserProfile, MemorizationPlan, RevisionItem, DailyLog, TestResult } fro
 import { EngineGeneratedPlan } from './services/planningEngine';
 import { CheckCircle2, AlertTriangle, Info, X, Loader2 } from 'lucide-react';
 import { parseRoute, navigateTo, buildRouteHash } from './services/router';
+import { getSessionCompletionMetrics } from './services/sessionCompletion';
 import { getLocalDateString } from './services/unifiedPortionService';
 
 // Lazy loaded views for optimal chunking and initial load performance
@@ -37,10 +38,12 @@ export default function App() {
     surahNumber: number;
     startAyah: number;
     endAyah: number;
+    mode: 'memorize' | 'review';
   }>({
     surahNumber: initialRoute.surahNumber || 67,
     startAyah: initialRoute.startAyah || 1,
-    endAyah: initialRoute.endAyah || 10
+    endAyah: initialRoute.endAyah || 10,
+    mode: initialRoute.mode || 'memorize'
   });
 
   // Track if active session has progress for exit confirmation
@@ -135,8 +138,11 @@ export default function App() {
   const handleToggleTheme = () => {
     const newTheme: 'light' | 'dark' = profile.theme === 'dark' ? 'light' : 'dark';
     const updated: UserProfile = { ...profile, theme: newTheme };
+    if (!StorageService.saveProfile(updated)) {
+      showToast('تعذر حفظ تغيير المظهر في التخزين الدائم. لم يتم تطبيق التغيير.', 'error');
+      return;
+    }
     setProfile(updated);
-    StorageService.saveProfile(updated);
   };
 
   // Synchronize route with URL hash & browser history
@@ -158,7 +164,8 @@ export default function App() {
         setSessionParams(prev => ({
           surahNumber: route.surahNumber || prev.surahNumber,
           startAyah: route.startAyah || prev.startAyah,
-          endAyah: route.endAyah || prev.endAyah
+          endAyah: route.endAyah || prev.endAyah,
+          mode: route.tab === 'session' ? (route.mode || prev.mode) : prev.mode
         }));
       }
     };
@@ -176,27 +183,55 @@ export default function App() {
   };
 
   // Start daily session handler with deep link URL
-  const handleStartSession = (surahNumber: number = 67, startAyah: number = 1, endAyah: number = 10) => {
-    setSessionParams({ surahNumber, startAyah, endAyah });
+  const handleStartSession = (
+    surahNumber: number = 67,
+    startAyah: number = 1,
+    endAyah: number = 10,
+    mode: 'memorize' | 'review' = 'memorize'
+  ) => {
+    setSessionParams({ surahNumber, startAyah, endAyah, mode });
     navigateTo({
       tab: 'session',
       surahNumber,
       startAyah,
       endAyah,
-      mode: 'memorize'
+      mode
     });
   };
 
-  // Session complete callback
-  const handleCompleteSession = (memorizedAyahs: number, reviewedPages: number, minutes: number, taskName: string) => {
-    StorageService.recordSessionCompletion(memorizedAyahs, reviewedPages, minutes, taskName);
-    if (sessionParams.surahNumber) {
-      RetentionService.recordMemorizationCompletion(
-        sessionParams.surahNumber,
-        sessionParams.startAyah,
-        sessionParams.endAyah
-      );
+  // Review sessions must never be recorded as new memorization progress.
+  const handleCompleteSession = (
+    memorizedAyahs: number,
+    reviewedPages: number,
+    minutes: number,
+    taskName: string,
+    mode: 'memorize' | 'review' = sessionParams.mode
+  ) => {
+    const completion = getSessionCompletionMetrics(mode, memorizedAyahs, reviewedPages);
+
+    if (completion.shouldRecordMemorization && sessionParams.surahNumber) {
+      try {
+        RetentionService.recordMemorizationCompletion(
+          sessionParams.surahNumber,
+          sessionParams.startAyah,
+          sessionParams.endAyah
+        );
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : 'تعذر حفظ إنجاز جلسة الحفظ؛ لم يتم تسجيله كإنجاز مؤكد.', 'error');
+        return;
+      }
     }
+
+    const activitySaved = StorageService.recordSessionCompletion(
+      completion.memorizedAyahs,
+      completion.reviewedPages,
+      minutes,
+      taskName
+    );
+    if (!activitySaved) {
+      showToast('تعذر حفظ سجل النشاط أو تحديث سلسلة المواظبة. لم يتم تأكيد تسجيل الجلسة؛ تحقّق من مساحة التخزين وصدّر نسخة احتياطية.', 'error');
+    }
+
     setLogs(StorageService.getLogs());
     setProfile(StorageService.getProfile());
     setRevisionItems(StorageService.getRevisionItems());
@@ -387,6 +422,7 @@ export default function App() {
                 initialSurahNumber={sessionParams.surahNumber}
                 initialStartAyah={sessionParams.startAyah}
                 initialEndAyah={sessionParams.endAyah}
+                mode={sessionParams.mode}
                 profile={profile}
                 onCompleteSession={handleCompleteSession}
                 onExit={() => handleNavigate('dashboard')}

@@ -393,7 +393,9 @@ export const RetentionService = {
       portions.unshift(updatedPortion);
     }
 
-    this.savePortions(portions);
+    if (!this.savePortions(portions)) {
+      throw new Error('تعذر حفظ تقدم الحفظ في التخزين المحلي؛ لم يتم تأكيد الإنجاز.');
+    }
     return updatedPortion;
   },
 
