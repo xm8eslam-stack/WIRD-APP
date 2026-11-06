@@ -164,6 +164,7 @@ class CloudSyncCoordinator {
       // Step A: Push local outbox mutations to Firestore
       let hasMore = true;
       let totalPushed = 0;
+      let firstPushError: string | null = null;
 
       while (hasMore) {
         const readyEntries = await LocalSyncOutbox.listReadyEntries(Date.now(), 25);
@@ -224,7 +225,12 @@ class CloudSyncCoordinator {
           } catch (writeError: any) {
             console.warn('[WIRD CloudSync] Mutation write failed, scheduling retry:', entry.mutationId, writeError);
             const errCode = writeError?.code || writeError?.message || 'firestore-write-error';
-            await LocalSyncOutbox.markFailed(entry.mutationId, errCode);
+            if (!firstPushError) {
+              firstPushError = typeof writeError?.message === 'string'
+                ? writeError.message
+                : 'تعذر رفع بعض التغييرات؛ ستظل محفوظة محلياً وستتم إعادة المحاولة.';
+            }
+            await LocalSyncOutbox.markFailed(entry.mutationId, String(errCode).slice(0, 64));
           }
         }
 
@@ -235,17 +241,23 @@ class CloudSyncCoordinator {
       }
 
       // Step B: Pull remote events or updates from other devices
-      await this.pullRemoteReconciliation(uid);
+      const remoteReconciled = await this.pullRemoteReconciliation(uid);
 
-      // Step C: Update state to synced
+      // Never report a complete sync while remote changes have not actually
+      // been applied locally. A successful upload alone is only partial sync.
       const finalCount = await this.refreshPendingCount();
+      const complete = finalCount === 0 && remoteReconciled;
       this.updateState({
-        status: finalCount > 0 ? 'idle' : 'synced',
-        lastSyncAtMs: Date.now(),
-        errorMessage: null
+        status: complete ? 'synced' : finalCount > 0 ? 'error' : 'unverified',
+        lastSyncAtMs: complete ? Date.now() : this.state.lastSyncAtMs,
+        errorMessage: firstPushError || (finalCount > 0
+          ? 'بعض التغييرات لم تُرفع بعد؛ احتفظنا بها محلياً وسنعيد المحاولة.'
+          : !remoteReconciled
+            ? 'تم فحص الاتصال، لكن استقبال تغييرات الأجهزة الأخرى وتطبيقها لم يكتمل بعد.'
+            : null)
       });
 
-      return true;
+      return complete;
     } catch (syncError: any) {
       console.error('[WIRD CloudSync] Cloud sync failed:', syncError);
       this.updateState({
@@ -262,25 +274,21 @@ class CloudSyncCoordinator {
   /**
    * Reconcile remote updates from other devices using deterministic projection logic.
    */
-  private async pullRemoteReconciliation(uid: string): Promise<void> {
-    if (!db) return;
-    try {
-      // Pull recent domain events for this user to detect multi-device activity
-      const eventsRef = collection(db, 'users', uid, 'events');
-      const eventsQuery = query(
-        eventsRef,
-        where('uid', '==', uid),
-        orderBy('occurredAtMs', 'desc'),
-        firestoreLimit(20)
-      );
-      // Even if offline or empty, query runs gracefully
-      const snapshot = await getDocs(eventsQuery);
-      if (!snapshot.empty) {
-        // Events are verified and immutable; local store remains resilient
-      }
-    } catch {
-      // Offline fallback: continue without blocking local operations
-    }
+  private async pullRemoteReconciliation(uid: string): Promise<boolean> {
+    if (!db) return false;
+    // Keep the bounded read as a connectivity/permission check, but do not
+    // mistake observing remote events for applying them to local projections.
+    const eventsRef = collection(db, 'users', uid, 'events');
+    const eventsQuery = query(
+      eventsRef,
+      where('uid', '==', uid),
+      orderBy('occurredAtMs', 'desc'),
+      firestoreLimit(20)
+    );
+    await getDocs(eventsQuery);
+    // Remote event ingestion and durable local projection are not implemented
+    // yet. Returning false prevents the UI from claiming cross-device sync.
+    return false;
   }
 
   public notifyMutationEnqueued(): void {
