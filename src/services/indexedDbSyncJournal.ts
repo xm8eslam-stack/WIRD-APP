@@ -3,7 +3,7 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
@@ -38,6 +38,7 @@ export interface JournalEvent {
   deviceId: string;
   payload: Record<string, unknown>;
   fingerprint: string;
+  sequence: number;
 }
 
 export interface JournalOutboxEntry {
@@ -65,6 +66,7 @@ export interface JournalSnapshot {
   pendingCount: number;
   acknowledgedCount: number;
   eventCount: number;
+  projectionCursor: number;
 }
 
 interface AcknowledgementRecord {
@@ -79,6 +81,8 @@ interface DeviceMetadata {
   uid: string;
   deviceId: string;
   schemaVersion: 1;
+  nextSequence: number;
+  lastProjectedSequence: number;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -227,10 +231,17 @@ export class IndexedDbSyncJournal {
 
       request.onupgradeneeded = () => {
         const database = request.result;
+        const upgradeTransaction = request.transaction!;
+        let events: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_EVENTS)) {
-          const events = database.createObjectStore(STORE_EVENTS, { keyPath: 'key' });
+          events = database.createObjectStore(STORE_EVENTS, { keyPath: 'key' });
           events.createIndex('uid', 'uid', { unique: false });
           events.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
+        } else {
+          events = upgradeTransaction.objectStore(STORE_EVENTS);
+        }
+        if (!events.indexNames.contains('uidSequence')) {
+          events.createIndex('uidSequence', ['uid', 'sequence'], { unique: true });
         }
         if (!database.objectStoreNames.contains(STORE_OUTBOX)) {
           const outbox = database.createObjectStore(STORE_OUTBOX, { keyPath: 'key' });
@@ -242,9 +253,55 @@ export class IndexedDbSyncJournal {
           acknowledgements.createIndex('uid', 'uid', { unique: false });
           acknowledgements.createIndex('uidAcknowledgedAt', ['uid', 'acknowledgedAtMs'], { unique: false });
         }
+        let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
-          database.createObjectStore(STORE_METADATA, { keyPath: 'uid' });
+          metadataStore = database.createObjectStore(STORE_METADATA, { keyPath: 'uid' });
+        } else {
+          metadataStore = upgradeTransaction.objectStore(STORE_METADATA);
         }
+
+        // Version 1 events had no monotonic sequence. Backfill in deterministic
+        // order before opening the upgraded database to normal read/write work.
+        const eventsRequest = events.getAll();
+        eventsRequest.onsuccess = () => {
+          const allEvents = (eventsRequest.result as Array<JournalEvent & { sequence?: number }>)
+            .sort((a, b) => a.uid.localeCompare(b.uid) ||
+              a.createdAtMs - b.createdAtMs || a.eventId.localeCompare(b.eventId));
+          const nextByUid = new Map<string, number>();
+          for (const event of allEvents) {
+            const next = nextByUid.get(event.uid) ?? 1;
+            if (!Number.isSafeInteger(event.sequence) || event.sequence < 1) {
+              event.sequence = next;
+              events.put(event);
+              nextByUid.set(event.uid, next + 1);
+            } else {
+              nextByUid.set(event.uid, Math.max(next, event.sequence + 1));
+            }
+          }
+
+          const metadataRequest = metadataStore.getAll();
+          metadataRequest.onsuccess = () => {
+            const existing = metadataRequest.result as DeviceMetadata[];
+            const existingUids = new Set<string>();
+            for (const metadata of existing) {
+              existingUids.add(metadata.uid);
+              const nextSequence = Math.max(metadata.nextSequence || 1, nextByUid.get(metadata.uid) || 1);
+              metadataStore.put({
+                ...metadata,
+                nextSequence,
+                lastProjectedSequence: metadata.lastProjectedSequence || 0
+              });
+            }
+            for (const [uid, nextSequence] of nextByUid) {
+              if (!existingUids.has(uid)) {
+                metadataStore.put({
+                  uid, deviceId: createSecureId(), schemaVersion: 1,
+                  nextSequence, lastProjectedSequence: 0
+                } satisfies DeviceMetadata);
+              }
+            }
+          };
+        };
       };
       request.onsuccess = () => {
         const database = request.result;
