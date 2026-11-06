@@ -202,11 +202,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       let projectionsMatch = false;
       try {
         projectionsMatch = Boolean(
-          expectedPortions && StorageService.verifyRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, JSON.stringify(expectedPortions)) &&
-          expectedActivity && StorageService.verifyRawItem(STORAGE_KEYS.LOGS, JSON.stringify(expectedActivity)) &&
-          expectedProfile && StorageService.verifyRawItem(STORAGE_KEYS.PROFILE, JSON.stringify(expectedProfile)) &&
+          expectedPortions && StorageService.verifyRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, (JSON.stringify(expectedPortions) ?? '')) &&
+          expectedActivity && StorageService.verifyRawItem(STORAGE_KEYS.LOGS, (JSON.stringify(expectedActivity) ?? '')) &&
+          expectedProfile && StorageService.verifyRawItem(STORAGE_KEYS.PROFILE, (JSON.stringify(expectedProfile) ?? '')) &&
           (expectedWeakVerses === undefined ||
-            StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(expectedWeakVerses)))
+            StorageService.verifyRawItem(STORAGE_KEYS.WEAK_VERSES, (JSON.stringify(expectedWeakVerses) ?? '')))
         );
       } catch {
         projectionsMatch = false;
