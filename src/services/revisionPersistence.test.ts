@@ -33,7 +33,7 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
         strength: 'weak'
       }]);
       const readded = RetentionService.addPortion({
-        type: 'passage', surahNumber: 67, surahName: 'اسم غير صحيح', startAyah: 31, endAyah: 35,
+        type: 'passage', surahNumber: 67, surahName: 'اسم غير صحيح', startAyah: 21, endAyah: 25,
         status: 'stable', strength: 'strong', nextDueDate: today, intervalDays: 7, easeFactor: 2.8,
         repetitionCount: 1, mistakesCount: 0
       });
@@ -61,6 +61,9 @@ export function runRevisionPersistenceTests(): { passed: number; failed: number 
       const updated = RetentionService.updatePortionStatus(portion.id, 'stable');
       assert(updated[0].status === 'stable' && updated[0].strength === 'strong',
         'Explicitly setting a portion to stable must also set its strength label to strong');
+      const reset = RetentionService.updatePortionStatus(portion.id, 'not_memorized');
+      assert(reset[0].status === 'not_memorized' && reset[0].strength === 'medium',
+        'Resetting a portion to not_memorized must not retain a contradictory strong label');
     } finally {
       StorageService.__resetStorageForTests();
     }
