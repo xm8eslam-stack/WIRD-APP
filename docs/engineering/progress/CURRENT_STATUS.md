@@ -7,7 +7,7 @@
 
 ## Verified repository position
 
-- Latest confirmed `main` HEAD at this checkpoint: `87d6abfb95809c2395e5acff7bfe4ab90e9d9a6f` (verified by compare against the active Phase 2 branch). Re-fetch before every integration.
+- Latest application-code merge on `main`: `e69871897c2561e7aa75c6e31f9005169ed08c23` — PR #10 (Phase 2 retention mutation-integrity slice). Re-fetch `main` HEAD before every integration; progress-document commits may advance it.
 - Previous merges: PR #6 `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`; PR #5 `fd480526dd3eac728f60b3554e83309354903ad8`; PR #4 `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - CI run `42180258989` is documented as successful for the code commit: 256 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - GitHub Actions run `42190653101` on PR #9 head `2b520ebcf6c51ae155de508ddf49e49d421ba7ab` passed automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test. The merged code is `f8e0cef`.
@@ -18,7 +18,7 @@
 ## Current milestone
 
 **PHASE 2 — Memorization/revision correctness audit**  
-**Status:** IN PROGRESS on `fix/phase2-retention-mutation-audit`; not merged to main and not CI-verified yet.  
+**Status:** IN PROGRESS on `main`; PR #10 merged and its code gates passed. Remaining daily queue/statistics/rollback audit is still open.  
 **Baseline:** PHASE 1 remains COMPLETED on main.  
 **Last code milestone:** PR #9 merge `f8e0cef`; all code gates passed in CI run `42190653101`.  
 **Verified:** strict record/backup validation (PR #4), session and Quran-range pre-write validation (PR #5), outbox identity/idempotency hardening (PR #6), and deterministic portion merge/history preservation (PR #9).  
@@ -47,15 +47,15 @@
 - Firestore rules foundation and emulator tests.
 - CI quality gate for tests, TypeScript, build, rules emulator, dependency audit, and server smoke test.
 
-## Phase 2 branch checkpoint (not yet verified)
+## Phase 2 mutation-integrity slice — merged and verified
 
-- Branch `fix/phase2-retention-mutation-audit` is 16 commits ahead and 0 behind `main` at the last comparison; additional focused commits were added afterward, so re-run compare before PR review.
+- PR #10 (`fix/phase2-retention-mutation-audit` → `main`) was squash-merged as `e69871897c2561e7aa75c6e31f9005169ed08c23`.
 - Files changed in the current Phase 2 slice: `src/services/retentionService.ts`, `src/services/unifiedPortionService.ts`, `src/components/revision/RevisionCenterView.tsx`, and focused tests in `src/services/*Persistence.test.ts`, `src/services/weakVerseRecording.test.ts`, and `src/tests/backupValidation.test.ts`.
 - Implemented in branch: service-boundary Quran range and status validation; duplicate portion additions merge with existing history/counters instead of resetting progress; unknown portion status updates reject; weak-verse archive rejects duplicate IDs/coordinates; weak-verse writes validate coordinates and inputs; resolving an already-resolved weak verse is idempotent; revision modal blocks rapid duplicate submissions and resets stale inputs; repeat memorization preserves weak status and counters.
 - A review correction removed memorization sessions from the revision-history ledger so dashboard `totalReviewsCompleted` is not inflated. Regression test asserts review history remains unchanged and metrics remain accurate.
-- Tests were added/updated but have **not yet been executed in a confirmed CI run**. One invalid Quran test fixture was found during review and corrected before PR.
-- Last code commit created during this continuation: `360702ad4b6ab3e8e5233670ad0eb5203fd50678` (verify branch HEAD again; subsequent documentation commits will advance it).
-- No Phase 2 change has been merged to `main`. Do not label Phase 2 completed until PR checks and independent review pass.
+- GitHub Actions Quality Gate #681 (`42194241711`) passed on PR head `958067b1b1e3c64513b1732c947e81c18a830a52`: 304 automated assertions, 10 Firestore rules emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
+- Final PR head before merge: `958067b1b1e3c64513b1732c947e81c18a830a52`. Squash merge SHA on main: `e69871897c2561e7aa75c6e31f9005169ed08c23`.
+- The reviewed Phase 2 mutation-integrity slice is merged. Phase 2 itself remains IN PROGRESS; do not mark it completed until daily queue, aggregate statistics, and remaining rollback/mutation-path audits are complete.
 
 ## Not yet implemented / not verified
 
@@ -89,11 +89,13 @@
 3. **High:** localStorage cannot atomically commit domain state plus outbox; a write-ahead event journal / transactional IndexedDB design is needed.
 4. **High:** Firestore rules are generic-envelope-only and not production complete.
 5. **High — local atomicity:** the outbox's localStorage read-modify-write is not cross-tab atomic; do not enable cloud sync until a transactional IndexedDB design is in place.
-6. **High — Phase 2:** the current branch adds validation and regression coverage but awaits full CI, independent review, and main integration; continue auditing review scheduling, duplicate-operation semantics, and statistics paths.
+6. **High — Phase 2:** PR #10's mutation-integrity slice is merged and CI-verified; continue auditing review scheduling, daily queue behavior, aggregate statistics, and multi-key rollback.
 7. **Medium:** complete file-by-file audit of all mutation call sites, backup/restore, PWA, APIs, and Quran integrity remains open.
 8. **Release:** Vercel rate limit previously blocked a production deployment; retry only through the normal platform path when quota permits.
 
 ## Last verified tests
+
+- PR #10 / Actions run `42194241711` (Quality Gate #681): **304 automated assertions passed, 0 failed**; **10 Firestore rules emulator tests passed**; dependency audit, TypeScript, production build, and server smoke test passed. PR head `958067b1b1e3c64513b1732c947e81c18a830a52`; squash merge `e69871897c2561e7aa75c6e31f9005169ed08c23`.
 
 - CI run `42190653101`: PASS on PR #9 head `2b520eb`; automated tests, 10 Firestore emulator tests, TypeScript, production build, and server smoke test.
 - Merge commit: `f8e0cef696b6b74f2f9872cf69a9d3ad6bcc731c`.
@@ -110,9 +112,8 @@
 
 ## Next exact action
 
-1. Re-fetch branch HEAD and `main`; compare exact SHAs and inspect all eight changed files.
-2. Open a draft PR from `fix/phase2-retention-mutation-audit` to `main` to run repository CI; do not merge until all required checks pass.
-3. Fix any test/type/build/security failures, then perform a second independent review of duplicate operations, history semantics, weak-verse integrity, and rollback.
-4. Revisit daily queue and dashboard statistics paths; add tests for invalid dates, aggregate correctness, and history classification.
-5. Keep localStorage outbox disconnected from cloud writes; cross-tab atomicity still requires an IndexedDB event+outbox transaction.
-6. Only after Phase 2 is verified and merged, proceed to the transactional event ledger. Do not activate Firestore production writes.
+1. Continue Phase 2 audit on `main`: daily revision queue, weekly overview, dashboard statistics, review-history integrity, and multi-key rollback.
+2. Add tests for invalid dates, duplicate completion paths, aggregate counts, and rollback under storage quota/read-back failures.
+3. Keep localStorage outbox disconnected from cloud writes; cross-tab atomicity still requires an IndexedDB event+outbox transaction.
+4. After Phase 2 gates, prototype the append-only event ledger and compare Dexie, idb, and native IndexedDB transaction semantics.
+5. Do not activate Firestore production writes or deploy production rules without explicit approval.
