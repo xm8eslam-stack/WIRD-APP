@@ -981,6 +981,11 @@ export const StorageService = {
         console.error('[WIRD Storage] Refusing to overwrite an unversioned canonical portions archive; reconciliation is required first.');
         return false;
       }
+      if (currentSchemaVersion !== '2' && !allowRecoveryOverwrite &&
+          (getItem(STORAGE_KEYS.PORTIONS) !== null || getItem(STORAGE_KEYS.REVISION) !== null)) {
+        console.error('[WIRD Storage] Refusing a direct canonical write while legacy archives still require migration.');
+        return false;
+      }
       if (currentSchemaVersion === '2' && !allowRecoveryOverwrite) {
         const currentRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
         if (currentRaw === null) {
@@ -1140,7 +1145,7 @@ export const StorageService = {
         return report;
       }
 
-      const saved = this.saveUnifiedPortions(portions, hasInvalidCanonicalPayload);
+      const saved = this.saveUnifiedPortions(portions, true);
       if (!saved) {
         return {
           success: false,
