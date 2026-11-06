@@ -13,34 +13,15 @@ service cloud.firestore {
 
     function isAllowedCollection(collection) {
       return collection in [
-        'profile',
-        'plans',
-        'enginePlans',
-        'portions',
-        'weakVerses',
-        'tests',
-        'activityEvents',
-        'syncMeta'
+        'profile', 'plans', 'enginePlans', 'portions',
+        'weakVerses', 'tests', 'activityEvents', 'syncMeta'
       ];
     }
 
     function hasValidSyncEnvelope() {
       let data = request.resource.data;
-      return data.keys().hasAll([
-          'schemaVersion',
-          'payload',
-          'updatedAtMs',
-          'deviceId',
-          'mutationId'
-        ])
-        && data.keys().hasOnly([
-          'schemaVersion',
-          'payload',
-          'updatedAtMs',
-          'deviceId',
-          'mutationId',
-          'deletedAt'
-        ])
+      return data.keys().hasAll(['schemaVersion', 'payload', 'updatedAtMs', 'deviceId', 'mutationId'])
+        && data.keys().hasOnly(['schemaVersion', 'payload', 'updatedAtMs', 'deviceId', 'mutationId', 'deletedAt'])
         && data.schemaVersion is int
         && data.schemaVersion == 1
         && data.payload is map
@@ -52,60 +33,48 @@ service cloud.firestore {
         && data.mutationId is string
         && data.mutationId.size() > 0
         && data.mutationId.size() <= 128
-        && (
-          !('deletedAt' in data)
-          || data.deletedAt == null
-          || data.deletedAt is timestamp
-        );
+        && (!('deletedAt' in data) || data.deletedAt == null || data.deletedAt is timestamp);
     }
 
     function hasValidJournalEnvelope() {
-      let journal = request.resource.data.payload.journalEvent;
-      return journal is map
-        && journal.keys().hasAll([
+      return request.resource.data.payload.journalEvent is map
+        && request.resource.data.payload.journalEvent.keys().hasAll([
           'schemaVersion', 'collection', 'documentId', 'operation',
           'clientUpdatedAtMs', 'createdAtMs', 'fingerprint', 'payload', 'serverCreatedAt'
         ])
-        && journal.keys().hasOnly([
+        && request.resource.data.payload.journalEvent.keys().hasOnly([
           'schemaVersion', 'collection', 'documentId', 'operation',
           'clientUpdatedAtMs', 'createdAtMs', 'fingerprint', 'payload', 'serverCreatedAt'
         ])
-        && journal.schemaVersion is int
-        && journal.schemaVersion == 1
-        && journal.collection in [
+        && request.resource.data.payload.journalEvent.schemaVersion is int
+        && request.resource.data.payload.journalEvent.schemaVersion == 1
+        && request.resource.data.payload.journalEvent.collection in [
           'profile', 'plans', 'enginePlans', 'portions',
           'weakVerses', 'tests', 'activityEvents', 'syncMeta'
         ]
-        && journal.documentId is string
-        && journal.documentId.size() > 0
-        && journal.documentId.size() <= 1500
-        && journal.operation in ['upsert', 'tombstone']
-        && journal.clientUpdatedAtMs is int
-        && journal.clientUpdatedAtMs >= 0
-        && journal.createdAtMs is int
-        && journal.createdAtMs >= 0
-        && journal.fingerprint is string
-        && journal.fingerprint.matches('^[0-9a-f]{16}
+        && request.resource.data.payload.journalEvent.documentId is string
+        && request.resource.data.payload.journalEvent.documentId.size() > 0
+        && request.resource.data.payload.journalEvent.documentId.size() <= 1500
+        && request.resource.data.payload.journalEvent.operation in ['upsert', 'tombstone']
+        && request.resource.data.payload.journalEvent.clientUpdatedAtMs is int
+        && request.resource.data.payload.journalEvent.clientUpdatedAtMs >= 0
+        && request.resource.data.payload.journalEvent.createdAtMs is int
+        && request.resource.data.payload.journalEvent.createdAtMs >= 0
+        && request.resource.data.payload.journalEvent.fingerprint is string
+        && request.resource.data.payload.journalEvent.fingerprint.size() == 16
+        && request.resource.data.payload.journalEvent.payload is map
+        && request.resource.data.payload.journalEvent.serverCreatedAt == request.time;
+    }
+
+    function hasValidDomainEvent(uid, eventId) {
       let data = request.resource.data;
       return data.keys().hasAll([
-          'schemaVersion',
-          'eventId',
-          'mutationId',
-          'uid',
-          'deviceId',
-          'occurredAtMs',
-          'eventType',
-          'payload'
+          'schemaVersion', 'eventId', 'mutationId', 'uid',
+          'deviceId', 'occurredAtMs', 'eventType', 'payload'
         ])
         && data.keys().hasOnly([
-          'schemaVersion',
-          'eventId',
-          'mutationId',
-          'uid',
-          'deviceId',
-          'occurredAtMs',
-          'eventType',
-          'payload'
+          'schemaVersion', 'eventId', 'mutationId', 'uid',
+          'deviceId', 'occurredAtMs', 'eventType', 'payload'
         ])
         && data.schemaVersion is int
         && data.schemaVersion == 1
@@ -126,105 +95,25 @@ service cloud.firestore {
         && data.eventType.size() > 0
         && data.eventType.size() <= 64
         && data.payload is map
-        && (
-          data.eventType != 'domain-mutation.v2'
-          || hasValidJournalEnvelope()
-        );
+        && (data.eventType != 'domain-mutation.v2' || hasValidJournalEnvelope());
     }
 
-    // Append-only immutable remote event ledger
     match /users/{uid}/events/{eventId} {
       allow read: if ownsUserPath(uid);
       allow create: if ownsUserPath(uid) && hasValidDomainEvent(uid, eventId);
       allow update, delete: if false;
     }
 
-    // Only verified users may access allowlisted documents inside their own UID path.
     match /users/{uid}/{collection}/{documentId} {
       allow read: if ownsUserPath(uid) && isAllowedCollection(collection);
       allow create, update: if ownsUserPath(uid)
         && isAllowedCollection(collection)
         && hasValidSyncEnvelope();
-      // Deletions are represented by tombstones to prevent offline resurrection.
       allow delete: if false;
     }
 
-    // Default deny: no public documents, admin bypasses, or unknown collections.
     match /{document=**} {
       allow read, write: if false;
     }
   }
 }
-
-)
-        && journal.payload is map
-        && journal.serverCreatedAt == request.time;
-    }
-
-    function hasValidDomainEvent(uid, eventId) {
-      let data = request.resource.data;
-      return data.keys().hasAll([
-          'schemaVersion',
-          'eventId',
-          'mutationId',
-          'uid',
-          'deviceId',
-          'occurredAtMs',
-          'eventType',
-          'payload'
-        ])
-        && data.keys().hasOnly([
-          'schemaVersion',
-          'eventId',
-          'mutationId',
-          'uid',
-          'deviceId',
-          'occurredAtMs',
-          'eventType',
-          'payload'
-        ])
-        && data.schemaVersion is int
-        && data.schemaVersion == 1
-        && data.eventId == eventId
-        && data.eventId is string
-        && data.eventId.size() > 0
-        && data.eventId.size() <= 128
-        && data.mutationId is string
-        && data.mutationId.size() > 0
-        && data.mutationId.size() <= 128
-        && data.uid == uid
-        && data.deviceId is string
-        && data.deviceId.size() > 0
-        && data.deviceId.size() <= 128
-        && data.occurredAtMs is int
-        && data.occurredAtMs >= 0
-        && data.eventType is string
-        && data.eventType.size() > 0
-        && data.eventType.size() <= 64
-        && data.payload is map;
-    }
-
-    // Append-only immutable remote event ledger
-    match /users/{uid}/events/{eventId} {
-      allow read: if ownsUserPath(uid);
-      allow create: if ownsUserPath(uid) && hasValidDomainEvent(uid, eventId);
-      allow update, delete: if false;
-    }
-
-    // Only verified users may access allowlisted documents inside their own UID path.
-    match /users/{uid}/{collection}/{documentId} {
-      allow read: if ownsUserPath(uid) && isAllowedCollection(collection);
-      allow create, update: if ownsUserPath(uid)
-        && isAllowedCollection(collection)
-        && hasValidSyncEnvelope();
-      // Deletions are represented by tombstones to prevent offline resurrection.
-      allow delete: if false;
-    }
-
-    // Default deny: no public documents, admin bypasses, or unknown collections.
-    match /{document=**} {
-      allow read, write: if false;
-    }
-  }
-}
-
