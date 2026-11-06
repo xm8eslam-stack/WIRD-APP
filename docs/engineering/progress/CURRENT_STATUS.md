@@ -80,7 +80,7 @@
 - CI run `42186678874`: PASS on PR #4 head.
 - CI run `42187380137`: PASS on PR #5 head, including automated tests, dependency audit, Firestore emulator, TypeScript, production build, and server smoke test.
 - Vercel status on merge commit `647eff6` reports the known free build-rate-limit failure.
-- Vercel status on merge commit `fd48052` was pending at verification time; production deployment is not confirmed.
+- Vercel status on application-code merge commit `fd48052`: **success**. The subsequent documentation-only checkpoint commit `e1f244c` hit the known free build-rate limit; this does not invalidate the successful code-merge deployment check.
 - No application code changed in the documentation checkpoint.
 
 ## Next exact action
