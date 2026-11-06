@@ -186,6 +186,30 @@ export const DEMO_PROFILE: UserProfile = {
   streakDays: 3,
   lastActiveDate: getLocalDateString()
 };
+function isValidUserProfile(value: unknown): value is UserProfile {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const profile = value as Record<string, unknown>;
+  const reciters = ['alafasy', 'husary', 'abdulbasit', 'ghamdi', 'minshawi'];
+  const fontSizes = ['sm', 'md', 'lg', 'xl'];
+  if (typeof profile.name !== 'string' || !profile.name.trim() || profile.name.length > 100) return false;
+  if (typeof profile.email !== 'string' || profile.email.length > 254) return false;
+  if (typeof profile.memorizationGoal !== 'string' || profile.memorizationGoal.length > 500) return false;
+  if (typeof profile.preferredReciter !== 'string' || !reciters.includes(profile.preferredReciter)) return false;
+  if (typeof profile.quranFontSize !== 'string' || !fontSizes.includes(profile.quranFontSize)) return false;
+  if (typeof profile.audioAutoPlay !== 'boolean') return false;
+  if (!Number.isSafeInteger(profile.repetitionTarget) || Number(profile.repetitionTarget) < 1 || Number(profile.repetitionTarget) > 100) return false;
+  if (profile.theme !== 'light' && profile.theme !== 'dark') return false;
+  if (!Number.isSafeInteger(profile.streakDays) || Number(profile.streakDays) < 0 || Number(profile.streakDays) > 100_000) return false;
+  if (typeof profile.lastActiveDate !== 'string') return false;
+  if (profile.lastActiveDate !== '') {
+    if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(profile.lastActiveDate)) return false;
+    const [year, month, day] = profile.lastActiveDate.split('-').map(Number);
+    const parsedDate = new Date(Date.UTC(year, month - 1, day));
+    if (!Number.isFinite(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== profile.lastActiveDate) return false;
+  }
+  return true;
+}
+
 function isValidDailyLog(value: unknown): value is DailyLog {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const log = value as Record<string, unknown>;
@@ -448,28 +472,36 @@ export const StorageService = {
   getProfile(): UserProfile {
     try {
       const data = getItem(STORAGE_KEYS.PROFILE);
-      if (!data) return { ...CLEAN_INITIAL_PROFILE };
-      const parsed: UserProfile = JSON.parse(data);
-      
+      if (data === null) return { ...CLEAN_INITIAL_PROFILE };
+      const parsed: unknown = JSON.parse(data);
+      if (!isValidUserProfile(parsed)) throw new Error('بنية الملف الشخصي غير صالحة.');
+      const profile = parsed;
       const todayStr = getLocalDateString();
-      const validStreak = calculateActiveStreak(parsed.lastActiveDate, parsed.streakDays, todayStr);
-      if (validStreak !== parsed.streakDays) {
-        parsed.streakDays = validStreak;
-        this.saveProfile(parsed);
+      const validStreak = calculateActiveStreak(profile.lastActiveDate, profile.streakDays, todayStr);
+      if (validStreak !== profile.streakDays) {
+        profile.streakDays = validStreak;
+        if (!this.saveProfile(profile)) {
+          console.warn('[WIRD Storage] Profile streak projection could not be persisted; original profile data remains protected.');
+        }
       }
-      return parsed;
-    } catch {
+      return profile;
+    } catch (error) {
+      console.error('[WIRD Storage] Profile archive needs recovery; preserving original bytes:', error);
       return { ...CLEAN_INITIAL_PROFILE };
     }
   },
 
   saveProfile(profile: UserProfile): boolean {
-    try {
-      return setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
-    } catch (e) {
-      console.warn("Storage write failed", e);
-      return false;
+    if (!isValidUserProfile(profile)) return false;
+    const current = getItem(STORAGE_KEYS.PROFILE);
+    if (current !== null) {
+      try {
+        if (!isValidUserProfile(JSON.parse(current))) return false;
+      } catch {
+        return false;
+      }
     }
+    return setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
   },
 
   // Plans (Returns clean empty array by default)

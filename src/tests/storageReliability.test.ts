@@ -65,6 +65,18 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Corrupt profile data is preserved and blocks ordinary profile writes', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:corrupt-profile');
+    const corrupt = '{broken profile';
+    StorageService.setRawItem(STORAGE_KEYS.PROFILE, corrupt);
+    const displayProfile = StorageService.getProfile();
+    assert(displayProfile.name === CLEAN_INITIAL_PROFILE.name, 'Profile display should fall back to safe defaults');
+    assert(!StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, theme: 'dark' }), 'Normal profile writes must not replace corrupt source data');
+    assert(StorageService.getRawItem(STORAGE_KEYS.PROFILE) === corrupt, 'Original profile bytes must remain unchanged');
+    StorageService.__resetStorageForTests();
+  });
+
   test('Display reads degrade safely while strict reads and writes preserve corrupt daily logs', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:daily-log-display');
