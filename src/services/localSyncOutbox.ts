@@ -94,7 +94,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidMutation(value: unknown): value is OutboxMutation {
   if (!isRecord(value)) return false;
-  return typeof value.mutationId === 'string' && value.mutationId.length > 0 && value.mutationId.length <= 128
+  return typeof value.mutationId === 'string' && value.mutationId.length > 0 && byteLength(value.mutationId) <= 128 && !/[\u0000-\u001f/]/.test(value.mutationId)
     && typeof value.collection === 'string' && ALLOWED_COLLECTIONS.has(value.collection as SyncCollection)
     && typeof value.documentId === 'string' && value.documentId.length > 0 && byteLength(value.documentId) <= 1500 && !value.documentId.includes('/') && !/[\u0000-\u001f]/.test(value.documentId)
     && (value.operation === 'upsert' || value.operation === 'tombstone')
@@ -171,7 +171,7 @@ export const LocalSyncOutbox = {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
     const mutationId = input.mutationId || createUuid();
-    if (typeof mutationId !== 'string' || !mutationId || mutationId.length > 128 || /[\\u0000-\\u001f/]/.test(mutationId)) throw new Error('معرّف العملية غير صالح.');
+    if (typeof mutationId !== 'string' || !mutationId || mutationId.length > 128 || /[\u0000-\u001f/]/.test(mutationId)) throw new Error('معرّف العملية غير صالح.');
     const canonicalPayload = JSON.parse(payloadJson) as Record<string, unknown>;
 
     const state = readState();
