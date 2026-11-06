@@ -1,9 +1,9 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06 after PR #54 merge and PR #55 local-mutation audit  
+**Updated:** 2026-11-06 after PR #55 merge and post-merge verification  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
-**Latest main SHA:** `033b8abda6bbf4f5c58d9b20d835f3268230abb6`
+**Latest main SHA:** `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`
 
 ## Latest completed work
 
@@ -13,7 +13,8 @@
 - **PR #52** — Backup import and factory reset journal-ordered; merged as `78fc3daccf187e88edd9f5fc857e7b04c59dd3c8`; exact-head run `42277464313` and post-merge main run `42277666291` passed.
 - **PR #53** — Removed unused direct-write handlers and refreshed engineering checkpoints; merged as `87c4ec4456c69e35e1d62a368c97a5992d0309ac`; exact-head run `42278253060` and post-merge main run `42278457062` passed.
 - **PR #54** — Typed, semantically validated local domain-event envelopes; merged as `6cc1d20e63257387044334da45e38bc204961c09`; exact-head run `42280361752` and post-merge main run `42280564932` passed.
-- Latest main also contains commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6` adding tab-based Quran Library navigation and Juz index support. PR #55 is based on this exact main SHA and will test the combined tree.
+- Main includes direct Quran Library navigation/Juz-index commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
+- **PR #55** — Journaled development demo data and rollback/restart recovery coverage; merged as `c4de1ea12549a9c8a51f818e3b855d1da1d45f96`; exact-head runs `42281993489` and `42281999065` passed; post-merge main run `42282206155` passed.
 
 ## Deployment status
 
@@ -30,7 +31,7 @@ Completed and merged:
 - App-level unused direct local-only session/revision handlers have been removed.
 
 Still open:
-- Finish the remaining file-by-file audit of legacy APIs and storage preferences. PR #55 routes the development demo loader through the journal; its exact-head CI is pending.
+- PR #55 closed the known development demo direct-write path. Remaining audit items: legacy outbox migration/reset behavior, device-local reader/Tafsir/audio preferences, and any unreviewed multi-key mutation callers.
 - Review legacy localStorage outbox migration against explicit reset and IndexedDB-loss scenarios.
 - Add failure-injection coverage for IndexedDB unavailable/blocked states, quota/read failures, rollback verification, and reload recovery.
 - Define immutable domain-event semantics and deterministic aggregate derivation before cloud sync.
@@ -49,19 +50,16 @@ Still open:
 - Production Firestore rules deployment and Vercel Production deployment are not verified.
 - Do not enable cloud writes, deploy production rules, or perform destructive migrations without explicit approval.
 
-## Current in-progress change — PR #55
+## Current status
 
-- Branch: `fix/local-mutation-audit-demo-journal-fresh-20261106`.
-- Replaces direct demo writes with one journaled transaction for signed-in users and one rollback-safe local transaction for guests.
-- Removes direct demo writer methods from StorageService and RetentionService.
-- Adds authenticated/guest demo persistence tests and a QuotaExceededError rollback test. Existing suites already cover IndexedDB enqueue failure, durable read failure, and projection rollback.
-- Latest head: `9d1352c65e371d36a84a1e136912f3835a3925e3`; exact-head Quality Gate run `42281919337` is pending. Added simulated restart/replay coverage for an event committed before local projection.
+- PR #55 is merged and verified on `main`; its grouped demo transaction works for authenticated and guest scopes.
+- The local mutation audit is still in progress for remaining legacy migration and device-local preference paths; core memorization/revision/backup flows remain journal-first.
 
 ## Next implementation sequence
 
-1. Complete PR #55 exact-head Quality Gate, second review, merge, and post-merge verification.
-2. Finish and merge the typed domain-event envelope after exact-head Quality Gate and second review.
-3. Define event-ledger/aggregate derivation and record-level Firestore document mapping.
+1. Finish the remaining local mutation audit, including legacy outbox migration/reset and device-local preferences; add failure-injection coverage where gaps remain.
+2. Derive daily aggregates and streaks deterministically from the merged domain-event ledger.
+3. Define record-level Firestore document mapping and conflict semantics.
 4. Implement Firestore adapter and sync coordinator behind an inactive feature gate.
 5. Test offline replay, duplicate delivery, account isolation, tombstones, and two-device conflicts in emulators.
 6. Deploy production rules/activate cloud writes only after backup review and explicit approval; complete browser QA and actual deployment verification.
