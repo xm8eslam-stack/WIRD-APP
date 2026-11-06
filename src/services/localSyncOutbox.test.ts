@@ -81,8 +81,8 @@ export function runLocalSyncOutboxTests(): { passed: number; failed: number } {
       const original = { mutationId: 'ack-fingerprint-1', collection: 'plans' as const, documentId: 'plan-1', payload: { title: 'خطة', count: 3 }, nowMs: 2500 };
       LocalSyncOutbox.enqueue(original);
       assert(LocalSyncOutbox.acknowledge(['ack-fingerprint-1']) === 1, 'Mutation should be acknowledged');
-      const exactRetry = LocalSyncOutbox.enqueue(original);
-      assert(exactRetry.status === 'already_acknowledged', 'Exact retry should remain idempotent');
+      const exactRetry = LocalSyncOutbox.enqueue({ ...original, payload: { count: 3, title: 'خطة' } });
+      assert(exactRetry.status === 'already_acknowledged', 'Semantically identical payloads must remain idempotent regardless of object key order');
       let changedPayloadRejected = false;
       let changedDocumentRejected = false;
       try { LocalSyncOutbox.enqueue({ ...original, payload: { title: 'خطة', count: 4 } }); } catch { changedPayloadRejected = true; }
