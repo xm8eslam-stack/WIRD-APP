@@ -1,6 +1,6 @@
 # WIRD — Current Engineering Status
 
-**Updated:** 2026-11-06 (PR #45 merged; post-merge Quality Gate passed)
+**Updated:** 2026-11-06 (active PR #49 exact-head Quality Gate passed; Vercel deployment remains rate-limited)
 **Repository:** `xm8eslam-stack/WIRD-APP`
 **Canonical branch:** `main` (Google AI Studio source)
 **Current main SHA:** `ee94a199fd354f3680807f0dbf8aa5da5e8adc6f`
@@ -15,10 +15,12 @@
 - Added production and development server smoke checks that assert `/api/tafsir` returns JSON for invalid coordinates, rather than source code.
 - Added a direct Mushaf-opening action for every Surah row and the selected-Surah panel. The selected Surah opens at its first Mushaf page; the general Mushaf entry continues to resume the saved reading position.
 - In-reader Surah jumps now resolve the first-ayah page from the generated 604-page index. Added a regression test validating all 114 Surah start pages against the generated page index.
-- Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed exact-head GitHub Actions PR run `42267248254` and push run `42267243769`: automated suites, Firestore emulator tests, TypeScript, production build, and development+production server smoke tests all passed.
+- Application-code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed exact-head PR run `42267248254` and push run `42267243769`.
+- Latest documentation-inclusive PR head `6d56580e2d2477ded76f1425d97e968f4b317eeb` passed exact-head WIRD Quality Gate run `42267565615` (run #1217): dependency audit, automated tests, Firestore emulator, TypeScript, production build, and production+development server smoke tests all succeeded.
+- Exact-head Vercel status remains failed with `build-rate-limit` / `api-deployments-free-per-day`; no Preview or Production deployment is verified.
 - Vercel deployment is blocked by the Free-plan daily deployment limit (`api-deployments-free-per-day`, retry after 24 hours). This is a deployment gate, not a successful deployment. Do not merge or claim production availability while this required check remains failed.
 - PR #49 remains open as a draft; main has not been modified.
-- Next: inspect current PR head and all checks after documentation checkpoint commits; wait for a valid deployment opportunity, verify the deployed preview/production endpoint, then decide merge only when all required checks are green.
+- Next: keep PR #49 open and unmerged; when the Vercel daily limit resets, retry deployment, verify the exact branch Preview and API response, then review whether merge is safe. Do not merge while Vercel's required check is failing.
 
 ## Latest verified position — after PR #45
 
