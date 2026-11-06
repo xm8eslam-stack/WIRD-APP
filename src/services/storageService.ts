@@ -13,6 +13,14 @@ import { ALL_SURAHS } from '../data/quranMeta';
 import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
 import type { JournalEvent } from './indexedDbSyncJournal';
+import type { SyncCollection } from './localSyncOutbox';
+
+export interface JournalProjectionOperation {
+  collection: Exclude<SyncCollection, 'syncMeta'>;
+  documentId: string;
+  operation: 'upsert';
+  payload: Record<string, unknown>;
+}
 
 export const STORAGE_KEYS = {
   PROFILE: 'wird_profile',
@@ -1409,9 +1417,102 @@ export const StorageService = {
       case 'activityEvents':
         return Array.isArray(payload.records) && this.saveLogs(payload.records as DailyLog[]);
       case 'syncMeta':
-        return true;
+        if (payload.transaction === undefined) return true;
+        if (!isPlainRecord(payload.transaction) || payload.transaction.version !== 1 ||
+            !Array.isArray(payload.transaction.operations)) return false;
+        return this.applyJournalTransaction(payload.transaction.operations);
       default:
         return false;
+    }
+  },
+
+  /**
+   * Apply several projections as one logical local transaction. All affected
+   * durable keys are snapshotted before the first write; any failed projection
+   * restores and verifies the complete pre-transaction byte set.
+   */
+  applyJournalTransaction(operations: unknown): boolean {
+    if (!Array.isArray(operations) || operations.length < 1 || operations.length > 8) return false;
+    const scope = this.getStorageScope();
+    const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
+    if (!uid) return false;
+
+    const keysByCollection: Record<string, string[]> = {
+      profile: [STORAGE_KEYS.PROFILE],
+      plans: [STORAGE_KEYS.PLANS],
+      enginePlans: [STORAGE_KEYS.ENGINE_PLANS],
+      portions: [
+        STORAGE_KEYS.UNIFIED_PORTIONS,
+        STORAGE_KEYS.SCHEMA_VERSION,
+        STORAGE_KEYS.PORTIONS,
+        STORAGE_KEYS.REVISION
+      ],
+      weakVerses: [STORAGE_KEYS.WEAK_VERSES],
+      tests: [STORAGE_KEYS.TESTS],
+      activityEvents: [STORAGE_KEYS.LOGS]
+    };
+    const seenCollections = new Set<string>();
+    const snapshotKeys = new Set<string>();
+
+    for (const operation of operations) {
+      if (!isPlainRecord(operation) ||
+          typeof operation.collection !== 'string' ||
+          !Object.prototype.hasOwnProperty.call(keysByCollection, operation.collection) ||
+          operation.operation !== 'upsert' ||
+          typeof operation.documentId !== 'string' ||
+          operation.documentId.length < 1 || operation.documentId.length > 128 ||
+          /[\u0000-\u001F]/.test(operation.documentId) ||
+          !isPlainRecord(operation.payload) ||
+          seenCollections.has(operation.collection)) return false;
+      seenCollections.add(operation.collection);
+      for (const key of keysByCollection[operation.collection]) snapshotKeys.add(resolveStorageKey(key));
+    }
+
+    const snapshot = new Map<string, string | null>();
+    for (const key of snapshotKeys) {
+      const value = readRawStorageValue(key);
+      if (value === undefined) {
+        console.error('[WIRD Storage] Grouped journal transaction stopped because a complete durable snapshot was unavailable.');
+        return false;
+      }
+      snapshot.set(key, value);
+    }
+
+    const rollback = (reason: string): false => {
+      const restored = restoreRawStorageValues(snapshot);
+      console.error('[WIRD Storage] Grouped journal transaction failed; complete previous state restored: ' + restored, reason);
+      return false;
+    };
+
+    try {
+      for (let index = 0; index < operations.length; index++) {
+        const operation = operations[index] as JournalProjectionOperation;
+        const now = Date.now();
+        const syntheticEvent: JournalEvent = {
+          key: 'journal-transaction:' + uid + ':' + index,
+          uid,
+          eventId: 'journal-transaction-' + index,
+          mutationId: 'journal-transaction-' + index,
+          eventType: 'domain-mutation',
+          collection: operation.collection,
+          documentId: operation.documentId,
+          operation: operation.operation,
+          schemaVersion: 1,
+          clientUpdatedAtMs: now,
+          createdAtMs: now,
+          deviceId: 'journal-transaction-projection',
+          payload: operation.payload,
+          fingerprint: 'journal-transaction-projection',
+          sequence: index + 1,
+          projectionRequired: true
+        };
+        if (!this.applyJournalEvent(syntheticEvent)) {
+          return rollback('A child projection rejected the grouped transaction.');
+        }
+      }
+      return true;
+    } catch (error) {
+      return rollback(error instanceof Error ? error.message : 'Unknown grouped projection error.');
     }
   },
 
