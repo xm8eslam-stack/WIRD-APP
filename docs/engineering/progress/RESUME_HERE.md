@@ -99,3 +99,22 @@ If any current evidence differs from these notes, current GitHub state wins. Upd
 3. Continue auditing daily revision queue, weekly overview, dashboard aggregate metrics, review-history semantics, and rollback under quota/read-back failures.
 4. Add targeted tests and run the complete quality gate plus independent second review before the next main integration.
 5. Keep cloud sync disabled until the transactional IndexedDB event+outbox design and multi-tab tests are complete; production rules deployment still requires explicit approval.
+
+
+## 2026-11-06 — Latest working checkpoint: Phase 2 queue/metrics audit
+
+- Canonical integration branch: `main`; latest known main checkpoint at branch creation: `0de185af757cfecead14beb98a465cf088200fff`.
+- Current working branch: `fix/phase2-queue-metrics-audit`.
+- Current code head before progress-document updates: `c2d5ab906bc66443f63bdc049595d0504e303937`; re-fetch current branch HEAD after documentation commits.
+- Prior PR #10 remains merged and verified (Actions #681: 304 assertions, 10 Firestore emulator tests, audit, TypeScript, build, smoke test).
+- Current branch implements shared deterministic daily/weekly queue ordering; removes the unused queue gracePeriodDays option; filters legacy initial-memorization init- history entries from review totals without deleting raw history; deduplicates review event IDs in the flattened review view; excludes not_memorized portions from average ease; and requires weak-ayah text before recording a failed review.
+- Regression tests cover all of those behaviors plus invalid calendar dates and daily queue backlog cap. They have not yet run in CI.
+- External research reviewed ts-fsrs (MIT, Node >=24, v6 breaking changes), fsrs.js (deprecated/transition recommendation), Anki scheduling migration guidance, and FSRS Helper load-balancing features. No code/dependency adopted; no SM-2 schedule migration.
+
+### Exact next action
+
+1. Re-fetch branch HEAD and main; inspect all changed files and test fixtures.
+2. Open a draft PR from `fix/phase2-queue-metrics-audit` to `main` and run CI.
+3. Fix any failures, perform a separate second review, then merge only after all required checks pass.
+4. Continue rollback failure-injection tests for review + weak-verse + activity multi-key writes.
+5. Keep cloud sync disabled until a transactional IndexedDB event/outbox design is tested.
