@@ -1,15 +1,15 @@
 # WIRD Work Session Checkpoint
 
-**Last updated:** 2026-11-06  
+**Last updated:** 2026-11-06 — active Quran/Tafsir PR #49 checkpoint  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
-**Branch:** `main`  
-**Current HEAD:** `f342b4bc7e02a48f88b90646098eea178901c8ea`  
+**Branch:** `fix/quran-reader-tafsir-navigation-20261106` (PR #49; `main` remains unchanged)  
+**Current HEAD:** `6d56580e2d2477ded76f1425d97e968f4b317eeb`  
 **Google AI Studio source branch:** `main`  
-**Latest CI run:** [42180258989 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42180258989)
+**Latest CI run:** [42267565615 — success](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42267565615). Vercel deployment is blocked by the Free-plan build/deployment rate limit; no Preview or Production deployment is verified.
 
 ## Resume instructions
 
-Continue from the current `main` HEAD. Do not reset, force-push, or merge the divergent Phase 5 branch wholesale. Before every write, fetch the current main SHA and use a non-forced compare-and-swap update. Commit one reviewed milestone at a time.
+For the active Quran/Tafsir task, continue on `fix/quran-reader-tafsir-navigation-20261106`; do not modify `main`. PR #49 is Draft and must remain unmerged until Vercel can deploy the exact head and the deployed experience is verified. For any new independent task, fetch the latest `main` SHA and create a fresh branch. Do not reset, force-push, or merge divergent branches wholesale.
 
 ## User goal
 
