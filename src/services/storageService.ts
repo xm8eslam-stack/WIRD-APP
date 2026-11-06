@@ -638,71 +638,64 @@ export interface BackupPayload {
 }
 
 export function validateBackupPayload(payload: any): { valid: boolean; error?: string } {
-  if (!payload || typeof payload !== 'object') {
+  if (!isPlainRecord(payload)) {
     return { valid: false, error: 'الملف لا يحتوي على كائن JSON صالح' };
   }
-
-  // Version check (Supported versions: 1 through 4)
-  if (typeof payload.version !== 'number' || payload.version < 1 || payload.version > 4) {
-    return { valid: false, error: `إصدار النسخة الاحتياطية (${payload.version}) غير مدعوم` };
+  if (!isIntegerBetween(payload.version, 1, 4)) {
+    return { valid: false, error: 'إصدار النسخة الاحتياطية (' + payload.version + ') غير مدعوم' };
+  }
+  if (payload.format !== undefined && payload.format !== 'wird_backup') {
+    return { valid: false, error: 'صيغة النسخة الاحتياطية غير معروفة' };
+  }
+  if (payload.timestamp !== undefined && !isValidTimestamp(payload.timestamp)) {
+    return { valid: false, error: 'تاريخ إنشاء النسخة الاحتياطية غير صالح' };
+  }
+  if (payload.isEncrypted !== undefined && typeof payload.isEncrypted !== 'boolean') {
+    return { valid: false, error: 'حالة تشفير النسخة الاحتياطية غير صالحة' };
+  }
+  if (payload.unencryptedWarning !== undefined &&
+      (typeof payload.unencryptedWarning !== 'string' || payload.unencryptedWarning.length > 1000)) {
+    return { valid: false, error: 'بيان تحذير النسخة الاحتياطية غير صالح' };
   }
 
-  // Profile validation if present
-  if (payload.profile !== undefined) {
-    if (typeof payload.profile !== 'object' || payload.profile === null) {
-      return { valid: false, error: 'بيانات الملف الشخصي (profile) غير صالحة' };
-    }
-    if (typeof payload.profile.name !== 'string' || !payload.profile.name.trim()) {
-      return { valid: false, error: 'اسم الحافظ في الملف الشخصي مفقود أو غير صالح' };
-    }
-    if (typeof payload.profile.streakDays !== 'number' || payload.profile.streakDays < 0) {
-      return { valid: false, error: 'قيمة سلسلة الأيام غير صالحة' };
-    }
+  if (payload.profile !== undefined && !isValidUserProfile(payload.profile)) {
+    return { valid: false, error: 'بيانات الملف الشخصي غير مكتملة أو غير صالحة' };
   }
 
-  // Array checks
-  const arrayFields = ['plans', 'enginePlans', 'revisionItems', 'logs', 'tests', 'portions', 'unifiedPortions', 'weakVerses'] as const;
-  for (const field of arrayFields) {
-    if (payload[field] !== undefined && !Array.isArray(payload[field])) {
-      return { valid: false, error: `الحقل ${field} يجب أن يكون مصفوفة صالحة` };
-    }
-  }
+  const arraySpecs: Array<{
+    field: string;
+    max: number;
+    validate: (value: unknown) => boolean;
+    label: string;
+  }> = [
+    { field: 'plans', max: 500, validate: isValidMemorizationPlan, label: 'خطط الحفظ' },
+    { field: 'enginePlans', max: 100, validate: isValidEngineGeneratedPlan, label: 'الخطط الذكية' },
+    { field: 'revisionItems', max: 10000, validate: isValidRevisionItem, label: 'عناصر المراجعة' },
+    { field: 'logs', max: 10000, validate: isValidDailyLog, label: 'سجل النشاط اليومي' },
+    { field: 'tests', max: 50, validate: isValidTestResultRecord, label: 'نتائج الاختبارات' },
+    { field: 'portions', max: 10000, validate: value => isValidPortionRecord(value, false), label: 'المقاطع القديمة' },
+    { field: 'unifiedPortions', max: 10000, validate: value => isValidPortionRecord(value, true), label: 'المقاطع الموحدة' },
+    { field: 'weakVerses', max: 10000, validate: isValidWeakVerseRecord, label: 'الآيات المتعثرة' }
+  ];
 
-  if (payload.unifiedPortions !== undefined) {
-    const validStatuses = new Set(['not_memorized', 'currently_memorizing', 'recently_memorized', 'stable', 'needs_revision', 'weak']);
-    const validTypes = new Set(['passage', 'surah', 'page']);
-    for (let index = 0; index < payload.unifiedPortions.length; index++) {
-      const portion = payload.unifiedPortions[index];
-      const surahMeta = portion && ALL_SURAHS.find(surah => surah.number === portion.surahNumber);
-      const validDate = typeof portion?.nextDueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(portion.nextDueDate)
-        && (() => {
-          const [year, month, day] = portion.nextDueDate.split('-').map(Number);
-          const date = new Date(Date.UTC(year, month - 1, day));
-          return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === portion.nextDueDate;
-        })();
-      const valid = portion && typeof portion === 'object' && surahMeta &&
-        typeof portion.id === 'string' && portion.id === createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah) &&
-        validTypes.has(portion.type) &&
-        typeof portion.surahName === 'string' && portion.surahName.trim().length > 0 &&
-        Number.isInteger(portion.startAyah) && portion.startAyah >= 1 && portion.startAyah <= surahMeta.versesCount &&
-        Number.isInteger(portion.endAyah) && portion.endAyah >= portion.startAyah && portion.endAyah <= surahMeta.versesCount &&
-        validStatuses.has(portion.status) &&
-        validDate &&
-        Number.isInteger(portion.intervalDays) && portion.intervalDays >= 1 &&
-        Number.isFinite(portion.easeFactor) && portion.easeFactor >= 1.3 && portion.easeFactor <= 3 &&
-        Number.isInteger(portion.repetitionCount) && portion.repetitionCount >= 0 &&
-        (portion.pageNumber === undefined || (Number.isInteger(portion.pageNumber) && portion.pageNumber >= 1 && portion.pageNumber <= 604)) &&
-        (portion.pageStart === undefined || (Number.isInteger(portion.pageStart) && portion.pageStart >= 1 && portion.pageStart <= 604)) &&
-        (portion.pageEnd === undefined || (Number.isInteger(portion.pageEnd) && portion.pageEnd >= 1 && portion.pageEnd <= 604)) &&
-        (portion.juzNumber === undefined || (Number.isInteger(portion.juzNumber) && portion.juzNumber >= 1 && portion.juzNumber <= 30)) &&
-        (portion.history === undefined || Array.isArray(portion.history));
-      if (!valid) return { valid: false, error: 'بيانات المقطع الموحد رقم ' + (index + 1) + ' غير صالحة أو تتجاوز حدود السورة' };
+  for (const spec of arraySpecs) {
+    const value = payload[spec.field];
+    if (value === undefined) continue;
+    if (!Array.isArray(value)) {
+      return { valid: false, error: 'الحقل ' + spec.field + ' يجب أن يكون مصفوفة صالحة' };
+    }
+    if (value.length > spec.max) {
+      return { valid: false, error: 'عدد السجلات في ' + spec.label + ' يتجاوز الحد المسموح' };
+    }
+    for (let index = 0; index < value.length; index++) {
+      if (!spec.validate(value[index])) {
+        return { valid: false, error: 'السجل رقم ' + (index + 1) + ' في ' + spec.label + ' غير صالح' };
+      }
     }
   }
 
   return { valid: true };
 }
-
 export const StorageService = {
   // Scope and raw-key API used by AuthGate and the retention adapter.
   needsLegacyDataDecision(scope: string): boolean {
