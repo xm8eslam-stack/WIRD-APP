@@ -327,11 +327,13 @@ export const RetentionService = {
     const portions = this.getPortions();
     const index = portions.findIndex(portion => portion.id === id);
     if (index < 0) throw new Error('المقطع المطلوب غير موجود؛ لم يتم حفظ تحديث وهمي.');
-    const updated = portions.map((portion, currentIndex) => currentIndex !== index ? portion : {
-      ...portion,
-      status: newStatus,
-      strength: newStatus === 'weak' ? 'weak' : newStatus === 'stable' ? 'strong' : 'medium'
-    });
+    const updated: PortionStatusRecord[] = portions.map((portion, currentIndex): PortionStatusRecord =>
+      currentIndex !== index ? portion : {
+        ...portion,
+        status: newStatus,
+        strength: newStatus === 'weak' ? 'weak' : newStatus === 'stable' ? 'strong' : 'medium'
+      }
+    );
     if (!this.savePortions(updated)) throw new Error('تعذر حفظ تحديث حالة المقطع في التخزين المحلي.');
     return updated;
   },
