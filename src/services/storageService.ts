@@ -57,28 +57,83 @@ function rawSetItem(key: string, value: string): boolean {
     memoryStorage.set(key, value);
     return true;
   }
+
+  let previousDurableValue: string | null;
+  try {
+    previousDurableValue = localStorage.getItem(key);
+  } catch (error) {
+    console.error(`[WIRD Storage] Cannot snapshot durable value before writing ${key}`, error);
+    return false;
+  }
+
+  const restorePreviousDurableValue = (): boolean => {
+    try {
+      if (previousDurableValue === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, previousDurableValue);
+    } catch {
+      // Verify below: a storage adapter may throw after applying the requested state.
+    }
+    try {
+      return localStorage.getItem(key) === previousDurableValue;
+    } catch {
+      return false;
+    }
+  };
+
+  const restorePreviousMemoryValue = () => {
+    if (previousMemoryValue === undefined) memoryStorage.delete(key);
+    else memoryStorage.set(key, previousMemoryValue);
+  };
+
   try {
     localStorage.setItem(key, value);
+    const readback = localStorage.getItem(key);
+    if (readback !== value) {
+      const rollbackVerified = restorePreviousDurableValue();
+      restorePreviousMemoryValue();
+      console.error(
+        `[WIRD Storage] Durable write verification failed for ${key}; previous value restored: ${rollbackVerified}`
+      );
+      return false;
+    }
     memoryStorage.set(key, value);
     return true;
   } catch (error) {
-    // A failed durable write must not appear successful through the memory fallback.
-    if (previousMemoryValue === undefined) memoryStorage.delete(key);
-    else memoryStorage.set(key, previousMemoryValue);
-    console.error(`[WIRD Storage] Durable write to localStorage failed for ${key}`, error);
+    const rollbackVerified = restorePreviousDurableValue();
+    restorePreviousMemoryValue();
+    console.error(
+      `[WIRD Storage] Durable write to localStorage failed for ${key}; previous value restored: ${rollbackVerified}`,
+      error
+    );
     return false;
   }
 }
 
 function rawRemoveItem(key: string): boolean {
-  let success = true;
-  try {
-    if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
-  } catch {
-    success = false;
+  const previousMemoryValue = memoryStorage.get(key);
+  if (typeof localStorage === 'undefined') {
+    memoryStorage.delete(key);
+    return true;
   }
-  memoryStorage.delete(key);
-  return success;
+  try {
+    localStorage.removeItem(key);
+    if (localStorage.getItem(key) !== null) {
+      if (previousMemoryValue === undefined) memoryStorage.delete(key);
+      else memoryStorage.set(key, previousMemoryValue);
+      console.error(`[WIRD Storage] Durable remove verification failed for ${key}`);
+      return false;
+    }
+    memoryStorage.delete(key);
+    return true;
+  } catch (error) {
+    let removed = false;
+    try { removed = localStorage.getItem(key) === null; } catch { /* verification unavailable */ }
+    if (removed) memoryStorage.delete(key);
+    else if (previousMemoryValue === undefined) memoryStorage.delete(key);
+    else memoryStorage.set(key, previousMemoryValue);
+    console.error(`[WIRD Storage] Durable remove failed or could not be verified for ${key}`, error);
+    return false;
+  }
 }
 
 /**
@@ -810,8 +865,8 @@ export const StorageService = {
     return setItem(key, value);
   },
 
-  removeRawItem(key: string): void {
-    removeItem(key);
+  removeRawItem(key: string): boolean {
+    return removeItem(key);
   },
 
   /** @internal Test-only reset; never call from application UI. */
