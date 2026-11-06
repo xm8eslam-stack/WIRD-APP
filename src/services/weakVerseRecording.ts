@@ -1,5 +1,6 @@
 import type { PortionStatusRecord } from '../types/quran';
 import { RetentionService } from './retentionService';
+import { StorageService, STORAGE_KEYS } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
 import { ALL_SURAHS } from '../data/quranMeta';
 
@@ -34,6 +35,7 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     portion.endAyah === input.ayahNumber
   );
   const today = getLocalDateString();
+  const previousWeakArchive = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES);
   try {
     RetentionService.addPortion({
       type: 'passage',
@@ -59,12 +61,21 @@ export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): Reco
     );
     return { success: true };
   } catch (error) {
-    const rollbackSucceeded = RetentionService.savePortions(previousPortions);
+    const portionWriteRestored = RetentionService.savePortions(previousPortions);
+    const portionReadbackRestored = JSON.stringify(RetentionService.getPortions()) === JSON.stringify(previousPortions);
+    try {
+      if (previousWeakArchive === null) StorageService.removeRawItem(STORAGE_KEYS.WEAK_VERSES);
+      else StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, previousWeakArchive);
+    } catch {
+      // The exact read-back below determines whether the archive was restored.
+    }
+    const weakArchiveRestored = StorageService.getRawItem(STORAGE_KEYS.WEAK_VERSES) === previousWeakArchive;
+    const rollbackSucceeded = portionWriteRestored && portionReadbackRestored && weakArchiveRestored;
     return {
       success: false,
       messageAr: rollbackSucceeded
-        ? (error instanceof Error ? error.message : 'تعذر تسجيل الآية المتعثرة؛ أُعيد سجل المقاطع إلى حالته السابقة.')
-        : 'تعذر تسجيل الآية المتعثرة، كما تعذر التحقق من استعادة سجل المقاطع السابق. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.'
+        ? (error instanceof Error ? error.message : 'تعذر تسجيل الآية المتعثرة؛ تم التحقق من استعادة سجل المقاطع وأرشيف الآيات إلى حالتهما السابقة.')
+        : 'تعذر تسجيل الآية المتعثرة، ولم ينجح التحقق من استعادة سجل المقاطع وأرشيف الآيات معًا. لا تغلق الصفحة ولا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة حالة البيانات.'
     };
   }
 }
