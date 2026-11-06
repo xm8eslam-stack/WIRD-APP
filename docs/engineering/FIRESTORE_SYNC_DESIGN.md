@@ -222,7 +222,7 @@ Cloud sync is not complete until the two-device emulator suite passes, productio
 - PR #45: journal-first weak-verse resolution; idempotent and isolated from canonical portion rating/schedule.
 - PR #47: journal-first Revision Center ratings, grouped with optional weak-verse updates, activity-log aggregate, and profile streak.
 
-Exact-head PR and push Quality Gates passed for PRs #43, #44, #45, and #47. Post-merge main Quality Gates passed after PRs #43 (run `42258433095`), #44 (run `42261020224`), and #45 (run `42262136009`). Post-merge main run `42264485087` for PR #47 was still in progress when this document was prepared; verify it separately.
+Exact-head PR and push Quality Gates passed for PRs #43, #44, #45, and #47. Post-merge main Quality Gates passed after PRs #43 (run `42258433095`), #44 (run `42261020224`), and #45 (run `42262136009`). Post-merge main run `42264485087` for PR #47 **passed** on the exact main SHA.
 
 ### Remaining local mutation work
 
