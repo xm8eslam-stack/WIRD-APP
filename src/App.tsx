@@ -231,7 +231,7 @@ export default function App() {
     handleStartSession(selection.surahNumber, selection.startAyah, selection.endAyah, selection.mode);
   };
 
-  // A session is complete only after canonical progress and activity both persist.
+  // Commit session progress, activity, streak, and matching smart-plan task together.
   const handleCompleteSession = async (
     memorizedAyahs: number,
     reviewedPages: number,
@@ -239,20 +239,8 @@ export default function App() {
     taskName: string,
     mode: 'memorize' | 'review' = sessionParams.mode
   ): Promise<boolean> => {
-    const result = await persistJournaledSessionCompletion({
-      mode, memorizedAyahs, reviewedPages, minutes, taskName,
-      surahNumber: sessionParams.surahNumber,
-      startAyah: sessionParams.startAyah,
-      endAyah: sessionParams.endAyah
-    });
-    if (!result.success) {
-      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
-      showToast(result.messageAr, 'error');
-      setRevisionItems(StorageService.getRevisionItems());
-      return false;
-    }
-
-    if (result.shouldRecordMemorization && sessionParams.surahNumber) {
+    let updatedEnginePlans: EngineGeneratedPlan[] | undefined;
+    if (mode === 'memorize' && sessionParams.surahNumber) {
       const currentEnginePlans = StorageService.getEnginePlans();
       const activeEnginePlan = currentEnginePlans.find(plan => plan.isActive && !plan.isPaused);
       const matchingDay = activeEnginePlan?.schedule.find(day =>
@@ -268,21 +256,25 @@ export default function App() {
             ? 'partially_completed' : 'completed',
           memorizationTask: { ...matchingDay.memorizationTask, completed: true, completedAt: new Date().toISOString() }
         });
-        const updatedPlans = currentEnginePlans.map(plan => plan.id === activeEnginePlan.id ? updatedPlan : plan);
-        const planResult = await persistEnginePlansSnapshot(updatedPlans);
-        if (planResult.success) setEnginePlans(updatedPlans);
-        else {
-          if (planResult.recoveredPriorEvents) refreshJournaledSnapshots();
-          showToast(planResult.recoveredPriorEvents
-          ? 'استعدنا تحديثاً سابقاً للخطة الذكية؛ لم ننفذ التحديث الجديد. راجع الخطة ثم أعد المحاولة.'
-          : planResult.queued
-            ? 'تم حفظ تحديث الخطة الذكية في سجل الاستعادة، لكن تعذر تطبيقه محلياً.'
-            : planResult.recoveryBlocked
-            ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تحديث الخطة الجديد.'
-            : 'تم حفظ المقطع وسجل الجلسة، لكن تعذر تحديث حالة المهمة في الخطة الذكية.', 'error');
-        }
+        updatedEnginePlans = currentEnginePlans.map(plan => plan.id === activeEnginePlan.id ? updatedPlan : plan);
       }
     }
+
+    const result = await persistJournaledSessionCompletion({
+      mode, memorizedAyahs, reviewedPages, minutes, taskName,
+      surahNumber: sessionParams.surahNumber,
+      startAyah: sessionParams.startAyah,
+      endAyah: sessionParams.endAyah,
+      enginePlansSnapshot: updatedEnginePlans
+    });
+    if (!result.success) {
+      if (result.recoveredPriorEvents) refreshJournaledSnapshots();
+      showToast(result.messageAr, 'error');
+      setRevisionItems(StorageService.getRevisionItems());
+      return false;
+    }
+
+    if (updatedEnginePlans) setEnginePlans(updatedEnginePlans);
     setLogs(StorageService.getLogsForDisplay());
     setProfile(StorageService.getProfile());
     setRevisionItems(StorageService.getRevisionItems());
