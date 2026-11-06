@@ -31,7 +31,7 @@
 - Current main SHA: `60d475d1f4f06ea4a852751e1548297d9c7dc6de`.
 - PR #36 exact-head runs `42242635765` (PR) and the corresponding push run passed; post-merge main run `42249998978` passed on SHA `9b76227b9498b23fa79fb39264d4b4be98fa16e4`.
 - PR #37 exact-head runs `42251723375` and `42251711748` passed on SHA `d45dd9e7284101e332f15b2f408cd62001a961be`.
-- Post-merge main run `42251976734` is still in progress at checkpoint preparation. Vercel Production deployment is not confirmed.
+- Post-merge main run `42251976734` passed on exact SHA `60d475d1f4f06ea4a852751e1548297d9c7dc6de`. Vercel Production deployment is not confirmed.
 - Phase 2 remains IN PROGRESS; PR #37 does not implement full cloud sync.
 
 ## Cloud sync
