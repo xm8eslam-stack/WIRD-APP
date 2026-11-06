@@ -292,7 +292,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         text: 'نص آية للاختبار',
         notes: 'اختبار تسجيل متعثر'
       }, mutationId);
-      assert(prepared.success, 'A valid weak-verse action must produce grouped projections');
+      if (!prepared.success) throw new Error(prepared.messageAr);
       assert(RetentionService.getPortions().length === 0 && RetentionService.getWeakVerses().length === 0,
         'Preparing the action must not mutate either local archive');
 
