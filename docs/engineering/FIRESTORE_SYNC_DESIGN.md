@@ -188,3 +188,30 @@ The current rules satisfy the ownership/allowlist/generic-envelope foundation, b
 ## 12. Release gate
 
 Cloud sync is not complete until the two-device emulator suite passes, production rules are reviewed and deployed with approval, and a real two-device test verifies offline replay and account isolation. A green frontend build or a Vercel deployment alone does not satisfy this gate.
+
+
+## 13. Implementation status — 2026-11-06
+
+The following foundation has been implemented and merged:
+
+- PR #30: UID-scoped IndexedDB stores for append-only events, outbox delivery state, acknowledgements, and device metadata. Each event/outbox pair commits in one IndexedDB read/write transaction.
+- PR #31: atomic and idempotent migration from the v1 localStorage outbox. The old localStorage value remains a recovery copy because older tabs may still write it; changed snapshots are merged by stable mutation fingerprints.
+- PR #32: the `LocalSyncOutbox` facade now exposes asynchronous IndexedDB enqueue, ready-list, acknowledgement, retry, and snapshot operations.
+- Automated coverage includes cross-tab duplicate enqueue, transaction abort atomicity, acknowledgement, retry scheduling, UID isolation, migration conflicts, incremental stale-tab migration, and database reopen recovery.
+
+**Not implemented yet:**
+
+- No production domain mutation call site currently invokes `LocalSyncOutbox`. The journal is not yet a write-ahead source for profile, plans, portions, revisions, weak verses, tests, or activity.
+- No deterministic journal-to-localStorage projection replay/cursor exists yet.
+- No Firestore repository, listener, sync worker, cloud outbox drain, or server acknowledgement flow is active.
+- Firestore rules have emulator coverage, but production deployment and two-device/offline integration remain unverified.
+
+### Next implementation sequence
+
+1. Define per-UID monotonic event sequencing and a durable projection cursor.
+2. Implement idempotent journal-to-local projection replay before connecting UI mutations. Advance the cursor only after the local projection is verified; a crash between projection and cursor update must safely replay the same event.
+3. Add journal-first mutation adapters for profile and plans, then portions/revision, weak verses, tests, and activity/session records. Each event payload must be a validated full snapshot or a documented deterministic patch.
+4. Implement Firestore draining, server acknowledgements, tombstones, retry/backoff, and collection-specific security rules.
+5. Pass two-account/two-device/offline/online tests before enabling cloud sync for users.
+
+Do not describe the IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
