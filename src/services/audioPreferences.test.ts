@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { PLAYBACK_RATES, normalizePlaybackRate } from './audioPreferences';
 
 export function runAudioPreferencesTests(): { passed: number; failed: number } {
@@ -12,6 +14,15 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
   });
   test('Playback rate normalization rejects unsupported values', () => {
     if (normalizePlaybackRate(1.5) !== 1.5 || normalizePlaybackRate(3) !== 1 || normalizePlaybackRate('invalid') !== 1) throw new Error('Invalid playback-rate normalization');
+  });
+  test('Every existing audio view applies the shared speed and renders the common control', () => {
+    const library = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranLibraryView.tsx'), 'utf8');
+    const session = fs.readFileSync(path.resolve(process.cwd(), 'src/components/session/MemorizationSessionView.tsx'), 'utf8');
+    for (const [name, source] of [['Quran library', library], ['Memorization session', session]] as const) {
+      if (!source.includes('getSavedPlaybackRate') || !source.includes('audio.playbackRate') || !source.includes('AudioPlaybackRateControl')) {
+        throw new Error(name + ' is missing the shared playback-speed integration');
+      }
+    }
   });
   return { passed, failed };
 }
