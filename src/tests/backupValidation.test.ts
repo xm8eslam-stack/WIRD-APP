@@ -390,6 +390,35 @@ export function runBackupTests(): { passed: number; failed: number } {
     }
   });
 
+  test('Malformed legacy archives are rejected before migration and their original bytes are preserved', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    const malformedLegacyPortions = JSON.stringify([{
+      id: 'legacy-invalid', surahNumber: 1, surahName: 'الفاتحة',
+      startAyah: 1, endAyah: 8, status: 'stable'
+    }]);
+    try {
+      StorageService.restoreStorageSnapshot({
+        ['memory:' + STORAGE_KEYS.SCHEMA_VERSION]: '1',
+        ['memory:' + STORAGE_KEYS.PORTIONS]: malformedLegacyPortions,
+        ['memory:' + STORAGE_KEYS.REVISION]: '[]'
+      });
+      const report = StorageService.ensureDataMigrated();
+      assert(!report.success, 'Malformed legacy coordinate must block migration');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === malformedLegacyPortions,
+        'Malformed legacy bytes must remain available for recovery');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === null,
+        'No canonical archive may be written after a malformed legacy record');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
+  test('Legacy revision items with migration-supported missing fields remain importable', () => {
+    const legacyRevision = { surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5 };
+    const result = validateBackupPayload({ version: 3, revisionItems: [legacyRevision] });
+    assert(result.valid, 'Legacy revision records with fields normalized by migration must remain supported');
+  });
+
   return { passed, failed };
 }
 
