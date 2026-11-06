@@ -282,11 +282,10 @@ async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 
   }
 
   const result = await indexedDbJournal.importLegacyState(normalized as LegacyOutboxState);
-  // The IDB transaction commits the complete migration first. If this cleanup
-  // fails, the migration marker makes the next attempt idempotent and safe.
-  StorageService.removeRawItem(key);
-  if (!StorageService.verifyRawItem(key, null)) {
-    throw new Error('تم ترحيل الصندوق إلى IndexedDB، لكن تعذر حذف النسخة القديمة. لا تكرر العمليات؛ أعد محاولة تنظيف النسخة القديمة لاحقاً.');
+  // Keep the source as a recovery copy. Older tabs may still write the v1 key;
+  // later imports merge new entries by fingerprint without deleting that source.
+  if (!StorageService.verifyRawItem(key, raw)) {
+    throw new Error('تغير صندوق المزامنة القديم أثناء الترحيل؛ تم الاحتفاظ بالمصدر وأُوقف تأكيد المزامنة حتى إعادة الدمج.');
   }
   return result;
 }
