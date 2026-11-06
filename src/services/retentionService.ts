@@ -569,17 +569,18 @@ export const RetentionService = {
     }
 
     // Activity aggregation is a separate durable write; record only measured time.
-    const activitySaved = StorageService.recordSessionCompletion(
+    const activityResult = StorageService.recordSessionCompletionDetailed(
       0,
       reviewedPagesCount,
       minutesSpent,
       `مراجعة ${target.surahName} (${target.startAyah}-${target.endAyah}) - ${rating === 'successful' ? 'ناجحة' : rating === 'difficult' ? 'صعبة' : 'غير متقنة'}`
     );
-    if (!activitySaved) {
-      if (!restoreAttempt()) {
-        throw new Error('تعذر حفظ سجل نشاط المراجعة، كما تعذر التحقق من استعادة تقييم المقطع وسجل الآيات المتعثرة. لا تغلق الصفحة؛ صدّر نسخة احتياطية قبل المتابعة.');
+    if (!activityResult.success) {
+      const portionAndWeakArchiveRestored = restoreAttempt();
+      if (!portionAndWeakArchiveRestored || !activityResult.rollbackVerified) {
+        throw new Error('تعذر حفظ سجل نشاط المراجعة، ولم ينجح التحقق من استعادة كلٍ من سجل النشاط وتقييم المقطع وقائمة الآيات المتعثرة. لا تغلق الصفحة ولا تكرر العملية؛ صدّر نسخة احتياطية واطلب مراجعة حالة البيانات.');
       }
-      throw new Error('تعذر حفظ سجل نشاط المراجعة؛ أُلغي التقييم وأُعيدت حالة المقطع وقائمة الآيات إلى ما قبل المحاولة. يمكنك المحاولة مجددًا.');
+      throw new Error('تعذر حفظ سجل نشاط المراجعة؛ تم التحقق من استعادة تقييم المقطع وقائمة الآيات المتعثرة وسجل النشاط إلى ما قبل المحاولة. يمكنك المحاولة مجددًا.');
     }
 
     return {
