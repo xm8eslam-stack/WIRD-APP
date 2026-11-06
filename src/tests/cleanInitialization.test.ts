@@ -91,8 +91,8 @@ export function runCleanInitializationTests(): { passed: number; failed: number 
     const storageSource = fs.readFileSync(path.resolve(process.cwd(), 'src/services/storageService.ts'), 'utf8');
     const retentionSource = fs.readFileSync(path.resolve(process.cwd(), 'src/services/retentionService.ts'), 'utf8');
     assert(settingsSource.includes('loadDemoDataJournaled()'), 'Demo action must call the journaled persistence service');
-    assert(!/\\bloadDemoData\\s*\\(/.test(storageSource), 'StorageService must not expose a direct demo archive writer');
-    assert(!/\\bloadDemoPortions\\s*\\(/.test(retentionSource), 'RetentionService must not expose a direct demo portions writer');
+    assert(!/\bloadDemoData\s*\(/.test(storageSource), 'StorageService must not expose a direct demo archive writer');
+    assert(!/\bloadDemoPortions\s*\(/.test(retentionSource), 'RetentionService must not expose a direct demo portions writer');
   });
 
   return { passed, failed };
