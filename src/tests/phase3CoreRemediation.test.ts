@@ -275,6 +275,37 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     assert(firstHistoryIds === repeatedHistoryIds, 'Conflicting history IDs remain deterministic across repeated migrations');
 
     assert(report.success === true, 'Migration report reports success');
+
+    const identicalAttemptA: PortionStatusRecord = {
+      ...legacyPortions[0],
+      id: 'legacy-identical-a',
+      history: [{ id: 'attempt-a', date: '2026-04-10', rating: 'successful', intervalDaysBefore: 5, intervalDaysAfter: 10 }]
+    };
+    const identicalAttemptB: PortionStatusRecord = {
+      ...legacyPortions[0],
+      id: 'legacy-identical-b',
+      history: [{ id: 'attempt-b', date: '2026-04-10', rating: 'successful', intervalDaysBefore: 5, intervalDaysAfter: 10 }]
+    };
+    const sameContentDifferentEvents = migrateLegacyDataLosslessly([identicalAttemptA, identicalAttemptB], []);
+    assert(sameContentDifferentEvents.report.success, 'Distinct review attempts with identical content must migrate successfully');
+    assert(sameContentDifferentEvents.portions[0].history?.length === 2,
+      'Distinct event IDs must both be preserved even when date, rating, intervals, and notes are identical');
+    assert(sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-a') &&
+      sameContentDifferentEvents.portions[0].history?.some(log => log.id === 'attempt-b'),
+      'Both original stable event IDs must remain unchanged');
+
+    const repeatedSameEvent = migrateLegacyDataLosslessly([
+      identicalAttemptA,
+      { ...identicalAttemptA, id: 'legacy-duplicate-source' }
+    ], []);
+    assert(repeatedSameEvent.portions[0].history?.length === 1,
+      'The same stable event ID and content must still be deduplicated');
+
+    const repeatedConflict = migrateLegacyDataLosslessly(legacyPortions, []);
+    const repeatedConflictAgain = migrateLegacyDataLosslessly(legacyPortions, []);
+    assert(repeatedConflict.portions[0].history?.map(log => log.id).sort().join('|') ===
+      repeatedConflictAgain.portions[0].history?.map(log => log.id).sort().join('|'),
+      'Conflicting event IDs must be deterministic across repeated migrations');
   }
 
   console.log('\n--- 4A. Canonical ID Recovery from Untrusted Legacy IDs ---');
