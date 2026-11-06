@@ -65,7 +65,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         payload: { records: [{ id: 'invalid-plan' }] }
       }, () => { fallbackCalled = true; return true; }, { journal, runExclusive: inlineLock });
       const snapshot = await journal.getSnapshot();
-      assert(!result.success && result.queued && result.recoveryBlocked, 'A failed projection must report the committed event and blocked recovery');
+      assert(!result.success && result.queued && result.recoveryBlocked && !result.recoveredPriorEvents, 'A failed projection must report the committed event and blocked recovery');
       assert(!fallbackCalled, 'The local-only fallback must never run after a journal commit');
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1, 'The event must remain available for a later recovery attempt');
       assert(snapshot.projectionCursor === 0, 'The cursor must remain before the invalid event');
@@ -73,7 +73,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
 
       const laterWrite = await persistPlansSnapshot(PRESET_PLANS, { journal, runExclusive: inlineLock });
       const afterLaterWrite = await journal.getSnapshot();
-      assert(!laterWrite.success && !laterWrite.queued && laterWrite.recoveryBlocked,
+      assert(!laterWrite.success && !laterWrite.queued && laterWrite.recoveryBlocked && !laterWrite.recoveredPriorEvents,
         'A later snapshot must be blocked while an earlier committed event cannot be replayed');
       assert(afterLaterWrite.eventCount === 1 && afterLaterWrite.projectionCursor === 0,
         'Blocked later writes must not append an event behind an unrecovered snapshot');
@@ -92,7 +92,7 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
 
       const firstAttempt = await persistPlansSnapshot(PRESET_PLANS, { journal, runExclusive: inlineLock });
       const recovered = await journal.getSnapshot();
-      assert(!firstAttempt.success && firstAttempt.recoveredPriorEvents && firstAttempt.recoveryBlocked,
+      assert(!firstAttempt.success && !firstAttempt.queued && firstAttempt.recoveredPriorEvents && firstAttempt.recoveryBlocked,
         'A write must stop after replay changes the local projection behind the caller');
       assert(recovered.eventCount === 1 && recovered.projectionCursor === 1,
         'Recovery must advance the old event cursor without appending the stale new snapshot');
