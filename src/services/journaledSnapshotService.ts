@@ -170,6 +170,17 @@ export function persistTestResultSnapshot(
   test: TestResult,
   options: JournaledSnapshotOptions = {}
 ): Promise<JournaledSnapshotWriteResult> {
+  if (!test || typeof test.id !== 'string' || !test.id.trim() ||
+      typeof test.date !== 'string' || !Number.isFinite(Date.parse(test.date))) {
+    return Promise.resolve({
+      success: false,
+      mode: StorageService.getStorageScope().startsWith('user:') ? 'journal' : 'local-only',
+      queued: false,
+      recoveryBlocked: false,
+      recoveredPriorEvents: false,
+      error: 'تاريخ أو معرّف نتيجة الاختبار غير صالح؛ لم يتم حفظ أي حدث.'
+    });
+  }
   const existing = StorageService.getTests();
   const existingMatch = existing.find(item => item.id === test.id);
   const sameResult = (left: TestResult, right: TestResult) =>
@@ -203,9 +214,7 @@ export function persistTestResultSnapshot(
           schemaVersion: 1,
           id: 'test-' + test.id,
           type: 'test.completed',
-          occurredAt: Number.isFinite(Date.parse(test.date))
-            ? new Date(test.date).toISOString()
-            : '1970-01-01T00:00:00.000Z',
+          occurredAt: new Date(test.date).toISOString(),
           payload: {
             testResultId: test.id,
             testType: test.type,
