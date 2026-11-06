@@ -3,7 +3,7 @@
 **Start here after every interruption. Updated 2026-11-06.**
 
 1. Open repository `xm8eslam-stack/WIRD-APP`.
-2. Fetch `main` and confirm its current HEAD; the latest confirmed main code merge before this resume-file update is `fd480526dd3eac728f60b3554e83309354903ad8` (PR #5); this update creates a further documentation commit, so re-fetch main HEAD before any work. Do not assume it is still current.
+2. Fetch `main` and confirm its current HEAD; the latest confirmed main code merge before this resume-file update is `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` (PR #6); this update creates a further documentation commit, so re-fetch main HEAD before any work. Do not assume it is still current.
 3. Read, in order:
    - `docs/engineering/progress/CURRENT_STATUS.md`
    - `docs/engineering/progress/MASTER_ROADMAP.md`
@@ -29,17 +29,20 @@
 11. Do not deploy production Firestore rules, enable production cloud sync, or change secrets/project settings without explicit user approval.
 
 ## Last known exact state
-- Latest confirmed main code merge before this resume-file update: `fd480526dd3eac728f60b3554e83309354903ad8` (PR #5). Re-fetch current main HEAD before making any changes.
+- Latest confirmed main code merge before this resume-file update: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784` (PR #6). Re-fetch current main HEAD before making any changes.
 - Documentation PR #3: https://github.com/xm8eslam-stack/WIRD-APP/pull/3 — merged as `82efeacd9118406d850336fa3c862fd5016bed14`.
 - Record-validation PR #4: https://github.com/xm8eslam-stack/WIRD-APP/pull/4 — merged as `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - Session/range validation PR #5: https://github.com/xm8eslam-stack/WIRD-APP/pull/5 — merged as `fd480526dd3eac728f60b3554e83309354903ad8`.
+- Local outbox integrity PR #6: https://github.com/xm8eslam-stack/WIRD-APP/pull/6 — merged as `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`.
 - CI run `42184381262` on the PR #3 head passed all steps.
 - CI run `42186678874` on PR #4 head passed all quality gates.
-- CI run `42187380137` on PR #5 head passed automated tests, dependency audit, Firestore emulator, TypeScript, production build, and server smoke test.
+- CI run `42187380137` on PR #5 head passed all quality gates.
+- CI run `42187959928` on PR #6 head passed 277 automated tests, 10 Firestore emulator tests, dependency audit, TypeScript, production build, and server smoke test.
 - Vercel still reports the free deployment rate limit; production deployment is not confirmed.
 - Latest audited baseline code commit: `f342b4bc7e02a48f88b90646098eea178901c8ea`.
 - Latest record-validation code merge: `647eff6624627d2c93ef797a317c6e7f1e0789c1`.
 - Latest session/range validation code merge: `fd480526dd3eac728f60b3554e83309354903ad8`.
+- Latest outbox integrity code merge: `aacc7aeaf5f5c3d8fa34e010a376ad6ba8ae1784`.
 - CI run `42180258989`: documented successful for the audited code commit.
 - Vercel: latest observed status was rate-limited; production deployment not confirmed.
 - M4 event-ledger integration: not complete.
