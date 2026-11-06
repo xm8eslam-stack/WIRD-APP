@@ -211,6 +211,55 @@ export function runStorageReliabilityTests(): { passed: number; failed: number }
     StorageService.__resetStorageForTests();
   });
 
+  test('Canonical portion and legacy projections roll back together when a projection write fails', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    let failRevisionWrites = false;
+    StorageService.__resetStorageForTests();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          if (failRevisionWrites && key === STORAGE_KEYS.REVISION) {
+            throw new Error('simulated legacy revision projection quota failure');
+          }
+          values.set(key, value);
+        },
+        removeItem: (key: string) => values.delete(key)
+      }
+    });
+    try {
+      const today = getLocalDateString();
+      const originalPortion: any = {
+        id: 's67_a1_a3', type: 'passage', surahNumber: 67, surahName: 'الملك',
+        startAyah: 1, endAyah: 3, status: 'stable', nextDueDate: today,
+        intervalDays: 3, easeFactor: 2.5, repetitionCount: 2, history: []
+      };
+      assert(StorageService.saveUnifiedPortions([originalPortion]), 'Initial canonical portion and projections should save');
+      const keys = [
+        STORAGE_KEYS.UNIFIED_PORTIONS,
+        STORAGE_KEYS.SCHEMA_VERSION,
+        STORAGE_KEYS.PORTIONS,
+        STORAGE_KEYS.REVISION
+      ];
+      const before = keys.map(key => StorageService.getRawItem(key));
+      const updatedPortion = {
+        ...originalPortion, status: 'weak', strength: 'weak',
+        intervalDays: 1, easeFactor: 1.8
+      };
+      failRevisionWrites = true;
+      assert(!StorageService.saveUnifiedPortions([updatedPortion]), 'A failed legacy projection must reject the canonical update');
+      const after = keys.map(key => StorageService.getRawItem(key));
+      assert(after.every((value, index) => value === before[index]),
+        'Canonical archive, schema marker, and both legacy projections must all match their original bytes');
+    } finally {
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+      StorageService.__resetStorageForTests();
+    }
+  });
+
   test('Corrupt profile data is preserved and blocks ordinary profile writes', () => {
     StorageService.__resetStorageForTests();
     StorageService.setStorageScope('user:corrupt-profile');
