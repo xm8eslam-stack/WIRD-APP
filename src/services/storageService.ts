@@ -1666,15 +1666,6 @@ export const StorageService = {
     return this.recordSessionCompletionDetailed(memorizedAyahs, reviewedPages, minutes, taskName).success;
   },
 
-  // Explicit Demo Data Loader (for demo mode only)
-  loadDemoData(): void {
-    this.saveProfile(DEMO_PROFILE);
-    this.savePlans(PRESET_PLANS);
-    this.saveEnginePlans([buildDemoEnginePlan()]);
-    this.saveRevisionItems(DEMO_REVISION_ITEMS);
-    this.saveLogs(DEMO_LOGS);
-  },
-
   // Export with Unencrypted Warning Label
   exportFullBackup(): string {
     try {
