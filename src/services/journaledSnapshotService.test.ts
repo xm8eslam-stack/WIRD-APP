@@ -70,6 +70,13 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1, 'The event must remain available for a later recovery attempt');
       assert(snapshot.projectionCursor === 0, 'The cursor must remain before the invalid event');
       assert(StorageService.getPlans().length === 0, 'Invalid data must not overwrite the local archive');
+
+      const laterWrite = await persistPlansSnapshot(PRESET_PLANS, { journal, runExclusive: inlineLock });
+      const afterLaterWrite = await journal.getSnapshot();
+      assert(!laterWrite.success && !laterWrite.queued,
+        'A later snapshot must be blocked while an earlier committed event cannot be replayed');
+      assert(afterLaterWrite.eventCount === 1 && afterLaterWrite.projectionCursor === 0,
+        'Blocked later writes must not append an event behind an unrecovered snapshot');
       journal.close();
     });
 
