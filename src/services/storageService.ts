@@ -1370,6 +1370,13 @@ export const StorageService = {
 
   // Export with Unencrypted Warning Label
   exportFullBackup(): string {
+    try {
+      // A backup must reflect durable browser storage, not a partial in-memory fallback.
+      this.getStorageSnapshot();
+    } catch (error) {
+      throw new Error('تعذر تصدير النسخة الاحتياطية: لم يمكن التحقق من قراءة التخزين الدائم بالكامل؛ أُوقف التصدير لمنع إنشاء نسخة ناقصة. ' +
+        (error instanceof Error ? error.message : 'خطأ غير معروف في التخزين.'));
+    }
     const profileRaw = getItem(STORAGE_KEYS.PROFILE);
     let profile: UserProfile;
     if (profileRaw === null) {
@@ -1498,7 +1505,16 @@ export const StorageService = {
     const validation = validateBackupPayload(parsed);
     if (!validation.valid) return { success: false, message: validation.error || 'فشل التحقق من بنية النسخة الاحتياطية' };
 
-    const snapshot = this.getStorageSnapshot();
+    let snapshot: Record<string, string | null>;
+    try {
+      snapshot = this.getStorageSnapshot();
+    } catch (error) {
+      return {
+        success: false,
+        message: 'تم إيقاف الاستيراد قبل تعديل أي بيانات؛ تعذر أخذ لقطة موثوقة من التخزين الدائم. ' +
+          (error instanceof Error ? error.message : 'خطأ غير معروف في التخزين.')
+      };
+    }
     const writeAndVerify = (key: string, value: unknown): void => {
       const serialized = JSON.stringify(value);
       if (!setItem(key, serialized) || getItem(key) !== serialized) throw new Error('تعذر التحقق من حفظ الحقل ' + key);
@@ -1556,9 +1572,18 @@ export const StorageService = {
     scopedKeys.forEach(key => {
       const memoryValue = memoryStorage.get(key);
       if (memoryValue !== undefined) snapshot[`memory:${key}`] = memoryValue;
-      try {
-        if (typeof localStorage !== 'undefined') snapshot[`local:${key}`] = localStorage.getItem(key);
-      } catch { /* ignore */ }
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const durableValue = localStorage.getItem(key);
+          snapshot[`local:${key}`] = durableValue;
+          if (memoryValue !== undefined && memoryValue !== durableValue) {
+            throw new Error('ذاكرة التطبيق لا تطابق القيمة الدائمة للمفتاح ' + key);
+          }
+        } catch (error) {
+          throw new Error('تعذرت قراءة القيمة الدائمة للمفتاح ' + key + ': ' +
+            (error instanceof Error ? error.message : 'خطأ غير معروف'));
+        }
+      }
     });
     return snapshot;
   },
