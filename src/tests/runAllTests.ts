@@ -3,6 +3,7 @@ import { runAllRetentionTests } from '../services/retentionService.test';
 import { runAllAdvisorTests } from '../services/deterministicAdvisor.test';
 import { runStreakTests } from './streakCalculations.test';
 import { runBackupTests } from './backupValidation.test';
+import { runBackupPersistenceTests } from '../services/backupPersistence.test';
 import { runCleanInitializationTests } from './cleanInitialization.test';
 import { runGeminiSecurityTests } from './geminiSecurity.test';
 import { runQuranIntegrityTests } from './quranContentIntegrity.test';
@@ -80,6 +81,7 @@ async function main() {
     { name: 'Deterministic Advisor Engine (Offline AI Fallback)', runner: () => runAllAdvisorTests() },
     { name: 'Truthful Daily Streak Engine (Phase 3)', runner: runStreakTests },
     { name: 'Backup Schema Validation & Atomic Imports (Phase 3)', runner: runBackupTests },
+    { name: 'Journal-Ordered Backup Import and Reset', runner: runBackupPersistenceTests },
     { name: 'Clean User Initialization & Zero Fake Progress (Phase 1)', runner: runCleanInitializationTests },
     { name: 'Gemini Free Tier Security & Isolation (Phase 2)', runner: runGeminiSecurityTests },
     { name: 'Quran Data Structural Integrity & Coverage', runner: runQuranIntegrityTests },
