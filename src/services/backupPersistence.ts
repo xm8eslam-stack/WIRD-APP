@@ -57,7 +57,11 @@ export type LegacyPortionMigrationResult = {
 export async function migrateLegacyPortionsJournaled(
   options: JournaledSnapshotOptions = {}
 ): Promise<LegacyPortionMigrationResult> {
+  const expectedStorageScope = StorageService.getStorageScope();
   const prepared = StorageService.prepareDataMigration();
+  if (StorageService.getStorageScope() !== expectedStorageScope) {
+    return { success: false, migrated: false, message: 'تغير نطاق الحساب أثناء قراءة البيانات القديمة؛ أوقفنا الترحيل لحماية البيانات.' };
+  }
   if (!prepared.report.success || !prepared.portions) {
     return { success: false, migrated: false, report: prepared.report, message: prepared.report.error || 'تعذر تجهيز ترحيل البيانات القديمة.' };
   }
@@ -74,7 +78,7 @@ export async function migrateLegacyPortionsJournaled(
         records: prepared.portions,
         recoveryFromLegacy: prepared.allowRecoveryOverwrite
       }
-    }], options, 'legacy-portions-migration-' + createSecureId());
+    }], { ...options, expectedStorageScope }, 'legacy-portions-migration-' + createSecureId());
 
     if (!result.success) {
       return {
