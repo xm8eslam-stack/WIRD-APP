@@ -564,6 +564,29 @@ export function runBackupTests(): { passed: number; failed: number } {
     }
   });
 
+  test('Unversioned canonical data is preserved and blocks automatic migration or overwrite', () => {
+    const snapshot = StorageService.getStorageSnapshot();
+    try {
+      StorageService.resetAllData();
+      const orphanedCanonical = JSON.stringify([SAMPLE_PORTION]);
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '1');
+      StorageService.setRawItem(STORAGE_KEYS.UNIFIED_PORTIONS, orphanedCanonical);
+      StorageService.setRawItem(STORAGE_KEYS.PORTIONS, JSON.stringify([]));
+      StorageService.setRawItem(STORAGE_KEYS.REVISION, JSON.stringify([]));
+
+      assert(StorageService.getUnifiedPortions().length === 0,
+        'Unversioned canonical data must not be exposed as trusted data');
+      assert(!StorageService.saveUnifiedPortions([SAMPLE_PORTION]),
+        'Normal writes must not overwrite an unversioned canonical archive');
+      assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === orphanedCanonical,
+        'Unversioned canonical bytes must remain unchanged');
+      assert(StorageService.getRawItem(STORAGE_KEYS.SCHEMA_VERSION) === '1',
+        'Schema marker must not be advanced after an unresolved migration');
+    } finally {
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
+  });
+
   test('Legacy history rows without IDs are migrated with stable canonical IDs', () => {
     const snapshot = StorageService.getStorageSnapshot();
     try {
