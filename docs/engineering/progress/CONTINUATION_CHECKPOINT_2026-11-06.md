@@ -1,5 +1,15 @@
 # WIRD — Continuation Checkpoint (2026-11-06)
 
+## Active work — Quran reader and Tafsir repair (PR #49)
+- Branch: `fix/quran-reader-tafsir-navigation-20261106`; PR: https://github.com/xm8eslam-stack/WIRD-APP/pull/49 (Draft, open, not merged).
+- Latest exact head: `6d56580e2d2477ded76f1425d97e968f4b317eeb`.
+- Exact-head Quality Gate run `42267565615` (run #1217) **passed**, including tests, Firestore emulator, TypeScript, production build, and both development/production server smoke tests.
+- Vercel status is still `failure` with `build-rate-limit` / `api-deployments-free-per-day`. No deployment is confirmed; do not merge until a Preview or Production deployment for the exact reviewed head can be verified.
+- Fix: register existing `/api/tafsir` handler in Express before Vite middleware; test JSON response in both server modes.
+- Fix: direct Mushaf-opening action from Surah rows and selected-Surah detail; use the generated page index for first-ayah page resolution; regression test checks all 114 Surahs.
+- Next: wait for Vercel quota reset, redeploy exact head, verify `/api/tafsir` returns JSON and Surah navigation in browser at desktop/mobile sizes. Keep `main` untouched.
+
+
 ## Canonical position
 - Repository: xm8eslam-stack/WIRD-APP
 - Canonical branch: main (Google AI Studio source)
