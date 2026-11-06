@@ -320,6 +320,7 @@ function isValidMemorizationPlan(value: unknown): value is MemorizationPlan {
   const validNumberArray = (items: unknown, max: number) =>
     items === undefined || (Array.isArray(items) && items.length <= max &&
       items.every(item => isIntegerBetween(item, 1, max)) && new Set(items).size === items.length);
+  const maxUnits = value.unitType === 'page' ? 604 : 6236;
   if (typeof value.id !== 'string' || !value.id.trim() || value.id.length > 160 ||
       typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200 ||
       typeof value.description !== 'string' || value.description.length > 2000 ||
@@ -328,10 +329,10 @@ function isValidMemorizationPlan(value: unknown): value is MemorizationPlan {
       !validNumberArray(value.targetJuz, 30) ||
       !isValidOptionalPage(value.startPage) || !isValidOptionalPage(value.endPage) ||
       (value.startPage !== undefined && value.endPage !== undefined && value.startPage > value.endPage) ||
-      !isIntegerBetween(value.totalUnits, 1, 6236) ||
-      !isIntegerBetween(value.completedUnits, 0, value.totalUnits) ||
       !validUnits.includes(value.unitType) ||
-      !isIntegerBetween(value.dailyTarget, 1, 6236) ||
+      !isIntegerBetween(value.totalUnits, 1, maxUnits) ||
+      !isIntegerBetween(value.completedUnits, 0, value.totalUnits) ||
+      !isIntegerBetween(value.dailyTarget, 1, maxUnits) ||
       !isIntegerBetween(value.memorizationDaysPerWeek, 1, 7) ||
       !isIntegerBetween(value.revisionDaysPerWeek, 0, 7) ||
       !isValidDateOnly(value.startDate) || !isValidDateOnly(value.targetEndDate) ||
@@ -361,8 +362,8 @@ function isValidTestResultRecord(value: unknown): value is TestResult {
     isValidDateOnly(value.date) &&
     ['complete_verse', 'order_words', 'mutashabihat', 'surah_beginnings', 'random_recall', 'bidirectional_recall'].includes(value.type) &&
     typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
-    isFiniteBetween(value.score, 0, 100) &&
     isIntegerBetween(value.totalQuestions, 1, 1000) &&
+    isIntegerBetween(value.score, 0, value.totalQuestions) &&
     Array.isArray(value.weakVerses) && value.weakVerses.length <= 200 &&
     value.weakVerses.every((item: unknown) => typeof item === 'string' && item.length <= 300);
 }
@@ -428,7 +429,7 @@ function isValidPlanGenerationInput(value: unknown): boolean {
     isValidDateOnly(value.startDate) &&
     (value.targetEndDate === undefined || (isValidDateOnly(value.targetEndDate) && value.targetEndDate >= value.startDate)) &&
     ['beginner', 'intermediate', 'advanced', 'hafiz'].includes(value.level) &&
-    isIntegerBetween(value.dailyAvailableMinutes, 1, 1440) &&
+    isIntegerBetween(value.dailyAvailableMinutes, 0, 1440) &&
     isIntegerBetween(value.dailyRevisionMinutes, 0, 1440) &&
     ['verses_per_day', 'pages_per_day', 'by_target_date'].includes(value.paceType) &&
     isIntegerBetween(value.paceQuantity, 1, 6236) &&
