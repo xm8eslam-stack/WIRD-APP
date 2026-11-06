@@ -242,6 +242,8 @@ export function runBackupTests(): { passed: number; failed: number } {
       const legacyPortion = { ...SAMPLE_PORTION, id: 'legacy-portion-67-1' };
       const imported = StorageService.importBackup(JSON.stringify({ version: 3, portions: [legacyPortion], revisionItems: [] }));
       assert(imported.success, 'Legacy v3 backup should import');
+      assert(StorageService.getRawItem(STORAGE_KEYS.PORTIONS) === JSON.stringify([legacyPortion]),
+        'Original legacy portion records must remain preserved after migration');
       const restored = StorageService.getUnifiedPortions();
       assert(restored.length === 1 && restored[0].surahNumber === 67 && restored[0].startAyah === 1, 'Legacy portion must be migrated into canonical storage');
     } finally { StorageService.restoreStorageSnapshot(snapshot); }
