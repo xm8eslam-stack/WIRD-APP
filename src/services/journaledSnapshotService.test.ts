@@ -7,6 +7,7 @@ import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import {
   persistEnginePlansSnapshot,
   persistJournaledSnapshot,
+  persistJournaledTransaction,
   persistPlansSnapshot,
   persistPortionsSnapshot,
   persistProfileSnapshot,
@@ -213,6 +214,59 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         'An enqueue failure must be reported without claiming a queued event');
       assert(!fallbackCalled && StorageService.getPlans().length === 0,
         'The local archive must remain untouched when IndexedDB cannot commit the event');
+    });
+
+    await test('Grouped profile and plan projections commit as one journal event', async () => {
+      const journal = createJournal();
+      const profile = { ...CLEAN_INITIAL_PROFILE, name: 'مجموعة ذرية' };
+      const result = await persistJournaledTransaction([
+        { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile } },
+        { collection: 'plans', documentId: 'snapshot', operation: 'upsert', payload: { records: PRESET_PLANS } }
+      ], { journal, runExclusive: inlineLock }, 'grouped-profile-plans-001');
+      const snapshot = await journal.getSnapshot();
+      assert(result.success && result.mode === 'journal', 'Grouped transaction must commit and project');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 1,
+        'All child projections must share one durable event/outbox pair and one cursor step');
+      assert(StorageService.getProfile().name === profile.name, 'The profile projection must be applied');
+      assert(JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+        'The plans projection must be applied in the same transaction');
+      journal.close();
+    });
+
+    await test('A failed child projection rolls back every earlier child projection', async () => {
+      const journal = createJournal();
+      const originalProfile = { ...CLEAN_INITIAL_PROFILE, name: 'قبل المعاملة' };
+      assert(StorageService.saveProfile(originalProfile), 'Test setup must persist the original profile');
+      assert(StorageService.savePlans(PRESET_PLANS), 'Test setup must persist the original plans');
+      const result = await persistJournaledTransaction([
+        { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: { ...originalProfile, name: 'بعد المعاملة' } } },
+        { collection: 'plans', documentId: 'snapshot', operation: 'upsert', payload: { records: [{ id: 'invalid-plan' }] } }
+      ], { journal, runExclusive: inlineLock }, 'grouped-rollback-001');
+      const snapshot = await journal.getSnapshot();
+      assert(!result.success && result.queued && result.recoveryBlocked,
+        'A failed grouped projection must leave its event pending for recovery');
+      assert(snapshot.eventCount === 1 && snapshot.pendingCount === 1 && snapshot.projectionCursor === 0,
+        'The journal cursor must not advance after a child projection failure');
+      assert(StorageService.getProfile().name === originalProfile.name,
+        'The first child profile write must be rolled back');
+      assert(JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+        'The original plan archive must remain unchanged');
+      journal.close();
+    });
+
+    await test('Grouped guest writes remain local-only but retain rollback-safe projection', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('guest');
+      const profile = { ...CLEAN_INITIAL_PROFILE, name: 'زائر' };
+      const result = await persistJournaledTransaction([
+        { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile } },
+        { collection: 'plans', documentId: 'snapshot', operation: 'upsert', payload: { records: PRESET_PLANS } }
+      ]);
+      assert(result.success && result.mode === 'local-only' && !result.queued,
+        'Guest grouped writes must not require IndexedDB');
+      assert(StorageService.getProfile().name === profile.name &&
+        JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+        'Guest grouped projections must apply together');
     });
 
     await test('Guest writes remain local-only and do not open a journal', async () => {
