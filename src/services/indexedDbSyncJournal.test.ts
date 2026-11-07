@@ -103,6 +103,63 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Remote revision acknowledgement is durable and becomes the next mutation base', async () => {
+      const { journal } = createJournal();
+      const first = await journal.enqueue({
+        mutationId: 'revision-first',
+        collection: 'plans',
+        documentId: 'revision-plan',
+        payload: { title: 'First' },
+        nowMs: 6000
+      });
+      assert(first.status === 'queued' && first.mutation.baseRevision === 0 && first.mutation.sequence === 1,
+        'The first mutation must start at base revision zero');
+      assert(await journal.acknowledgeRemoteMutation('revision-first', 1, 6100),
+        'A confirmed server write must atomically acknowledge the outbox mutation');
+      const cached = await journal.getRemoteRevision('plans', 'revision-plan');
+      assert(cached?.revision === 1 && cached.localSequence === 1,
+        'The server revision and last locally applied sequence must persist together');
+      const second = await journal.enqueue({
+        mutationId: 'revision-second',
+        collection: 'plans',
+        documentId: 'revision-plan',
+        payload: { title: 'Second' },
+        nowMs: 6200
+      });
+      assert(second.status === 'queued' && second.mutation.baseRevision === 1 && second.mutation.sequence === 2,
+        'A later local mutation must capture the acknowledged server revision');
+      journal.close();
+    });
+
+    await test('Only later local pending mutations can be rebased after an earlier acknowledgement', async () => {
+      const { journal } = createJournal();
+      await journal.enqueue({
+        mutationId: 'revision-chain-first',
+        collection: 'plans',
+        documentId: 'revision-chain-plan',
+        payload: { title: 'First' },
+        nowMs: 7000
+      });
+      await journal.enqueue({
+        mutationId: 'revision-chain-second',
+        collection: 'plans',
+        documentId: 'revision-chain-plan',
+        payload: { title: 'Second' },
+        nowMs: 7001
+      });
+      await journal.acknowledgeRemoteMutation('revision-chain-first', 1, 7100);
+      assert(await journal.rebasePendingMutation('revision-chain-second', 0, 1),
+        'A later same-device event may advance to the immediately prior local acknowledgement');
+      const ready = await journal.listReady(7200);
+      assert(ready.length === 1 && ready[0].baseRevision === 1 && ready[0].sequence === 2,
+        'The later pending mutation must durably retain its rebased base revision');
+      let olderRejected = false;
+      try { await journal.rebasePendingMutation('revision-chain-second', 1, 2); }
+      catch { olderRejected = true; }
+      assert(olderRejected, 'A mutation cannot be rebased without a newer acknowledged local sequence');
+      journal.close();
+    });
+
     await test('Acknowledgement removes delivery work but preserves the append-only event', async () => {
       const { journal } = createJournal();
       await journal.enqueue({ mutationId: 'ack-event', collection: 'activityEvents', documentId: 'session-ack', payload: { minutes: 7 }, nowMs: 4000 });
