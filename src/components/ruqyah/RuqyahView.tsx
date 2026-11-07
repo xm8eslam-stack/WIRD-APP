@@ -216,7 +216,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   // Click counter handler
   const handleItemClick = (item: RuqyahItem) => {
     const current = counts[item.id] || 0;
-    if (item.type === 'guideline' || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
+    if (item.type === 'guideline' || current >= 1000 || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
 
     const next = current + 1;
     setCounts(prev => ({ ...prev, [item.id]: next }));
@@ -431,6 +431,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           {/* Mode Switch Controls */}
           <div className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
             <button
+              type="button"
+              aria-pressed={viewMode === 'interactive'}
               onClick={() => setViewMode('interactive')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'interactive'
@@ -443,6 +445,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </button>
 
             <button
+              type="button"
+              aria-pressed={viewMode === 'audio_stream'}
               onClick={() => setViewMode('audio_stream')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'audio_stream'
@@ -455,6 +459,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </button>
 
             <button
+              type="button"
+              aria-pressed={viewMode === 'api_library'}
               onClick={() => setViewMode('api_library')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'api_library'
@@ -490,12 +496,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
 
           {/* Category Tabs Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div role="group" aria-label="تصنيفات الرقية" className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {CATEGORY_TABS.map(tab => {
               const isActive = activeCategory === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
+                  aria-pressed={isActive}
                   onClick={() => setActiveCategory(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                     isActive
@@ -528,7 +536,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     <span>نسبة إنجاز رقية القسم الحالي</span>
                     <span className="text-stone-500 font-mono tabular-nums">{completedCount} من {trackedItems.length} عناصر</span>
                   </div>
-                  <div className="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+                  <div role="progressbar" aria-label="نسبة إنجاز رقية القسم الحالي" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent} className="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-700 dark:bg-emerald-500 h-full transition-all duration-500 rounded-full"
                       style={{ width: `${progressPercent}%` }}
@@ -568,18 +576,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               const isPlayingVerse = playingVerseId === item.id;
 
               return (
-                <div
+                <article
                   key={item.id}
                   id={`ruqyah-card-${item.id}`}
-                  onClick={item.type === 'guideline' ? undefined : () => handleItemClick(item)}
-                  className={`group relative bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-7 border transition-all duration-300 ${item.type === 'guideline' ? 'cursor-default' : 'cursor-pointer'} ${
+                  className={`group relative bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-7 border transition-all duration-300 ${
                     isCompleted
                       ? 'border-emerald-500/60 dark:border-emerald-700/60 bg-emerald-50/20 dark:bg-emerald-950/10 shadow-xs'
                       : 'border-stone-200/90 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-800 hover:shadow-md'
                   }`}
                 >
                   {/* Card Top Row: Number, Type badge, Title, Audio Button */}
-                  <div className="flex items-start justify-between gap-4 mb-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
                       <span className="w-7 h-7 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-bold text-xs flex items-center justify-center font-mono">
                         {idx + 1}
@@ -657,6 +664,19 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         )}
                       </div>
 
+                      <button
+                        type="button"
+                        onClick={() => handleItemClick(item)}
+                        disabled={currentCount >= 1000 || (item.repeatTarget !== null && currentCount >= item.repeatTarget)}
+                        aria-label={item.repeatTarget === null
+                          ? `تسجيل قراءة جديدة لـ ${item.title}. العدد الحالي ${currentCount}`
+                          : `تسجيل قراءة ${item.title}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-500 dark:disabled:bg-stone-800 text-white px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{item.repeatTarget !== null && isCompleted ? 'اكتمل' : currentCount > 0 ? 'تسجيل قراءة أخرى' : 'سجلت القراءة'}</span>
+                      </button>
+
                       {/* Repetition Counter Badge */}
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-stone-500">{item.repeatTarget === null ? 'عدد القراءات:' : 'المتبقي:'}</span>
@@ -670,7 +690,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                       </div>
                     </div>
                   )}
-                </div>
+                </article>
               );
             })}
           </div>
@@ -714,6 +734,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             <div className="space-y-2">
               <input
                 type="range"
+                aria-label="موضع التسجيل الصوتي"
                 min="0"
                 max={streamDuration || 100}
                 value={streamProgress}
@@ -733,6 +754,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 <Volume2 className="w-4 h-4 text-stone-400" />
                 <input
                   type="range"
+                  aria-label="مستوى الصوت"
                   min="0"
                   max="1"
                   step="0.05"
@@ -749,6 +771,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 {[15, 30, 45, 60].map(mins => (
                   <button
                     key={mins}
+                    type="button"
+                    aria-pressed={sleepTimerMinutes === mins}
                     onClick={() => setSleepTimerMinutes(prev => prev === mins ? null : mins)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
                       sleepTimerMinutes === mins
