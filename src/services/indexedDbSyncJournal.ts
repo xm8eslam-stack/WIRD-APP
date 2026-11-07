@@ -3,16 +3,19 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
 const STORE_REMOTE_INBOX = 'remoteInbox';
+const STORE_PROJECTION_CONFLICTS = 'projectionConflicts';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_REMOTE_INBOX_EVENTS = 1_000;
+const MAX_PROJECTION_CONFLICTS = 100;
+const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -101,6 +104,20 @@ export interface RemoteInboxEvent {
 }
 
 export type RemoteInboxEventInput = Omit<RemoteInboxEvent, 'key' | 'fingerprint'>;
+
+export interface RemoteProjectionConflict {
+  key: string;
+  uid: string;
+  event: RemoteInboxEvent;
+  reason: string;
+  localSnapshot: Record<string, string | null>;
+  createdAtMs: number;
+  updatedAtMs: number;
+  status: 'open' | 'resolved';
+  resolution?: 'keep-local' | 'use-remote';
+  resolvedAtMs?: number;
+}
+
 
 interface AcknowledgementRecord {
   key: string;
@@ -315,6 +332,11 @@ export class IndexedDbSyncJournal {
           const remoteInbox = database.createObjectStore(STORE_REMOTE_INBOX, { keyPath: 'key' });
           remoteInbox.createIndex('uid', 'uid', { unique: false });
           remoteInbox.createIndex('uidServerSequence', ['uid', 'serverSequence'], { unique: true });
+        }
+        if (!database.objectStoreNames.contains(STORE_PROJECTION_CONFLICTS)) {
+          const conflicts = database.createObjectStore(STORE_PROJECTION_CONFLICTS, { keyPath: 'key' });
+          conflicts.createIndex('uid', 'uid', { unique: false });
+          conflicts.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
         }
         let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
