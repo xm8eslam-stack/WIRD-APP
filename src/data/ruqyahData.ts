@@ -30,27 +30,27 @@ export interface RuqyahProgramAudio {
 }
 
 /**
- * Complete program recordings documented by IslamicAPI. These are program
- * recordings, not recordings attributed to the individual Quran reciters.
+ * Reserved full-program audio slots. Third-party full-program recordings stay
+ * disabled until their reciter, complete contents, and source chain are verified.
  */
 export const RUQYAH_PROGRAM_AUDIO: RuqyahProgramAudio[] = [
   {
     id: 'brief-ruqya',
     name: 'الرقية المختصرة',
-    description: 'تسجيل متصل للبرنامج المختصر من القرآن والسنة.',
-    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_brief_ruqyah.mp3'
+    description: 'التسجيل الكامل موقوف لحين التحقق من القارئ والمحتوى والمصدر.',
+    audioUrl: ''
   },
   {
     id: 'a-medium-ruqya',
     name: 'الرقية المتوسطة',
-    description: 'تسجيل متصل للبرنامج المتوسط من القرآن والسنة.',
-    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_med_ruqyah.mp3'
+    description: 'التسجيل الكامل موقوف لحين التحقق من القارئ والمحتوى والمصدر.',
+    audioUrl: ''
   },
   {
     id: 'a-long-ruqya',
     name: 'الرقية المطولة',
-    description: 'تسجيل متصل للبرنامج المطول من القرآن والسنة.',
-    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_long_ruqyah.mp3'
+    description: 'التسجيل الكامل موقوف لحين التحقق من القارئ والمحتوى والمصدر.',
+    audioUrl: ''
   }
 ];
 
