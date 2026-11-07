@@ -304,6 +304,86 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Remote finalization blocks pending writes for the same document', async () => {
+      const { journal } = createJournal('projection-same-document-pending');
+      const event = {
+        uid: 'projection-same-document-pending',
+        eventId: 'projection-same-document-event',
+        mutationId: 'projection-same-document-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'tests' as const,
+        documentId: 'remote-test',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-test-device',
+        occurredAtMs: 9000,
+        payload: { id: 'remote-test', score: 4 },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'same-document-local-pending',
+        collection: 'tests',
+        documentId: 'remote-test',
+        payload: { id: 'remote-test', score: 5 },
+        nowMs: 9001
+      });
+      const intent = {
+        sequence: 1, eventId: event.eventId, collection: event.collection,
+        documentId: event.documentId, revision: 1, initializedCollections: [] as SyncCollection[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      let rejected = false;
+      try { await journal.finalizeRemoteProjection(intent, () => true); } catch { rejected = true; }
+      assert(rejected && await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listReady(9002, 10)).some(item => item.mutationId === 'same-document-local-pending'),
+        'A same-document pending mutation must block finalization and remain in the outbox');
+      journal.close();
+    });
+
+    await test('Remote finalization permits an independent document while another record in the collection is pending', async () => {
+      const { journal } = createJournal('projection-independent-document-pending');
+      const event = {
+        uid: 'projection-independent-document-pending',
+        eventId: 'projection-independent-document-event',
+        mutationId: 'projection-independent-document-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'tests' as const,
+        documentId: 'remote-test',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-test-device',
+        occurredAtMs: 9100,
+        payload: { id: 'remote-test', score: 4 },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'other-document-local-pending',
+        collection: 'tests',
+        documentId: 'local-test',
+        payload: { id: 'local-test', score: 2 },
+        nowMs: 9101
+      });
+      const intent = {
+        sequence: 1, eventId: event.eventId, collection: event.collection,
+        documentId: event.documentId, revision: 1, initializedCollections: [] as SyncCollection[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      let applied = false;
+      assert(await journal.finalizeRemoteProjection(intent, () => { applied = true; return true; }) && applied,
+        'A pending mutation for another document must not block an independent remote projection');
+      assert(await journal.getRemoteProjectionCursor() === 1 &&
+        (await journal.getRemoteRevision('tests', 'remote-test'))?.revision === 1 &&
+        (await journal.listReady(9102, 10)).some(item => item.mutationId === 'other-document-local-pending'),
+        'The remote document advances while the unrelated local mutation remains queued and intact');
+      journal.close();
+    });
+
     await test('Oversized projection conflict snapshots are rejected without touching the inbox event', async () => {
       const { journal } = createJournal('projection-conflict-size-limit');
       const event = {
