@@ -1354,7 +1354,12 @@ export class IndexedDbSyncJournal {
             cursor + 1 !== intent.sequence || !event ||
             event.eventId !== intent.eventId || event.revision !== intent.revision ||
             event.serverSequence !== intent.sequence || event.collection !== intent.collection ||
-            event.documentId !== intent.documentId) {
+            event.documentId !== intent.documentId ||
+            (conflict && (
+              conflict.event.fingerprint !== event.fingerprint ||
+              conflict.event.serverSequence !== event.serverSequence ||
+              conflict.event.revision !== event.revision
+            ))) {
           failure = new Error('تعذر اعتماد الإسقاط؛ ستظل نية الإسقاط والحدث محفوظين لإعادة المحاولة.');
           transaction.abort();
           return;
@@ -1556,6 +1561,19 @@ export class IndexedDbSyncJournal {
       const finishRead = () => {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
+        if (existing && (
+          existing.event.eventId !== event.eventId ||
+          existing.event.fingerprint !== event.fingerprint ||
+          existing.event.serverSequence !== event.serverSequence ||
+          existing.event.revision !== event.revision ||
+          existing.event.collection !== event.collection ||
+          existing.event.documentId !== event.documentId ||
+          existing.event.mutationId !== event.mutationId
+        )) {
+          failure = new Error('هوية حدث التعارض لا تطابق السجل المحفوظ؛ رفضنا استبدال دليل التعافي.');
+          transaction.abort();
+          return;
+        }
         if (existing?.status === 'resolved') {
           saved = true;
           return;
@@ -1842,7 +1860,12 @@ export class IndexedDbSyncJournal {
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
         if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
-            metadata.remoteProjectionIntent?.sequence === sequence) {
+            metadata.remoteProjectionIntent?.sequence === sequence ||
+            (conflict && (
+              conflict.event.fingerprint !== event.fingerprint ||
+              conflict.event.serverSequence !== event.serverSequence ||
+              conflict.event.revision !== event.revision
+            ))) {
           failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;
