@@ -1,6 +1,5 @@
 import {
   doc,
-  getDoc,
   runTransaction,
   type Firestore
 } from 'firebase/firestore';
