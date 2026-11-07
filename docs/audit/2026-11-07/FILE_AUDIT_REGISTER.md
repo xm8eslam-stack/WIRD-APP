@@ -219,3 +219,8 @@ All listed PRs are Draft and unmerged at this checkpoint. These are implementati
 | `src/tests/quranMathValidation.test.ts` | PR #65 | New coordinate/range boundary tests. |
 | `src/tests/domainEventCoordinateValidation.test.ts` | PR #65 | New event payload boundary tests. |
 | `src/tests/runAllTests.ts` | PR #65 | Registers both new validation suites in aggregate CI. |
+
+| `docs/audit/2026-11-07/SYNC_DESIGN_REVIEW.md` | Audit branch | New detailed code-to-protocol gap review; documents that main's remote pull is a read-only query and does not import/project events. |
+| `src/services/cloudSyncCoordinator.ts` | PR #66 | Adds a `partial` state and prevents zero local pending count from claiming full sync before remote import/projection. |
+| `src/components/settings/SettingsView.tsx` | PR #66 | Adds visible partial-sync state label. |
+| `src/services/cloudSyncCoordinator.test.ts` | PR #66 | Tests that no pending local mutations is insufficient for `synced`; remote reconciliation must also be complete. |
