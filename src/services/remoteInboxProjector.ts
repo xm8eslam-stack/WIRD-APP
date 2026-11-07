@@ -1,6 +1,11 @@
-import { LocalSyncOutbox } from './localSyncOutbox';
+import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
 import { StorageService } from './storageService';
-import type { JournalEvent, RemoteInboxEvent } from './indexedDbSyncJournal';
+import type {
+  JournalEvent,
+  RemoteInboxEvent,
+  RemoteRevisionSnapshot,
+  RemoteProjectionIntent
+} from './indexedDbSyncJournal';
 
 export type RemoteProjectionDecision =
   | 'apply'
@@ -42,45 +47,102 @@ export interface RemoteProjectionBatchResult {
   reason: Exclude<RemoteProjectionDecision, 'apply' | 'already_applied'> | 'projection_failed' | null;
 }
 
+export interface RemoteProjectionDependencies {
+  getRemoteProjectionCursor(): Promise<number>;
+  listRemoteInboxAfter(sequence: number, limit: number): Promise<RemoteInboxEvent[]>;
+  getRemoteRevision(collection: SyncCollection, documentId: string): Promise<RemoteRevisionSnapshot | null>;
+  hasPendingForCollection(collection: SyncCollection): Promise<boolean>;
+  isRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean>;
+  isLocalProjectionEmpty(collection: SyncCollection): boolean;
+  applyJournalEvent(event: JournalEvent): boolean;
+  setRemoteRevisionFromRemote(collection: SyncCollection, documentId: string, revision: number): Promise<boolean>;
+  markRemoteProjected(sequence: number): Promise<boolean>;
+  markRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean>;
+  getRemoteProjectionIntent(): Promise<RemoteProjectionIntent | null>;
+  prepareRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean>;
+  finalizeRemoteProjection(intent: RemoteProjectionIntent, applyProjection: () => boolean): Promise<boolean>;
+}
+
+const defaultDependencies: RemoteProjectionDependencies = {
+  getRemoteProjectionCursor: () => LocalSyncOutbox.getRemoteProjectionCursor(),
+  listRemoteInboxAfter: (sequence, limit) => LocalSyncOutbox.listRemoteInboxAfter(sequence, limit),
+  getRemoteRevision: (collection, documentId) => LocalSyncOutbox.getRemoteRevision(collection, documentId),
+  hasPendingForCollection: collection => LocalSyncOutbox.hasPendingForCollection(collection),
+  isRemoteCollectionInitialized: collection => LocalSyncOutbox.isRemoteCollectionInitialized(collection),
+  isLocalProjectionEmpty: collection => StorageService.isLocalProjectionEmpty(collection),
+  applyJournalEvent: event => StorageService.applyJournalEvent(event),
+  setRemoteRevisionFromRemote: (collection, documentId, revision) =>
+    LocalSyncOutbox.setRemoteRevisionFromRemote(collection, documentId, revision),
+  markRemoteProjected: sequence => LocalSyncOutbox.markRemoteProjected(sequence),
+  markRemoteCollectionInitialized: collection => LocalSyncOutbox.markRemoteCollectionInitialized(collection),
+  getRemoteProjectionIntent: () => LocalSyncOutbox.getRemoteProjectionIntent(),
+  prepareRemoteProjection: intent => LocalSyncOutbox.prepareRemoteProjection(intent),
+  finalizeRemoteProjection: (intent, applyProjection) =>
+    LocalSyncOutbox.finalizeRemoteProjection(intent, applyProjection)
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
+  if (event.collection !== 'syncMeta' || !isRecord(event.payload.transaction) ||
+      !Array.isArray(event.payload.transaction.operations)) return [];
+  const allowed = new Set<SyncCollection>([
+    'profile', 'plans', 'enginePlans', 'portions',
+    'weakVerses', 'tests', 'activityEvents', 'syncMeta'
+  ]);
+  const collections = new Set<SyncCollection>();
+  for (const operation of event.payload.transaction.operations) {
+    if (!isRecord(operation) || typeof operation.collection !== 'string' ||
+        !allowed.has(operation.collection as SyncCollection)) {
+      throw new Error('REMOTE_TRANSACTION_COLLECTION_INVALID');
+    }
+    collections.add(operation.collection as SyncCollection);
+  }
+  return [...collections];
+}
+
 /**
  * Apply remote events in server order. A conflict leaves the event in the
  * durable inbox and does not advance the projection cursor, preserving both
  * local and remote bytes until an explicit reconciliation path exists.
+ *
+ * Dependencies are injectable so the conflict policy and cursor behavior can
+ * be tested without a live Firebase account.
  */
-export async function projectRemoteInboxBatch(limit: number = 100): Promise<RemoteProjectionBatchResult> {
-  const cursor = await LocalSyncOutbox.getRemoteProjectionCursor();
-  const events = await LocalSyncOutbox.listRemoteInboxAfter(cursor, limit);
+export async function projectRemoteInboxBatch(
+  limit: number = 100,
+  dependencies: RemoteProjectionDependencies = defaultDependencies
+): Promise<RemoteProjectionBatchResult> {
+  const cursor = await dependencies.getRemoteProjectionCursor();
+  const events = await dependencies.listRemoteInboxAfter(cursor, limit);
   let projectedCount = 0;
 
   for (const remoteEvent of events) {
-    const cached = await LocalSyncOutbox.getRemoteRevision(
+    const cached = await dependencies.getRemoteRevision(
       remoteEvent.collection,
       remoteEvent.documentId
     );
-    let hasPendingLocalMutation = await LocalSyncOutbox.hasPendingForCollection(remoteEvent.collection);
-    const remoteCollectionInitialized = await LocalSyncOutbox.isRemoteCollectionInitialized(remoteEvent.collection);
-    let localProjectionEmpty = StorageService.isLocalProjectionEmpty(remoteEvent.collection);
-    let transactionCollections: string[] = [];
-    if (remoteEvent.collection === 'syncMeta' && remoteEvent.payload.transaction &&
-        typeof remoteEvent.payload.transaction === 'object' &&
-        Array.isArray((remoteEvent.payload.transaction as { operations?: unknown }).operations)) {
-      const operations = (remoteEvent.payload.transaction as { operations: Array<{ collection?: unknown }> }).operations;
-      transactionCollections = operations
-        .map(operation => operation.collection)
-        .filter((value): value is string => typeof value === 'string');
+    let hasPendingLocalMutation = await dependencies.hasPendingForCollection(remoteEvent.collection);
+    const remoteCollectionInitialized = await dependencies.isRemoteCollectionInitialized(remoteEvent.collection);
+    let localProjectionEmpty = dependencies.isLocalProjectionEmpty(remoteEvent.collection);
+    const transactionCollections = readTransactionCollections(remoteEvent);
+
+    if (remoteEvent.collection === 'syncMeta' && transactionCollections.length > 0) {
       localProjectionEmpty = true;
-      for (const collectionName of transactionCollections) {
-        const collection = collectionName as RemoteInboxEvent['collection'];
-        const initialized = await LocalSyncOutbox.isRemoteCollectionInitialized(collection);
-        if (await LocalSyncOutbox.hasPendingForCollection(collection)) {
+      for (const collection of transactionCollections) {
+        const initialized = await dependencies.isRemoteCollectionInitialized(collection);
+        if (await dependencies.hasPendingForCollection(collection)) {
           hasPendingLocalMutation = true;
         }
-        if (!StorageService.isLocalProjectionEmpty(collection) && !initialized) {
+        if (!dependencies.isLocalProjectionEmpty(collection) && !initialized) {
           localProjectionEmpty = false;
         }
       }
     }
-    const intent = await LocalSyncOutbox.getRemoteProjectionIntent();
+
+    const intent = await dependencies.getRemoteProjectionIntent();
     const isResumingThisProjection = !!intent &&
       intent.sequence === remoteEvent.serverSequence &&
       intent.eventId === remoteEvent.eventId &&
@@ -94,6 +156,7 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
         reason: 'projection_failed'
       };
     }
+
     const decision = isResumingThisProjection
       ? (hasPendingLocalMutation
           ? 'blocked_pending_local'
@@ -108,7 +171,7 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
         });
 
     if (decision === 'already_applied') {
-      await LocalSyncOutbox.markRemoteProjected(remoteEvent.serverSequence);
+      await dependencies.markRemoteProjected(remoteEvent.serverSequence);
       projectedCount++;
       continue;
     }
@@ -140,15 +203,15 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       projectionRequired: true
     };
 
-    const projectionIntent = {
+    const projectionIntent: RemoteProjectionIntent = {
       sequence: remoteEvent.serverSequence,
       eventId: remoteEvent.eventId,
       collection: remoteEvent.collection,
       documentId: remoteEvent.documentId,
       revision: remoteEvent.revision,
-      initializedCollections: transactionCollections as RemoteInboxEvent['collection'][]
+      initializedCollections: transactionCollections
     };
-    const prepared = await LocalSyncOutbox.prepareRemoteProjection(projectionIntent);
+    const prepared = await dependencies.prepareRemoteProjection(projectionIntent);
     if (!prepared) {
       return {
         projectedCount,
@@ -157,9 +220,12 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       };
     }
 
-    const finalized = await LocalSyncOutbox.finalizeRemoteProjection(
+    // The actual storage write runs synchronously inside the journal's
+    // finalization transaction. This serializes it against competing tabs
+    // and local outbox writes; a crash leaves the durable intent recoverable.
+    const finalized = await dependencies.finalizeRemoteProjection(
       projectionIntent,
-      () => StorageService.applyJournalEvent(localEvent)
+      () => dependencies.applyJournalEvent(localEvent)
     );
     if (!finalized) {
       return {
