@@ -497,12 +497,15 @@ export class IndexedDbSyncJournal {
           }
           if (existingAck) continue;
 
+          const sequence = existingEvent?.sequence ?? nextSequence++;
           const mutation: JournalOutboxEntry = {
             ...legacy,
             key,
             uid,
             eventId: legacy.mutationId,
-            fingerprint
+            fingerprint,
+            sequence,
+            baseRevision: legacy.baseRevision ?? 0
           };
           if (!existingEvent) {
             events.add({
@@ -511,7 +514,8 @@ export class IndexedDbSyncJournal {
               documentId: legacy.documentId, operation: legacy.operation,
               schemaVersion: 1, clientUpdatedAtMs: legacy.clientUpdatedAtMs,
               createdAtMs: legacy.queuedAtMs, deviceId: legacy.deviceId,
-              payload: legacy.payload, fingerprint, sequence: nextSequence++, projectionRequired: false
+              payload: legacy.payload, fingerprint, sequence, baseRevision: legacy.baseRevision ?? 0,
+              projectionRequired: false
             } satisfies JournalEvent);
           }
           if (!existingOutbox) {
