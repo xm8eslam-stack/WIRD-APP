@@ -69,6 +69,17 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
     });
 
+    await test('Ruqyah proxy accepts a documented single-entry object response', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: { id: 3, title: 'Muslim : 2708', arabic: 'أعوذ بكلمات الله التامات', reference: 'Muslim : 2708' }
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-sunnah', id: '3' }, headers: { 'x-forwarded-for': '198.51.100.56' } }, res);
+      assert(res.statusCode === 200 && res.body?.data?.id === 3, 'Single-entry object payload must be accepted');
+    });
+
     await test('Ruqyah proxy rejects HTML fallbacks and malformed upstream payloads', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       globalThis.fetch = (async () => new Response('<!doctype html><html></html>', {
