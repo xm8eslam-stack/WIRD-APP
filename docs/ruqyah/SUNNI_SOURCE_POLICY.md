@@ -54,5 +54,5 @@ Quran text and verse ranges remain checked against WIRD's canonical corpus. The 
 3. Record the narrator, collection, number, and named grading scholar where applicable.
 4. Check the ruling/interpretation with a recognized Sunni scholar or institution; do not derive rulings from an API summary.
 5. Check content rights and attribution separately from religious authenticity.
-6. Add a regression test that prevents unreviewed content from entering the user interface.
+6. Add a regression test that prevents unreviewed content from entering the user interface and add the exact approved reference to the source allowlist.
 7. Only then enable the content through a reviewed pull request.
