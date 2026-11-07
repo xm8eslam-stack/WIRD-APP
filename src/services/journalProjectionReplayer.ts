@@ -80,12 +80,20 @@ export async function replayJournalProjection(
 
         if (event.projectionRequired === false) {
           skippedAlreadyProjected++;
-        } else {
-          if (!StorageService.applyJournalEvent(event)) {
-            throw new Error('تعذر إسقاط الحدث رقم ' + event.sequence +
-              ' محلياً. تم الحفاظ على الحدث ولم يتحرك مؤشر إعادة التشغيل.');
-          }
+        } else if (StorageService.applyJournalEvent(event)) {
           applied++;
+        } else if (StorageService.matchesJournalProjection(event.collection, event.payload)) {
+          // A previous attempt may have durably written the projection and then
+          // stopped before committing the IndexedDB cursor. Confirm the exact
+          // snapshot (including every child of a grouped transaction) before
+          // advancing; never treat a merely similar or invalid snapshot as done.
+          skippedAlreadyProjected++;
+        } else {
+          throw new Error(
+            'تعذر إسقاط الحدث رقم ' + event.sequence + ' محلياً (' +
+            event.collection + '/' + event.operation + '). ' +
+            'لم تتطابق البيانات المحلية مع الحدث المحفوظ؛ تم الحفاظ على الحدث ولم يتحرك مؤشر إعادة التشغيل.'
+          );
         }
 
         const advanced = await journal.markProjected(event.sequence);
