@@ -41,7 +41,6 @@ In the Vercel project settings, verify the following variables are present in th
 - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` — future release only; keep disabled until all global release gates pass.
 - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — future release only; keep disabled until all global release gates pass and Firestore rules are deployed.
 - `ISLAMICAPI_API_KEY` — server-side secret only; never prefix it with `VITE_`, never expose it to browser code.
-- `RUQYAH_TOPICS_ENABLED` — leave unset/false. The educational topic endpoints remain disabled until every article and reference is reviewed; do not enable it as part of normal release.
 
 Redeploy `main` after changing variables. Verify the deployment commit SHA equals the merged `main` commit and the deployment is Ready before testing.
 
@@ -84,7 +83,7 @@ Use two real browsers/devices signed in to the same verified account:
 See `docs/ruqyah/SUNNI_SOURCE_POLICY.md` for the exact source hierarchy and checked hadith references.
 
 - IslamicAPI is permitted only as a Quran locator. Its `from-sunnah` and category endpoints are rejected; the proxy strips all provider-authored fields and returns only validated numeric coordinates and an item ID. Canonical Quran text and surah metadata are rendered from WIRD's verified corpus.
-- Educational topic articles stay disabled until qualified Sunni content review is complete.
+- Educational topic and category endpoints are hard-disabled in the proxy. Do not reintroduce them until each article is curated from a named, reviewed Sunni source and passes the source registry tests.
 - Full-program recordings and Al Furqan's dynamic reciter/audio provider are disabled. No unverified audio catalogue or recording URL is exposed.
 - Do not re-enable any disabled content/audio mode without a source record, exact verification, usage-rights review, and regression tests.
 
@@ -117,7 +116,7 @@ Repository: https://github.com/muslimpack/Ruqayyah
 - Live Firestore rules deployment is not verified from this repository session.
 - Vercel reports a build-rate-limit quota error; live production deployment status must be checked in the Vercel dashboard.
 - The deployed values of the three environment variables above are not observable through GitHub CI.
-- The proxy's per-IP limiter is an in-memory, per-serverless-instance safeguard, not a globally coordinated quota. Educational topic endpoints are disabled by default behind the server-side `RUQYAH_TOPICS_ENABLED` flag. The provider's account-level fair-use limits remain authoritative; use a shared rate-limit store only if traffic justifies it.
+- The proxy's per-IP limiter is an in-memory, per-serverless-instance safeguard, not a globally coordinated quota. Educational topic endpoints are hard-disabled regardless of environment variables. The provider's account-level fair-use limits remain authoritative; use a shared rate-limit store only if traffic justifies it.
 - Real browser/device playback and two-device cloud sync have not been run against production.
 
 Never mark these blockers as passed based only on unit tests or emulator results.
