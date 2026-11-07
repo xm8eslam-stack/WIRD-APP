@@ -148,10 +148,18 @@ test.describe('Ruqyah progress reset safety', () => {
     await expect(page.getByText('تأكيد إعادة ضبط القسم')).toBeVisible();
     await page.getByRole('button', { name: 'إلغاء' }).click();
     await expect(page.getByText('تأكيد إعادة ضبط القسم')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'إعادة الضبط' })).toBeFocused();
+    await expect(fatihahCard.getByText('1 قراءة')).toBeVisible();
+
+    await page.getByRole('button', { name: 'إعادة الضبط' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('تأكيد إعادة ضبط القسم')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'إعادة الضبط' })).toBeFocused();
     await expect(fatihahCard.getByText('1 قراءة')).toBeVisible();
 
     await page.getByRole('button', { name: 'إعادة الضبط' }).click();
     await page.getByRole('button', { name: 'تأكيد إعادة الضبط' }).click();
+    await expect(page.getByRole('button', { name: 'إعادة الضبط' })).toBeFocused();
     await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
     await expect(fatihahCard.getByText('1 قراءة')).toHaveCount(0);
   });
