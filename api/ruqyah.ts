@@ -56,7 +56,7 @@ function parseQuranIndexTitle(value: unknown): QuranIndexCoordinates | null {
     const index = digitMap.indexOf(digit);
     return String(index % 10);
   });
-  const match = normalized.trim().match(/(?:^|[^\\d])(\\d{1,3})\\s*:\\s*(\\d{1,3})(?:\\s*[-–—]\\s*(\\d{1,3}))?\\s*$/);
+  const match = normalized.trim().match(/(?:^|[^0-9])([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))? *$/);
   if (!match) return null;
   const surahNumber = Number(match[1]);
   const startAyah = Number(match[2]);
@@ -133,7 +133,7 @@ function validPayload(type: string, payload: unknown): boolean {
 
   if (type === 'instant' && rows.some(row =>
     !((typeof row.id === 'number' && Number.isSafeInteger(row.id) && row.id > 0) ||
-      (typeof row.id === 'string' && /^[1-9]\\d{0,8}$/.test(row.id))) ||
+      (typeof row.id === 'string' && /^[1-9][0-9]{0,8}$/.test(row.id))) ||
     parseQuranIndexTitle(row.title) === null
   )) return false;
 
