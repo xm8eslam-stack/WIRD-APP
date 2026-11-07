@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
-import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
+import { getRuqyahProgressDeviceId, loadRuqyahProgress } from '../../services/ruqyahProgressService';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot } from '../../services/ruqyahProgressSchema';
+import type { RuqyahProgressSnapshotV2 } from '../../services/ruqyahProgressSchema';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
 import { STORAGE_KEYS, StorageService } from '../../services/storageService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
@@ -42,6 +44,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   
   // Counter states per item (itemId -> current count)
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [progressSnapshot, setProgressSnapshot] = useState<RuqyahProgressSnapshotV2 | null>(null);
+  const [progressDeviceId, setProgressDeviceId] = useState<string | null>(null);
   const [progressHydrated, setProgressHydrated] = useState(false);
   const [progressDirty, setProgressDirty] = useState(false);
   const [progressScope, setProgressScope] = useState(currentStorageScope);
@@ -285,19 +289,39 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   // Hydrate progress whenever WIRD switches guest/account storage namespaces.
   useEffect(() => {
+    let active = true;
     setProgressHydrated(false);
     setProgressCorrupt(false);
     setProgressDirty(false);
+    setProgressSnapshot(null);
+    setProgressDeviceId(null);
     const saved = loadRuqyahProgress();
     if (saved.status === 'corrupt') {
       setCounts({});
       setProgressCorrupt(true);
       if (onToast) onToast('تعذر قراءة تقدم الرقية المحفوظ؛ احتفظنا بالبيانات الأصلية ولم نستبدلها.', 'warn');
     } else {
-      setCounts(saved.counts);
+      const snapshot = saved.status === 'loaded'
+        ? migrateRuqyahProgressSnapshot(saved.snapshot, Date.now())
+        : createEmptyRuqyahProgressSnapshot();
+      setProgressSnapshot(snapshot);
+      setCounts(snapshot.counts);
+      // V1 snapshots are migrated through the journal before cloud sync can replace them.
+      setProgressDirty(saved.status === 'loaded' && saved.snapshot.schemaVersion === 1);
     }
     setProgressScope(currentStorageScope);
     setProgressHydrated(true);
+    void getRuqyahProgressDeviceId(currentStorageScope)
+      .then(deviceId => {
+        if (active && StorageService.getStorageScope() === currentStorageScope) setProgressDeviceId(deviceId);
+      })
+      .catch(error => {
+        if (active && onToast) onToast(
+          error instanceof Error ? error.message : 'تعذر تحديد جهاز المزامنة لتقدم الرقية.',
+          'error'
+        );
+      });
+    return () => { active = false; };
   }, [currentStorageScope]);
 
   useEffect(() => {
@@ -314,11 +338,16 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       const saved = loadRuqyahProgress();
       if (saved.status === 'corrupt') {
         setCounts({});
+        setProgressSnapshot(null);
         setProgressCorrupt(true);
         return;
       }
-      setCounts(saved.counts);
-      setProgressDirty(false);
+      const snapshot = saved.status === 'loaded'
+        ? migrateRuqyahProgressSnapshot(saved.snapshot, Date.now())
+        : createEmptyRuqyahProgressSnapshot();
+      setProgressSnapshot(snapshot);
+      setCounts(snapshot.counts);
+      setProgressDirty(saved.status === 'loaded' && saved.snapshot.schemaVersion === 1);
     };
     window.addEventListener('wird:ruqyah-progress-updated', refreshProgress);
     window.addEventListener('storage', refreshProgress);
@@ -329,9 +358,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   }, [currentStorageScope]);
 
   useEffect(() => {
-    if (!progressHydrated || !progressDirty || progressCorrupt || progressScope !== currentStorageScope) return;
+    if (!progressHydrated || !progressDirty || progressCorrupt || !progressSnapshot ||
+        !progressDeviceId || progressScope !== currentStorageScope) return;
     let active = true;
-    const snapshot = { schemaVersion: 1 as const, updatedAtMs: Date.now(), counts: { ...counts } };
+    const snapshot = progressSnapshot;
     void persistRuqyahProgressSnapshot(snapshot, { expectedStorageScope: currentStorageScope })
       .then(result => {
         if (active && !result.success && onToast) {
@@ -342,10 +372,12 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         if (active && onToast) onToast('تعذر حفظ تقدم الرقية ومزامنته.', 'error');
       });
     return () => { active = false; };
-  }, [counts, progressHydrated, progressDirty, progressCorrupt, progressScope, currentStorageScope, onToast]);
+  }, [progressSnapshot, progressDeviceId, progressHydrated, progressDirty, progressCorrupt, progressScope, currentStorageScope, onToast]);
 
   const handleRecoverProgress = () => {
     try {
+      const emptySnapshot = createEmptyRuqyahProgressSnapshot();
+      setProgressSnapshot(emptySnapshot);
       setCounts({});
       setProgressCorrupt(false);
       setProgressDirty(true);
@@ -359,10 +391,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   // Click counter handler
   const handleItemClick = (item: RuqyahItem) => {
     const current = counts[item.id] || 0;
-    if (item.type === 'guideline' || current >= 1000 || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
+    if (!progressDeviceId || !progressSnapshot || item.type === 'guideline' ||
+        current >= 1_000_000 || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
 
-    const next = current + 1;
-    setCounts(prev => ({ ...prev, [item.id]: next }));
+    const nextSnapshot = adjustRuqyahProgressCounter(progressSnapshot, item.id, progressDeviceId, 1);
+    const next = nextSnapshot.counts[item.id] || 0;
+    setProgressSnapshot(nextSnapshot);
+    setCounts(nextSnapshot.counts);
     setProgressDirty(true);
 
     // Haptic feedback if available
@@ -394,12 +429,16 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   // Reset counters for current active category
   const handleResetCategoryCounts = () => {
-    if (!progressHydrated || progressCorrupt) return;
-    const updated = { ...counts };
+    if (!progressHydrated || progressCorrupt || !progressDeviceId || !progressSnapshot) return;
+    let updatedSnapshot = progressSnapshot;
     currentItems.forEach(item => {
-      delete updated[item.id];
+      const current = updatedSnapshot.counts[item.id] || 0;
+      if (current > 0) {
+        updatedSnapshot = adjustRuqyahProgressCounter(updatedSnapshot, item.id, progressDeviceId, -current);
+      }
     });
-    setCounts(updated);
+    setProgressSnapshot(updatedSnapshot);
+    setCounts(updatedSnapshot.counts);
     setProgressDirty(true);
     closeResetConfirmation();
     if (onToast) onToast('تم إعادة ضبط العدادات لهذه القائمة.', 'info');
@@ -621,7 +660,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   type="button"
                   ref={resetTriggerRef}
                   onClick={() => setShowResetConfirmation(true)}
-                  disabled={!progressHydrated || progressCorrupt}
+                  disabled={!progressHydrated || progressCorrupt || !progressDeviceId}
                   aria-expanded={showResetConfirmation}
                   aria-controls="ruqyah-reset-confirmation"
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
@@ -642,7 +681,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button type="button" onClick={closeResetConfirmation} className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">إلغاء</button>
-                <button type="button" onClick={handleResetCategoryCounts} disabled={!progressHydrated || progressCorrupt} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">تأكيد إعادة الضبط</button>
+                <button type="button" onClick={handleResetCategoryCounts} disabled={!progressHydrated || progressCorrupt || !progressDeviceId} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">تأكيد إعادة الضبط</button>
               </div>
             </div>
           )}
@@ -744,7 +783,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                       <button
                         type="button"
                         onClick={() => handleItemClick(item)}
-                        disabled={currentCount >= 1000 || (item.repeatTarget !== null && currentCount >= item.repeatTarget)}
+                        disabled={!progressDeviceId || currentCount >= 1_000_000 || (item.repeatTarget !== null && currentCount >= item.repeatTarget)}
                         aria-label={item.repeatTarget === null
                           ? `تسجيل قراءة جديدة لـ ${item.title}. العدد الحالي ${currentCount}`
                           : `تسجيل قراءة ${item.title}`}
