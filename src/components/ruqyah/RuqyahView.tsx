@@ -4,7 +4,7 @@ import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } f
 import type { QuranReciter } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
-import { StorageService } from '../../services/storageService';
+import { STORAGE_KEYS, StorageService } from '../../services/storageService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
@@ -105,7 +105,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const refreshProgress = () => {
+    const progressStorageKey = currentStorageScope === 'legacy' || currentStorageScope === 'guest'
+      ? STORAGE_KEYS.RUQYAH_PROGRESS
+      : `wird_scope_v1:${currentStorageScope}:${STORAGE_KEYS.RUQYAH_PROGRESS}`;
+    const refreshProgress = (event?: Event) => {
+      if (event && 'key' in event) {
+        const changedKey = (event as StorageEvent).key;
+        if (changedKey !== null && changedKey !== progressStorageKey) return;
+      }
       if (StorageService.getStorageScope() !== currentStorageScope) return;
       const saved = loadRuqyahProgress();
       if (saved.status === 'corrupt') {
