@@ -1,6 +1,6 @@
 # WIRD — Engineering Work Log
 
-## 2026-11-07 — Re-audit after PR #140
+## 2026 11 07 — Re-audit after PR #140
 
 ### Repository state
 - Latest main merge commit verified: `d9ad6b51ad8133e32057ff170e9ff0a136b78305` (PR #140).
