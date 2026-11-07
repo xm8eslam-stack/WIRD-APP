@@ -6,9 +6,9 @@ Last updated: 2026-11-07
 
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
-- Latest reviewed phase merge: PR #108, merge commit `4ae28edf7d30e41f11727a7b85b67d9056d78408`.
-- Working checkpoint branch: `fix/ruqyah-quran-index-sanitization-20261107`.
-- All eleven implementation phases below are merged to `main`.
+- Latest reviewed phase merge: PR #111, merge commit `48cf9b236072cd3db2603a57cda5f67b30a778cd`.
+- Working checkpoint branch: `main` (all current phases merged).
+- All twelve listed implementation phases are merged to `main`.
 
 ## Merged implementation phases
 
@@ -21,6 +21,7 @@ Last updated: 2026-11-07
 | IslamicAPI proxy hardening + topic gate | #97 | `217f7136244d4d7afd02a9c52be86f520c1baefa` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Sunni source allowlist and unverified audio lockdown | #105 | `d71908b3e411bcd7d1db2b09318eb3c95564198e` | 509 unit tests, 31 Firestore tests, TypeScript, build, server smoke passed |
 | Exact Sunni source registry and Ibn Baz treatment guidance | #108 | `4ae28edf7d30e41f11727a7b85b67d9056d78408` | 510 unit tests, 31 Firestore tests, TypeScript, build, server smoke passed |
+| External Quran index sanitization and canonical text resolution | #111 | `48cf9b236072cd3db2603a57cda5f67b30a778cd` | 513 unit tests, 31 Firestore tests, TypeScript, build, server smoke passed |
 | Guarded manual Firestore rules deploy workflow | #98 | `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Firestore Emulator preflight for manual rules deploy | #100 | `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d` | Exact-head Quality Gate passed; manual workflow now runs rules emulator tests before credentials/deploy |
 | Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
@@ -65,46 +66,28 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 6. Third-party Sunnah content is rejected before upstream access; backend accepts only `from-quran`.
 7. Provider-authored Quran titles, Arabic strings, references, introductions, translations, and category labels are never exposed to the browser; only numeric coordinates are returned after server validation.
 
-## Pending Phase 6 — Sunni source allowlist and audio restriction
+## Completed Phases 6–8 — Source policy, registry, and canonical Quran index
 
-Working branch: `fix/ruqyah-sunni-source-allowlist-20261107`
+### Phase 6 — Sunni source allowlist and audio restriction (PR #105)
 
-- Backend rejects IslamicAPI `from-sunnah`; only Quran index requests are accepted.
-- API library offers only Quran locator data and renders canonical WIRD Quran text.
-- Removed third-party full-program audio URLs; all reserved audio slots have empty URLs.
-- Disabled Al Furqan dynamic reciter catalogue and audio playback. Its API route fails closed with `503 QURAN_AUDIO_SOURCE_NOT_VERIFIED`; the URL builder throws.
-- Individual verse audio controls and the full-program mode are visibly disabled until the reciter, exact recording, source chain, and permissions are verified.
-- Removed optional guidance/narration without sufficient review; clarified Abu Dawud 5082 as Hasan (al-Albani), Abu Dawud 5088 as Sahih (al-Albani), and Bukhari 2311 as a suspended placement with connected routes.
-- Added `docs/ruqyah/SUNNI_SOURCE_POLICY.md` with the source hierarchy, checked references, blocked-source list, and required review workflow.
-- Added tests for third-party Sunnah rejection, disabled full-program audio, and fail-closed unverified reciter endpoints.
+- IslamicAPI from-sunnah is rejected; only Quran index requests are accepted.
+- Full-program and individual-verse audio, and Al Furqan dynamic reciter/audio, remain disabled pending source, exact recording, provenance, and rights verification.
+- Unreviewed optional religious content was removed; the source hierarchy and reviewed hadith references are documented.
 
-Phase 6 is not merged yet. Wait for exact-head CI before merging.
+### Phase 7 — Exact content-ID source registry (PR #108)
 
-## Pending Phase 7 — Reviewed source registry hardening
+- Every published Ruqyah item and guideline is bound to its exact reviewed source string by content ID.
+- Tests reject missing, changed, duplicated, or unregistered content IDs/references.
+- Abu Dawud 5082 grading is explicitly attributed to al-Albani; treatment guidance cites Shaykh Ibn Baz's named fatwa on combining Ruqyah and medical treatment.
 
-Working branch: `test/ruqyah-source-registry-hardening-20261107`
+### Phase 8 — External Quran index sanitization (PR #111)
 
-- Added an explicit code-level allowlist of reviewed source references for every Ruqyah item and guideline.
-- The test suite now rejects any item with a missing, changed, or newly introduced source string until it is reviewed and added to the allowlist.
-- Clarified the grading on all three protective-surah entries: Abu Dawud 5082 is Hasan according to al-Albani; Bukhari 5017 supports the bedtime recitation/nasf.
-- Updated `docs/ruqyah/SUNNI_SOURCE_POLICY.md` with the registry rule.
-
-Phase 7 requires exact-head CI before merge.
-
-## Pending Phase 8 — External Quran index sanitization
-
-Working branch: `fix/ruqyah-quran-index-sanitization-20261107`
-
-- Disable the external `instant-category` endpoint; category labels and program descriptions from the provider are not trusted.
-- Hard-disable all educational topic and topic-category endpoints, with no environment-variable override, until a fully curated Sunni source set is approved.
-- The API proxy validates each Quran locator against WIRD's canonical `ALL_SURAHS` metadata and returns only `{ id, title: "surah:start-end" }`.
-- Strip provider-authored Arabic text, reference labels, introductions, translations, and all other extra fields before the response reaches the browser.
-- The client resolves normalized numeric coordinates to canonical surah names and verified Quran text. Provider titles are never rendered.
-- Remove category-index fetches and all provider-authored content fields from the frontend type.
-- Add regression tests for category endpoint rejection, exact response sanitization, hostile extra fields, and canonical text resolution.
-- Update source policy, release checklist, and checkpoint.
-
-Phase 8 requires exact-head CI before merge.
+- IslamicAPI is used only as a Quran-coordinate index. The proxy accepts only type=instant and source=from-quran; educational topic/category endpoints are hard-disabled with no environment-variable override.
+- The server validates numeric IDs, Arabic/Persian digit normalization, one unambiguous coordinate/range, and surah/ayah bounds against canonical metadata.
+- The proxy strips provider-authored Arabic, translations, references, introductions, titles, and all other content; it returns only an ID and normalized numeric locator.
+- The browser client accepts only the Quran index request shape and resolves text/name metadata from WIRD's verified Quran corpus. Invalid IDs, out-of-range references, and ambiguous multiple-coordinate titles fail closed.
+- Exact PR head 805c6c3d7b0c00ab348be4891f1f027d50529974 passed Quality Gate run 42358956417: 513 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server startup smoke.
+- Main is now 48cf9b236072cd3db2603a57cda5f67b30a778cd; post-merge Main Quality Gate 42359049396 was still running when this checkpoint was written. Vercel remains build-rate-limit; no production alias/live SHA is verified.
 
 ## External source and licensing decisions
 
