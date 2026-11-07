@@ -163,7 +163,7 @@ export async function getTafsir(
   const tafsirText = contentParts
     .map(part => isRecord(part) && typeof part.text === 'string' ? part.text.trim() : '')
     .filter(part => part.length > 0)
-    .join('\\n\\n');
+    .join('\n\n');
   if (!tafsirText) throw new Error('لا يتوفر نص تفسير لهذه الآية في المصدر الحالي.');
 
   writeCachedTafsir(key, tafsirText);
