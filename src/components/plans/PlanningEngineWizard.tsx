@@ -50,6 +50,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const [scheduleViewMode, setScheduleViewMode] = useState<'daily' | 'weekly' | 'all'>('weekly');
   const [editingTask, setEditingTask] = useState<ScheduledDayPlan | null>(null);
   const [showRecalculateConfirm, setShowRecalculateConfirm] = useState(false);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
 
   // Active selected plan
   const activePlan = enginePlans.find(p => p.id === selectedPlanId) || enginePlans[0];
@@ -110,40 +111,52 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   // Submit and generate plan
   const handleGeneratePlan = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isGeneratingPlan) return;
+    setIsGeneratingPlan(true);
 
-    const existingPortions = selectedExistingSurahs.map(sNum => {
-      const s = ALL_SURAHS.find(item => item.number === sNum);
-      return {
-        surahNumber: sNum,
-        startAyah: 1,
-        endAyah: s ? s.versesCount : 10
+    try {
+      const existingPortions = selectedExistingSurahs.map(sNum => {
+        const s = ALL_SURAHS.find(item => item.number === sNum);
+        return {
+          surahNumber: sNum,
+          startAyah: 1,
+          endAyah: s ? s.versesCount : 10
+        };
+      });
+
+      const input: PlanGenerationInput = {
+        title: planTitle.trim() || `خطة حفظ سورة ${startSurahMeta?.name || ''}`,
+        startSurah,
+        startAyah,
+        endSurah,
+        endAyah,
+        startDate,
+        targetEndDate: paceType === 'by_target_date' ? targetEndDate : undefined,
+        level,
+        dailyAvailableMinutes,
+        dailyRevisionMinutes,
+        paceType,
+        paceQuantity,
+        activeDays,
+        restDays,
+        schedulePreference: schedulePref,
+        existingMemorized: existingPortions
       };
-    });
 
-    const input: PlanGenerationInput = {
-      title: planTitle.trim() || `خطة حفظ سورة ${startSurahMeta?.name || ''}`,
-      startSurah,
-      startAyah,
-      endSurah,
-      endAyah,
-      startDate,
-      targetEndDate: paceType === 'by_target_date' ? targetEndDate : undefined,
-      level,
-      dailyAvailableMinutes,
-      dailyRevisionMinutes,
-      paceType,
-      paceQuantity,
-      activeDays,
-      restDays,
-      schedulePreference: schedulePref,
-      existingMemorized: existingPortions
-    };
-
-    const newPlan = PlanningEngine.generatePlan(input);
-    const updated = [newPlan, ...enginePlans];
-    if (!await onUpdateEnginePlans(updated)) return;
-    setSelectedPlanId(newPlan.id);
-    setIsCreatingNew(false);
+      const newPlan = PlanningEngine.generatePlan(input);
+      const updated = [newPlan, ...enginePlans.filter(plan => plan.id !== newPlan.id)];
+      if (!await onUpdateEnginePlans(updated)) return;
+      setSelectedPlanId(newPlan.id);
+      setIsCreatingNew(false);
+      onToast?.('تم إنشاء الخطة وحفظها بنجاح.', 'success');
+    } catch (error) {
+      onToast?.(
+        error instanceof Error ? error.message : 'تعذر إنشاء الخطة. راجع بيانات النطاق والتواريخ وحاول مجدداً.',
+        'error'
+      );
+    } finally {
+      setIsGeneratingPlan(false);
+    }
   };
 
   // Plan Pause / Resume toggle
@@ -258,6 +271,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                         setStartAyah(1);
                         if (s > endSurah) {
                           setEndSurah(s);
+                          const adjustedEndSurah = ALL_SURAHS.find(item => item.number === s);
+                          setEndAyah(Math.min(endAyah, adjustedEndSurah?.versesCount || 1));
                         }
                       }}
                       className="w-full px-2.5 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg font-semibold"
@@ -561,9 +576,10 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold shadow-xs transition-colors"
+              disabled={isGeneratingPlan || liveTotalVerses <= 0}
+              className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xs transition-colors"
             >
-              توليد وحفظ الخطة فوراً
+              {isGeneratingPlan ? 'جارٍ إنشاء الخطة وحفظها...' : 'توليد وحفظ الخطة فوراً'}
             </button>
           </div>
         </form>

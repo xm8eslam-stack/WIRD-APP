@@ -101,8 +101,17 @@ export const QuranMath = {
     let versesRemaining = totalVerses;
 
     while (versesRemaining > 0) {
-      const currentChunkSize = Math.min(versesRemaining, chunkSize);
-      const currentEnd = this.addVerses(currentStart, currentChunkSize - 1);
+      // ScheduledTaskUnit and the storage validator represent one Surah per task.
+      // Never let a daily chunk cross a Surah boundary; the next chunk starts at
+      // the following Surah while the requested pace remains an upper bound.
+      const currentSurah = this.getSurah(currentStart.surahNumber);
+      if (!currentSurah) return [];
+      const versesUntilSurahEnd = currentSurah.versesCount - currentStart.ayahNumber + 1;
+      const currentChunkSize = Math.min(versesRemaining, chunkSize, versesUntilSurahEnd);
+      const currentEnd = {
+        surahNumber: currentStart.surahNumber,
+        ayahNumber: currentStart.ayahNumber + currentChunkSize - 1
+      };
       
       chunks.push({
         start: { ...currentStart },
