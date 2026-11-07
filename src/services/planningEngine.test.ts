@@ -288,6 +288,41 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     assert(movedRevision?.minorRevisionTask?.completed === false, 'Moved revision must remain pending');
   });
 
+  runTest('PlanLifecycle: preserves pending tasks when a legacy plan has no active study days', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة بلا أيام نشطة',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 10,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 5,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    const pendingDay = plan.schedule[0];
+    const invalidPlan = {
+      ...plan,
+      isPaused: true,
+      input: { ...plan.input, activeDays: [0], restDays: [0] },
+      schedule: [pendingDay]
+    };
+
+    const resumed = PlanLifecycle.resumePlan(invalidPlan, '2026-11-07');
+    assert(resumed.isPaused === true, 'Resume must remain paused when no valid active day exists');
+    assert(resumed.schedule[0].id === pendingDay.id, 'Resume must preserve the original pending task');
+
+    const recalculated = PlanLifecycle.recalculatePlan(invalidPlan, 5);
+    assert(recalculated.schedule[0].id === pendingDay.id,
+      'Recalculation must preserve pending tasks when no active day exists');
+  });
+
   runTest('PlanLifecycle: recalculation preserves completed revision history and reschedules pending revision work', () => {
     const input: PlanGenerationInput = {
       title: 'خطة إعادة الحساب',
