@@ -449,7 +449,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           <p className="font-bold text-[11px] text-stone-700 dark:text-stone-200">
                             العمليات المحلية المعلقة المحفوظة ({conflict.localMutations?.length || 0})
                           </p>
-                          {(conflict.localMutations || []).map(mutation => (
+                          {(conflict.localMutations || []).slice(0, 10).map(mutation => (
                             <div key={mutation.mutationId} className="rounded-lg border border-stone-200 dark:border-stone-700 p-2 space-y-1">
                               <p className="text-[10px] text-stone-500 dark:text-stone-400 break-all">
                                 {mutation.collection}/{mutation.documentId} · revision base {mutation.baseRevision} · sequence {mutation.sequence}
@@ -460,6 +460,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           {(conflict.localMutations || []).length === 0 && (
                             <p className="text-[10px] text-stone-500 dark:text-stone-400">
                               لم تكن هناك عملية محلية معلقة مرتبطة بهذا المستند عند حفظ التعارض؛ لقطة التخزين المحلية محفوظة أعلاه.
+                            </p>
+                          )}
+                          {(conflict.localMutations || []).length > 10 && (
+                            <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                              عُرضت أول 10 عمليات فقط؛ بقية العمليات محفوظة في سجل التعافي المحلي.
                             </p>
                           )}
                         </div>
