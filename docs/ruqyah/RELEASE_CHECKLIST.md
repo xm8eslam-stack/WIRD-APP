@@ -20,7 +20,7 @@ Last reviewed: 2026-11-07
 - Phase 14: PR #139 — restore keyboard focus after reset confirmation actions and support Escape cancellation from the reset trigger; verify on desktop/mobile.
 - Phase 15: PR #141 — assert no horizontal overflow at 320px, 360px, and 390px in both Ruqyah reading and Quran locator library modes on desktop/mobile Chromium.
 - Phase 16: PR #145 — announce counter updates through polite atomic live regions with Arabic labels for free-reading counts and source-defined remaining repetitions.
-- Phase 17: active branch `feat/ruqyah-audio-restoration-alqurancloud-20261107` — restore Quran ayah-level audio with a curated Al Quran Cloud reciter allowlist, fixed CDN URLs, continuous section playlists, accessible playback controls, and live CDN smoke checks. Awaiting exact-head CI; full-program recordings remain disabled.
+- Phase 17: PR #150 merged (`c1e480b94c08df152fb75c797ddc0caeebc148e6`) — restore Quran ayah-level audio with seven curated Al Quran Cloud reciter choices mapped to verified CDN folder IDs and bitrates, continuous section playlists, accessible playback controls, and live CDN smoke checks. Exact-head Quality Gate passed: 533 automated assertions, 31 Firestore rules tests, dependency audit, 8/8 CDN samples, TypeScript, production build, server smoke, and 30 desktop/mobile Playwright tests. Full-program recordings remain disabled pending separate content, reciter, and rights review.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
@@ -46,7 +46,7 @@ Do not turn on remote projection before this deployment is confirmed.
 
 ### 2. Verify Vercel environment and deployment
 
-The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate.
+The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure on the PR #150 merge commit (`c1e480b94c08df152fb75c797ddc0caeebc148e6`). This is a provider quota issue, not a failed code quality gate. Code is merged, but production deployment and live-site audio playback remain unverified until the quota clears and the deployment SHA/alias is checked.
 
 **STOP — do not enable production sync at the current checkpoint.** The values below are documented for a future release only. Do not set either remote-sync flag until every global gate in docs/sync/RELEASE-GATES.md passes, especially user-facing conflict resolution, deterministic Ruqyah additive-increment resolution, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing. These gates are currently open.
 
@@ -85,7 +85,7 @@ Use two real browsers/devices signed in to the same verified account:
 - Verify section playback builds its queue only from WIRD's canonical local Quran ayah map; provider audio never supplies the displayed Quran text.
 - Verify pause/resume/stop, seeking, volume, sequential ayah transitions, category changes, library navigation, unmount cleanup, network errors, and no silent source fallback.
 - Verify audio playback never increments or modifies reading counters automatically.
-- Full-program recordings that include supplications remain disabled until a complete reciter/content/rights audit is completed.
+- Full-program recordings that include supplications remain disabled until a complete reciter/content/rights audit is completed. PR #150 restores ayah-level Al Quran Cloud playback only; do not confuse that with approval of the former full-program files.
 - Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
 ### 5. Accessibility and responsive review
