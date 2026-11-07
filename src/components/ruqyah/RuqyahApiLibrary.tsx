@@ -31,11 +31,7 @@ const SOURCES: Array<{ id: SourceId; label: string }> = [
   { id: 'from-sunnah', label: 'أدعية من السنة' }
 ];
 
-interface RuqyahApiLibraryProps {
-  onToast?: (message: string, type?: 'success' | 'info' | 'warn' | 'error') => void;
-}
-
-export const RuqyahApiLibrary: React.FC<RuqyahApiLibraryProps> = ({ onToast }) => {
+export const RuqyahApiLibrary: React.FC = () => {
   const [program, setProgram] = useState<ProgramId>('brief-ruqya');
   const [source, setSource] = useState<SourceId>('from-quran');
   const [categories, setCategories] = useState<RuqyahApiProgramCategory[]>([]);
@@ -44,6 +40,7 @@ export const RuqyahApiLibrary: React.FC<RuqyahApiLibraryProps> = ({ onToast }) =
   const [loadingEntries, setLoadingEntries] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedEntry, setExpandedEntry] = useState<string | number | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -64,7 +61,7 @@ export const RuqyahApiLibrary: React.FC<RuqyahApiLibraryProps> = ({ onToast }) =
         if (!controller.signal.aborted) setLoadingCategories(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [retryNonce]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,7 +92,7 @@ export const RuqyahApiLibrary: React.FC<RuqyahApiLibraryProps> = ({ onToast }) =
         if (!controller.signal.aborted) setLoadingEntries(false);
       });
     return () => controller.abort();
-  }, [program, source]);
+  }, [program, source, retryNonce]);
 
   const selectedProgramCategory = useMemo(() => {
     const index = PROGRAMS.findIndex(item => item.id === program);
@@ -106,11 +103,8 @@ export const RuqyahApiLibrary: React.FC<RuqyahApiLibraryProps> = ({ onToast }) =
     ?.find(item => item['subcategory-slug'] === source)?.ruqyah?.length;
 
   const retry = () => {
-    setProgram(current => current);
     setError(null);
-    // Changing source twice is not needed; the effect is keyed to program/source.
-    setSource(current => current === 'from-quran' ? 'from-sunnah' : 'from-quran');
-    setTimeout(() => setSource(current => current === 'from-quran' ? 'from-sunnah' : 'from-quran'), 0);
+    setRetryNonce(value => value + 1);
   };
 
   return (
