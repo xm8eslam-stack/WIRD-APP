@@ -73,6 +73,11 @@ export interface JournalSnapshot {
   projectionCursor: number;
 }
 
+export interface RemoteRevisionSnapshot {
+  revision: number;
+  localSequence: number;
+}
+
 interface AcknowledgementRecord {
   key: string;
   uid: string;
@@ -812,6 +817,144 @@ export class IndexedDbSyncJournal {
       }
       transaction.oncomplete = () => resolve(acknowledgedCount);
       transaction.onabort = () => reject(normalizeError(transaction.error || new Error('IndexedDB acknowledgement transaction aborted.')));
+    });
+  }
+
+  async getRemoteRevision(
+    collection: SyncCollection,
+    documentId: string
+  ): Promise<RemoteRevisionSnapshot | null> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection) || !documentId || documentId.includes('/')) {
+      throw new Error('معرّف مستند الإصدار السحابي غير صالح.');
+    }
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    const value = metadata?.remoteRevisions?.[collection + ':' + documentId];
+    if (!value) return null;
+    if (!Number.isSafeInteger(value.revision) || value.revision < 0 ||
+        !Number.isSafeInteger(value.localSequence) || value.localSequence < 0) {
+      throw new Error('بيانات الإصدار السحابي المحلية تالفة؛ تم إيقاف المزامنة لحماية البيانات.');
+    }
+    return { revision: value.revision, localSequence: value.localSequence };
+  }
+
+  /** Atomically persist the server revision and acknowledge the exact outbox mutation. */
+  async acknowledgeRemoteMutation(
+    mutationId: string,
+    revision: number,
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(mutationId) || !Number.isSafeInteger(revision) || revision < 1 ||
+        !Number.isSafeInteger(nowMs) || nowMs < 0) {
+      throw new Error('بيانات إقرار المزامنة ذات الإصدار غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_OUTBOX, STORE_ACKNOWLEDGEMENTS, STORE_METADATA],
+        'readwrite'
+      );
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const acknowledgements = transaction.objectStore(STORE_ACKNOWLEDGEMENTS);
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const key = uid + ':' + mutationId;
+      const mutationRequest = outbox.get(key);
+      const metadataRequest = metadataStore.get(uid);
+      let mutation: JournalOutboxEntry | undefined;
+      let metadata: DeviceMetadata | undefined;
+      let readsRemaining = 2;
+      let failure: Error | undefined;
+      let acknowledged = false;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        if (!mutation) return;
+        if (revision !== mutation.baseRevision + 1) {
+          failure = new Error('إصدار الخادم لا يطابق الإصدار المتوقع للعملية؛ لم يتم إقرارها محلياً.');
+          transaction.abort();
+          return;
+        }
+        const revisionKey = mutation.collection + ':' + mutation.documentId;
+        const remoteRevisions = { ...(metadata?.remoteRevisions || {}) };
+        const current = remoteRevisions[revisionKey];
+        if (current && (!Number.isSafeInteger(current.revision) || current.revision > revision)) {
+          failure = new Error('وصل إقرار قديم بعد إصدار أحدث؛ تم إيقاف تحديث مؤشر الإصدار.');
+          transaction.abort();
+          return;
+        }
+        acknowledgements.put({
+          key, uid, mutationId,
+          fingerprint: mutation.fingerprint,
+          acknowledgedAtMs: nowMs
+        } satisfies AcknowledgementRecord);
+        outbox.delete(key);
+        remoteRevisions[revisionKey] = { revision, localSequence: mutation.sequence };
+        metadataStore.put({
+          ...(metadata || {
+            uid, deviceId: mutation.deviceId, schemaVersion: 1,
+            nextSequence: mutation.sequence + 1, lastProjectedSequence: 0
+          }),
+          remoteRevisions
+        } satisfies DeviceMetadata);
+        acknowledged = true;
+      };
+      mutationRequest.onsuccess = () => { mutation = mutationRequest.result as JournalOutboxEntry | undefined; finishRead(); };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      transaction.oncomplete = () => resolve(acknowledged);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Revision acknowledgement transaction aborted.')));
+    });
+  }
+
+  /** Rebase only a later local event after an earlier local event advanced this document. */
+  async rebasePendingMutation(
+    mutationId: string,
+    expectedBaseRevision: number,
+    nextBaseRevision: number
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(mutationId) || !Number.isSafeInteger(expectedBaseRevision) ||
+        expectedBaseRevision < 0 || !Number.isSafeInteger(nextBaseRevision) ||
+        nextBaseRevision !== expectedBaseRevision + 1) {
+      throw new Error('بيانات إعادة تأسيس إصدار العملية غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_OUTBOX, STORE_METADATA], 'readwrite');
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const key = uid + ':' + mutationId;
+      const mutationRequest = outbox.get(key);
+      const metadataRequest = metadataStore.get(uid);
+      let mutation: JournalOutboxEntry | undefined;
+      let metadata: DeviceMetadata | undefined;
+      let readsRemaining = 2;
+      let rebased = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure || !mutation) return;
+        const revisionKey = mutation.collection + ':' + mutation.documentId;
+        const cached = metadata?.remoteRevisions?.[revisionKey];
+        if (!cached || cached.revision !== nextBaseRevision ||
+            mutation.baseRevision !== expectedBaseRevision ||
+            mutation.sequence <= cached.localSequence) {
+          failure = new Error('لا يمكن إعادة تأسيس عملية قديمة أو غير متتابعة على إصدار أحدث؛ يلزم حل التعارض أولاً.');
+          transaction.abort();
+          return;
+        }
+        outbox.put({ ...mutation, baseRevision: nextBaseRevision } satisfies JournalOutboxEntry);
+        rebased = true;
+      };
+      mutationRequest.onsuccess = () => { mutation = mutationRequest.result as JournalOutboxEntry | undefined; finishRead(); };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      transaction.oncomplete = () => resolve(rebased);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Outbox revision rebase transaction aborted.')));
     });
   }
 
