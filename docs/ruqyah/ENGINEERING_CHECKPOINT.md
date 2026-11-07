@@ -1,3 +1,49 @@
+# Current verified continuation — after PR #117
+
+Last verified: 2026-11-07.
+
+## Current repository and merged work
+- Repository: `xm8eslam-stack/WIRD-APP`; base branch: `main`.
+- PR #111 merged Quran index sanitization and canonical WIRD Quran text resolution. Merge SHA: `48cf9b236072cd3db2603a57cda5f67b30a778cd`.
+- PR #116 refreshed this checkpoint. Merge SHA: `d49e2f57ad81bfba22722ba513c85382b74879f7`.
+- PR #117 removed dormant verse/full-program audio playback code from `RuqyahView.tsx), retaining visibly disabled audio notices and all reading/progress functionality. Merge SHA: `673ddfcb5af046f785e2da18abc73c4a1bba2339`.
+- PR #117 exact-head Quality Gate passed on `8cdfc2bb94a18522f17ae8270ca22fc9929652de`, run `42359507976`: 518 unit/integration assertions passed, 31 Firestore Rules Emulator tests passed, dependency audit passed, TypeScript passed, production build passed, and production server smoke passed.
+- The first PR #117 run failed TypeScript because the retained disabled-mode `Headphones` icon import was omitted during cleanup. The failure was inspected from job logs, fixed, and the rerun on the final head passed all checks.
+- PR #120 is open for signed/negative coordinate rejection and a consistent maximum numeric provider ID. Head SHA: `bc95c5a0018b32be6d8868c85ec556afb6a4eed4`. Its exact-head Quality Gate result is not yet available; do not merge until it passes.
+
+## Quran index/API state
+- IslamicAPI is used only as a locator index; only `instant/from-quran` is accepted.
+- The proxy validates coordinates against `ALL_SURAHS`, strips provider-authored text/metadata, and returns only an item ID plus normalized numeric coordinates.
+- The browser resolves locators against WIRD's canonical Quran metadata and verified corpus.
+- Educational topic/category endpoints and third-party Sunnah endpoints remain hard-disabled.
+- Arabic-Indic and Persian-Indic numerals are normalized. The pending PR #120 additionally rejects signed coordinates and bounds numeric provider IDs consistently.
+- Existing regression coverage includes out-of-range references, reversed ranges, ambiguous multiple coordinates, malformed IDs, HTML/invalid JSON, hostile provider fields, oversized responses, and unreviewed endpoints.
+
+## Audio state
+- `RuqyahView.tsx` no longer instantiates browser Audio objects or contains audio playback handlers, audio timers, audio refs, or an audio-stream mode.
+- Full-program and individual verse audio controls remain visibly disabled with explanatory labels.
+- Audio must remain disabled until reciter identity, exact recording content, provenance, and usage rights are independently verified. No substitute provider may be activated merely because it is available.
+
+## Source and licensing policy
+- `docs/ruqyah/SUNNI_SOURCE_POLICY.md` remains authoritative.
+- No new hadith, tafsir, medical treatment claim, or religious instruction was introduced by PR #117.
+- MuslimPack Ruqayyah remains GPL-3.0; no code was copied. IslamicAPI's dataset is not vendored or redistributed without a clear data license.
+
+## Remaining release blockers
+1. Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit`; no live production alias or deployed SHA is verified.
+2. Firestore rules deployment and deployed production environment-variable values are not verified.
+3. Live two-device sync, additive offline Ruqyah counter merge, user-facing conflict resolution, tombstones, cross-tab concurrency, and account lifecycle release gates remain open as documented in `docs/sync/RELEASE-GATES.md`.
+4. Production API, mobile RTL, keyboard-only, screen-reader, and real-device smoke tests remain unverified.
+5. Audio remains disabled pending independent verification.
+
+## Next engineering actions
+1. Await exact-head Quality Gate for PR #120. Inspect logs and repair any failure; merge only after all required checks pass.
+2. Review the Ruqyah view and locator library responsively at 320px–390px, tablet, and desktop widths; add meaningful component/integration coverage for loading, API error, empty, and successful canonical-text states.
+3. Continue security review of proxy abuse limits and production behavior; distinguish per-instance rate limiting from a global quota.
+4. Complete live release verification only when Vercel quota and production access are available.
+
+---
+
 # Current verified continuation — supersedes stale pending-phase notes below
 
 Last verified: 2026-11-07, after PR #111.
