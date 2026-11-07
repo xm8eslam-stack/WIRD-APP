@@ -223,7 +223,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         first[0].localSnapshot.wird_plans === localSnapshot.wird_plans &&
         first[0].localMutations?.length === 1 &&
         first[0].localMutations[0].mutationId === 'local-conflict-mutation-1' &&
-        first[0].localMutations[0].payload.records[0].title === 'local pending intent' &&
+        (first[0].localMutations[0].payload.records as Array<{ title: string }>)[0].title === 'local pending intent' &&
         await journal.getProjectionConflictCount() === 1,
         'The archive must preserve remote payload, raw local bytes, and the exact pending local mutation');
       await journal.enqueue({
