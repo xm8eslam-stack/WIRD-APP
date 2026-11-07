@@ -42,7 +42,7 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
       if (item.type === 'quran') {
         assert(Boolean(item.surahNumber && item.surahNumber > 0), `Quran item ${item.id} must have surahNumber`);
         assert(Boolean(item.surahName), `Quran item ${item.id} must have surahName`);
-        assert(Boolean(item.audioVerseKey && /^\d{6}$/.test(item.audioVerseKey)), `Quran item ${item.id} must have 6-digit audioVerseKey`);
+        assert(Boolean(item.verseRange), `Quran item ${item.id} must have a verse range for complete playback`);
       }
     });
   });
