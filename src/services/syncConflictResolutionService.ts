@@ -33,7 +33,7 @@ function assertActiveConflictScope(uid: string): void {
 export interface UseRemoteConflictResolutionResult {
   eventId: string;
   revision: number;
-  removedPendingMutations: number;
+  archivedMutationCount: number;
 }
 
 /**
@@ -72,9 +72,15 @@ export async function resolveProjectionConflictUsingRemote(
     throw new Error('لم يعد مستند الحالة السحابي موجوداً؛ لا يمكن اختيار نسخة بعيدة غير متاحة.');
   }
   const state = stateSnapshot.data();
-  if (!Number.isSafeInteger(state.revision) || state.revision < conflict.event.revision ||
+  if (state.schemaVersion !== 1 ||
+      !Number.isSafeInteger(state.updatedAtMs) || state.updatedAtMs < 0 ||
+      typeof state.deviceId !== 'string' || !state.deviceId ||
+      typeof state.mutationId !== 'string' || !state.mutationId ||
+      !Number.isSafeInteger(state.baseRevision) || state.baseRevision < 0 ||
+      !Number.isSafeInteger(state.revision) || state.revision !== state.baseRevision + 1 ||
+      state.revision < conflict.event.revision ||
       !isRecord(state.payload) || state.deletedAt != null) {
-    throw new Error('الحالة السحابية الحالية غير صالحة أو تحتوي على حذف غير مدعوم؛ لم يتم تعديل البيانات المحلية.');
+    throw new Error('الحالة السحابية الحالية لا تطابق غلاف المزامنة الموثوق أو تحتوي على حذف غير مدعوم؛ لم يتم تعديل البيانات المحلية.');
   }
 
   const localSnapshot = StorageService.getLocalProjectionSnapshot(conflict.event.collection);
@@ -122,6 +128,6 @@ export async function resolveProjectionConflictUsingRemote(
   return {
     eventId,
     revision: state.revision,
-    removedPendingMutations: localMutationFingerprints.length
+    archivedMutationCount: localMutationFingerprints.length
   };
 }
