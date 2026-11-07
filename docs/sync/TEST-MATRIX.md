@@ -4,19 +4,19 @@
 
 | Area | Coverage / evidence | Result | Limitation |
 |---|---|---|---|
-| Unit/regression suites | GitHub Actions exact-head workflow | 450 passed, 0 failed | Assertion count is suite output, not a statement of full product coverage |
-| Firestore Rules | Emulator on PR #77 SHA `7d92b0efc5241b6ce2d7e2e0139b9c4183ebf2a7` | 26 passed, 0 failed | Emulator only; production rules deployment unverified |
-| Two-device bidirectional | PR #77 | Passed | Profile collection only; separate fake IndexedDB/localStorage, independent auth clients |
-| Offline same-document conflict | PR #78 SHA `9144a25c4454db4ccb0309a979eff69fc0039860` | Passed | Confirms stale rejection and preservation/blocking, not a conflict-resolution UI |
-| Crash recovery | PR #73 | Passed in CI | Does not replace browser crash testing on real devices |
-| TypeScript | PR #77 and #78 exact-head workflows | Passed | Exact-head CI only |
-| Production build | PR #77 and #78 exact-head workflows | Passed | Not a Vercel deployment |
-| Production startup smoke | PR #77 and #78 exact-head workflows | Passed | Not a live production URL smoke |
-| Dependency audit | PR #77 and #78 exact-head workflows | Passed | Snapshot at CI run time |
-| Tombstones | Projector guard tests | Blocked safely | Actual delete propagation is not implemented |
-| Browser E2E / mobile / tablet | Not verified in this work segment | Not run | Requires Playwright/browser workflow evidence |
-| Offline stress / load | Not verified | Not run | Hundreds/thousands of queued writes and long offline windows remain |
-| Production Vercel | Status returns `build-rate-limit` | Unverified | External deployment limit, not a successful deployment |
+| Unit/regression suites | PR #129 exact head `334a73a05bddc4d574cdf8c25a0299f329b22c49` | 525 passed, 0 failed | Assertion count is suite output, not full product coverage |
+| Firestore Rules | PR #129 exact-head Emulator run | 31 passed, 0 failed | Emulator only; production rules deployment unverified |
+| Populated collection round trip | PR #114 + PR #125 | All eight collections populated; sequential A → B → A; multiple records preserved in array collections | Emulator-backed isolated service contexts, not real devices or simultaneous conflict merge |
+| Document-scoped projection | PR #129 | Same-document pending write blocks; unrelated test-result document progresses | Grouped syncMeta remains collection-wide; no field merge |
+| Conflict evidence | PR #126 | Local snapshot plus pending Outbox mutations retained; 500 KB combined cap; repeated observations deduplicated | No user decision workflow yet |
+| Browser app shell | PR #122 | 6/6 Playwright desktop/mobile Chromium checks passed | Shell, reload, JS errors, overflow only; not auth/CRUD/sync |
+| Ruqyah locator library | PR #127 | 16 browser checks passed | Locator/library UI only; not full recitation or cloud sync |
+| TypeScript / production build / server smoke | PR #129 exact head | Passed | Exact-head CI only; not live Vercel deployment |
+| Dependency audit | PR #129 exact head | Passed | Snapshot at CI run time |
+| Tombstones | Projector guards | Blocked safely | Actual delete propagation, resurrection prevention, and retention not implemented |
+| Offline stress / load | Not yet verified | Not run | Hundreds/thousands of queued writes, long offline windows, crash/IDB quota stress remain |
+| Full browser auth/sync | Not yet verified | Not run | Independent auth sessions, cross-tab, full CRUD, two-device sync journeys remain |
+| Production Firebase / Vercel | Main status `build-rate-limit` | Unverified | No production rules deployment or deployed SHA/live smoke claim |
 
 ## Exact main verification
 
@@ -61,17 +61,43 @@
 
 
 ## 2026-11-07 — PR #111 and populated eight-collection sync verification
-- Subsequent main work: PR #117 removed dormant unverified audio playback code (merge SHA `673ddfcb5af046f785e2da18abc73c4a1bba2339`; exact-head run `42359507976`, 518 assertions and 31 rules tests passed). PR #120 hardened signed Quran coordinates and provider IDs (merge SHA `66d3ac74d8402fb13718ff38d8c7ad4bb889cd89`; exact-head run `42359703038`, 520 assertions and 31 rules tests passed).
+- Subsequent main work: PR #117 removed dormant unverified audio playback code (merge SHA `673ddfcb5af046f785e2da18abc73c4a1bba2339`; exact-head run `42359507976`, 518 assertions and 31 rules tests passed). PR #120 hardened signed Quran coordinates and provider IDs (merge SHA `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`; exact-head run `42359703038`, 520 assertions and 31 rules tests passed).
 - PR #115's browser test branch failed only during Playwright browser installation because Ubuntu 26.04 is unsupported by Playwright 1.56.1; its test/config files were reapplied on current main in PR #122 using Ubuntu 24.04. PR #122 remains under exact-head CI; browser smoke is not yet claimed passed.
 - PR #118 was closed as a duplicate of already-merged PR #117 after confirming the 360-line playback removal is already on main. PR #113's older Ruqyah checkpoint is being superseded by PR #121; its release checklist changes are being preserved there.
 
 
 - PR #111 merged as `48cf9b236072cd3db2603a57cda5f67b30a778cd`. It restricts IslamicAPI to validated Quran locator coordinates; displayed Quran text and metadata resolve from WIRD's canonical corpus. Duplicate PR #112 was closed after all code/test files were confirmed identical to main and its only remaining difference was stale checklist wording.
-- PR #114 merged as `66d3ac74d8402fb13718ff38d8c7ad4bb889cd89`; exact PR head `9ff200bc731ac99db0d662f76dad97b370d00c9b` passed both push and pull-request Quality Gate runs `42359408488` and `42359412200`.
+- PR #114 merged as `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`; exact PR head `9ff200bc731ac99db0d662f76dad97b370d00c9b` passed both push and pull-request Quality Gate runs `42359408488` and `42359412200`.
 - Exact-head evidence: 513 automated assertions passed, 31 Firestore Rules Emulator tests passed, dependency audit passed, TypeScript passed, production build passed, and production/development server startup smoke passed.
 - PR #114 replaces empty fixtures for plans, enginePlans, portions, weakVerses, tests, and activityEvents with valid non-empty domain records. All eight collections now have populated fixtures. The Emulator test performs sequential A → B → A projection with distinct B-side edits and compares complete local projection records and remote payload fields, plus revision 1/2.
 - This does not prove simultaneous concurrent merge for every collection, long-offline replay, real-browser cross-tab behavior, or Playwright/device E2E. It closes the empty-record serialization/round-trip gap documented under PR #101/#106.
-- Current main SHA: `66d3ac74d8402fb13718ff38d8c7ad4bb889cd89`. Post-merge Main Quality Gate run `42359547235` completed successfully on `8ac5d87d84077f209eaf49881dd1354ce10d3565`.
+- Current main SHA: `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`. Post-merge Main Quality Gate run `42359547235` completed successfully on `8ac5d87d84077f209eaf49881dd1354ce10d3565`.
 - Vercel status remains `build-rate-limit`; this is a provider deployment quota failure, not a successful deployment. No production Firebase rules deployment, live deployed SHA, live two-device verification, environment-variable change, secret change, or production sync activation is claimed.
 - PR #2 remains a draft and is 115 commits ahead / 266 behind current main; do not merge it wholesale. Review and selectively reapply any still-useful changes only.
 - Next priority: design and implement an idempotent user-directed conflict-resolution state machine with durable preservation and latest-revision revalidation; then tombstone semantics, additive Ruqyah counters, cross-tab/Playwright, and account lifecycle stress tests. Keep production sync gates disabled.
+
+
+## 2026-11-07 — populated multi-record sync, Playwright, and conflict-evidence checkpoint
+
+- Current main at checkpoint: `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`.
+- PR #122 merged as `beec50a623febdfa79f286f7c2b87d8234b2b150`; exact head `945c0f73e965d0111d46c53179465ee4c98fb83a` passed six Playwright app-shell checks (three desktop, three mobile Chromium/iPhone 13 viewport emulation). Post-merge main run `42360161749` passed.
+- PR #125 merged as `ceebd11995bece572d40230ab084858be5a40cf2`; exact head `b24e0eb8221c23498878ee0a58727990ad9f2dfd` passed 521 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and six Playwright checks. Post-merge main run `42360526021` passed.
+- PR #126 merged as `802811d45a6d7e977d3b4082fd08ebf5e95151fa`; exact head `9886ca8a090cf07f04b51943fbc254a4b98ce221` passed 521 automated assertions and 31 Firestore Rules Emulator tests plus the remaining Quality Gate steps, including Playwright. Post-merge main run `42360725981` passed.
+- PR #129 merged as `ab1a2cd04a1456a6430985ce6f6e72a1b137907d`; exact head `334a73a05bddc4d574cdf8c25a0299f329b22c49` passed 525 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and six Playwright app-shell checks. Its post-merge main run was cancelled when the subsequent documentation-only PR #130 updated main; current main Quality Gate run `42361224358` is the relevant post-merge validation and was in progress at this checkpoint.
+- PR #129 makes normal remote projection and the final IndexedDB cursor/revision transaction document-scoped. Same-document pending writes still block; unrelated test-result documents can progress independently. Grouped `syncMeta` transactions retain collection-wide guards.
+- PR #126 adds durable pending local mutation evidence to Conflict Archive, including mutation IDs, fingerprints, base revisions, sequence numbers, and payloads. Repeated observations append by mutation ID; a fingerprint mismatch or combined snapshot size above 500 KB aborts without deleting inbox/outbox entries or advancing the cursor. Settings displays at most ten archived mutation payloads while retaining the full archive.
+- This is not yet a user-directed conflict-resolution state machine: keep-local, use-remote, safe merge, and revision revalidation actions remain unimplemented. Tombstones, additive multi-device Ruqyah counters, full auth/sync browser journeys, real two-device verification, and production deployment remain release blockers.
+- PR #127 added 16 Ruqyah locator-library browser checks; PR #130 refreshed the Ruqyah checkpoint and release checklist after CORS hardening and locator-library E2E. These browser checks do not replace live Firebase/device tests.
+- Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit` on reviewed main updates. No live deployed SHA, live two-device verification, Firebase production-rules deployment, secret/environment-variable change, or production sync activation is claimed.
+- PR #2 remains a draft, 115 commits ahead / 276 behind current main. Do not merge it wholesale.
+- Next: implement the conflict decision state machine with atomic archival/revalidation and crash recovery; then tombstones, additive Ruqyah counters, broader Playwright workflows, backup/restore stress, and account lifecycle tests.
+
+
+## 2026-11-07 — multi-record and browser coverage update
+
+- PR #125 expands all eight collection fixtures with multiple populated records where the model is collection-array based. Device B changes only one record; the untouched record must remain byte-for-byte equivalent in both A → B and B → A projections. Exact-head Quality Gate: 521 automated assertions, 31 Firestore Rules Emulator tests, six Playwright app-shell checks; post-merge main run passed.
+- PR #122 adds six Playwright app-shell checks: desktop and mobile viewport projects, hard refresh, no uncaught page errors, and no viewport horizontal overflow. Mobile uses Chromium with iPhone 13 viewport/touch emulation because only Chromium is installed.
+- PR #127 adds 16 Ruqyah locator-library browser checks. These are UI/library tests, not full authentication, CRUD, or sync journeys.
+- PR #126 verifies durable conflict evidence: pending local mutation payloads are archived, repeat observations append without replacing the original snapshot, and oversized evidence fails closed while inbox/outbox remain intact.
+- PR #129 verifies document-scoped projection at both projector and atomic finalization layers: same-document pending writes block; a different test-result document in the same collection does not. Grouped syncMeta remains collection-scoped.
+- Still not covered: concurrent edits to the same collection snapshot from multiple real devices, long-offline replay, out-of-order multi-event stress, cross-tab races, full browser auth/sync workflows, tombstone replay, and live Firebase verification.
