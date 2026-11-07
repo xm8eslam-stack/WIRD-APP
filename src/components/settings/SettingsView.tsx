@@ -193,6 +193,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setConflictDetails(previous => previous.filter(item => item.event.eventId !== eventId));
       setConflictIntents(previous => ({ ...previous, [eventId]: null }));
       setConfirmRemoteConflictId(null);
+      setConfirmLocalConflictId(null);
       onUpdateProfile(StorageService.getProfile());
       onBackupImported?.();
       onToast?.(
@@ -220,6 +221,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setConflictDetails(previous => previous.filter(item => item.event.eventId !== eventId));
       setConflictIntents(previous => ({ ...previous, [eventId]: null }));
       setConfirmLocalConflictId(null);
+      setConfirmRemoteConflictId(null);
       onToast?.(
         `تم اعتماد النسخة المحلية للتعارض ${eventId} وتجهيز عملية جديدة على الإصدار السحابي ${result.revision}. حُفظت ${result.archivedMutationCount} عملية قديمة في الأرشيف، والعملية الجديدة بانتظار تأكيد الرفع.`,
         'success'
@@ -245,6 +247,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       const cancelled = await cancelPreparedProjectionConflictResolution(eventId, intent.decisionId);
       if (cancelled) {
         setConflictIntents(previous => ({ ...previous, [eventId]: null }));
+        setConfirmRemoteConflictId(null);
+        setConfirmLocalConflictId(null);
         onToast?.('تم إلغاء القرار غير المنفذ فقط؛ لم تُحذف أدلة التعارض أو العمليات المحلية.', 'info');
         void triggerSync();
       }
@@ -619,7 +623,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             <div className="space-y-2">
                               <button
                                 type="button"
-                                onClick={() => setConfirmRemoteConflictId(conflict.event.eventId)}
+                                onClick={() => { setConfirmLocalConflictId(null); setConfirmRemoteConflictId(conflict.event.eventId); }}
                                 disabled={!user || isGuest || !isEmailVerified || !isOnline || syncStatus === 'syncing' || resolvingConflictId !== null}
                                 className="px-3 py-2 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                               >
@@ -628,7 +632,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               {canKeepLocal && (
                                 <button
                                   type="button"
-                                  onClick={() => setConfirmLocalConflictId(conflict.event.eventId)}
+                                  onClick={() => { setConfirmRemoteConflictId(null); setConfirmLocalConflictId(conflict.event.eventId); }}
                                   disabled={!user || isGuest || !isEmailVerified || !isOnline || syncStatus === 'syncing' || resolvingConflictId !== null}
                                   className="px-3 py-2 rounded-lg border border-emerald-800 text-emerald-900 dark:text-emerald-200 dark:border-emerald-700 text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
