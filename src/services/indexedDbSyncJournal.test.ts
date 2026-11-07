@@ -249,6 +249,8 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       assert(identityRejected,
         'An event ID reused with a different fingerprint must not replace archived recovery evidence');
 
+      assert(await journal.acknowledge(['local-conflict-mutation-1', 'local-conflict-mutation-2'], 9255) === 2,
+        'After a later successful local resolution write, pending entries may be acknowledged while archived evidence remains');
       const intent = {
         sequence: 1,
         eventId: event.eventId,
@@ -337,8 +339,9 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       } catch { rejected = true; }
       assert(rejected, 'Oversized local snapshots must be rejected');
       assert(await journal.getRemoteProjectionCursor() === 0 &&
-        (await journal.listRemoteInboxAfter(0, 10)).length === 1,
-        'Rejecting an oversized archive must preserve the original inbox event and cursor');
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1 &&
+        (await journal.listReady(9000, 10)).some(item => item.mutationId === 'large-conflict-pending-mutation'),
+        'Rejecting an oversized archive must preserve the original inbox event, cursor, and pending local mutation');
       journal.close();
     });
 
