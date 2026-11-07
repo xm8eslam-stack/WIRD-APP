@@ -22,6 +22,7 @@ Last reviewed: 2026-11-07
 - Phase 16: PR #145 — announce counter updates through polite atomic live regions with Arabic labels for free-reading counts and source-defined remaining repetitions.
 - Phase 17: PR #150 merged (`c1e480b94c08df152fb75c797ddc0caeebc148e6`) — restored Quran ayah-level audio with a curated Al Quran Cloud reciter allowlist, API-to-CDN folder mapping, provider-documented bitrates, continuous section playlists, accessible playback controls, and live CDN smoke checks. Exact-head Quality Gate passed: 533 automated assertions, 31 Firestore Rules tests, 8/8 CDN probes, and 30 desktop/mobile Playwright tests. Production playback remains pending a successful Vercel deployment; full-program recordings remain disabled.
 - Phase 18: PR #149 merged (`78ada24ecadbda3460178550e871632f6d81d770`) — added the first executable, explicitly user-confirmed use latest remote snapshot conflict-resolution path, with complete remote envelope validation, exact archived-local-state checks, commit-time remote revalidation, atomic journal/outbox/inbox transitions, safe cancellation, and recovery after local projection interruption. Exact-head Quality Gate passed on `c675a2d164b88994c08a5368bf1695712f2625f3`, run `42368745026` (#2871), including automated tests, Firestore Rules Emulator, dependency audit, TypeScript, production build, server smoke, audio CDN/range checks, and desktop/mobile Playwright. This does not implement keep-local re-publication, user-authored merge, tombstones, additive counter merge, or production sync activation.
+- Phase 19: PR #155 merged (`c620697538ef72eec3d1c2c78bb456c0403232ce`) — added the explicitly confirmed keep-local path for supported single-collection upserts. It verifies the latest Firestore revision and current local projection, atomically preserves the archive, replaces stale pending writes with one new full-snapshot outbox mutation based on that revision, and advances the blocked projection cursor in the same IndexedDB transaction. Exact-head Quality Gate passed on `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf`, run `42370175733` (#2909), including automated tests, Firestore Rules Emulator, dependency audit, TypeScript, production build, server smoke, audio CDN/range checks, and desktop/mobile Playwright. The new mutation is queued, not claimed as server-acknowledged. `syncMeta`, `ruqyahProgress` additive counters, tombstones, user-authored merge, and production sync activation remain out of scope.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
@@ -89,13 +90,13 @@ Use two real browsers/devices signed in to the same verified account:
 - Full-program recordings that include supplications remain disabled until a complete reciter/content/rights audit is completed.
 - Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
-### 5. Current conflict-resolution scope — PR #149
+### 5. Current conflict-resolution scope — PR #149 and PR #155
 
-- The only executable user decision currently available is use latest remote snapshot. It requires a separate user confirmation and is guarded for verified, online, non-syncing accounts.
+- Two narrow user-confirmed decisions are implemented: use latest remote snapshot (PR #149) and keep local (PR #155) for supported single-collection upsert conflicts. Both require a separate confirmation and verified account scope.
 - The service validates the authoritative Firestore state envelope, rejects missing/malformed/tombstoned documents, binds the decision to the archived local snapshot and mutation identities, and revalidates the remote snapshot immediately before local commit.
 - The journal transition preserves archived local evidence, supersedes only the matching pending mutations, closes the conflict, removes its blocked Inbox event, updates revision metadata, clears the prepared intent, and advances the projection cursor atomically.
 - Cancellation removes only the uncommitted decision intent; it does not delete the conflict archive or pending writes. Recovery handles the case where the exact remote projection was applied immediately before an IndexedDB interruption.
-- Keep-local re-publication, user-authored merge, tombstone semantics, deterministic additive Ruqyah counter merge, cross-tab coordination, account lifecycle isolation, and live multi-device verification remain release blockers.
+- Keep-local is deliberately disabled for grouped `syncMeta`, `ruqyahProgress` counters, and tombstones. User-authored merge, deterministic additive Ruqyah counter merge, collection-specific tombstone semantics, cross-tab coordination, account lifecycle isolation, and live multi-device verification remain release blockers.
 - Keep `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` disabled until all global gates pass and live Firestore rules deployment plus two-device tests are verified. PR #149 did not change production flags or Firestore rules.
 
 ### 6. Accessibility and responsive review
@@ -141,7 +142,7 @@ Repository: https://github.com/muslimpack/Ruqayyah
 
 ## Known release blockers
 
-- The explicit use-latest-remote conflict path is implemented by PR #149. Keep-local re-publication and user-authored merge are still not implemented; tombstone/deletion resolution remains blocked.
+- The explicit use-latest-remote path (PR #149) and narrow keep-local re-publication path (PR #155) are implemented for their supported cases. User-authored merge and tombstone/deletion resolution remain blocked; keep-local remains disabled for Ruqyah counters and grouped syncMeta.
 - Ruqyah aggregate counter snapshots do not yet support deterministic additive merge for independent offline increments.
 - Tombstone projection, cross-tab coordination, comprehensive account lifecycle isolation, and all-collection conflict handling remain unverified.
 - Live Firestore rules deployment is not verified from this repository session.
