@@ -227,11 +227,11 @@ export const PlanningEngine = {
       // Average 15 verses per page in standard Quranic distribution
       dailyPaceVerses = Math.max(1, Math.round(input.paceQuantity * 15));
     } else if (input.paceType === 'by_target_date' && input.targetEndDate) {
-      const activeDays = this.countActiveDaysBetween(input.startDate, input.targetEndDate, activeDays, restDays);
-      if (activeDays <= 0) {
+      const activeDaysCount = this.countActiveDaysBetween(input.startDate, input.targetEndDate, activeDays, restDays);
+      if (activeDaysCount <= 0) {
         throw new Error("لا توجد أيام دراسة نشطة متاحة بين تاريخ البداية والنهاية المحدد.");
       }
-      dailyPaceVerses = Math.max(1, Math.ceil(totalVerses / activeDays));
+      dailyPaceVerses = Math.max(1, Math.ceil(totalVerses / activeDaysCount));
     }
 
     if (!Number.isSafeInteger(dailyPaceVerses) || dailyPaceVerses <= 0) {
