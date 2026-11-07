@@ -3,6 +3,7 @@ import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyah
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import type { QuranReciter } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from '../../services/ruqyahProgressService';
+import { StorageService } from '../../services/storageService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
@@ -66,6 +67,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const audioStreamRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
+  const currentStorageScope = StorageService.getStorageScope();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -82,8 +84,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     return () => controller.abort();
   }, []);
 
-  // Hydrate the current account's isolated Ruqyah progress before allowing writes.
+  // Hydrate progress whenever WIRD switches guest/account storage namespaces.
   useEffect(() => {
+    setProgressHydrated(false);
+    setProgressCorrupt(false);
     const saved = loadRuqyahProgress();
     if (saved.status === 'corrupt') {
       setProgressCorrupt(true);
@@ -92,7 +96,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       setCounts(saved.counts);
     }
     setProgressHydrated(true);
-  }, []);
+  }, [currentStorageScope]);
 
   useEffect(() => {
     if (!progressHydrated || progressCorrupt) return;
