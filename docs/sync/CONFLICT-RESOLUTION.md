@@ -1,8 +1,8 @@
 # WIRD Conflict Resolution Policy
 
-## 2026-11-07 — explicit use-remote resolution path (next executor phase)
+## 2026-11-07 — explicit use-remote resolution path (PR #149 merged)
 
-The follow-on implementation adds a deliberately narrow, user-confirmed **use latest remote snapshot** path:
+PR #149 implements a deliberately narrow, user-confirmed **use latest remote snapshot** path. Its exact tested head `c675a2d164b88994c08a5368bf1695712f2625f3` passed WIRD Quality Gate run `42368745026` (#2871), and the squash merge commit is `78ada24ecadbda3460178550e871632f6d81d770`.
 
 - The UI requires a separate confirmation and disables the action while offline, syncing, guest, or unverified.
 - The service reads the latest Firestore state document and validates its schema/revision envelope. Missing, malformed, or tombstoned documents are rejected.
@@ -20,7 +20,7 @@ PR #148 introduces a versioned, UID-scoped IndexedDB store for a single immutabl
 
 Preparation rechecks that the conflict is still open, the exact event remains in the inbox, the archived mutation set and raw local snapshot have not changed since inspection, no newer relevant local Outbox mutations appeared, and the locally known revision is not newer than the supplied revision. The intent survives reload and exact retries; a different decision cannot overwrite it. Retention is bounded and fails closed rather than silently pruning decision evidence.
 
-**This is not yet an executable conflict resolver.** The prepared intent is not a server acknowledgement, does not replace or acknowledge local Outbox mutations, does not apply a local or remote snapshot, and does not advance the Inbox/projection cursor. Normal projection finalization and direct cursor advancement are blocked while a prepared intent exists, so the automatic projector cannot bypass a saved user decision. At the time of PR #148, the preparation API was intentionally not exposed to the UI. The follow-on use-remote path below is the first narrow executor; keep-local re-publication and merge remain separate work.
+**At the PR #148 foundation stage, this was not yet an executable conflict resolver.** The prepared intent alone was not a server acknowledgement, did not replace or acknowledge local Outbox mutations, did not apply a local or remote snapshot, and did not advance the Inbox/projection cursor. Normal projection finalization and direct cursor advancement were blocked while a prepared intent existed, so the automatic projector could not bypass a saved user decision. PR #149 subsequently added the first narrow executor for the use-remote decision; keep-local re-publication and user-authored merge remain separate work.
 
 Production sync flags remain disabled. No Firestore rules, secrets, or production settings changed.
 
@@ -35,19 +35,20 @@ PR #78 verifies this with two independently stored devices: one write is accepte
 
 ## Not yet implemented
 
-- User-facing compare/choose/merge workflow and persisted decision intent.
-- Safe automatic field-level merge for collections where fields are independently mergeable.
-- Conflict-resolution mutation that rebases the chosen result on the latest server revision.
-- Recovery/retention policy for unresolved conflicts.
+- Keep-local re-publication as a separately confirmed and revision-safe decision.
+- User-authored merge with collection-specific validation and explicit preservation of both sides.
+- Collection-specific tombstone/deletion resolution.
+- Deterministic additive merge for independent offline Ruqyah counter increments.
+- Cross-tab coordination, comprehensive account lifecycle isolation, and live two-device verification.
 
-Until these exist, a blocked mutation is a safe unresolved conflict, not a completed resolution. Do not silently discard or automatically rebase the losing local mutation.
+The use-remote path is a completed narrow resolution, not completion of the full conflict-resolution engine. A blocked mutation without an explicitly completed decision remains an unresolved conflict. Do not silently discard or automatically rebase the losing local mutation.
 
 
 ## Durable conflict archive — implemented in PR #81
 
 Blocked projection archives the full remote inbox event and raw local storage bytes in a UID-scoped IndexedDB store. PR #126 extends this to preserve pending local outbox mutations for the exact conflicting document, including mutation ID, fingerprint, base revision, sequence, and payload. Repeated observations append newly pending mutations by ID without replacing the first snapshot. Combined evidence is capped at 500 KB; fingerprint mismatch or overflow aborts without deleting inbox/outbox entries or advancing the cursor. Settings displays up to ten archived mutation payloads.
 
-This archive prevents diagnostic evidence from disappearing; it does not resolve the conflict. No keep-local/use-remote UI or automatic merge exists. The event remains in the inbox and the projection cursor remains blocked until a separately tested resolution workflow is implemented.
+This archive prevents diagnostic evidence from disappearing; it does not itself resolve the conflict. At the time PR #126 was implemented, no keep-local/use-remote UI existed. PR #149 later added the explicit use-latest-remote path; keep-local re-publication, user-authored merge, and automatic merge remain unimplemented.
 
 
 ## Atomic reconciliation semantics — PR #85
@@ -60,7 +61,7 @@ This is automatic bookkeeping after a successful safe projection, not a user cho
 
 PR #104 adds an expandable Settings view of up to 20 open conflict records, including the immutable remote event payload and captured local projection snapshot. PR #126 adds a bounded preview of preserved pending local mutation payloads (up to ten rendered entries), guarded by exact active UID scope. The inspector remains read-only: it does not choose a winner, rebase an Outbox mutation, change the inbox/cursor, or mark a conflict resolved.
 
-Still required: an idempotent user decision state machine for keep-local/use-remote/merge, latest server revision revalidation, preservation of both snapshots until durable commit, failure recovery, and history of the user's decision. Do not infer resolution from the inspector or the existing `reconciled` bookkeeping status.
+Still required beyond PR #149: separately confirmed keep-local re-publication and user-authored merge, collection-specific validation, preservation of both snapshots until durable commit, failure recovery, and decision history. The inspector remains read-only; do not infer resolution from the inspector or the existing `reconciled` bookkeeping status.
 
 
 ## 2026-11-07 — populated multi-record sync, Playwright, and conflict-evidence checkpoint
