@@ -128,7 +128,7 @@ export async function getTafsir(
   }
   const trimmedResponse = responseText.trim();
   const contentType = response.headers.get('content-type') || '';
-  if (trimmedResponse.startsWith('<') || /text\\/html/i.test(contentType)) {
+  if (trimmedResponse.startsWith('<') || /text\/html/i.test(contentType)) {
     throw new Error(
       'خدمة التفسير أعادت صفحة HTML بدل بيانات JSON؛ غالباً مسار API غير متاح في النشر الحالي. لم يتم عرض محتوى بديل.'
     );
@@ -136,7 +136,7 @@ export async function getTafsir(
   if (!response.ok) {
     throw new Error('تعذر جلب التفسير (HTTP ' + response.status + ').');
   }
-  if (!/\\bapplication\\/(?:[a-z0-9.+-]*\\+)?json\\b/i.test(contentType)) {
+  if (!/\bapplication\/(?:[a-z0-9.+-]*\+)?json\b/i.test(contentType)) {
     throw new Error('استجابة خادم التفسير ليست بصيغة JSON صالحة؛ لم يتم عرض محتوى بديل.');
   }
 
