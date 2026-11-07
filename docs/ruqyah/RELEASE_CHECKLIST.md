@@ -13,6 +13,8 @@ Last reviewed: 2026-11-07
 - Phase 7: PR #117 — removed dormant legacy audio playback code and all hidden browser audio handlers while retaining disabled safety notices.
 - Phase 8: PR #120 — rejects signed/negative Quran coordinates, mixed/ambiguous/out-of-range locators, and invalid or oversized provider IDs.
 - Phase 9: PR #123 — canonical surah/ayah search, Arabic numeral normalization, no-results state, and keyboard focus indicators.
+- Phase 10: PR #124 — remove wildcard CORS grants from the same-origin server-side Ruqyah proxy.
+- Phase 11: PR #127 — Playwright coverage for loading, canonical text, empty, retry/error, invalid locator, and search states on desktop/mobile.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
