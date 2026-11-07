@@ -8,6 +8,7 @@ export type CloudSyncStatus =
   | 'idle'
   | 'syncing'
   | 'synced'
+  | 'partial'
   | 'offline'
   | 'unverified'
   | 'guest'
@@ -22,6 +23,16 @@ export interface CloudSyncState {
 }
 
 type SyncListener = (state: CloudSyncState) => void;
+
+/** Full sync is only possible after remote events have been durably imported and projected. */
+export function getCloudSyncCompletionStatus(
+  pendingCount: number,
+  remoteReconciled: boolean
+): CloudSyncStatus {
+  if (!Number.isSafeInteger(pendingCount) || pendingCount < 0) return 'error';
+  if (pendingCount > 0) return 'error';
+  return remoteReconciled ? 'synced' : 'partial';
+}
 
 function checkIsOnline(): boolean {
   if (typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean') {
@@ -220,18 +231,23 @@ class CloudSyncCoordinator {
         }
       }
 
-      // Step B: Pull remote events or updates from other devices
-      await this.pullRemoteReconciliation(uid);
+      // Step B: Inspect remote events. This is not yet a durable import/projection.
+      const remoteReconciled = await this.pullRemoteReconciliation(uid);
 
-      // Step C: Update state to synced
+      // Never claim full sync until remote events are durably imported and projected.
       const finalCount = await this.refreshPendingCount();
+      const status = getCloudSyncCompletionStatus(finalCount, remoteReconciled);
       this.updateState({
-        status: finalCount > 0 ? 'idle' : 'synced',
-        lastSyncAtMs: Date.now(),
-        errorMessage: null
+        status,
+        lastSyncAtMs: status === 'synced' ? Date.now() : this.state.lastSyncAtMs,
+        errorMessage: status === 'error'
+          ? 'بعض التغييرات لم تُرفع بعد؛ احتفظنا بها محلياً وسنعيد المحاولة.'
+          : status === 'partial'
+            ? 'تم رفع التغييرات المحلية، لكن استقبال تغييرات الأجهزة الأخرى وتطبيقها لم يكتمل بعد.'
+            : null
       });
 
-      return true;
+      return status === 'synced';
     } catch (syncError: any) {
       console.error('[WIRD CloudSync] Cloud sync failed:', syncError);
       this.updateState({
@@ -248,8 +264,8 @@ class CloudSyncCoordinator {
   /**
    * Reconcile remote updates from other devices using deterministic projection logic.
    */
-  private async pullRemoteReconciliation(uid: string): Promise<void> {
-    if (!db) return;
+  private async pullRemoteReconciliation(uid: string): Promise<boolean> {
+    if (!db) return false;
     try {
       // Pull recent domain events for this user to detect multi-device activity
       const eventsRef = collection(db, 'users', uid, 'events');
@@ -262,10 +278,12 @@ class CloudSyncCoordinator {
       // Even if offline or empty, query runs gracefully
       const snapshot = await getDocs(eventsQuery);
       if (!snapshot.empty) {
-        // Events are verified and immutable; local store remains resilient
+        // Reading remote events is only an inspection, not an import or projection.
       }
+      // Remote inbox, durable cursor and projection are not implemented yet.
+      return false;
     } catch {
-      // Offline fallback: continue without blocking local operations
+      return false;
     }
   }
 
