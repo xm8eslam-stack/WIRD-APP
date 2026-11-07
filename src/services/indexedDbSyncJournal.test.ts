@@ -339,13 +339,27 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.prepareRemoteProjection(intent);
       let rejected = false;
       let projectionAttempts = 0;
+      let injected = false;
+      const originalPut = IDBObjectStore.prototype.put;
+      (IDBObjectStore.prototype as any).put = function(value: unknown, key?: IDBValidKey) {
+        const request = key === undefined
+          ? originalPut.call(this, value)
+          : originalPut.call(this, value, key);
+        if (this.name === 'metadata' && !injected) {
+          injected = true;
+          this.transaction.abort();
+        }
+        return request;
+      };
       try {
         await journal.finalizeRemoteProjection(intent, () => {
           projectionAttempts++;
-          return false;
+          return true;
         });
       } catch { rejected = true; }
-      assert(rejected && projectionAttempts === 1, 'Injected projection failure must abort finalization');
+      finally { IDBObjectStore.prototype.put = originalPut; }
+      assert(rejected && injected && projectionAttempts === 1,
+        'Injected metadata finalization abort must occur after the local projection callback');
       assert(await journal.getRemoteProjectionCursor() === 0, 'A failed projection must not advance its cursor');
       assert((await journal.listRemoteInboxAfter(0, 10)).length === 1, 'A failed projection must retain its inbox event');
       assert((await journal.getRemoteProjectionIntent())?.eventId === event.eventId, 'A failed projection must retain its durable intent');
