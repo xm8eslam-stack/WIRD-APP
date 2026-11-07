@@ -70,12 +70,23 @@ function splitDayTasks(day: ScheduledDayPlan): {
   return { historical, pending };
 }
 
+function hasSchedulableDay(input: EngineGeneratedPlan['input']): boolean {
+  const activeDays = Array.isArray(input.activeDays) ? input.activeDays : [];
+  const restDays = Array.isArray(input.restDays) ? input.restDays : [];
+  return activeDays.some(day =>
+    Number.isSafeInteger(day) && day >= 0 && day <= 6 && !restDays.includes(day)
+  );
+}
+
 function schedulePendingBundles(
   bundles: PendingTaskBundle[],
   startDate: Date,
   input: EngineGeneratedPlan['input'],
   idPrefix: string
 ): ScheduledDayPlan[] {
+  if (!hasSchedulableDay(input)) {
+    throw new Error('لا توجد أيام دراسة نشطة لإعادة جدولة المهام المعلقة؛ تم الحفاظ على الخطة دون تغيير.');
+  }
   const schedule: ScheduledDayPlan[] = [];
   const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
   let pendingIndex = 0;
@@ -205,6 +216,7 @@ export const PlanLifecycle = {
     if (pendingBundles.length === 0) {
       return { ...plan, isPaused: false, pausedAt: undefined };
     }
+    if (!hasSchedulableDay(plan.input)) return plan;
 
     const rescheduled = schedulePendingBundles(
       pendingBundles,
@@ -370,6 +382,7 @@ export const PlanLifecycle = {
 
     const startDate = new Date();
     startDate.setDate(startDate.getDate() + 1);
+    if (workBundles.length > 0 && !hasSchedulableDay(plan.input)) return plan;
     const rescheduled = schedulePendingBundles(
       workBundles,
       startDate,
