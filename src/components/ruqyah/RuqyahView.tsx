@@ -43,6 +43,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [progressScope, setProgressScope] = useState(currentStorageScope);
   const [progressCorrupt, setProgressCorrupt] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
@@ -155,12 +156,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   // Reset counters for current active category
   const handleResetCategoryCounts = () => {
+    if (!progressHydrated || progressCorrupt) return;
     const updated = { ...counts };
     currentItems.forEach(item => {
       delete updated[item.id];
     });
     setCounts(updated);
     setProgressDirty(true);
+    setShowResetConfirmation(false);
     if (onToast) onToast('تم إعادة ضبط العدادات لهذه القائمة.', 'info');
   };
 
@@ -321,13 +324,29 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
                 <button
                   type="button"
-                  onClick={handleResetCategoryCounts}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  title="إعادة ضبط عداد القسم"
+                  onClick={() => setShowResetConfirmation(true)}
+                  disabled={!progressHydrated || progressCorrupt}
+                  aria-haspopup="true"
+                  aria-expanded={showResetConfirmation}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  title={progressCorrupt ? "أعد ضبط سجل الرقية التالف من رسالة الاسترداد أعلاه" : "إعادة ضبط عداد القسم"}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>إعادة الضبط</span>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {showResetConfirmation && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
+              <div className="min-w-0">
+                <p id="ruqyah-reset-confirmation-title" className="text-sm font-bold text-amber-950 dark:text-amber-100">تأكيد إعادة ضبط القسم</p>
+                <p id="ruqyah-reset-confirmation-description" className="mt-1 text-xs leading-relaxed text-amber-900 dark:text-amber-200">سيتم تصفير عدادات هذا القسم فقط. لن تتغير نصوص القرآن أو الأدعية أو بيانات الأقسام الأخرى.</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <button type="button" onClick={() => setShowResetConfirmation(false)} className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">إلغاء</button>
+                <button type="button" onClick={handleResetCategoryCounts} disabled={!progressHydrated || progressCorrupt} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">تأكيد إعادة الضبط</button>
               </div>
             </div>
           )}
