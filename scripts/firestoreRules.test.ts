@@ -1248,7 +1248,8 @@ try {
         const ownerState = await assertSucceeds(getDoc(doc(
           firestoreB, 'users', uid, item.collection, 'snapshot'
         )));
-        if (!ownerState.exists() || ownerState.data().revision !== 1) {
+        if (!ownerState.exists() || ownerState.data().revision !== 1 ||
+            JSON.stringify(ownerState.data().payload) !== JSON.stringify(item.payload)) {
           throw new Error('Owner cannot read revisioned state for ' + item.collection);
         }
         const otherDb = testEnv.authenticatedContext(uid + '-other').firestore();
@@ -1324,7 +1325,8 @@ try {
         const ownerState = await assertSucceeds(getDoc(doc(
           firestoreA, 'users', uid, item.collection, 'snapshot'
         )));
-        if (!ownerState.exists() || ownerState.data().revision !== 2) {
+        if (!ownerState.exists() || ownerState.data().revision !== 2 ||
+            JSON.stringify(ownerState.data().payload) !== JSON.stringify(item.reversePayload)) {
           throw new Error('Device A did not observe revision 2 for ' + item.collection);
         }
       }
