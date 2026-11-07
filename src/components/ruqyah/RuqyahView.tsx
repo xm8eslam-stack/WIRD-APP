@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
-import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
+import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS } from '../../services/ruqyahAudioService';
 import type { QuranReciter } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
