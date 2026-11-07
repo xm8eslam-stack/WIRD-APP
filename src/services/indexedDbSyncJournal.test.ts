@@ -402,7 +402,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.importRemotePage([event]);
       await journal.enqueue({
         mutationId: 'use-remote-local-pending',
-        collection: 'plans',
+        collection: 'profile',
         documentId: event.documentId,
         payload: { profile: localProfile },
         nowMs: 9501
@@ -438,7 +438,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         await journal.getProjectionConflictCount() === 0 &&
         await journal.getConflictResolutionIntent(event.eventId) === null,
         'The same transaction must remove only superseded Outbox writes, close the conflict, clear the intent, and advance the cursor');
-      const revision = await journal.getRemoteRevision('plans', event.documentId);
+      const revision = await journal.getRemoteRevision('profile', event.documentId);
       assert(revision?.revision === 2,
         'The latest authoritative server revision must become the local revision baseline');
       journal.close();
