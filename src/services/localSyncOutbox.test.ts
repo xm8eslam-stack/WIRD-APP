@@ -262,6 +262,56 @@ export async function runLocalSyncOutboxTests(): Promise<{ passed: number; faile
       const original = await LocalSyncOutbox.getSnapshot();
       assert(original.pendingCount === 1, 'Switching back must restore the first account outbox only');
     });
+
+    await test('Captured sync UID prevents in-flight account switches from reading or mutating the new outbox', async () => {
+      const accountA = activate();
+      const mutationId = 'same-pending-id-across-accounts';
+      await LocalSyncOutbox.enqueue({
+        mutationId, collection: 'profile', documentId: 'profile',
+        payload: { displayName: 'Account A' }, nowMs: 7200
+      });
+
+      StorageService.setStorageScope('user:' + accountA + '-other');
+      await LocalSyncOutbox.enqueue({
+        mutationId, collection: 'profile', documentId: 'profile',
+        payload: { displayName: 'Account B' }, nowMs: 7300
+      });
+
+      const staleAccountOperations: Array<() => Promise<unknown>> = [
+        () => LocalSyncOutbox.listReadyEntries(7300, 25, accountA),
+        () => LocalSyncOutbox.getRemoteRevision('profile', 'profile', accountA),
+        () => LocalSyncOutbox.rebasePendingMutation(mutationId, 0, 1, accountA),
+        () => LocalSyncOutbox.markFailed(mutationId, 'STALE_ACCOUNT_SYNC', 7400, accountA),
+        () => LocalSyncOutbox.acknowledgeRemoteMutation(mutationId, 1, 7500, accountA)
+      ];
+      let rejected = 0;
+      for (const operation of staleAccountOperations) {
+        try { await operation(); } catch (error: any) {
+          if (error?.message === 'SYNC_SCOPE_CHANGED') rejected++;
+        }
+      }
+
+      const accountB = await LocalSyncOutbox.getSnapshot();
+      const accountBEntries = await LocalSyncOutbox.listReadyEntries(7500, 25);
+      assert(rejected === staleAccountOperations.length,
+        'Every stale operation bound to account A must abort after the active scope changes');
+      assert(accountB.uid === accountA + '-other' && accountB.pendingCount === 1,
+        'Account B pending mutation must remain present after stale A sync attempts');
+      assert(accountBEntries[0]?.payload.displayName === 'Account B' &&
+        accountBEntries[0]?.baseRevision === 0 &&
+        accountBEntries[0]?.attemptCount === 0,
+        'Account B mutation payload, base revision, and retry state must remain untouched');
+
+      StorageService.setStorageScope('user:' + accountA);
+      const restoredA = await LocalSyncOutbox.getSnapshot();
+      const restoredAEntries = await LocalSyncOutbox.listReadyEntries(7500, 25);
+      assert(restoredA.pendingCount === 1 && restoredAEntries[0]?.payload.displayName === 'Account A',
+        'Account A original pending mutation must remain recoverable after the stale sync aborts');
+      StorageService.setStorageScope('user:' + accountA + '-other');
+      const restoredB = await LocalSyncOutbox.getSnapshot();
+      assert(restoredB.pendingCount === 1,
+        'Account B pending mutation must remain isolated when switching back');
+    });
   } finally {
     StorageService.__resetStorageForTests();
   }
