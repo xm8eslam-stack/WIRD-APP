@@ -47,6 +47,11 @@ export default async function handler(req: any, res: any) {
   const type = String(Array.isArray(req.query?.type) ? req.query.type[0] : req.query?.type || '');
   if (type !== 'reciters') return send(res, 400, { error: 'INVALID_AUDIO_CATALOG_QUERY' });
 
+  // This provider has not passed WIRD's source, reciter-attribution, and
+  // recording-permission review. Do not proxy its catalogue or audio URLs.
+  res.setHeader('Cache-Control', 'no-store');
+  return send(res, 503, { error: 'QURAN_AUDIO_SOURCE_NOT_VERIFIED' });
+
   if (isRateLimited(getClientIp(req))) {
     res.setHeader('Retry-After', '60');
     return send(res, 429, { error: 'RATE_LIMITED' });
