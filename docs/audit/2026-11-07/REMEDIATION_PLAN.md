@@ -183,3 +183,18 @@ Create fresh branch from latest main; port PR #60's useful changes only.
 11. Phase 6 content and release.
 
 This order fixes local data loss before touching cloud replication, then closes security and user-facing errors before public rollout.
+
+## Execution status update — 2026-11-07
+
+Phase 0 — **COMPLETE**. All 147 baseline files have per-file notes; all 70 baseline branches were compared; three PWA icons were visually inspected; the remote replication design gate was added at docs/sync/REMOTE_REPLICATION_PLAN.md because AGENTS.md referenced a missing file.
+
+Phase 1:
+- 1A Backup import journal boundary — implemented on PR #61 (Draft, not merged). Exact-head Quality Gate run 42340818280 PASS: 404 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass. Vercel Preview Ready.
+- 1B Plan lifecycle/history — implemented on PR #62 (Draft, not merged). Exact-head Quality Gate run 42341126825 PASS: 406 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass. Vercel Preview failed due Vercel daily build-rate limit.
+- 1C QuranLibrary repeat controller — implemented on PR #63 (Draft, not merged). Exact-head Quality Gate run 42341365536 PASS: 404 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass. Vercel Preview failed due Vercel daily build-rate limit.
+- 1D QuranMath/domain event validation — NOT STARTED.
+
+Phase 2 Tafsir:
+- HTML/non-JSON handling and regression tests implemented on PR #64 (Draft, not merged). Exact-head Quality Gate run 42341419175 was pending with no job assigned at last check. Do not call it green until the exact head completes.
+
+Main remains unchanged at 6228150c2f7137678ba1079f5d9b2e8aba527523. None of these PRs has been merged. Vercel daily build-rate limit is an external deployment gate; it does not invalidate the green GitHub Quality Gate, but production/preview behavior is not confirmed for PRs #62–#64.
