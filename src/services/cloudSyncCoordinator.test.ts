@@ -218,15 +218,15 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   }
 
   try {
-    const event = makeRemoteEvent({ documentId: 'remote-plan' });
+    const event = makeRemoteEvent({ collection: 'tests', documentId: 'remote-test' });
     const harness = makeProjectionHarness([event], {
-      pendingDocuments: ['plans:local-plan'],
-      empty: ['plans']
+      pendingDocuments: ['tests:local-test'],
+      empty: ['tests']
     });
     const result = await projectRemoteInboxBatch(10, harness.dependencies);
     assert(result.projectedCount === 1 && harness.state.cursor === 1 &&
       harness.state.applied === 1 && harness.state.conflicts.length === 0,
-      'A pending mutation for another document in the same collection does not block an independent remote document');
+      'A pending test-result mutation for another test ID does not block an independent remote test document');
   } catch (err: any) {
     assert(false, `Independent document projection guard failed: ${err?.message}`);
   }
