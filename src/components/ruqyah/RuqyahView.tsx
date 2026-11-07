@@ -77,7 +77,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     fetchQuranReciters(controller.signal)
       .then(list => {
         setReciters(list);
-        setSelectedReciterId(current => list.some(reciter => reciter.id === current) ? current : list[0].id);
+        if (list.length > 0) setSelectedReciterId(current => list.some(reciter => reciter.id === current) ? current : list[0].id);
       })
       .catch(error => {
         if (!controller.signal.aborted && onToast) {
@@ -152,7 +152,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       setProgressCorrupt(false);
       setProgressDirty(true);
       setProgressHydrated(true);
-      if (onToast) onToast('تمت إعادة ضبط بيانات تقدم الرقية فقط.', 'success');
+      if (onToast) onToast('جارٍ حفظ إعادة ضبط سجل تقدم الرقية...', 'info');
     } catch {
       if (onToast) onToast('تعذر إعادة ضبط بيانات تقدم الرقية.', 'error');
     }
@@ -165,24 +165,34 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
     const streamAudio = audioStreamRef.current;
     if (streamAudio) {
-      streamAudio.addEventListener('timeupdate', () => {
-        setStreamProgress(streamAudio.currentTime);
-      });
-      streamAudio.addEventListener('loadedmetadata', () => {
-        setStreamDuration(streamAudio.duration);
-      });
-      streamAudio.addEventListener('ended', () => {
+      streamAudio.volume = streamVolume;
+      const handleTimeUpdate = () => setStreamProgress(streamAudio.currentTime);
+      const handleLoadedMetadata = () => setStreamDuration(Number.isFinite(streamAudio.duration) ? streamAudio.duration : 0);
+      const handleStreamEnded = () => {
         setIsStreamPlaying(false);
         setStreamProgress(0);
-      });
+      };
+      streamAudio.addEventListener('timeupdate', handleTimeUpdate);
+      streamAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      streamAudio.addEventListener('durationchange', handleLoadedMetadata);
+      streamAudio.addEventListener('ended', handleStreamEnded);
+      return () => {
+        streamAudio.removeEventListener('timeupdate', handleTimeUpdate);
+        streamAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        streamAudio.removeEventListener('durationchange', handleLoadedMetadata);
+        streamAudio.removeEventListener('ended', handleStreamEnded);
+        streamAudio.pause();
+        if (audioVerseRef.current) {
+          audioVerseRef.current.pause();
+          audioVerseRef.current.onended = null;
+        }
+      };
     }
 
     return () => {
       if (audioVerseRef.current) {
         audioVerseRef.current.pause();
-      }
-      if (audioStreamRef.current) {
-        audioStreamRef.current.pause();
+        audioVerseRef.current.onended = null;
       }
     };
   }, []);
@@ -324,11 +334,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
     if (selectedProgramAudio.id !== target.id) {
       setSelectedProgramAudio(target);
+      setIsStreamPlaying(false);
+      setStreamProgress(0);
+      setStreamDuration(0);
       if (audioStreamRef.current) {
+        audioStreamRef.current.pause();
         audioStreamRef.current.src = target.audioUrl;
+        audioStreamRef.current.load();
         audioStreamRef.current.play().then(() => {
           setIsStreamPlaying(true);
         }).catch(() => {
+          setIsStreamPlaying(false);
           if (onToast) onToast('تعذر تشغيل تسجيل البرنامج. تحقق من الاتصال بالإنترنت.', 'warn');
         });
       }
@@ -346,6 +362,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         audioStreamRef.current.play().then(() => {
           setIsStreamPlaying(true);
         }).catch(() => {
+          setIsStreamPlaying(false);
           if (onToast) onToast('تعذر تشغيل تسجيل البرنامج.', 'warn');
         });
       }
@@ -368,7 +385,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   };
 
   const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return '00:00';
+    if (!Number.isFinite(seconds) || seconds <= 0) return '00:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -380,7 +397,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const progressPercent = trackedItems.length > 0 ? Math.round((completedCount / trackedItems.length) * 100) : 0;
 
   return (
-    <div className="space-y-6 pb-12 select-none" dir="rtl">
+    <div className="space-y-8 pb-24 max-w-7xl mx-auto" dir="rtl">
       {progressCorrupt && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
           <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
