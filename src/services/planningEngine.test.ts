@@ -122,6 +122,28 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     assert(threw, 'Invalid Surah-specific coordinate must be rejected');
   });
 
+  runTest('PlanningEngine: derives pace from a valid target date without requiring a manual pace', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة بتاريخ مستهدف',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 10,
+      startDate: '2026-11-01',
+      targetEndDate: '2026-11-10',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'by_target_date',
+      paceQuantity: 0,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    assert(plan.meta.totalVerses === 10, 'Target-date mode must derive a valid positive pace');
+  });
+
   runTest('PlanningEngine: rejects empty/all-rest schedules and invalid start dates', () => {
     const base: PlanGenerationInput = {
       title: 'خطة أيام نشطة',
