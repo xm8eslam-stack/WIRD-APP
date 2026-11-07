@@ -1,12 +1,12 @@
 const samples = [
-  { edition: 'ar.husary', cdnEdition: 'ar.husary', bitrate: 128, ayah: 1, label: 'Al-Husary / Al-Fatihah 1:1' },
-  { edition: 'ar.minshawi', cdnEdition: 'ar.minshawi', bitrate: 128, ayah: 1, label: 'Al-Minshawi / Al-Fatihah 1:1' },
-  { edition: 'ar.abdulbasit', cdnEdition: 'ar.abdulbasitmurattal', bitrate: 192, ayah: 1, label: 'Abdul Basit / Al-Fatihah 1:1' },
-  { edition: 'ar.sudais', cdnEdition: 'ar.abdurrahmaansudais', bitrate: 192, ayah: 1, label: 'Al-Sudais / Al-Fatihah 1:1' },
-  { edition: 'ar.shuraim', cdnEdition: 'ar.saoodshuraym', bitrate: 64, ayah: 1, label: 'Al-Shuraim / Al-Fatihah 1:1' },
-  { edition: 'ar.ajamy', cdnEdition: 'ar.ahmedajamy', bitrate: 64, ayah: 1, label: 'Al-Ajamy / Al-Fatihah 1:1' },
-  { edition: 'ar.alafasy', cdnEdition: 'ar.alafasy', bitrate: 128, ayah: 1, label: 'Alafasy / Al-Fatihah 1:1' },
-  { edition: 'ar.alafasy', cdnEdition: 'ar.alafasy', bitrate: 128, ayah: 6236, label: 'Alafasy / final canonical ayah' }
+  { edition: 'ar.husary', bitrate: 128, ayah: 1, label: 'Al-Husary / Al-Fatihah 1:1' },
+  { edition: 'ar.minshawi', bitrate: 128, ayah: 1, label: 'Al-Minshawi / Al-Fatihah 1:1' },
+  { edition: 'ar.abdulbasitmurattal', bitrate: 192, ayah: 1, label: 'Abdul Basit / Al-Fatihah 1:1' },
+  { edition: 'ar.abdurrahmaansudais', bitrate: 192, ayah: 1, label: 'Al-Sudais / Al-Fatihah 1:1' },
+  { edition: 'ar.saoodshuraym', bitrate: 64, ayah: 1, label: 'Al-Shuraim / Al-Fatihah 1:1' },
+  { edition: 'ar.ahmedajamy', bitrate: 64, ayah: 1, label: 'Al-Ajamy / Al-Fatihah 1:1' },
+  { edition: 'ar.alafasy', bitrate: 128, ayah: 1, label: 'Alafasy / Al-Fatihah 1:1' },
+  { edition: 'ar.alafasy', bitrate: 128, ayah: 6236, label: 'Alafasy / final canonical ayah' }
 ];
 
 const base = 'https://cdn.islamic.network/quran/audio';
