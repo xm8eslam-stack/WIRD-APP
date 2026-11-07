@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBKeyRange } from 'fake-indexeddb';
 import { resolve } from 'node:path';
 import {
   assertFails,
@@ -545,6 +545,13 @@ try {
   await test('Two isolated devices exchange profile changes through Firestore and independent IndexedDB/localStorage', async () => {
     const uid = 'device-pair';
     const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
+    Object.defineProperty(globalThis, 'IDBKeyRange', {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: IDBKeyRange
+    });
     const localStorageA = new IsolatedMemoryStorage();
     const localStorageB = new IsolatedMemoryStorage();
     const factoryA = new IDBFactory();
@@ -702,6 +709,8 @@ try {
       StorageService.__resetStorageForTests();
       if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
       else Reflect.deleteProperty(globalThis, 'localStorage');
+      if (originalIDBKeyRange) Object.defineProperty(globalThis, 'IDBKeyRange', originalIDBKeyRange);
+      else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
     }
   });
 
