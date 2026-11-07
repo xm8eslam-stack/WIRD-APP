@@ -125,7 +125,7 @@ function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
       !Array.isArray(event.payload.transaction.operations)) return [];
   const allowed = new Set<SyncCollection>([
     'profile', 'plans', 'enginePlans', 'portions',
-    'weakVerses', 'tests', 'activityEvents', 'syncMeta'
+    'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
   ]);
   const collections = new Set<SyncCollection>();
   for (const operation of event.payload.transaction.operations) {
