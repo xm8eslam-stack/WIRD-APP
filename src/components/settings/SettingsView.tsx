@@ -139,6 +139,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const {
     status: syncStatus, pendingCount, remoteInboxPendingCount,
     remoteProjectionBlockReason, remoteProjectionBlockedAtSequence,
+    projectionConflictCount, latestProjectionConflict,
     lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync
   } = useCloudSync();
   const projectionBlockMessages: Record<string, string> = {
@@ -154,6 +155,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const projectionBlockMessage = remoteProjectionBlockReason
     ? projectionBlockMessages[remoteProjectionBlockReason] || 'تطبيق الأحداث السحابية متوقف بأمان.'
     : null;
+  const conflictReasonLabels: Record<string, string> = {
+    blocked_pending_local: 'تغييرات محلية لم تُرفع بعد',
+    blocked_base_revision: 'الإصدار المحلي يحتاج إلى مصالحة',
+    blocked_tombstone: 'حدث حذف يحتاج إلى مراجعة آمنة',
+    projection_failed: 'تعذر تطبيق الحدث مع الاحتفاظ بنسخة محلية'
+  };
+  const conflictCollectionLabels: Record<string, string> = {
+    profile: 'الملف الشخصي',
+    plans: 'خطط الحفظ',
+    enginePlans: 'الخطط',
+    portions: 'الأجزاء',
+    weakVerses: 'الآيات المتشابهة',
+    tests: 'الاختبارات',
+    activityEvents: 'سجل النشاط',
+    syncMeta: 'بيانات متعددة'
+  };
   const [isManualSyncing, setIsManualSyncing] = useState(false);
 
   const handleManualSync = async () => {
@@ -348,6 +365,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="font-bold text-stone-800 dark:text-stone-200 font-mono">
               {remoteInboxPendingCount === 0 ? 'لا توجد أحداث معلقة' : `${remoteInboxPendingCount} حدث غير مطبق`}
             </div>
+          </div>
+
+          <div
+            className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1"
+            aria-live="polite"
+          >
+            <span className="text-stone-500 dark:text-stone-400 block text-[11px]">تعارضات محفوظة بأمان:</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200 font-mono">
+              {projectionConflictCount === 0 ? 'لا توجد تعارضات مفتوحة' : `${projectionConflictCount} تعارض محفوظ`}
+            </div>
+            {latestProjectionConflict && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5">
+                {conflictCollectionLabels[latestProjectionConflict.collection] || 'بيانات'}
+                {' — '}
+                {conflictReasonLabels[latestProjectionConflict.reason] || 'تحتاج إلى مصالحة'}
+                {' (الحدث رقم '}
+                {latestProjectionConflict.sequence}
+                {')'}
+              </p>
+            )}
           </div>
         </div>
 
