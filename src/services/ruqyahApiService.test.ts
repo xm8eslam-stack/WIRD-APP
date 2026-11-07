@@ -23,6 +23,13 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       });
       assert(resolved === getRuqyahDisplayText(local!), 'External Quran text must be replaced by canonical WIRD text');
       assert(resolved !== 'نص تجريبي غير صحيح من المصدر', 'Unverified API Arabic must never override canonical Quran text');
+      const arabicDigits = resolveApiQuranEntryText({
+        id: 2,
+        title: 'البقرة ٢:١-٥',
+        arabic: 'نص خارجي غير معتمد'
+      });
+      const localBaqarah = RUQYAH_ITEMS.find(item => item.id === 'q-baqarah-1-5');
+      assert(Boolean(localBaqarah) && arabicDigits === getRuqyahDisplayText(localBaqarah!), 'Arabic-Indic Quran coordinates must resolve correctly');
     });
 
     await test('External Quran entries without valid coordinates fail closed', () => {
