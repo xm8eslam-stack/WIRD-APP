@@ -72,20 +72,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchQuranReciters(controller.signal)
-      .then(list => {
-        setReciters(list);
-        if (list.length > 0) setSelectedReciterId(current => list.some(reciter => reciter.id === current) ? current : list[0].id);
-      })
-      .catch(error => {
-        if (!controller.signal.aborted && onToast) {
-          onToast(error instanceof Error ? error.message : 'تعذر تحديث قائمة القراء؛ نستخدم القائمة الاحتياطية.', 'info');
-        }
-      });
-    return () => controller.abort();
-  }, []);
+  // External reciter catalogue and audio host are intentionally not loaded
+  // until their recitation provenance and usage permissions are reviewed.
 
   // Hydrate progress whenever WIRD switches guest/account storage namespaces.
   useEffect(() => {
@@ -481,23 +469,9 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               <p className="text-sm font-bold text-stone-800 dark:text-stone-200">قارئ تلاوة الآيات</p>
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُشغّل المقاطع متعددة الآيات كاملة وبالترتيب.</p>
             </div>
-            <select
-              value={selectedReciterId}
-              onChange={event => {
-                audioVerseRef.current?.pause();
-                setPlayingVerseId(null);
-                setVerseLoopCount(0);
-                verseQueueRef.current = [];
-                verseItemRef.current = null;
-                setSelectedReciterId(event.target.value);
-              }}
-              className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-sm text-stone-800 dark:text-stone-100"
-              aria-label="اختيار قارئ القرآن"
-            >
-              {reciters.map(reciter => (
-                <option key={reciter.id} value={reciter.id}>{reciter.arabicName}</option>
-              ))}
-            </select>
+            <div className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs text-stone-500 dark:text-stone-400" role="status">
+              التلاوة الصوتية قيد التحقق من مصدر التسجيل ونسبته للقارئ
+            </div>
           </div>
 
           {/* Category Tabs Bar */}
@@ -621,18 +595,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     {item.type === 'quran' && (
                       <button
                         type="button"
-                        aria-label={isPlayingVerse ? 'إيقاف تلاوة ' + item.title : 'استماع إلى ' + item.title}
-                        aria-pressed={isPlayingVerse}
-                        onClick={() => handleToggleVerseAudio(item)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
-                          isPlayingVerse
-                            ? 'bg-amber-400 text-emerald-950 animate-pulse'
-                            : 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60'
-                        }`}
-                        title="استماع صوتي مع التكرار التلقائي"
+                        disabled
+                        aria-disabled="true"
+                        aria-label={'التلاوة الصوتية قيد التحقق: ' + item.title}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-stone-400 bg-stone-100 dark:bg-stone-800 cursor-not-allowed opacity-70"
+                        title="لن يُفعّل التشغيل حتى يتم التحقق من مصدر التسجيل ونسبته للقارئ"
                       >
-                        {isPlayingVerse ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span>{isPlayingVerse ? (item.repeatTarget === null ? 'تشغيل الآيات' : `تكرار (${verseLoopCount}/${item.repeatTarget})`) : 'استماع للآيات'}</span>
+                        <Volume2 className="w-4 h-4" />
+                        <span>الصوت قيد التحقق</span>
                       </button>
                     )}
                   </div>
