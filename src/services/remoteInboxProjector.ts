@@ -52,6 +52,7 @@ export interface RemoteProjectionDependencies {
   listRemoteInboxAfter(sequence: number, limit: number): Promise<RemoteInboxEvent[]>;
   getRemoteRevision(collection: SyncCollection, documentId: string): Promise<RemoteRevisionSnapshot | null>;
   hasPendingForCollection(collection: SyncCollection): Promise<boolean>;
+  hasPendingForDocument?(collection: SyncCollection, documentId: string): Promise<boolean>;
   isRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean>;
   isLocalProjectionEmpty(collection: SyncCollection): boolean;
   applyJournalEvent(event: JournalEvent): boolean;
@@ -74,6 +75,7 @@ const defaultDependencies: RemoteProjectionDependencies = {
   listRemoteInboxAfter: (sequence, limit) => LocalSyncOutbox.listRemoteInboxAfter(sequence, limit),
   getRemoteRevision: (collection, documentId) => LocalSyncOutbox.getRemoteRevision(collection, documentId),
   hasPendingForCollection: collection => LocalSyncOutbox.hasPendingForCollection(collection),
+  hasPendingForDocument: (collection, documentId) => LocalSyncOutbox.hasPendingForDocument(collection, documentId),
   isRemoteCollectionInitialized: collection => LocalSyncOutbox.isRemoteCollectionInitialized(collection),
   isLocalProjectionEmpty: collection => StorageService.isLocalProjectionEmpty(collection),
   applyJournalEvent: event => StorageService.applyJournalEvent(event),
@@ -159,7 +161,9 @@ export async function projectRemoteInboxBatch(
       remoteEvent.collection,
       remoteEvent.documentId
     );
-    let hasPendingLocalMutation = await dependencies.hasPendingForCollection(remoteEvent.collection);
+    let hasPendingLocalMutation = dependencies.hasPendingForDocument
+      ? await dependencies.hasPendingForDocument(remoteEvent.collection, remoteEvent.documentId)
+      : await dependencies.hasPendingForCollection(remoteEvent.collection);
     const remoteCollectionInitialized = await dependencies.isRemoteCollectionInitialized(remoteEvent.collection);
     let localProjectionEmpty = dependencies.isLocalProjectionEmpty(remoteEvent.collection);
     const transactionCollections = readTransactionCollections(remoteEvent);
