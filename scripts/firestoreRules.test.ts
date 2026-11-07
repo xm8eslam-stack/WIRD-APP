@@ -230,10 +230,27 @@ try {
       });
       legacyRejected = legacy.status !== 'written';
     } catch { legacyRejected = true; }
+    let malformedRejected = false;
+    try {
+      const malformed = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        uid: 'alice',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: 'mutation-ruqyah-progress-v2-malformed',
+        eventId: 'mutation-ruqyah-progress-v2-malformed',
+        deviceId: 'test-device-01',
+        clientUpdatedAtMs: snapshot.updatedAtMs + 2,
+        baseRevision: 1,
+        payload: { snapshot: { schemaVersion: 2, updatedAtMs: snapshot.updatedAtMs + 2, counts: {}, components: [] } }
+      });
+      malformedRejected = malformed.status !== 'written';
+    } catch { malformedRejected = true; }
     const unchanged = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
-    if (!legacyRejected || unchanged.data()?.revision !== 1 ||
+    if (!legacyRejected || !malformedRejected || unchanged.data()?.revision !== 1 ||
         unchanged.data()?.payload?.snapshot?.counts?.['q-fatiha'] !== 7) {
-      throw new Error('Legacy clients must not overwrite V2 PN-counter components with a V1 count snapshot.');
+      throw new Error('Legacy or malformed V2 clients must not overwrite the valid PN-counter snapshot.');
     }
   });
 
