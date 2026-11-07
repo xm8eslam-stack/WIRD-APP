@@ -197,3 +197,14 @@ This addendum supersedes contradictory status lines earlier in this file; fetch 
 - Fresh branch `fix/cloud-sync-honest-status-20261107` is being used to port the safe part of PR #59. It changes sync status to `partial` until remote import/projection is implemented, adds an honest Settings indicator, and tests status resolution. Last verified branch head `963271760ea93d61baefaa23a545e194d613f67f`; run 42342306759 was pending at last check. Re-fetch before proceeding.
 - Do not merge PR #59 or #61–#65. Keep all fixes as Draft until reviewed and explicitly approved.
 - Next: finish exact-head CI for honest-status branch; open/update Draft PR if green; then implement the actual remote inbox/fetch cursor/import/projector and revision CAS only as a separately tested protocol phase.
+
+
+## Final checkpoint for this continuation
+
+- Current live branch count was re-fetched as **77**. Original audit baseline remains 70 branches and 147 files.
+- PR #65 exact-head Quality Gate run 42342171626 is SUCCESS: 417 passed / 0 failed; Firestore Rules 13/13; TypeScript, build and server smoke pass.
+- PR #66 was opened as Draft at `https://github.com/xm8eslam-stack/WIRD-APP/pull/66`, exact head `963271760ea93d61baefaa23a545e194d613f67f`; run 42342306759 SUCCESS. It prevents a false `synced` status but does not implement remote import.
+- New detailed sync review: `docs/audit/2026-11-07/SYNC_DESIGN_REVIEW.md`. Read it before implementing remote inbox or revision/CAS.
+- The continuation record and remediation plan were refreshed after reconnect. The audit branch must still be fetched at its live head before further edits.
+- Current Draft PR set from this remediation stream: #61, #62, #63, #64, #65, #66. None is merged. No production deployment or Firestore rule deployment.
+- Next engineering step: review PR #66 and its Settings copy; then design the actual remote inbox, durable fetch cursor, transactional revision/CAS, remote projector and emulator-backed two-client harness as separate gated increments. Do not mark this complete until persisted data is asserted on both clients and server.
