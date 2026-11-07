@@ -430,6 +430,16 @@ function isValidDailyLogArray(value: unknown): value is DailyLog[] {
     new Set(value.map(log => log.date)).size === value.length;
 }
 
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) return '[' + value.map(stableSerialize).join(',') + ']';
+  if (isPlainRecord(value)) {
+    return '{' + Object.keys(value).sort().map(key =>
+      JSON.stringify(key) + ':' + stableSerialize(value[key])
+    ).join(',') + '}';
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 function isPlainRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -1515,6 +1525,66 @@ export const StorageService = {
         return isValidRuqyahProgressSnapshot(payload.snapshot) && this.saveRuqyahProgressSnapshot(payload.snapshot);
       default:
         return false;
+    }
+  },
+
+  /**
+   * Read-only recovery check for a remote snapshot that may have been applied
+   * just before an IndexedDB transaction was interrupted. This lets the
+   * journal distinguish an already-applied chosen snapshot from a new local
+   * edit before retrying the durable cursor commit.
+   */
+  matchesJournalProjection(
+    collection: SyncCollection,
+    payload: Record<string, unknown>
+  ): boolean {
+    if (!isPlainRecord(payload)) return false;
+    const equals = (actual: unknown, expected: unknown) =>
+      stableSerialize(actual) === stableSerialize(expected);
+    try {
+      if (collection === 'syncMeta') {
+        if (!isPlainRecord(payload.transaction) || payload.transaction.version !== 1 ||
+            !Array.isArray(payload.transaction.operations) ||
+            payload.transaction.operations.length < 1 ||
+            payload.transaction.operations.length > 8) return false;
+        return payload.transaction.operations.every(operation =>
+          isPlainRecord(operation) &&
+          typeof operation.collection === 'string' &&
+          operation.collection !== 'syncMeta' &&
+          isPlainRecord(operation.payload) &&
+          this.matchesJournalProjection(
+            operation.collection as Exclude<SyncCollection, 'syncMeta'>,
+            operation.payload
+          )
+        );
+      }
+      switch (collection) {
+        case 'profile':
+          return isValidUserProfile(payload.profile) && equals(this.getProfile(), payload.profile);
+        case 'plans':
+          return Array.isArray(payload.records) && equals(this.getPlans(), payload.records);
+        case 'enginePlans':
+          return Array.isArray(payload.records) && equals(this.getEnginePlans(), payload.records);
+        case 'portions':
+          return Array.isArray(payload.records) && equals(this.getUnifiedPortions(), payload.records);
+        case 'weakVerses': {
+          if (!Array.isArray(payload.records)) return false;
+          const raw = this.getRawItem(STORAGE_KEYS.WEAK_VERSES);
+          const current = raw === null ? [] : JSON.parse(raw);
+          return equals(current, payload.records);
+        }
+        case 'tests':
+          return Array.isArray(payload.records) && equals(this.getTests(), payload.records);
+        case 'activityEvents':
+          return Array.isArray(payload.records) && equals(this.getLogs(), payload.records);
+        case 'ruqyahProgress':
+          return isValidRuqyahProgressSnapshot(payload.snapshot) &&
+            equals(this.getRuqyahProgressSnapshot(), payload.snapshot);
+        default:
+          return false;
+      }
+    } catch {
+      return false;
     }
   },
 
