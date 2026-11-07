@@ -43,6 +43,12 @@ export async function runQuranMathValidationTests(): Promise<{ passed: number; f
     threw = false;
     try { QuranMath.getCoordinateFromAbsoluteIndex(Number.POSITIVE_INFINITY); } catch { threw = true; }
     assert(threw, 'Infinite absolute index must throw');
+    threw = false;
+    try { QuranMath.getCoordinateFromAbsoluteIndex(0); } catch { threw = true; }
+    assert(threw, 'Zero absolute index must throw');
+    threw = false;
+    try { QuranMath.getCoordinateFromAbsoluteIndex(6237); } catch { threw = true; }
+    assert(threw, 'Absolute index beyond the Quran must throw');
   });
 
   test('Verse addition rejects invalid offsets and crosses Surah boundaries accurately', () => {
@@ -54,6 +60,9 @@ export async function runQuranMathValidationTests(): Promise<{ passed: number; f
     threw = false;
     try { QuranMath.addVerses({ surahNumber: 1, ayahNumber: 8 }, 1); } catch { threw = true; }
     assert(threw, 'Invalid starting coordinate must throw');
+    threw = false;
+    try { QuranMath.addVerses({ surahNumber: 114, ayahNumber: 6 }, 1); } catch { threw = true; }
+    assert(threw, 'Adding beyond the final Quran ayah must throw');
   });
 
   test('Chunk generation rejects invalid ranges and fractional chunk sizes', () => {
