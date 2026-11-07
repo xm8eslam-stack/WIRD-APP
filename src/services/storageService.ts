@@ -1339,7 +1339,11 @@ export const StorageService = {
     return setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
   },
 
-  /** Capture the exact local storage bytes relevant to a blocked remote projection. */
+  /**
+   * Conservative first-sync guard. If local data exists, remote projection must
+   * prove a matching base revision instead of replacing an unknown local archive.
+   */
+  /** Capture exact local storage bytes for a blocked remote projection; never mutate storage. */
   getLocalProjectionSnapshot(collection: SyncCollection): Record<string, string | null> {
     const keysByCollection: Record<SyncCollection, string[]> = {
       profile: [STORAGE_KEYS.PROFILE],
@@ -1356,14 +1360,10 @@ export const StorageService = {
       ]
     };
     const snapshot: Record<string, string | null> = {};
-    for (const key of keysByCollection[collection] || []) snapshot[key] = getItem(key);
+    for (const key of keysByCollection[collection]) snapshot[key] = getItem(key);
     return snapshot;
   },
 
-  /**
-   * Conservative first-sync guard. If local data exists, remote projection must
-   * prove a matching base revision instead of replacing an unknown local archive.
-   */
   isLocalProjectionEmpty(collection: SyncCollection): boolean {
     const emptyArrayArchive = (key: string): boolean => {
       const raw = getItem(key);
