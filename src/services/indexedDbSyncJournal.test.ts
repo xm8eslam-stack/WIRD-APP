@@ -487,8 +487,17 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         localMutationFingerprints: archived,
         nowMs: 9503
       });
+      let staleRemotePayloadRejected = false;
+      try {
+        await journal.commitUseRemoteConflictResolution(
+          event.eventId, 2, { profile: { ...localProfile, name: 'stale-remote-choice' } }, 9504
+        );
+      } catch { staleRemotePayloadRejected = true; }
+      assert(staleRemotePayloadRejected && await journal.getRemoteProjectionCursor() === 0 &&
+        await journal.getProjectionConflictCount() === 1,
+        'A remote snapshot that differs from the immutable prepared choice must not be applied');
       assert(await journal.commitUseRemoteConflictResolution(
-        event.eventId, 2, latestRemotePayload, 9504
+        event.eventId, 2, latestRemotePayload, 9505
       ), 'The explicit remote choice must commit against the latest confirmed server revision');
       assert(StorageService.getProfile().name === 'remote-latest',
         'The latest remote snapshot must replace the local projection');
