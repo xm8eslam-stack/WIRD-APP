@@ -6,7 +6,12 @@ Last reviewed: 2026-11-07
 
 - Phase 1: PR #88 — Quran mapping, multi-ayah playback, Al Furqan reciters, IslamicAPI proxy, and Shariah content cleanup.
 - Phase 2: PR #91 — UID-scoped journal-first progress sync, revisioned Firestore writes, two-device projection, version-5 backup, and ordered reset.
-- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and accurate API-key error guidance. Audio was subsequently disabled pending source and rights verification.
+- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and API-key error guidance.
+- Phase 4: PR #105 — reviewed Sunni source policy, Quran-index-only external API usage, and lockdown of unverified recitation/audio sources.
+- Phase 5: PR #108 — exact content-ID-to-source registry and named Ibn Baz fatwa reference for combining Ruqyah and medical treatment.
+- Phase 6: PR #111 — strict Quran-coordinate sanitization, hard-disabled topic/category endpoints, and canonical WIRD Quran text rendering.
+- Phase 7: PR #117 — removed dormant legacy audio playback code and all hidden browser audio handlers while retaining disabled safety notices.
+- Phase 8: PR #120 — rejects signed/negative Quran coordinates, mixed/ambiguous/out-of-range locators, and invalid or oversized provider IDs.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
@@ -32,7 +37,7 @@ Do not turn on remote projection before this deployment is confirmed.
 
 ### 2. Verify Vercel environment and deployment
 
-The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate.
+The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The latest main SHA `66d3ac74d8402fb13718ff38d8c7ad4bb889cd89` reports Vercel `failure` (`build-rate-limit`). PR #120 exact-head Quality Gate run `42359703038` passed 520 assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server startup smoke. The Vercel result is a provider quota issue, not a code Quality Gate failure. No deployed production SHA or live post-deploy smoke is verified.
 
 **STOP — do not enable production sync at the current checkpoint.** The values below are documented for a future release only. Do not set either remote-sync flag until every global gate in docs/sync/RELEASE-GATES.md passes, especially user-facing conflict resolution, deterministic Ruqyah additive-increment resolution, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing. These gates are currently open.
 
@@ -106,6 +111,12 @@ Repository: https://github.com/muslimpack/Ruqayyah
 - The API is free of charge but requires registration and an API key. The provider's terms also reserve fair-use rate limiting and suspension rights; do not interpret "free" as unlimited requests. See https://islamicapi.com/terms/.
 - The dataset README describes the data as free/open source, but the public dataset repository currently has no discoverable LICENSE file. Do not vendor or redistribute the raw dataset until a clear written data license is available. Using the documented API remains subject to the provider's current API terms.
 - Topic articles cover sensitive subjects such as sihr, jinn, illness, hijamah, and detoxification. WIRD intentionally does not expose the entire topic corpus as authoritative Shariah/medical guidance until each article and its references have been reviewed. Quran text must continue to resolve to WIRD's canonical Quran corpus.
+
+## Current automated browser baseline
+
+- PR #115 attempted Playwright desktop/iPhone 13 smoke but browser installation failed because `ubuntu-latest` resolved to unsupported Ubuntu 26.04 for Playwright 1.56.1. The failure occurred before browser tests executed.
+- PR #122 reapplies the tests on `ubuntu-24.04`; exact-head CI is pending/in progress. Until that passes, do not claim browser smoke coverage is active or successful.
+- The planned baseline checks app-shell rendering, hard refresh, uncaught page errors, and viewport-level horizontal overflow. It is not a complete authentication, CRUD, sync, or production E2E suite.
 
 ## Known release blockers
 
