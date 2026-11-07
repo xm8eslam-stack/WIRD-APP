@@ -14,21 +14,19 @@ The code quality gate passed on each phase. This document records the remaining 
 
 ### 1. Deploy Firestore Security Rules first
 
-`firebase.json` points to the repository's `firestore.rules`. The repository does not include a Firebase deploy workflow or a checked-in `.firebaserc`, so CI only validates rules in the emulator; it does not publish them to the live Firebase project.
+`firebase.json` points to the repository's `firestore.rules`. The repository now includes a guarded, manual workflow at `.github/workflows/deploy-firestore-rules.yml`. It deploys only rules, runs only from `main`, and requires both the exact project ID and the typed confirmation `DEPLOY_FIRESTORE_RULES`. It does not deploy automatically on every commit. A checked-in `.firebaserc` is intentionally not required.
 
 Before enabling remote Ruqyah progress sync:
 
-1. Identify the exact Firebase project ID used by the deployed WIRD application from the Firebase Console / deployment configuration.
-2. Authenticate Firebase CLI with an authorized deployment identity.
-3. Review the diff in `firestore.rules` and confirm `ruqyahProgress` is in the owner-scoped collection allowlist.
-4. Deploy only the rules:
+1. Identify the exact Firebase project ID used by the deployed WIRD application from Firebase Console / deployment configuration.
+2. Add repository variable `FIREBASE_PROJECT_ID` with that exact ID.
+3. Add repository secret `FIREBASE_SERVICE_ACCOUNT_JSON` containing a deployment service-account JSON with permission to publish Firestore Security Rules. Keep this secret out of the repository and all client environments.
+4. Review the diff in `firestore.rules` and confirm `ruqyahProgress` is in the owner-scoped collection allowlist.
+5. From GitHub Actions, select **Deploy Firestore Rules (Manual)** on the `main` branch, enter the exact project ID, and type `DEPLOY_FIRESTORE_RULES`.
+6. Verify the workflow succeeded and the deployed rules version in Firebase Console; test a verified user write/read against `users/{uid}/ruqyahProgress/snapshot`.
+7. Confirm unauthenticated, unverified, and cross-user access is denied.
 
-```bash
-npx firebase-tools@15.0.0 deploy --only firestore:rules --project <FIREBASE_PROJECT_ID>
-```
-
-5. Verify the deployed rules version in Firebase Console and test a verified user write/read against `users/{uid}/ruqyahProgress/snapshot`.
-6. Confirm unauthenticated, unverified, and cross-user access is denied.
+If the repository variable/secret is not configured, the workflow fails closed before deployment.
 
 Do not turn on remote projection before this deployment is confirmed.
 

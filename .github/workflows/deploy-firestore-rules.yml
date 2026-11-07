@@ -1,0 +1,87 @@
+name: Deploy Firestore Rules (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_id:
+        description: "Firebase project ID. Must exactly match the FIREBASE_PROJECT_ID repository variable."
+        required: true
+        type: string
+      confirmation:
+        description: "Type DEPLOY_FIRESTORE_RULES to authorize this production rules deployment."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firestore-rules-deploy-${{ inputs.project_id }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy reviewed Firestore rules
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Validate deployment target and credentials
+        shell: bash
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          CONFIRM_PROJECT_ID: ${{ inputs.project_id }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          if [[ "$CONFIRMATION" != "DEPLOY_FIRESTORE_RULES" ]]; then
+            echo "::error::Type DEPLOY_FIRESTORE_RULES exactly to authorize deployment."
+            exit 1
+          fi
+          if [[ -z "$FIREBASE_PROJECT_ID" || "$CONFIRM_PROJECT_ID" != "$FIREBASE_PROJECT_ID" ]]; then
+            echo "::error::Input project ID must exactly match the FIREBASE_PROJECT_ID repository variable."
+            exit 1
+          fi
+          if [[ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_JSON repository secret."
+            exit 1
+          fi
+          echo "Deployment target validated: $FIREBASE_PROJECT_ID"
+
+      - name: Write short-lived runner credentials
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          credential_file="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$credential_file"
+          chmod 600 "$credential_file"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$credential_file" >> "$GITHUB_ENV"
+
+      - name: Deploy Firestore Security Rules only
+        shell: bash
+        env:
+          FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes firebase-tools@15.0.0 deploy \
+            --only firestore:rules \
+            --project "$FIREBASE_PROJECT_ID" \
+            --non-interactive
+
+      - name: Remove deployment credentials
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/firebase-service-account.json"
