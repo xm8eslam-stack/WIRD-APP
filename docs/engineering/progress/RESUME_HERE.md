@@ -1,5 +1,19 @@
 # WIRD — Resume Here
 
+## Live resume checkpoint — 2026-11-07 after PR #139
+
+- Always re-fetch `main` before editing. Latest verified main SHA at this checkpoint: `28a1c4339d31bb66549402db36cfc40357caf65f`.
+- PRs #134–#139 are merged. PR #134 preserves grouped transaction Outbox evidence; PR #135/#137/#139 harden Ruqyah progress corruption/reset/keyboard behavior; PR #136/#138 update checkpoints.
+- PR #135 exact-head gate passed: 526 assertions, 31 Rules Emulator tests, audit, TypeScript, build, smoke, 18 Playwright tests.
+- PR #137 and PR #139 exact-head gates passed: 526 assertions, 31 Rules Emulator tests, audit, TypeScript, build, smoke, 20 Playwright tests each.
+- Vercel remains blocked by the Free-plan daily deployment quota. Do not claim production deployment or live verification.
+- PR #2 remains open Draft and divergent; do not merge wholesale.
+- **First engineering priority:** implement a real, durable user-directed Conflict Resolution state machine. Current conflict archive and Settings inspector are evidence-only. Keep-local/use-remote/merge, durable decision intent, latest authoritative revision validation, idempotent commit, and crash recovery are absent.
+- Preserve existing immutable remote event, local snapshot, archived Outbox mutations, fingerprints, and Inbox cursor until the selected resolution is durably acknowledged. Never use LWW.
+- Next phases after conflict resolution: tombstones, additive Ruqyah increment events/counters with reset epoch, populated fixtures and round-trip equality for all eight collections, multi-tab/browser and account-lifecycle E2E, Backup/Restore stress, and release verification.
+- Keep `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` disabled. Do not deploy production rules, change secrets, or activate production sync without explicit owner approval.
+
+
 **Authoritative checkpoint: 2026-11-07 after PR #129 and PR #130 merges. Re-fetch GitHub before any new edit.**
 
 ## Canonical repository
