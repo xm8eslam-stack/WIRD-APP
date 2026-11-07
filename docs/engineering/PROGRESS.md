@@ -86,3 +86,16 @@ No production data, rules, credentials, service accounts, environment variables,
 - The archive's `reconciled` state means the corresponding event was safely projected/cursor-committed; it does not represent a user choosing local vs remote data.
 - Manual conflict resolution/merge/rebase UI remains absent. Tombstone projection remains blocked. Profile-only two-device integration and one same-document offline conflict test do not certify all collections or physical devices.
 - Vercel still reports `build-rate-limit`; current main is not verified as deployed.
+
+## 2026-11-07 — Live continuation checkpoint after PR #89
+
+- Re-fetched repository state; the checkpoint SHA from the earlier section is historical. Current main at this checkpoint: e894140c91ec8086d111989dcdb601d3cdbf9ce4.
+- PR #62 merged as 8535802d3609c854b1c91742135c84894e5e074f. Exact-head Quality Gate 42342109962 passed; post-merge Main Quality Gate 42354256341 passed on that exact merge SHA.
+- PR #89 merged as e894140c91ec8086d111989dcdb601d3cdbf9ce4, reapplying the audio repeat fix from stale PR #63 onto current main. Exact-head runs 42354410219 and 42354399498 passed. PR #63 was closed as superseded; its divergent branch was not merged.
+- Post-merge Main run 42354517460 was still in progress when this checkpoint was written. Recheck it against the exact main SHA before claiming post-merge CI success.
+- PR #88 Ruqyah integration is merged at 6af7ce1d27543429911ca686550bc26f446ec2e0; Main run 42354021822 passed. Ruqyah progress currently persists in UID-scoped local storage only; it is not yet part of the cloud sync collection/projection model.
+- A separate branch feat/ruqyah-cloud-sync-20261107 is under active development. Its observed exact-head run 42354431882 failed: 491 passed / 3 failed because StorageService.saveRuqyahProgressSnapshot was called but is not implemented. Do not merge that branch based on allowlist changes alone. Re-fetch its latest head and checks before any action; later commits may have changed it.
+- Important design gap: Ruqyah counters are mutable per-item totals. A cross-device merge policy (per-device counters or immutable increment events) is not defined. Do not sync a whole counter snapshot with last-write-wins semantics because concurrent increments can be lost.
+- Existing cloud-sync release blockers remain: no user-facing keep-local/use-remote/merge/rebase workflow; tombstone projection blocked; two-device coverage is profile-only plus one offline conflict; all-collection, cross-tab browser, account-lifecycle and production rules/deployment verification remain outstanding.
+- Vercel still reports a daily build-rate-limit status. No current-main production deployment or live URL smoke is claimed.
+- No production data, Firebase rules deployment, secrets, Vercel settings, or remote-sync flags were changed.
