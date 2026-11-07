@@ -77,7 +77,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     fetchQuranReciters(controller.signal)
       .then(list => {
         setReciters(list);
-        setSelectedReciterId(current => list.some(reciter => reciter.id === current) ? current : list[0].id);
+        if (list.length > 0) setSelectedReciterId(current => list.some(reciter => reciter.id === current) ? current : list[0].id);
       })
       .catch(error => {
         if (!controller.signal.aborted && onToast) {
@@ -152,7 +152,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       setProgressCorrupt(false);
       setProgressDirty(true);
       setProgressHydrated(true);
-      if (onToast) onToast('تمت إعادة ضبط بيانات تقدم الرقية فقط.', 'success');
+      if (onToast) onToast('جارٍ حفظ إعادة ضبط سجل تقدم الرقية...', 'info');
     } catch {
       if (onToast) onToast('تعذر إعادة ضبط بيانات تقدم الرقية.', 'error');
     }
@@ -165,24 +165,35 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
     const streamAudio = audioStreamRef.current;
     if (streamAudio) {
-      streamAudio.addEventListener('timeupdate', () => {
-        setStreamProgress(streamAudio.currentTime);
-      });
-      streamAudio.addEventListener('loadedmetadata', () => {
-        setStreamDuration(streamAudio.duration);
-      });
-      streamAudio.addEventListener('ended', () => {
+      streamAudio.volume = streamVolume;
+      const handleTimeUpdate = () => setStreamProgress(streamAudio.currentTime);
+      const handleLoadedMetadata = () => setStreamDuration(Number.isFinite(streamAudio.duration) ? streamAudio.duration : 0);
+      const handleStreamEnded = () => {
+        streamAudio.currentTime = 0;
         setIsStreamPlaying(false);
         setStreamProgress(0);
-      });
+      };
+      streamAudio.addEventListener('timeupdate', handleTimeUpdate);
+      streamAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      streamAudio.addEventListener('durationchange', handleLoadedMetadata);
+      streamAudio.addEventListener('ended', handleStreamEnded);
+      return () => {
+        streamAudio.removeEventListener('timeupdate', handleTimeUpdate);
+        streamAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        streamAudio.removeEventListener('durationchange', handleLoadedMetadata);
+        streamAudio.removeEventListener('ended', handleStreamEnded);
+        streamAudio.pause();
+        if (audioVerseRef.current) {
+          audioVerseRef.current.pause();
+          audioVerseRef.current.onended = null;
+        }
+      };
     }
 
     return () => {
       if (audioVerseRef.current) {
         audioVerseRef.current.pause();
-      }
-      if (audioStreamRef.current) {
-        audioStreamRef.current.pause();
+        audioVerseRef.current.onended = null;
       }
     };
   }, []);
@@ -206,7 +217,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   // Click counter handler
   const handleItemClick = (item: RuqyahItem) => {
     const current = counts[item.id] || 0;
-    if (item.type === 'guideline' || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
+    if (item.type === 'guideline' || current >= 1000 || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
 
     const next = current + 1;
     setCounts(prev => ({ ...prev, [item.id]: next }));
@@ -324,11 +335,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
     if (selectedProgramAudio.id !== target.id) {
       setSelectedProgramAudio(target);
+      setIsStreamPlaying(false);
+      setStreamProgress(0);
+      setStreamDuration(0);
       if (audioStreamRef.current) {
+        audioStreamRef.current.pause();
         audioStreamRef.current.src = target.audioUrl;
+        audioStreamRef.current.load();
         audioStreamRef.current.play().then(() => {
           setIsStreamPlaying(true);
         }).catch(() => {
+          setIsStreamPlaying(false);
           if (onToast) onToast('تعذر تشغيل تسجيل البرنامج. تحقق من الاتصال بالإنترنت.', 'warn');
         });
       }
@@ -346,6 +363,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         audioStreamRef.current.play().then(() => {
           setIsStreamPlaying(true);
         }).catch(() => {
+          setIsStreamPlaying(false);
           if (onToast) onToast('تعذر تشغيل تسجيل البرنامج.', 'warn');
         });
       }
@@ -368,7 +386,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   };
 
   const formatTime = (seconds: number) => {
-    if (!seconds || isNaN(seconds)) return '00:00';
+    if (!Number.isFinite(seconds) || seconds <= 0) return '00:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
@@ -380,13 +398,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const progressPercent = trackedItems.length > 0 ? Math.round((completedCount / trackedItems.length) * 100) : 0;
 
   return (
-    <div className="space-y-6 pb-12 select-none" dir="rtl">
+    <div className="space-y-8 pb-24 max-w-7xl mx-auto" dir="rtl">
       {progressCorrupt && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
           <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
             تعذر قراءة تقدم الرقية المحفوظ. احتفظنا بالبيانات الأصلية دون استبدالها؛ يمكنك متابعة القراءة دون حفظ حتى تختار إعادة ضبط هذا السجل.
           </p>
-          <button onClick={handleRecoverProgress} className="shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+          <button type="button" onClick={handleRecoverProgress} className="shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
             إعادة ضبط سجل الرقية
           </button>
         </div>
@@ -412,8 +430,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
 
           {/* Mode Switch Controls */}
-          <div className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
+          <div role="group" aria-label="طرق استخدام الرقية" className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
             <button
+              type="button"
+              aria-pressed={viewMode === 'interactive'}
               onClick={() => setViewMode('interactive')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'interactive'
@@ -426,6 +446,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </button>
 
             <button
+              type="button"
+              aria-pressed={viewMode === 'audio_stream'}
               onClick={() => setViewMode('audio_stream')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'audio_stream'
@@ -438,6 +460,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </button>
 
             <button
+              type="button"
+              aria-pressed={viewMode === 'api_library'}
               onClick={() => setViewMode('api_library')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'api_library'
@@ -462,7 +486,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </div>
             <select
               value={selectedReciterId}
-              onChange={event => setSelectedReciterId(event.target.value)}
+              onChange={event => {
+                audioVerseRef.current?.pause();
+                setPlayingVerseId(null);
+                setVerseLoopCount(0);
+                verseQueueRef.current = [];
+                verseItemRef.current = null;
+                setSelectedReciterId(event.target.value);
+              }}
               className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-sm text-stone-800 dark:text-stone-100"
               aria-label="اختيار قارئ القرآن"
             >
@@ -473,12 +504,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
 
           {/* Category Tabs Bar */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div role="group" aria-label="تصنيفات الرقية" className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {CATEGORY_TABS.map(tab => {
               const isActive = activeCategory === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
+                  aria-pressed={isActive}
                   onClick={() => setActiveCategory(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                     isActive
@@ -511,7 +544,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     <span>نسبة إنجاز رقية القسم الحالي</span>
                     <span className="text-stone-500 font-mono tabular-nums">{completedCount} من {trackedItems.length} عناصر</span>
                   </div>
-                  <div className="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+                  <div role="progressbar" aria-label="نسبة إنجاز رقية القسم الحالي" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progressPercent} className="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-700 dark:bg-emerald-500 h-full transition-all duration-500 rounded-full"
                       style={{ width: `${progressPercent}%` }}
@@ -532,6 +565,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 </label>
 
                 <button
+                  type="button"
                   onClick={handleResetCategoryCounts}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors"
                   title="إعادة ضبط عداد القسم"
@@ -551,18 +585,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               const isPlayingVerse = playingVerseId === item.id;
 
               return (
-                <div
+                <article
                   key={item.id}
                   id={`ruqyah-card-${item.id}`}
-                  onClick={item.type === 'guideline' ? undefined : () => handleItemClick(item)}
-                  className={`group relative bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-7 border transition-all duration-300 ${item.type === 'guideline' ? 'cursor-default' : 'cursor-pointer'} ${
+                  className={`group relative bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-7 border transition-all duration-300 ${
                     isCompleted
                       ? 'border-emerald-500/60 dark:border-emerald-700/60 bg-emerald-50/20 dark:bg-emerald-950/10 shadow-xs'
                       : 'border-stone-200/90 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-800 hover:shadow-md'
                   }`}
                 >
                   {/* Card Top Row: Number, Type badge, Title, Audio Button */}
-                  <div className="flex items-start justify-between gap-4 mb-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
                       <span className="w-7 h-7 rounded-xl bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-bold text-xs flex items-center justify-center font-mono">
                         {idx + 1}
@@ -590,10 +623,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     {/* Audio Play Button for Verse */}
                     {item.type === 'quran' && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleVerseAudio(item);
-                        }}
+                        type="button"
+                        aria-label={isPlayingVerse ? 'إيقاف تلاوة ' + item.title : 'استماع إلى ' + item.title}
+                        aria-pressed={isPlayingVerse}
+                        onClick={() => handleToggleVerseAudio(item)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                           isPlayingVerse
                             ? 'bg-amber-400 text-emerald-950 animate-pulse'
@@ -626,7 +659,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
                   {/* Card Bottom Row: Counter Controls */}
                   {item.type !== 'guideline' && (
-                    <div className="flex items-center justify-between gap-4 pt-2 border-t border-stone-100 dark:border-stone-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-stone-100 dark:border-stone-800">
                       <div className="flex items-center gap-2">
                         {isCompleted ? (
                           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/80 px-3 py-1 rounded-xl">
@@ -635,10 +668,23 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                           </div>
                         ) : (
                           <span className="text-xs text-stone-500 font-medium">
-                            {item.repeatTarget === null ? 'لا يوجد عدد ثابت؛ اضغط لتسجيل قراءتك' : 'اضغط على البطاقة لزيادة العداد'}
+                            {item.repeatTarget === null ? 'لا يوجد عدد ثابت؛ سجّل كل قراءة على حدة' : 'سجّل القراءة بعد إتمامها'}
                           </span>
                         )}
                       </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleItemClick(item)}
+                        disabled={currentCount >= 1000 || (item.repeatTarget !== null && currentCount >= item.repeatTarget)}
+                        aria-label={item.repeatTarget === null
+                          ? `تسجيل قراءة جديدة لـ ${item.title}. العدد الحالي ${currentCount}`
+                          : `تسجيل قراءة ${item.title}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-500 dark:disabled:bg-stone-800 text-white px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{item.repeatTarget !== null && isCompleted ? 'اكتمل' : currentCount > 0 ? 'تسجيل قراءة أخرى' : 'سجل قراءة'}</span>
+                      </button>
 
                       {/* Repetition Counter Badge */}
                       <div className="flex items-center gap-2">
@@ -653,7 +699,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                       </div>
                     </div>
                   )}
-                </div>
+                </article>
               );
             })}
           </div>
@@ -685,6 +731,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
               {/* Play / Pause Toggle Button */}
               <button
+                type="button"
                 onClick={() => handleToggleStream()}
                 className="w-14 h-14 rounded-full bg-emerald-800 hover:bg-emerald-700 text-amber-200 flex items-center justify-center shadow-lg transition-transform active:scale-95 shrink-0"
                 aria-label={isStreamPlaying ? 'إيقاف مؤقت' : 'تشغيل الرقية'}
@@ -697,9 +744,11 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             <div className="space-y-2">
               <input
                 type="range"
+                aria-label="موضع التسجيل الصوتي"
                 min="0"
-                max={streamDuration || 100}
-                value={streamProgress}
+                max={streamDuration || 0}
+                value={Math.min(streamProgress, streamDuration || 0)}
+                disabled={!Number.isFinite(streamDuration) || streamDuration <= 0}
                 onChange={handleSeekStream}
                 className="w-full accent-emerald-700 dark:accent-emerald-400 h-2 bg-stone-100 dark:bg-stone-800 rounded-lg cursor-pointer"
               />
@@ -716,6 +765,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 <Volume2 className="w-4 h-4 text-stone-400" />
                 <input
                   type="range"
+                  aria-label="مستوى الصوت"
                   min="0"
                   max="1"
                   step="0.05"
@@ -726,12 +776,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               </div>
 
               {/* Sleep Timer Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Moon className="w-4 h-4 text-amber-500" />
                 <span className="text-xs font-medium text-stone-600 dark:text-stone-400">مؤقت النوم:</span>
                 {[15, 30, 45, 60].map(mins => (
                   <button
                     key={mins}
+                    type="button"
+                    aria-pressed={sleepTimerMinutes === mins}
                     onClick={() => setSleepTimerMinutes(prev => prev === mins ? null : mins)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
                       sleepTimerMinutes === mins
@@ -756,10 +808,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               {RUQYAH_PROGRAM_AUDIO.map(programAudio => {
                 const isSelected = selectedProgramAudio.id === programAudio.id;
                 return (
-                  <div
+                  <button
                     key={programAudio.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`تشغيل تسجيل ${programAudio.name}`}
                     onClick={() => handleToggleStream(programAudio)}
-                    className={`p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                    className={`w-full text-right p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                       isSelected
                         ? 'bg-emerald-900 text-white border-emerald-700 shadow-sm'
                         : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 text-stone-900 dark:text-stone-100 hover:border-emerald-300'
@@ -777,7 +832,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     }`}>
                       {isSelected && isStreamPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>

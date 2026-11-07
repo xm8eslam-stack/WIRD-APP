@@ -102,6 +102,8 @@ export const RuqyahApiLibrary: React.FC = () => {
   const selectedSourceCount = selectedProgramCategory?.subcategories
     ?.find(item => item['subcategory-slug'] === source)?.ruqyah?.length;
 
+  const isMissingApiKey = Boolean(error?.includes('مفتاح API'));
+
   const retry = () => {
     setError(null);
     setRetryNonce(value => value + 1);
@@ -145,16 +147,18 @@ export const RuqyahApiLibrary: React.FC = () => {
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
+        <div role="alert" aria-live="polite" className="rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
           <div className="flex items-start gap-2">
             <AlertCircle className="w-5 h-5 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5" />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-amber-900 dark:text-amber-100">تعذر تحميل المكتبة الخارجية</p>
               <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200 mt-1">{error}</p>
-              <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-200/80 mt-2">
-                يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub، وتحقق من شروط استخدام الخدمة قبل تفعيلها.
-              </p>
-              <button onClick={retry} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+              {isMissingApiKey && (
+                <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-200/80 mt-2">
+                  يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub، وتحقق من شروط استخدام الخدمة قبل تفعيلها.
+                </p>
+              )}
+              <button type="button" onClick={retry} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
                 <RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة
               </button>
             </div>
@@ -163,7 +167,7 @@ export const RuqyahApiLibrary: React.FC = () => {
       )}
 
       {loadingCategories || loadingEntries ? (
-        <div className="flex items-center justify-center gap-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-8 text-sm text-stone-500">
+        <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-8 text-sm text-stone-500">
           <Loader2 className="w-5 h-5 animate-spin" /> جارٍ تحميل محتوى الرقية...
         </div>
       ) : !error && entries.length === 0 ? (
@@ -209,7 +213,7 @@ export const RuqyahApiLibrary: React.FC = () => {
                 )}
                 <div className="flex justify-between items-center pt-2 border-t border-stone-100 dark:border-stone-800">
                   <span className="text-[11px] text-stone-400">{source === 'from-quran' ? 'نص مطابق للمصحف المعتمد في وِرد' : 'مرجع من المصدر الخارجي'}</span>
-                  <button onClick={() => setExpandedEntry(expanded ? null : entry.id)}
+                  <button type="button" aria-expanded={expanded} onClick={() => setExpandedEntry(expanded ? null : entry.id)}
                     className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline">
                     {expanded ? 'إخفاء التفاصيل' : 'التفاصيل'}
                   </button>
