@@ -137,11 +137,11 @@ export const RuqyahApiLibrary: React.FC = () => {
         <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center text-sm text-stone-500">
           لا توجد مواضع قرآنية في هذا القسم من الفهرس.
         </div>
-      ) : filteredEntries.length === 0 ? (
+      ) : !error && filteredEntries.length === 0 ? (
         <div role="status" className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center text-sm text-stone-500">
           {searchQuery.trim() ? 'لا توجد مواضع مطابقة لعبارة البحث.' : 'لا توجد مواضع قرآنية في هذا القسم من الفهرس.'}
         </div>
-      ) : (
+      ) : !error ? (
         <div className="space-y-3">
           {filteredEntries.map((entry, index) => {
             let resolved: ReturnType<typeof resolveApiQuranEntry> | null = null;
@@ -180,7 +180,7 @@ export const RuqyahApiLibrary: React.FC = () => {
             );
           })}
         </div>
-      )}
+      ) : null}
     </section>
   );
 };
