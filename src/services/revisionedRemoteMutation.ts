@@ -1,5 +1,6 @@
 import {
   doc,
+  getDoc,
   runTransaction,
   type Firestore
 } from 'firebase/firestore';
@@ -41,6 +42,12 @@ function stableStringify(value: unknown): string {
 
 function validId(value: string, max = 128): boolean {
   return value.length > 0 && value.length <= max && !/[\u0000-\u001f/]/.test(value);
+}
+function isPermissionDenied(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === 'permission-denied' ||
+    (typeof candidate.message === 'string' && /PERMISSION_DENIED|permission-denied/i.test(candidate.message));
 }
 
 /**
@@ -85,7 +92,10 @@ export async function writeRevisionedRemoteMutation(
     revision: nextRevision
   };
 
-  return runTransaction(firestore, async transaction => {
+  let lastObservedServerSequence: number | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await runTransaction(firestore, async transaction => {
     const [stateSnapshot, eventSnapshot, sequenceSnapshot] = await Promise.all([
       transaction.get(stateRef),
       transaction.get(eventRef),
@@ -133,6 +143,7 @@ export async function writeRevisionedRemoteMutation(
         currentServerSequence >= Number.MAX_SAFE_INTEGER) {
       throw new Error('REMOTE_SEQUENCE_CONFLICT');
     }
+    lastObservedServerSequence = currentServerSequence;
     const serverSequence = currentServerSequence + 1;
 
     const stateRecord: Record<string, unknown> = {
@@ -163,5 +174,22 @@ export async function writeRevisionedRemoteMutation(
     transaction.set(stateRef, stateRecord);
     transaction.set(sequenceRef, sequenceRecord);
     return { status: 'written', revision: nextRevision, serverSequence };
-  });
+      });
+    } catch (error) {
+      if (!isPermissionDenied(error) || lastObservedServerSequence === null || attempt === 2) {
+        throw error;
+      }
+      // Concurrent writes to different documents contend on the per-user
+      // sequence allocator. Retry only when another committed transaction
+      // demonstrably advanced that allocator; never retry a static rules denial.
+      const latestSequenceSnapshot = await getDoc(sequenceRef);
+      const latestSequence = latestSequenceSnapshot.exists()
+        ? latestSequenceSnapshot.data().sequence
+        : 0;
+      if (!Number.isSafeInteger(latestSequence) || latestSequence <= lastObservedServerSequence) {
+        throw error;
+      }
+    }
+  }
+  throw new Error('REMOTE_SEQUENCE_CONTENTION_RETRY_EXHAUSTED');
 }
