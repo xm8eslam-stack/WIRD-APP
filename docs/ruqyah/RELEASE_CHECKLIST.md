@@ -79,6 +79,15 @@ Use two real browsers/devices signed in to the same verified account:
 - Light/dark theme, Arabic RTL wrapping, long headings, long supplications, and reduced motion.
 - Confirm audio does not overlap when switching between verse and full-program playback.
 
+## Sunni content and audio gate
+
+See `docs/ruqyah/SUNNI_SOURCE_POLICY.md` for the exact source hierarchy and checked hadith references.
+
+- IslamicAPI is permitted only as a Quran index. Its third-party `from-sunnah` data is rejected by the backend; canonical Quran text is rendered from WIRD's verified corpus.
+- Educational topic articles stay disabled until qualified Sunni content review is complete.
+- Full-program recordings and Al Furqan's dynamic reciter/audio provider are disabled. No unverified audio catalogue or recording URL is exposed.
+- Do not re-enable any disabled content/audio mode without a source record, exact verification, usage-rights review, and regression tests.
+
 ## External project and license review
 
 ### MuslimPack Ruqayyah
