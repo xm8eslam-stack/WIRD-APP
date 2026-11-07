@@ -7,8 +7,9 @@ Last updated: 2026-11-07
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
 - Phase 1 PR #88 is merged. Merge commit: `6af7ce1d27543429911ca686550bc26f446ec2e0`.
-- Phase 2 branch: `feat/ruqyah-cloud-sync-20261107`
-- Phase 2 objective: make Ruqyah completion progress participate in WIRD's journal-first, revisioned, bidirectional cloud sync and backup model without changing other collections' semantics.
+- Phase 2 PR #91 is merged. Merge commit: `a618036b995ff45749748e90e2a4d3ec1037c838`.
+- Phase 3 branch: `feat/ruqyah-ux-accessibility-20261107`
+- Phase 3 objective: remove accidental counter mutations, improve keyboard/screen-reader operation, and correct audio/API error handling while preserving WIRD's visual language.
 
 ## Phase 1 completed and merged
 
@@ -42,6 +43,25 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 7. Added progress to the ordered journaled reset transaction; reset no longer deletes the journal-managed progress projection out of band.
 8. Added tests for journal persistence, remote projection validation, version-5 backup restore, reset behavior, Firestore allowlisting, and a two-device progress sync round trip.
 
+## Phase 3 changes implemented on the working branch
+
+1. Removed the page-wide `select-none` behavior so Quran and supplication text can be selected and copied.
+2. Replaced card-wide click-to-increment behavior with an explicit accessible counter button. This prevents accidental counter increments while selecting or copying Quran text.
+3. Added a safe upper bound to repeatable counters and disabled fixed-target controls after completion.
+4. Converted full-program audio selection cards into semantic buttons with selected state and keyboard focus styling.
+5. Added accessible state labels to view modes, categories, audio controls, progress meter, seek slider, volume slider, and sleep timer.
+6. Improved full-program audio switching: pause old source, reset timeline metadata, load the new source, and restore stopped state on play failure.
+7. Cleaned up audio event listeners on component unmount.
+8. Stopped the current verse playback when the selected reciter changes so the UI cannot imply a new reader while the old reader continues.
+9. API library only displays the server-key setup instructions for the specific missing-key response; other network/rate-limit/upstream errors now show their own error without misleading configuration advice.
+10. Added loading/error live-region semantics and expanded/collapsed state for external-library details.
+
+## Phase 3 verification status
+
+- Working branch has not yet completed full CI.
+- Required gates: 500+ unit suites, Firestore rules emulator, dependency audit, TypeScript, production build, server smoke test.
+- Manual review still required at mobile widths, keyboard-only navigation, text selection/copy, light/dark theme, Arabic RTL layout, and actual audio playback switching.
+
 ## Critical correctness rules
 
 - Do not auto-persist an empty progress object on first mount. It can race the first remote pull and create an avoidable revision conflict.
@@ -67,4 +87,5 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 3. Inspect CI logs and fix all test/type/build/rules failures.
 4. Run/review two-device Firestore emulator test and confirm the progress collection round trip.
 5. Merge only after all required code checks pass. Treat a Vercel quota failure separately from code CI.
-6. Continue with post-deploy audio/API smoke tests and the remaining RTL/accessibility review.
+6. Complete Phase 3 UI/accessibility CI and review; merge only after the exact head passes.
+7. Continue with post-deploy audio/API smoke tests and the remaining RTL/accessibility review.
