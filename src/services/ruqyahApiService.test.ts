@@ -35,7 +35,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
     });
 
     await test('External Quran entries without valid coordinates fail closed', () => {
-      for (const title of ['Al-Fatiha', '115:1', '2:287', '2:5-1', 'Al-Baqarah 2:255']) {
+      for (const title of ['Al-Fatiha', '115:1', '2:287', '2:5-1', 'Al-Baqarah 2:255', '2:255, 3:33', '2:255 3:33']) {
         let rejected = false;
         try { resolveApiQuranEntryText({ id: 2, title }); } catch { rejected = true; }
         assert(rejected, 'Invalid external Quran title must be rejected: ' + title);
