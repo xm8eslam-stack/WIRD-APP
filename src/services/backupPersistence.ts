@@ -151,7 +151,7 @@ export function buildBackupImportOperations(
   if (canonicalPortions !== undefined) {
     operations.push({
       collection: 'portions', documentId: 'snapshot', operation: 'upsert',
-      payload: { records: canonicalPortions }
+      payload: { records: canonicalPortions, validatedImport: true }
     });
   }
 
