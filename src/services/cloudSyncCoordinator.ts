@@ -280,15 +280,31 @@ class CloudSyncCoordinator {
         'profile', 'plans', 'enginePlans', 'portions',
         'weakVerses', 'tests', 'activityEvents', 'syncMeta'
       ] as const;
+      let hasAnyStateDocument = false;
       for (const collectionName of collections) {
         const snapshot = await getDocs(collection(db, 'users', uid, collectionName));
-        const hasUnversionedDocument = snapshot.docs.some(item => {
-          if (collectionName === 'syncMeta' && item.id === 'remoteReplication') return false;
+        const stateDocuments = snapshot.docs.filter(item =>
+          !(collectionName === 'syncMeta' && item.id === 'remoteReplication')
+        );
+        if (stateDocuments.length > 0) hasAnyStateDocument = true;
+        const hasUnversionedDocument = stateDocuments.some(item => {
           const data = item.data();
           return !Number.isSafeInteger(data.revision) ||
             !Number.isSafeInteger(data.baseRevision);
         });
         if (hasUnversionedDocument) {
+          this.legacyCheckUid = uid;
+          this.legacyDataDetected = true;
+          return true;
+        }
+      }
+      if (!hasAnyStateDocument) {
+        const legacyEvents = await getDocs(query(
+          collection(db, 'users', uid, 'events'),
+          where('schemaVersion', '==', 1),
+          firestoreLimit(1)
+        ));
+        if (!legacyEvents.empty) {
           this.legacyCheckUid = uid;
           this.legacyDataDetected = true;
           return true;
