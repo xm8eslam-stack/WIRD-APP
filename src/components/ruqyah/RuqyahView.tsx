@@ -302,7 +302,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       if (onToast) onToast('تعذر قراءة تقدم الرقية المحفوظ؛ احتفظنا بالبيانات الأصلية ولم نستبدلها.', 'warn');
     } else {
       const snapshot = saved.status === 'loaded'
-        ? migrateRuqyahProgressSnapshot(saved.snapshot, Date.now())
+        ? migrateRuqyahProgressSnapshot(saved.snapshot)
         : createEmptyRuqyahProgressSnapshot();
       setProgressSnapshot(snapshot);
       setCounts(snapshot.counts);
