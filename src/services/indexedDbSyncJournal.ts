@@ -1687,8 +1687,7 @@ export class IndexedDbSyncJournal {
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
         if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
-            (metadata.remoteProjectionIntent?.sequence === sequence &&
-              metadata.remoteProjectionIntent.eventId === event.eventId)) {
+            metadata.remoteProjectionIntent?.sequence === sequence) {
           failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;
