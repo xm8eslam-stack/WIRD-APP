@@ -1,6 +1,6 @@
 import { createSecureId } from './secureId';
 import { StorageService } from './storageService';
-import { isValidRuqyahProgressSnapshotV2, mergeRuqyahProgressSnapshots } from './ruqyahProgressSchema';
+import { isValidRuqyahProgressSnapshot, isValidRuqyahProgressSnapshotV2, mergeRuqyahProgressSnapshots } from './ruqyahProgressSchema';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
@@ -825,15 +825,27 @@ export class IndexedDbSyncJournal {
           }
           return;
         }
-        const legacyRuqyahPending = input.collection === 'ruqyahProgress' &&
+        const isRuqyahV2Mutation = input.collection === 'ruqyahProgress' &&
           operation === 'upsert' &&
           isRecord(payload.snapshot) &&
-          payload.snapshot.schemaVersion === 2 &&
-          isValidRuqyahProgressSnapshotV2(payload.snapshot)
+          isValidRuqyahProgressSnapshotV2(payload.snapshot);
+        if (isRuqyahV2Mutation && sameDocumentPending.some(item =>
+          item.operation !== 'upsert' ||
+          (isRecord(item.payload) && isRecord(item.payload.snapshot) &&
+            item.payload.snapshot.schemaVersion === 1 &&
+            !isValidRuqyahProgressSnapshot(item.payload.snapshot))
+        )) {
+          failure = new Error('توجد عملية رقية قديمة أو غير صالحة لا يمكن إثبات احتوائها في لقطة V2؛ احتفظنا بها ولم نتابع الترحيل.');
+          transaction.abort();
+          return;
+        }
+        const legacyRuqyahPending = isRuqyahV2Mutation
           ? sameDocumentPending.filter(item =>
               item.operation === 'upsert' &&
+              isRecord(item.payload) &&
               isRecord(item.payload.snapshot) &&
-              item.payload.snapshot.schemaVersion === 1
+              item.payload.snapshot.schemaVersion === 1 &&
+              isValidRuqyahProgressSnapshot(item.payload.snapshot)
             )
           : [];
         for (const legacyMutation of legacyRuqyahPending) outbox.delete(legacyMutation.key);
