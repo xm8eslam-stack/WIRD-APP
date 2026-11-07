@@ -72,7 +72,7 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     for (const item of [...RUQYAH_GUIDELINES, ...RUQYAH_ITEMS]) {
       assert(typeof item.source === 'string' && item.source.trim().length > 0,
         item.id + ' must identify its source');
-      assert(reviewedSources.has(item.source),
+      assert(reviewedSources.has(item.source || ''),
         item.id + ' uses a source reference that has not been explicitly reviewed: ' + item.source);
     }
   });
