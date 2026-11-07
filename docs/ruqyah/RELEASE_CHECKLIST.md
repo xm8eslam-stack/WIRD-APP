@@ -6,7 +6,7 @@ Last reviewed: 2026-11-07
 
 - Phase 1: PR #88 — Quran mapping, multi-ayah playback, Al Furqan reciters, IslamicAPI proxy, and Shariah content cleanup.
 - Phase 2: PR #91 — UID-scoped journal-first progress sync, revisioned Firestore writes, two-device projection, version-5 backup, and ordered reset.
-- Phase 3: PR #93 — accessible counter actions, selectable Quran text, semantic audio controls, responsive layout, and accurate API-key error guidance.
+- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and accurate API-key error guidance. Audio was subsequently disabled pending source and rights verification.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
