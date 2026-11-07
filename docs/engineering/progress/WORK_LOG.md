@@ -419,3 +419,23 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Two-device tests are limited to profile round-trip and one offline same-document conflict.
 - Cross-tab/browser, account lifecycle, all-collection coverage, production Firestore rules deployment, and production deployment/live smoke remain unverified.
 - Vercel failure is the daily deployment rate limit, not a successful deployment. No production settings or secrets were changed.
+
+## 2026-11-07 — Ruqyah sync, storage integrity, and accessibility follow-up
+
+### Merged
+- PR #91 merged at a618036b995ff45749748e90e2a4d3ec1037c838. Exact-head run 42355023151 passed. Adds journal-first UID-scoped Ruqyah progress sync, revisioned remote writes, sequential two-device projection, and backup v5 support.
+- PR #92 merged at bd6fc3a79267ee7136746fed17c58a6ceac8b58c. Exact-head run 42355486226 passed. Protects unversioned canonical portions, blocks direct writes while migration is pending, validates duplicate IDs/ranges, and normalizes legacy history IDs.
+- PR #93 merged at f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Exact-head run 42355488786 passed 500 unit tests, 29 Firestore rules tests, dependency audit, TypeScript, production build, and server startup smoke.
+- Current main run 42355600523 passed on f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3.
+
+### Active follow-up
+- PR #94 adds ruqyahProgress to the coordinator legacy remote-state scan and tests a concurrent-offline stale revision. It asserts local Outbox, remote Inbox, local snapshot, remote event, conflict archive, and projection cursor are preserved. Exact-head CI must pass before merge.
+- The current Ruqyah counter snapshot model does not calculate an additive merge of two concurrent increments. The test documents safe blocking/preservation only; manual merge remains unimplemented.
+
+### Remaining critical blockers
+- Manual conflict-resolution UI and idempotent keep-local/use-remote/merge state machine.
+- Deterministic additive merge for Ruqyah counts or an explicit user-driven resolution that has sufficient base/delta evidence.
+- Collection-specific tombstone projection and deletion retention.
+- Cross-tab browser concurrency, comprehensive two-device multi-collection coverage, and account lifecycle isolation.
+- Production Firestore rules deployment, production environment verification, exact-SHA deployment, and live post-deploy smoke.
+- Vercel build-rate-limit is not a successful production deployment. No production secrets, rules, or flags changed.
