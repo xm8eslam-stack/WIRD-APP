@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-07  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
-**Main SHA at checkpoint:** `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`
+**Main SHA at checkpoint:** `059e902194811be71ab4dea9da8609a96967214e`
 
 ## Completed and merged in this work segment
 
@@ -51,3 +51,21 @@ PR #78's post-merge main run was queued at checkpoint and must be rechecked.
 ## Safety
 
 No production data, rules, credentials, service accounts, environment variables, or Vercel settings were changed. No production sync activation was performed.
+
+
+## Additional milestone — PR #81
+
+- PR #81 merged as `059e902194811be71ab4dea9da8609a96967214e`.
+- Added IndexedDB v8 UID-scoped `projectionConflicts` archive, bounded at 100 records per UID.
+- Blocked projection archives the remote event and exact relevant local snapshot. Repeated observations preserve the original snapshot. Open records are never pruned; only resolved records may be pruned.
+- Cloud sync diagnostics and Settings show open conflict count and latest conflict summary.
+- Exact-head CI on `415cbe33389a6108d08f9d5785818e8e12458fee`: 459 automated assertions passed, 27 Firestore Rules tests passed, TypeScript/build/startup smoke/dependency audit passed.
+- Post-merge main CI run `42351965332` passed on the merge SHA.
+- The older PR #76 was closed as superseded by #81. PR #59 was closed as superseded by the revisioned sync work; its legacy serverTimestamp envelope was not merged.
+
+## Updated current state
+
+- Durable conflict evidence is now archived. Conflict resolution/rebase and user controls are still missing.
+- Tombstone projection remains intentionally blocked.
+- Two-device integration still covers profile upserts and a same-document offline conflict; it does not prove all collections or real-browser contexts.
+- Production Vercel check remains `build-rate-limit`; live deployment unverified.

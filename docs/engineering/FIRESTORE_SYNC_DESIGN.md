@@ -347,3 +347,8 @@ PR #73 added durable remote projection intent and atomic local finalization/reco
 The sync coordinator now has explicit gates: `VITE_WIRD_REVISIONED_SYNC_ENABLED` for revisioned cloud writes and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` for local remote-event projection. Production values were not inspected; do not assume either is active.
 
 Still not release-ready: tombstones are deliberately blocked by the projector/storage adapter; conflict detection has no dedicated conflict record or user-facing resolution/rebase; multi-device tests cover profile only; production rules deployment, Vercel deployment, and browser E2E are unverified.
+
+
+## PR #81 — durable projection conflict archive
+
+The current main includes a bounded UID-scoped IndexedDB conflict archive. When projection blocks, it stores the remote event and relevant local storage bytes, preserves the original snapshot on repeated observations, and exposes count/latest summaries in Settings. Open conflicts are not pruned; only resolved historical entries may be pruned at capacity. This is not a conflict-resolution workflow: no user-facing keep-local/use-remote/rebase action exists, and the inbox/cursor remain blocked. Exact-head CI passed with 459 automated assertions and 27 Firestore Rules tests; post-merge main run `42351965332` passed on `059e902194811be71ab4dea9da8609a96967214e`.

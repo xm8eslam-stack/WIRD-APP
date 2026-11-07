@@ -27,10 +27,20 @@ PR #78 adds an offline same-document conflict regression: the first device's bas
 
 - The two-device tests currently exercise the profile collection and do not prove all collection mappings or browser/device E2E.
 - Tombstone delivery is intentionally blocked by the projector and local storage adapter. No safe collection-specific delete projection or tombstone garbage collection is implemented.
-- Conflict records/merge UI are not yet implemented. A stale local mutation remains pending and blocks projection; this is safe but requires a resolution workflow.
+- A bounded UID-scoped IndexedDB conflict archive is now implemented (PR #81). It preserves the remote event and the exact relevant local storage snapshot when projection blocks; open conflicts are never pruned, and only resolved historical records may be pruned at capacity. Settings shows the open count and latest event summary. This is diagnostic/recovery storage, not a resolution UI.
 - Production Firebase rules deployment and Vercel deployment of current main have not been verified.
 - Runtime activation depends on explicit build flags: `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. Their production values have not been inspected and must not be assumed enabled.
 
 ## Safety invariant
 
 Never enable upload or projection against production until the deployed Firestore rules match the transaction contract, every active mutation path is journaled, tombstones/conflicts have safe semantics, and release gates pass.
+
+
+## Conflict archive implementation — PR #81
+
+- IndexedDB schema version 8 adds `projectionConflicts`, keyed and indexed by UID.
+- Maximum 100 conflict records per UID; when full, only resolved records may be pruned. If all records are open, archive insertion fails safely and the inbox event remains.
+- Repeated observations update reason/time but preserve the first captured local snapshot.
+- The projector archives blocked decisions and failed finalization while leaving the inbox event and cursor unchanged.
+- Settings exposes count and latest summary. It does not expose a destructive or automatic resolution action.
+- Durable conflict resolution, user choice, and safe cursor advancement after resolution remain unimplemented.
