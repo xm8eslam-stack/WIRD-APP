@@ -205,7 +205,7 @@ The following fixes are implemented in separate Draft PRs but are **not merged**
 - PR #61: journaled backup import across Settings and Progress Analytics; exact CI PASS (404/0), Vercel Preview Ready.
 - PR #62: preserve revision-only/partial task history and out-of-order memorization gaps; exact CI PASS (406/0), Vercel Preview blocked by Vercel daily build-rate limit.
 - PR #63: exact ayah repeat count and live target handling; exact CI PASS (404/0), Vercel Preview blocked by Vercel daily build-rate limit.
-- PR #64: Tafsir HTML/malformed JSON guards; exact CI pending/no job assigned at last check.
+- PR #64: Tafsir HTML/malformed JSON guards; exact-head CI PASS 405/0; Vercel Preview blocked by daily build-rate limit.
 
 No PR was merged because AGENTS.md explicitly requires user approval before merge. No production Firestore or Vercel configuration was changed.
 
@@ -237,4 +237,4 @@ Latest remediation status:
 - #62 current exact-head `48fe031d67c358e3034dd5e64134d6b46513aab4`, run 42342109962 PASS.
 - #63 exact-head CI PASS.
 - #64 exact-head CI PASS.
-- Quran coordinate/domain-event validation working branch `fix/quran-coordinate-validation-20261107`, SHA `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`; run 42342171626 still in progress at last check, with tests, rules, TypeScript and build passed, production smoke pending.
+- Quran coordinate/domain-event validation working branch `fix/quran-coordinate-validation-20261107`, SHA `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`; run 42342071131 PASS 417/0; Firestore Rules 13/13, TypeScript, build and server smoke passed; Vercel Preview Ready.
