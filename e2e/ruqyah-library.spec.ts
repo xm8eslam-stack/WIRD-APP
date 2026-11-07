@@ -196,3 +196,24 @@ test.describe('Ruqyah narrow-screen layout', () => {
     }
   });
 });
+
+test.describe('Ruqyah live progress announcements', () => {
+  test('announces changing free and source-defined repetition counters', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+    await expect(page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' })).toHaveCount(0);
+    await page.goto('/#/ruqyah');
+    await expect(page.getByRole('heading', { name: 'الرقية الشرعية الكاملة من القرآن والسنة' })).toBeVisible();
+
+    const fatihahCard = page.locator('article').filter({ hasText: 'سورة الفاتحة' }).first();
+    const freeCounter = fatihahCard.getByRole('status', { name: 'عدد القراءات: 0' });
+    await expect(freeCounter).toHaveAttribute('aria-live', 'polite');
+    await expect(freeCounter).toHaveAttribute('aria-atomic', 'true');
+    await fatihahCard.getByRole('button', { name: /تسجيل قراءة جديدة لـ سورة الفاتحة/ }).click();
+    await expect(fatihahCard.getByRole('status', { name: 'عدد القراءات: 1' })).toBeVisible();
+
+    const ikhlasCard = page.locator('article').filter({ hasText: 'سورة الإخلاص' }).first();
+    await ikhlasCard.getByRole('button', { name: 'تسجيل قراءة سورة الإخلاص' }).click();
+    await expect(ikhlasCard.getByRole('status', { name: 'المتبقي: 2 من 3' })).toBeVisible();
+  });
+});
