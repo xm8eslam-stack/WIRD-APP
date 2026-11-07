@@ -31,7 +31,9 @@ service cloud.firestore {
           'payload',
           'updatedAtMs',
           'deviceId',
-          'mutationId'
+          'mutationId',
+          'baseRevision',
+          'revision'
         ])
         && data.keys().hasOnly([
           'schemaVersion',
@@ -39,6 +41,8 @@ service cloud.firestore {
           'updatedAtMs',
           'deviceId',
           'mutationId',
+          'baseRevision',
+          'revision',
           'deletedAt'
         ])
         && data.schemaVersion is int
@@ -52,6 +56,11 @@ service cloud.firestore {
         && data.mutationId is string
         && data.mutationId.size() > 0
         && data.mutationId.size() <= 128
+        && data.baseRevision is int
+        && data.baseRevision >= 0
+        && data.revision is int
+        && data.revision > 0
+        && data.revision == data.baseRevision + 1
         && (
           !('deletedAt' in data)
           || data.deletedAt == null
@@ -112,9 +121,19 @@ service cloud.firestore {
     // Only verified users may access allowlisted documents inside their own UID path.
     match /users/{uid}/{collection}/{documentId} {
       allow read: if ownsUserPath(uid) && isAllowedCollection(collection);
-      allow create, update: if ownsUserPath(uid)
+      allow create: if ownsUserPath(uid)
         && isAllowedCollection(collection)
-        && hasValidSyncEnvelope();
+        && hasValidSyncEnvelope()
+        && request.resource.data.baseRevision == 0
+        && request.resource.data.revision == 1;
+      // A revisioned update must prove the exact server version it replaced.
+      // Legacy documents without a revision stay read-only until reconciled.
+      allow update: if ownsUserPath(uid)
+        && isAllowedCollection(collection)
+        && hasValidSyncEnvelope()
+        && resource.data.revision is int
+        && request.resource.data.baseRevision == resource.data.revision
+        && request.resource.data.revision == resource.data.revision + 1;
       // Deletions are represented by tombstones to prevent offline resurrection.
       allow delete: if false;
     }
