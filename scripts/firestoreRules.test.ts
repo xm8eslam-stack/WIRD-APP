@@ -53,6 +53,11 @@ try {
     email: 'alice@example.com',
     email_verified: true
   }).firestore();
+  const aliceDeviceTwo = testEnv.authenticatedContext('alice', {
+    email: 'alice@example.com',
+    email_verified: true,
+    device: 'second-client'
+  }).firestore();
   const bob = testEnv.authenticatedContext('bob', {
     email: 'bob@example.com',
     email_verified: true
@@ -321,8 +326,9 @@ try {
       writeRevisionedRemoteMutation(alice as unknown as Firestore, {
         ...base, mutationId: 'cas-race-a', eventId: 'cas-race-a', payload: { value: 'A' }
       }),
-      writeRevisionedRemoteMutation(alice as unknown as Firestore, {
-        ...base, mutationId: 'cas-race-b', eventId: 'cas-race-b', payload: { value: 'B' }
+      writeRevisionedRemoteMutation(aliceDeviceTwo as unknown as Firestore, {
+        ...base, deviceId: 'test-device-02',
+        mutationId: 'cas-race-b', eventId: 'cas-race-b', payload: { value: 'B' }
       })
     ]);
     const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-race'));
@@ -330,6 +336,49 @@ try {
         results.filter(result => result.status === 'rejected').length !== 1 ||
         state.data()?.revision !== 1) {
       throw new Error('Concurrent stale writers did not produce exactly one winner');
+    }
+  });
+
+  await test('Two devices can update independent documents with one contiguous server sequence', async () => {
+    const sequenceRef = doc(alice, 'users/alice/syncSystem/remoteReplication');
+    const before = await getDoc(sequenceRef);
+    const baseSequence = before.exists() ? before.data().sequence : 0;
+    const firstInput = {
+      uid: 'alice',
+      collection: 'plans' as const,
+      operation: 'upsert' as const,
+      schemaVersion: 1 as const,
+      clientUpdatedAtMs: 1_799_000_000_350,
+      baseRevision: 0
+    };
+    const results = await Promise.all([
+      writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        ...firstInput,
+        documentId: 'cas-independent-a',
+        mutationId: 'cas-independent-a',
+        eventId: 'cas-independent-a',
+        deviceId: 'test-device-01',
+        payload: { records: [{ id: 'a' }] }
+      }),
+      writeRevisionedRemoteMutation(aliceDeviceTwo as unknown as Firestore, {
+        ...firstInput,
+        documentId: 'cas-independent-b',
+        mutationId: 'cas-independent-b',
+        eventId: 'cas-independent-b',
+        deviceId: 'test-device-02',
+        payload: { records: [{ id: 'b' }] }
+      })
+    ]);
+    const sequences = results.map(result => result.serverSequence).sort((a, b) => a - b);
+    const [stateA, stateB, after] = await Promise.all([
+      getDoc(doc(alice, 'users/alice/plans/cas-independent-a')),
+      getDoc(doc(alice, 'users/alice/plans/cas-independent-b')),
+      getDoc(sequenceRef)
+    ]);
+    if (sequences[0] !== baseSequence + 1 || sequences[1] !== baseSequence + 2 ||
+        stateA.data()?.revision !== 1 || stateB.data()?.revision !== 1 ||
+        after.data()?.sequence !== baseSequence + 2) {
+      throw new Error('Independent device writes did not receive a contiguous global server sequence');
     }
   });
 
