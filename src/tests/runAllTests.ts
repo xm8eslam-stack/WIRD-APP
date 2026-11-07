@@ -39,7 +39,7 @@ import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.t
 import { runRuqyahIntegrityTests } from './ruqyahIntegrity.test';
 import { runRuqyahContentServiceTests } from '../services/ruqyahContentService.test';
 import { runRuqyahProxyTests } from './ruqyahProxy.test';
-import { runRuqyahAudioServiceTests } from '../services/ruqyahAudioService.test';
+import { runRuqyahAudioServiceTests } from './ruqyahAudioService.test';
 import { runRuqyahProgressServiceTests } from '../services/ruqyahProgressService.test';
 import { runRuqyahApiServiceTests } from '../services/ruqyahApiService.test';
 
