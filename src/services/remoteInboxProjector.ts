@@ -115,7 +115,7 @@ function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
 /**
  * Apply remote events in server order. A conflict leaves the event in the
  * durable inbox and does not advance the projection cursor, preserving both
- * local and remote bytes until an explicit reconciliation path exists.
+ * local and remote bytes until a later safe reconciliation can be committed.
  *
  * Dependencies are injectable so the conflict policy and cursor behavior can
  * be tested without a live Firebase account.
@@ -204,6 +204,11 @@ export async function projectRemoteInboxBatch(
       if (isResumingThisProjection && intent) {
         const finalized = await dependencies.finalizeRemoteProjection(intent, () => true);
         if (!finalized) {
+          await archiveBlockedProjection(
+            remoteEvent,
+            'projection_failed',
+            remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
+          );
           return {
             projectedCount,
             blockedAtSequence: remoteEvent.serverSequence,
@@ -211,7 +216,19 @@ export async function projectRemoteInboxBatch(
           };
         }
       } else {
-        await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+        const marked = await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+        if (!marked) {
+          await archiveBlockedProjection(
+            remoteEvent,
+            'projection_failed',
+            remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
+          );
+          return {
+            projectedCount,
+            blockedAtSequence: remoteEvent.serverSequence,
+            reason: 'projection_failed'
+          };
+        }
       }
       projectedCount++;
       continue;
