@@ -80,12 +80,32 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
         }
       }
     }
-    const decision = decideRemoteProjection(remoteEvent, {
-      cachedRevision: cached?.revision ?? null,
-      hasPendingLocalMutation,
-      localProjectionEmpty,
-      remoteCollectionInitialized
-    });
+    const intent = await LocalSyncOutbox.getRemoteProjectionIntent();
+    const isResumingThisProjection = !!intent &&
+      intent.sequence === remoteEvent.serverSequence &&
+      intent.eventId === remoteEvent.eventId &&
+      intent.collection === remoteEvent.collection &&
+      intent.documentId === remoteEvent.documentId &&
+      intent.revision === remoteEvent.revision;
+    if (intent && !isResumingThisProjection) {
+      return {
+        projectedCount,
+        blockedAtSequence: remoteEvent.serverSequence,
+        reason: 'projection_failed'
+      };
+    }
+    const decision = isResumingThisProjection
+      ? (hasPendingLocalMutation
+          ? 'blocked_pending_local'
+          : remoteEvent.operation === 'tombstone'
+            ? 'blocked_tombstone'
+            : 'apply')
+      : decideRemoteProjection(remoteEvent, {
+          cachedRevision: cached?.revision ?? null,
+          hasPendingLocalMutation,
+          localProjectionEmpty,
+          remoteCollectionInitialized
+        });
 
     if (decision === 'already_applied') {
       await LocalSyncOutbox.markRemoteProjected(remoteEvent.serverSequence);
@@ -120,6 +140,23 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       projectionRequired: true
     };
 
+    const projectionIntent = {
+      sequence: remoteEvent.serverSequence,
+      eventId: remoteEvent.eventId,
+      collection: remoteEvent.collection,
+      documentId: remoteEvent.documentId,
+      revision: remoteEvent.revision,
+      initializedCollections: transactionCollections as RemoteInboxEvent['collection'][]
+    };
+    const prepared = await LocalSyncOutbox.prepareRemoteProjection(projectionIntent);
+    if (!prepared) {
+      return {
+        projectedCount,
+        blockedAtSequence: remoteEvent.serverSequence,
+        reason: 'projection_failed'
+      };
+    }
+
     if (!StorageService.applyJournalEvent(localEvent)) {
       return {
         projectedCount,
@@ -128,31 +165,15 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       };
     }
 
-    const revisionSaved = await LocalSyncOutbox.setRemoteRevisionFromRemote(
-      remoteEvent.collection,
-      remoteEvent.documentId,
-      remoteEvent.revision
-    );
-    if (!revisionSaved) {
-      const latest = await LocalSyncOutbox.getRemoteRevision(
-        remoteEvent.collection,
-        remoteEvent.documentId
-      );
-      if (!latest || latest.revision < remoteEvent.revision) {
-        return {
-          projectedCount,
-          blockedAtSequence: remoteEvent.serverSequence,
-          reason: 'projection_failed'
-        };
-      }
+    const finalized = await LocalSyncOutbox.finalizeRemoteProjection(projectionIntent);
+    if (!finalized) {
+      return {
+        projectedCount,
+        blockedAtSequence: remoteEvent.serverSequence,
+        reason: 'projection_failed'
+      };
     }
 
-    if (remoteEvent.collection === 'syncMeta') {
-      for (const collectionName of transactionCollections) {
-        await LocalSyncOutbox.markRemoteCollectionInitialized(collectionName as RemoteInboxEvent['collection']);
-      }
-    }
-    await LocalSyncOutbox.markRemoteProjected(remoteEvent.serverSequence);
     projectedCount++;
   }
 
