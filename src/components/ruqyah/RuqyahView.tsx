@@ -230,7 +230,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               type="button"
               aria-pressed={viewMode === 'api_library'}
               onClick={() => setViewMode('api_library')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'api_library'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
                   : 'text-stone-300 hover:text-white hover:bg-emerald-900/60'
