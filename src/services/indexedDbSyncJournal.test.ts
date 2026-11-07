@@ -433,10 +433,12 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         serverSequence: 1
       };
       await journal.importRemotePage([event]);
-      assert(await journal.saveProjectionConflict(event, 'blocked_pending_local', {
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      assert(!!storedEvent?.fingerprint, 'The imported event must have a verified fingerprint before archiving');
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', {
         plans: '{"id":"local-original"}'
       }, 8901), 'The first blocked projection snapshot must be archived');
-      assert(await journal.saveProjectionConflict(event, 'blocked_base_revision', {
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
         plans: '{"id":"later-mutated-state"}'
       }, 8902), 'Repeated observation of the same event must update its reason');
       const conflicts = await journal.listProjectionConflicts(10);
@@ -461,7 +463,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         'The conflict record must resolve atomically with the projection cursor');
       assert((await journal.listProjectionConflicts(10)).length === 0,
         'Resolved conflicts must not appear in the open-conflict list');
-      assert(await journal.saveProjectionConflict(event, 'projection_failed', {
+      assert(await journal.saveProjectionConflict(storedEvent, 'projection_failed', {
         plans: '{"id":"stale-tab-snapshot"}'
       }, 8903), 'A stale competing tab must treat an already committed event as reconciled');
       assert(await journal.getProjectionConflictCount() === 0,
@@ -488,7 +490,8 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         serverSequence: 1
       };
       await journal.importRemotePage([event]);
-      await journal.saveProjectionConflict(event, 'blocked_base_revision', {
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
         plans: '{"id":"local-state"}'
       }, 8951);
       await journal.setRemoteRevisionFromRemote('plans', event.documentId, 1);
@@ -518,9 +521,10 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         serverSequence: 1
       };
       await journal.importRemotePage([event]);
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
       let rejected = false;
       try {
-        await journal.saveProjectionConflict(event, 'blocked_base_revision', {
+        await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
           plans: 'x'.repeat(500_100)
         }, 8991);
       } catch { rejected = true; }
