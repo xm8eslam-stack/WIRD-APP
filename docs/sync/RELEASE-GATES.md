@@ -64,3 +64,13 @@ The following remain release blockers and must not be waived:
 - PR #100 is open to add a Firestore Emulator preflight to the manual deploy workflow. Do not dispatch until this preflight is merged and explicit deployment approval is given.
 - Current main Vercel status is build-rate-limit failure; production alias and deployed SHA are unverified.
 - Do not set VITE_WIRD_REVISIONED_SYNC_ENABLED or VITE_WIRD_REMOTE_PROJECTION_ENABLED until manual conflict resolution, additive Ruqyah counter merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification pass.
+
+## 2026-11-07 — Updated after PR #104/#106/#105
+
+- PR #104 adds a UID-guarded read-only conflict inspector. Manual keep-local/use-remote/merge/rebase remains a blocker.
+- PR #106 adds bidirectional A ↔ B revisioned projection across eight collection routes and exact-head Emulator/CI coverage. Six collection arrays remain empty in the fixture; populated domain-record serialization is still a blocker.
+- PR #105 restricts external Ruqyah API use to Quran reference indexing, keeps educational topics disabled, and blocks unverified recitation audio. The source policy is documented; PR #108 adds an exact source registry and must be reviewed for ID-to-reference binding and `g-4` health guidance attribution.
+- Current main SHA: `d71908b3e411bcd7d1db2b09318eb3c95564198e`; Main Quality Gate `42357565644` passed (509 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, build, startup smoke).
+- Vercel remains failed with `build-rate-limit`; production deployment/live SHA is not verified.
+- Remaining blockers: manual conflict resolution, deterministic additive Ruqyah counter merge, tombstone projection/retention, real multi-tab/browser concurrency, in-flight account lifecycle isolation, populated multi-collection records, Playwright E2E, production rules deployment, and exact-SHA live deployment/post-deploy smoke.
+- Keep both remote sync flags disabled and do not dispatch the manual rules workflow until explicit approval and all gates pass.
