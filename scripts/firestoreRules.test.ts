@@ -213,6 +213,31 @@ try {
     }
   });
 
+  await test('A client with the current base revision can advance the same document', async () => {
+    const base = {
+      uid: 'alice',
+      collection: 'plans' as const,
+      documentId: 'cas-plan-update',
+      operation: 'upsert' as const,
+      schemaVersion: 1 as const,
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: 1_799_000_000_150
+    };
+    const first = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      ...base, mutationId: 'cas-update-first', eventId: 'cas-update-first',
+      baseRevision: 0, payload: { title: 'Revision one' }
+    });
+    const second = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      ...base, mutationId: 'cas-update-second', eventId: 'cas-update-second',
+      clientUpdatedAtMs: 1_799_000_000_151,
+      baseRevision: first.revision, payload: { title: 'Revision two' }
+    });
+    const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-update'));
+    if (first.revision !== 1 || second.revision !== 2 || state.data()?.payload?.title !== 'Revision two') {
+      throw new Error('A valid CAS update did not advance exactly one revision');
+    }
+  });
+
   await test('Stale base revision cannot overwrite a newer remote snapshot', async () => {
     const first = {
       uid: 'alice',
