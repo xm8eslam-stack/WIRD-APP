@@ -221,3 +221,15 @@ The prior checkpoint paragraphs are historical. Current main at this update is f
 - Manual conflict-resolution UI/state machine remains absent. Ruqyah aggregate snapshots safely block/archive concurrent stale writes but do not calculate an additive merge.
 - Tombstones remain blocked; cross-tab browser concurrency, full account lifecycle isolation, and complete multi-collection two-device coverage remain unverified.
 - Keep remote sync flags disabled. Do not deploy rules, alter secrets, or change Vercel production settings without explicit approval.
+
+## Live checkpoint — 2026-11-07 after PR #105/#106
+
+Current main is `d71908b3e411bcd7d1db2b09318eb3c95564198e`; Main Quality Gate run `42357565644` passed on that exact SHA (509 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, startup smoke).
+
+- PR #104 adds a UID-guarded, read-only conflict inspector in Settings. It displays preserved local and remote snapshots; it offers no resolution actions.
+- PR #106 adds reverse B → A projection across the eight revisioned collection routes, including revision-2 checks and a contiguous 16-event stream. Exact-head CI passed. Six array collections still use empty `records` arrays; populated domain-record serialization remains unverified.
+- PR #105 adds a strict Ruqyah source policy: external API Quran text is not displayed, third-party Sunnah is rejected, topics remain disabled, and unverified audio sources are blocked. Main Quality Gate passed.
+- PR #108 is open; do not merge until its exact-source registry maps each item ID to its approved reference and the generic health-guidance source is resolved.
+- Vercel reports `build-rate-limit`; current main production deployment/live SHA is unverified.
+
+Unresolved release gates: user-directed conflict resolution and rebase; additive Ruqyah counter merge; tombstones; cross-tab concurrency; account-switch race tests; populated multi-collection domain fixtures; browser/mobile E2E; production rules deployment; exact-SHA deployment and live smoke. Keep all remote sync flags disabled for production.
