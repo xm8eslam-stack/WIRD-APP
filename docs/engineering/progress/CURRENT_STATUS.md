@@ -1,8 +1,8 @@
 # WIRD — Current Engineering Status
 
-## Authoritative refresh — 2026-11-07 after PR #140
+## Authoritative refresh — 2026-11-07 after RR #140
 
-- Latest verified main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305` (PR #140). PR #140 updates the Ruqyah checkpoint and release checklist through PR #139; its exact-head Quality Gate passed on `90f5aa71046fc376b4937adc3dca5ae647927722`, run `42364663347`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 20 desktop/mobile Playwright tests.
+- Latest verified main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305` (RR #140). PR #140 updates the Ruqyah checkpoint and release checklist through PR #139; its exact-head Quality Gate passed on `90f5aa71046fc376b4937adc3dca5ae647927722`, run `42364663347`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 20 desktop/mobile Playwright tests.
 - PR #141 remains open: narrow-screen Ruqyah overflow regression coverage at 320/360/390px. Exact-head Quality Gate run `42364704191` was still in progress at last check; all automated assertions, Rules Emulator, audit, TypeScript, build and server smoke steps had passed, with desktop/mobile browser tests running. Do not merge until final exact-head result is successful.
 - PR #142 remains open but is based on the previous main SHA `28a1c433...`; GitHub reports it not mergeable after PR #140 advanced main. Its documentation checkpoint is superseded by this refreshed branch/PR. Do not merge stale PR #142.
 - PR #134–#139 remain merged. PR #134 grouped transaction conflict archival preserves all relevant pending Outbox evidence without advancing Inbox cursor on conflict.
