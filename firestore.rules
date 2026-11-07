@@ -31,7 +31,11 @@ service cloud.firestore {
         || (
           payload.keys().hasAll(['snapshot'])
           && payload.snapshot is map
+          && payload.snapshot.keys().hasAll(['schemaVersion', 'updatedAtMs', 'counts', 'components'])
           && payload.snapshot.schemaVersion == 2
+          && payload.snapshot.updatedAtMs is int
+          && payload.snapshot.counts is map
+          && payload.snapshot.components is map
         );
     }
 
