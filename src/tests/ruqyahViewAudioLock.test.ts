@@ -47,9 +47,10 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
       viewSource.includes('stopRuqyahAudio')
   );
   test(
-    'Full-program recordings containing unverified supplication audio remain disabled',
-    /disabled[\s\S]{0,240}title="التسجيلات الكاملة التي تشمل الأدعية لم تعتمد بعد/.test(viewSource) &&
-      viewSource.includes('التسجيل الكامل (قيد التحقق)')
+    'Unverified full-program recordings are not exposed as playable controls',
+    !viewSource.includes('التسجيل الكامل (قيد التحقق)') &&
+      viewSource.includes('المتاح هنا تلاوة الآيات القرآنية فقط، وليس تسجيلًا كاملًا يضم الأدعية') &&
+      viewSource.includes('التسجيلات الكاملة التي تتضمن الأدعية لا تزال قيد التحقق.')
   );
   test(
     'Playback errors never silently switch to another source',
