@@ -1,4 +1,4 @@
-# Current verified continuation — after PR #127
+# Current verified continuation — after PR #135
 
 Last verified: 2026-11-07.
 
@@ -16,13 +16,24 @@ Last verified: 2026-11-07.
 - PR #123 exact-head Quality Gate passed on `bba9ad53fc1a0079d67ef0bee0e94867fec74096`, run `42360037568`: 521 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
 - PR #124 exact-head Quality Gate passed on `0ffb40d027d118ed52e53e70ae688cc0a44c3424`, run `42360270891`: 521 tests, 31 Firestore Rules tests, dependency audit, TypeScript, production build, server smoke, and browser smoke passed.
 - PR #127 exact-head Quality Gate passed on `c406d3c4675171df30adfd272d9b97e61da09f87`, run `42360845123`: 521 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 16 desktop/mobile Playwright tests passed (6 app-shell + 10 Ruqyah locator-library tests).
+- PR #130 refreshed this checkpoint and release checklist; merge commit `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`.
+- PR #131 documented merged and superseded Ruqyah work branches; merge commit `ae5c8a162f5aec8ea5bb5ef6a16c9d5b23611ab6`.
+- PR #135 fixed stale in-memory Ruqyah counters after corrupt progress is detected during initial hydration or a cross-tab/custom-event refresh. Merge commit: `9e62e26c06fb1821095390db4c32e5f81b8233a8`.
+- PR #135 exact-head Quality Gate passed on `da312046dec7192cd0a2da6b025542c7f407e579`, run `42363462082`: 526 automated unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 18 desktop/mobile Playwright tests passed.
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit`. This is a deployment quota failure, not a code Quality Gate failure. No live production alias or deployed SHA is verified.
 
 ## Branch hygiene
-- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130).
+- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135).
 - Two superseded non-PR branches remain and must not be reused: `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` (superseded by the v2 branch after main advanced) and `test/ruqyah-library-ui-states-20261107` (superseded by the v2 branch after adding the supported guest-auth flow).
 - The available GitHub integration exposes branch search and ref updates but no delete-ref operation. These two branches are therefore documented as inactive rather than falsely reported as deleted; remove them through GitHub's branch UI when available.
 - Other Ruqyah-named branches visible in the repository predate this continuation and were not modified or assumed to be active. Audit their associated PRs before deleting.
+
+## Ruqyah progress corruption isolation — PR #135
+- Both progress hydration and cross-tab/custom-event refresh now clear the in-memory count map when `loadRuqyahProgress()` returns `status: 'corrupt'`.
+- The original corrupt storage bytes remain preserved. The component continues to block progress writes while `progressCorrupt` is true; it does not silently replace the stored record.
+- The user may explicitly choose the existing recovery action, which writes an empty valid snapshot through WIRD's journal/local-only persistence path.
+- Regression coverage in `e2e/ruqyah-library.spec.ts`: record a count in guest mode, corrupt the stored snapshot, dispatch `wird:ruqyah-progress-updated`, and assert the warning appears and the stale count disappears.
+- Desktop and mobile Playwright projects both passed this regression in exact-head run `42363462082`.
 
 ## Quran index/API boundary
 **Status: merged in PR #111 and hardened in PR #120.**
