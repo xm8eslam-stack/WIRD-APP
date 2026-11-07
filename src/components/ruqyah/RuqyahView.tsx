@@ -67,6 +67,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const selectedReciterIdRef = useRef(selectedReciterId);
   const audioQueueRef = useRef<Array<{ globalAyahNumber: number; itemId: string; title: string }>>([]);
   const audioQueueIndexRef = useRef(0);
+  const audioRequestIdRef = useRef(0);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
@@ -78,6 +79,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   };
 
   const playAudioQueuePosition = async (index: number) => {
+    const requestId = ++audioRequestIdRef.current;
     const audio = audioRef.current;
     const entry = audioQueueRef.current[index];
     if (!audio || !entry) return;
@@ -96,9 +98,11 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       audio.src = buildQuranAyahAudioUrl(selectedReciterIdRef.current, entry.globalAyahNumber);
       audio.load();
       await audio.play();
+      if (requestId !== audioRequestIdRef.current) return;
       setAudioIsPlaying(true);
       setAudioIsLoading(false);
     } catch {
+      if (requestId !== audioRequestIdRef.current) return;
       setAudioIsPlaying(false);
       setAudioIsLoading(false);
       setAudioError('تعذر تشغيل التلاوة من المصدر المعتمد. تحقق من الاتصال ثم أعد المحاولة.');
@@ -135,14 +139,15 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   };
 
   const stopRuqyahAudio = () => {
+    audioRequestIdRef.current += 1;
+    audioQueueRef.current = [];
+    audioQueueIndexRef.current = 0;
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
     }
-    audioQueueRef.current = [];
-    audioQueueIndexRef.current = 0;
     setAudioIsPlaying(false);
     setAudioIsLoading(false);
     setAudioQueueLength(0);
@@ -166,10 +171,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     }
     if (audio.src && audioQueueLength > 0) {
       setAudioIsLoading(true);
+      const requestId = audioRequestIdRef.current;
       void audio.play().then(() => {
+        if (requestId !== audioRequestIdRef.current) return;
         setAudioIsPlaying(true);
         setAudioIsLoading(false);
       }).catch(() => {
+        if (requestId !== audioRequestIdRef.current) return;
         setAudioIsPlaying(false);
         setAudioIsLoading(false);
         setAudioError('تعذر استكمال التلاوة. تحقق من الاتصال بالإنترنت.');
@@ -216,6 +224,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     const handleWaiting = () => setAudioIsLoading(true);
     const handleCanPlay = () => setAudioIsLoading(false);
     const handleEnded = () => {
+      if (audioQueueRef.current.length === 0) return;
       const nextIndex = audioQueueIndexRef.current + 1;
       if (nextIndex < audioQueueRef.current.length) {
         void playAudioQueuePosition(nextIndex);
@@ -229,6 +238,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       }
     };
     const handleError = () => {
+      if (audioQueueRef.current.length === 0) return;
       setAudioIsPlaying(false);
       setAudioIsLoading(false);
       setAudioError('تعذر تحميل ملف التلاوة. لم يتم استبداله بتسجيل من مصدر آخر.');
@@ -252,6 +262,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
+      audioRequestIdRef.current += 1;
+      audioQueueRef.current = [];
       audio.pause();
       audio.removeAttribute('src');
       audio.load();
@@ -480,10 +492,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
             <div>
               <p className="text-sm font-bold text-stone-800 dark:text-stone-200">التحقق من نص الآيات</p>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُعرض الآيات من مصحف وِرد المعتمد. تشغيل الصوت موقوف حتى اعتماد مصدر موثوق.</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُعرض الآيات من مصحف وِرد المعتمد. يمكنك تشغيل تلاوتها من المصدر الصوتي الموثق أدناه.</p>
             </div>
             <div className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs text-stone-500 dark:text-stone-400" role="status">
-              التلاوة الصوتية قيد التحقق من مصدر التسجيل ونسبته للقارئ
+              التلاوة متاحة للآيات القرآنية؛ التسجيلات الكاملة التي تشمل الأدعية لا تزال قيد التحقق
             </div>
           </div>
 
