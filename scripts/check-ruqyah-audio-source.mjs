@@ -1,7 +1,11 @@
 const samples = [
   { edition: 'ar.husary', bitrate: 128, ayah: 1, label: 'Al-Husary / Al-Fatihah 1:1' },
-  { edition: 'ar.husary', bitrate: 128, ayah: 262, label: 'Al-Husary / Al-Baqarah 2:255' },
+  { edition: 'ar.minshawi', bitrate: 128, ayah: 1, label: 'Al-Minshawi / Al-Fatihah 1:1' },
+  { edition: 'ar.abdulbasit', bitrate: 192, ayah: 1, label: 'Abdul Basit / Al-Fatihah 1:1' },
   { edition: 'ar.sudais', bitrate: 192, ayah: 1, label: 'Al-Sudais / Al-Fatihah 1:1' },
+  { edition: 'ar.shuraim', bitrate: 128, ayah: 1, label: 'Al-Shuraim / Al-Fatihah 1:1' },
+  { edition: 'ar.ajamy', bitrate: 128, ayah: 1, label: 'Al-Ajamy / Al-Fatihah 1:1' },
+  { edition: 'ar.alafasy', bitrate: 128, ayah: 1, label: 'Alafasy / Al-Fatihah 1:1' },
   { edition: 'ar.alafasy', bitrate: 128, ayah: 6236, label: 'Alafasy / final canonical ayah' }
 ];
 
