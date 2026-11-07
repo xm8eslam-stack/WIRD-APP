@@ -120,6 +120,17 @@ export async function runRuqyahAudioServiceTests(): Promise<{ passed: number; fa
 
       globalThis.fetch = (async () => new Response(JSON.stringify({
         provider: QURAN_AUDIO_PROVIDER.name,
+        reciters: [
+          ...FALLBACK_QURAN_RECITERS.slice(0, -1),
+          FALLBACK_QURAN_RECITERS[0]
+        ]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      let rejectedDuplicate = false;
+      try { await fetchQuranReciters(); } catch { rejectedDuplicate = true; }
+      assert(rejectedDuplicate, 'Duplicate or missing reciter entries must be rejected');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        provider: QURAN_AUDIO_PROVIDER.name,
         reciters: FALLBACK_QURAN_RECITERS.map((reciter, index) =>
           index === 0 ? { ...reciter, arabicName: 'قارئ آخر' } : reciter
         )
