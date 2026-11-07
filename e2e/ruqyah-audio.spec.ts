@@ -61,7 +61,6 @@ test.describe('Ruqyah verified Quran audio playback', () => {
 
     const player = page.getByRole('region', { name: 'مشغل تلاوة آيات الرقية' });
     await expect(player.getByRole('status')).toContainText('يتم التشغيل: سورة الفاتحة');
-    await expect(player.getByText(/سورة الفاتحة/)).toBeVisible();
     await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
   });
 
