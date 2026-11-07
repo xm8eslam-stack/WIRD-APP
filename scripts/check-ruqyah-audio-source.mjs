@@ -1,14 +1,15 @@
 const samples = [
   { edition: 'ar.husary', ayah: 1, label: 'Al-Husary / Al-Fatihah 1:1' },
-  { edition: 'ar.husary', ayah: 262, label: 'Al-Husary / Al-Baqarah 2:255' },
-  { edition: 'ar.alafasy', ayah: 6236, label: 'Alafasy / final canonical ayah' }
+  { edition: 'ar.husary', bitrate: 128, ayah: 262, label: 'Al-Husary / Al-Baqarah 2:255' },
+  { edition: 'ar.sudais', bitrate: 192, ayah: 1, label: 'Al-Sudais / Al-Fatihah 1:1' },
+  { edition: 'ar.alafasy', bitrate: 128, ayah: 6236, label: 'Alafasy / final canonical ayah' }
 ];
 
-const base = 'https://cdn.islamic.network/quran/audio/128';
+const base = 'https://cdn.islamic.network/quran/audio';
 let failures = 0;
 
 for (const sample of samples) {
-  const url = `${base}/${sample.edition}/${sample.ayah}.mp3`;
+  const url = `${base}/${sample.bitrate}/${sample.edition}/${sample.ayah}.mp3`;
   try {
     const response = await fetch(url, {
       method: 'GET',
