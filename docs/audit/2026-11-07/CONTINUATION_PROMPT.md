@@ -167,3 +167,20 @@ Next engineering tasks after PR #64 CI is resolved:
 4. Then resume full remote sync only under docs/sync/REMOTE_REPLICATION_PLAN.md.
 
 Never merge PR #61–#64 without explicit user approval, even if CI is green.
+
+
+## Live continuation correction — 2026-11-07 (verified after reconnect)
+
+This addendum supersedes contradictory status lines earlier in this file; fetch live refs again before acting.
+
+- main remains `6228150c2f7137678ba1079f5d9b2e8aba527523`.
+- Audit branch at start of this correction: `7c46b1d150071be6be8dbd7dfbd43053f87d4054`.
+- PR #61 exact head `dd5d5d620d03416e96975320a6443b6eab56fbcc`: Quality Gate run 42340818280 SUCCESS.
+- PR #62 current exact head `48fe031d67c358e3034dd5e64134d6b46513aab4`: Quality Gate run 42342109962 SUCCESS (406 tests in earlier exact-head run; current run also completed all steps including production smoke). This is newer than previously recorded green SHA `651f03e...`.
+- PR #63 exact head `6a7a2b8c3a6cb1b6bbca58ea6674834096a8de93`: runs 42341365536 and 42341457664 SUCCESS.
+- PR #64 exact head `aee5b433122a234d6f36edd38e383c964fca1e10`: runs 42341419175 and 42341470582 SUCCESS.
+- PR #65 is not yet created at the time of this addendum. Working branch `fix/quran-coordinate-validation-20261107` head `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`; compare main shows 13 commits ahead, 0 behind, seven changed files. Exact-head Quality Gate run 42342171626 is in progress; tests, Firestore Rules Emulator, TypeScript and production build have passed; production server smoke is still running.
+- PR #59 remains an important separate sync-status candidate. Its branch `fix/cloud-sync-retry-and-status` is 15 commits ahead and 4 behind main. It adds a truthful `partial` status and returns false because remote event import/projection is not implemented. Do not merge it wholesale; port/review only safe changes onto a fresh main-based branch if proceeding.
+- Critical finding confirmed directly in main `cloudSyncCoordinator.ts`: it uploads outbox documents, reads at most 20 remote events, does not persist or project them, then can report `synced` when pending outbox is empty. This is a false-completion defect. The #59 branch changes that to `partial` while remote reconciliation is incomplete.
+- `REMOTE_REPLICATION_PLAN.md` is design only. The existing main implementation has a local IndexedDB journal/outbox and projection replay, but no durable remote inbox/fetch cursor, no remote event import/projector, and no revision/CAS transaction. Firestore rules still accept generic snapshot envelopes and generic domain event payloads; no server-owned monotonic revision enforcement.
+- Never claim multi-device sync works or merge/deploy without the required independent-client evidence and explicit authorization.
