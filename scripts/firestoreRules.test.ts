@@ -1151,12 +1151,12 @@ try {
         revisionDaysPerWeek: 2, startDate: '2026-11-07', targetEndDate: '2026-12-07', isActive: true
       };
       const planB = { ...planA, completedUnits: 4, isActive: false, description: 'تعديل الجهاز B للخطة' };
-      const enginePlanA = PlanningEngine.generatePlan({
+      const enginePlanA = JSON.parse(JSON.stringify(PlanningEngine.generatePlan({
         title: 'خطة المحرك للاختبار', startSurah: 1, startAyah: 1, endSurah: 1, endAyah: 3,
         startDate: '2026-11-07', level: 'beginner', dailyAvailableMinutes: 45,
         dailyRevisionMinutes: 15, paceType: 'verses_per_day', paceQuantity: 1,
         activeDays: [0, 1, 2, 3, 4, 5, 6], restDays: [], schedulePreference: 'single_session'
-      });
+      })));
       const enginePlanB = {
         ...enginePlanA,
         title: 'خطة المحرك بعد تعديل B',
