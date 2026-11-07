@@ -893,10 +893,7 @@ try {
         throw new Error('The stale offline write was not rejected as an explicit revision conflict: ' + conflictCode);
       }
 
-      const acceptedEvent = readRemoteEvent(await getDoc(doc(
-        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
-      )));
-      await journalB.importRemotePage([acceptedEvent]);
+      await journalB.importRemotePage([acceptedEventA]);
       activateIsolatedDevice(localStorageB, uid);
       const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
       const retainedOutbox = await journalB.listReady(1_800_000_000_000, 10);
@@ -1131,6 +1128,15 @@ try {
         throw new Error('Device A did not publish the first V2 counter snapshot.');
       }
       await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, acceptedA.revision, nextA.updatedAtMs + 1);
+      const acceptedEventA = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
+      )));
+      await journalA.importRemotePage([acceptedEventA]);
+      activateIsolatedDevice(localStorageA, uid);
+      const selfProjectionA = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      if (selfProjectionA.projectedCount !== 1 || await journalA.getRemoteProjectionCursor() !== 1) {
+        throw new Error('Device A did not advance its remote projection cursor past its own acknowledged event.');
+      }
 
       let conflictCode = '';
       try {
