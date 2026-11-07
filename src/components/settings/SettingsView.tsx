@@ -33,7 +33,7 @@ import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
 import { useCloudSync } from '../../hooks/useCloudSync';
 import { getLocalDateString } from '../../services/unifiedPortionService';
-import { importBackupJournaled } from '../../services/backupPersistence';
+import { importBackupFile } from '../../services/backupPersistence';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
 
 interface SettingsViewProps {
@@ -106,40 +106,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file || isImporting) return;
 
     setIsImporting(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const content = event.target?.result;
-        if (typeof content !== 'string') throw new Error('تعذر قراءة ملف النسخة الاحتياطية كنص صالح.');
-        const result = await importBackupJournaled(content);
-        if (result.success) {
-          const updated = StorageService.getProfile();
-          setFormData(updated);
-          onUpdateProfile(updated);
-          onBackupImported?.();
-          onToast?.(result.message, "success");
-        } else {
-          if (result.recoveredPriorEvents) onBackupImported?.();
-          onToast?.(`فشل استيراد النسخة: ${result.message}`, "error");
-        }
-      } catch (error) {
-        onToast?.(`فشل استيراد النسخة: ${error instanceof Error ? error.message : 'خطأ غير متوقع'}`, "error");
-      } finally {
-        setIsImporting(false);
-        e.target.value = '';
+    try {
+      const result = await importBackupFile(file);
+      if (result.success) {
+        const updated = StorageService.getProfile();
+        setFormData(updated);
+        onUpdateProfile(updated);
+        onBackupImported?.();
+        onToast?.(result.message, 'success');
+      } else {
+        if (result.recoveredPriorEvents) onBackupImported?.();
+        onToast?.(`فشل استيراد النسخة: ${result.message}`, 'error');
       }
-    };
-    reader.onerror = () => {
+    } catch (error) {
+      onToast?.(
+        `فشل استيراد النسخة: ${error instanceof Error ? error.message : 'خطأ غير متوقع'}`,
+        'error'
+      );
+    } finally {
       setIsImporting(false);
-      e.target.value = '';
-      onToast?.('تعذر قراءة ملف النسخة الاحتياطية من الجهاز.', 'error');
-    };
-    reader.readAsText(file);
+      input.value = '';
+    }
   };
 
   const { user, isGuest, isEmailVerified, logout } = useAuth();
