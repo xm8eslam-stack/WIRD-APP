@@ -355,6 +355,16 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().rebasePendingMutation(mutationId, expectedBaseRevision, nextBaseRevision);
   },
 
+  async hasPendingForDocument(collection: SyncCollection, documentId: string): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().hasPendingForDocument(collection, documentId);
+  },
+
+  async setRemoteRevisionFromRemote(collection: SyncCollection, documentId: string, revision: number): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().setRemoteRevisionFromRemote(collection, documentId, revision);
+  },
+
   /** Read the durable remote event cursor for the active UID. */
   async getRemoteCursor(): Promise<number> {
     await migrateLegacyOutboxToIndexedDb();
