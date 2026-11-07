@@ -400,6 +400,7 @@ class CloudSyncCoordinator {
           where('schemaVersion', '==', 1),
           firestoreLimit(1)
         ));
+        assertActiveSyncScope(uid);
         if (!legacyEvents.empty) {
           this.legacyCheckUid = uid;
           this.legacyDataDetected = true;
