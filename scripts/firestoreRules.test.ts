@@ -19,6 +19,7 @@ import { IndexedDbSyncJournal, type JournalEvent, type JournalOutboxEntry, type 
 import { CLEAN_INITIAL_PROFILE, StorageService, STORAGE_KEYS } from '../src/services/storageService';
 import { projectRemoteInboxBatch, type RemoteProjectionDependencies } from '../src/services/remoteInboxProjector';
 import { PlanningEngine } from '../src/services/planningEngine';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot } from '../src/services/ruqyahProgressSchema';
 
 class IsolatedMemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -69,7 +70,10 @@ function makeDeviceProjectorDependencies(journal: IndexedDbSyncJournal): RemoteP
     getRemoteProjectionIntent: () => journal.getRemoteProjectionIntent(),
     prepareRemoteProjection: intent => journal.prepareRemoteProjection(intent),
     finalizeRemoteProjection: (intent, applyProjection) =>
-      journal.finalizeRemoteProjection(intent, applyProjection)
+      journal.finalizeRemoteProjection(intent, applyProjection),
+    getLocalRuqyahProgressSnapshot: () => StorageService.getRuqyahProgressSnapshot(),
+    finalizeRuqyahProgressMerge: (intent, applyMergedProjection) =>
+      journal.finalizeRuqyahProgressMerge(intent, applyMergedProjection)
   };
 }
 
@@ -186,12 +190,10 @@ try {
     await assertSucceeds(getDoc(aliceProfile));
   });
 
-  await test('Verified owner can write the isolated Ruqyah progress collection', async () => {
-    const snapshot = {
-      schemaVersion: 1,
-      updatedAtMs: 1_799_000_000_050,
-      counts: { 'q-fatiha': 7, 'dua-pain': 3 }
-    };
+  await test('Verified owner can write V2 PN-counter Ruqyah progress; legacy V1 writes are denied', async () => {
+    let snapshot = createEmptyRuqyahProgressSnapshot(1_799_000_000_050);
+    snapshot = adjustRuqyahProgressCounter(snapshot, 'q-fatiha', 'test-device-01', 7, 1_799_000_000_051);
+    snapshot = adjustRuqyahProgressCounter(snapshot, 'dua-pain', 'test-device-01', 3, 1_799_000_000_052);
     const result = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
       uid: 'alice',
       collection: 'ruqyahProgress',
@@ -208,7 +210,30 @@ try {
     const stored = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
     if (result.status !== 'written' || result.revision !== 1 ||
         JSON.stringify(stored.data()?.payload?.snapshot?.counts) !== JSON.stringify(snapshot.counts)) {
-      throw new Error('Ruqyah progress did not pass the same owner-scoped revisioned write contract.');
+      throw new Error('V2 Ruqyah progress did not pass the owner-scoped revisioned write contract.');
+    }
+
+    let legacyRejected = false;
+    try {
+      const legacy = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        uid: 'alice',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: 'mutation-ruqyah-progress-v1-rejected',
+        eventId: 'mutation-ruqyah-progress-v1-rejected',
+        deviceId: 'old-client-device',
+        clientUpdatedAtMs: snapshot.updatedAtMs + 1,
+        baseRevision: 1,
+        payload: { snapshot: { schemaVersion: 1, updatedAtMs: snapshot.updatedAtMs + 1, counts: { 'q-fatiha': 99 } } }
+      });
+      legacyRejected = legacy.status !== 'written';
+    } catch { legacyRejected = true; }
+    const unchanged = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
+    if (!legacyRejected || unchanged.data()?.revision !== 1 ||
+        unchanged.data()?.payload?.snapshot?.counts?.['q-fatiha'] !== 7) {
+      throw new Error('Legacy clients must not overwrite V2 PN-counter components with a V1 count snapshot.');
     }
   });
 
