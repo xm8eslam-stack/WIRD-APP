@@ -130,9 +130,9 @@ export interface ConflictResolutionMutationFingerprint {
 export type ConflictResolutionDecision = 'keep-local' | 'use-remote' | 'merge';
 
 /**
- * Durable user decision evidence. This record deliberately does not execute a
- * resolution: the executor must revalidate the latest server revision and
- * atomically replace/acknowledge local mutations in a later phase.
+ * Durable user decision evidence. A decision-specific executor may consume
+ * this intent only after revalidating the authoritative server revision and
+ * the exact local snapshot/archive identity captured for user confirmation.
  */
 export interface ConflictResolutionIntent {
   key: string;
