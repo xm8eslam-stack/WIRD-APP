@@ -24,13 +24,16 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
   const originalTopicsFlag = process.env.RUQYAH_TOPICS_ENABLED;
 
   try {
-    await test('Ruqyah proxy rejects non-GET requests and supports CORS preflight', async () => {
+    await test('Ruqyah proxy rejects non-GET requests without granting cross-origin CORS access', async () => {
       const options = new MockResponse();
-      await ruqyahHandler({ method: 'OPTIONS', headers: {} }, options);
+      await ruqyahHandler({ method: 'OPTIONS', headers: { origin: 'https://attacker.example' } }, options);
       assert(options.statusCode === 204 && options.ended, 'OPTIONS must return 204');
+      assert(!options.headers['Access-Control-Allow-Origin'] && !options.headers['Access-Control-Allow-Methods'] &&
+        !options.headers['Access-Control-Allow-Headers'], 'Cross-origin preflight must not be granted access');
       const post = new MockResponse();
       await ruqyahHandler({ method: 'POST', headers: {} }, post);
       assert(post.statusCode === 405 && post.body?.error === 'METHOD_NOT_ALLOWED', 'POST must be rejected');
+      assert(!post.headers['Access-Control-Allow-Origin'], 'Rejected methods must not expose wildcard CORS');
     });
 
     await test('Ruqyah proxy rejects unreviewed category indexes before upstream access', async () => {
@@ -57,8 +60,9 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       let called = false;
       globalThis.fetch = (async () => { called = true; throw new Error('unexpected upstream call'); }) as typeof fetch;
       const res = new MockResponse();
-      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.52' } }, res);
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { origin: 'https://attacker.example', 'x-real-ip': '198.51.100.52' } }, res);
       assert(res.statusCode === 503 && res.body?.error === 'RUQYAH_API_KEY_NOT_CONFIGURED', 'Missing key must be explicit');
+      assert(!res.headers['Access-Control-Allow-Origin'], 'Cross-origin GET must not receive wildcard CORS');
       assert(!called, 'Missing key must not reach upstream');
     });
 
