@@ -6,7 +6,19 @@ import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 import { projectRemoteInboxBatch } from './remoteInboxProjector';
 
-export const LEGACY_REMOTE_STATE_COLLECTIONS = [
+export function isSyncScopeChanged(error: unknown): boolean {
+  return error instanceof Error && error.message === 'SYNC_SCOPE_CHANGED';
+}
+
+function assertActiveSyncScope(uid: string): void {
+  const currentUser = auth?.currentUser;
+  if (!currentUser || currentUser.uid !== uid || !currentUser.emailVerified ||
+      StorageService.getStorageScope() !== `user:${uid}`) {
+    throw new Error('SYNC_SCOPE_CHANGED');
+  }
+}
+
+const LEGACY_REMOTE_STATE_COLLECTIONS = [
   'profile', 'plans', 'enginePlans', 'portions',
   'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
 ] as const;
@@ -167,8 +179,8 @@ class CloudSyncCoordinator {
       }
       const [snapshot, remoteCursor, remoteProjectionCursor, conflictCount, latestConflicts] = await Promise.all([
         LocalSyncOutbox.getSnapshot(),
-        LocalSyncOutbox.getRemoteCursor(),
-        LocalSyncOutbox.getRemoteProjectionCursor(),
+        LocalSyncOutbox.getRemoteCursor(uid),
+        LocalSyncOutbox.getRemoteProjectionCursor(uid),
         LocalSyncOutbox.getProjectionConflictCount(),
         LocalSyncOutbox.listProjectionConflicts(1)
       ]);
@@ -254,16 +266,20 @@ class CloudSyncCoordinator {
       let firstPushError: string | null = null;
 
       while (hasMore && revisionedSyncEnabled) {
-        const readyEntries = await LocalSyncOutbox.listReadyEntries(Date.now(), 25);
+        assertActiveSyncScope(uid);
+        const readyEntries = await LocalSyncOutbox.listReadyEntries(Date.now(), 25, uid);
+        assertActiveSyncScope(uid);
         if (readyEntries.length === 0) {
           hasMore = false;
           break;
         }
 
         for (const entry of readyEntries) {
+          assertActiveSyncScope(uid);
           try {
             let baseRevision = entry.baseRevision;
-            const cachedRevision = await LocalSyncOutbox.getRemoteRevision(entry.collection, entry.documentId);
+            const cachedRevision = await LocalSyncOutbox.getRemoteRevision(entry.collection, entry.documentId, uid);
+            assertActiveSyncScope(uid);
             if (cachedRevision && baseRevision < cachedRevision.revision) {
               if (entry.sequence <= cachedRevision.localSequence) {
                 throw new Error('REMOTE_REVISION_CONFLICT');
@@ -271,14 +287,17 @@ class CloudSyncCoordinator {
               const rebased = await LocalSyncOutbox.rebasePendingMutation(
                 entry.mutationId,
                 baseRevision,
-                cachedRevision.revision
+                cachedRevision.revision,
+                uid
               );
+              assertActiveSyncScope(uid);
               if (!rebased) throw new Error('REMOTE_REVISION_CONFLICT');
               baseRevision = cachedRevision.revision;
             } else if (cachedRevision && baseRevision > cachedRevision.revision) {
               throw new Error('REMOTE_REVISION_CONFLICT');
             }
 
+            assertActiveSyncScope(uid);
             const result = await writeRevisionedRemoteMutation(db, {
               uid,
               collection: entry.collection,
@@ -292,8 +311,12 @@ class CloudSyncCoordinator {
               baseRevision,
               payload: entry.payload
             });
-            await LocalSyncOutbox.acknowledgeRemoteMutation(entry.mutationId, result.revision);
+            assertActiveSyncScope(uid);
+            await LocalSyncOutbox.acknowledgeRemoteMutation(entry.mutationId, result.revision, Date.now(), uid);
+            assertActiveSyncScope(uid);
           } catch (writeError: any) {
+            if (isSyncScopeChanged(writeError)) throw writeError;
+            assertActiveSyncScope(uid);
             console.warn('[WIRD CloudSync] Mutation write failed, scheduling retry:', entry.mutationId, writeError);
             const errCode = writeError?.code || writeError?.message || 'firestore-write-error';
             if (!firstPushError) {
@@ -301,7 +324,8 @@ class CloudSyncCoordinator {
                 ? writeError.message
                 : 'تعذر رفع بعض التغييرات؛ ستظل محفوظة محلياً وستتم إعادة المحاولة.';
             }
-            await LocalSyncOutbox.markFailed(entry.mutationId, String(errCode).slice(0, 64));
+            await LocalSyncOutbox.markFailed(entry.mutationId, String(errCode).slice(0, 64), Date.now(), uid);
+            assertActiveSyncScope(uid);
           }
         }
 
@@ -310,8 +334,11 @@ class CloudSyncCoordinator {
         }
       }
 
+      assertActiveSyncScope(uid);
       const remoteReconciled = await this.pullRemoteReconciliation(uid);
+      assertActiveSyncScope(uid);
       const finalCount = await this.refreshPendingCount();
+      assertActiveSyncScope(uid);
       const status = getCloudSyncCompletionStatus(finalCount, remoteReconciled);
       this.updateState({
         status,
@@ -327,6 +354,10 @@ class CloudSyncCoordinator {
 
       return status === 'synced';
     } catch (syncError: any) {
+      if (isSyncScopeChanged(syncError)) {
+        this.updateState({ status: 'idle', errorMessage: null });
+        return false;
+      }
       console.error('[WIRD CloudSync] Cloud sync failed:', syncError);
       this.updateState({
         status: 'error',
@@ -340,12 +371,14 @@ class CloudSyncCoordinator {
   }
 
   private async hasLegacyRemoteState(uid: string): Promise<boolean> {
+    assertActiveSyncScope(uid);
     if (this.legacyCheckUid === uid && this.legacyDataDetected === false) return false;
     if (!db) return true;
     try {
       let hasAnyStateDocument = false;
       for (const collectionName of LEGACY_REMOTE_STATE_COLLECTIONS) {
         const snapshot = await getDocs(collection(db, 'users', uid, collectionName));
+        assertActiveSyncScope(uid);
         const stateDocuments = snapshot.docs.filter(item =>
           !(collectionName === 'syncMeta' && item.id === 'remoteReplication')
         );
@@ -377,6 +410,7 @@ class CloudSyncCoordinator {
       this.legacyDataDetected = false;
       return false;
     } catch (error) {
+      if (isSyncScopeChanged(error)) throw error;
       console.warn('[WIRD CloudSync] Could not verify legacy remote documents; projection remains blocked.', error);
       this.legacyCheckUid = uid;
       this.legacyDataDetected = true;
@@ -390,10 +424,12 @@ class CloudSyncCoordinator {
    */
   private async pullRemoteReconciliation(uid: string): Promise<boolean> {
     if (!db) return false;
+    assertActiveSyncScope(uid);
     try {
       const eventsRef = collection(db, 'users', uid, 'events');
       for (let page = 0; page < 5; page++) {
-        const cursor = await LocalSyncOutbox.getRemoteCursor();
+        const cursor = await LocalSyncOutbox.getRemoteCursor(uid);
+        assertActiveSyncScope(uid);
         const eventsQuery = query(
           eventsRef,
           where('serverSequence', '>', cursor),
@@ -401,9 +437,11 @@ class CloudSyncCoordinator {
           firestoreLimit(100)
         );
         const snapshot = await getDocs(eventsQuery);
+        assertActiveSyncScope(uid);
         if (snapshot.empty) break;
         const remoteEvents = snapshot.docs.map(item => item.data()) as unknown as RemoteInboxEventInput[];
-        await LocalSyncOutbox.importRemotePage(remoteEvents);
+        await LocalSyncOutbox.importRemotePage(remoteEvents, uid);
+        assertActiveSyncScope(uid);
         if (snapshot.size < 100) break;
       }
 
@@ -411,12 +449,15 @@ class CloudSyncCoordinator {
         this.updateState({ remoteProjectionBlockReason: 'projection_disabled', remoteProjectionBlockedAtSequence: null });
         return false;
       }
+      assertActiveSyncScope(uid);
       if (await this.hasLegacyRemoteState(uid)) {
         this.updateState({ remoteProjectionBlockReason: 'legacy_remote_state', remoteProjectionBlockedAtSequence: null });
         return false;
       }
 
+      assertActiveSyncScope(uid);
       const projection = await projectRemoteInboxBatch(100);
+      assertActiveSyncScope(uid);
       if (projection.reason) {
         console.warn('[WIRD CloudSync] Remote projection paused without advancing its cursor.', projection);
         this.updateState({
@@ -436,6 +477,7 @@ class CloudSyncCoordinator {
       this.updateState({ remoteProjectionBlockReason: null, remoteProjectionBlockedAtSequence: null });
       return true;
     } catch (error) {
+      if (isSyncScopeChanged(error)) throw error;
       console.warn('[WIRD CloudSync] Remote inbox import/projection is incomplete; durable cursors were preserved.', error);
       this.updateState({ remoteProjectionBlockReason: 'import_failed', remoteProjectionBlockedAtSequence: null });
       return false;
