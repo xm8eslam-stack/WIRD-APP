@@ -160,6 +160,34 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Collection-wide pending guards and remote initialization metadata are durable', async () => {
+      const { journal } = createJournal('remote-projection-guards');
+      await journal.enqueue({
+        mutationId: 'pending-plan-snapshot',
+        collection: 'plans',
+        documentId: 'snapshot',
+        payload: { records: [{ id: 'p1' }] },
+        nowMs: 7500
+      });
+      assert(await journal.hasPendingForCollection('plans'),
+        'A pending snapshot blocks remote projection for the entire collection');
+      assert(await journal.hasPendingForDocument('plans', 'snapshot'),
+        'Document-level pending lookup remains available');
+      assert(!(await journal.hasPendingForCollection('tests')),
+        'An unrelated collection remains independently projectable');
+      assert(await journal.setRemoteRevisionFromRemote('plans', 'snapshot', 1),
+        'A successfully applied remote event must persist its server revision');
+      const revision = await journal.getRemoteRevision('plans', 'snapshot');
+      assert(revision?.revision === 1 && revision.localSequence === 1,
+        'Remote revision metadata records the local sequence high-water mark');
+      assert(await journal.isRemoteCollectionInitialized('plans'),
+        'Applying the first remote snapshot marks its collection initialized');
+      assert(await journal.markRemoteCollectionInitialized('tests') &&
+        await journal.isRemoteCollectionInitialized('tests'),
+        'Collections touched by a remote transaction can be marked initialized');
+      journal.close();
+    });
+
     await test('Remote inbox import persists events and advances the durable cursor atomically', async () => {
       const { journal } = createJournal('remote-alpha');
       const event = {
