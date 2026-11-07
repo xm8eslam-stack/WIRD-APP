@@ -625,6 +625,9 @@ export class IndexedDbSyncJournal {
           nextSequence,
           lastProjectedSequence: currentMetadata?.lastProjectedSequence ?? 0,
           remoteRevisions: currentMetadata?.remoteRevisions ?? {},
+          remoteCursor: currentMetadata?.remoteCursor ?? 0,
+          remoteProjectionCursor: currentMetadata?.remoteProjectionCursor ?? 0,
+          remoteInitializedCollections: currentMetadata?.remoteInitializedCollections ?? [],
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
