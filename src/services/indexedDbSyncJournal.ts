@@ -3,7 +3,7 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 5;
+const DATABASE_VERSION = 6;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
@@ -297,6 +297,10 @@ export class IndexedDbSyncJournal {
           const outbox = database.createObjectStore(STORE_OUTBOX, { keyPath: 'key' });
           outbox.createIndex('uid', 'uid', { unique: false });
           outbox.createIndex('uidNextAttempt', ['uid', 'nextAttemptAtMs'], { unique: false });
+        }
+        const outboxStore = upgradeTransaction.objectStore(STORE_OUTBOX);
+        if (!outboxStore.indexNames.contains('uidCollectionDocument')) {
+          outboxStore.createIndex('uidCollectionDocument', ['uid', 'collection', 'documentId'], { unique: false });
         }
         if (!database.objectStoreNames.contains(STORE_ACKNOWLEDGEMENTS)) {
           const acknowledgements = database.createObjectStore(STORE_ACKNOWLEDGEMENTS, { keyPath: 'key' });
@@ -1127,6 +1131,64 @@ export class IndexedDbSyncJournal {
       };
       transaction.oncomplete = () => resolve(advanced);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection cursor transaction aborted.')));
+    });
+  }
+
+  async hasPendingForDocument(collection: SyncCollection, documentId: string): Promise<boolean> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection) || !documentId || documentId.includes('/')) {
+      throw new Error('معرّف المستند المحلي غير صالح.');
+    }
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_OUTBOX], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_OUTBOX)
+      .index('uidCollectionDocument').getAll([uid, collection, documentId]);
+    const pending = await requestResult(request) as JournalOutboxEntry[];
+    await completed;
+    return pending.length > 0;
+  }
+
+  /** Record a revision learned from a remote event without treating it as a local mutation. */
+  async setRemoteRevisionFromRemote(
+    collection: SyncCollection,
+    documentId: string,
+    revision: number
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection) || !documentId || documentId.includes('/') ||
+        !Number.isSafeInteger(revision) || revision < 1) {
+      throw new Error('بيانات الإصدار المستقبَل غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_METADATA], 'readwrite');
+      const store = transaction.objectStore(STORE_METADATA);
+      const request = store.get(uid);
+      let updated = false;
+      let failure: Error | undefined;
+      request.onsuccess = () => {
+        const metadata = request.result as DeviceMetadata | undefined;
+        const revisionKey = collection + ':' + documentId;
+        const remoteRevisions = { ...(metadata?.remoteRevisions || {}) };
+        const current = remoteRevisions[revisionKey];
+        if (current && current.revision > revision) return;
+        const nextSequence = metadata?.nextSequence ?? 1;
+        remoteRevisions[revisionKey] = {
+          revision,
+          localSequence: Math.max(current?.localSequence ?? 0, nextSequence - 1)
+        };
+        store.put({
+          ...(metadata || {
+            uid, deviceId: createSecureId(), schemaVersion: 1,
+            nextSequence: 1, lastProjectedSequence: 0
+          }),
+          remoteRevisions
+        } satisfies DeviceMetadata);
+        updated = true;
+      };
+      transaction.oncomplete = () => resolve(updated);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote revision cache transaction aborted.')));
     });
   }
 
