@@ -1,5 +1,16 @@
 # WIRD Conflict Resolution Policy
 
+## 2026-11-07 — durable decision-intent foundation (PR #148)
+
+PR #148 introduces a versioned, UID-scoped IndexedDB store for a single immutable prepared decision per conflict. A prepared intent is bound to the exact remote event fingerprint and sequence, the raw local snapshot fingerprint, the selected complete snapshot, decision ID/type, supplied server revision, and archived local mutation IDs/fingerprints.
+
+Preparation rechecks that the conflict is still open, the exact event remains in the inbox, the archived mutation set and raw local snapshot have not changed since inspection, no newer relevant local Outbox mutations appeared, and the locally known revision is not newer than the supplied revision. The intent survives reload and exact retries; a different decision cannot overwrite it. Retention is bounded and fails closed rather than silently pruning decision evidence.
+
+**This is not yet an executable conflict resolver.** The prepared intent is not a server acknowledgement, does not replace or acknowledge local Outbox mutations, does not apply a local or remote snapshot, and does not advance the Inbox/projection cursor. Normal projection finalization and direct cursor advancement are blocked while a prepared intent exists, so the automatic projector cannot bypass a saved user decision. The next phase must implement an explicit executor with fresh authoritative Firestore reads, atomic local journal transitions, server acknowledgement, crash recovery, and UI. Do not call the preparation API from user-facing UI until that executor is available.
+
+Production sync flags remain disabled. No Firestore rules, secrets, or production settings changed.
+
+
 ## Current implemented policy: detect and preserve
 
 The server uses optimistic concurrency. Every mutation carries `baseRevision`; the Firestore transaction compares it with the authoritative current revision. A stale write is rejected with `REMOTE_REVISION_CONFLICT`. No client clock or Last-Write-Wins policy is used.
