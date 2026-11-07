@@ -152,22 +152,22 @@ Every row is a note. Update the note after full inspection; never mark a file re
 
 | File | Note | Status |
 |---|---|---|
-| `src/tests/backupValidation.test.ts` | Backup schema/import validation; cover malformed/oversized payloads and backwards compatibility. | PENDING |
-| `src/tests/cleanInitialization.test.ts` | Fresh install/initialization tests; verify no demo data leaks and account startup is deterministic. | PENDING |
-| `src/tests/firebaseAuth.test.ts` | Auth tests; verify guest, Google/email, verification and account scope transitions. | PENDING |
+| `src/tests/backupValidation.test.ts` | 585-line backup suite validates v4 schema, nested records, legacy migration, canonical IDs, duplicate data, export/import rollback and unencrypted warning. Add explicit journaled import tests and prove all import UI entry points call that path. | REVIEWED (initial) |
+| `src/tests/cleanInitialization.test.ts` | Verifies zero fake logs/plans/revisions and that demo loaders are not invoked at startup; source-text assertions are brittle. DEFAULT_PORTIONS is a dormant exported fixture, not used by canonical getter. | REVIEWED (initial) |
+| `src/tests/firebaseAuth.test.ts` | Tests auth service helpers, guest transition rollback, verification state and Firebase config validation. These are mocked/unit tests; no real Google OAuth redirect, email verification or cross-device account test. | REVIEWED (initial) |
 | `src/tests/geminiSecurity.test.ts` | AI security tests; verify secrets remain server-side and untrusted content is bounded. | PENDING |
 | `src/tests/independentTanzilComparison.ts` | Quran text/metadata verification; inspected. It writes a generated report and handles Basmalah prefixes; independently verify normalization cannot mask a real mismatch. | REVIEWED (initial) |
-| `src/tests/mobileErgonomics.test.ts` | Mobile interaction assertions; supplement with browser/device accessibility checks. | PENDING |
+| `src/tests/mobileErgonomics.test.ts` | Single static test asserts 604-page map has 48px targets; too narrow for mobile sign-off. Add responsive viewport, touch, keyboard, RTL, screen-reader and iOS Safari tests. | REVIEWED (initial) |
 | `src/tests/phase3CoreRemediation.test.ts` | Core domain regression suite; map coverage to current architecture and remove brittle source-text assertions. | PENDING |
 | `src/tests/planRangeSelection.test.ts` | Plan range tests; verify explicit scope boundaries. | PENDING |
-| `src/tests/pwaIntegration.test.ts` | PWA tests; cover service worker cache upgrade, offline launch and stale asset recovery. | PENDING |
-| `src/tests/quranContentIntegrity.test.ts` | Quran data integrity suite; validate text, count, metadata and reference checksum. | PENDING |
-| `src/tests/quranLazyLoading.test.ts` | Lazy-loading tests; verify no eager full-dataset inclusion in critical routes. | PENDING |
-| `src/tests/quranMushafReader.test.ts` | Mushaf reader tests; verify page/Surah/Juz navigation and exact ayah mapping. | PENDING |
+| `src/tests/pwaIntegration.test.ts` | Static tests verify manifest, SW cache names/offline fallback, audio precache hook and registration/update code; no actual offline browser, activation race, stale asset or cache quota test. | REVIEWED (initial) |
+| `src/tests/quranContentIntegrity.test.ts` | Checks 114 Surahs, 6,236 ayahs, local/global sequence, page/Juz/Hizb ranges and Basmalah/Tawbah behavior; independent Tanzil comparison provides additional reference validation. Verify report generation does not mask discrepancies. | REVIEWED (initial) |
+| `src/tests/quranLazyLoading.test.ts` | Checks lazy-loading and generated chunks mostly through source-text assertions; does not measure actual browser network/chunk behavior or cold-start performance. | REVIEWED (initial) |
+| `src/tests/quranMushafReader.test.ts` | Checks 604-page generated index, Surah first-page mapping, 30 Juz/240 Hizb starts and lazy import references. Static structural tests only; add browser navigation/scroll/touch/audio integration. | REVIEWED (initial) |
 | `src/tests/runAllTests.ts` | Aggregate custom test runner; inspected initially. Review suite isolation, reliable failure aggregation and brittle source-code assertions. | REVIEWED (initial) |
 | `src/tests/sessionCompletion.test.ts` | Session completion behavior tests; cover grouped journal event and idempotent retries. | PENDING |
-| `src/tests/storageReliability.test.ts` | Storage reliability tests; review failure injection breadth and false-positive rollback claims. | PENDING |
-| `src/tests/streakCalculations.test.ts` | Streak/date calculation tests; test local timezone, DST and year boundaries. | PENDING |
+| `src/tests/storageReliability.test.ts` | 407-line fail-injection suite covers rollback, corrupt archive preservation, canonical mirror writes, durable read-back and reset rollback. Strong synchronous storage coverage; does not substitute for IndexedDB crash/concurrency/multi-tab or real-browser quota tests. | REVIEWED (initial) |
+| `src/tests/streakCalculations.test.ts` | Tests local date and streak start/consecutive/same-day/missed-day behavior. Add DST and timezone-change coverage and ensure date helper is consistently used across plan/revision calculations. | REVIEWED (initial) |
 | `src/tests/tafsirProxy.test.ts` | Tafsir proxy tests; add upstream HTML/malformed payload and rate-limit coverage. | REVIEWED (initial) |
 | `src/tests/uniqueRetentionScore.test.ts` | Retention metric tests; verify unique ayah counting and conservative status selection. | PENDING |
 | `src/types/quran.ts` | Core Quran/progress/profile types inspected. conflictAudit.value: any weakens safety; legacy IDs and optional duplicated revision structures need migration/compatibility policy. | REVIEWED (initial) |
