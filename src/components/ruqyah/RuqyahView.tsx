@@ -209,7 +209,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             <button
               type="button"
               aria-pressed={viewMode === 'interactive'}
-              onClick={() => setViewMode('interactive')}
+              onClick={() => { setShowResetConfirmation(false); setViewMode('interactive'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'interactive'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
@@ -234,7 +234,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             <button
               type="button"
               aria-pressed={viewMode === 'api_library'}
-              onClick={() => setViewMode('api_library')}
+              onClick={() => { setShowResetConfirmation(false); setViewMode('api_library'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'api_library'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
@@ -270,7 +270,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   key={tab.id}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => setActiveCategory(tab.id)}
+                  onClick={() => { setShowResetConfirmation(false); setActiveCategory(tab.id); }}
                   className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                     isActive
                       ? 'bg-emerald-800 text-amber-200 border-emerald-700 shadow-sm'
@@ -326,8 +326,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   type="button"
                   onClick={() => setShowResetConfirmation(true)}
                   disabled={!progressHydrated || progressCorrupt}
-                  aria-haspopup="true"
                   aria-expanded={showResetConfirmation}
+                  aria-controls="ruqyah-reset-confirmation"
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   title={progressCorrupt ? "أعد ضبط سجل الرقية التالف من رسالة الاسترداد أعلاه" : "إعادة ضبط عداد القسم"}
                 >
@@ -339,7 +339,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           )}
 
           {showResetConfirmation && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
+            <div id="ruqyah-reset-confirmation" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
               <div className="min-w-0">
                 <p id="ruqyah-reset-confirmation-title" className="text-sm font-bold text-amber-950 dark:text-amber-100">تأكيد إعادة ضبط القسم</p>
                 <p id="ruqyah-reset-confirmation-description" className="mt-1 text-xs leading-relaxed text-amber-900 dark:text-amber-200">سيتم تصفير عدادات هذا القسم فقط. لن تتغير نصوص القرآن أو الأدعية أو بيانات الأقسام الأخرى.</p>
