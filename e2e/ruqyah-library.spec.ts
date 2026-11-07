@@ -69,6 +69,17 @@ test.describe('Ruqyah Quran locator library', () => {
     expect(requests).toBe(2);
   });
 
+
+  test('fails closed when the proxy is bypassed and returns an out-of-range locator', async ({ page }) => {
+    await page.route(INDEX_ENDPOINT, route => route.fulfill(validIndexResponse([
+      { id: 3, title: '115:1', arabic: 'نص خارجي غير موثوق' }
+    ])));
+    await openExtendedLibrary(page);
+    await expect(page.getByRole('heading', { name: 'موضع قرآني غير صالح' })).toBeVisible();
+    await expect(page.getByText('موضع الآيات في الفهرس الخارجي خارج حدود المصحف المعتمد.')).toBeVisible();
+    await expect(page.getByText('نص خارجي غير موثوق')).toHaveCount(0);
+  });
+
   test('filters only canonical surah names and normalized Arabic numeral coordinates', async ({ page }) => {
     await page.route(INDEX_ENDPOINT, route => route.fulfill(validIndexResponse([
       { id: 1, title: '1:1-7' },
