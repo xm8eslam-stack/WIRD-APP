@@ -47,10 +47,10 @@ export const QuranMath = {
    * Convert absolute global index back to Surah and Ayah
    */
   getCoordinateFromAbsoluteIndex(absIndex: number): VerseCoordinate {
-    if (!Number.isSafeInteger(absIndex)) {
-      throw new RangeError('Absolute Quran ayah index must be a safe integer.');
+    if (!Number.isSafeInteger(absIndex) || absIndex < 1 || absIndex > TOTAL_QURAN_VERSES) {
+      throw new RangeError('Absolute Quran ayah index must be between 1 and ' + TOTAL_QURAN_VERSES + '.');
     }
-    let remaining = Math.max(1, Math.min(TOTAL_QURAN_VERSES, absIndex));
+    let remaining = absIndex;
     for (const surah of ALL_SURAHS) {
       if (remaining <= surah.versesCount) {
         return { surahNumber: surah.number, ayahNumber: remaining };
