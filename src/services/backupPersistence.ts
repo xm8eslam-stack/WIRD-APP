@@ -76,7 +76,8 @@ export async function migrateLegacyPortionsJournaled(
       operation: 'upsert',
       payload: {
         records: prepared.portions,
-        recoveryFromLegacy: prepared.allowRecoveryOverwrite
+        recoveryFromLegacy: prepared.allowRecoveryOverwrite,
+        migration: true
       }
     }], { ...options, expectedStorageScope }, 'legacy-portions-migration-' + createSecureId());
 
