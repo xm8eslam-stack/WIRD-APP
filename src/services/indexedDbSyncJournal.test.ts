@@ -164,7 +164,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const { journal } = createJournal('remote-alpha');
       const event = {
         uid: 'remote-alpha',
-        eventId: 'remote-event-1',
+        eventId: 'remote-mutation-1',
         mutationId: 'remote-mutation-1',
         eventType: 'domain-mutation' as const,
         collection: 'plans' as const,
@@ -197,7 +197,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const { journal } = createJournal('remote-gap');
       const event = {
         uid: 'remote-gap',
-        eventId: 'remote-gap-event-2',
+        eventId: 'remote-gap-mutation-2',
         mutationId: 'remote-gap-mutation-2',
         eventType: 'domain-mutation' as const,
         collection: 'plans' as const,
@@ -224,7 +224,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const { journal } = createJournal('remote-owner');
       const event = {
         uid: 'remote-other',
-        eventId: 'foreign-event',
+        eventId: 'foreign-mutation',
         mutationId: 'foreign-mutation',
         eventType: 'domain-mutation' as const,
         collection: 'plans' as const,
