@@ -220,6 +220,15 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const repeated = await journal.listProjectionConflicts(10);
       assert(repeated.length === 1 && repeated[0].localSnapshot.wird_plans === localSnapshot.wird_plans,
         'Repeated observations update the reason/time but never replace the original conflict snapshot');
+      let identityRejected = false;
+      try {
+        await journal.saveProjectionConflict({
+          ...storedEvent,
+          fingerprint: 'different-event-fingerprint'
+        }, 'blocked_pending_local', localSnapshot, 9250);
+      } catch { identityRejected = true; }
+      assert(identityRejected,
+        'An event ID reused with a different fingerprint must not replace archived recovery evidence');
 
       const intent = {
         sequence: 1,
