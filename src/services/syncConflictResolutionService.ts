@@ -95,6 +95,16 @@ export async function resolveProjectionConflictUsingRemote(
     throw new Error('الحالة السحابية الحالية لا تطابق غلاف المزامنة الموثوق أو تحتوي على حذف غير مدعوم؛ لم يتم تعديل البيانات المحلية.');
   }
 
+  let normalizedRemotePayload: Record<string, unknown>;
+  try {
+    normalizedRemotePayload = JSON.parse(JSON.stringify(state.payload)) as Record<string, unknown>;
+  } catch {
+    throw new Error('تعذر تطبيع حمولة الحالة السحابية؛ لم يتم تغيير البيانات المحلية.');
+  }
+  if (!isRecord(normalizedRemotePayload)) {
+    throw new Error('حمولة الحالة السحابية ليست كائناً صالحاً؛ لم يتم تغيير البيانات المحلية.');
+  }
+
   const localSnapshot = StorageService.getLocalProjectionSnapshot(conflict.event.collection);
   const localSnapshotFingerprint = fingerprintConflictSnapshot(localSnapshot);
   const localMutationFingerprints = (conflict.localMutations || []).map(item => ({
@@ -108,7 +118,7 @@ export async function resolveProjectionConflictUsingRemote(
     if (existingIntent.decision !== 'use-remote' ||
         existingIntent.baseRevision !== state.revision ||
         existingIntent.localSnapshotFingerprint !== localSnapshotFingerprint ||
-        stableStringify(existingIntent.payload) !== stableStringify(state.payload)) {
+        stableStringify(existingIntent.payload) !== stableStringify(normalizedRemotePayload)) {
       throw new Error('يوجد قرار محفوظ سابقاً لكنه لم يعد مطابقاً للحالة السحابية أو المحلية الحالية. لا تحاول تجاوزه؛ يلزم إلغاء القرار المعلّق بعد مراجعة الأدلة.');
     }
   } else {
@@ -119,7 +129,7 @@ export async function resolveProjectionConflictUsingRemote(
       localSnapshotFingerprint,
       decision: 'use-remote',
       baseRevision: state.revision,
-      payload: state.payload,
+      payload: normalizedRemotePayload,
       localMutationFingerprints,
       nowMs: Date.now()
     });
@@ -129,7 +139,7 @@ export async function resolveProjectionConflictUsingRemote(
   const committed = await LocalSyncOutbox.commitUseRemoteConflictResolution(
     eventId,
     state.revision,
-    state.payload,
+    normalizedRemotePayload,
     Date.now()
   );
   assertActiveConflictScope(uid);
