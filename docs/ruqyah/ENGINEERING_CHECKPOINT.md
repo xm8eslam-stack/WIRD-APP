@@ -9,8 +9,9 @@ Last updated: 2026-11-07
 - Phase 1 PR #88 is merged. Merge commit: `6af7ce1d27543429911ca686550bc26f446ec2e0`.
 - Phase 2 PR #91 is merged. Merge commit: `a618036b995ff45749748e90e2a4d3ec1037c838`.
 - Phase 3 PR #93 is merged. Merge commit: `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3`.
-- Phase 4 branch: `fix/ruqyah-release-readiness-20261107`
-- Phase 4 objective: close direct backup/reset refresh gaps, document live deployment gates, and record external source/license constraints.
+- Phase 4 PR #95 is merged. Merge commit: `52e62d6b21057cf0d796cc3b137f4087cbe2e983`.
+- Phase 5 branch: `fix/ruqyah-api-proxy-hardening-20261107`
+- Phase 5 objective: harden the IslamicAPI proxy against spoofed rate-limit identities, oversized responses, and malformed topic content.
 
 ## Phase 1 completed and merged
 
@@ -81,6 +82,22 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 - Live Firestore rules deployment and Vercel environment values are external release blockers; do not claim production cloud sync is active until verified.
 - The Vercel integration has reported build-rate-limit quota failures; treat them as provider capacity failures, not code test results.
 
+## Phase 5 changes implemented on the working branch
+
+1. Rate limiting now prefers Vercel's trusted `x-real-ip` and does not trust the client-controlled `x-forwarded-for` header.
+2. Rate-limit bucket cleanup now evicts expired/oldest entries to keep the per-instance map bounded.
+3. Upstream response size is checked against declared content length before reading and capped again before JSON parsing.
+4. Topic content block types are allowlisted to the documented text/Arabic/translation/header/transliteration types.
+5. Added regression tests for spoofed forwarded-for bypass attempts, oversized provider payloads, and unknown topic block types.
+6. Clarified IslamicAPI fair-use limits and the per-serverless-instance nature of the local limiter in the release checklist.
+
+## Phase 5 verification status
+
+- Working branch requires a fresh full CI run.
+- Required gates: unit tests, Firestore rules emulator, dependency audit, TypeScript, production build, server smoke test.
+- Review Vercel header behavior for `x-real-ip` in production before relying on the proxy's per-IP limit; local fallback uses the socket address.
+- Do not describe the in-memory limiter as a global rate limit. Provider fair-use restrictions remain authoritative.
+
 ## Critical correctness rules
 
 - Do not auto-persist an empty progress object on first mount. It can race the first remote pull and create an avoidable revision conflict.
@@ -107,4 +124,5 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 4. Run/review two-device Firestore emulator test and confirm the progress collection round trip.
 5. Merge only after all required code checks pass. Treat a Vercel quota failure separately from code CI.
 6. Complete Phase 4 CI and review; merge only after the exact head passes.
-7. Deploy Firestore rules, verify Vercel environment and deployment, then run the live smoke checklist.
+7. Complete Phase 5 proxy security CI and review; merge only after the exact head passes.
+8. Deploy Firestore rules, verify Vercel environment and deployment, then run the live smoke checklist.
