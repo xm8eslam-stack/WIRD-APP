@@ -1304,9 +1304,9 @@ export class IndexedDbSyncJournal {
       const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const key = uid + ':' + event.eventId;
       const existingRequest = store.get(key);
-      const countRequest = store.index('uid').count(IDBKeyRange.only(uid));
+      const recordsRequest = store.index('uid').getAll(IDBKeyRange.only(uid));
       let existing: RemoteProjectionConflict | undefined;
-      let count = 0;
+      let records: RemoteProjectionConflict[] = [];
       let readsRemaining = 2;
       let saved = false;
       let failure: Error | undefined;
@@ -1317,10 +1317,20 @@ export class IndexedDbSyncJournal {
           saved = true;
           return;
         }
-        if (!existing && count >= MAX_PROJECTION_CONFLICTS) {
-          failure = new Error('وصل سجل التعارضات إلى الحد الآمن؛ بقي الحدث محفوظًا في صندوق الاستقبال.');
-          transaction.abort();
-          return;
+        if (!existing) {
+          const resolved = records
+            .filter(record => record.status === 'resolved')
+            .sort((a, b) => a.createdAtMs - b.createdAtMs);
+          while (records.length >= MAX_PROJECTION_CONFLICTS && resolved.length > 0) {
+            const oldest = resolved.shift()!;
+            store.delete(oldest.key);
+            records = records.filter(record => record.key !== oldest.key);
+          }
+          if (records.length >= MAX_PROJECTION_CONFLICTS) {
+            failure = new Error('وصل سجل التعارضات المفتوحة إلى الحد الآمن؛ بقي الحدث محفوظًا في صندوق الاستقبال.');
+            transaction.abort();
+            return;
+          }
         }
         const record: RemoteProjectionConflict = existing || {
           key,
@@ -1343,8 +1353,8 @@ export class IndexedDbSyncJournal {
         existing = existingRequest.result as RemoteProjectionConflict | undefined;
         finishRead();
       };
-      countRequest.onsuccess = () => {
-        count = countRequest.result;
+      recordsRequest.onsuccess = () => {
+        records = recordsRequest.result as RemoteProjectionConflict[];
         finishRead();
       };
       transaction.oncomplete = () => resolve(saved);
