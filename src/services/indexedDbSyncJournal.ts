@@ -2028,6 +2028,58 @@ export class IndexedDbSyncJournal {
     });
   }
 
+  /** Cancel only a prepared (not executing) decision; preserve the conflict and all evidence. */
+  async cancelPreparedConflictResolutionIntent(eventId: string, decisionId: string): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(eventId) || !validMutationId(decisionId)) {
+      throw new Error('معرّف قرار إلغاء التعارض غير صالح.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_CONFLICT_RESOLUTION_INTENTS],
+        'readwrite'
+      );
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const intents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
+      const key = uid + ':' + eventId;
+      const conflictRequest = conflicts.get(key);
+      const intentRequest = intents.get(key);
+      const inboxRequest = inbox.index('uid').getAll(IDBKeyRange.only(uid));
+      let conflict: RemoteProjectionConflict | undefined;
+      let intent: ConflictResolutionIntent | undefined;
+      let inboxEvents: RemoteInboxEvent[] = [];
+      let readsRemaining = 3;
+      let cancelled = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        if (!intent) return;
+        const event = conflict?.event;
+        const matchingInbox = inboxEvents.find(item => item.serverSequence === intent.serverSequence);
+        if (!conflict || conflict.status !== 'open' || !event ||
+            event.eventId !== eventId || event.fingerprint !== intent.eventFingerprint ||
+            intent.uid !== uid || intent.eventId !== eventId ||
+            intent.decisionId !== decisionId || intent.status !== 'prepared' ||
+            !matchingInbox || matchingInbox.eventId !== eventId ||
+            matchingInbox.fingerprint !== intent.eventFingerprint) {
+          failure = new Error('لا يمكن إلغاء هذا القرار؛ لم تعد النية أو أدلة التعارض في الحالة المتوقعة.');
+          transaction.abort();
+          return;
+        }
+        intents.delete(key);
+        cancelled = true;
+      };
+      conflictRequest.onsuccess = () => { conflict = conflictRequest.result as RemoteProjectionConflict | undefined; finishRead(); };
+      intentRequest.onsuccess = () => { intent = intentRequest.result as ConflictResolutionIntent | undefined; finishRead(); };
+      inboxRequest.onsuccess = () => { inboxEvents = inboxRequest.result as RemoteInboxEvent[]; finishRead(); };
+      transaction.oncomplete = () => resolve(cancelled);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Conflict decision cancellation transaction aborted.')));
+    });
+  }
+
   async getConflictResolutionIntent(eventId: string): Promise<ConflictResolutionIntent | null> {
     const uid = activeUid();
     if (!validMutationId(eventId)) throw new Error('معرّف التعارض المطلوب غير صالح.');
