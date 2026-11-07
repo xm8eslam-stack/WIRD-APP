@@ -616,8 +616,8 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
-    await test('Ruqyah PN-counter merge atomically preserves independent increments and recovers after interrupted projection', async () => {
-      const uid = 'ruqyah-pn-counter-merge-owner';
+    await test('Ruqyah per-device resettable counter merge atomically preserves independent increments and recovers after interrupted projection', async () => {
+      const uid = 'ruqyah-per-device resettable counter-merge-owner';
       const { journal } = createJournal(uid);
       const itemId = 'q-fatihah';
       const localSnapshot = adjustRuqyahProgressCounter(
@@ -627,11 +627,11 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         createEmptyRuqyahProgressSnapshot(300000), itemId, 'remote-device', 3, 300002
       );
       assert(StorageService.saveRuqyahProgressSnapshot(localSnapshot),
-        'The local PN-counter fixture must be stored before the remote event arrives');
+        'The local per-device resettable counter fixture must be stored before the remote event arrives');
       const event = {
         uid,
-        eventId: 'ruqyah-pn-counter-remote-event',
-        mutationId: 'ruqyah-pn-counter-remote-event',
+        eventId: 'ruqyah-per-device resettable counter-remote-event',
+        mutationId: 'ruqyah-per-device resettable counter-remote-event',
         eventType: 'domain-mutation' as const,
         collection: 'ruqyahProgress' as const,
         documentId: 'snapshot',
@@ -646,7 +646,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       };
       await journal.importRemotePage([event]);
       await journal.enqueue({
-        mutationId: 'ruqyah-pn-counter-local-pending',
+        mutationId: 'ruqyah-per-device resettable counter-local-pending',
         collection: 'ruqyahProgress',
         documentId: 'snapshot',
         payload: { snapshot: localSnapshot },
@@ -701,7 +701,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const revision = await journal.getRemoteRevision('ruqyahProgress', 'snapshot');
       assert(mergedSnapshot?.schemaVersion === 2 && mergedSnapshot.counts[itemId] === 5,
         'The local projection must contain both devices’ increments exactly once');
-      assert(pending.length === 1 && pending[0].mutationId !== 'ruqyah-pn-counter-local-pending' &&
+      assert(pending.length === 1 && pending[0].mutationId !== 'ruqyah-per-device resettable counter-local-pending' &&
         pending[0].baseRevision === 1 &&
         (pending[0].payload.snapshot as { counts: Record<string, number> }).counts[itemId] === 5,
         'Old pending writes must be replaced by one merged full-snapshot mutation based on the remote revision');
