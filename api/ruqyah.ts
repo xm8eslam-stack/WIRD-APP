@@ -160,9 +160,7 @@ async function readBoundedUpstreamText(response: Response): Promise<string | nul
  * numeric Quran coordinates and item IDs are returned.
  */
 export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // The proxy is consumed by WIRD through same-origin requests; do not grant cross-origin access.
   res.setHeader('X-Content-Type-Options', 'nosniff');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
