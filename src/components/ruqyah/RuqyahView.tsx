@@ -329,8 +329,9 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   };
 
   // Calculate section progress
-  const completedCount = currentItems.filter(item => item.type !== 'guideline' && (item.repeatTarget === null ? (counts[item.id] || 0) > 0 : (counts[item.id] || 0) >= item.repeatTarget)).length;
-  const progressPercent = currentItems.length > 0 ? Math.round((completedCount / currentItems.length) * 100) : 0;
+  const trackedItems = currentItems.filter(item => item.type !== 'guideline');
+  const completedCount = trackedItems.filter(item => item.repeatTarget === null ? (counts[item.id] || 0) > 0 : (counts[item.id] || 0) >= item.repeatTarget).length;
+  const progressPercent = trackedItems.length > 0 ? Math.round((completedCount / trackedItems.length) * 100) : 0;
 
   return (
     <div className="space-y-6 pb-12 select-none" dir="rtl">
@@ -462,7 +463,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2 text-xs font-bold text-stone-800 dark:text-stone-200 mb-1">
                     <span>نسبة إنجاز رقية القسم الحالي</span>
-                    <span className="text-stone-500 font-mono tabular-nums">{completedCount} من {currentItems.length} عناصر</span>
+                    <span className="text-stone-500 font-mono tabular-nums">{completedCount} من {trackedItems.length} عناصر</span>
                   </div>
                   <div className="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
                     <div 
