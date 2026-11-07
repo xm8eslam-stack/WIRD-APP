@@ -7,7 +7,7 @@ Last updated: 2026-11-07
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
 - Latest reviewed phase merge: PR #100, merge commit `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d`.
-- Working checkpoint branch: `docs/ruqyah-checkpoint-refresh-20261107`.
+- Working checkpoint branch: `fix/ruqyah-sunni-source-allowlist-20261107`.
 - All nine implementation phases below are merged to `main`.
 
 ## Merged implementation phases
@@ -31,9 +31,9 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 ### Ruqyah content and audio
 1. Quran passages resolve to WIRD's canonical Quran corpus using validated surah/ayah coordinates.
 2. Multi-ayah audio uses ordered global ayah queues; the first-ayah-only playback bug was removed.
-3. Al Furqan reciter catalogue and per-ayah audio are served through a validated server proxy.
-4. Full-program recordings are separate from individual Quran reciter audio.
-5. IslamicAPI provides Arabic instant-category and instant entries through a server-only proxy.
+3. Al Furqan's dynamic reciter catalogue and audio proxy are now blocked pending source/recording/rights verification.
+4. Full-program recording URLs are empty and the playback UI is disabled pending full-content verification.
+5. IslamicAPI is used only as a Quran-reference index through a server-only proxy; only `from-quran` is accepted and displayed Arabic text comes from WIRD's canonical Quran corpus.
 6. Unsupported repetition counts and unsubstantiated disease/magic claims were removed.
 7. Educational topic endpoints remain disabled by default behind server-only `RUQYAH_TOPICS_ENABLED`; do not enable until each article and reference is reviewed.
 
@@ -50,8 +50,8 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 1. Quran and supplication text can be selected and copied.
 2. Counter increments require an explicit button; clicking/selecting text no longer changes progress.
 3. Counter values are bounded; fixed-target actions disable after completion.
-4. Mode/category controls, program audio selectors, progress meter, seek/volume sliders and sleep timer expose accessible states.
-5. Audio switching resets the correct source/timeline, event listeners are cleaned up, and changing reciter stops the old recitation.
+4. Mode/category controls and progress meter expose accessible states; unverified audio controls are visibly disabled.
+5. Audio playback is intentionally disabled until the reciter/source and recording provenance are verified.
 6. API-key setup guidance appears only for an actual missing-key response, not generic network failures.
 
 ### API proxy security
@@ -60,6 +60,22 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 3. Upstream body declared length is checked before reading and streaming is capped at 2 MiB, including chunked responses.
 4. Topic content blocks are type-allowlisted.
 5. Topic and topic-category API endpoints require server-side `RUQYAH_TOPICS_ENABLED=true`; default is disabled.
+6. Third-party Sunnah content is rejected before upstream access; backend accepts only `from-quran`.
+
+## Pending Phase 6 — Sunni source allowlist and audio restriction
+
+Working branch: `fix/ruqyah-sunni-source-allowlist-20261107`
+
+- Backend rejects IslamicAPI `from-sunnah`; only Quran index requests are accepted.
+- API library offers only Quran locator data and renders canonical WIRD Quran text.
+- Removed third-party full-program audio URLs; all reserved audio slots have empty URLs.
+- Disabled Al Furqan dynamic reciter catalogue and audio playback. Its API route fails closed with `503 QURAN_AUDIO_SOURCE_NOT_VERIFIED`; the URL builder throws.
+- Individual verse audio controls and the full-program mode are visibly disabled until the reciter, exact recording, source chain, and permissions are verified.
+- Removed optional guidance/narration without sufficient review; clarified Abu Dawud 5082 as Hasan (al-Albani), Abu Dawud 5088 as Sahih (al-Albani), and Bukhari 2311 as a suspended placement with connected routes.
+- Added `docs/ruqyah/SUNNI_SOURCE_POLICY.md` with the source hierarchy, checked references, blocked-source list, and required review workflow.
+- Added tests for third-party Sunnah rejection, disabled full-program audio, and fail-closed unverified reciter endpoints.
+
+Phase 6 is not merged yet. Wait for exact-head CI before merging.
 
 ## External source and licensing decisions
 
@@ -80,7 +96,7 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
    - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` only after Firestore rules deployment.
    - `ISLAMICAPI_API_KEY` server-side secret only.
    - Leave `RUQYAH_TOPICS_ENABLED` unset/false.
-4. Live two-device sync, production audio, production API, mobile RTL, and keyboard/screen-reader smoke tests have not been executed against the deployed site.
+4. Live two-device sync, production API, mobile RTL, and keyboard/screen-reader smoke tests have not been executed against the deployed site. Audio is intentionally disabled until its source is approved.
 
 ## Required live verification after deployment
 
@@ -89,7 +105,7 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 3. Test offline edit/reconnect, simultaneous edits, stale revision conflict retention, guest local-only behavior, and account switching.
 4. Test version-5 export/import and legacy v4 import preservation.
 5. Test reset on two devices and confirm progress is cleared through the journal.
-6. Test reciter list, one-ayah and multi-ayah audio order, pause/resume, reciter switching, full-program switching, replay after end, seek, volume and sleep timer.
+6. Confirm unverified audio catalogue, individual verse audio, and full-program audio remain disabled; test audio only after a vetted provider and recording assets are approved.
 7. Test API missing key, 429, upstream 5xx, HTML, malformed JSON, oversized/chunked body, and Arabic success.
 8. Test keyboard-only navigation, screen-reader labels, text selection/copy, 320px–390px mobile widths, RTL wrapping, light/dark themes.
 
