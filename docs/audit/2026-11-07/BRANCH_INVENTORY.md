@@ -127,3 +127,10 @@ Current live branch count: **76** (70 original baseline + audit branch + five re
 - `fix/quran-coordinate-validation-20261107` — PR #65 Draft, 13 commits ahead; exact-head Quality Gate run 42342071131 PASS (417/0); Firestore Rules 13/13; Vercel Preview Ready.
 
 Current live branch count: **76** (original 70 + audit branch + five remediation branches).
+
+## Latest additions — live count 77
+
+- `fix/quran-coordinate-validation-20261107` — PR #65 Draft; 13 commits ahead of main; exact-head Quality Gate run 42342171626 PASS (417/0).
+- `fix/cloud-sync-honest-status-20261107` — PR #66 Draft; 3 commits ahead of main; exact-head Quality Gate run 42342306759 PASS. Safety/status correction only; remote replication remains unimplemented.
+
+The original 70-branch baseline and 147-file baseline are unchanged. Current live branch count after all audit and remediation branches: **77**.
