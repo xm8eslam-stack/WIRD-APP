@@ -394,5 +394,5 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #65 Quran coordinate/domain-event validation: exact-head SHA 25d73e93e60bd6cc57102b7cfa643addbaa6ced2 passed CI 417/0; Vercel Preview Ready.
 - All five exact-head CI runs also passed Firestore Rules Emulator 13/13, dependency audit, TypeScript, production build and server smoke.
 - PR #65 exposed and fixed a real target-date planning bug: a block-scoped variable shadowed the validated active-day array. It also rejects invalid dates, invalid coordinates, fractional pace, and no-active-day plans.
-- Current live branch count: 76 (70 original baseline + audit branch + five remediation branches). The audit branch has 42 commits ahead of main, all documentation-only.
+- Current live branch count: 76 (70 original baseline + audit branch + five remediation branches). The audit branch had 53 commits ahead of main at the latest exact comparison, all documentation-only.
 - Main is unchanged. All five PRs remain Draft/unmerged. PR #62–#64 Vercel previews remain blocked by the daily build-rate limit; PR #61 and #65 previews are Ready.
