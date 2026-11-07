@@ -59,7 +59,22 @@ const RATE_LIMIT_MAX = 30;
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 function send(res: any, statusCode: number, payload: unknown) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   return res.status(statusCode).json(payload);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseUpstreamJson(raw: string): unknown | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.startsWith('<')) return null;
+  try {
+    return JSON.parse(trimmed) as unknown;
+  } catch {
+    return null;
+  }
 }
 
 function getClientIp(req: any): string {
@@ -135,9 +150,10 @@ export default async function handler(req: any, res: any) {
         return send(res, 502, { error: 'TAFSIR_SOURCE_UNAVAILABLE' });
       }
 
-      const payload: any = await upstream.json();
-      const rawText = payload?.tafsir?.text;
-      if (typeof rawText !== 'string' || !rawText.trim()) {
+      const payload = parseUpstreamJson(await upstream.text());
+      const tafsirRecord = isRecord(payload) && isRecord(payload.tafsir) ? payload.tafsir : null;
+      const rawText = tafsirRecord?.text;
+      if (!payload || typeof rawText !== 'string' || !rawText.trim()) {
         res.setHeader('Cache-Control', 'no-store');
         return send(res, 404, { error: 'TAFSIR_NOT_FOUND' });
       }
@@ -156,18 +172,22 @@ export default async function handler(req: any, res: any) {
         return send(res, 502, { error: 'TAFSIR_SOURCE_UNAVAILABLE' });
       }
 
-      const payload: any = await upstream.json();
-      if (payload?.book?.id !== bookId || !Array.isArray(payload.content) || payload.content.length > 50) {
+      const payload = parseUpstreamJson(await upstream.text());
+      const bookRecord = isRecord(payload) && isRecord(payload.book) ? payload.book : null;
+      const contentParts = isRecord(payload) && Array.isArray(payload.content) ? payload.content : null;
+      if (!payload || bookRecord?.id !== bookId || !contentParts || contentParts.length > 50) {
         res.setHeader('Cache-Control', 'no-store');
         return send(res, 502, { error: 'INVALID_TAFSIR_SOURCE_RESPONSE' });
       }
 
-      content = payload.content
-        .filter((part: any) => typeof part?.text === 'string' && part.text.trim().length > 0)
-        .map((part: any) => ({
-          text: part.text.slice(0, 20_000),
-          part: Number.isInteger(part.part) ? part.part : undefined,
-          page: Number.isInteger(part.page) ? part.page : undefined,
+      content = contentParts
+        .filter((part): part is Record<string, unknown> =>
+          isRecord(part) && typeof part.text === 'string' && part.text.trim().length > 0
+        )
+        .map(part => ({
+          text: String(part.text).slice(0, 20_000),
+          part: Number.isInteger(part.part) ? Number(part.part) : undefined,
+          page: Number.isInteger(part.page) ? Number(part.page) : undefined,
           ayahs: typeof part.ayahs === 'string' ? part.ayahs.slice(0, 100) : undefined
         }));
 
