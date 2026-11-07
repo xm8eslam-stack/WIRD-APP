@@ -1,5 +1,6 @@
 import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus, LEGACY_REMOTE_STATE_COLLECTIONS } from './cloudSyncCoordinator';
 import { StorageService } from './storageService';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, resetRuqyahProgressCounter } from './ruqyahProgressSchema';
 import type { SuiteResult } from '../tests/runAllTests';
 import { decideRemoteProjection, projectRemoteInboxBatch, type RemoteProjectionDependencies } from './remoteInboxProjector';
 import type { RemoteInboxEvent, RemoteRevisionSnapshot, RemoteProjectionIntent } from './indexedDbSyncJournal';
@@ -229,6 +230,120 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       'A pending test-result mutation for another test ID does not block an independent remote test document');
   } catch (err: any) {
     assert(false, `Independent document projection guard failed: ${err?.message}`);
+  }
+
+  try {
+    const itemId = 'q-fatihah';
+    const localSnapshot = adjustRuqyahProgressCounter(
+      createEmptyRuqyahProgressSnapshot(5000), itemId, 'local-device', 2, 5001
+    );
+    const remoteSnapshot = adjustRuqyahProgressCounter(
+      createEmptyRuqyahProgressSnapshot(5000), itemId, 'remote-device', 3, 5002
+    );
+    const event = makeRemoteEvent({
+      eventId: 'ruqyah-per-device resettable counter-event',
+      mutationId: 'ruqyah-per-device resettable counter-event',
+      collection: 'ruqyahProgress',
+      documentId: 'snapshot',
+      payload: { snapshot: remoteSnapshot },
+      baseRevision: 0,
+      revision: 1,
+      serverSequence: 1
+    });
+    const harness = makeProjectionHarness([event], { pending: ['ruqyahProgress'], empty: [] });
+    const mergeResult: { snapshot?: ReturnType<typeof mergeRuqyahProgressSnapshots> } = {};
+    harness.dependencies.getLocalRuqyahProgressSnapshot = () => localSnapshot;
+    harness.dependencies.finalizeRuqyahProgressMerge = async (intent, applyMergedProjection) => {
+      if (intent.sequence !== 1 || intent.eventId !== event.eventId) return false;
+      mergeResult.snapshot = mergeRuqyahProgressSnapshots(localSnapshot, remoteSnapshot, 5003);
+      const replacementEvent = {
+        ...event,
+        key: 'remote-user:merged-ruqyah-event',
+        eventId: 'merged-ruqyah-event',
+        mutationId: 'merged-ruqyah-event',
+        deviceId: 'local-device',
+        payload: { snapshot: mergeResult.snapshot },
+        baseRevision: 1,
+        revision: 2,
+        serverSequence: 2,
+        fingerprint: 'fedcba9876543210'
+      } as unknown as import('./indexedDbSyncJournal').JournalEvent;
+      if (!applyMergedProjection(replacementEvent)) return false;
+      harness.state.cursor = intent.sequence;
+      harness.state.revisions.set('ruqyahProgress:snapshot', { revision: 1, localSequence: 1 });
+      harness.state.pending.delete('ruqyahProgress');
+      const conflict = harness.state.conflicts.find(item => item.eventId === event.eventId);
+      if (conflict) conflict.status = 'resolved';
+      return true;
+    };
+    const result = await projectRemoteInboxBatch(10, harness.dependencies);
+    assert(result.projectedCount === 1 && harness.state.cursor === 1 &&
+      harness.state.applied === 1 && !harness.state.pending.has('ruqyahProgress') &&
+      mergeResult.snapshot?.counts[itemId] === 5 &&
+      harness.state.conflicts[0]?.status === 'resolved',
+      'Concurrent V2 Ruqyah counters are merged additively and atomically replace stale local pending state');
+  } catch (err: any) {
+    assert(false, `Ruqyah per-device resettable counter projection merge failed: ${err?.message}`);
+  }
+
+  try {
+    const itemId = 'q-fatihah';
+    const localV2 = adjustRuqyahProgressCounter(
+      createEmptyRuqyahProgressSnapshot(5100), itemId, 'local-device', 2, 5101
+    );
+    const remoteLegacy = { schemaVersion: 1 as const, updatedAtMs: 5102, counts: { [itemId]: 3 } };
+    const event = makeRemoteEvent({
+      eventId: 'ruqyah-legacy-conflict',
+      mutationId: 'ruqyah-legacy-conflict',
+      collection: 'ruqyahProgress',
+      documentId: 'snapshot',
+      payload: { snapshot: remoteLegacy },
+      baseRevision: 0,
+      revision: 1,
+      serverSequence: 1
+    });
+    const harness = makeProjectionHarness([event], { pending: ['ruqyahProgress'], empty: [] });
+    harness.dependencies.getLocalRuqyahProgressSnapshot = () => localV2;
+    const result = await projectRemoteInboxBatch(10, harness.dependencies);
+    assert(result.reason === 'blocked_pending_local' && harness.state.cursor === 0 &&
+      harness.state.applied === 0 && harness.state.conflicts[0]?.status === 'open',
+      'Legacy V1 remote snapshots remain archived against V2 local counters instead of being merged with guessed additive semantics');
+  } catch (err: any) {
+    assert(false, `Legacy Ruqyah migration conflict guard failed: ${err?.message}`);
+  }
+
+  try {
+    const itemId = 'q-fatihah';
+    const localLegacyV2 = {
+      schemaVersion: 2 as const,
+      updatedAtMs: 5200,
+      counts: { [itemId]: 4 },
+      components: { [itemId]: { increments: { legacy: 4 }, resetWatermarks: {} } }
+    };
+    const remoteLegacyV2 = {
+      schemaVersion: 2 as const,
+      updatedAtMs: 5201,
+      counts: { [itemId]: 6 },
+      components: { [itemId]: { increments: { legacy: 6 }, resetWatermarks: {} } }
+    };
+    const event = makeRemoteEvent({
+      eventId: 'ruqyah-divergent-legacy-v2',
+      mutationId: 'ruqyah-divergent-legacy-v2',
+      collection: 'ruqyahProgress',
+      documentId: 'snapshot',
+      payload: { snapshot: remoteLegacyV2 },
+      baseRevision: 0,
+      revision: 1,
+      serverSequence: 1
+    });
+    const harness = makeProjectionHarness([event], { pending: ['ruqyahProgress'], empty: [] });
+    harness.dependencies.getLocalRuqyahProgressSnapshot = () => localLegacyV2;
+    const result = await projectRemoteInboxBatch(10, harness.dependencies);
+    assert(result.reason === 'blocked_pending_local' && harness.state.cursor === 0 &&
+      harness.state.applied === 0 && harness.state.conflicts[0]?.status === 'open',
+      'Different migrated legacy baselines must stay archived without creating an unsafe automatic merge intent');
+  } catch (err: any) {
+    assert(false, `Divergent legacy counter baseline guard failed: ${err?.message}`);
   }
 
   try {

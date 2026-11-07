@@ -1,6 +1,7 @@
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from './ruqyahProgressService';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, isValidRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, migrateRuqyahProgressSnapshot, resetRuqyahProgressCounter } from './ruqyahProgressSchema';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);
@@ -56,6 +57,70 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
       try { saveRuqyahProgress(counts, 123458); } catch { rejected = true; }
       assert(rejected, 'Invalid count payload must be rejected');
     }
+  });
+
+  test('Independent device increments merge additively and idempotently', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const base = createEmptyRuqyahProgressSnapshot(200000);
+    const deviceA = adjustRuqyahProgressCounter(base, itemId, 'device-A', 2, 200001);
+    const deviceB = adjustRuqyahProgressCounter(base, itemId, 'device-B', 3, 200002);
+    const merged = mergeRuqyahProgressSnapshots(deviceA, deviceB, 200003);
+    assert(merged.counts[itemId] === 5, 'Two independent increments from the same base must add, not overwrite');
+    assert(isValidRuqyahProgressSnapshot(merged), 'Merged per-device resettable counter snapshot must validate');
+    const repeated = mergeRuqyahProgressSnapshots(merged, merged, 200004);
+    assert(repeated.counts[itemId] === 5, 'Replaying the same remote snapshot must not duplicate increments');
+    const reversed = mergeRuqyahProgressSnapshots(deviceB, deviceA, 200005);
+    assert(reversed.counts[itemId] === 5, 'Merge order must not affect the resulting total');
+  });
+
+  test('Concurrent reset preserves increments that were not observed by the resetting device', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const base = createEmptyRuqyahProgressSnapshot(210000);
+    const local = adjustRuqyahProgressCounter(base, itemId, 'device-A', 4, 210001);
+    const remoteConcurrent = adjustRuqyahProgressCounter(base, itemId, 'device-B', 2, 210002);
+    const resetLocal = resetRuqyahProgressCounter(local, itemId, 'device-A', 210003);
+    const merged = mergeRuqyahProgressSnapshots(resetLocal, remoteConcurrent, 210004);
+    assert(merged.counts[itemId] === 2,
+      'A reset subtracts the local known total but must preserve a concurrent unseen device increment');
+  });
+
+  test('Two devices resetting the same observed baseline converge to zero without double subtraction', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const base = adjustRuqyahProgressCounter(createEmptyRuqyahProgressSnapshot(215000), itemId, 'device-A', 4, 215001);
+    const resetA = resetRuqyahProgressCounter(base, itemId, 'device-A', 215002);
+    const resetB = resetRuqyahProgressCounter(base, itemId, 'device-B', 215003);
+    const merged = mergeRuqyahProgressSnapshots(resetA, resetB, 215004);
+    assert((merged.counts[itemId] ?? 0) === 0,
+      'Concurrent resets of the same observed increments must merge idempotently without producing a negative count');
+  });
+
+  test('Legacy V1 migration shares a single baseline component without double counting', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const legacy = { schemaVersion: 1 as const, updatedAtMs: 220000, counts: { [itemId]: 7 } };
+    const a = migrateRuqyahProgressSnapshot(legacy);
+    const b = migrateRuqyahProgressSnapshot(legacy);
+    const merged = mergeRuqyahProgressSnapshots(a, b, 220001);
+    assert(merged.counts[itemId] === 7, 'The same legacy baseline must not be added twice during migration');
+  });
+
+  test('Divergent V1 migration baselines are rejected instead of guessed or silently undercounted', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const local = migrateRuqyahProgressSnapshot({
+      schemaVersion: 1 as const, updatedAtMs: 225000, counts: { [itemId]: 4 }
+    });
+    const remote = migrateRuqyahProgressSnapshot({
+      schemaVersion: 1 as const, updatedAtMs: 225001, counts: { [itemId]: 6 }
+    });
+    let rejected = false;
+    try { mergeRuqyahProgressSnapshots(local, remote, 225002); } catch { rejected = true; }
+    assert(rejected, 'Different legacy totals may contain overlapping offline increments and must not be merged by max or sum');
+  });
+
+  test('V2 validation rejects a derived total that disagrees with PN components', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const valid = adjustRuqyahProgressCounter(createEmptyRuqyahProgressSnapshot(230000), itemId, 'device-A', 1, 230001);
+    const invalid = { ...valid, counts: { [itemId]: 2 } };
+    assert(!isValidRuqyahProgressSnapshot(invalid), 'A forged or stale aggregate count must fail validation');
   });
 
   test('Reset removes only Ruqyah progress', () => {

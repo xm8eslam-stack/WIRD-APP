@@ -19,6 +19,7 @@ import { IndexedDbSyncJournal, type JournalEvent, type JournalOutboxEntry, type 
 import { CLEAN_INITIAL_PROFILE, StorageService, STORAGE_KEYS } from '../src/services/storageService';
 import { projectRemoteInboxBatch, type RemoteProjectionDependencies } from '../src/services/remoteInboxProjector';
 import { PlanningEngine } from '../src/services/planningEngine';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot } from '../src/services/ruqyahProgressSchema';
 
 class IsolatedMemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -69,7 +70,10 @@ function makeDeviceProjectorDependencies(journal: IndexedDbSyncJournal): RemoteP
     getRemoteProjectionIntent: () => journal.getRemoteProjectionIntent(),
     prepareRemoteProjection: intent => journal.prepareRemoteProjection(intent),
     finalizeRemoteProjection: (intent, applyProjection) =>
-      journal.finalizeRemoteProjection(intent, applyProjection)
+      journal.finalizeRemoteProjection(intent, applyProjection),
+    getLocalRuqyahProgressSnapshot: () => StorageService.getRuqyahProgressSnapshot(),
+    finalizeRuqyahProgressMerge: (intent, applyMergedProjection) =>
+      journal.finalizeRuqyahProgressMerge(intent, applyMergedProjection)
   };
 }
 
@@ -186,12 +190,10 @@ try {
     await assertSucceeds(getDoc(aliceProfile));
   });
 
-  await test('Verified owner can write the isolated Ruqyah progress collection', async () => {
-    const snapshot = {
-      schemaVersion: 1,
-      updatedAtMs: 1_799_000_000_050,
-      counts: { 'q-fatiha': 7, 'dua-pain': 3 }
-    };
+  await test('Verified owner can write V2 per-device resettable counter Ruqyah progress; legacy V1 writes are denied', async () => {
+    let snapshot = createEmptyRuqyahProgressSnapshot(1_799_000_000_050);
+    snapshot = adjustRuqyahProgressCounter(snapshot, 'q-fatiha', 'test-device-01', 7, 1_799_000_000_051);
+    snapshot = adjustRuqyahProgressCounter(snapshot, 'dua-pain', 'test-device-01', 3, 1_799_000_000_052);
     const result = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
       uid: 'alice',
       collection: 'ruqyahProgress',
@@ -208,7 +210,47 @@ try {
     const stored = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
     if (result.status !== 'written' || result.revision !== 1 ||
         JSON.stringify(stored.data()?.payload?.snapshot?.counts) !== JSON.stringify(snapshot.counts)) {
-      throw new Error('Ruqyah progress did not pass the same owner-scoped revisioned write contract.');
+      throw new Error('V2 Ruqyah progress did not pass the owner-scoped revisioned write contract.');
+    }
+
+    let legacyRejected = false;
+    try {
+      const legacy = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        uid: 'alice',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: 'mutation-ruqyah-progress-v1-rejected',
+        eventId: 'mutation-ruqyah-progress-v1-rejected',
+        deviceId: 'old-client-device',
+        clientUpdatedAtMs: snapshot.updatedAtMs + 1,
+        baseRevision: 1,
+        payload: { snapshot: { schemaVersion: 1, updatedAtMs: snapshot.updatedAtMs + 1, counts: { 'q-fatiha': 99 } } }
+      });
+      legacyRejected = legacy.status !== 'written';
+    } catch { legacyRejected = true; }
+    let malformedRejected = false;
+    try {
+      const malformed = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        uid: 'alice',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: 'mutation-ruqyah-progress-v2-malformed',
+        eventId: 'mutation-ruqyah-progress-v2-malformed',
+        deviceId: 'test-device-01',
+        clientUpdatedAtMs: snapshot.updatedAtMs + 2,
+        baseRevision: 1,
+        payload: { snapshot: { schemaVersion: 2, updatedAtMs: snapshot.updatedAtMs + 2, counts: {}, components: [] } }
+      });
+      malformedRejected = malformed.status !== 'written';
+    } catch { malformedRejected = true; }
+    const unchanged = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
+    if (!legacyRejected || !malformedRejected || unchanged.data()?.revision !== 1 ||
+        unchanged.data()?.payload?.snapshot?.counts?.['q-fatiha'] !== 7) {
+      throw new Error('Legacy or malformed V2 clients must not overwrite the valid per-device resettable counter snapshot.');
     }
   });
 
@@ -829,6 +871,9 @@ try {
         payload: mutationA.mutation.payload
       });
       await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, accepted.revision, 1_799_000_100_003);
+      const acceptedEvent = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
+      )));
       let conflictCode = '';
       try {
         await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
@@ -851,9 +896,6 @@ try {
         throw new Error('The stale offline write was not rejected as an explicit revision conflict: ' + conflictCode);
       }
 
-      const acceptedEvent = readRemoteEvent(await getDoc(doc(
-        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
-      )));
       await journalB.importRemotePage([acceptedEvent]);
       activateIsolatedDevice(localStorageB, uid);
       const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
@@ -905,11 +947,10 @@ try {
         email: 'ruqyah-sync@example.com', email_verified: true, device: 'ruqyah-b'
       }).firestore();
       activateIsolatedDevice(localStorageA, uid);
-      const progress = {
-        schemaVersion: 1 as const,
-        updatedAtMs: 1_799_000_200_001,
-        counts: { 'q-fatiha': 9, 'dua-pain': 7 }
-      };
+      const deviceAId = (await journalA.getSnapshot()).deviceId;
+      let progress = createEmptyRuqyahProgressSnapshot(1_799_000_200_001);
+      progress = adjustRuqyahProgressCounter(progress, 'q-fatiha', deviceAId, 9, 1_799_000_200_002);
+      progress = adjustRuqyahProgressCounter(progress, 'dua-pain', deviceAId, 7, 1_799_000_200_003);
       const queued = await journalA.enqueue({
         mutationId: 'ruqyah-device-a-001',
         collection: 'ruqyahProgress',
@@ -956,11 +997,17 @@ try {
         throw new Error('Device B did not converge on Device A Ruqyah progress through the cloud journal.');
       }
       // The second device now edits the same snapshot using the exact remote revision.
-      const nextProgress = {
-        schemaVersion: 1 as const,
-        updatedAtMs: progress.updatedAtMs + 10,
-        counts: { 'q-fatiha': 10, 'dua-pain': 7 }
-      };
+      if (!received || received.schemaVersion !== 2) {
+        throw new Error('Device B must receive the V2 per-device resettable counter snapshot before incrementing.');
+      }
+      const deviceBId = (await journalB.getSnapshot()).deviceId;
+      const nextProgress = adjustRuqyahProgressCounter(
+        received,
+        'q-fatiha',
+        deviceBId,
+        1,
+        progress.updatedAtMs + 10
+      );
       const queuedB = await journalB.enqueue({
         mutationId: 'ruqyah-device-b-001',
         collection: 'ruqyahProgress',
@@ -1010,7 +1057,7 @@ try {
   });
 
 
-  await test('Concurrent offline Ruqyah increments preserve both snapshots and block stale projection', async () => {
+  await test('Concurrent offline Ruqyah increments converge through per-device resettable counter merge without losing either device', async () => {
     const uid = 'ruqyah-offline-increment-conflict';
     const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
@@ -1032,36 +1079,46 @@ try {
       const firestoreB = testEnv.authenticatedContext(uid, {
         email: 'ruqyah-offline@example.com', email_verified: true, device: 'ruqyah-offline-b'
       }).firestore();
-      const baseProgress = {
-        schemaVersion: 1 as const,
-        updatedAtMs: 1_799_000_300_000,
-        counts: { 'q-fatiha': 5 }
-      };
+
       activateIsolatedDevice(localStorageA, uid);
-      if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
-        throw new Error('Device A could not seed the shared offline baseline.');
+      const deviceAId = (await journalA.getSnapshot()).deviceId;
+      const baseProgress = adjustRuqyahProgressCounter(
+        createEmptyRuqyahProgressSnapshot(1_799_000_300_000),
+        'q-fatiha',
+        'legacy',
+        5,
+        1_799_000_300_000
+      );
+      const nextA = adjustRuqyahProgressCounter(
+        baseProgress, 'q-fatiha', deviceAId, 1, 1_799_000_300_001
+      );
+      if (!StorageService.saveRuqyahProgressSnapshot(nextA)) {
+        throw new Error('Device A could not seed its V2 per-device resettable counter snapshot.');
       }
-      const nextA = { ...baseProgress, updatedAtMs: baseProgress.updatedAtMs + 1, counts: { 'q-fatiha': 6 } };
       const mutationA = await journalA.enqueue({
         mutationId: 'ruqyah-offline-a-001', collection: 'ruqyahProgress', documentId: 'snapshot',
         payload: { snapshot: nextA }, nowMs: nextA.updatedAtMs
       });
-      if (mutationA.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
-        throw new Error('Device A could not journal its offline increment.');
+      if (mutationA.status !== 'queued' || mutationA.mutation.baseRevision !== 0 ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
+        throw new Error('Device A could not journal its offline per-device resettable counter increment.');
       }
 
       activateIsolatedDevice(localStorageB, uid);
+      const deviceBId = (await journalB.getSnapshot()).deviceId;
       if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
-        throw new Error('Device B could not seed the same offline baseline.');
+        throw new Error('Device B could not seed the same V2 per-device resettable counter baseline.');
       }
-      const nextB = { ...baseProgress, updatedAtMs: baseProgress.updatedAtMs + 2, counts: { 'q-fatiha': 6 } };
+      const nextB = adjustRuqyahProgressCounter(
+        baseProgress, 'q-fatiha', deviceBId, 1, 1_799_000_300_002
+      );
       const mutationB = await journalB.enqueue({
         mutationId: 'ruqyah-offline-b-001', collection: 'ruqyahProgress', documentId: 'snapshot',
         payload: { snapshot: nextB }, nowMs: nextB.updatedAtMs
       });
-      if (mutationB.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation)) ||
-          mutationA.mutation.baseRevision !== 0 || mutationB.mutation.baseRevision !== 0) {
-        throw new Error('Both devices must persist independent increments from the same remote base revision.');
+      if (mutationB.status !== 'queued' || mutationB.mutation.baseRevision !== 0 ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation))) {
+        throw new Error('Device B could not journal its independent offline per-device resettable counter increment.');
       }
 
       const acceptedA = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
@@ -1070,7 +1127,19 @@ try {
         deviceId: mutationA.mutation.deviceId, clientUpdatedAtMs: mutationA.mutation.clientUpdatedAtMs,
         baseRevision: mutationA.mutation.baseRevision, payload: mutationA.mutation.payload
       });
+      if (acceptedA.status !== 'written' || acceptedA.revision !== 1) {
+        throw new Error('Device A did not publish the first V2 counter snapshot.');
+      }
       await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, acceptedA.revision, nextA.updatedAtMs + 1);
+      const acceptedEventA = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
+      )));
+      await journalA.importRemotePage([acceptedEventA]);
+      activateIsolatedDevice(localStorageA, uid);
+      const selfProjectionA = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      if (selfProjectionA.projectedCount !== 1 || await journalA.getRemoteProjectionCursor() !== 1) {
+        throw new Error('Device A did not advance its remote projection cursor past its own acknowledged event.');
+      }
 
       let conflictCode = '';
       try {
@@ -1084,7 +1153,7 @@ try {
         conflictCode = error instanceof Error ? error.message : String(error);
       }
       if (conflictCode !== 'REMOTE_REVISION_CONFLICT') {
-        throw new Error('The stale offline Ruqyah increment must be rejected as a revision conflict: ' + conflictCode);
+        throw new Error('The stale offline Ruqyah mutation must first be rejected by revision CAS: ' + conflictCode);
       }
 
       const acceptedEvent = readRemoteEvent(await getDoc(doc(
@@ -1092,20 +1161,47 @@ try {
       )));
       await journalB.importRemotePage([acceptedEvent]);
       activateIsolatedDevice(localStorageB, uid);
-      const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
-      const retainedOutbox = await journalB.listReady(1_800_000_000_000, 10);
-      const retainedInbox = await journalB.listRemoteInboxAfter(0, 10);
-      const conflicts = await journalB.listProjectionConflicts(10);
-      const remote = await getDoc(doc(firestoreA, 'users', uid, 'ruqyahProgress', 'snapshot'));
-      const local = StorageService.getRuqyahProgressSnapshot();
-      if (blocked.reason !== 'blocked_pending_local' || blocked.blockedAtSequence !== 1 ||
-          await journalB.getRemoteProjectionCursor() !== 0 ||
-          retainedOutbox.length !== 1 || retainedOutbox[0].mutationId !== mutationB.mutation.mutationId ||
-          retainedInbox.length !== 1 || conflicts.length !== 1 ||
-          conflicts[0]?.localSnapshot[STORAGE_KEYS.RUQYAH_PROGRESS] === undefined ||
-          !remote.exists() || remote.data().payload.snapshot.counts['q-fatiha'] !== 6 ||
-          local?.counts['q-fatiha'] !== 6) {
-        throw new Error('Concurrent offline increments must preserve local outbox, remote event, both snapshots, and cursor without false convergence.');
+      const merged = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      const mergedLocal = StorageService.getRuqyahProgressSnapshot();
+      const replacementQueue = await journalB.listReady(1_800_000_000_000, 10);
+      if (merged.projectedCount !== 1 || merged.reason ||
+          await journalB.getRemoteProjectionCursor() !== 1 ||
+          replacementQueue.length !== 1 ||
+          replacementQueue[0].mutationId === mutationB.mutation.mutationId ||
+          replacementQueue[0].baseRevision !== 1 ||
+          mergedLocal?.schemaVersion !== 2 || mergedLocal.counts['q-fatiha'] !== 7) {
+        throw new Error('Device B did not automatically merge the two device components into a revision-1 replacement mutation.');
+      }
+
+      const mergedMutation = replacementQueue[0];
+      const acceptedB = await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
+        uid, collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert', schemaVersion: 1,
+        mutationId: mergedMutation.mutationId, eventId: mergedMutation.eventId,
+        deviceId: mergedMutation.deviceId, clientUpdatedAtMs: mergedMutation.clientUpdatedAtMs,
+        baseRevision: mergedMutation.baseRevision, payload: mergedMutation.payload
+      });
+      if (acceptedB.status !== 'written' || acceptedB.revision !== 2) {
+        throw new Error('The merged per-device resettable counter replacement mutation was not accepted at revision 2.');
+      }
+      await journalB.acknowledgeRemoteMutation(mergedMutation.mutationId, acceptedB.revision, Date.now() + 1);
+
+      const mergedEvent = readRemoteEvent(await getDoc(doc(
+        firestoreB, 'users', uid, 'events', mergedMutation.eventId
+      )));
+      await journalA.importRemotePage([mergedEvent]);
+      activateIsolatedDevice(localStorageA, uid);
+      const projectedA = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      const finalA = StorageService.getRuqyahProgressSnapshot();
+      const finalB = await getDoc(doc(firestoreB, 'users', uid, 'ruqyahProgress', 'snapshot'));
+      const openConflictsB = await journalB.listProjectionConflicts(10);
+      if (projectedA.projectedCount !== 1 || projectedA.reason ||
+          finalA?.schemaVersion !== 2 || finalA.counts['q-fatiha'] !== 7 ||
+          mergedLocal?.counts['q-fatiha'] !== 7 ||
+          finalB.data()?.payload?.snapshot?.counts?.['q-fatiha'] !== 7 ||
+          await journalA.getRemoteProjectionCursor() !== 2 ||
+          openConflictsB.length !== 0 ||
+          (await journalB.getSnapshot()).pendingCount !== 0) {
+        throw new Error('Both devices and Firestore did not converge on the additive total with no pending conflict.');
       }
     } finally {
       journalA.close();
@@ -1118,7 +1214,6 @@ try {
       else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
     }
   });
-
 
   await test('Two-device revisioned sync projects every user data collection', async () => {
     const uid = 'multi-collection-sync-matrix';
@@ -1210,8 +1305,11 @@ try {
         date: '2026-11-06', memorizedAyahsCount: 1, reviewedPagesCount: 2,
         minutesSpent: 9, completedTasks: ['مراجعة سورة البقرة']
       };
-      const ruqyahA = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_700_000, counts: { 'q-fatiha': 3, 'dua-pain': 2 } };
-      const ruqyahB = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_701_100, counts: { 'q-fatiha': 4, 'dua-pain': 5 } };
+      let ruqyahA = createEmptyRuqyahProgressSnapshot(1_799_000_700_000);
+      ruqyahA = adjustRuqyahProgressCounter(ruqyahA, 'q-fatiha', 'matrix-device-a', 3, 1_799_000_700_001);
+      ruqyahA = adjustRuqyahProgressCounter(ruqyahA, 'dua-pain', 'matrix-device-a', 2, 1_799_000_700_002);
+      let ruqyahB = adjustRuqyahProgressCounter(ruqyahA, 'q-fatiha', 'matrix-device-b', 1, 1_799_000_701_100);
+      ruqyahB = adjustRuqyahProgressCounter(ruqyahB, 'dua-pain', 'matrix-device-b', 3, 1_799_000_701_101);
 
       const collections = [
         { collection: 'profile', payload: { profile: profileA }, reversePayload: { profile: profileB }, expected: profileA, reverseExpected: profileB, key: STORAGE_KEYS.PROFILE, kind: 'object' },

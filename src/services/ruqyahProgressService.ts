@@ -1,13 +1,14 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
-import { isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import { isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import { LocalSyncOutbox } from './localSyncOutbox';
 
 const STORAGE_KEY = STORAGE_KEYS.RUQYAH_PROGRESS;
 export type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 
 export type RuqyahProgressLoadResult =
   | { status: 'empty'; counts: Record<string, number> }
-  | { status: 'loaded'; counts: Record<string, number>; updatedAtMs: number }
+  | { status: 'loaded'; counts: Record<string, number>; updatedAtMs: number; snapshot: RuqyahProgressSnapshot }
   | { status: 'corrupt'; counts: Record<string, number> };
 
 /** Load progress from WIRD's current UID-scoped storage namespace. */
@@ -22,7 +23,8 @@ export function loadRuqyahProgress(): RuqyahProgressLoadResult {
     return {
       status: 'loaded',
       counts: parsed.counts,
-      updatedAtMs: Number(parsed.updatedAtMs)
+      updatedAtMs: Number(parsed.updatedAtMs),
+      snapshot: parsed
     };
   } catch {
     // Preserve the original bytes for recovery; never overwrite malformed state.
@@ -30,16 +32,31 @@ export function loadRuqyahProgress(): RuqyahProgressLoadResult {
   }
 }
 
-/** Persist progress atomically through the same account-scoped storage adapter as WIRD. */
+/** Stable per-account device identity used by the per-device resettable counter; guests remain local-only. */
+export async function getRuqyahProgressDeviceId(expectedStorageScope?: string): Promise<string> {
+  const scope = StorageService.getStorageScope();
+  if (expectedStorageScope && expectedStorageScope !== scope) {
+    throw new Error('تغير نطاق التخزين أثناء تحديد جهاز تقدم الرقية.');
+  }
+  if (!scope.startsWith('user:')) return 'guest-local';
+  const snapshot = await LocalSyncOutbox.getSnapshot();
+  if (StorageService.getStorageScope() !== scope || snapshot.uid !== scope.slice('user:'.length) ||
+      !snapshot.deviceId || snapshot.deviceId.length > 128) {
+    throw new Error('تعذر التحقق من هوية جهاز المزامنة للحساب الحالي.');
+  }
+  return snapshot.deviceId;
+}
+
+/** @deprecated Legacy local-only adapter. New interactive writes must use the device-aware journaled snapshot path. */
 export function saveRuqyahProgress(counts: Record<string, number>, nowMs = Date.now()): void {
   if (!isValidRuqyahProgressCounts(counts) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
     throw new Error('بيانات تقدم الرقية غير صالحة.');
   }
-  const snapshot: RuqyahProgressSnapshot = {
+  const snapshot: RuqyahProgressSnapshot = migrateRuqyahProgressSnapshot({
     schemaVersion: 1,
     updatedAtMs: nowMs,
     counts: { ...counts }
-  };
+  }, nowMs);
   const serialized = JSON.stringify(snapshot);
   if (!StorageService.saveRuqyahProgressSnapshot(snapshot) ||
       !StorageService.verifyRawItem(STORAGE_KEY, serialized)) {

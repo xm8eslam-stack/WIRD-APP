@@ -471,6 +471,14 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().finalizeRemoteProjection(intent, applyProjection);
   },
 
+  async finalizeRuqyahProgressMerge(
+    intent: Parameters<ReturnType<typeof getIndexedDbJournal>['finalizeRuqyahProgressMerge']>[0],
+    applyMergedProjection: Parameters<ReturnType<typeof getIndexedDbJournal>['finalizeRuqyahProgressMerge']>[1]
+  ): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().finalizeRuqyahProgressMerge(intent, applyMergedProjection);
+  },
+
   async setRemoteRevisionFromRemote(collection: SyncCollection, documentId: string, revision: number): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().setRemoteRevisionFromRemote(collection, documentId, revision);

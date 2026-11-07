@@ -1,5 +1,6 @@
 import { createSecureId } from './secureId';
 import { StorageService } from './storageService';
+import { isValidRuqyahProgressSnapshot, isValidRuqyahProgressSnapshotV2, mergeRuqyahProgressSnapshots } from './ruqyahProgressSchema';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
@@ -800,7 +801,8 @@ export class IndexedDbSyncJournal {
       let acknowledgedRecord: AcknowledgementRecord | undefined;
       let deviceMetadata: DeviceMetadata | undefined;
       let pendingCount = 0;
-      let readsRemaining = 4;
+      let sameDocumentPending: JournalOutboxEntry[] = [];
+      let readsRemaining = 5;
       let result: JournalEnqueueResult | undefined;
       let failure: Error | undefined;
       const finishRead = () => {
@@ -823,8 +825,34 @@ export class IndexedDbSyncJournal {
           }
           return;
         }
+        const isRuqyahV2Mutation = input.collection === 'ruqyahProgress' &&
+          operation === 'upsert' &&
+          isRecord(payload.snapshot) &&
+          isValidRuqyahProgressSnapshotV2(payload.snapshot);
+        if (isRuqyahV2Mutation && sameDocumentPending.some(item =>
+          item.operation !== 'upsert' ||
+          !isRecord(item.payload) ||
+          !isRecord(item.payload.snapshot) ||
+          !isValidRuqyahProgressSnapshot(item.payload.snapshot)
+        )) {
+          failure = new Error('توجد عملية رقية قديمة أو غير صالحة لا يمكن إثبات احتوائها في لقطة V2؛ احتفظنا بها ولم نتابع الترحيل.');
+          transaction.abort();
+          return;
+        }
+        const legacyRuqyahPending = isRuqyahV2Mutation
+          ? sameDocumentPending.filter(item =>
+              item.operation === 'upsert' &&
+              isRecord(item.payload) &&
+              isRecord(item.payload.snapshot) &&
+              item.payload.snapshot.schemaVersion === 1 &&
+              isValidRuqyahProgressSnapshot(item.payload.snapshot)
+            )
+          : [];
+        for (const legacyMutation of legacyRuqyahPending) outbox.delete(legacyMutation.key);
+        pendingCount = Math.max(0, pendingCount - legacyRuqyahPending.length);
         if (pendingCount >= MAX_PENDING_MUTATIONS) {
           failure = new Error('وصل صندوق المزامنة إلى سعته الآمنة؛ لم نحذف أي عملية معلقة.');
+          transaction.abort();
           return;
         }
 
@@ -900,6 +928,9 @@ export class IndexedDbSyncJournal {
       metadataRequest.onsuccess = () => { deviceMetadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
       const countRequest = outbox.index('uid').count(IDBKeyRange.only(uid));
       countRequest.onsuccess = () => { pendingCount = countRequest.result; finishRead(); };
+      const sameDocumentRequest = outbox.index('uidCollectionDocument')
+        .getAll(IDBKeyRange.only([uid, input.collection, input.documentId]));
+      sameDocumentRequest.onsuccess = () => { sameDocumentPending = sameDocumentRequest.result as JournalOutboxEntry[]; finishRead(); };
 
       transaction.oncomplete = () => {
         if (failure) reject(failure);
@@ -1324,7 +1355,8 @@ export class IndexedDbSyncJournal {
             currentIntent.documentId === intent.documentId &&
             currentIntent.revision === intent.revision &&
             Array.isArray(currentIntent.initializedCollections) &&
-            currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+            Array.isArray(currentIntent.initializedCollections) &&
+          currentIntent.initializedCollections.length === intent.initializedCollections.length &&
             currentIntent.initializedCollections.every((collection, index) =>
               collection === intent.initializedCollections[index]
             );
@@ -1360,6 +1392,275 @@ export class IndexedDbSyncJournal {
       };
       transaction.oncomplete = () => resolve(accepted);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection intent transaction aborted.')));
+    });
+  }
+
+  /**
+   * Converge two V2 Ruqyah per-device resettable counter snapshots when a remote event arrives
+   * while this device has local pending counter writes. The archive is created
+   * by the projector before this method is called. Old pending writes are
+   * atomically replaced by one merged snapshot mutation based on the remote
+   * revision; the local projection is updated inside the same transaction.
+   */
+  async finalizeRuqyahProgressMerge(
+    intent: RemoteProjectionIntent,
+    applyMergedProjection: (event: JournalEvent) => boolean
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (intent.collection !== 'ruqyahProgress' || intent.documentId !== 'snapshot' ||
+        !Number.isSafeInteger(intent.sequence) || intent.sequence < 1 ||
+        !validMutationId(intent.eventId) || !Number.isSafeInteger(intent.revision) || intent.revision < 1 ||
+        !Array.isArray(intent.initializedCollections)) {
+      throw new Error('بيانات دمج عدادات الرقية غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_EVENTS, STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_OUTBOX, STORE_CONFLICT_RESOLUTION_INTENTS],
+        'readwrite'
+      );
+      const events = transaction.objectStore(STORE_EVENTS);
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const resolutionIntents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
+      const key = uid + ':' + intent.eventId;
+      const metadataRequest = metadataStore.get(uid);
+      const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
+      const conflictRequest = conflicts.get(key);
+      const resolutionIntentRequest = resolutionIntents.get(key);
+      const pendingRequest = outbox.index('uid').getAll(IDBKeyRange.only(uid));
+      let metadata: DeviceMetadata | undefined;
+      let event: RemoteInboxEvent | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
+      let resolutionIntent: ConflictResolutionIntent | undefined;
+      let allPending: JournalOutboxEntry[] = [];
+      let pending: JournalOutboxEntry[] = [];
+      let readsRemaining = 5;
+      let merged = false;
+      let failure: Error | undefined;
+      const finish = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const currentIntent = metadata?.remoteProjectionIntent;
+        const cursor = metadata?.remoteProjectionCursor ?? 0;
+        const matchingIntent = !!currentIntent &&
+          currentIntent.sequence === intent.sequence &&
+          currentIntent.eventId === intent.eventId &&
+          currentIntent.collection === intent.collection &&
+          currentIntent.documentId === intent.documentId &&
+          currentIntent.revision === intent.revision &&
+          Array.isArray(currentIntent.initializedCollections) &&
+          currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+          currentIntent.initializedCollections.every((collection, index) =>
+            collection === intent.initializedCollections[index]
+          );
+        if (!metadata || !matchingIntent || cursor + 1 !== intent.sequence ||
+            !event || event.eventId !== intent.eventId ||
+            event.serverSequence !== intent.sequence ||
+            event.collection !== 'ruqyahProgress' ||
+            event.documentId !== 'snapshot' ||
+            event.revision !== intent.revision ||
+            !Number.isSafeInteger(event.baseRevision) || event.baseRevision + 1 !== event.revision ||
+            event.operation !== 'upsert' ||
+            !isRecord(event.payload) ||
+            !isValidRuqyahProgressSnapshotV2(event.payload.snapshot) ||
+            !conflict || conflict.status !== 'open' ||
+            conflict.event.fingerprint !== event.fingerprint ||
+            conflict.event.serverSequence !== event.serverSequence ||
+            conflict.event.revision !== event.revision ||
+            resolutionIntent) {
+          failure = new Error('تغيرت هوية حدث الرقية أو نية الإسقاط أو سجل التعارض؛ لم ندمج أي نسخة.');
+          transaction.abort();
+          return;
+        }
+        if (StorageService.getStorageScope() !== 'user:' + uid) {
+          failure = new Error('تغير حساب التخزين أثناء دمج عدادات الرقية؛ أوقفنا العملية لحماية الحساب الآخر.');
+          transaction.abort();
+          return;
+        }
+        const localSnapshot = StorageService.getRuqyahProgressSnapshot();
+        if (!localSnapshot || !isValidRuqyahProgressSnapshotV2(localSnapshot)) {
+          failure = new Error('النسخة المحلية ليست من مخطط عدادات الرقية المتزامن؛ أبقينا التعارض محفوظاً دون دمج تخميني.');
+          transaction.abort();
+          return;
+        }
+        const remoteSnapshot = event.payload.snapshot;
+        let mergedSnapshot;
+        try {
+          mergedSnapshot = mergeRuqyahProgressSnapshots(
+            localSnapshot,
+            remoteSnapshot,
+            Math.max(localSnapshot.updatedAtMs, remoteSnapshot.updatedAtMs)
+          );
+        } catch (error) {
+          failure = normalizeError(error);
+          transaction.abort();
+          return;
+        }
+        const rawLocalSnapshot = StorageService.getLocalProjectionSnapshot('ruqyahProgress');
+        const isOriginalSnapshot =
+          fingerprintConflictSnapshot(rawLocalSnapshot) === fingerprintConflictSnapshot(conflict.localSnapshot);
+        const isAlreadyMerged = StorageService.matchesJournalProjection(
+          'ruqyahProgress',
+          { snapshot: mergedSnapshot }
+        );
+        if (!isOriginalSnapshot && !isAlreadyMerged) {
+          failure = new Error('تغيرت بيانات الرقية المحلية خارج سجل المزامنة؛ احتفظنا بالنسختين ورفضنا الدمج.');
+          transaction.abort();
+          return;
+        }
+
+        const archivedById = new Map(
+          (conflict.localMutations || []).map(item => [item.mutationId, item.fingerprint])
+        );
+        if (pending.some(item =>
+          item.operation !== 'upsert' ||
+          archivedById.get(item.mutationId) !== item.fingerprint
+        )) {
+          failure = new Error('ظهرت عملية رقية محلية غير محفوظة في أرشيف التعارض؛ لم نحذفها أو ندمجها تلقائياً.');
+          transaction.abort();
+          return;
+        }
+        if (pending.length < 1 || pending.length > MAX_PENDING_MUTATIONS) {
+          failure = new Error('مجموعة عمليات الرقية المحلية لا تطابق حدود الدمج الآمنة.');
+          transaction.abort();
+          return;
+        }
+        const payload: Record<string, unknown> = { snapshot: mergedSnapshot };
+        const payloadJson = stableStringify(payload);
+        if (byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES ||
+            allPending.length - pending.length + 1 > MAX_PENDING_MUTATIONS) {
+          failure = new Error('حمولة أو سعة دمج عدادات الرقية تجاوزت الحدود الآمنة.');
+          transaction.abort();
+          return;
+        }
+
+        const revisionKey = 'ruqyahProgress:snapshot';
+        const remoteRevisions = { ...(metadata.remoteRevisions || {}) };
+        const previousRevision = remoteRevisions[revisionKey];
+        if ((previousRevision && (
+              !Number.isSafeInteger(previousRevision.revision) || previousRevision.revision < 0 ||
+              previousRevision.revision > event.revision
+            )) ||
+            (!previousRevision && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS)) {
+          failure = new Error('إصدار الرقية المحلي أحدث من الحدث السحابي أو تجاوز سجل الإصدارات سعته.');
+          transaction.abort();
+          return;
+        }
+        const sequence = metadata.nextSequence;
+        const highestPendingSequence = allPending.reduce((highest, item) => Math.max(highest, item.sequence), 0);
+        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER ||
+            allPending.some(item => !Number.isSafeInteger(item.sequence) || item.sequence < 1) ||
+            !metadata.deviceId || sequence <= highestPendingSequence ||
+            (previousRevision && (
+              !Number.isSafeInteger(previousRevision.revision) || previousRevision.revision < 0 ||
+              previousRevision.revision > event.revision ||
+              !Number.isSafeInteger(previousRevision.localSequence) || previousRevision.localSequence < 0 ||
+              sequence <= previousRevision.localSequence
+            ))) {
+          failure = new Error('تسلسل عمليات الرقية غير صالح؛ لم ننشئ عملية دمج.');
+          transaction.abort();
+          return;
+        }
+        const mutationId = createSecureId();
+        if (!validMutationId(mutationId)) {
+          failure = new Error('تعذر إنشاء معرّف آمن لعملية دمج الرقية.');
+          transaction.abort();
+          return;
+        }
+        const nowMs = Date.now();
+        const fingerprint = fingerprintMutation('ruqyahProgress', 'snapshot', 'upsert', payload);
+        const mutationKey = uid + ':' + mutationId;
+        const replacement: JournalOutboxEntry = {
+          key: mutationKey,
+          uid,
+          eventId: mutationId,
+          mutationId,
+          collection: 'ruqyahProgress',
+          documentId: 'snapshot',
+          operation: 'upsert',
+          schemaVersion: 1,
+          clientUpdatedAtMs: nowMs,
+          deviceId: metadata.deviceId,
+          payload,
+          queuedAtMs: nowMs,
+          attemptCount: 0,
+          nextAttemptAtMs: 0,
+          fingerprint,
+          sequence,
+          baseRevision: event.revision
+        };
+        const replacementEvent: JournalEvent = {
+          key: mutationKey,
+          uid,
+          eventId: mutationId,
+          mutationId,
+          eventType: 'domain-mutation',
+          collection: 'ruqyahProgress',
+          documentId: 'snapshot',
+          operation: 'upsert',
+          schemaVersion: 1,
+          clientUpdatedAtMs: nowMs,
+          createdAtMs: nowMs,
+          deviceId: metadata.deviceId,
+          payload,
+          fingerprint,
+          sequence,
+          baseRevision: event.revision,
+          projectionRequired: true
+        };
+        try {
+          if (!applyMergedProjection(replacementEvent)) {
+            failure = new Error('تعذر تطبيق عدادات الرقية المدمجة محلياً؛ بقيت نية الإسقاط والحدث محفوظين للتعافي.');
+            transaction.abort();
+            return;
+          }
+        } catch (error) {
+          failure = normalizeError(error);
+          transaction.abort();
+          return;
+        }
+        for (const item of pending) outbox.delete(item.key);
+        events.add(replacementEvent);
+        outbox.add(replacement);
+        remoteRevisions[revisionKey] = {
+          revision: event.revision,
+          localSequence: Math.max(previousRevision?.localSequence ?? 0, sequence - 1)
+        };
+        const initialized = new Set(metadata.remoteInitializedCollections || []);
+        initialized.add('ruqyahProgress');
+        metadataStore.put({
+          ...metadata,
+          nextSequence: sequence + 1,
+          lastProjectedSequence: Math.max(metadata.lastProjectedSequence ?? 0, sequence),
+          remoteRevisions,
+          remoteInitializedCollections: [...initialized],
+          remoteProjectionCursor: event.serverSequence,
+          remoteProjectionIntent: undefined
+        } satisfies DeviceMetadata);
+        inbox.delete(event.key);
+        conflicts.put({
+          ...conflict,
+          status: 'resolved',
+          resolution: 'reconciled',
+          resolvedAtMs: nowMs,
+          updatedAtMs: nowMs
+        } satisfies RemoteProjectionConflict);
+        merged = true;
+      };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finish(); };
+      eventRequest.onsuccess = () => { event = eventRequest.result as RemoteInboxEvent | undefined; finish(); };
+      conflictRequest.onsuccess = () => { conflict = conflictRequest.result as RemoteProjectionConflict | undefined; finish(); };
+      resolutionIntentRequest.onsuccess = () => { resolutionIntent = resolutionIntentRequest.result as ConflictResolutionIntent | undefined; finish(); };
+      pendingRequest.onsuccess = () => {
+        allPending = pendingRequest.result as JournalOutboxEntry[];
+        pending = allPending.filter(item => item.collection === 'ruqyahProgress' && item.documentId === 'snapshot');
+        finish();
+      };
+      transaction.oncomplete = () => resolve(merged);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Ruqyah per-device resettable counter merge transaction aborted.')));
     });
   }
 
@@ -2560,6 +2861,7 @@ export class IndexedDbSyncJournal {
         const nextMetadata: DeviceMetadata = {
           ...metadata,
           nextSequence: sequence + 1,
+          lastProjectedSequence: Math.max(metadata.lastProjectedSequence ?? 0, sequence),
           remoteRevisions,
           remoteInitializedCollections: [...initialized],
           remoteProjectionCursor: event.serverSequence
