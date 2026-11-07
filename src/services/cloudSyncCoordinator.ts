@@ -340,7 +340,7 @@ class CloudSyncCoordinator {
     try {
       const collections = [
         'profile', 'plans', 'enginePlans', 'portions',
-        'weakVerses', 'tests', 'activityEvents', 'syncMeta'
+        'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
       ] as const;
       let hasAnyStateDocument = false;
       for (const collectionName of collections) {
