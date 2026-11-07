@@ -896,7 +896,7 @@ export class IndexedDbSyncJournal {
           acknowledgedAtMs: nowMs
         } satisfies AcknowledgementRecord);
         outbox.delete(key);
-        remoteRevisions[revisionKey] = { revision, localSequence: mutation.sequence };
+        remoteRevisions[revisionKey] = { revision, localSequence: Math.max(current?.localSequence ?? 0, mutation.sequence) };
         metadataStore.put({
           ...(metadata || {
             uid, deviceId: mutation.deviceId, schemaVersion: 1,
