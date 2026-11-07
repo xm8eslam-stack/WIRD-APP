@@ -1237,14 +1237,20 @@ export class IndexedDbSyncJournal {
           }
           return;
         }
-        if (!metadata || intent.sequence !== cursor + 1 || !event ||
+        if (intent.sequence !== cursor + 1 || !event ||
             event.eventId !== intent.eventId || event.collection !== intent.collection ||
             event.documentId !== intent.documentId || event.revision !== intent.revision) {
           failure = new Error('لا تتطابق نية الإسقاط مع الحدث التالي المحفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;
         }
-        metadataStore.put({ ...metadata, remoteProjectionIntent: intent } satisfies DeviceMetadata);
+        metadataStore.put({
+          ...(metadata || {
+            uid, deviceId: createSecureId(), schemaVersion: 1,
+            nextSequence: 1, lastProjectedSequence: 0
+          }),
+          remoteProjectionIntent: intent
+        } satisfies DeviceMetadata);
         accepted = true;
       };
       metadataRequest.onsuccess = () => {
