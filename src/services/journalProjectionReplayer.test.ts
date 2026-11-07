@@ -137,7 +137,8 @@ export async function runJournalProjectionReplayerTests(): Promise<{ passed: num
 
       const replay = await replayJournalProjection(journal, inlineLock);
       const afterRetry = await journal.getSnapshot();
-      assert(replay.applied === 0 && replay.skippedAlreadyProjected === 1 && replay.cursor === 1,
+      assert(replay.applied === 0 && replay.skippedAlreadyProjected === 1 &&
+        replay.recoveredAlreadyProjected === 1 && replay.cursor === 1,
         'Retry must recognize the exact durable snapshot and safely commit its cursor');
       assert(afterRetry.projectionCursor === 1 &&
         JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
