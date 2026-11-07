@@ -120,9 +120,9 @@ These branches are additional to the original 70-ref baseline. Current remote br
 
 Additional current branches:
 - `fix/quran-audio-repeat-20261107` — PR #63 Draft, 4 commits ahead; exact-head Quality Gate run 42341365536 PASS (404/0); Vercel Preview blocked by daily build-rate limit.
-- `fix/tafsir-json-response-20261107` — PR #64 Draft, 4 commits ahead; exact-head run 42341419175 pending/no jobs at last check.
+- `fix/tafsir-json-response-20261107` — PR #64 Draft, 4 commits ahead; exact-head run 42341419175 PASS (405/0); Vercel daily build-rate limit blocks preview.
 
-Current live branch count: **75** (70 original baseline + audit branch + four remediation branches).
+Current live branch count: **76** (70 original baseline + audit branch + five remediation branches).
 
 - `fix/quran-coordinate-validation-20261107` — PR #65 Draft, 13 commits ahead; exact-head Quality Gate run 42342071131 PASS (417/0); Firestore Rules 13/13; Vercel Preview Ready.
 
