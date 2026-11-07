@@ -53,3 +53,12 @@ Never enable upload or projection against production until the deployed Firestor
 - `finalizeRemoteProjection` and `markRemoteProjected` include the conflict store in the same IndexedDB transaction as cursor advancement and inbox deletion. A matching open conflict is marked `resolved/reconciled` atomically with that cursor transition.
 - Late archival after another tab has already advanced the cursor cannot create an orphan open conflict.
 - The only supported resolution status is `reconciled` (derived from successful projection/cursor commit). There is no manual keep-local/use-remote API or user merge UI.
+
+## 2026-11-07 — Ruqyah data boundary and current main checkpoint
+
+- Main at this checkpoint: e894140c91ec8086d111989dcdb601d3cdbf9ce4.
+- PR #88 added Ruqyah progress under STORAGE_KEYS.RUQYAH_PROGRESS with UID-scoped local storage and corruption preservation. It is intentionally outside the current SyncCollection allowlist and outside StorageService.getLocalProjectionSnapshot / applyJournalProjection.
+- Do not treat the presence of an authenticated UID-scoped local key as cloud sync. Ruqyah progress remains local-only.
+- A separate experiment branch attempted to add ruqyahProgress to sync allowlists. Its observed exact-head CI failed because it called a nonexistent StorageService method, and its implementation did not yet provide the complete mutation enqueue/projection/revision/rules path.
+- More importantly, Ruqyah counts are mutable per-item aggregates. Before syncing them, define a merge model that cannot lose independent increments (e.g. per-device monotonic counters with deterministic totals or immutable increment events). Do not use a full-snapshot last-write-wins mutation.
+- All current sync safety invariants remain unchanged: conflict evidence is preserved; tombstones are blocked; no manual conflict resolution exists; projection/upload gates must remain disabled in production until release gates pass.
