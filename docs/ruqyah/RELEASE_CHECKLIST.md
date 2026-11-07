@@ -83,7 +83,7 @@ Use two real browsers/devices signed in to the same verified account:
 
 See `docs/ruqyah/SUNNI_SOURCE_POLICY.md` for the exact source hierarchy and checked hadith references.
 
-- IslamicAPI is permitted only as a Quran index. Its third-party `from-sunnah` data is rejected by the backend; canonical Quran text is rendered from WIRD's verified corpus.
+- IslamicAPI is permitted only as a Quran locator. Its `from-sunnah` and category endpoints are rejected; the proxy strips all provider-authored fields and returns only validated numeric coordinates and an item ID. Canonical Quran text and surah metadata are rendered from WIRD's verified corpus.
 - Educational topic articles stay disabled until qualified Sunni content review is complete.
 - Full-program recordings and Al Furqan's dynamic reciter/audio provider are disabled. No unverified audio catalogue or recording URL is exposed.
 - Do not re-enable any disabled content/audio mode without a source record, exact verification, usage-rights review, and regression tests.
