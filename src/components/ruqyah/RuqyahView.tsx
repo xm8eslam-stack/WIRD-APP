@@ -7,6 +7,7 @@ import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
   Volume2,
+  Headphones,
   RotateCcw, 
   CheckCircle2, 
   Sparkles, 
