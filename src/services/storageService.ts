@@ -1340,6 +1340,47 @@ export const StorageService = {
   },
 
   /**
+   * Conservative first-sync guard. If local data exists, remote projection must
+   * prove a matching base revision instead of replacing an unknown local archive.
+   */
+  isLocalProjectionEmpty(collection: SyncCollection): boolean {
+    const emptyArrayArchive = (key: string): boolean => {
+      const raw = getItem(key);
+      if (raw === null) return true;
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        return Array.isArray(parsed) && parsed.length === 0;
+      } catch {
+        return false;
+      }
+    };
+    switch (collection) {
+      case 'profile':
+        return getItem(STORAGE_KEYS.PROFILE) === null;
+      case 'plans':
+        return emptyArrayArchive(STORAGE_KEYS.PLANS);
+      case 'enginePlans':
+        return emptyArrayArchive(STORAGE_KEYS.ENGINE_PLANS);
+      case 'portions':
+        return [STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION]
+          .every(emptyArrayArchive);
+      case 'weakVerses':
+        return emptyArrayArchive(STORAGE_KEYS.WEAK_VERSES);
+      case 'tests':
+        return emptyArrayArchive(STORAGE_KEYS.TESTS);
+      case 'activityEvents':
+        return emptyArrayArchive(STORAGE_KEYS.LOGS);
+      case 'syncMeta':
+        return getItem(STORAGE_KEYS.PROFILE) === null &&
+          [STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS, STORAGE_KEYS.UNIFIED_PORTIONS,
+            STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION, STORAGE_KEYS.WEAK_VERSES,
+            STORAGE_KEYS.TESTS, STORAGE_KEYS.LOGS].every(emptyArrayArchive);
+      default:
+        return false;
+    }
+  },
+
+  /**
    * Apply one validated full-snapshot event to the local projection. The caller
    * advances the journal cursor only after this method confirms the durable write.
    * Tombstones are intentionally rejected until collection-specific delete semantics exist.
