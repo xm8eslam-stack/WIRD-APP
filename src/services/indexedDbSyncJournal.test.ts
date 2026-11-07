@@ -689,7 +689,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       const afterInterruption = StorageService.getRuqyahProgressSnapshot();
       assert(injected && interrupted && afterInterruption?.schemaVersion === 2 &&
         afterInterruption.counts[itemId] === 5 &&
-        (await journal.listReady(300100, 10)).length === 1 &&
+        (await journal.listReady(Date.now() + 1000, 10)).length === 1 &&
         await journal.getRemoteProjectionCursor() === 0 &&
         (await journal.listProjectionConflicts(10)).length === 1,
         'An interrupted transaction may apply the merged projection, but must keep the old Outbox, inbox, intent, and archive recoverable');
@@ -697,7 +697,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       assert(await journal.finalizeRuqyahProgressMerge(intent, mergedEvent => StorageService.applyJournalEvent(mergedEvent)),
         'Retry must recognize the exact already-applied merged projection and finish the atomic journal transition');
       const mergedSnapshot = StorageService.getRuqyahProgressSnapshot();
-      const pending = await journal.listReady(300200, 10);
+      const pending = await journal.listReady(Date.now() + 1000, 10);
       const revision = await journal.getRemoteRevision('ruqyahProgress', 'snapshot');
       assert(mergedSnapshot?.schemaVersion === 2 && mergedSnapshot.counts[itemId] === 5,
         'The local projection must contain both devices’ increments exactly once');
