@@ -96,6 +96,7 @@ Phase 7 requires exact-head CI before merge.
 Working branch: `fix/ruqyah-quran-index-sanitization-20261107`
 
 - Disable the external `instant-category` endpoint; category labels and program descriptions from the provider are not trusted.
+- Hard-disable all educational topic and topic-category endpoints, with no environment-variable override, until a fully curated Sunni source set is approved.
 - The API proxy validates each Quran locator against WIRD's canonical `ALL_SURAHS` metadata and returns only `{ id, title: "surah:start-end" }`.
 - Strip provider-authored Arabic text, reference labels, introductions, translations, and all other extra fields before the response reaches the browser.
 - The client resolves normalized numeric coordinates to canonical surah names and verified Quran text. Provider titles are never rendered.
