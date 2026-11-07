@@ -16,7 +16,7 @@ import type { Firestore } from 'firebase/firestore';
 import { writeImmutableRemoteEvent } from '../src/services/immutableRemoteEvent';
 import { writeRevisionedRemoteMutation } from '../src/services/revisionedRemoteMutation';
 import { IndexedDbSyncJournal, type JournalEvent, type JournalOutboxEntry, type RemoteInboxEventInput } from '../src/services/indexedDbSyncJournal';
-import { StorageService, STORAGE_KEYS } from '../src/services/storageService';
+import { CLEAN_INITIAL_PROFILE, StorageService, STORAGE_KEYS } from '../src/services/storageService';
 import { projectRemoteInboxBatch, type RemoteProjectionDependencies } from '../src/services/remoteInboxProjector';
 
 class IsolatedMemoryStorage implements Storage {
@@ -1092,6 +1092,124 @@ try {
           !remote.exists() || remote.data().payload.snapshot.counts['q-fatiha'] !== 6 ||
           local?.counts['q-fatiha'] !== 6) {
         throw new Error('Concurrent offline increments must preserve local outbox, remote event, both snapshots, and cursor without false convergence.');
+      }
+    } finally {
+      journalA.close();
+      journalB.close();
+      setTestLocalStorage(new IsolatedMemoryStorage());
+      StorageService.__resetStorageForTests();
+      if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+      else Reflect.deleteProperty(globalThis, 'localStorage');
+      if (originalIDBKeyRange) Object.defineProperty(globalThis, 'IDBKeyRange', originalIDBKeyRange);
+      else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
+    }
+  });
+
+
+  await test('Two-device revisioned sync projects every user data collection', async () => {
+    const uid = 'multi-collection-sync-matrix';
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
+    Object.defineProperty(globalThis, 'IDBKeyRange', {
+      configurable: true, enumerable: true, writable: true, value: IDBKeyRange
+    });
+    const localStorageA = new IsolatedMemoryStorage();
+    const localStorageB = new IsolatedMemoryStorage();
+    const journalA = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(), databaseName: 'wird-multi-collection-device-a'
+    });
+    const journalB = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(), databaseName: 'wird-multi-collection-device-b'
+    });
+    try {
+      const firestoreA = testEnv.authenticatedContext(uid, {
+        email: 'multi-collection@example.com', email_verified: true, device: 'matrix-device-a'
+      }).firestore();
+      const firestoreB = testEnv.authenticatedContext(uid, {
+        email: 'multi-collection@example.com', email_verified: true, device: 'matrix-device-b'
+      }).firestore();
+      const collections = [
+        { collection: 'profile', payload: { profile: CLEAN_INITIAL_PROFILE }, key: STORAGE_KEYS.PROFILE, kind: 'object' },
+        { collection: 'plans', payload: { records: [] }, key: STORAGE_KEYS.PLANS, kind: 'array' },
+        { collection: 'enginePlans', payload: { records: [] }, key: STORAGE_KEYS.ENGINE_PLANS, kind: 'array' },
+        { collection: 'portions', payload: { records: [] }, key: STORAGE_KEYS.UNIFIED_PORTIONS, kind: 'array' },
+        { collection: 'weakVerses', payload: { records: [] }, key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
+        { collection: 'tests', payload: { records: [] }, key: STORAGE_KEYS.TESTS, kind: 'array' },
+        { collection: 'activityEvents', payload: { records: [] }, key: STORAGE_KEYS.LOGS, kind: 'array' },
+        { collection: 'ruqyahProgress', payload: {
+          snapshot: { schemaVersion: 1, updatedAtMs: 1_799_000_700_000, counts: { 'q-fatiha': 3 } }
+        }, key: STORAGE_KEYS.RUQYAH_PROGRESS, kind: 'ruqyah' }
+      ] as const;
+
+      activateIsolatedDevice(localStorageA, uid);
+      const remoteEvents: Array<{ sequence: number; event: RemoteInboxEventInput }> = [];
+      for (let index = 0; index < collections.length; index++) {
+        const item = collections[index];
+        const mutationId = 'matrix-' + item.collection + '-001';
+        const nowMs = 1_799_000_700_100 + index;
+        const queued = await journalA.enqueue({
+          mutationId,
+          collection: item.collection,
+          documentId: 'snapshot',
+          payload: item.payload,
+          nowMs
+        });
+        if (queued.status !== 'queued' ||
+            !StorageService.applyJournalEvent(makeLocalJournalEvent(queued.mutation))) {
+          throw new Error('Device A failed to journal local projection for ' + item.collection);
+        }
+        const accepted = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
+          uid,
+          collection: item.collection,
+          documentId: 'snapshot',
+          operation: 'upsert',
+          schemaVersion: 1,
+          mutationId: queued.mutation.mutationId,
+          eventId: queued.mutation.eventId,
+          deviceId: queued.mutation.deviceId,
+          clientUpdatedAtMs: queued.mutation.clientUpdatedAtMs,
+          baseRevision: queued.mutation.baseRevision,
+          payload: queued.mutation.payload
+        });
+        await journalA.acknowledgeRemoteMutation(queued.mutation.mutationId, accepted.revision, nowMs + 1);
+        const event = readRemoteEvent(await getDoc(doc(
+          firestoreA, 'users', uid, 'events', queued.mutation.eventId
+        )));
+        remoteEvents.push({ sequence: accepted.serverSequence, event });
+      }
+
+      activateIsolatedDevice(localStorageB, uid);
+      await journalB.importRemotePage(remoteEvents.sort((a, b) => a.sequence - b.sequence).map(item => item.event));
+      const projection = await projectRemoteInboxBatch(20, makeDeviceProjectorDependencies(journalB));
+      if (projection.projectedCount !== collections.length || projection.reason !== null ||
+          projection.blockedAtSequence !== null ||
+          await journalB.getRemoteProjectionCursor() !== collections.length) {
+        throw new Error('Device B did not project the complete multi-collection event stream: ' + JSON.stringify(projection));
+      }
+
+      for (const item of collections) {
+        const raw = StorageService.getLocalProjectionSnapshot(item.collection)[item.key];
+        if (raw === null || raw === undefined) {
+          throw new Error('Device B is missing the projected local archive for ' + item.collection);
+        }
+        const parsed = JSON.parse(raw);
+        if (item.kind === 'array' && (!Array.isArray(parsed) || parsed.length !== 0)) {
+          throw new Error('Device B projected an invalid array archive for ' + item.collection);
+        }
+        if (item.kind === 'object' && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) {
+          throw new Error('Device B projected an invalid profile object.');
+        }
+        if (item.kind === 'ruqyah' && parsed.counts?.['q-fatiha'] !== 3) {
+          throw new Error('Device B did not project the Ruqyah progress snapshot.');
+        }
+        const ownerState = await assertSucceeds(getDoc(doc(
+          firestoreB, 'users', uid, item.collection, 'snapshot'
+        )));
+        if (!ownerState.exists() || ownerState.data().revision !== 1) {
+          throw new Error('Owner cannot read revisioned state for ' + item.collection);
+        }
+        const otherDb = testEnv.authenticatedContext(uid + '-other').firestore();
+        await assertFails(getDoc(doc(otherDb, 'users', uid, item.collection, 'snapshot')));
       }
     } finally {
       journalA.close();
