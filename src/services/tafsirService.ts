@@ -109,9 +109,37 @@ export async function getTafsir(
     headers: { Accept: 'application/json' },
     signal
   });
-  if (!response.ok) throw new Error('تعذر جلب التفسير (HTTP ' + response.status + ').');
+  const responseText = await response.text();
+  const trimmedResponse = responseText.trim();
+  const contentType = response.headers.get('content-type') || '';
 
-  const payload: any = await response.json();
+  // SPA fallbacks and gateways can return HTML for an unavailable API route.
+  // Never pass an HTML document or malformed body to JSON.parse().
+  if (trimmedResponse.startsWith('<') || contentType.toLowerCase().includes('text/html')) {
+    throw new Error(
+      'خدمة التفسير لم تُرجع بيانات التفسير؛ وصلتنا صفحة HTML بدل استجابة JSON. غالباً مسار API غير متاح في النشر الحالي. أعد المحاولة لاحقاً.'
+    );
+  }
+
+  let payload: any;
+  try {
+    payload = trimmedResponse ? JSON.parse(trimmedResponse) : null;
+  } catch {
+    throw new Error('تعذر قراءة استجابة خدمة التفسير؛ البيانات المستلمة ليست JSON صالحاً.');
+  }
+
+  if (!response.ok) {
+    const serverMessage = typeof payload?.error === 'string' ? payload.error : '';
+    throw new Error(
+      serverMessage
+        ? 'تعذر جلب التفسير (' + serverMessage + ', HTTP ' + response.status + ').'
+        : 'تعذر جلب التفسير (HTTP ' + response.status + ').'
+    );
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('استجابة خدمة التفسير فارغة أو غير صالحة.');
+  }
   const validBook = payload?.book?.id === bookId ||
     (bookId === LEGACY_TAFSIR_BOOK_ID && (payload?.book?.id === LEGACY_TAFSIR_BOOK_ID || payload?.book?.id === 16)) ||
     (bookId === 16 && (payload?.book?.id === 16 || payload?.book?.id === LEGACY_TAFSIR_BOOK_ID));
