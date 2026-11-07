@@ -412,6 +412,7 @@ export class IndexedDbSyncJournal {
           !Number.isSafeInteger(item.queuedAtMs) || item.queuedAtMs < 0 ||
           !Number.isSafeInteger(item.attemptCount) || item.attemptCount < 0 ||
           !Number.isSafeInteger(item.nextAttemptAtMs) || item.nextAttemptAtMs < 0 ||
+          (item.baseRevision !== undefined && (!Number.isSafeInteger(item.baseRevision) || item.baseRevision < 0)) ||
           (item.lastErrorCode !== undefined && (typeof item.lastErrorCode !== 'string' || item.lastErrorCode.length > 64))) {
         throw new Error('تحتوي قائمة العمليات القديمة على سجل غير صالح؛ لم يتم بدء الترحيل.');
       }
