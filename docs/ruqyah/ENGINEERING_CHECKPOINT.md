@@ -1,4 +1,4 @@
-# Current verified continuation — after PR #145
+# Current verified continuation — after PR #147; audio restoration under review
 
 Last verified: 2026-11-07.
 
@@ -49,9 +49,23 @@ Last verified: 2026-11-07.
 - PR #144 refreshed this checkpoint and release checklist through the narrow-screen regression coverage; merge SHA: `fff12b41aa87103ea9cfc53054ef583240f7c860`.
 - PR #145 marks each reading counter as an atomic polite live status region and supplies explicit Arabic accessible labels for both free-reading counts and source-defined remaining repetition counts.
 - PR #145 merge SHA: `3452c7bfe8c2ac5095fe6c7ced454a3588dc3c7c`.
+- PR #146 documented merged and superseded Ruqyah work branches; merge commit `8379fdeb7f3891f95c3f1c71dd7e225b96c58a73`.
+- PR #147 completed the merged branch inventory; merge commit `ccd9e44c896d334b57688afddbba05f9e5c1dc13`. Exact-head Quality Gate passed on `ed897f22801cda8c9b7674df355b04536571f460`, run `42365509031`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 24 desktop/mobile Playwright tests passed.
 - Exact-head Quality Gate passed on `a19038862946025780f4f9f41c2609900d022ff3`, run `42365003132`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 24 desktop/mobile Playwright tests passed.
 - Regression verifies that the free Al-Fatihah count changes from 0 to 1 with a live label, and the Al-Ikhlas source-defined remaining count changes to 2 of 3 after recording.
 - No Quran text, hadith, fixed repetition values, or source registry changed.
+
+## Quran audio restoration — active PR branch, not yet merged
+- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; current branch head at checkpoint edit: `b058865fcb76f55a0412beec3ee65d19d57ba5fa`.
+- Main base verified before this branch: `ccd9e44c896d334b57688afddbba05f9e5c1dc13` (PR #147 merge).
+- Replaced the disabled audio catalogue with a static seven-edition Al Quran Cloud allowlist: `ar.husary`, `ar.minshawi`, `ar.abdulbasit`, `ar.sudais`, `ar.shuraim`, `ar.ajamy`, and `ar.alafasy`.
+- Provider terms: recitations are licensed to Al Quran Cloud by reciters or estates; streaming/embedding is permitted for personal and educational use. WIRD limits this to educational ayah-level streaming and does not mirror or bundle files. Terms and CDN docs are recorded in `SUNNI_SOURCE_POLICY.md`.
+- Restored per-ayah and section playlist playback using WIRD's canonical local ayah coordinates. Added pause/resume/stop, seek, volume, reciter selection, cleanup on navigation, no silent source fallback, and no automatic reading-counter increments.
+- Full-program recordings containing supplications remain disabled; no unverified recording URLs were reintroduced.
+- Added unit tests, desktop/mobile Playwright coverage, and a CI live-CDN smoke script checking representative MP3 content type and byte-range responses.
+- Files changed on this branch: `api/quran-audio.ts`, `src/services/ruqyahAudioService.ts`, `src/components/ruqyah/RuqyahView.tsx`, `src/tests/ruqyahAudioService.test.ts`, `src/tests/ruqyahViewAudioLock.test.ts`, `src/tests/runAllTests.ts`, `e2e/ruqyah-audio.spec.ts`, `scripts/check-ruqyah-audio-source.mjs`, `.github/workflows/ci.yml`, `index.html`, `docs/ruqyah/SUNNI_SOURCE_POLICY.md`, and `docs/ruqyah/RELEASE_CHECKLIST.md`.
+- Validation is pending the exact-head PR Quality Gate, including the real external CDN smoke test. No production playback or Vercel deployment is claimed.
+- Acoustic limitation: provider metadata, published terms, and CDN endpoint behavior are documented; CI's representative endpoint checks do not constitute human listening verification of every file.
 
 ## Branch hygiene
 ### Merged continuation branches
@@ -74,6 +88,7 @@ Last verified: 2026-11-07.
 - PR #144: `docs/ruqyah-checkpoint-after-pr141-20261107`
 - PR #145: `a11y/ruqyah-live-progress-announcements-20261107`
 - PR #146: `docs/ruqyah-checkpoint-after-pr145-20261107`
+- PR #147: `docs/ruqyah-complete-branch-hygiene-20261107`
 
 ### Superseded non-PR branches
 - `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` — superseded by the v2 branch after main advanced.
@@ -279,5 +294,6 @@ Phase 8 requires exact-head CI before merge.
 3. Review any pending PR diff and exact-head CI runs before merging.
 4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
 5. Do not expose educational topic endpoints; any future locally curated article must have named Sunni source review, rights review, and source-registry tests before implementation.
-6. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
+6. Complete and merge the active Al Quran Cloud ayah-audio restoration PR only after exact-head CI, including live CDN range checks, passes. Full-program recordings remain disabled pending separate verification.
+7. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
 7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.
