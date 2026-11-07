@@ -413,7 +413,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </h1>
 
             <p className="text-xs md:text-sm text-stone-200/90 leading-relaxed font-sans">
-              آيات من القرآن وأدعية ثابتة من السنة، مع أدوات للقراءة ومتابعة ما أتممته.
+              آيات من القرآن وأدعية ثابتة من السنة. التقسيمات المختصرة والمتوسطة والمطولة تنظيمية للتيسير، وليست ترتيبًا نبويًا أو عددًا لازمًا.
             </p>
           </div>
 
