@@ -100,8 +100,8 @@ The baseline matrix remains an exact snapshot of the original 70 refs. Three new
 
 | Branch | Compare status | Main-only commits | Branch-only commits | Purpose / state |
 |---|---:|---:|---:|---|
-| `chore/full-repository-audit-20261107` | main only | 0 | 26 | Documentation-only audit branch; all changed paths are under docs/; preserve |
-| `fix/progress-import-journal-20261107` | main only | 0 | 4 | PR #61 Draft; journaled backup import fix; exact-head CI PASS |
-| `fix/plan-lifecycle-preserve-revisions-20261107` | main only | 0 | 7 | Plan lifecycle preservation fix; CI currently running after earlier duplicate-date compile error was fixed |
+| `chore/full-repository-audit-20261107` | ahead | 0 | 26 | Documentation-only audit branch; all changed paths are under docs/; preserve |
+| `fix/progress-import-journal-20261107` | ahead | 0 | 4 | PR #61 Draft; journaled backup import fix; exact-head CI PASS |
+| `fix/plan-lifecycle-preserve-revisions-20261107` | ahead | 0 | 7 | Plan lifecycle preservation fix; CI currently running after earlier duplicate-date compile error was fixed |
 
 Current remote branch count after these additions: **73**. Do not confuse the original 70-ref baseline matrix with the current live count.
