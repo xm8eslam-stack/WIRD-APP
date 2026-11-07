@@ -282,10 +282,6 @@ export const PlanLifecycle = {
       }
     }
 
-    const totalVerses = QuranMath.countVersesBetween(
-      plan.meta.startCoordinate,
-      plan.meta.endCoordinate
-    );
     let remainingStartCoord = plan.meta.startCoordinate;
 
     if (lastCompletedCoord) {
@@ -390,8 +386,6 @@ export const PlanLifecycle = {
       }
     };
 
-    // Keep totalVerses for the original plan range; this is not a new plan.
-    void totalVerses;
     return this.refreshActualVsPlanned(updatedPlan);
   }
 };
