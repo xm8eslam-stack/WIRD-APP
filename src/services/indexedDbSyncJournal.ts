@@ -16,6 +16,7 @@ const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_REMOTE_INBOX_EVENTS = 1_000;
 const MAX_PROJECTION_CONFLICTS = 100;
+const MAX_CONFLICT_RESOLUTION_INTENTS = 500;
 const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
@@ -396,7 +397,8 @@ export class IndexedDbSyncJournal {
           conflicts.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
         }
         if (!database.objectStoreNames.contains(STORE_CONFLICT_RESOLUTION_INTENTS)) {
-          database.createObjectStore(STORE_CONFLICT_RESOLUTION_INTENTS, { keyPath: 'key' });
+          const resolutionIntents = database.createObjectStore(STORE_CONFLICT_RESOLUTION_INTENTS, { keyPath: 'key' });
+          resolutionIntents.createIndex('uid', 'uid', { unique: false });
         }
         let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
@@ -1846,12 +1848,14 @@ export class IndexedDbSyncJournal {
       const intentRequest = intents.get(intentKey);
       const inboxRequest = inbox.index('uid').getAll(IDBKeyRange.only(uid));
       const outboxRequest = outbox.index('uid').getAll(IDBKeyRange.only(uid));
+      const intentCountRequest = intents.index('uid').count(IDBKeyRange.only(uid));
       let metadata: DeviceMetadata | undefined;
       let conflict: RemoteProjectionConflict | undefined;
       let existingIntent: ConflictResolutionIntent | undefined;
       let inboxEvents: RemoteInboxEvent[] = [];
       let pendingMutations: JournalOutboxEntry[] = [];
-      let readsRemaining = 5;
+      let intentCount = 0;
+      let readsRemaining = 6;
       let prepared = false;
       let failure: Error | undefined;
       const finishRead = () => {
@@ -1948,6 +1952,11 @@ export class IndexedDbSyncJournal {
           prepared = true;
           return;
         }
+        if (intentCount >= MAX_CONFLICT_RESOLUTION_INTENTS) {
+          failure = new Error('وصل سجل قرارات التعارض إلى الحد الآمن؛ لم نحذف أي قرار محفوظ.');
+          transaction.abort();
+          return;
+        }
         const intent: ConflictResolutionIntent = {
           key: intentKey,
           uid,
@@ -1973,6 +1982,7 @@ export class IndexedDbSyncJournal {
       intentRequest.onsuccess = () => { existingIntent = intentRequest.result as ConflictResolutionIntent | undefined; finishRead(); };
       inboxRequest.onsuccess = () => { inboxEvents = inboxRequest.result as RemoteInboxEvent[]; finishRead(); };
       outboxRequest.onsuccess = () => { pendingMutations = outboxRequest.result as JournalOutboxEntry[]; finishRead(); };
+      intentCountRequest.onsuccess = () => { intentCount = intentCountRequest.result; finishRead(); };
       transaction.oncomplete = () => resolve(prepared);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Conflict resolution intent transaction aborted.')));
     });
