@@ -58,15 +58,15 @@ export interface RemoteProjectionDependencies {
   setRemoteRevisionFromRemote(collection: SyncCollection, documentId: string, revision: number): Promise<boolean>;
   markRemoteProjected(sequence: number): Promise<boolean>;
   markRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean>;
+  getRemoteProjectionIntent(): Promise<RemoteProjectionIntent | null>;
+  prepareRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean>;
+  finalizeRemoteProjection(intent: RemoteProjectionIntent, applyProjection: () => boolean): Promise<boolean>;
   getLocalProjectionSnapshot(collection: SyncCollection): Record<string, string | null>;
   saveProjectionConflict(
     event: RemoteInboxEvent,
     reason: string,
     localSnapshot: Record<string, string | null>
   ): Promise<boolean>;
-  getRemoteProjectionIntent(): Promise<RemoteProjectionIntent | null>;
-  prepareRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean>;
-  finalizeRemoteProjection(intent: RemoteProjectionIntent, applyProjection: () => boolean): Promise<boolean>;
 }
 
 const defaultDependencies: RemoteProjectionDependencies = {
@@ -81,30 +81,17 @@ const defaultDependencies: RemoteProjectionDependencies = {
     LocalSyncOutbox.setRemoteRevisionFromRemote(collection, documentId, revision),
   markRemoteProjected: sequence => LocalSyncOutbox.markRemoteProjected(sequence),
   markRemoteCollectionInitialized: collection => LocalSyncOutbox.markRemoteCollectionInitialized(collection),
-  getLocalProjectionSnapshot: collection => StorageService.getLocalProjectionSnapshot(collection),
-  saveProjectionConflict: (event, reason, localSnapshot) =>
-    LocalSyncOutbox.saveProjectionConflict(event, reason, localSnapshot),
   getRemoteProjectionIntent: () => LocalSyncOutbox.getRemoteProjectionIntent(),
   prepareRemoteProjection: intent => LocalSyncOutbox.prepareRemoteProjection(intent),
   finalizeRemoteProjection: (intent, applyProjection) =>
-    LocalSyncOutbox.finalizeRemoteProjection(intent, applyProjection)
+    LocalSyncOutbox.finalizeRemoteProjection(intent, applyProjection),
+  getLocalProjectionSnapshot: collection => StorageService.getLocalProjectionSnapshot(collection),
+  saveProjectionConflict: (event, reason, snapshot) =>
+    LocalSyncOutbox.saveProjectionConflict(event, reason, snapshot)
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-async function archiveBlockedProjection(
-  event: RemoteInboxEvent,
-  reason: string,
-  transactionCollections: SyncCollection[],
-  dependencies: RemoteProjectionDependencies
-): Promise<boolean> {
-  const snapshot: Record<string, string | null> = {};
-  for (const collection of new Set<SyncCollection>([event.collection, ...transactionCollections])) {
-    Object.assign(snapshot, dependencies.getLocalProjectionSnapshot(collection));
-  }
-  return dependencies.saveProjectionConflict(event, reason, snapshot);
 }
 
 function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
@@ -128,7 +115,7 @@ function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
 /**
  * Apply remote events in server order. A conflict leaves the event in the
  * durable inbox and does not advance the projection cursor, preserving both
- * local and remote bytes until an explicit reconciliation path exists.
+ * local and remote bytes until a later safe reconciliation can be committed.
  *
  * Dependencies are injectable so the conflict policy and cursor behavior can
  * be tested without a live Firebase account.
@@ -140,6 +127,20 @@ export async function projectRemoteInboxBatch(
   const cursor = await dependencies.getRemoteProjectionCursor();
   const events = await dependencies.listRemoteInboxAfter(cursor, limit);
   let projectedCount = 0;
+
+  const archiveBlockedProjection = async (
+    event: RemoteInboxEvent,
+    reason: string,
+    collections: SyncCollection[]
+  ): Promise<void> => {
+    const affected = [...new Set(collections.length > 0 ? collections : [event.collection])];
+    const snapshot: Record<string, string | null> = {};
+    for (const collection of affected) {
+      Object.assign(snapshot, dependencies.getLocalProjectionSnapshot(collection));
+    }
+    const saved = await dependencies.saveProjectionConflict(event, reason, snapshot);
+    if (!saved) throw new Error('تعذر حفظ نسخة التعارض المحلية؛ بقي الحدث محفوظًا دون تجاوز المؤشر.');
+  };
 
   for (const remoteEvent of events) {
     const cached = await dependencies.getRemoteRevision(
@@ -172,6 +173,11 @@ export async function projectRemoteInboxBatch(
       intent.documentId === remoteEvent.documentId &&
       intent.revision === remoteEvent.revision;
     if (intent && !isResumingThisProjection) {
+      await archiveBlockedProjection(
+        remoteEvent,
+        'projection_failed',
+        remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
+      );
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
@@ -198,6 +204,11 @@ export async function projectRemoteInboxBatch(
       if (isResumingThisProjection && intent) {
         const finalized = await dependencies.finalizeRemoteProjection(intent, () => true);
         if (!finalized) {
+          await archiveBlockedProjection(
+            remoteEvent,
+            'projection_failed',
+            remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
+          );
           return {
             projectedCount,
             blockedAtSequence: remoteEvent.serverSequence,
@@ -205,22 +216,33 @@ export async function projectRemoteInboxBatch(
           };
         }
       } else {
-        await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+        const marked = await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+        if (!marked) {
+          await archiveBlockedProjection(
+            remoteEvent,
+            'projection_failed',
+            remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
+          );
+          return {
+            projectedCount,
+            blockedAtSequence: remoteEvent.serverSequence,
+            reason: 'projection_failed'
+          };
+        }
       }
       projectedCount++;
       continue;
     }
     if (decision !== 'apply') {
-      const archived = await archiveBlockedProjection(
+      await archiveBlockedProjection(
         remoteEvent,
         decision,
-        transactionCollections,
-        dependencies
+        remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
       );
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
-        reason: archived ? decision : 'projection_failed'
+        reason: decision
       };
     }
 
@@ -252,8 +274,22 @@ export async function projectRemoteInboxBatch(
       revision: remoteEvent.revision,
       initializedCollections: transactionCollections
     };
+    const projectionCollections = remoteEvent.collection === 'syncMeta'
+      ? transactionCollections
+      : [remoteEvent.collection];
+    const preProjectionSnapshot: Record<string, string | null> = {};
+    for (const collection of [...new Set(projectionCollections.length > 0 ? projectionCollections : [remoteEvent.collection])]) {
+      Object.assign(preProjectionSnapshot, dependencies.getLocalProjectionSnapshot(collection));
+    }
+
     const prepared = await dependencies.prepareRemoteProjection(projectionIntent);
     if (!prepared) {
+      const saved = await dependencies.saveProjectionConflict(
+        remoteEvent,
+        'projection_failed',
+        preProjectionSnapshot
+      );
+      if (!saved) throw new Error('تعذر حفظ نسخة التعارض قبل إعادة المحاولة.');
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
@@ -269,12 +305,12 @@ export async function projectRemoteInboxBatch(
       () => dependencies.applyJournalEvent(localEvent)
     );
     if (!finalized) {
-      await archiveBlockedProjection(
+      const saved = await dependencies.saveProjectionConflict(
         remoteEvent,
         'projection_failed',
-        transactionCollections,
-        dependencies
+        preProjectionSnapshot
       );
+      if (!saved) throw new Error('تعذر حفظ نسخة التعارض بعد فشل الإسقاط.');
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
