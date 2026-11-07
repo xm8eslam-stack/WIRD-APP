@@ -447,16 +447,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
             <button
               type="button"
-              aria-pressed={viewMode === 'audio_stream'}
-              onClick={() => setViewMode('audio_stream')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                viewMode === 'audio_stream'
-                  ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
-                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60'
-              }`}
+              disabled
+              aria-disabled="true"
+              title="سيُتاح بعد التحقق من التسجيل كاملًا ومراجعة مصدره ومحتواه"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-stone-400/70 cursor-not-allowed opacity-60"
             >
               <Headphones className="w-4 h-4" />
-              <span>الرقية الصوتية الكاملة</span>
+              <span>التسجيل الكامل (قيد التحقق)</span>
             </button>
 
             <button
