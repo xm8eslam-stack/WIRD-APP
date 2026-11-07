@@ -54,7 +54,7 @@ export async function writeRevisionedRemoteMutation(
 ): Promise<RevisionedRemoteMutationResult> {
   const payloadBytes = new TextEncoder().encode(stableStringify(input.payload)).byteLength;
   if (!validId(input.uid) || !validId(input.documentId, 1500) ||
-      !validId(input.mutationId) || !validId(input.eventId) ||
+      !validId(input.mutationId) || !validId(input.eventId) || input.eventId !== input.mutationId ||
       !validId(input.deviceId) || input.schemaVersion !== 1 ||
       !['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'syncMeta'].includes(input.collection) ||
       (input.collection === 'syncMeta' && input.documentId === 'remoteReplication') ||
