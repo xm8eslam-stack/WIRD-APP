@@ -174,3 +174,143 @@ export async function resolveProjectionConflictUsingRemote(
     archivedMutationCount: localMutationFingerprints.length
   };
 }
+
+
+export interface KeepLocalConflictResolutionResult {
+  eventId: string;
+  revision: number;
+  queuedMutationId: string;
+  archivedMutationCount: number;
+}
+
+/**
+ * Keep the current local full snapshot and queue one consolidated replacement
+ * against the latest authoritative remote revision. This first executor is
+ * deliberately limited to single-collection upserts; grouped syncMeta and
+ * tombstones fail closed until their semantics are implemented separately.
+ */
+export async function resolveProjectionConflictUsingLocal(
+  eventId: string
+): Promise<KeepLocalConflictResolutionResult> {
+  if (!isFirebaseConfigured() || !db || !auth) {
+    throw new Error('المزامنة السحابية غير مهيأة؛ لم يتم تغيير أي بيانات.');
+  }
+  const user = auth.currentUser;
+  if (!user || !user.emailVerified) {
+    throw new Error('يلزم تسجيل الدخول ببريد موثق قبل إعادة نشر النسخة المحلية.');
+  }
+  const uid = user.uid;
+  assertActiveConflictScope(uid);
+
+  const conflicts = await LocalSyncOutbox.listProjectionConflicts(100);
+  assertActiveConflictScope(uid);
+  const conflict = conflicts.find(item => item.event.eventId === eventId);
+  if (!conflict || conflict.status !== 'open') {
+    throw new Error('لم يعد التعارض مفتوحاً؛ حدّث قائمة التعارضات.');
+  }
+  if (conflict.event.operation !== 'upsert' || conflict.event.collection === 'syncMeta') {
+    throw new Error('إعادة نشر أحداث الحذف أو المعاملات المجمعة غير مفعّلة حتى تكتمل اختبارات سلامة البيانات الخاصة بها.');
+  }
+
+  const archivedMutations = [...(conflict.localMutations || [])]
+    .sort((a, b) => a.sequence - b.sequence || a.mutationId.localeCompare(b.mutationId));
+  if (archivedMutations.length === 0 ||
+      archivedMutations.some(item =>
+        item.collection !== conflict.event.collection ||
+        item.documentId !== conflict.event.documentId ||
+        item.operation !== 'upsert' ||
+        !isRecord(item.payload)
+      )) {
+    throw new Error('لا توجد لقطة محلية كاملة ومتجانسة في سجل التعارض لإعادة نشرها بأمان.');
+  }
+  const latestLocalMutation = archivedMutations[archivedMutations.length - 1];
+  const localPayload = JSON.parse(JSON.stringify(latestLocalMutation.payload)) as Record<string, unknown>;
+  if (!StorageService.matchesJournalProjection(conflict.event.collection, localPayload)) {
+    throw new Error('اللقطة المحلية الحالية لا تطابق آخر عملية محفوظة في الأرشيف؛ لم نرفع نسخة قديمة.');
+  }
+
+  const stateRef = doc(db, 'users', uid, conflict.event.collection, conflict.event.documentId);
+  const stateSnapshot = await getDoc(stateRef);
+  assertActiveConflictScope(uid);
+  if (!stateSnapshot.exists()) {
+    throw new Error('لم يعد مستند الحالة السحابي موجوداً؛ لا يمكن إعادة تأسيس النسخة المحلية على إصدار غير متاح.');
+  }
+  const state = stateSnapshot.data();
+  if (state.schemaVersion !== 1 ||
+      !Number.isSafeInteger(state.updatedAtMs) || state.updatedAtMs < 0 ||
+      typeof state.deviceId !== 'string' || !state.deviceId ||
+      typeof state.mutationId !== 'string' || !state.mutationId ||
+      !Number.isSafeInteger(state.baseRevision) || state.baseRevision < 0 ||
+      !Number.isSafeInteger(state.revision) || state.revision !== state.baseRevision + 1 ||
+      state.revision < conflict.event.revision ||
+      !isRecord(state.payload) || state.deletedAt != null) {
+    throw new Error('الحالة السحابية الحالية لا تطابق غلاف المزامنة الموثوق أو تحتوي على حذف غير مدعوم؛ لم نعد نشر البيانات.');
+  }
+
+  const localSnapshot = StorageService.getLocalProjectionSnapshot(conflict.event.collection);
+  const localSnapshotFingerprint = fingerprintConflictSnapshot(localSnapshot);
+  const localMutationFingerprints = archivedMutations.map(item => ({
+    mutationId: item.mutationId,
+    fingerprint: item.fingerprint
+  }));
+  const existingIntent = await LocalSyncOutbox.getConflictResolutionIntent(eventId);
+  assertActiveConflictScope(uid);
+  if (existingIntent) {
+    if (existingIntent.decision !== 'keep-local' ||
+        existingIntent.baseRevision !== state.revision ||
+        existingIntent.localSnapshotFingerprint !== localSnapshotFingerprint ||
+        stableStringify(existingIntent.payload) !== stableStringify(localPayload)) {
+      throw new Error('يوجد قرار محفوظ سابقاً لكنه لم يعد مطابقاً للحالة السحابية أو المحلية الحالية. ألغِ القرار بعد مراجعة الأدلة قبل إنشاء قرار جديد.');
+    }
+  } else {
+    await LocalSyncOutbox.prepareConflictResolutionIntent({
+      decisionId: createSecureId(),
+      eventId,
+      eventFingerprint: conflict.event.fingerprint,
+      localSnapshotFingerprint,
+      decision: 'keep-local',
+      baseRevision: state.revision,
+      payload: localPayload,
+      localMutationFingerprints,
+      nowMs: Date.now()
+    });
+    assertActiveConflictScope(uid);
+  }
+
+  // Re-read the authoritative server document immediately before the journal commit.
+  const latestSnapshot = await getDoc(stateRef);
+  assertActiveConflictScope(uid);
+  if (!latestSnapshot.exists()) {
+    throw new Error('اختفى مستند الحالة السحابي قبل اعتماد القرار؛ بقيت أدلة التعارض محفوظة.');
+  }
+  const latestState = latestSnapshot.data();
+  if (latestState.schemaVersion !== 1 ||
+      latestState.revision !== state.revision ||
+      latestState.baseRevision !== state.baseRevision ||
+      latestState.mutationId !== state.mutationId ||
+      latestState.deviceId !== state.deviceId ||
+      latestState.updatedAtMs !== state.updatedAtMs ||
+      latestState.deletedAt != null ||
+      !isRecord(latestState.payload) ||
+      stableStringify(latestState.payload) !== stableStringify(state.payload)) {
+    throw new Error('تغيرت النسخة السحابية بعد تجهيز القرار؛ لم نعد نشر لقطة محلية على إصدار قديم، وما زال الأرشيف محفوظاً.');
+  }
+
+  const committed = await LocalSyncOutbox.commitKeepLocalConflictResolution(
+    eventId,
+    state.revision,
+    localPayload,
+    Date.now()
+  );
+  assertActiveConflictScope(uid);
+  if (!committed || !committed.mutationId) {
+    throw new Error('لم يؤكد سجل المزامنة تجهيز عملية إعادة النشر؛ بقي التعارض والأدلة محفوظة.');
+  }
+
+  return {
+    eventId,
+    revision: state.revision,
+    queuedMutationId: committed.mutationId,
+    archivedMutationCount: localMutationFingerprints.length
+  };
+}
