@@ -157,15 +157,10 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       };
     }
 
-    if (!StorageService.applyJournalEvent(localEvent)) {
-      return {
-        projectedCount,
-        blockedAtSequence: remoteEvent.serverSequence,
-        reason: 'projection_failed'
-      };
-    }
-
-    const finalized = await LocalSyncOutbox.finalizeRemoteProjection(projectionIntent);
+    const finalized = await LocalSyncOutbox.finalizeRemoteProjection(
+      projectionIntent,
+      () => StorageService.applyJournalEvent(localEvent)
+    );
     if (!finalized) {
       return {
         projectedCount,
