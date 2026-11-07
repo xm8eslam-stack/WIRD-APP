@@ -1,7 +1,7 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
-import type { JournalOutboxEntry, LegacyOutboxState } from './indexedDbSyncJournal';
+import type { JournalOutboxEntry, LegacyOutboxState, RemoteInboxEvent, RemoteInboxEventInput } from './indexedDbSyncJournal';
 
 export type SyncCollection =
   | 'profile'
@@ -353,6 +353,34 @@ export const LocalSyncOutbox = {
   async rebasePendingMutation(mutationId: string, expectedBaseRevision: number, nextBaseRevision: number): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().rebasePendingMutation(mutationId, expectedBaseRevision, nextBaseRevision);
+  },
+
+  /** Read the durable remote event cursor for the active UID. */
+  async getRemoteCursor(): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().getRemoteCursor();
+  },
+
+  /** Import one contiguous server page and advance its cursor atomically. */
+  async importRemotePage(events: RemoteInboxEventInput[]): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().importRemotePage(events);
+  },
+
+  /** Read durably imported remote events not yet projected locally. */
+  async listRemoteInboxAfter(sequence: number = 0, limit: number = 100): Promise<RemoteInboxEvent[]> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().listRemoteInboxAfter(sequence, limit);
+  },
+
+  async getRemoteProjectionCursor(): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().getRemoteProjectionCursor();
+  },
+
+  async markRemoteProjected(sequence: number): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().markRemoteProjected(sequence);
   },
 
   /** Record a retryable failure with capped exponential backoff; keep the mutation. */
