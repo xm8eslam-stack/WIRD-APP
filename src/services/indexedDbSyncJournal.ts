@@ -1293,7 +1293,9 @@ export class IndexedDbSyncJournal {
             currentIntent.documentId !== intent.documentId ||
             currentIntent.revision !== intent.revision ||
             cursor + 1 !== intent.sequence || !event ||
-            event.eventId !== intent.eventId || event.revision !== intent.revision) {
+            event.eventId !== intent.eventId || event.revision !== intent.revision ||
+            event.serverSequence !== intent.sequence || event.collection !== intent.collection ||
+            event.documentId !== intent.documentId) {
           failure = new Error('تعذر اعتماد الإسقاط؛ ستظل نية الإسقاط والحدث محفوظين لإعادة المحاولة.');
           transaction.abort();
           return;
