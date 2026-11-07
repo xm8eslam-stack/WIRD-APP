@@ -8,6 +8,14 @@
 - Both production sync feature flags remain disabled. PR #149 did not deploy Firestore rules or change production configuration. Vercel production deployment and live-site verification remain separate and unverified.
 
 
+## Latest verified update — PR #149 (2026-11-07)
+
+- PR #149 merged as `78ada24ecadbda3460178550e871632f6d81d770`; exact tested head `c675a2d164b88994c08a5368bf1695712f2625f3` passed WIRD Quality Gate run `42368745026` (#2871).
+- The first narrow user-directed conflict decision is now implemented: use the latest validated remote snapshot. It has explicit confirmation, UID/scope guards, complete state-envelope validation, commit-time remote revalidation, durable archive preservation, atomic local journal transitions, safe cancellation, and interruption recovery.
+- This closes only the use-remote portion of the conflict-resolution gate. Keep-local re-publication, user-authored merge, tombstone/deletion semantics, additive merge of independent offline Ruqyah counter increments, cross-tab coordination, and live two-device verification remain open.
+- Both production sync feature flags remain disabled. PR #149 did not deploy Firestore rules or change production configuration. Vercel production deployment and live-site verification remain separate and unverified.
+
+
 A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Required before enabling production sync
