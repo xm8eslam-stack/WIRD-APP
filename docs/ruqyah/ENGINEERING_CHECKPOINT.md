@@ -1,6 +1,19 @@
-# Current verified continuation — after PR #149; ayah-level audio restored
+# Current verified continuation — after PR #155; ayah-level audio restored and conflict choices partially implemented
 
 Last verified: 2026-11-07.
+
+## Latest verified continuation — PR #155 merged
+
+- Current main merge SHA: `c620697538ef72eec3d1c2c78bb456c0403232ce` (PR #155, squash merge).
+- Exact tested PR head: `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf`; WIRD Quality Gate run `42370175733` (#2909) completed successfully.
+- Passed on that exact head: dependency audit, automated test suites, approved Quran audio CDN/range checks, Firestore Rules Emulator, TypeScript, production build, server startup smoke, and desktop/mobile Playwright.
+- PR #155 adds an explicit keep-local decision for supported single-collection upsert conflicts. It revalidates the latest Firestore revision, verifies the exact current local projection against the last archived local mutation, atomically archives/supersedes the old pending mutations, and queues one consolidated replacement mutation based on the latest remote revision.
+- The local snapshot is not overwritten. The new mutation remains queued until the normal revisioned sync coordinator successfully uploads and acknowledges it; the UI does not claim that Firestore accepted it merely because it was queued.
+- Keep-local is deliberately blocked for `syncMeta` grouped transactions, `ruqyahProgress` counters (until deterministic additive merge exists), and tombstones. User-authored merge, tombstone resolution, cross-tab coordination, comprehensive account lifecycle isolation, and live two-device production verification remain open.
+- PR #149 use-latest-remote and PR #155 keep-local are narrow user-confirmed choices, not a general merge engine. Both production sync flags remain disabled.
+- Vercel production deployment/live audio playback remain unverified because of the Free-plan `build-rate-limit` quota. CI success is not a production deployment.
+- Next: design deterministic additive Ruqyah counter reconciliation, then tombstone/delete semantics and grouped `syncMeta` resolution; continue cross-tab/account lifecycle and live two-device tests before any production activation.
+
 
 ## Latest sync continuation — PR #149 merged
 
