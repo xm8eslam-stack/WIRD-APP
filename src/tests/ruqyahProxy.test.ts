@@ -21,6 +21,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
   const assert = (condition: boolean, message: string) => { if (!condition) throw new Error(message); };
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.ISLAMICAPI_API_KEY;
+  const originalTopicsFlag = process.env.RUQYAH_TOPICS_ENABLED;
 
   try {
     await test('Ruqyah proxy rejects non-GET requests and supports CORS preflight', async () => {
@@ -149,7 +150,22 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         'Chunked provider response above the byte limit must be rejected');
     });
 
+    await test('Ruqyah educational topics remain disabled until content review is explicitly enabled', async () => {
+      delete process.env.RUQYAH_TOPICS_ENABLED;
+      let called = false;
+      globalThis.fetch = (async () => { called = true; throw new Error('unexpected upstream call'); }) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({
+        method: 'GET',
+        query: { type: 'topic', topic: 'introduction-to-ruqyah' },
+        headers: { 'x-real-ip': '198.51.100.211' }
+      }, res);
+      assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY' && !called,
+        'Topic endpoints must remain unavailable unless the server-side review flag is enabled');
+    });
+
     await test('Ruqyah proxy rejects unknown topic content block types', async () => {
+      process.env.RUQYAH_TOPICS_ENABLED = 'true';
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       globalThis.fetch = (async () => new Response(JSON.stringify({
         status: 'success',
@@ -185,6 +201,8 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
     globalThis.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.ISLAMICAPI_API_KEY;
     else process.env.ISLAMICAPI_API_KEY = originalKey;
+    if (originalTopicsFlag === undefined) delete process.env.RUQYAH_TOPICS_ENABLED;
+    else process.env.RUQYAH_TOPICS_ENABLED = originalTopicsFlag;
   }
 
   return { passed, failed };
