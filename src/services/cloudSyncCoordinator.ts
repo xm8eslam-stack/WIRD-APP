@@ -6,6 +6,11 @@ import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 import { projectRemoteInboxBatch } from './remoteInboxProjector';
 
+export const LEGACY_REMOTE_STATE_COLLECTIONS = [
+  'profile', 'plans', 'enginePlans', 'portions',
+  'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
+] as const;
+
 export type CloudSyncStatus =
   | 'idle'
   | 'syncing'
@@ -338,12 +343,8 @@ class CloudSyncCoordinator {
     if (this.legacyCheckUid === uid && this.legacyDataDetected === false) return false;
     if (!db) return true;
     try {
-      const collections = [
-        'profile', 'plans', 'enginePlans', 'portions',
-        'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
-      ] as const;
       let hasAnyStateDocument = false;
-      for (const collectionName of collections) {
+      for (const collectionName of LEGACY_REMOTE_STATE_COLLECTIONS) {
         const snapshot = await getDocs(collection(db, 'users', uid, collectionName));
         const stateDocuments = snapshot.docs.filter(item =>
           !(collectionName === 'syncMeta' && item.id === 'remoteReplication')
