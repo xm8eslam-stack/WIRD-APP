@@ -3,6 +3,7 @@ import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { LocalSyncOutbox } from './localSyncOutbox';
 import { StorageService } from './storageService';
 import type { SyncCollection } from './localSyncOutbox';
+import { writeImmutableRemoteEvent } from './immutableRemoteEvent';
 
 export type CloudSyncStatus =
   | 'idle'
@@ -191,11 +192,10 @@ class CloudSyncCoordinator {
             if (entry.operation === 'tombstone') {
               docData.deletedAt = new Date(entry.clientUpdatedAtMs);
             }
-            await setDoc(docRef, docData);
-
+            // Commit the immutable event first. If the state snapshot write fails,
+            // retrying the outbox item safely recognizes this same event as already present.
             if (entry.eventId) {
-              const eventRef = doc(db, 'users', uid, 'events', entry.eventId);
-              const eventRecord = {
+              await writeImmutableRemoteEvent(db, uid, {
                 schemaVersion: 1,
                 eventId: entry.eventId,
                 mutationId: entry.mutationId,
@@ -204,9 +204,12 @@ class CloudSyncCoordinator {
                 occurredAtMs: entry.clientUpdatedAtMs,
                 eventType: 'domain-mutation',
                 payload: entry.payload
-              };
-              await setDoc(eventRef, eventRecord);
+              });
             }
+
+            // State snapshots remain last-write-wins until the server-revision/CAS
+            // stage is implemented. Never acknowledge before both writes succeed.
+            await setDoc(docRef, docData);
 
             await LocalSyncOutbox.acknowledge([entry.mutationId]);
           } catch (writeError: any) {
