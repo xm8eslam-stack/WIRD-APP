@@ -26,3 +26,6 @@
 
 | Durable projection conflict archive | PR #81 SHA `415cbe33389a6108d08f9d5785818e8e12458fee` | Passed | 459 automated assertions; archive preserves remote event and original local bytes; conflict remains unresolved |
 | Post-merge main gate | Main SHA `059e902194811be71ab4dea9da8609a96967214e`, run `42351965332` | Passed | Same CI workflow passed after merge |
+
+| Atomic conflict reconciliation | PR #85 head `b6af08b2d9461a1d3d7cc019404692d779500248` | Passed | 462 automated assertions; 27/27 Firestore Rules; first snapshot preserved, already-applied event resolution, late archive/orphan guard, oversized snapshot rejection |
+| Post-merge main gate | Main SHA `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`, run `42352594819` | Passed | Exact merge commit verified by main workflow |

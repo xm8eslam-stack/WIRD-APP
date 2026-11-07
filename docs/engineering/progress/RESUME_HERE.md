@@ -65,3 +65,11 @@
 - PR #76 and #59 are closed as superseded.
 - Conflict evidence is persisted, but resolution/rebase UI is not implemented. Tombstone projection remains blocked.
 - Continue with conflict-resolution protocol, then tombstone semantics, broader collection/device coverage, and browser E2E. Do not enable production projection.
+
+
+## Latest checkpoint — PR #85
+- Main SHA: `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
+- PR #85 merged: validates conflict event/inbox identity, caps snapshots, resolves conflict records atomically with projection cursor commits, and prevents late orphan archives.
+- Exact PR gate: 462 assertions, 27/27 Firestore Rules, TypeScript, build, dependency audit, startup smoke passed. Post-merge main run `42352594819` passed.
+- PR #82 and #86 closed as superseded.
+- Next: manual conflict resolution/rebase workflow, then safe tombstone semantics, all-collection/device coverage, multi-tab and browser E2E. Do not enable production sync.

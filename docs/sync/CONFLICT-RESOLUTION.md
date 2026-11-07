@@ -24,3 +24,10 @@ Until these exist, a blocked mutation is a safe unresolved conflict, not a compl
 Blocked projection now archives the full remote inbox event and relevant local storage bytes in a UID-scoped IndexedDB store. The original local snapshot is retained across repeated observations. Open records are never pruned; the archive is bounded to 100 entries per UID and may prune only resolved historical records. Settings displays the open conflict count and latest affected record.
 
 This archive prevents diagnostic evidence from disappearing; it does not resolve the conflict. No keep-local/use-remote UI or automatic merge exists. The event remains in the inbox and the projection cursor remains blocked until a separately tested resolution workflow is implemented.
+
+
+## Atomic reconciliation semantics — PR #85
+
+Conflict archival now validates the immutable event fingerprint against the inbox and any existing conflict record. It rejects stale/orphan archive writes and oversized snapshots. An open conflict is marked `resolved` with resolution `reconciled` only inside the same IndexedDB transaction that advances the projection cursor and deletes the inbox event. This also handles already-applied events through `markRemoteProjected`. A late competing-tab archive cannot recreate an open conflict after the cursor has passed the event.
+
+This is automatic bookkeeping after a successful safe projection, not a user choice between local and remote versions. Manual keep-local/use-remote, field-level merge, and rebase UX remain unimplemented.

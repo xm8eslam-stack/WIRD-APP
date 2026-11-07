@@ -384,3 +384,13 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #81 merged as `059e902194811be71ab4dea9da8609a96967214e`; post-merge main run `42351965332` passed.
 - Closed stale PR #76 and superseded PR #59; neither was merged. PR #59's old `domain-mutation.v2` serverTimestamp envelope did not match the current revisioned schema and was intentionally not ported.
 - Vercel still reports `build-rate-limit`; no live deployment verification.
+
+
+## 2026-11-07 — Atomic conflict reconciliation (PR #85)
+
+- Reviewed PR #82's improved conflict archive implementation and ported it onto the current main via PR #85 rather than merging a stale-base branch.
+- Added inbox/event fingerprint and identity checks to conflict archive writes, orphan prevention, 500 KB snapshot cap, and atomic conflict resolution within `finalizeRemoteProjection` / `markRemoteProjected` cursor transactions.
+- Added recovery coverage for first-snapshot preservation, already-applied event reconciliation, late archive attempts, and oversized snapshot rejection. Exact PR head `b6af08b2d9461a1d3d7cc019404692d779500248`: 462 assertions passed, Rules 27/27, TypeScript/build/dependency audit/startup smoke passed.
+- PR #85 merged as `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`; post-merge main run `42352594819` passed.
+- Closed PR #82 and duplicate port PR #86 as superseded. PR #85 is authoritative.
+- Vercel still reports `build-rate-limit`; no live production deployment.

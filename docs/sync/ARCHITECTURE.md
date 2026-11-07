@@ -40,7 +40,16 @@ Never enable upload or projection against production until the deployed Firestor
 
 - IndexedDB schema version 8 adds `projectionConflicts`, keyed and indexed by UID.
 - Maximum 100 conflict records per UID; when full, only resolved records may be pruned. If all records are open, archive insertion fails safely and the inbox event remains.
-- Repeated observations update reason/time but preserve the first captured local snapshot.
+- Repeated observations update reason/time but preserve the first captured local snapshot. Archival validates the event fingerprint and immutable identity against the inbox record before writing.
 - The projector archives blocked decisions and failed finalization while leaving the inbox event and cursor unchanged.
 - Settings exposes count and latest summary. It does not expose a destructive or automatic resolution action.
 - Durable conflict resolution, user choice, and safe cursor advancement after resolution remain unimplemented.
+
+
+## Atomic conflict reconciliation — PR #85
+
+- `saveProjectionConflict` checks the current UID metadata, inbox event at the same server sequence, immutable event identity/fingerprint, and the existing archive record before saving. It rejects orphan or mismatched evidence.
+- Local snapshot bytes are capped at 500 KB. If the cap or 100-open-record limit is exceeded, the inbox event and cursor remain unchanged.
+- `finalizeRemoteProjection` and `markRemoteProjected` include the conflict store in the same IndexedDB transaction as cursor advancement and inbox deletion. A matching open conflict is marked `resolved/reconciled` atomically with that cursor transition.
+- Late archival after another tab has already advanced the cursor cannot create an orphan open conflict.
+- The only supported resolution status is `reconciled` (derived from successful projection/cursor commit). There is no manual keep-local/use-remote API or user merge UI.

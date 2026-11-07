@@ -352,3 +352,8 @@ Still not release-ready: tombstones are deliberately blocked by the projector/st
 ## PR #81 — durable projection conflict archive
 
 The current main includes a bounded UID-scoped IndexedDB conflict archive. When projection blocks, it stores the remote event and relevant local storage bytes, preserves the original snapshot on repeated observations, and exposes count/latest summaries in Settings. Open conflicts are not pruned; only resolved historical entries may be pruned at capacity. This is not a conflict-resolution workflow: no user-facing keep-local/use-remote/rebase action exists, and the inbox/cursor remain blocked. Exact-head CI passed with 459 automated assertions and 27 Firestore Rules tests; post-merge main run `42351965332` passed on `059e902194811be71ab4dea9da8609a96967214e`.
+
+
+## PR #85 — atomic conflict reconciliation
+
+The conflict archive now verifies the event fingerprint/identity against the durable inbox before writing. Snapshot size is bounded at 500 KB. Both normal projection finalization and already-applied event cursor advancement mark the corresponding open conflict as `resolved/reconciled` in the same IndexedDB transaction that advances the projection cursor and deletes the inbox event. A late archive attempt cannot create an orphan after the cursor passes the event. This is not a user-facing keep-local/use-remote/merge workflow.
