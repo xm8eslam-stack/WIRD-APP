@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getRuqyahDisplayText } from '../../services/ruqyahContentService';
+import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
+import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters, QuranReciter } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from '../../services/ruqyahProgressService';
 import { 
   ShieldCheck, 
@@ -26,9 +27,9 @@ import {
   RuqyahCategory, 
   RuqyahItem, 
   RUQYAH_GUIDELINES, 
-  RUQYAH_RECITERS, 
+  RUQYAH_PROGRAM_AUDIO, 
   getRuqyahItemsByCategory, 
-  RuqyahReciter 
+  RuqyahProgramAudio 
 } from '../../data/ruqyahData';
 
 interface RuqyahViewProps {
@@ -57,10 +58,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   // Audio Verse Playback State
   const [playingVerseId, setPlayingVerseId] = useState<string | null>(null);
   const [verseLoopCount, setVerseLoopCount] = useState<number>(0);
+  const [reciters, setReciters] = useState<QuranReciter[]>(FALLBACK_QURAN_RECITERS);
+  const [selectedReciterId, setSelectedReciterId] = useState<string>('husary');
+  const verseQueueRef = useRef<number[]>([]);
+  const verseQueueIndexRef = useRef<number>(0);
+  const verseRepeatTargetRef = useRef<number>(1);
+  const verseRepeatCountRef = useRef<number>(1);
+  const verseItemRef = useRef<RuqyahItem | null>(null);
   const audioVerseRef = useRef<HTMLAudioElement | null>(null);
 
   // Full Reciter Audio Stream State
-  const [selectedReciter, setSelectedReciter] = useState<RuqyahReciter>(RUQYAH_RECITERS[0]);
+  const [selectedProgramAudio, setSelectedProgramAudio] = useState<RuqyahProgramAudio>(RUQYAH_PROGRAM_AUDIO[0]);
   const [isStreamPlaying, setIsStreamPlaying] = useState<boolean>(false);
   const [streamProgress, setStreamProgress] = useState<number>(0);
   const [streamDuration, setStreamDuration] = useState<number>(0);
@@ -69,6 +77,21 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const audioStreamRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchQuranReciters(controller.signal)
+      .then(list => {
+        setReciters(list);
+        setSelectedReciterId(current => list.some(reciter => reciter.id === current) ? current : list[0].id);
+      })
+      .catch(error => {
+        if (!controller.signal.aborted && onToast) {
+          onToast(error instanceof Error ? error.message : 'تعذر تحديث قائمة القراء؛ نستخدم القائمة الاحتياطية.', 'info');
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   // Hydrate the current account's isolated Ruqyah progress before allowing writes.
   useEffect(() => {
@@ -188,79 +211,90 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     if (onToast) onToast('تم إعادة ضبط العدادات لهذه القائمة.', 'info');
   };
 
-  // Play individual verse loop audio using EveryAyah CDN
-  const handleToggleVerseAudio = (item: RuqyahItem) => {
-    if (!item.audioVerseKey) {
-      if (onToast) onToast('التسجيل الصوتي لهذه الآية سيتوفر قريباً.', 'info');
+  // Play the complete selected Quran passage, verse by verse, using Al Furqan.
+  const playVerseQueuePosition = (index: number) => {
+    const audio = audioVerseRef.current;
+    const queue = verseQueueRef.current;
+    if (!audio || queue.length === 0) return;
+
+    if (index >= queue.length) {
+      if (verseRepeatCountRef.current < verseRepeatTargetRef.current) {
+        verseRepeatCountRef.current += 1;
+        setVerseLoopCount(verseRepeatCountRef.current);
+        playVerseQueuePosition(0);
+        return;
+      }
+      const completedItem = verseItemRef.current;
+      if (completedItem) {
+        setCounts(previous => ({ ...previous, [completedItem.id]: completedItem.repeatTarget }));
+      }
+      setPlayingVerseId(null);
+      setVerseLoopCount(0);
+      verseItemRef.current = null;
       return;
     }
 
+    verseQueueIndexRef.current = index;
+    audio.src = buildQuranAyahAudioUrl(selectedReciterId, queue[index]);
+    audio.play().catch(() => {
+      if (onToast) onToast('تعذر تشغيل التلاوة. تحقق من الاتصال بالإنترنت أو اختر قارئًا آخر.', 'warn');
+      setPlayingVerseId(null);
+    });
+  };
+
+  const handleToggleVerseAudio = (item: RuqyahItem) => {
     if (playingVerseId === item.id) {
-      // Pause
-      if (audioVerseRef.current) {
-        audioVerseRef.current.pause();
-      }
+      audioVerseRef.current?.pause();
       setPlayingVerseId(null);
       setVerseLoopCount(0);
       return;
     }
 
-    // Stop stream if playing
     if (audioStreamRef.current && isStreamPlaying) {
       audioStreamRef.current.pause();
       setIsStreamPlaying(false);
     }
 
-    // EveryAyah URL pattern: e.g. Mishary Alafasy 128kbps
-    const verseUrl = `https://everyayah.com/data/Alafasy_128kbps/${item.audioVerseKey}.mp3`;
-    setPlayingVerseId(item.id);
-    setVerseLoopCount(1);
+    try {
+      const queue = getRuqyahAudioQueue(item).map(ayah => ayah.globalAyahNumber);
+      if (queue.length === 0) throw new Error('لا توجد آيات صالحة للتشغيل.');
+      verseQueueRef.current = queue;
+      verseQueueIndexRef.current = 0;
+      verseRepeatTargetRef.current = Math.max(1, item.repeatTarget);
+      verseRepeatCountRef.current = 1;
+      verseItemRef.current = item;
+      setPlayingVerseId(item.id);
+      setVerseLoopCount(1);
+      playVerseQueuePosition(0);
 
-    if (audioVerseRef.current) {
-      audioVerseRef.current.src = verseUrl;
-      audioVerseRef.current.play().catch(() => {
-        if (onToast) onToast('تعذر تشغيل الصوت للآية. تحقق من الاتصال بالإنترنت.', 'warn');
-        setPlayingVerseId(null);
-      });
-
-      audioVerseRef.current.onended = () => {
-        setVerseLoopCount(prev => {
-          const next = prev + 1;
-          if (next <= item.repeatTarget) {
-            if (audioVerseRef.current) {
-              audioVerseRef.current.currentTime = 0;
-              audioVerseRef.current.play();
-            }
-            return next;
-          } else {
-            setPlayingVerseId(null);
-            // Increment item count to max
-            setCounts(p => ({ ...p, [item.id]: item.repeatTarget }));
-            return 0;
-          }
-        });
-      };
+      if (audioVerseRef.current) {
+        audioVerseRef.current.onended = () => {
+          playVerseQueuePosition(verseQueueIndexRef.current + 1);
+        };
+      }
+    } catch (error) {
+      if (onToast) onToast(error instanceof Error ? error.message : 'تعذر تجهيز آيات التلاوة.', 'error');
+      setPlayingVerseId(null);
     }
   };
 
-  // Stream controls for Full Reciters
-  const handleToggleStream = (reciter?: RuqyahReciter) => {
-    const target = reciter || selectedReciter;
-    
-    // Stop verse audio if playing
+  // Full-program recordings are separate from individual Quran reciter streams.
+  const handleToggleStream = (program?: RuqyahProgramAudio) => {
+    const target = program || selectedProgramAudio;
+
     if (audioVerseRef.current && playingVerseId) {
       audioVerseRef.current.pause();
       setPlayingVerseId(null);
     }
 
-    if (selectedReciter.id !== target.id) {
-      setSelectedReciter(target);
+    if (selectedProgramAudio.id !== target.id) {
+      setSelectedProgramAudio(target);
       if (audioStreamRef.current) {
         audioStreamRef.current.src = target.audioUrl;
         audioStreamRef.current.play().then(() => {
           setIsStreamPlaying(true);
         }).catch(() => {
-          if (onToast) onToast('تعذر الاتصال بالبث الصوتي المباشر للرقية.', 'warn');
+          if (onToast) onToast('تعذر تشغيل تسجيل البرنامج. تحقق من الاتصال بالإنترنت.', 'warn');
         });
       }
       return;
@@ -277,7 +311,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         audioStreamRef.current.play().then(() => {
           setIsStreamPlaying(true);
         }).catch(() => {
-          if (onToast) onToast('تعذر تشغيل البث الصوتي.', 'warn');
+          if (onToast) onToast('تعذر تشغيل تسجيل البرنامج.', 'warn');
         });
       }
     }
@@ -294,9 +328,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const vol = parseFloat(e.target.value);
     setStreamVolume(vol);
-    if (audioStreamRef.current) {
-      audioStreamRef.current.volume = vol;
-    }
+    if (audioStreamRef.current) audioStreamRef.current.volume = vol;
+    if (audioVerseRef.current) audioVerseRef.current.volume = vol;
   };
 
   const formatTime = (seconds: number) => {
@@ -374,6 +407,23 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       {/* Main Mode 1: Interactive Reading with Counter */}
       {viewMode === 'interactive' && (
         <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
+            <div>
+              <p className="text-sm font-bold text-stone-800 dark:text-stone-200">قارئ تلاوة الآيات</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُشغّل المقاطع متعددة الآيات كاملة وبالترتيب.</p>
+            </div>
+            <select
+              value={selectedReciterId}
+              onChange={event => setSelectedReciterId(event.target.value)}
+              className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-sm text-stone-800 dark:text-stone-100"
+              aria-label="اختيار قارئ القرآن"
+            >
+              {reciters.map(reciter => (
+                <option key={reciter.id} value={reciter.id}>{reciter.arabicName}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Category Tabs Bar */}
           <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
             {CATEGORY_TABS.map(tab => {
@@ -490,7 +540,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     </div>
 
                     {/* Audio Play Button for Verse */}
-                    {item.audioVerseKey && (
+                    {item.type === 'quran' && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -504,7 +554,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         title="استماع صوتي مع التكرار التلقائي"
                       >
                         {isPlayingVerse ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span>{isPlayingVerse ? `تكرار (${verseLoopCount}/${item.repeatTarget})` : 'استماع للآية'}</span>
+                        <span>{isPlayingVerse ? `تكرار (${verseLoopCount}/${item.repeatTarget})` : 'استماع للآيات'}</span>
                       </button>
                     )}
                   </div>
@@ -577,10 +627,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     مشغل الرقية الصوتية المباشر
                   </span>
                   <h2 className="text-lg md:text-xl font-bold text-stone-900 dark:text-stone-100 mt-0.5">
-                    {selectedReciter.name}
+                    {selectedProgramAudio.name}
                   </h2>
                   <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                    {selectedReciter.description}
+                    {selectedProgramAudio.description}
                   </p>
                 </div>
               </div>
@@ -651,16 +701,16 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           {/* Reciter Selector Cards Grid */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-stone-800 dark:text-stone-200">
-              اختر القارئ المفضل للرقية الصوتية:
+              اختر تسجيل البرنامج الصوتي:
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {RUQYAH_RECITERS.map(reciter => {
-                const isSelected = selectedReciter.id === reciter.id;
+              {RUQYAH_PROGRAM_AUDIO.map(programAudio => {
+                const isSelected = selectedProgramAudio.id === programAudio.id;
                 return (
                   <div
-                    key={reciter.id}
-                    onClick={() => handleToggleStream(reciter)}
+                    key={programAudio.id}
+                    onClick={() => handleToggleStream(programAudio)}
                     className={`p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
                       isSelected
                         ? 'bg-emerald-900 text-white border-emerald-700 shadow-sm'
@@ -668,15 +718,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     }`}
                   >
                     <div className="space-y-1">
-                      <h4 className="font-bold text-sm">{reciter.name}</h4>
+                      <h4 className="font-bold text-sm">{programAudio.name}</h4>
                       <p className={`text-xs ${isSelected ? 'text-stone-200/80' : 'text-stone-500 dark:text-stone-400'}`}>
-                        {reciter.description}
+                        {programAudio.description}
                       </p>
-                      <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-mono mt-1 ${
-                        isSelected ? 'bg-amber-400/20 text-amber-200' : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
-                      }`}>
-                        المدة: {reciter.durationStr}
-                      </span>
                     </div>
 
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
