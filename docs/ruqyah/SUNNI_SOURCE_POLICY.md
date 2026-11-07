@@ -33,7 +33,7 @@ Quran text and verse ranges remain checked against WIRD's canonical corpus. The 
 ## Explicitly blocked sources/features
 
 - IslamicAPI's `from-sunnah` content is not rendered or proxied. Its category endpoint is also blocked. The API is only a Quran locator/index; the server validates coordinates and returns only an item ID plus normalized numeric coordinates. All provider-authored titles, Arabic, references, introductions, translations, and category labels are stripped before reaching the browser. WIRD renders only canonical Quran text and local surah metadata.
-- IslamicAPI educational topic articles remain disabled by default behind `RUQYAH_TOPICS_ENABLED`; do not enable them without a separate qualified content review.
+- IslamicAPI educational topic and category endpoints are hard-disabled in the server proxy, with no environment-variable override. Do not reintroduce them until each article is curated from a named, reviewed Sunni source and protected by source-registry tests.
 - IslamicAPI full-program recordings are not playable. Their reciter, complete contents, and source/rights chain have not been independently verified.
 - Al Furqan's dynamic reciter catalogue/audio endpoint is not used. The public audio proxy returns `503 QURAN_AUDIO_SOURCE_NOT_VERIFIED`, and the URL builder fails closed.
 - The full-program audio tab and individual verse audio controls remain visibly disabled until a verified provider and exact recitation assets are approved.
