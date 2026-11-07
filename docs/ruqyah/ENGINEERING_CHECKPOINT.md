@@ -2,12 +2,14 @@
 
 Last updated: 2026-11-07
 
+Current PR head at checkpoint: d29ad153e1cf0d85bef3b779957717852eacfa22
+
 ## Active work
 
 - Repository: xm8eslam-stack/WIRD-APP
-- Base branch: main
-- Working branch: feat/ruqyah-phase1-canonical-quran
-- Pull request: #84
+- Base branch: main (base SHA 473619ef16386ccb7b18ea7d32058bfe67bdfd6a at PR creation)
+- Working branch: feat/ruqyah-phase1-canonical-quran-v2
+- Pull request: #88
 - Do not merge until the current PR head has passing automated checks and the build has been independently verified.
 
 ## Completed in this branch
@@ -40,11 +42,11 @@ Last updated: 2026-11-07
 - Automated tests have been authored and registered in src/tests/runAllTests.ts.
 - Tests have not yet been executed in a runtime in this session. GitHub connector writes did not produce observable Actions/check-run results, and the local repository runtime was unavailable. Do not report the tests as passed.
 - Current main already had an external Vercel status failure caused by build rate limiting; distinguish provider quota failures from code test failures.
-- Do not merge PR #84 until the exact current head SHA is checked and the CI/build gates pass.
+- Do not merge PR #88 until the exact current head SHA is checked and the CI/build gates pass.
 
 ## Next actions, in order
 
-1. Fetch PR #84 and current main; record exact base/head SHAs and all check runs.
+1. Fetch PR #88 and current main; record exact base/head SHAs and all check runs.
 2. Run npm test, npm run typecheck (or the repository's actual scripts), production build, Firestore rules tests, and server smoke tests in a real runner.
 3. Fix all compile/test failures, rerun the full suite, then merge only when the required checks pass.
 4. Configure ISLAMICAPI_API_KEY as a server secret after confirming the provider's current plan/terms; never put it in client code.
@@ -60,4 +62,4 @@ Last updated: 2026-11-07
 
 ## Resume instruction
 
-Start by reading this checkpoint, the current PR #84 diff, and the current main head. Do not assume this branch or its head SHA is unchanged. Continue from the first unfinished action above; preserve all already completed work and do not merge without passing checks.
+Start by reading this checkpoint, the current PR #88 diff, and the current main head. Do not assume this branch or its head SHA is unchanged. Continue from the first unfinished action above; preserve all already completed work and do not merge without passing checks.
