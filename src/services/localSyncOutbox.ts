@@ -365,6 +365,11 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().markRemoteCollectionInitialized(collection);
   },
 
+  async hasPendingForCollection(collection: SyncCollection): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().hasPendingForCollection(collection);
+  },
+
   async hasPendingForDocument(collection: SyncCollection, documentId: string): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().hasPendingForDocument(collection, documentId);
