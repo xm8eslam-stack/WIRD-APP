@@ -6,7 +6,7 @@ Last verified: 2026-11-07.
 - Repository: `xm8eslam-stack/WIRD-APP`; base branch: `main`.
 - PR #111 merged Quran index sanitization and canonical WIRD Quran text resolution. Merge SHA: `48cf9b236072cd3db2603a57cda5f67b30a778cd`.
 - PR #116 refreshed this checkpoint. Merge SHA: `d49e2f57ad81bfba22722ba513c85382b74879f7`.
-- PR #117 removed dormant verse/full-program audio playback code from `RuqyahView.tsx), retaining visibly disabled audio notices and all reading/progress functionality. Merge SHA: `673ddfcb5af046f785e2da18abc73c4a1bba2339`.
+- PR #117 removed dormant verse/full-program audio playback code from `RuqyahView.tsx`, retaining visibly disabled audio notices and all reading/progress functionality. Merge SHA: `673ddfcb5af046f785e2da18abc73c4a1bba2339`.
 - PR #120 tightened external Quran locator validation and provider item IDs. Merge SHA: `66d3ac74d8402fb13718ff38d8c7ad4bb889cd89`.
 - PR #117 exact-head Quality Gate passed on `8cdfc2bb94a18522f17ae8270ca22fc9929652de`, run `42359507976`: 518 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
 - PR #120 exact-head Quality Gate passed on `bc95c5a0018b32be6d8868c85ec556afb6a4eed4`, run `42359703038`: 520 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
