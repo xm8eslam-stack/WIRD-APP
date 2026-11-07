@@ -871,6 +871,9 @@ try {
         payload: mutationA.mutation.payload
       });
       await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, accepted.revision, 1_799_000_100_003);
+      const acceptedEvent = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
+      )));
       let conflictCode = '';
       try {
         await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
@@ -893,7 +896,7 @@ try {
         throw new Error('The stale offline write was not rejected as an explicit revision conflict: ' + conflictCode);
       }
 
-      await journalB.importRemotePage([acceptedEventA]);
+      await journalB.importRemotePage([acceptedEvent]);
       activateIsolatedDevice(localStorageB, uid);
       const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
       const retainedOutbox = await journalB.listReady(1_800_000_000_000, 10);
