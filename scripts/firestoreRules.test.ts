@@ -11,6 +11,8 @@ import {
   getDoc,
   setDoc
 } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
+import { writeImmutableRemoteEvent } from '../src/services/immutableRemoteEvent';
 
 const projectId = 'demo-wird-rules';
 const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
@@ -145,7 +147,7 @@ try {
   });
 
   const validEvent = {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     eventId: 'event-alice-001',
     mutationId: 'mutation-test-0001',
     uid: 'alice',
@@ -160,6 +162,49 @@ try {
     await assertSucceeds(setDoc(eventRef, validEvent));
     await assertSucceeds(getDoc(eventRef));
   });
+  await test('Immutable event helper treats an identical retry as a successful no-op', async () => {
+    const event = { ...validEvent, eventId: 'event-idempotent-001', mutationId: 'mutation-idempotent-001' };
+    const first = await writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', event);
+    const retry = await writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', { ...event, payload: { memorizedAyahs: 5 } });
+    const stored = await getDoc(doc(alice, 'users/alice/events/event-idempotent-001'));
+    if (first !== 'created' || retry !== 'already_exists' || !stored.exists() ||
+        stored.data().payload.memorizedAyahs !== 5) {
+      throw new Error('Identical retry did not preserve one immutable event');
+    }
+  });
+
+  await test('Immutable event helper rejects event-ID reuse with different content', async () => {
+    const event = { ...validEvent, eventId: 'event-collision-001', mutationId: 'mutation-collision-001' };
+    await writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', event);
+    let rejected = false;
+    try {
+      await writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', {
+        ...event,
+        payload: { memorizedAyahs: 99 }
+      });
+    } catch (error) {
+      rejected = error instanceof Error && error.message === 'REMOTE_EVENT_ID_COLLISION';
+    }
+    const stored = await getDoc(doc(alice, 'users/alice/events/event-collision-001'));
+    if (!rejected || stored.data()?.payload?.memorizedAyahs !== 5) {
+      throw new Error('Event collision changed or failed to protect the original event');
+    }
+  });
+
+  await test('Concurrent identical event deliveries converge on one immutable event', async () => {
+    const event = { ...validEvent, eventId: 'event-race-001', mutationId: 'mutation-race-001' };
+    const results = await Promise.all([
+      writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', event),
+      writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', { ...event, payload: { memorizedAyahs: 5 } })
+    ]);
+    const stored = await getDoc(doc(alice, 'users/alice/events/event-race-001'));
+    if (results.filter(result => result === 'created').length !== 1 ||
+        results.filter(result => result === 'already_exists').length !== 1 ||
+        !stored.exists()) {
+      throw new Error('Concurrent event retries did not converge to one event');
+    }
+  });
+
 
   await test('Domain events are immutable: update and delete are strictly denied', async () => {
     const eventRef = doc(alice, 'users/alice/events/event-alice-001');
