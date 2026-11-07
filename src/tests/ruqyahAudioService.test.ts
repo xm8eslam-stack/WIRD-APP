@@ -1,5 +1,5 @@
 import quranAudioHandler from '../../api/quran-audio';
-import { buildQuranAyahAudioUrl } from './ruqyahAudioService';
+import { buildQuranAyahAudioUrl } from '../services/ruqyahAudioService';
 
 class MockResponse {
   statusCode = 200;
