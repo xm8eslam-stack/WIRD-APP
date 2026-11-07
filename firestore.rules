@@ -68,6 +68,29 @@ service cloud.firestore {
         );
     }
 
+    function hasMatchingSequenceAfter(uid, eventId) {
+      let sequencePath = /databases/$(database)/documents/users/$(uid)/syncSystem/remoteReplication;
+      return existsAfter(sequencePath)
+        && getAfter(sequencePath).data.sequence == request.resource.data.serverSequence
+        && getAfter(sequencePath).data.lastEventId == eventId
+        && getAfter(sequencePath).data.mutationId == request.resource.data.mutationId;
+    }
+
+    function hasMatchingStateAfter(uid) {
+      let statePath = /databases/$(database)/documents/users/$(uid)/$(request.resource.data.collection)/$(request.resource.data.documentId);
+      return existsAfter(statePath)
+        && getAfter(statePath).data.mutationId == request.resource.data.mutationId
+        && getAfter(statePath).data.baseRevision == request.resource.data.baseRevision
+        && getAfter(statePath).data.revision == request.resource.data.revision;
+    }
+
+    function hasMatchingEventAfter(uid) {
+      let eventPath = /databases/$(database)/documents/users/$(uid)/events/$(request.resource.data.mutationId);
+      return existsAfter(eventPath)
+        && getAfter(eventPath).data.mutationId == request.resource.data.mutationId
+        && getAfter(eventPath).data.serverSequence is int;
+    }
+
     function hasValidDomainEvent(uid, eventId) {
       let data = request.resource.data;
       let common = data.keys().hasAll([
@@ -130,6 +153,8 @@ service cloud.firestore {
           && data.revision == data.baseRevision + 1
           && data.serverSequence is int
           && data.serverSequence > 0
+          && hasMatchingSequenceAfter(uid, eventId)
+          && hasMatchingStateAfter(uid)
         )
       );
     }
@@ -178,7 +203,8 @@ service cloud.firestore {
         && isAllowedCollection(collection)
         && hasValidSyncEnvelope()
         && request.resource.data.baseRevision == 0
-        && request.resource.data.revision == 1;
+        && request.resource.data.revision == 1
+        && hasMatchingEventAfter(uid);
       // A revisioned update must prove the exact server version it replaced.
       // Legacy documents without a revision stay read-only until reconciled.
       allow update: if ownsUserPath(uid)
@@ -186,7 +212,8 @@ service cloud.firestore {
         && hasValidSyncEnvelope()
         && resource.data.revision is int
         && request.resource.data.baseRevision == resource.data.revision
-        && request.resource.data.revision == resource.data.revision + 1;
+        && request.resource.data.revision == resource.data.revision + 1
+        && hasMatchingEventAfter(uid);
       // Deletions are represented by tombstones to prevent offline resurrection.
       allow delete: if false;
     }
@@ -196,12 +223,14 @@ service cloud.firestore {
       allow create: if ownsUserPath(uid)
         && hasValidRemoteSequence()
         && request.resource.data.baseSequence == 0
-        && request.resource.data.sequence == 1;
+        && request.resource.data.sequence == 1
+        && hasMatchingEventAfter(uid);
       allow update: if ownsUserPath(uid)
         && hasValidRemoteSequence()
         && resource.data.sequence is int
         && request.resource.data.baseSequence == resource.data.sequence
-        && request.resource.data.sequence == resource.data.sequence + 1;
+        && request.resource.data.sequence == resource.data.sequence + 1
+        && hasMatchingEventAfter(uid);
       allow delete: if false;
     }
 
