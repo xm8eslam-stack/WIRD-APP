@@ -1,11 +1,11 @@
 const APPROVED_RECITERS = [
-  { id: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري', style: 'Murattal' },
-  { id: 'ar.minshawi', name: 'Mohamed Siddiq al-Minshawi', arabicName: 'محمد صديق المنشاوي', style: 'Murattal' },
-  { id: 'ar.abdulbasit', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد', style: 'Murattal' },
-  { id: 'ar.sudais', name: 'Abdul Rahman Al-Sudais', arabicName: 'عبدالرحمن السديس', style: 'Murattal' },
-  { id: 'ar.shuraim', name: 'Saud Al-Shuraim', arabicName: 'سعود الشريم', style: 'Murattal' },
-  { id: 'ar.ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي', style: 'Murattal' },
-  { id: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي', style: 'Murattal' }
+  { id: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.minshawi', name: 'Mohamed Siddiq al-Minshawi', arabicName: 'محمد صديق المنشاوي', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.abdulbasit', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد', style: 'Murattal', bitrate: 192 },
+  { id: 'ar.sudais', name: 'Abdul Rahman Al-Sudais', arabicName: 'عبدالرحمن السديس', style: 'Murattal', bitrate: 192 },
+  { id: 'ar.shuraim', name: 'Saud Al-Shuraim', arabicName: 'سعود الشريم', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي', style: 'Murattal', bitrate: 128 }
 ] as const;
 
 function send(res: any, statusCode: number, payload: unknown) {
