@@ -1395,7 +1395,7 @@ export class IndexedDbSyncJournal {
   }
 
   /**
-   * Converge two V2 Ruqyah PN-counter snapshots when a remote event arrives
+   * Converge two V2 Ruqyah per-device resettable counter snapshots when a remote event arrives
    * while this device has local pending counter writes. The archive is created
    * by the projector before this method is called. Old pending writes are
    * atomically replaced by one merged snapshot mutation based on the remote
@@ -1659,7 +1659,7 @@ export class IndexedDbSyncJournal {
         finish();
       };
       transaction.oncomplete = () => resolve(merged);
-      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Ruqyah PN-counter merge transaction aborted.')));
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Ruqyah per-device resettable counter merge transaction aborted.')));
     });
   }
 
