@@ -57,7 +57,7 @@ Last verified: 2026-11-07.
 - No Quran text, hadith, fixed repetition values, or source registry changed.
 
 ## Quran audio restoration — active PR branch, not yet merged
-- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; latest audio implementation commit before checkpoint refresh: `7f7b61b86ec2aa3dfe646a2304b418dad15804a8`.
+- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; latest audio implementation commit before checkpoint refresh: `8c6537f249eb519bd9fe3afb185ba29152b6b147`.
 - Main base verified before this branch: `7b8b92dab41b3996483c38b5da9033c7e350fb5e` (PR #148 merge; PR #147 remains recorded below).
 - Replaced the disabled audio catalogue with a static seven-edition Al Quran Cloud allowlist: `ar.husary`, `ar.minshawi`, `ar.abdulbasit`, `ar.sudais`, `ar.shuraim`, `ar.ajamy`, and `ar.alafasy`.
 - Provider terms: recitations are licensed to Al Quran Cloud by reciters or estates; streaming/embedding is permitted for personal and educational use. WIRD limits this to educational ayah-level streaming and does not mirror or bundle files. Terms and CDN docs are recorded in `SUNNI_SOURCE_POLICY.md`.
