@@ -380,19 +380,21 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
     await test('Use-remote resolution atomically applies the latest snapshot and supersedes only archived local mutations', async () => {
       const uid = 'use-remote-resolution-owner';
       const { journal } = createJournal(uid);
-      StorageService.savePlans([]);
+      const localProfile = { ...StorageService.getProfile(), name: 'local-choice' };
+      assert(StorageService.saveProfile(localProfile), 'The local profile fixture must be valid');
+      const latestRemoteProfile = { ...localProfile, name: 'remote-latest' };
       const event = {
         uid,
         eventId: 'use-remote-resolution-event',
         mutationId: 'use-remote-resolution-event',
         eventType: 'domain-mutation' as const,
-        collection: 'plans' as const,
+        collection: 'profile' as const,
         documentId: 'snapshot',
         operation: 'upsert' as const,
         schemaVersion: 2 as const,
         deviceId: 'remote-device',
         occurredAtMs: 9500,
-        payload: { records: [{ id: 'remote-old' }] },
+        payload: { profile: { ...localProfile, name: 'remote-old' } },
         baseRevision: 0,
         revision: 1,
         serverSequence: 1
@@ -402,18 +404,18 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         mutationId: 'use-remote-local-pending',
         collection: 'plans',
         documentId: event.documentId,
-        payload: { records: [{ id: 'local-pending' }] },
+        payload: { profile: localProfile },
         nowMs: 9501
       });
       const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
-      const localSnapshot = StorageService.getLocalProjectionSnapshot('plans');
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('profile');
       await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9502);
       const conflict = (await journal.listProjectionConflicts(10))[0];
       const archived = (conflict.localMutations || []).map(item => ({
         mutationId: item.mutationId,
         fingerprint: item.fingerprint
       }));
-      const latestRemotePayload = { records: [{ id: 'remote-latest' }] };
+      const latestRemotePayload = { profile: latestRemoteProfile };
       await journal.prepareConflictResolutionIntent({
         decisionId: 'use-remote-decision-1',
         eventId: event.eventId,
@@ -428,8 +430,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       assert(await journal.commitUseRemoteConflictResolution(
         event.eventId, 2, latestRemotePayload, 9504
       ), 'The explicit remote choice must commit against the latest confirmed server revision');
-      assert(StorageService.getPlans().length === 1 &&
-        StorageService.getPlans()[0].id === 'remote-latest',
+      assert(StorageService.getProfile().name === 'remote-latest',
         'The latest remote snapshot must replace the local projection');
       assert((await journal.listReady(9600, 10)).length === 0 &&
         await journal.getRemoteProjectionCursor() === 1 &&
