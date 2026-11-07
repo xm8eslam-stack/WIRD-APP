@@ -56,6 +56,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     setProgressDirty(false);
     const saved = loadRuqyahProgress();
     if (saved.status === 'corrupt') {
+      setCounts({});
       setProgressCorrupt(true);
       if (onToast) onToast('تعذر قراءة تقدم الرقية المحفوظ؛ احتفظنا بالبيانات الأصلية ولم نستبدلها.', 'warn');
     } else {
@@ -78,6 +79,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       if (StorageService.getStorageScope() !== currentStorageScope) return;
       const saved = loadRuqyahProgress();
       if (saved.status === 'corrupt') {
+        setCounts({});
         setProgressCorrupt(true);
         return;
       }

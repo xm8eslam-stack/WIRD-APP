@@ -106,3 +106,27 @@ test.describe('Ruqyah Quran locator library', () => {
     await expect(page.getByText('لا توجد مواضع مطابقة لعبارة البحث.')).toBeVisible();
   });
 });
+
+test.describe('Ruqyah progress recovery isolation', () => {
+  test('clears the previously displayed count when stored progress becomes corrupt', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+    await expect(page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' })).toHaveCount(0);
+    await page.goto('/#/ruqyah');
+    await expect(page.getByRole('heading', { name: 'الرقية الشرعية الكاملة من القرآن والسنة' })).toBeVisible();
+
+    const fatihahCard = page.locator('article').filter({ hasText: 'سورة الفاتحة' }).first();
+    await fatihahCard.getByRole('button', { name: /تسجيل قراءة جديدة لـ سورة الفاتحة/ }).click();
+    await expect(fatihahCard.getByText('1 قراءة')).toBeVisible();
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('wird_ruqyah_progress_v1'))).not.toBeNull();
+
+    await page.evaluate(() => {
+      localStorage.setItem('wird_ruqyah_progress_v1', '{corrupt-json');
+      window.dispatchEvent(new CustomEvent('wird:ruqyah-progress-updated'));
+    });
+
+    await expect(page.getByText(/تعذر قراءة تقدم الرقية المحفوظ/)).toBeVisible();
+    await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
+    await expect(fatihahCard.getByText('1 قراءة')).toHaveCount(0);
+  });
+});
