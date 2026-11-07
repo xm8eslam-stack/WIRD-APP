@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { IDBFactory } from 'fake-indexeddb';
 import { resolve } from 'node:path';
 import {
   assertFails,
@@ -14,6 +15,86 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import { writeImmutableRemoteEvent } from '../src/services/immutableRemoteEvent';
 import { writeRevisionedRemoteMutation } from '../src/services/revisionedRemoteMutation';
+import { IndexedDbSyncJournal, type JournalEvent, type JournalOutboxEntry, type RemoteInboxEventInput } from '../src/services/indexedDbSyncJournal';
+import { StorageService, STORAGE_KEYS } from '../src/services/storageService';
+import { projectRemoteInboxBatch, type RemoteProjectionDependencies } from '../src/services/remoteInboxProjector';
+
+class IsolatedMemoryStorage implements Storage {
+  private readonly values = new Map<string, string>();
+  get length(): number { return this.values.size; }
+  clear(): void { this.values.clear(); }
+  getItem(key: string): string | null { return this.values.get(String(key)) ?? null; }
+  key(index: number): string | null { return [...this.values.keys()][index] ?? null; }
+  removeItem(key: string): void { this.values.delete(String(key)); }
+  setItem(key: string, value: string): void { this.values.set(String(key), String(value)); }
+}
+
+function setTestLocalStorage(storage: Storage): void {
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: storage
+  });
+}
+
+function activateIsolatedDevice(storage: Storage, uid: string): void {
+  // StorageService has a process-wide in-memory fallback. Reset it while a
+  // throwaway adapter is active, never while either device's durable store is.
+  setTestLocalStorage(new IsolatedMemoryStorage());
+  StorageService.__resetStorageForTests();
+  setTestLocalStorage(storage);
+  if (!StorageService.setStorageScope('user:' + uid)) {
+    throw new Error('Could not activate isolated storage scope for ' + uid);
+  }
+}
+
+function makeDeviceProjectorDependencies(journal: IndexedDbSyncJournal): RemoteProjectionDependencies {
+  return {
+    getRemoteProjectionCursor: () => journal.getRemoteProjectionCursor(),
+    listRemoteInboxAfter: (sequence, limit) => journal.listRemoteInboxAfter(sequence, limit),
+    getRemoteRevision: (collection, documentId) => journal.getRemoteRevision(collection, documentId),
+    hasPendingForCollection: collection => journal.hasPendingForCollection(collection),
+    isRemoteCollectionInitialized: collection => journal.isRemoteCollectionInitialized(collection),
+    isLocalProjectionEmpty: collection => StorageService.isLocalProjectionEmpty(collection),
+    applyJournalEvent: event => StorageService.applyJournalEvent(event),
+    setRemoteRevisionFromRemote: (collection, documentId, revision) =>
+      journal.setRemoteRevisionFromRemote(collection, documentId, revision),
+    markRemoteProjected: sequence => journal.markRemoteProjected(sequence),
+    markRemoteCollectionInitialized: collection => journal.markRemoteCollectionInitialized(collection),
+    getRemoteProjectionIntent: () => journal.getRemoteProjectionIntent(),
+    prepareRemoteProjection: intent => journal.prepareRemoteProjection(intent),
+    finalizeRemoteProjection: (intent, applyProjection) =>
+      journal.finalizeRemoteProjection(intent, applyProjection)
+  };
+}
+
+function makeLocalJournalEvent(mutation: JournalOutboxEntry): JournalEvent {
+  return {
+    key: mutation.uid + ':' + mutation.mutationId,
+    uid: mutation.uid,
+    eventId: mutation.eventId,
+    mutationId: mutation.mutationId,
+    eventType: 'domain-mutation',
+    collection: mutation.collection,
+    documentId: mutation.documentId,
+    operation: mutation.operation,
+    schemaVersion: 1,
+    clientUpdatedAtMs: mutation.clientUpdatedAtMs,
+    createdAtMs: mutation.queuedAtMs,
+    deviceId: mutation.deviceId,
+    payload: mutation.payload,
+    fingerprint: mutation.fingerprint,
+    sequence: mutation.sequence,
+    baseRevision: mutation.baseRevision,
+    projectionRequired: true
+  };
+}
+
+function readRemoteEvent(snapshot: Awaited<ReturnType<typeof getDoc>>): RemoteInboxEventInput {
+  if (!snapshot.exists()) throw new Error('The accepted server event is missing.');
+  return snapshot.data() as unknown as RemoteInboxEventInput;
+}
 
 const projectId = 'demo-wird-rules';
 const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
@@ -460,6 +541,169 @@ try {
     }
   });
 
+
+  await test('Two isolated devices exchange profile changes through Firestore and independent IndexedDB/localStorage', async () => {
+    const uid = 'device-pair';
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const localStorageA = new IsolatedMemoryStorage();
+    const localStorageB = new IsolatedMemoryStorage();
+    const factoryA = new IDBFactory();
+    const factoryB = new IDBFactory();
+    const journalA = new IndexedDbSyncJournal({
+      indexedDBFactory: factoryA,
+      databaseName: 'wird-device-pair-a'
+    });
+    const journalB = new IndexedDbSyncJournal({
+      indexedDBFactory: factoryB,
+      databaseName: 'wird-device-pair-b'
+    });
+    try {
+      const devicePairA = testEnv.authenticatedContext(uid, {
+        email: 'device-pair@example.com',
+        email_verified: true,
+        device: 'device-a'
+      }).firestore();
+      const devicePairB = testEnv.authenticatedContext(uid, {
+        email: 'device-pair@example.com',
+        email_verified: true,
+        device: 'device-b'
+      }).firestore();
+
+      activateIsolatedDevice(localStorageA, uid);
+      const profileA = { ...StorageService.getProfile(), name: 'حافظ الجهاز الأول' };
+      const queuedA = await journalA.enqueue({
+        mutationId: 'device-pair-a-001',
+        collection: 'profile',
+        documentId: 'main',
+        payload: { profile: profileA },
+        nowMs: 1_799_000_000_500
+      });
+      if (queuedA.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(queuedA.mutation))) {
+        throw new Error('Device A could not durably queue and locally apply its profile mutation.');
+      }
+      const serverA = await writeRevisionedRemoteMutation(devicePairA as unknown as Firestore, {
+        uid,
+        collection: 'profile',
+        documentId: 'main',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: queuedA.mutation.mutationId,
+        eventId: queuedA.mutation.eventId,
+        deviceId: queuedA.mutation.deviceId,
+        clientUpdatedAtMs: queuedA.mutation.clientUpdatedAtMs,
+        baseRevision: queuedA.mutation.baseRevision,
+        payload: queuedA.mutation.payload
+      });
+      await journalA.acknowledgeRemoteMutation(queuedA.mutation.mutationId, serverA.revision, 1_799_000_000_501);
+      const eventA = readRemoteEvent(await getDoc(doc(
+        devicePairA,
+        'users', uid, 'events', queuedA.mutation.eventId
+      )));
+      if (eventA.serverSequence !== 1 || serverA.revision !== 1) {
+        throw new Error('Device A did not receive the first server revision and sequence.');
+      }
+
+      await journalA.importRemotePage([eventA]);
+      activateIsolatedDevice(localStorageA, uid);
+      const ownEventProjection = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      if (ownEventProjection.projectedCount !== 1 || ownEventProjection.reason) {
+        throw new Error('Device A could not reconcile its own acknowledged event.');
+      }
+
+      await journalB.importRemotePage([eventA]);
+      activateIsolatedDevice(localStorageB, uid);
+      const firstProjection = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      const receivedProfile = StorageService.getProfile();
+      if (firstProjection.projectedCount !== 1 || firstProjection.reason ||
+          receivedProfile.name !== profileA.name) {
+        throw new Error('Device B did not project Device A’s server-accepted profile.');
+      }
+
+      const profileB = {
+        ...receivedProfile,
+        memorizationGoal: 'تثبيت الحفظ بالمراجعة المتدرجة'
+      };
+      const queuedB = await journalB.enqueue({
+        mutationId: 'device-pair-b-001',
+        collection: 'profile',
+        documentId: 'main',
+        payload: { profile: profileB },
+        nowMs: 1_799_000_000_600
+      });
+      if (queuedB.status !== 'queued' || queuedB.mutation.baseRevision !== 1 ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(queuedB.mutation))) {
+        throw new Error('Device B did not build its next mutation on the received server revision.');
+      }
+      const serverB = await writeRevisionedRemoteMutation(devicePairB as unknown as Firestore, {
+        uid,
+        collection: 'profile',
+        documentId: 'main',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: queuedB.mutation.mutationId,
+        eventId: queuedB.mutation.eventId,
+        deviceId: queuedB.mutation.deviceId,
+        clientUpdatedAtMs: queuedB.mutation.clientUpdatedAtMs,
+        baseRevision: queuedB.mutation.baseRevision,
+        payload: queuedB.mutation.payload
+      });
+      await journalB.acknowledgeRemoteMutation(queuedB.mutation.mutationId, serverB.revision, 1_799_000_000_601);
+      const eventB = readRemoteEvent(await getDoc(doc(
+        devicePairB,
+        'users', uid, 'events', queuedB.mutation.eventId
+      )));
+      if (eventB.serverSequence !== 2 || serverB.revision !== 2) {
+        throw new Error('Device B did not receive the next contiguous server revision and sequence.');
+      }
+
+      activateIsolatedDevice(localStorageA, uid);
+      const profileBeforeBEvent = StorageService.getProfile();
+      if (profileBeforeBEvent.memorizationGoal === profileB.memorizationGoal) {
+        throw new Error('Device A observed Device B’s local-only change before receiving its remote event.');
+      }
+      await journalA.importRemotePage([eventB]);
+      const secondProjectionA = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      if (secondProjectionA.projectedCount !== 1 || secondProjectionA.reason) {
+        throw new Error('Device A did not project Device B’s acknowledged update.');
+      }
+
+      await journalB.importRemotePage([eventB]);
+      activateIsolatedDevice(localStorageB, uid);
+      const ownEventB = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      if (ownEventB.projectedCount !== 1 || ownEventB.reason) {
+        throw new Error('Device B could not reconcile its own acknowledged event.');
+      }
+
+      activateIsolatedDevice(localStorageA, uid);
+      const finalProfileA = StorageService.getProfile();
+      const snapshotA = await journalA.getSnapshot();
+      const cursorA = await journalA.getRemoteProjectionCursor();
+      const revisionA = await journalA.getRemoteRevision('profile', 'main');
+      activateIsolatedDevice(localStorageB, uid);
+      const finalProfileB = StorageService.getProfile();
+      const snapshotB = await journalB.getSnapshot();
+      const cursorB = await journalB.getRemoteProjectionCursor();
+      const revisionB = await journalB.getRemoteRevision('profile', 'main');
+
+      if (localStorageA === localStorageB ||
+          snapshotA.deviceId === snapshotB.deviceId ||
+          snapshotA.pendingCount !== 0 || snapshotB.pendingCount !== 0 ||
+          cursorA !== 2 || cursorB !== 2 ||
+          revisionA?.revision !== 2 || revisionB?.revision !== 2 ||
+          finalProfileA.name !== finalProfileB.name ||
+          finalProfileA.memorizationGoal !== profileB.memorizationGoal ||
+          finalProfileB.memorizationGoal !== profileB.memorizationGoal) {
+        throw new Error('Two independent devices did not converge on the same profile, revision, and projection cursor.');
+      }
+    } finally {
+      journalA.close();
+      journalB.close();
+      setTestLocalStorage(new IsolatedMemoryStorage());
+      StorageService.__resetStorageForTests();
+      if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+      else Reflect.deleteProperty(globalThis, 'localStorage');
+    }
+  });
 
   await test('Domain events are immutable: update and delete are strictly denied', async () => {
     const eventRef = doc(alice, 'users/alice/events/event-alice-001');
