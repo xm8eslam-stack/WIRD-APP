@@ -165,3 +165,14 @@ The detailed historical checkpoint entries below are retained for traceability. 
 - PR #76 and #59 closed as superseded; no stale-base changes were merged directly.
 - Current main SHA: `059e902194811be71ab4dea9da8609a96967214e`.
 - Remaining blockers: user-facing conflict resolution/rebase, tombstone projection/retention, all-collection two-device coverage, real-browser E2E, long-offline/load tests, and live production deployment/rules verification.
+
+
+## 2026-11-07 — Atomic conflict reconciliation merged
+
+- PR #85 merged as `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
+- Conflict archive writes validate UID metadata, inbox event identity/fingerprint, existing archive identity, and snapshot size. A conflict is marked `resolved/reconciled` atomically with successful cursor advancement and inbox deletion.
+- Already-applied events use the same atomic reconciliation path. Late archive attempts cannot create orphan open conflicts after cursor advancement.
+- Exact PR CI: 462 assertions passed, Firestore Rules 27/27, TypeScript, build, dependency audit, startup smoke passed. Post-merge main run `42352594819` passed.
+- PR #82 and #86 closed as superseded by #85.
+- Current main SHA: `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
+- Manual conflict choice/rebase UI, tombstone projection, all-collection multi-device coverage, browser E2E, load tests, and live production deployment/rules remain unverified.
