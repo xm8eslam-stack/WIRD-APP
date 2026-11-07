@@ -51,13 +51,14 @@ Last verified: 2026-11-07.
 - PR #145 merge SHA: `3452c7bfe8c2ac5095fe6c7ced454a3588dc3c7c`.
 - PR #146 documented merged and superseded Ruqyah work branches; merge commit `8379fdeb7f3891f95c3f1c71dd7e225b96c58a73`.
 - PR #147 completed the merged branch inventory; merge commit `ccd9e44c896d334b57688afddbba05f9e5c1dc13`. Exact-head Quality Gate passed on `ed897f22801cda8c9b7674df355b04536571f460`, run `42365509031`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 24 desktop/mobile Playwright tests passed.
+- PR #148 added durable UID-bound conflict-resolution decision intents; merge commit `7b8b92dab41b3996483c38b5da9033c7e350fb5e`. Its changes are in `docs/sync/CONFLICT-RESOLUTION.md`, `src/services/indexedDbSyncJournal.ts`, `src/services/indexedDbSyncJournal.test.ts`, and `src/services/localSyncOutbox.ts`; the audio restoration branch was rebased onto this main SHA without overlapping those files.
 - Exact-head Quality Gate passed on `a19038862946025780f4f9f41c2609900d022ff3`, run `42365003132`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 24 desktop/mobile Playwright tests passed.
 - Regression verifies that the free Al-Fatihah count changes from 0 to 1 with a live label, and the Al-Ikhlas source-defined remaining count changes to 2 of 3 after recording.
 - No Quran text, hadith, fixed repetition values, or source registry changed.
 
 ## Quran audio restoration — active PR branch, not yet merged
-- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; current branch head at checkpoint edit: `b058865fcb76f55a0412beec3ee65d19d57ba5fa`.
-- Main base verified before this branch: `ccd9e44c896d334b57688afddbba05f9e5c1dc13` (PR #147 merge).
+- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; current branch head at checkpoint edit: `631dae87556bd781d5ddeaa2f046eabaeb7a02b5`.
+- Main base verified before this branch: `7b8b92dab41b3996483c38b5da9033c7e350fb5e` (PR #148 merge; PR #147 remains recorded below).
 - Replaced the disabled audio catalogue with a static seven-edition Al Quran Cloud allowlist: `ar.husary`, `ar.minshawi`, `ar.abdulbasit`, `ar.sudais`, `ar.shuraim`, `ar.ajamy`, and `ar.alafasy`.
 - Provider terms: recitations are licensed to Al Quran Cloud by reciters or estates; streaming/embedding is permitted for personal and educational use. WIRD limits this to educational ayah-level streaming and does not mirror or bundle files. Terms and CDN docs are recorded in `SUNNI_SOURCE_POLICY.md`.
 - Restored per-ayah and section playlist playback using WIRD's canonical local ayah coordinates. Added pause/resume/stop, seek, volume, reciter selection, cleanup on navigation, no silent source fallback, and no automatic reading-counter increments.
