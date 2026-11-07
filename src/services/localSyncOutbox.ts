@@ -29,6 +29,8 @@ export interface OutboxMutation {
   attemptCount: number;
   nextAttemptAtMs: number;
   lastErrorCode?: string;
+  sequence?: number;
+  baseRevision?: number;
 }
 
 export interface EnqueueMutationInput {
@@ -113,6 +115,8 @@ function isValidMutation(value: unknown): value is OutboxMutation {
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
     && Number.isSafeInteger(value.nextAttemptAtMs) && Number(value.nextAttemptAtMs) >= 0
+    && (value.sequence === undefined || (Number.isSafeInteger(value.sequence) && Number(value.sequence) >= 0))
+    && (value.baseRevision === undefined || (Number.isSafeInteger(value.baseRevision) && Number(value.baseRevision) >= 0))
     && (value.lastErrorCode === undefined || (typeof value.lastErrorCode === 'string' && value.lastErrorCode.length <= 64));
 }
 
@@ -331,6 +335,24 @@ export const LocalSyncOutbox = {
   async acknowledge(mutationIds: string[], nowMs: number = Date.now()): Promise<number> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().acknowledge(mutationIds, nowMs);
+  },
+
+  /** Read the last server revision durably acknowledged for one document. */
+  async getRemoteRevision(collection: SyncCollection, documentId: string) {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().getRemoteRevision(collection, documentId);
+  },
+
+  /** Atomically acknowledge a remote write and persist its new server revision. */
+  async acknowledgeRemoteMutation(mutationId: string, revision: number, nowMs: number = Date.now()): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().acknowledgeRemoteMutation(mutationId, revision, nowMs);
+  },
+
+  /** Rebase a later pending mutation only after a preceding local mutation advanced its document. */
+  async rebasePendingMutation(mutationId: string, expectedBaseRevision: number, nextBaseRevision: number): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().rebasePendingMutation(mutationId, expectedBaseRevision, nextBaseRevision);
   },
 
   /** Record a retryable failure with capped exponential backoff; keep the mutation. */
