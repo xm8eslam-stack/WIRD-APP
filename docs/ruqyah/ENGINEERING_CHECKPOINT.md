@@ -18,6 +18,12 @@ Last verified: 2026-11-07.
 - PR #127 exact-head Quality Gate passed on `c406d3c4675171df30adfd272d9b97e61da09f87`, run `42360845123`: 521 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 16 desktop/mobile Playwright tests passed.
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit`. This is a deployment quota failure, not a code Quality Gate failure. No live production alias or deployed SHA is verified.
 
+## Branch hygiene
+- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130).
+- Two superseded non-PR branches remain and must not be reused: `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` (superseded by the v2 branch after main advanced) and `test/ruqyah-library-ui-states-20261107` (superseded by the v2 branch after adding the supported guest-auth flow).
+- The available GitHub integration exposes branch search and ref updates but no delete-ref operation. These two branches are therefore documented as inactive rather than falsely reported as deleted; remove them through GitHub's branch UI when available.
+- Other Ruqyah-named branches visible in the repository predate this continuation and were not modified or assumed to be active. Audit their associated PRs before deleting.
+
 ## Quran index/API boundary
 **Status: merged in PR #111 and hardened in PR #120.**
 - IslamicAPI is used only as a locator index; only `instant/from-quran` is accepted.
