@@ -85,7 +85,7 @@ test.describe('Ruqyah verified Quran audio playback', () => {
     await page.evaluate(() => (window as any).__resolvePendingAudioPlay?.());
 
     await expect(player.getByRole('button', { name: 'إيقاف مؤقت' })).toHaveCount(0);
-    await expect(player.getByRole('status')).not.toContainText('يتم التشغيل:');
+    await expect(player.getByRole('status')).toHaveCount(0);
   });
 
   test('changing Ruqyah category stops active audio before the new section is shown', async ({ page }) => {
