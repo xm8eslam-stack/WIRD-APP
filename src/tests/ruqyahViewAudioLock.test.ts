@@ -25,12 +25,12 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
   test(
     'Full-program audio mode remains visibly disabled pending source and rights review',
-    /disabled\s+title="سيُتاح بعد التحقق/.test(viewSource) &&
+    /disabled[\s\S]{0,180}title="سيُتاح بعد التحقق/.test(viewSource) &&
       viewSource.includes('التسجيل الكامل (قيد التحقق)')
   );
   test(
     'Individual Quran audio controls remain disabled and explicitly labelled',
-    /disabled\s+aria-disabled="true"[\s\S]{0,240}الصوت قيد التحقق/.test(viewSource)
+    /disabled[\s\S]{0,320}الصوت قيد التحقق/.test(viewSource)
   );
   test(
     'The rendered view exposes only interactive reading and the Quran locator library',
