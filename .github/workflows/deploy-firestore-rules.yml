@@ -35,6 +35,19 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 24
+          package-manager-cache: false
+
+      - name: Install dependencies for Firestore rules verification
+        run: npm install --no-audit --no-fund
+
+      - name: Set up Java 21 for Firestore Emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Verify Firestore Security Rules in Emulator
+        run: npm run test:firestore-rules
 
       - name: Validate deployment target and credentials
         shell: bash
