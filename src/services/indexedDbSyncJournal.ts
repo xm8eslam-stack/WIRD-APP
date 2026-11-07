@@ -1567,14 +1567,39 @@ export class IndexedDbSyncJournal {
       const inboxRequest = inbox.index('uidServerSequence').get([uid, event.serverSequence]);
       const existingRequest = store.get(key);
       const recordsRequest = store.index('uid').getAll(IDBKeyRange.only(uid));
-      const localMutationsRequest = outbox.index('uidCollectionDocument')
-        .getAll(IDBKeyRange.only([uid, event.collection, event.documentId]));
+      const localMutationRequests: IDBRequest<JournalOutboxEntry[]>[] = [];
+      if (event.collection === 'syncMeta') {
+        // A grouped transaction can be blocked by pending writes in any
+        // participating collection; archive those intents as well as the
+        // transaction document itself.
+        localMutationRequests.push(outbox.index('uidCollectionDocument')
+          .getAll(IDBKeyRange.only([uid, 'syncMeta', event.documentId])));
+        const operations = isRecord(event.payload.transaction) && Array.isArray(event.payload.transaction.operations)
+          ? event.payload.transaction.operations : [];
+        const affected = new Set<string>();
+        const allowed = new Set([
+          'profile', 'plans', 'enginePlans', 'portions', 'weakVerses',
+          'tests', 'activityEvents', 'ruqyahProgress'
+        ]);
+        for (const operation of operations) {
+          if (isRecord(operation) && typeof operation.collection === 'string' && allowed.has(operation.collection)) {
+            affected.add(operation.collection);
+          }
+        }
+        for (const collection of affected) {
+          localMutationRequests.push(outbox.index('uidCollection')
+            .getAll(IDBKeyRange.only([uid, collection])));
+        }
+      } else {
+        localMutationRequests.push(outbox.index('uidCollectionDocument')
+          .getAll(IDBKeyRange.only([uid, event.collection, event.documentId])));
+      }
       let metadata: DeviceMetadata | undefined;
       let inboxEvent: RemoteInboxEvent | undefined;
       let existing: RemoteProjectionConflict | undefined;
       let records: RemoteProjectionConflict[] = [];
       let localMutations: JournalOutboxEntry[] = [];
-      let readsRemaining = 5;
+      let readsRemaining = 4 + localMutationRequests.length;
       let saved = false;
       let failure: Error | undefined;
       const finishRead = () => {
@@ -1709,10 +1734,12 @@ export class IndexedDbSyncJournal {
         records = recordsRequest.result as RemoteProjectionConflict[];
         finishRead();
       };
-      localMutationsRequest.onsuccess = () => {
-        localMutations = localMutationsRequest.result as JournalOutboxEntry[];
-        finishRead();
-      };
+      for (const request of localMutationRequests) {
+        request.onsuccess = () => {
+          localMutations.push(...(request.result as JournalOutboxEntry[]));
+          finishRead();
+        };
+      }
       transaction.oncomplete = () => resolve(saved);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection conflict archive transaction aborted.')));
     });
