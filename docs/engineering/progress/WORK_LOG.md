@@ -394,3 +394,28 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #85 merged as `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`; post-merge main run `42352594819` passed.
 - Closed PR #82 and duplicate port PR #86 as superseded. PR #85 is authoritative.
 - Vercel still reports `build-rate-limit`; no live production deployment.
+
+## 2026-11-07 — Continued repository verification and safe merges
+
+### Repository state
+- Re-fetched current main after the PR #85 checkpoint. Current main at the end of this session segment: e894140c91ec8086d111989dcdb601d3cdbf9ce4.
+- Main Quality Gate after PR #62: run 42354256341, success on 8535802d3609c854b1c91742135c84894e5e074f.
+- Main Quality Gate after PR #89: run 42354517460, in progress at checkpoint time; exact-SHA result still required.
+
+### Merged work
+- PR #62: plan lifecycle preservation; exact-head run 42342109962 passed; merge SHA 8535802d3609c854b1c91742135c84894e5e074f; post-merge main run 42354256341 passed.
+- PR #89: reapplied reviewed Quran audio repeat fix on current main; exact-head runs 42354410219 and 42354399498 passed; merge SHA e894140c91ec8086d111989dcdb601d3cdbf9ce4.
+- PR #63 was closed as superseded after PR #89 merged. Its stale/diverged branch was not merged.
+
+### Ruqyah sync audit
+- PR #88 is merged; progress persistence is UID-scoped local storage, not cloud sync.
+- Inspected feat/ruqyah-cloud-sync-20261107. At observed head ec15084e9a1f20013476af5df83144f45456a595, exact-head run 42354431882 failed: 491 tests passed and 3 failed because the branch calls a nonexistent StorageService.saveRuqyahProgressSnapshot.
+- The branch's observed changes add a Ruqyah allowlist entry and shared schema, but do not establish complete end-to-end mutation enqueue, storage projection, revisioned mutation validation, or a safe concurrent counter merge. Do not merge until these are implemented and tested.
+- Ruqyah progress is a mutable aggregate counter. A safe sync design must preserve increments made independently on different devices; consider per-device monotonic counters or immutable increment events and deterministic aggregation. Snapshot last-write-wins is not acceptable.
+
+### Remaining critical work
+- User-facing conflict resolution is absent. RemoteProjectionConflict is an evidence archive, not a user decision. reconciled only means projection/cursor finalization succeeded.
+- Tombstones remain blocked in remoteInboxProjector; no collection-specific delete projection or safe retention/compaction.
+- Two-device tests are limited to profile round-trip and one offline same-document conflict.
+- Cross-tab/browser, account lifecycle, all-collection coverage, production Firestore rules deployment, and production deployment/live smoke remain unverified.
+- Vercel failure is the daily deployment rate limit, not a successful deployment. No production settings or secrets were changed.
