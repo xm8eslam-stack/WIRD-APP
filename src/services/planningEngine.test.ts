@@ -51,6 +51,13 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     assert(adv.surahNumber === 114 && adv.ayahNumber === 2, `Expected 114:2, got ${adv.surahNumber}:${adv.ayahNumber}`);
   });
 
+  runTest('QuranMath: rejects fractional and invalid coordinates', () => {
+    assert(!QuranMath.isValidCoordinate(1.5, 1), 'Fractional Surah number must be rejected');
+    assert(!QuranMath.isValidCoordinate(1, 1.5), 'Fractional ayah number must be rejected');
+    assert(!QuranMath.isValidCoordinate(1, 8), 'Al-Fatihah ayah 8 must be rejected');
+    assert(QuranMath.getAbsoluteAyahIndex(1, 8) === 0, 'Invalid coordinate must not produce an absolute index');
+  });
+
   // 2. Date Calculations & Active Days
   runTest('PlanningEngine: Active days counting skips weekly rest days', () => {
     // 7 days total (Sunday to Saturday), with Friday (day 5) as rest day
@@ -88,6 +95,81 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     assert(studyTasks.length === 6, `Expected 6 study tasks, got ${studyTasks.length}`);
     assert(studyTasks[0].memorizationTask?.startAyah === 1 && studyTasks[0].memorizationTask?.endAyah === 5, 'Day 1 should be 1-5');
     assert(studyTasks[5].memorizationTask?.startAyah === 26 && studyTasks[5].memorizationTask?.endAyah === 30, 'Day 6 should be 26-30');
+  });
+
+  runTest('PlanningEngine: rejects fractional pace and invalid Quran range', () => {
+    const base: PlanGenerationInput = {
+      title: 'خطة تحقق',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 5,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    let threw = false;
+    try { PlanningEngine.generatePlan({ ...base, paceQuantity: 2.5 }); } catch { threw = true; }
+    assert(threw, 'Fractional pace must be rejected');
+    threw = false;
+    try { PlanningEngine.generatePlan({ ...base, startSurah: 1, startAyah: 8, endSurah: 1, endAyah: 7 }); } catch { threw = true; }
+    assert(threw, 'Invalid Surah-specific coordinate must be rejected');
+  });
+
+  runTest('PlanningEngine: derives pace from a valid target date without requiring a manual pace', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة بتاريخ مستهدف',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 10,
+      startDate: '2026-11-01',
+      targetEndDate: '2026-11-10',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'by_target_date',
+      paceQuantity: 0,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    assert(plan.meta.totalVerses === 10, 'Target-date mode must derive a valid positive pace');
+  });
+
+  runTest('PlanningEngine: rejects empty/all-rest schedules and invalid start dates', () => {
+    const base: PlanGenerationInput = {
+      title: 'خطة أيام نشطة',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 10,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 5,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    let threw = false;
+    try { PlanningEngine.generatePlan({ ...base, activeDays: [] }); } catch { threw = true; }
+    assert(threw, 'Empty active days must be rejected instead of looping forever');
+    threw = false;
+    try { PlanningEngine.generatePlan({ ...base, activeDays: [0], restDays: [0] }); } catch { threw = true; }
+    assert(threw, 'A schedule with every day marked as rest must be rejected');
+    threw = false;
+    try { PlanningEngine.generatePlan({ ...base, startDate: 'not-a-date' }); } catch { threw = true; }
+    assert(threw, 'Invalid start date must be rejected');
   });
 
   // 4. Workload Limits & Feasibility

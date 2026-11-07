@@ -198,6 +198,23 @@ export const PlanningEngine = {
   generatePlan(input: PlanGenerationInput): EngineGeneratedPlan {
     const startCoord: VerseCoordinate = { surahNumber: input.startSurah, ayahNumber: input.startAyah };
     const endCoord: VerseCoordinate = { surahNumber: input.endSurah, ayahNumber: input.endAyah };
+
+    const parsedStartDate = this.parseDate(input.startDate);
+    if (!Number.isFinite(parsedStartDate.getTime()) || this.formatDate(parsedStartDate) !== input.startDate) {
+      throw new Error('تاريخ بداية الخطة غير صالح.');
+    }
+    if (input.paceType !== 'by_target_date' && (!Number.isSafeInteger(input.paceQuantity) || input.paceQuantity <= 0)) {
+      throw new Error('المقدار اليومي يجب أن يكون عدداً صحيحاً موجباً.');
+    }
+    const activeDays = Array.isArray(input.activeDays) ? input.activeDays : [];
+    const restDays = Array.isArray(input.restDays) ? input.restDays : [];
+    const hasSchedulableDay = activeDays.some(day =>
+      Number.isSafeInteger(day) && day >= 0 && day <= 6 && !restDays.includes(day)
+    );
+    if (!hasSchedulableDay) {
+      throw new Error('يجب اختيار يوم دراسة نشط واحد على الأقل لتوليد الخطة.');
+    }
+
     const totalVerses = QuranMath.countVersesBetween(startCoord, endCoord);
 
     if (totalVerses <= 0) {
@@ -210,11 +227,15 @@ export const PlanningEngine = {
       // Average 15 verses per page in standard Quranic distribution
       dailyPaceVerses = Math.max(1, Math.round(input.paceQuantity * 15));
     } else if (input.paceType === 'by_target_date' && input.targetEndDate) {
-      const activeDays = this.countActiveDaysBetween(input.startDate, input.targetEndDate, input.activeDays, input.restDays);
-      if (activeDays <= 0) {
+      const activeDaysCount = this.countActiveDaysBetween(input.startDate, input.targetEndDate, activeDays, restDays);
+      if (activeDaysCount <= 0) {
         throw new Error("لا توجد أيام دراسة نشطة متاحة بين تاريخ البداية والنهاية المحدد.");
       }
-      dailyPaceVerses = Math.max(1, Math.ceil(totalVerses / activeDays));
+      dailyPaceVerses = Math.max(1, Math.ceil(totalVerses / activeDaysCount));
+    }
+
+    if (!Number.isSafeInteger(dailyPaceVerses) || dailyPaceVerses <= 0) {
+      throw new Error('المقدار اليومي الناتج غير صالح؛ راجع عدد الآيات أو تاريخ الهدف.');
     }
 
     // Workload & Feasibility Assessment
@@ -241,7 +262,7 @@ export const PlanningEngine = {
     while (chunkIndex < chunks.length) {
       const dateStr = this.formatDate(curDate);
       const dayOfWeek = curDate.getDay();
-      const isRest = input.restDays.includes(dayOfWeek) || !input.activeDays.includes(dayOfWeek);
+      const isRest = restDays.includes(dayOfWeek) || !activeDays.includes(dayOfWeek);
 
       if (isRest) {
         restDaysCount++;

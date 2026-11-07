@@ -1,4 +1,5 @@
 import type { RevisionRating, TestResult } from '../types/quran';
+import { QuranMath } from './quranMath';
 
 export type DomainEventType =
   | 'session.completed'
@@ -83,8 +84,8 @@ export function isValidDomainEvent(value: unknown, expectedId?: string): value i
   const isCount = (value: unknown, max = 1000000) =>
     Number.isSafeInteger(value) && Number(value) >= 0 && Number(value) <= max;
   const isCoordinate = (surah: unknown, ayah: unknown) =>
-    Number.isSafeInteger(surah) && Number(surah) >= 1 && Number(surah) <= 114 &&
-    Number.isSafeInteger(ayah) && Number(ayah) >= 1 && Number(ayah) <= 286;
+    typeof surah === 'number' && typeof ayah === 'number' &&
+    QuranMath.isValidCoordinate(surah, ayah);
   const isOptionalNote = (value: unknown) =>
     value === undefined || (typeof value === 'string' && value.length <= 2000);
 
@@ -99,18 +100,18 @@ export function isValidDomainEvent(value: unknown, expectedId?: string): value i
         (payload.surahNumber === undefined
           ? payload.startAyah === undefined && payload.endAyah === undefined
           : isCoordinate(payload.surahNumber, payload.startAyah) &&
-            Number.isSafeInteger(payload.endAyah) &&
-            Number(payload.endAyah) >= Number(payload.startAyah) &&
-            Number(payload.endAyah) <= 286);
+            isCoordinate(payload.surahNumber, payload.endAyah) &&
+            Number(payload.endAyah) >= Number(payload.startAyah));
     case 'revision.rated':
-      return typeof payload.portionId === 'string' && payload.portionId.length > 0 &&
-        Number.isSafeInteger(payload.surahNumber) && Number(payload.surahNumber) >= 1 && Number(payload.surahNumber) <= 114 &&
-        Number.isSafeInteger(payload.startAyah) && Number(payload.startAyah) >= 1 &&
-        Number.isSafeInteger(payload.endAyah) && Number(payload.endAyah) >= Number(payload.startAyah) &&
+      return typeof payload.portionId === 'string' && payload.portionId.length > 0 && payload.portionId.length <= 128 &&
+        isCoordinate(payload.surahNumber, payload.startAyah) &&
+        isCoordinate(payload.surahNumber, payload.endAyah) &&
+        Number(payload.endAyah) >= Number(payload.startAyah) &&
         (payload.rating === 'successful' || payload.rating === 'difficult' || payload.rating === 'failed') &&
         isOptionalNote(payload.notes) &&
         (payload.weakAyahNumber === undefined ||
-          (Number.isSafeInteger(payload.weakAyahNumber) && Number(payload.weakAyahNumber) >= Number(payload.startAyah) &&
+          (isCoordinate(payload.surahNumber, payload.weakAyahNumber) &&
+            Number(payload.weakAyahNumber) >= Number(payload.startAyah) &&
             Number(payload.weakAyahNumber) <= Number(payload.endAyah)));
     case 'test.completed':
       return typeof payload.testResultId === 'string' && payload.testResultId.length > 0 &&

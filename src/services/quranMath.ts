@@ -21,6 +21,7 @@ export const QuranMath = {
    * Validate if a surah and ayah coordinate exists
    */
   isValidCoordinate(surahNumber: number, ayahNumber: number): boolean {
+    if (!Number.isSafeInteger(surahNumber) || !Number.isSafeInteger(ayahNumber)) return false;
     const s = this.getSurah(surahNumber);
     if (!s) return false;
     return ayahNumber >= 1 && ayahNumber <= s.versesCount;
@@ -30,6 +31,7 @@ export const QuranMath = {
    * Calculate absolute global index of an ayah in the Quran (1 to 6236)
    */
   getAbsoluteAyahIndex(surahNumber: number, ayahNumber: number): number {
+    if (!this.isValidCoordinate(surahNumber, ayahNumber)) return 0;
     let index = 0;
     for (let i = 0; i < ALL_SURAHS.length; i++) {
       if (ALL_SURAHS[i].number === surahNumber) {
@@ -45,7 +47,10 @@ export const QuranMath = {
    * Convert absolute global index back to Surah and Ayah
    */
   getCoordinateFromAbsoluteIndex(absIndex: number): VerseCoordinate {
-    let remaining = Math.max(1, Math.min(TOTAL_QURAN_VERSES, absIndex));
+    if (!Number.isSafeInteger(absIndex) || absIndex < 1 || absIndex > TOTAL_QURAN_VERSES) {
+      throw new RangeError('Absolute Quran ayah index must be between 1 and ' + TOTAL_QURAN_VERSES + '.');
+    }
+    let remaining = absIndex;
     for (const surah of ALL_SURAHS) {
       if (remaining <= surah.versesCount) {
         return { surahNumber: surah.number, ayahNumber: remaining };
@@ -59,6 +64,8 @@ export const QuranMath = {
    * Calculate exact count of verses between two coordinates (inclusive)
    */
   countVersesBetween(start: VerseCoordinate, end: VerseCoordinate): number {
+    if (!this.isValidCoordinate(start?.surahNumber, start?.ayahNumber) ||
+        !this.isValidCoordinate(end?.surahNumber, end?.ayahNumber)) return 0;
     const startIdx = this.getAbsoluteAyahIndex(start.surahNumber, start.ayahNumber);
     const endIdx = this.getAbsoluteAyahIndex(end.surahNumber, end.ayahNumber);
     return Math.max(0, endIdx - startIdx + 1);
@@ -68,6 +75,12 @@ export const QuranMath = {
    * Add N verses to a coordinate, advancing across surah boundaries accurately
    */
   addVerses(start: VerseCoordinate, count: number): VerseCoordinate {
+    if (!this.isValidCoordinate(start?.surahNumber, start?.ayahNumber)) {
+      throw new RangeError('Starting Quran coordinate is invalid.');
+    }
+    if (!Number.isSafeInteger(count) || count < 0) {
+      throw new RangeError('Verse offset must be a non-negative safe integer.');
+    }
     const currentAbs = this.getAbsoluteAyahIndex(start.surahNumber, start.ayahNumber);
     const targetAbs = currentAbs + count;
     return this.getCoordinateFromAbsoluteIndex(targetAbs);
@@ -78,8 +91,11 @@ export const QuranMath = {
    */
   sliceRangeIntoChunks(start: VerseCoordinate, end: VerseCoordinate, chunkSize: number): VerseRange[] {
     const chunks: VerseRange[] = [];
+    if (!this.isValidCoordinate(start?.surahNumber, start?.ayahNumber) ||
+        !this.isValidCoordinate(end?.surahNumber, end?.ayahNumber) ||
+        !Number.isSafeInteger(chunkSize) || chunkSize <= 0) return chunks;
     const totalVerses = this.countVersesBetween(start, end);
-    if (totalVerses <= 0 || chunkSize <= 0) return chunks;
+    if (totalVerses <= 0) return chunks;
 
     let currentStart = { ...start };
     let versesRemaining = totalVerses;
@@ -108,6 +124,7 @@ export const QuranMath = {
    * based on memorization level and verses count.
    */
   estimateMemorizationMinutes(versesCount: number, level: 'beginner' | 'intermediate' | 'advanced' | 'hafiz'): number {
+    if (!Number.isSafeInteger(versesCount) || versesCount <= 0) return 0;
     // Minutes per verse for deep repetition and solid retention:
     // Beginner: ~4-5 mins/verse (includes reading, tajweed, 15x repetition)
     // Intermediate: ~3 mins/verse
@@ -127,6 +144,7 @@ export const QuranMath = {
    * Estimate revision time required in minutes for a given number of verses
    */
   estimateRevisionMinutes(versesCount: number, type: 'minor' | 'major'): number {
+    if (!Number.isSafeInteger(versesCount) || versesCount <= 0) return 0;
     // Minor revision (recent): ~0.8 min per verse (includes linking)
     // Major revision (older): ~0.4 min per verse (fluent recitation pace ~20 min/juz)
     const rate = type === 'minor' ? 0.8 : 0.4;
