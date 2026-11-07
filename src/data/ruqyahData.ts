@@ -20,7 +20,6 @@ export interface RuqyahItem {
   repeatTarget: number;
   source?: string;
   explanation?: string;
-  audioVerseKey?: string; // e.g. "002255" for Al-Baqarah 255
 }
 
 export interface RuqyahProgramAudio {
