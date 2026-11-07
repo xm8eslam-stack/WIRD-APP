@@ -198,3 +198,19 @@ Phase 2 Tafsir:
 - HTML/non-JSON handling and regression tests implemented on PR #64 (Draft, not merged). Exact-head Quality Gate run 42341419175 was pending with no job assigned at last check. Do not call it green until the exact head completes.
 
 Main remains unchanged at 6228150c2f7137678ba1079f5d9b2e8aba527523. None of these PRs has been merged. Vercel daily build-rate limit is an external deployment gate; it does not invalidate the green GitHub Quality Gate, but production/preview behavior is not confirmed for PRs #62–#64.
+
+## Execution checkpoint — 2026-11-07 (after PR #65)
+
+Current live branch count: **76**. Original baseline: 70 branches / 147 files. Main remains at 6228150c2f7137678ba1079f5d9b2e8aba527523.
+
+| PR | Scope | Exact-head Quality Gate | Vercel Preview |
+|---|---|---|---|
+| #61 | Journal-first backup import | PASS — 404 passed / 0 failed | Ready |
+| #62 | Plan task/revision history and gap preservation; invalid legacy schedule guard | PASS — 407 passed / 0 failed | Daily build-rate limit |
+| #63 | Quran ayah repeat controller and correct pause/resume | PASS — 404 passed / 0 failed | Daily build-rate limit |
+| #64 | Tafsir HTML/malformed JSON handling | PASS — 405 passed / 0 failed | Daily build-rate limit |
+| #65 | Quran coordinate/domain-event validation and plan input guards | PASS — 417 passed / 0 failed | Ready |
+
+All five PRs remain Draft and unmerged. Each exact-head CI also passed Firestore Rules Emulator 13/13, dependency audit, TypeScript, production build and server smoke. No production deploy or Firestore rule deployment has occurred.
+
+PR #65 fixed a target-date planning bug exposed by its new regression test: a block-scoped activeDays variable shadowed the validated active-day array. The latest exact-head suite passes.
