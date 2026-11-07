@@ -504,6 +504,68 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Use-remote resolution recovers if local projection was applied before the journal commit completed', async () => {
+      const uid = 'use-remote-crash-recovery-owner';
+      const { journal } = createJournal(uid);
+      const localProfile = { ...StorageService.getProfile(), name: 'before-resolution' };
+      assert(StorageService.saveProfile(localProfile), 'The local profile fixture must be valid');
+      const remoteProfile = { ...localProfile, name: 'chosen-remote-after-crash' };
+      const event = {
+        uid,
+        eventId: 'use-remote-crash-event',
+        mutationId: 'use-remote-crash-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'profile' as const,
+        documentId: 'crash-profile',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9550,
+        payload: { profile: { ...localProfile, name: 'remote-event-payload' } },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'use-remote-crash-local',
+        collection: 'profile',
+        documentId: event.documentId,
+        payload: { profile: localProfile },
+        nowMs: 9551
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('profile');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9552);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const chosenPayload = { profile: remoteProfile };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'use-remote-crash-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'use-remote',
+        baseRevision: 2,
+        payload: chosenPayload,
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9553
+      });
+      assert(StorageService.applyJournalProjection('profile', chosenPayload),
+        'Simulate the durable local projection succeeding immediately before an IndexedDB interruption');
+      assert(await journal.commitUseRemoteConflictResolution(event.eventId, 2, chosenPayload, 9554),
+        'Recovery must recognize the exact chosen snapshot and finish the journal commit idempotently');
+      assert(StorageService.getProfile().name === 'chosen-remote-after-crash' &&
+        await journal.getRemoteProjectionCursor() === 1 &&
+        await journal.getProjectionConflictCount() === 0 &&
+        await journal.getConflictResolutionIntent(event.eventId) === null &&
+        (await journal.listReady(9600, 10)).length === 0,
+        'Crash recovery must finish without restoring stale local data or resending superseded mutations');
+      journal.close();
+    });
+
     await test('Grouped use-remote resolution applies all transaction collections atomically', async () => {
       const uid = 'use-remote-grouped-owner';
       const { journal } = createJournal(uid);
