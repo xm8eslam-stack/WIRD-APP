@@ -7,7 +7,7 @@ import {
 import type { RuqyahApiEntry } from '../../services/ruqyahApiService';
 
 type ProgramId = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
-type SourceId = 'from-quran' | 'from-sunnah';
+type SourceId = 'from-quran';
 
 interface RuqyahApiSubcategory {
   subcategory: string;
@@ -27,8 +27,7 @@ const PROGRAMS: Array<{ id: ProgramId; label: string }> = [
 ];
 
 const SOURCES: Array<{ id: SourceId; label: string }> = [
-  { id: 'from-quran', label: 'آيات من القرآن' },
-  { id: 'from-sunnah', label: 'أدعية من السنة' }
+  { id: 'from-quran', label: 'فهرس مواضع الآيات القرآنية' }
 ];
 
 export const RuqyahApiLibrary: React.FC = () => {
@@ -142,7 +141,7 @@ export const RuqyahApiLibrary: React.FC = () => {
         </div>
         <div className="flex items-center justify-between gap-3 mt-3 text-xs text-stone-500 dark:text-stone-400">
           <span>{selectedSourceCount === undefined ? 'عدد العناصر يظهر بعد تحميل الفهرس' : selectedSourceCount + ' عنصر في الفهرس'}</span>
-          <span>المصدر: IslamicAPI</span>
+          <span>فهرس خارجي فقط · النص من مصحف وِرد</span>
         </div>
       </div>
 
