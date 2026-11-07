@@ -3,18 +3,20 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 8;
+const DATABASE_VERSION = 9;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
 const STORE_REMOTE_INBOX = 'remoteInbox';
 const STORE_PROJECTION_CONFLICTS = 'projectionConflicts';
+const STORE_CONFLICT_RESOLUTION_INTENTS = 'conflictResolutionIntents';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_REMOTE_INBOX_EVENTS = 1_000;
 const MAX_PROJECTION_CONFLICTS = 100;
+const MAX_CONFLICT_RESOLUTION_INTENTS = 500;
 const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
@@ -104,6 +106,67 @@ export interface RemoteInboxEvent {
 }
 
 export type RemoteInboxEventInput = Omit<RemoteInboxEvent, 'key' | 'fingerprint'>;
+
+/** Stable, bounded fingerprint for the immutable raw local snapshot shown in Conflict Archive. */
+export function fingerprintConflictSnapshot(snapshot: Record<string, string | null>): string {
+  if (!isRecord(snapshot)) throw new Error('بيانات لقطة التعارض المحلية غير صالحة.');
+  const source = stableStringify(snapshot);
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    hashA = Math.imul(hashA ^ code, 0x01000193);
+    hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+  }
+  return (hashA >>> 0).toString(16).padStart(8, '0') +
+    (hashB >>> 0).toString(16).padStart(8, '0');
+}
+
+export interface ConflictResolutionMutationFingerprint {
+  mutationId: string;
+  fingerprint: string;
+}
+
+export type ConflictResolutionDecision = 'keep-local' | 'use-remote' | 'merge';
+
+/**
+ * Durable user decision evidence. This record deliberately does not execute a
+ * resolution: the executor must revalidate the latest server revision and
+ * atomically replace/acknowledge local mutations in a later phase.
+ */
+export interface ConflictResolutionIntent {
+  key: string;
+  uid: string;
+  eventId: string;
+  eventFingerprint: string;
+  localSnapshotFingerprint: string;
+  serverSequence: number;
+  collection: SyncCollection;
+  documentId: string;
+  decisionId: string;
+  decision: ConflictResolutionDecision;
+  baseRevision: number;
+  payload: Record<string, unknown>;
+  localMutationFingerprints: ConflictResolutionMutationFingerprint[];
+  fingerprint: string;
+  createdAtMs: number;
+  status: 'prepared';
+}
+
+export interface PrepareConflictResolutionIntentInput {
+  decisionId: string;
+  eventId: string;
+  eventFingerprint: string;
+  localSnapshotFingerprint: string;
+  decision: ConflictResolutionDecision;
+  /** Latest authoritative server revision fetched immediately before prepare. */
+  baseRevision: number;
+  /** Complete chosen snapshot, not a patch. */
+  payload: Record<string, unknown>;
+  /** Exact archived mutation identity set shown to the user. */
+  localMutationFingerprints: ConflictResolutionMutationFingerprint[];
+  nowMs?: number;
+}
 
 export interface RemoteProjectionConflict {
   key: string;
@@ -349,6 +412,10 @@ export class IndexedDbSyncJournal {
           const conflicts = database.createObjectStore(STORE_PROJECTION_CONFLICTS, { keyPath: 'key' });
           conflicts.createIndex('uid', 'uid', { unique: false });
           conflicts.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
+        }
+        if (!database.objectStoreNames.contains(STORE_CONFLICT_RESOLUTION_INTENTS)) {
+          const resolutionIntents = database.createObjectStore(STORE_CONFLICT_RESOLUTION_INTENTS, { keyPath: 'key' });
+          resolutionIntents.createIndex('uid', 'uid', { unique: false });
         }
         let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
@@ -1315,16 +1382,18 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX, STORE_PROJECTION_CONFLICTS],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX, STORE_PROJECTION_CONFLICTS, STORE_CONFLICT_RESOLUTION_INTENTS],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const outbox = transaction.objectStore(STORE_OUTBOX);
       const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const resolutionIntents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
       const conflictRequest = conflicts.get(uid + ':' + intent.eventId);
+      const resolutionIntentRequest = resolutionIntents.get(uid + ':' + intent.eventId);
       const pendingRequests = intent.collection === 'syncMeta'
         ? affectedCollections.map(collection =>
             outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
@@ -1334,9 +1403,10 @@ export class IndexedDbSyncJournal {
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
       let conflict: RemoteProjectionConflict | undefined;
+      let resolutionIntent: ConflictResolutionIntent | undefined;
       let pendingByCollection: JournalOutboxEntry[][] = [];
       let finalized = false;
-      let readsRemaining = 3 + pendingRequests.length;
+      let readsRemaining = 4 + pendingRequests.length;
       let failure: Error | undefined;
       const finish = () => {
         readsRemaining--;
@@ -1349,6 +1419,11 @@ export class IndexedDbSyncJournal {
           currentIntent.initializedCollections.every((collection, index) =>
             collection === intent.initializedCollections[index]
           );
+        if (resolutionIntent) {
+          failure = new Error('يوجد قرار مستخدم محفوظ لهذا التعارض؛ لا يجوز للإسقاط التلقائي تجاوزه.');
+          transaction.abort();
+          return;
+        }
         if (!metadata || !currentIntent ||
             currentIntent.sequence !== intent.sequence ||
             currentIntent.eventId !== intent.eventId ||
@@ -1436,6 +1511,10 @@ export class IndexedDbSyncJournal {
       };
       conflictRequest.onsuccess = () => {
         conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
+        finish();
+      };
+      resolutionIntentRequest.onsuccess = () => {
+        resolutionIntent = resolutionIntentRequest.result as ConflictResolutionIntent | undefined;
         finish();
       };
       pendingRequests.forEach(request => {
@@ -1745,6 +1824,227 @@ export class IndexedDbSyncJournal {
     });
   }
 
+  /**
+   * Persist a user's explicit conflict choice without mutating the outbox,
+   * inbox, local projection, or either cursor. A later executor must consume
+   * this intent only after re-fetching and validating the authoritative server
+   * state. The intent is bound to the immutable event and exact archived local
+   * mutation identity set so stale UI cannot authorize a different decision.
+   */
+  async prepareConflictResolutionIntent(
+    input: PrepareConflictResolutionIntentInput
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!input || !validMutationId(input.decisionId) || !validMutationId(input.eventId) ||
+        typeof input.eventFingerprint !== 'string' || !/^[0-9a-f]{16}$/.test(input.eventFingerprint) ||
+        typeof input.localSnapshotFingerprint !== 'string' || !/^[0-9a-f]{16}$/.test(input.localSnapshotFingerprint) ||
+        !['keep-local', 'use-remote', 'merge'].includes(input.decision) ||
+        !Number.isSafeInteger(input.baseRevision) || input.baseRevision < 1 ||
+        !isRecord(input.payload) || !Array.isArray(input.localMutationFingerprints) ||
+        input.localMutationFingerprints.length > MAX_PENDING_MUTATIONS) {
+      throw new Error('بيانات قرار حل التعارض غير صالحة.');
+    }
+    const nowMs = input.nowMs ?? Date.now();
+    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت قرار حل التعارض غير صالح.');
+    let payloadJson: string;
+    try { payloadJson = JSON.stringify(input.payload); }
+    catch { throw new Error('تعذر تسلسل حمولة قرار حل التعارض؛ لم يتم حفظ القرار.'); }
+    if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+      throw new Error('حمولة قرار حل التعارض تتجاوز الحد الآمن أو غير قابلة للتسلسل.');
+    }
+    const seenMutationIds = new Set<string>();
+    for (const item of input.localMutationFingerprints) {
+      if (!item || !validMutationId(item.mutationId) ||
+          typeof item.fingerprint !== 'string' || !/^[0-9a-f]{16}$/.test(item.fingerprint) ||
+          seenMutationIds.has(item.mutationId)) {
+        throw new Error('قائمة أدلة التغييرات المحلية غير صالحة.');
+      }
+      seenMutationIds.add(item.mutationId);
+    }
+
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_OUTBOX, STORE_CONFLICT_RESOLUTION_INTENTS],
+        'readwrite'
+      );
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const intents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
+      const conflictKey = uid + ':' + input.eventId;
+      const intentKey = conflictKey;
+      const metadataRequest = metadataStore.get(uid);
+      const conflictRequest = conflicts.get(conflictKey);
+      const intentRequest = intents.get(intentKey);
+      const inboxRequest = inbox.index('uid').getAll(IDBKeyRange.only(uid));
+      const outboxRequest = outbox.index('uid').getAll(IDBKeyRange.only(uid));
+      const intentCountRequest = intents.index('uid').count(IDBKeyRange.only(uid));
+      let metadata: DeviceMetadata | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
+      let existingIntent: ConflictResolutionIntent | undefined;
+      let inboxEvents: RemoteInboxEvent[] = [];
+      let pendingMutations: JournalOutboxEntry[] = [];
+      let intentCount = 0;
+      let readsRemaining = 6;
+      let prepared = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const event = conflict?.event;
+        const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
+        if (!conflict || conflict.uid !== uid || conflict.status !== 'open' || !event ||
+            event.eventId !== input.eventId || event.fingerprint !== input.eventFingerprint ||
+            event.serverSequence < 1 || !matchingInbox ||
+            matchingInbox.eventId !== event.eventId ||
+            matchingInbox.fingerprint !== event.fingerprint ||
+            matchingInbox.revision !== event.revision ||
+            matchingInbox.documentId !== event.documentId ||
+            matchingInbox.collection !== event.collection) {
+          failure = new Error('التعارض لم يعد مفتوحاً أو لم تعد هويته مطابقة للحدث المحفوظ.');
+          transaction.abort();
+          return;
+        }
+        if (input.baseRevision < event.revision) {
+          failure = new Error('الإصدار السحابي الذي بُني عليه القرار أقدم من الحدث المتعارض.');
+          transaction.abort();
+          return;
+        }
+        const revisionKey = event.collection + ':' + event.documentId;
+        const knownRevision = metadata?.remoteRevisions?.[revisionKey]?.revision ?? 0;
+        if (!Number.isSafeInteger(knownRevision) || knownRevision > input.baseRevision) {
+          failure = new Error('تغير الإصدار المحلي المعروف بعد قراءة القرار؛ أعد تحميل التعارض قبل المتابعة.');
+          transaction.abort();
+          return;
+        }
+
+        const actualLocalSnapshotFingerprint = fingerprintConflictSnapshot(conflict.localSnapshot);
+        if (actualLocalSnapshotFingerprint !== input.localSnapshotFingerprint) {
+          failure = new Error('تغيرت لقطة البيانات المحلية منذ عرض التعارض؛ أعد تحميله قبل تسجيل القرار.');
+          transaction.abort();
+          return;
+        }
+        const archived = [...(conflict.localMutations || [])]
+          .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
+          .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
+        const supplied = [...input.localMutationFingerprints]
+          .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
+          .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
+        if (stableStringify(archived) !== stableStringify(supplied)) {
+          failure = new Error('تغيرت أدلة التعديلات المحلية منذ عرض التعارض؛ أعد تحميله قبل تسجيل القرار.');
+          transaction.abort();
+          return;
+        }
+
+        const archivedById = new Map(archived.map(item => [item.mutationId, item.fingerprint]));
+        const currentPending = pendingMutations.filter(item =>
+          item.collection === event.collection && item.documentId === event.documentId
+        );
+        if (event.collection === 'syncMeta') {
+          const operations = isRecord(event.payload.transaction) && Array.isArray(event.payload.transaction.operations)
+            ? event.payload.transaction.operations : [];
+          const affected = new Set(operations
+            .filter(isRecord)
+            .map(operation => operation.collection)
+            .filter((value): value is string => typeof value === 'string'));
+          currentPending.push(...pendingMutations.filter(item => affected.has(item.collection)));
+        }
+        if (currentPending.some(item => archivedById.get(item.mutationId) !== item.fingerprint)) {
+          failure = new Error('توجد تغييرات محلية أحدث لم تدخل سجل التعارض؛ لم نسجل قراراً قديماً.');
+          transaction.abort();
+          return;
+        }
+
+        const normalizedInput = {
+          uid,
+          eventId: event.eventId,
+          eventFingerprint: event.fingerprint,
+          localSnapshotFingerprint: actualLocalSnapshotFingerprint,
+          serverSequence: event.serverSequence,
+          collection: event.collection,
+          documentId: event.documentId,
+          decisionId: input.decisionId,
+          decision: input.decision,
+          baseRevision: input.baseRevision,
+          payload: JSON.parse(payloadJson),
+          localMutationFingerprints: supplied
+        };
+        let hashA = 0x811c9dc5;
+        let hashB = 0x9e3779b9;
+        const source = stableStringify(normalizedInput);
+        for (let index = 0; index < source.length; index++) {
+          const code = source.charCodeAt(index);
+          hashA = Math.imul(hashA ^ code, 0x01000193);
+          hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+        }
+        const fingerprint = (hashA >>> 0).toString(16).padStart(8, '0') +
+          (hashB >>> 0).toString(16).padStart(8, '0');
+        if (existingIntent) {
+          if (existingIntent.fingerprint !== fingerprint ||
+              existingIntent.decisionId !== input.decisionId) {
+            failure = new Error('يوجد قرار سابق مختلف لهذا التعارض؛ لن نستبدل سجل القرار.');
+            transaction.abort();
+            return;
+          }
+          prepared = true;
+          return;
+        }
+        if (intentCount >= MAX_CONFLICT_RESOLUTION_INTENTS) {
+          failure = new Error('وصل سجل قرارات التعارض إلى الحد الآمن؛ لم نحذف أي قرار محفوظ.');
+          transaction.abort();
+          return;
+        }
+        const intent: ConflictResolutionIntent = {
+          key: intentKey,
+          uid,
+          eventId: event.eventId,
+          eventFingerprint: event.fingerprint,
+          localSnapshotFingerprint: actualLocalSnapshotFingerprint,
+          serverSequence: event.serverSequence,
+          collection: event.collection,
+          documentId: event.documentId,
+          decisionId: input.decisionId,
+          decision: input.decision,
+          baseRevision: input.baseRevision,
+          payload: JSON.parse(payloadJson),
+          localMutationFingerprints: supplied,
+          fingerprint,
+          createdAtMs: nowMs,
+          status: 'prepared'
+        };
+        intents.add(intent);
+        prepared = true;
+      };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      conflictRequest.onsuccess = () => { conflict = conflictRequest.result as RemoteProjectionConflict | undefined; finishRead(); };
+      intentRequest.onsuccess = () => { existingIntent = intentRequest.result as ConflictResolutionIntent | undefined; finishRead(); };
+      inboxRequest.onsuccess = () => { inboxEvents = inboxRequest.result as RemoteInboxEvent[]; finishRead(); };
+      outboxRequest.onsuccess = () => { pendingMutations = outboxRequest.result as JournalOutboxEntry[]; finishRead(); };
+      intentCountRequest.onsuccess = () => { intentCount = intentCountRequest.result; finishRead(); };
+      transaction.oncomplete = () => resolve(prepared);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Conflict resolution intent transaction aborted.')));
+    });
+  }
+
+  async getConflictResolutionIntent(eventId: string): Promise<ConflictResolutionIntent | null> {
+    const uid = activeUid();
+    if (!validMutationId(eventId)) throw new Error('معرّف التعارض المطلوب غير صالح.');
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_CONFLICT_RESOLUTION_INTENTS], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS).get(uid + ':' + eventId);
+    const intent = await requestResult(request) as ConflictResolutionIntent | undefined;
+    await completed;
+    if (!intent) return null;
+    if (intent.uid !== uid || intent.eventId !== eventId || intent.status !== 'prepared' ||
+        !/^[0-9a-f]{16}$/.test(intent.fingerprint)) {
+      throw new Error('سجل قرار حل التعارض تالف أو لا يخص الحساب الحالي.');
+    }
+    return intent;
+  }
+
   async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
     const uid = activeUid();
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
@@ -1961,17 +2261,19 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_CONFLICT_RESOLUTION_INTENTS],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const resolutionIntents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, sequence]);
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
       let conflict: RemoteProjectionConflict | undefined;
+      let resolutionIntent: ConflictResolutionIntent | undefined;
       let readsRemaining = 2;
       let advanced = false;
       let failure: Error | undefined;
@@ -1982,6 +2284,7 @@ export class IndexedDbSyncJournal {
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
         if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
+            resolutionIntent ||
             metadata.remoteProjectionIntent?.sequence === sequence ||
             (conflict && (
               conflict.event.fingerprint !== event.fingerprint ||
@@ -2013,7 +2316,12 @@ export class IndexedDbSyncJournal {
       eventRequest.onsuccess = () => {
         event = eventRequest.result as RemoteInboxEvent | undefined;
         if (event) {
-          readsRemaining++;
+          readsRemaining += 2;
+          const resolutionIntentRequest = resolutionIntents.get(uid + ':' + event.eventId);
+          resolutionIntentRequest.onsuccess = () => {
+            resolutionIntent = resolutionIntentRequest.result as ConflictResolutionIntent | undefined;
+            finishRead();
+          };
           const conflictRequest = conflicts.get(uid + ':' + event.eventId);
           conflictRequest.onsuccess = () => {
             conflict = conflictRequest.result as RemoteProjectionConflict | undefined;

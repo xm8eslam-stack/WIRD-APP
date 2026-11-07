@@ -1,7 +1,7 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
-import type { JournalOutboxEntry, LegacyOutboxState, RemoteInboxEvent, RemoteInboxEventInput, RemoteProjectionConflict } from './indexedDbSyncJournal';
+import type { ConflictResolutionIntent, PrepareConflictResolutionIntentInput, JournalOutboxEntry, LegacyOutboxState, RemoteInboxEvent, RemoteInboxEventInput, RemoteProjectionConflict } from './indexedDbSyncJournal';
 
 export type SyncCollection =
   | 'profile'
@@ -376,6 +376,18 @@ export const LocalSyncOutbox = {
   ): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().saveProjectionConflict(event, reason, localSnapshot);
+  },
+
+  /** Persist a decision intent without changing local data or sync cursors. */
+  async prepareConflictResolutionIntent(input: PrepareConflictResolutionIntentInput): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().prepareConflictResolutionIntent(input);
+  },
+
+  /** Recover the exact prepared decision after reload or account-tab restart. */
+  async getConflictResolutionIntent(eventId: string): Promise<ConflictResolutionIntent | null> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().getConflictResolutionIntent(eventId);
   },
 
   async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
