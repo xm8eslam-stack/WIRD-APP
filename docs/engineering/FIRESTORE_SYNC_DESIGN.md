@@ -328,3 +328,13 @@ This source audit does not replace automated failure-injection tests or the two-
 - Settings now displays the count of remote events awaiting local projection and the separate import/projection cursors.
 - The coordinator exposes a typed pause reason (feature gate, legacy remote data, pending local writes, base-revision mismatch, tombstone, projection failure, or import failure) and the blocked server sequence when known.
 - These diagnostics do not advance cursors or resolve conflicts; they make safe pauses visible instead of presenting a misleading success state.
+
+
+## 17. Durable projection conflict archive — 2026-11-07
+
+- When remote projection blocks on a pending local mutation, unknown base revision, tombstone, or local projection failure, the projector archives the complete remote event and exact relevant local storage bytes in a UID-scoped IndexedDB conflict store.
+- Repeated observations update the reason/time without replacing the original local snapshot.
+- The archive is bounded; only resolved historical records may be pruned to make room. Open conflicts are never silently deleted.
+- Settings exposes the number of open conflicts and the latest affected collection/document/server sequence.
+- The event remains in the remote inbox and the projection cursor remains blocked. This archive is diagnostic/recovery storage, not an automatic conflict resolution policy.
+- Explicit keep-local/use-remote resolution and collection-specific merge semantics remain future work; do not enable remote projection for general users until those actions are implemented and tested.
