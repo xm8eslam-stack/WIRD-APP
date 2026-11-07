@@ -17,3 +17,10 @@ PR #78 verifies this with two independently stored devices: one write is accepte
 - Recovery/retention policy for unresolved conflicts.
 
 Until these exist, a blocked mutation is a safe unresolved conflict, not a completed resolution. Do not silently discard or automatically rebase the losing local mutation.
+
+
+## Durable conflict archive — implemented in PR #81
+
+Blocked projection now archives the full remote inbox event and relevant local storage bytes in a UID-scoped IndexedDB store. The original local snapshot is retained across repeated observations. Open records are never pruned; the archive is bounded to 100 entries per UID and may prune only resolved historical records. Settings displays the open conflict count and latest affected record.
+
+This archive prevents diagnostic evidence from disappearing; it does not resolve the conflict. No keep-local/use-remote UI or automatic merge exists. The event remains in the inbox and the projection cursor remains blocked until a separately tested resolution workflow is implemented.
