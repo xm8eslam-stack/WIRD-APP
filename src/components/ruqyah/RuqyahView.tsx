@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import { getRuqyahProgressDeviceId, loadRuqyahProgress } from '../../services/ruqyahProgressService';
-import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot } from '../../services/ruqyahProgressSchema';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot, resetRuqyahProgressCounter } from '../../services/ruqyahProgressSchema';
 import type { RuqyahProgressSnapshotV2 } from '../../services/ruqyahProgressSchema';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
 import { STORAGE_KEYS, StorageService } from '../../services/storageService';
@@ -432,9 +432,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     if (!progressHydrated || progressCorrupt || !progressDeviceId || !progressSnapshot) return;
     let updatedSnapshot = progressSnapshot;
     currentItems.forEach(item => {
-      const current = updatedSnapshot.counts[item.id] || 0;
-      if (current > 0) {
-        updatedSnapshot = adjustRuqyahProgressCounter(updatedSnapshot, item.id, progressDeviceId, -current);
+      if ((updatedSnapshot.counts[item.id] || 0) > 0) {
+        updatedSnapshot = resetRuqyahProgressCounter(updatedSnapshot, item.id, progressDeviceId);
       }
     });
     setProgressSnapshot(updatedSnapshot);
