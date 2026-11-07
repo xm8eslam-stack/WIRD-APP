@@ -184,7 +184,7 @@ Same journal tests pass across supported browser engines, including concurrent t
 10. Build: profile large chunks before code splitting; do not remove Quran features/data to reduce bundle size.
 11. SpacedRevisionEngine uses UTC date strings. Confirm whether it is a live path; if so migrate to local-date helper, otherwise mark deprecated/remove after call-site proof.
 12. Mutashabihat and deterministic advisor religious claims need qualified content review and source citations.
-13. Three PNG icons need visual inspection; text API could not decode binary assets.
+13. Three PNG icons were visually inspected and appear as flat dark-teal squares with no discernible WIRD mark; replace with approved branded assets.
 14. Several engineering documents are stale. Keep WORK_LOG append-only and designate one current resume/status document.
 15. Verify Vercel Production deployment for exact main SHA. Green CI does not prove deployment.
 
