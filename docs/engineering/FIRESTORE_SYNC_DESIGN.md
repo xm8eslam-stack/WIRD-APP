@@ -321,3 +321,10 @@ Synchronous local-only methods remain in `RetentionService`, `sessionPersistence
 ### Release note
 
 This source audit does not replace automated failure-injection tests or the two-device suite. Keep remote projection disabled until those suites cover the full production mutation surface and conflict-resolution behavior.
+
+
+### Sync diagnostics
+
+- Settings now displays the count of remote events awaiting local projection and the separate import/projection cursors.
+- The coordinator exposes a typed pause reason (feature gate, legacy remote data, pending local writes, base-revision mismatch, tombstone, projection failure, or import failure) and the blocked server sequence when known.
+- These diagnostics do not advance cursors or resolve conflicts; they make safe pauses visible instead of presenting a misleading success state.

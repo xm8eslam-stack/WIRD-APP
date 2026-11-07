@@ -136,7 +136,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const { user, isGuest, isEmailVerified, logout } = useAuth();
-  const { status: syncStatus, pendingCount, remoteInboxPendingCount, lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync } = useCloudSync();
+  const {
+    status: syncStatus, pendingCount, remoteInboxPendingCount,
+    remoteProjectionBlockReason, remoteProjectionBlockedAtSequence,
+    lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync
+  } = useCloudSync();
+  const projectionBlockMessages: Record<string, string> = {
+    projection_disabled: 'استقبال الأحداث غير مفعّل بعد؛ نحتفظ بها دون تطبيقها.',
+    legacy_remote_state: 'توجد بيانات سحابية قديمة تحتاج إلى مصالحة آمنة.',
+    events_pending: 'توجد أحداث سحابية أخرى بانتظار التطبيق.',
+    import_failed: 'تعذر استيراد الأحداث أو التحقق منها؛ لم نحرك المؤشرات.',
+    blocked_pending_local: 'هناك تغييرات محلية معلقة في مجموعة البيانات نفسها.',
+    blocked_base_revision: 'الإصدار المحلي لا يطابق الإصدار السابق للحدث السحابي.',
+    blocked_tombstone: 'حدث حذف ينتظر سياسة حذف آمنة.',
+    projection_failed: 'تعذر تطبيق الحدث محليًا؛ احتفظنا به لإعادة المحاولة.'
+  };
+  const projectionBlockMessage = remoteProjectionBlockReason
+    ? projectionBlockMessages[remoteProjectionBlockReason] || 'تطبيق الأحداث السحابية متوقف بأمان.'
+    : null;
   const [isManualSyncing, setIsManualSyncing] = useState(false);
 
   const handleManualSync = async () => {
@@ -342,6 +359,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             {syncErrorMessage && (
               <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5" role="status">
                 {syncErrorMessage}
+              </p>
+            )}
+            {projectionBlockMessage && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5" role="status">
+                {projectionBlockMessage}
+                {remoteProjectionBlockedAtSequence !== null && ` (الحدث رقم ${remoteProjectionBlockedAtSequence})`}
               </p>
             )}
           </div>
