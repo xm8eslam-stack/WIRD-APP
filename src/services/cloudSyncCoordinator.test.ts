@@ -1,6 +1,6 @@
 import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus, LEGACY_REMOTE_STATE_COLLECTIONS } from './cloudSyncCoordinator';
 import { StorageService } from './storageService';
-import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots } from './ruqyahProgressSchema';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, resetRuqyahProgressCounter } from './ruqyahProgressSchema';
 import type { SuiteResult } from '../tests/runAllTests';
 import { decideRemoteProjection, projectRemoteInboxBatch, type RemoteProjectionDependencies } from './remoteInboxProjector';
 import type { RemoteInboxEvent, RemoteRevisionSnapshot, RemoteProjectionIntent } from './indexedDbSyncJournal';
