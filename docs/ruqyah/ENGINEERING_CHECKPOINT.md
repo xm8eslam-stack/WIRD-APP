@@ -15,7 +15,7 @@ Last verified: 2026-11-07.
 - PR #120 exact-head Quality Gate passed on `bc95c5a0018b32be6d8868c85ec556afb6a4eed4`, run `42359703038`: 520 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
 - PR #123 exact-head Quality Gate passed on `bba9ad53fc1a0079d67ef0bee0e94867fec74096`, run `42360037568`: 521 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server smoke test all passed.
 - PR #124 exact-head Quality Gate passed on `0ffb40d027d118ed52e53e70ae688cc0a44c3424`, run `42360270891`: 521 tests, 31 Firestore Rules tests, dependency audit, TypeScript, production build, server smoke, and browser smoke passed.
-- PR #127 exact-head Quality Gate passed on `c406d3c4675171df30adfd272d9b97e61da09f87`, run `42360845123`: 521 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 16 desktop/mobile Playwright tests passed.
+- PR #127 exact-head Quality Gate passed on `c406d3c4675171df30adfd272d9b97e61da09f87`, run `42360845123`: 521 unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 16 desktop/mobile Playwright tests passed (6 app-shell + 10 Ruqyah locator-library tests).
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit`. This is a deployment quota failure, not a code Quality Gate failure. No live production alias or deployed SHA is verified.
 
 ## Branch hygiene
