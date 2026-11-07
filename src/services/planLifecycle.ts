@@ -310,7 +310,6 @@ export const PlanLifecycle = {
       (total, range) => total + range.endIndex - range.startIndex + 1,
       0
     );
-    const todayStr = PlanningEngine.formatDate(new Date());
 
     if (remainingVerses === 0 && pendingRevisionBundles.length === 0) {
       return this.refreshActualVsPlanned(plan);
