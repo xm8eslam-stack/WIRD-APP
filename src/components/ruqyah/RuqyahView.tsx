@@ -6,7 +6,6 @@ import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
   Volume2, 
-  VolumeX, 
   Play, 
   Pause, 
   RotateCcw, 
@@ -14,15 +13,9 @@ import {
   Sparkles, 
   BookOpen, 
   Heart, 
-  Clock, 
   Info,
-  ChevronRight,
-  ChevronLeft,
-  Settings2,
   Headphones,
-  Check,
   Moon,
-  Volume1
 } from 'lucide-react';
 import { 
   RuqyahCategory, 
@@ -377,7 +370,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
 
           {/* Mode Switch Controls */}
-          <div className="flex items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
+          <div className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
             <button
               onClick={() => setViewMode('interactive')}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
