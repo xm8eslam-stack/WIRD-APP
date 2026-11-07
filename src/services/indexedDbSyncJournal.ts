@@ -1312,22 +1312,25 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX, STORE_PROJECTION_CONFLICTS],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const outbox = transaction.objectStore(STORE_OUTBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
+      const conflictRequest = conflicts.get(uid + ':' + intent.eventId);
       const pendingRequests = affectedCollections.map(collection =>
         outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
       );
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
       let pendingByCollection: JournalOutboxEntry[][] = [];
       let finalized = false;
-      let readsRemaining = 2 + pendingRequests.length;
+      let readsRemaining = 3 + pendingRequests.length;
       let failure: Error | undefined;
       const finish = () => {
         readsRemaining--;
@@ -1400,6 +1403,16 @@ export class IndexedDbSyncJournal {
           remoteProjectionIntent: undefined
         } satisfies DeviceMetadata);
         inbox.delete(event.key);
+        if (conflict?.status === 'open') {
+          const nowMs = Date.now();
+          conflicts.put({
+            ...conflict,
+            status: 'resolved',
+            resolution: 'reconciled',
+            resolvedAtMs: nowMs,
+            updatedAtMs: nowMs
+          } satisfies RemoteProjectionConflict);
+        }
         finalized = true;
       };
       metadataRequest.onsuccess = () => {
@@ -1408,6 +1421,10 @@ export class IndexedDbSyncJournal {
       };
       eventRequest.onsuccess = () => {
         event = eventRequest.result as RemoteInboxEvent | undefined;
+        finish();
+      };
+      conflictRequest.onsuccess = () => {
+        conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
         finish();
       };
       pendingRequests.forEach(request => {
@@ -1803,13 +1820,18 @@ export class IndexedDbSyncJournal {
     }
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_METADATA, STORE_REMOTE_INBOX], 'readwrite');
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        'readwrite'
+      );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, sequence]);
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
       let readsRemaining = 2;
       let advanced = false;
       let failure: Error | undefined;
@@ -1827,6 +1849,16 @@ export class IndexedDbSyncJournal {
         }
         metadataStore.put({ ...metadata, remoteProjectionCursor: sequence } satisfies DeviceMetadata);
         inbox.delete(event.key);
+        if (conflict?.status === 'open') {
+          const nowMs = Date.now();
+          conflicts.put({
+            ...conflict,
+            status: 'resolved',
+            resolution: 'reconciled',
+            resolvedAtMs: nowMs,
+            updatedAtMs: nowMs
+          } satisfies RemoteProjectionConflict);
+        }
         advanced = true;
       };
       metadataRequest.onsuccess = () => {
@@ -1835,13 +1867,20 @@ export class IndexedDbSyncJournal {
       };
       eventRequest.onsuccess = () => {
         event = eventRequest.result as RemoteInboxEvent | undefined;
+        if (event) {
+          readsRemaining++;
+          const conflictRequest = conflicts.get(uid + ':' + event.eventId);
+          conflictRequest.onsuccess = () => {
+            conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
+            finishRead();
+          };
+        }
         finishRead();
       };
       transaction.oncomplete = () => resolve(advanced);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote projection cursor transaction aborted.')));
     });
   }
-
 
   async getSnapshot(): Promise<JournalSnapshot> {
     const uid = activeUid();
