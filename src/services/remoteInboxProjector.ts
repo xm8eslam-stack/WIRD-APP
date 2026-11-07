@@ -13,7 +13,7 @@ export interface RemoteProjectionState {
   cachedRevision: number | null;
   hasPendingLocalMutation: boolean;
   localProjectionEmpty: boolean;
-  remoteCollectionInitialized: boolean;
+  remoteCollectionInitialized?: boolean;
 }
 
 /** Pure conflict gate: never replace unknown local state or a pending local mutation. */
@@ -30,7 +30,7 @@ export function decideRemoteProjection(
     return 'apply';
   }
   if (state.cachedRevision === null && event.baseRevision === 0 &&
-      (state.localProjectionEmpty || state.remoteCollectionInitialized)) {
+      (state.localProjectionEmpty || state.remoteCollectionInitialized === true)) {
     return 'apply';
   }
   return 'blocked_base_revision';
