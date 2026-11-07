@@ -1,5 +1,36 @@
 # WIRD — Current Engineering Status
 
+## Authoritative refresh — 2026-11-07 after PR #140
+
+- Latest verified main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305` (PR #140). PR #140 updates the Ruqyah checkpoint and release checklist through PR #139; its exact-head Quality Gate passed on `90f5aa71046fc376b4937adc3dca5ae647927722`, run `42364663347`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 20 desktop/mobile Playwright tests.
+- PR #141 remains open: narrow-screen Ruqyah overflow regression coverage at 320/360/390px. Exact-head Quality Gate run `42364704191` was still in progress at last check; all automated assertions, Rules Emulator, audit, TypeScript, build and server smoke steps had passed, with desktop/mobile browser tests running. Do not merge until final exact-head result is successful.
+- PR #142 remains open but is based on the previous main SHA `28a1c433...`; GitHub reports it not mergeable after PR #140 advanced main. Its documentation checkpoint is superseded by this refreshed branch/PR. Do not merge stale PR #142.
+- PR #134–#139 remain merged. PR #134 grouped transaction conflict archival preserves all relevant pending Outbox evidence without advancing Inbox cursor on conflict.
+- Conflict Resolution remains **not implemented**: archive and read-only inspector exist, but no durable user decision state machine, keep-local/use-remote/merge, latest-revision validation, idempotent resolution mutation, or crash recovery.
+- Tombstone projection and safe retention remain unimplemented. Ruqyah progress is still snapshot/revision based; independent cross-device increments are not guaranteed additive. Production sync flags remain disabled.
+- Vercel reports the Free-plan deployment quota on the latest main. No current production deployment or live verification is claimed.
+- PR #2 remains open Draft and divergent; do not merge wholesale.
+
+
+## Authoritative refresh — 2026-11-07 after PR #139
+
+- Re-fetched canonical `main`: **`28a1c4339d31bb66549402db36cfc40357caf65f`**. This supersedes all older SHA values in historical checkpoint entries below.
+- PR #134 merged as `cfc5f211c55e342ed72357025393438d7c481f50`: grouped `syncMeta` conflict archival now captures pending Outbox mutations from each validated affected collection. It preserves Inbox/Outbox evidence and does not advance the projection cursor.
+- PR #135 merged as `9e62e26c06fb1821095390db4c32e5f81b8233a8`: corrupt Ruqyah progress clears stale in-memory counts and blocks writes while preserving corrupt bytes for recovery.
+- PR #136 merged as `0d71633b9fe69fdb4b3928c8698f20e539ef57f0`: Ruqyah checkpoint update.
+- PR #137 merged as `900bd989299a08ea09eb046d5579395d0bab7064`: category reset requires confirmation and is disabled until safe hydration.
+- PR #138 merged as `921f7d17b937c8c5914abab52833279942af802d`: Ruqyah checkpoint update.
+- PR #139 merged as `28a1c4339d31bb66549402db36cfc40357caf65f`: reset confirmation restores keyboard focus and Escape cancels.
+- PR #135 exact-head Quality Gate: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, 18 desktop/mobile Playwright tests passed.
+- PR #137 exact-head Quality Gate: 526 automated assertions, 31 Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, 20 desktop/mobile Playwright tests passed.
+- PR #139 exact-head Quality Gate: 526 automated assertions, 31 Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, 20 desktop/mobile Playwright tests passed.
+- Vercel status on the latest main SHA is failure due to `build-rate-limit` / `api-deployments-free-per-day`. This is an external deployment quota failure, not proof of a source build failure. No current production deployment or live verification is claimed.
+- Open PR inventory: PR #2 only. It remains Draft and is substantially divergent (115 commits ahead; 276 behind per its recorded metadata); do not merge wholesale.
+- Conflict Resolution remains **not implemented**: the archive and read-only inspector preserve evidence, but there is no user decision state machine, keep-local/use-remote/merge workflow, latest-revision revalidation for a decision, or crash-recoverable resolution intent.
+- Tombstone projection and safe retention remain unimplemented. Ruqyah progress is revisioned/snapshot-synced but independent concurrent increments are not additively merged. Production sync flags must remain disabled.
+- Main Quality Gate post-merge for PR #139 and current live Vercel deployment were not independently confirmed through the available commit-status lookup; PR exact-head gate evidence is recorded above.
+
+
 **Updated:** 2026-11-07 after PR #129 and PR #130 merges  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
 **Canonical branch:** `main` (Google AI Studio source)  
