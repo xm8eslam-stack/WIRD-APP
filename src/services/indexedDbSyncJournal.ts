@@ -12,6 +12,7 @@ const STORE_REMOTE_INBOX = 'remoteInbox';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
+const MAX_REMOTE_INBOX_EVENTS = 1_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -1158,7 +1159,7 @@ export class IndexedDbSyncJournal {
           !validMutationId(event.mutationId) || !validMutationId(event.deviceId) ||
           !ALLOWED_COLLECTIONS.has(event.collection) ||
           typeof event.documentId !== 'string' || !event.documentId ||
-          event.documentId.includes('/') || byteLength(event.documentId) > 1500 ||
+          event.documentId.includes('/') || /[\u0000-\u001f]/.test(event.documentId) || byteLength(event.documentId) > 1500 ||
           (event.operation !== 'upsert' && event.operation !== 'tombstone') ||
           !Number.isSafeInteger(event.occurredAtMs) || event.occurredAtMs < 0 ||
           !Number.isSafeInteger(event.baseRevision) || event.baseRevision < 0 ||
@@ -1186,10 +1187,12 @@ export class IndexedDbSyncJournal {
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const metadataRequest = metadataStore.get(uid);
+      const countRequest = inbox.index('uid').count(IDBKeyRange.only(uid));
       const existingRequests = normalized.map(event => inbox.get(event.key));
       let metadata: DeviceMetadata | undefined;
+      let inboxCount = 0;
       const existing: Array<RemoteInboxEvent | undefined> = new Array(normalized.length);
-      let readsRemaining = 1 + existingRequests.length;
+      let readsRemaining = 2 + existingRequests.length;
       let resultCursor = 0;
       let failure: Error | undefined;
       const finishRead = () => {
@@ -1201,6 +1204,15 @@ export class IndexedDbSyncJournal {
             !Number.isSafeInteger(projectionCursor) || projectionCursor < 0 ||
             projectionCursor > cursor) {
           failure = new Error('بيانات مؤشر صندوق الاستقبال تالفة؛ لم يتم تغييرها.');
+          transaction.abort();
+          return;
+        }
+        let additions = 0;
+        for (let index = 0; index < normalized.length; index++) {
+          if (normalized[index].serverSequence > cursor && !existing[index]) additions++;
+        }
+        if (inboxCount + additions > MAX_REMOTE_INBOX_EVENTS) {
+          failure = new Error('امتلأ صندوق الأحداث السحابية قبل اكتمال تطبيق الأحداث؛ لم نحذف أي حدث أو نحرك المؤشر.');
           transaction.abort();
           return;
         }
@@ -1243,6 +1255,10 @@ export class IndexedDbSyncJournal {
       };
       metadataRequest.onsuccess = () => {
         metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finishRead();
+      };
+      countRequest.onsuccess = () => {
+        inboxCount = countRequest.result;
         finishRead();
       };
       existingRequests.forEach((request, index) => {
