@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import type { QuranReciter } from '../../services/ruqyahAudioService';
-import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from '../../services/ruqyahProgressService';
+import { loadRuqyahProgress, resetRuqyahProgress } from '../../services/ruqyahProgressService';
+import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
 import { StorageService } from '../../services/storageService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
@@ -102,11 +103,18 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   useEffect(() => {
     if (!progressHydrated || progressCorrupt || progressScope !== currentStorageScope) return;
-    try {
-      saveRuqyahProgress(counts);
-    } catch {
-      if (onToast) onToast('تعذر حفظ تقدم الرقية على هذا الجهاز.', 'error');
-    }
+    let active = true;
+    const snapshot = { schemaVersion: 1 as const, updatedAtMs: Date.now(), counts: { ...counts } };
+    void persistRuqyahProgressSnapshot(snapshot, { expectedStorageScope: currentStorageScope })
+      .then(result => {
+        if (active && !result.success && onToast) {
+          onToast(result.error || 'تعذر حفظ تقدم الرقية ومزامنته.', 'error');
+        }
+      })
+      .catch(() => {
+        if (active && onToast) onToast('تعذر حفظ تقدم الرقية ومزامنته.', 'error');
+      });
+    return () => { active = false; };
   }, [counts, progressHydrated, progressCorrupt, progressScope, currentStorageScope, onToast]);
 
   const handleRecoverProgress = () => {
