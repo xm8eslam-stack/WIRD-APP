@@ -1,5 +1,13 @@
 # WIRD Sync Release Gates
 
+## Latest verified update — PR #149 (2026-11-07)
+
+- PR #149 merged as `78ada24ecadbda3460178550e871632f6d81d770`; exact tested head `c675a2d164b88994c08a5368bf1695712f2625f3` passed WIRD Quality Gate run `42368745026` (#2871).
+- The first narrow user-directed conflict decision is now implemented: use the latest validated remote snapshot. It has explicit confirmation, UID/scope guards, complete state-envelope validation, commit-time remote revalidation, durable archive preservation, atomic local journal transitions, safe cancellation, and interruption recovery.
+- This closes only the use-remote portion of the conflict-resolution gate. Keep-local re-publication, user-authored merge, tombstone/deletion semantics, additive merge of independent offline Ruqyah counter increments, cross-tab coordination, and live two-device verification remain open.
+- Both production sync feature flags remain disabled. PR #149 did not deploy Firestore rules or change production configuration. Vercel production deployment and live-site verification remain separate and unverified.
+
+
 A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Required before enabling production sync
@@ -8,7 +16,7 @@ A release gate is passed only with evidence on the exact candidate SHA.
 - [ ] Firestore rules are deployed to the intended production Firebase project and verified to match the transaction contract.
 - [ ] Two-device tests cover every supported collection and both directions.
 - [ ] Offline retry, idempotent replay, timeout-after-acceptance, and restart tests pass.
-- [ ] Same-document stale revision conflicts preserve both versions and have a tested resolution path. (Detection/preservation and durable archive exist; user-facing resolution remains open.)
+- [ ] Same-document stale revision conflicts preserve both versions and have tested resolution paths. (The explicit use-latest-remote path is implemented in PR #149; keep-local re-publication and user-authored merge remain open.)
 - [ ] Tombstone projection, offline deletion, stale update rejection, and safe retention/compaction are implemented and tested.
 - [ ] Cross-tab sync serialization is tested in independent real browser contexts.
 - [ ] Account switch/logout/reinstall/schema migration tests pass.
@@ -19,7 +27,7 @@ A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Current release decision
 
-**Not approved for full production cloud-sync activation.** The current verified work now includes populated multi-record service round trips across all eight collection routes, document-scoped projection guards, a bounded local-mutation conflict evidence archive, six desktop/mobile app-shell Playwright checks, and 16 Ruqyah locator-library browser checks. These are meaningful automated gates, not live-device or production proof. User-directed conflict decisions, tombstones, additive Ruqyah counters, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore rules deployment, and exact-SHA live deployment remain open. Keep production sync flags disabled.
+**Not approved for full production cloud-sync activation.** The current verified work now includes populated multi-record service round trips across all eight collection routes, document-scoped projection guards, a bounded local-mutation conflict evidence archive, six desktop/mobile app-shell Playwright checks, and 16 Ruqyah locator-library browser checks. These are meaningful automated gates, not live-device or production proof. The use-latest-remote decision is implemented, but keep-local/merge decisions, tombstones, additive Ruqyah counters, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore rules deployment, and exact-SHA live deployment remain open. Keep production sync flags disabled.
 
 
 ## New evidence since the initial checkpoint
@@ -39,7 +47,7 @@ Still not approved for production sync: user-directed conflict choices/merge/reb
 
 The following remain release blockers and must not be waived:
 
-- User-facing conflict resolution with keep-local/use-remote/merge semantics, durable history, server-revision revalidation, and idempotent recovery.
+- Keep-local re-publication and user-authored merge semantics, durable decision history, collection-specific validation, and idempotent recovery. The narrow use-latest-remote path is implemented by PR #149.
 - Collection-specific tombstone projection, stale-event rejection, offline deletion and safe retention/compaction.
 - Multi-collection two-device coverage is now exercised in isolated Emulator-backed service contexts across all eight populated collection routes, including multi-record preservation. Simultaneous concurrent merge, long-offline replay, and real-device verification remain outstanding.
 - Cross-tab concurrency in independent real browser contexts and account-switch/logout/reinstall isolation.
