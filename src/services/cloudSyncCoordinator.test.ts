@@ -1,6 +1,7 @@
 import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus } from './cloudSyncCoordinator';
 import { StorageService } from './storageService';
 import type { SuiteResult } from '../tests/runAllTests';
+import { decideRemoteProjection } from './remoteInboxProjector';
 
 export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   let passed = 0;
@@ -25,6 +26,32 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     'Pending local mutations prevent a synced status even if remote reconciliation passed');
   assert(getCloudSyncCompletionStatus(-1, false) === 'error',
     'Invalid pending counts cannot produce a successful sync status');
+
+  const remoteEvent = { baseRevision: 1, revision: 2, operation: 'upsert' as const };
+  assert(decideRemoteProjection(remoteEvent, {
+    cachedRevision: 1, hasPendingLocalMutation: false, localProjectionEmpty: false
+  }) === 'apply', 'A remote event applies when its base matches the known local server revision');
+  assert(decideRemoteProjection({ ...remoteEvent, baseRevision: 0, revision: 1 }, {
+    cachedRevision: null, hasPendingLocalMutation: false, localProjectionEmpty: true
+  }) === 'apply', 'A first remote snapshot applies to an empty local archive');
+  assert(decideRemoteProjection({ ...remoteEvent, baseRevision: 0, revision: 1 }, {
+    cachedRevision: null, hasPendingLocalMutation: false, localProjectionEmpty: false,
+    remoteCollectionInitialized: true
+  }) === 'apply', 'Later snapshot documents in an already imported collection preserve server order');
+
+  assert(decideRemoteProjection(remoteEvent, {
+    cachedRevision: 1, hasPendingLocalMutation: true, localProjectionEmpty: false
+  }) === 'blocked_pending_local', 'Remote projection never overwrites a document with pending local mutations');
+  assert(decideRemoteProjection({ ...remoteEvent, baseRevision: 0, revision: 1 }, {
+    cachedRevision: null, hasPendingLocalMutation: false, localProjectionEmpty: false
+  }) === 'blocked_base_revision', 'Unknown existing local data blocks first-sync replacement');
+  assert(decideRemoteProjection(remoteEvent, {
+    cachedRevision: 2, hasPendingLocalMutation: false, localProjectionEmpty: false
+  }) === 'already_applied', 'An event already represented by a newer local revision is safely skipped');
+  assert(decideRemoteProjection({ ...remoteEvent, operation: 'tombstone' }, {
+    cachedRevision: 1, hasPendingLocalMutation: false, localProjectionEmpty: false
+  }) === 'blocked_tombstone', 'Tombstones remain blocked until collection-specific delete semantics exist');
+
 
   try {
     const initialState = cloudSyncCoordinator.getState();

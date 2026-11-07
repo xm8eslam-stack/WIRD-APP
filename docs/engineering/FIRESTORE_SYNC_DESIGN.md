@@ -287,3 +287,21 @@ Cloud writes using the revisioned protocol are gated by `VITE_WIRD_REVISIONED_SY
 - Reconcile existing unversioned cloud documents without replacing either local or remote data.
 - Add two-device tests covering concurrent same-document updates, independent document updates, account switching, offline replay, tombstones, and crash recovery.
 - Keep the release gate in Section 12 closed until the full suite passes.
+
+
+## 15. Remote inbox projection — 2026-11-07
+
+### Implemented on the development branch; exact-head CI pending
+
+- Remote events are projected in server-sequence order through the existing validated local journal projection APIs.
+- A remote event applies only when its base revision matches the locally acknowledged revision, or when it is the first revision for a demonstrably empty local collection.
+- Collection initialization metadata allows later full-snapshot documents in a collection to be applied without mistaking already-imported remote data for unknown local data.
+- Any pending local mutation in an affected snapshot collection blocks remote projection; transaction events check every affected collection.
+- A local archive with unknown provenance blocks first-sync replacement.
+- Tombstones remain in the inbox until collection-specific deletion semantics are implemented.
+- The remote inbox event is deleted and the projection cursor advanced atomically only after the local projection and revision cache are durable.
+- A conflict blocks the contiguous projection cursor; the event remains recoverable in IndexedDB. No last-write-wins fallback is used.
+
+### Activation guard
+
+Remote projection is gated by `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true`, default disabled. Do not enable it until every local mutation path is journal-first, conflict resolution is designed, and the two-device/offline test suite passes. Keep `VITE_WIRD_REVISIONED_SYNC_ENABLED` disabled until matching Firestore rules and legacy state reconciliation are also verified.
