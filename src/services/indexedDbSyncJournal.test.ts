@@ -238,6 +238,24 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         'A decision must persist only when bound to the open event, latest supplied base revision, and archived local evidence');
       assert(await journal.prepareConflictResolutionIntent(input),
         'Retrying the exact same decision intent must be idempotent');
+      let automaticCursorAdvanceRejected = false;
+      try { await journal.markRemoteProjected(1); } catch { automaticCursorAdvanceRejected = true; }
+      const projectionIntent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: event.collection,
+        documentId: event.documentId,
+        revision: 1,
+        initializedCollections: [] as SyncCollection[]
+      };
+      await journal.prepareRemoteProjection(projectionIntent);
+      let automaticProjectionRejected = false;
+      try { await journal.finalizeRemoteProjection(projectionIntent, () => true); }
+      catch { automaticProjectionRejected = true; }
+      assert(automaticCursorAdvanceRejected && automaticProjectionRejected &&
+        await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1,
+        'A prepared user decision must block automatic projection/cursor reconciliation until an explicit executor consumes it');
       const saved = await journal.getConflictResolutionIntent(event.eventId);
       assert(!!saved && saved.uid === uid && saved.decisionId === input.decisionId &&
         saved.decision === 'keep-local' && saved.baseRevision === 1 &&
