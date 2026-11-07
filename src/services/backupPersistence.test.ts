@@ -64,12 +64,13 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
     });
     const result = await importBackupJournaled(backup, { journal, runExclusive: inlineLock });
     const events = await journal.listEvents();
+    const importedTransaction = events[0]?.payload.transaction as { operations?: Array<{ collection?: string }> } | undefined;
     assert(result.success, 'A valid version-five backup must import successfully');
     assert(JSON.stringify(StorageService.getRuqyahProgressSnapshot()?.counts) === JSON.stringify(progress.counts),
       'The Ruqyah progress snapshot must be restored exactly');
     assert(events.length === 1 && events[0].collection === 'syncMeta' &&
-      Array.isArray(events[0].payload.transaction?.operations) &&
-      events[0].payload.transaction.operations.some((operation: any) => operation.collection === 'ruqyahProgress'),
+      Array.isArray(importedTransaction?.operations) &&
+      importedTransaction.operations.some(operation => operation.collection === 'ruqyahProgress'),
       'The imported progress must be part of the same durable grouped transaction');
     journal.close();
   });
