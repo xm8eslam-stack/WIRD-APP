@@ -638,6 +638,7 @@ export class IndexedDbSyncJournal {
           remoteCursor: currentMetadata?.remoteCursor ?? 0,
           remoteProjectionCursor: currentMetadata?.remoteProjectionCursor ?? 0,
           remoteInitializedCollections: currentMetadata?.remoteInitializedCollections ?? [],
+          remoteProjectionIntent: currentMetadata?.remoteProjectionIntent,
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
@@ -1303,6 +1304,11 @@ export class IndexedDbSyncJournal {
         const revisionKey = intent.collection + ':' + intent.documentId;
         const remoteRevisions = { ...(metadata.remoteRevisions || {}) };
         const previous = remoteRevisions[revisionKey];
+        if (!previous && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS) {
+          failure = new Error('وصل سجل إصدارات المستندات إلى الحد الآمن؛ لم يتم اعتماد الإسقاط أو حذف الحدث.');
+          transaction.abort();
+          return;
+        }
         const nextSequence = metadata.nextSequence ?? 1;
         remoteRevisions[revisionKey] = {
           revision: Math.max(previous?.revision ?? 0, intent.revision),
