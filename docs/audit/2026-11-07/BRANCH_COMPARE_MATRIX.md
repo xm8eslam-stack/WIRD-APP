@@ -105,3 +105,8 @@ The baseline matrix remains an exact snapshot of the original 70 refs. Three new
 | `fix/plan-lifecycle-preserve-revisions-20261107` | ahead | 0 | 7 | Plan lifecycle preservation fix; CI currently running after earlier duplicate-date compile error was fixed |
 
 Current remote branch count after these additions: **73**. Do not confuse the original 70-ref baseline matrix with the current live count.
+
+| `fix/quran-audio-repeat-20261107` | ahead | 0 | 4 | PR #63 Draft; repeat-controller fix; exact-head CI PASS |
+| `fix/tafsir-json-response-20261107` | ahead | 0 | 4 | PR #64 Draft; HTML/JSON guard; exact-head CI pending at last check |
+
+Current remote branch count after all audit/remediation branches: **75**.
