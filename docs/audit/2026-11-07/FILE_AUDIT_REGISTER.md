@@ -101,8 +101,8 @@ Every row is a note. Update the note after full inspection; never mark a file re
 |---|---|---|
 | `src/services/advisorService.ts` | Advisor client service; review request schema, timeout, retries, error handling and secret boundary. | PENDING |
 | `src/services/audioPreferences.test.ts` | Audio preference tests; verify all views use shared settings and edge cases are covered. | PENDING |
-| `src/services/audioPreferences.ts` | Shared audio preference state; review validation and local persistence. | PENDING |
-| `src/services/audioService.ts` | Reciter/audio URL construction and playback; verify sources, attribution, URL integrity and playback failure recovery. | PENDING |
+| `src/services/audioPreferences.ts` | Playback-rate normalization allowlists 0.75–2.0 and safely falls back when localStorage is unavailable. Preference is a global device setting, not account-scoped; document this intentionally and test cross-view persistence. | REVIEWED (initial) |
+| `src/services/audioService.ts` | Fixed EveryAyah reciter registry and deterministic 3-digit URL formatter inspected. Validate Surah/ayah before URL construction and add direct tests for every reciter/path; attribution and source availability should be surfaced. | REVIEWED (initial) |
 | `src/services/authService.ts` | Firebase auth operations; inspect provider behavior, redirect/popup flow and error normalization. | PENDING |
 | `src/services/authUtils.ts` | Auth verification helpers; review state mapping and tests. | PENDING |
 | `src/services/backupPersistence.test.ts` | Backup/reset transaction tests; inspect corruption, import ordering, rollback and quota coverage. | PENDING |
@@ -124,11 +124,11 @@ Every row is a note. Update the note after full inspection; never mark a file re
 | `src/services/localSyncOutbox.test.ts` | Outbox tests; verify retry, idempotency, acknowledgement and legacy migration. | PENDING |
 | `src/services/localSyncOutbox.ts` | Async facade migrates legacy localStorage outbox into IndexedDB atomically and keeps source as recovery copy; stable fingerprints and bounded payload/backoff are present. Verify duplicate legacy writers and retention limits with multi-tab tests. | REVIEWED (initial) |
 | `src/services/pageProgressService.test.ts` | Page progress tests; verify all ayahs per page and journal persistence. | PENDING |
-| `src/services/pageProgressService.ts` | Page progress mapping/service; verify exact canonical page coverage and duplicate ranges. | PENDING |
+| `src/services/pageProgressService.ts` | Page index mapping and conservative status aggregation inspected. `buildPageStatusUpdate` rewrites due date, interval and repetitionCount when manually changing page status; verify this intentional reset does not erase spaced-revision history/expectations. Full generated page index must remain reproducible in CI. | REVIEWED (initial) |
 | `src/services/planLifecycle.ts` | **P1 data-loss bug:** resumePlan/recalculatePlan retain only days with a completed memorizationTask and rebuild only pending memorization tasks; completed revision-only days, revision task history and some partial days are dropped. No planLifecycle.test.ts exists. Preserve every completed task/day and add dedicated regression suite before release. | REVIEWED (initial) |
 | `src/services/planningEngine.test.ts` | Planning engine tests; test constraints, leap years, missed days and impossible schedules. | PENDING |
 | `src/services/planningEngine.ts` | Schedule generator inspected. Uses canonical QuranMath ranges and skips rest days; page pace is approximated as 15 ayahs/page rather than exact page boundaries, and feasibility score should compare total new+revision workload with total available minutes. Validate dates, day sets and all numeric input bounds. | REVIEWED (initial) |
-| `src/services/quranMath.ts` | Quran coordinate/range math; verify global/local ayah, page and Juz boundary calculations. | PENDING |
+| `src/services/quranMath.ts` | Central global-index/range/chunk arithmetic inspected. `isValidCoordinate` does not require integer/safe integer, and `countVersesBetween`/`getAbsoluteAyahIndex` do not reject invalid Surah/ayah coordinates; invalid Surah can produce misleading absolute indexes. Validate inputs and add boundary/property tests before relying on it for scheduling. | REVIEWED (initial) |
 | `src/services/retentionService.test.ts` | Retention tests; ensure overlapping portions are deduplicated and failed review priority is conservative. | PENDING |
 | `src/services/retentionService.ts` | Canonical getter reads StorageService.getUnifiedPortions; DEFAULT_PORTIONS seed array is not returned by getPortions and must not be used as real user progress. Journal snapshot builders coexist with local-only legacy mutators; ensure every authenticated production caller uses journal-first APIs. | REVIEWED (initial) |
 | `src/services/revisionPersistence.test.ts` | Revision persistence tests; verify transaction/rollback and event history integrity. | PENDING |
@@ -172,7 +172,7 @@ Every row is a note. Update the note after full inspection; never mark a file re
 | `src/tests/uniqueRetentionScore.test.ts` | Retention metric tests; verify unique ayah counting and conservative status selection. | PENDING |
 | `src/types/quran.ts` | Core Quran/progress/profile types inspected. conflictAudit.value: any weakens safety; legacy IDs and optional duplicated revision structures need migration/compatibility policy. | REVIEWED (initial) |
 | `src/utils/tafsirSanitizer.test.ts` | Tafsir sanitization tests; test malformed HTML, unsafe markup and valid Arabic formatting. | PENDING |
-| `src/utils/tafsirSanitizer.ts` | Tafsir text sanitization; inspect XSS boundary and whether rendering uses safe text/HTML. | PENDING |
+| `src/utils/tafsirSanitizer.ts` | Plain-text/segment sanitizer avoids dangerouslySetInnerHTML and strips tags. Numeric HTML entities use String.fromCharCode, which corrupts code points above U+FFFF; use String.fromCodePoint with Unicode range checks and fuzz malformed/nested HTML. | REVIEWED (initial) |
 | `src/index.css` | Global design system, RTL and responsive styling; audit token consistency, contrast, focus, dark mode and unused CSS. | PENDING |
 | `src/main.tsx` | React root wraps AuthProvider/AuthGate/App and registers service worker in production. No visible top-level error boundary; verify process.env replacement in Vite and add SW update/recovery tests. | REVIEWED (initial) |
 | `src/lib/firebase.ts` | Firebase config and initialization; inspected. Uses public client config/environment fallbacks and optional initialization; verify target project/database and no privileged secrets. | REVIEWED (initial) |
