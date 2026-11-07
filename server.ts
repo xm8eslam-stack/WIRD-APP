@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import tafsirHandler from './api/tafsir';
+import ruqyahHandler from './api/ruqyah';
+import quranAudioHandler from './api/quran-audio';
 
 dotenv.config();
 
@@ -19,6 +21,16 @@ app.use(express.json({ limit: '1mb' }));
 // development and in the production Express server. Register before Vite's SPA fallback.
 app.all('/api/tafsir', (req: Request, res: Response) => {
   void tafsirHandler(req, res);
+});
+
+// Secure Arabic Ruqyah data proxy; the upstream API key remains server-side.
+app.all('/api/ruqyah', (req: Request, res: Response) => {
+  void ruqyahHandler(req, res);
+});
+
+// Read-only catalog proxy for Al Furqan's verified Quran reciter directory.
+app.all('/api/quran-audio', (req: Request, res: Response) => {
+  void quranAudioHandler(req, res);
 });
 
 // In-memory rate limiter for Gemini Free Tier (15 requests/minute)
