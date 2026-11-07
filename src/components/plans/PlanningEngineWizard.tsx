@@ -271,6 +271,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                         setStartAyah(1);
                         if (s > endSurah) {
                           setEndSurah(s);
+                          const adjustedEndSurah = ALL_SURAHS.find(item => item.number === s);
+                          setEndAyah(Math.min(endAyah, adjustedEndSurah?.versesCount || 1));
                         }
                       }}
                       className="w-full px-2.5 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg font-semibold"
