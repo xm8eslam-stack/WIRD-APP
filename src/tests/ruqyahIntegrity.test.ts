@@ -55,7 +55,7 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     assert(byId.get('d-6')?.repeatTarget === 7, 'Pain supplication must retain its seven repetitions');
     assert(byId.get('d-4')?.repeatTarget === 3, 'Morning/evening protection remembrance must retain three repetitions');
     assert(byId.get('q-ikhlas')?.repeatTarget === 3 && byId.get('q-falaq')?.repeatTarget === 3 && byId.get('q-nas')?.repeatTarget === 3, 'The three protective surahs must retain their narrated morning/evening count');
-    assert(byId.get('d-7')?.type === 'guideline', 'Blessing guidance must not be presented as a fixed-count supplication');
+    assert(!byId.has('d-7'), 'Unreviewed optional blessing guidance must not be included in the core Ruqyah corpus');
   });
 
   test('Ruqyah categories filter accurately', () => {
