@@ -1,5 +1,5 @@
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
-import { StorageService } from './storageService';
+import { STORAGE_KEYS, StorageService } from './storageService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from './ruqyahProgressService';
 
 function assert(condition: boolean, message: string): void {
@@ -42,7 +42,7 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
 
   test('Malformed progress is reported and its original bytes are preserved', () => {
     StorageService.__resetStorageForTests();
-    const key = 'wird_ruqyah_progress_v1';
+    const key = STORAGE_KEYS.RUQYAH_PROGRESS;
     const malformed = '{"schemaVersion":1,"counts":{"q-fatihah":"many"}';
     assert(StorageService.setRawItem(key, malformed), 'Malformed fixture must be stored');
     assert(loadRuqyahProgress().status === 'corrupt', 'Malformed state must be reported');
