@@ -1,7 +1,7 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
-import type { JournalOutboxEntry, LegacyOutboxState, RemoteInboxEvent, RemoteInboxEventInput } from './indexedDbSyncJournal';
+import type { JournalOutboxEntry, LegacyOutboxState, RemoteInboxEvent, RemoteInboxEventInput, RemoteProjectionConflict } from './indexedDbSyncJournal';
 
 export type SyncCollection =
   | 'profile'
