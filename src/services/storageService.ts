@@ -1339,6 +1339,27 @@ export const StorageService = {
     return setItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
   },
 
+  /** Capture the exact local storage bytes relevant to a blocked remote projection. */
+  getLocalProjectionSnapshot(collection: SyncCollection): Record<string, string | null> {
+    const keysByCollection: Record<SyncCollection, string[]> = {
+      profile: [STORAGE_KEYS.PROFILE],
+      plans: [STORAGE_KEYS.PLANS],
+      enginePlans: [STORAGE_KEYS.ENGINE_PLANS],
+      portions: [STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION],
+      weakVerses: [STORAGE_KEYS.WEAK_VERSES],
+      tests: [STORAGE_KEYS.TESTS],
+      activityEvents: [STORAGE_KEYS.LOGS],
+      syncMeta: [
+        STORAGE_KEYS.PROFILE, STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS,
+        STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION,
+        STORAGE_KEYS.WEAK_VERSES, STORAGE_KEYS.TESTS, STORAGE_KEYS.LOGS
+      ]
+    };
+    const snapshot: Record<string, string | null> = {};
+    for (const key of keysByCollection[collection] || []) snapshot[key] = getItem(key);
+    return snapshot;
+  },
+
   /**
    * Conservative first-sync guard. If local data exists, remote projection must
    * prove a matching base revision instead of replacing an unknown local archive.
