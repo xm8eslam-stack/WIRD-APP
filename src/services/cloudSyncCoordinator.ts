@@ -179,8 +179,8 @@ class CloudSyncCoordinator {
       }
       const [snapshot, remoteCursor, remoteProjectionCursor, conflictCount, latestConflicts] = await Promise.all([
         LocalSyncOutbox.getSnapshot(),
-        LocalSyncOutbox.getRemoteCursor(uid),
-        LocalSyncOutbox.getRemoteProjectionCursor(uid),
+        LocalSyncOutbox.getRemoteCursor(),
+        LocalSyncOutbox.getRemoteProjectionCursor(),
         LocalSyncOutbox.getProjectionConflictCount(),
         LocalSyncOutbox.listProjectionConflicts(1)
       ]);
