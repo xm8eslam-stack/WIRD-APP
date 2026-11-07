@@ -445,6 +445,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                             ))}
                           </div>
                         </div>
+                        <div className="mt-3 space-y-2">
+                          <p className="font-bold text-[11px] text-stone-700 dark:text-stone-200">
+                            العمليات المحلية المعلقة المحفوظة ({conflict.localMutations?.length || 0})
+                          </p>
+                          {(conflict.localMutations || []).map(mutation => (
+                            <div key={mutation.mutationId} className="rounded-lg border border-stone-200 dark:border-stone-700 p-2 space-y-1">
+                              <p className="text-[10px] text-stone-500 dark:text-stone-400 break-all">
+                                {mutation.collection}/{mutation.documentId} · revision base {mutation.baseRevision} · sequence {mutation.sequence}
+                              </p>
+                              <pre dir="ltr" className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-white dark:bg-black/30 border border-stone-200 dark:border-stone-700 p-2 text-[10px] text-stone-700 dark:text-stone-200">{JSON.stringify(mutation.payload, null, 2)}</pre>
+                            </div>
+                          ))}
+                          {(conflict.localMutations || []).length === 0 && (
+                            <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                              لم تكن هناك عملية محلية معلقة مرتبطة بهذا المستند عند حفظ التعارض؛ لقطة التخزين المحلية محفوظة أعلاه.
+                            </p>
+                          )}
+                        </div>
                         <p className="mt-2 text-[10px] text-stone-500 dark:text-stone-400">
                           سبب الإيقاف: {conflict.reason} · معرّف الحدث: <span dir="ltr">{conflict.event.eventId}</span>
                         </p>
