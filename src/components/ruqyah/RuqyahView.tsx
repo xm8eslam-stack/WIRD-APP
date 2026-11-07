@@ -168,7 +168,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   // Click counter handler
   const handleItemClick = (item: RuqyahItem) => {
     const current = counts[item.id] || 0;
-    if (current >= item.repeatTarget) return;
+    if (item.type === 'guideline' || (item.repeatTarget !== null && current >= item.repeatTarget)) return;
 
     const next = current + 1;
     setCounts(prev => ({ ...prev, [item.id]: next }));
@@ -181,7 +181,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     }
 
     // Auto-scroll to next card when target reached
-    if (next === item.repeatTarget && autoAdvance) {
+    if (item.repeatTarget !== null && next === item.repeatTarget && autoAdvance) {
       const currentIndex = currentItems.findIndex(i => i.id === item.id);
       if (currentIndex !== -1 && currentIndex < currentItems.length - 1) {
         const nextId = currentItems[currentIndex + 1].id;
@@ -254,7 +254,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       if (queue.length === 0) throw new Error('لا توجد آيات صالحة للتشغيل.');
       verseQueueRef.current = queue;
       verseQueueIndexRef.current = 0;
-      verseRepeatTargetRef.current = Math.max(1, item.repeatTarget);
+      verseRepeatTargetRef.current = Math.max(1, item.repeatTarget ?? 1);
       verseRepeatCountRef.current = 1;
       verseItemRef.current = item;
       setPlayingVerseId(item.id);
@@ -334,7 +334,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   };
 
   // Calculate section progress
-  const completedCount = currentItems.filter(item => (counts[item.id] || 0) >= item.repeatTarget).length;
+  const completedCount = currentItems.filter(item => item.type !== 'guideline' && (item.repeatTarget === null ? (counts[item.id] || 0) > 0 : (counts[item.id] || 0) >= item.repeatTarget)).length;
   const progressPercent = currentItems.length > 0 ? Math.round((completedCount / currentItems.length) * 100) : 0;
 
   return (
@@ -505,15 +505,15 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           <div className="space-y-4">
             {currentItems.map((item, idx) => {
               const currentCount = counts[item.id] || 0;
-              const isCompleted = currentCount >= item.repeatTarget;
+              const isCompleted = item.type !== 'guideline' && (item.repeatTarget === null ? currentCount > 0 : currentCount >= item.repeatTarget);
               const isPlayingVerse = playingVerseId === item.id;
 
               return (
                 <div
                   key={item.id}
                   id={`ruqyah-card-${item.id}`}
-                  onClick={() => handleItemClick(item)}
-                  className={`group relative bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-7 border transition-all duration-300 cursor-pointer ${
+                  onClick={item.type === 'guideline' ? undefined : () => handleItemClick(item)}
+                  className={`group relative bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-7 border transition-all duration-300 ${item.type === 'guideline' ? 'cursor-default' : 'cursor-pointer'} ${
                     isCompleted
                       ? 'border-emerald-500/60 dark:border-emerald-700/60 bg-emerald-50/20 dark:bg-emerald-950/10 shadow-xs'
                       : 'border-stone-200/90 dark:border-stone-800 hover:border-emerald-300 dark:hover:border-emerald-800 hover:shadow-md'
@@ -560,7 +560,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         title="استماع صوتي مع التكرار التلقائي"
                       >
                         {isPlayingVerse ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span>{isPlayingVerse ? `تكرار (${verseLoopCount}/${item.repeatTarget})` : 'استماع للآيات'}</span>
+                        <span>{isPlayingVerse ? (item.repeatTarget === null ? 'تشغيل الآيات' : `تكرار (${verseLoopCount}/${item.repeatTarget})`) : 'استماع للآيات'}</span>
                       </button>
                     )}
                   </div>
@@ -589,24 +589,24 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         {isCompleted ? (
                           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/80 px-3 py-1 rounded-xl">
                             <CheckCircle2 className="w-4 h-4" />
-                            <span>تم الانتهاء من التكرارات المطلوب ({item.repeatTarget})</span>
+                            <span>{item.repeatTarget === null ? 'تم تسجيل القراءة' : `اكتمل التكرار المحدد (${item.repeatTarget})`}</span>
                           </div>
                         ) : (
                           <span className="text-xs text-stone-500 font-medium">
-                            اضغط على البطاقة لزيادة العداد
+                            {item.repeatTarget === null ? 'لا يوجد عدد ثابت؛ اضغط لتسجيل قراءتك' : 'اضغط على البطاقة لزيادة العداد'}
                           </span>
                         )}
                       </div>
 
                       {/* Repetition Counter Badge */}
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-stone-500">المتبقي:</span>
+                        <span className="text-xs font-semibold text-stone-500">{item.repeatTarget === null ? 'عدد القراءات:' : 'المتبقي:'}</span>
                         <div className={`px-4 py-2 rounded-2xl font-mono text-sm font-bold transition-all ${
                           isCompleted
                             ? 'bg-emerald-700 text-white shadow-xs'
                             : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300 group-hover:scale-105'
                         }`}>
-                          {item.repeatTarget - currentCount > 0 ? item.repeatTarget - currentCount : 0} / {item.repeatTarget}
+                          {item.repeatTarget === null ? currentCount + ' قراءة' : Math.max(0, item.repeatTarget - currentCount) + ' / ' + item.repeatTarget}
                         </div>
                       </div>
                     </div>
