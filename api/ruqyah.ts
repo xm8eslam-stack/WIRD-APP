@@ -8,7 +8,9 @@ const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 const ALLOWED_TYPES = new Set(['instant-category', 'instant']);
 const ALLOWED_PROGRAMS = new Set(['brief-ruqya', 'a-medium-ruqya', 'a-long-ruqya']);
-const ALLOWED_SOURCES = new Set(['from-quran', 'from-sunnah']);
+// Only use the external API as an index for Quran references. Hadith/dua text
+// from third-party payloads is not trusted or rendered in WIRD.
+const ALLOWED_SOURCES = new Set(['from-quran']);
 const ALLOWED_TOPICS = new Set([
   'introduction-to-ruqyah',
   'protect-yourself-from-jinn',
