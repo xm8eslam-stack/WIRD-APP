@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Loader2, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Loader2, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
 import {
   fetchRuqyahApiData,
   resolveApiQuranEntryText,
