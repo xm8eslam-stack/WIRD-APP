@@ -47,6 +47,7 @@
 
 ## 2026-11-07 — Multi-collection two-device projection matrix
 
-- PR #101 adds an Emulator-backed round trip for all eight user data collections: profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and ruqyahProgress.
-- The test writes revisioned mutations on device A, imports the ordered immutable event stream on device B, runs the actual remote inbox projector, verifies the local archive for each collection and cursor advancement, and confirms owner reads succeed while cross-user reads fail.
-- This closes the automated collection-projection coverage gap for these eight collection routes. It does not replace real-device/mobile E2E, account lifecycle switching tests, cross-tab browser E2E, or conflict-resolution UI verification.
+- PR #101 adds an Emulator-backed **one-way A → B projection pass** through all eight user data collection routes: profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and ruqyahProgress. It is not a bidirectional round-trip test.
+- The test writes revisioned mutations on device A, imports the ordered immutable event stream on device B, runs the actual remote inbox projector, verifies local archive presence/cursor advancement, and checks owner reads plus cross-user read denial for every route.
+- Payload depth is limited: plans, enginePlans, portions, weakVerses, tests, and activityEvents currently use empty `records: []` arrays. Profile and Ruqyah have non-empty representative payloads. Therefore this validates collection routing, event transport, projection dispatch, cursor handling, and owner rules; it does **not** validate populated-record schemas/serialization for those six arrays, reverse B → A flow, simultaneous writes, or conflict convergence.
+- Remaining multi-collection work: add valid populated domain records per collection, assert field-level round-trip equality, test B → A and alternating edits, and exercise offline/retry/crash cases across more than one collection. Real-device/mobile E2E, account lifecycle switching, cross-tab browser E2E, and conflict-resolution UI also remain unverified.
