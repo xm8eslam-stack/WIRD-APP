@@ -1325,7 +1325,8 @@ export class IndexedDbSyncJournal {
             currentIntent.documentId === intent.documentId &&
             currentIntent.revision === intent.revision &&
             Array.isArray(currentIntent.initializedCollections) &&
-            currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+            Array.isArray(currentIntent.initializedCollections) &&
+          currentIntent.initializedCollections.length === intent.initializedCollections.length &&
             currentIntent.initializedCollections.every((collection, index) =>
               collection === intent.initializedCollections[index]
             );
@@ -1399,12 +1400,12 @@ export class IndexedDbSyncJournal {
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
       const conflictRequest = conflicts.get(key);
       const resolutionIntentRequest = resolutionIntents.get(key);
-      const pendingRequest = outbox.index('uidCollectionDocument')
-        .getAll(IDBKeyRange.only([uid, 'ruqyahProgress', 'snapshot']));
+      const pendingRequest = outbox.index('uid').getAll(IDBKeyRange.only(uid));
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
       let conflict: RemoteProjectionConflict | undefined;
       let resolutionIntent: ConflictResolutionIntent | undefined;
+      let allPending: JournalOutboxEntry[] = [];
       let pending: JournalOutboxEntry[] = [];
       let readsRemaining = 5;
       let merged = false;
@@ -1498,7 +1499,7 @@ export class IndexedDbSyncJournal {
         const payload: Record<string, unknown> = { snapshot: mergedSnapshot };
         const payloadJson = stableStringify(payload);
         if (byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES ||
-            pending.length + (pendingMutationsCount(metadata, pending) ?? 0) > MAX_PENDING_MUTATIONS) {
+            allPending.length - pending.length + 1 > MAX_PENDING_MUTATIONS) {
           failure = new Error('حمولة أو سعة دمج عدادات الرقية تجاوزت الحدود الآمنة.');
           transaction.abort();
           return;
@@ -1514,11 +1515,14 @@ export class IndexedDbSyncJournal {
           return;
         }
         const sequence = metadata.nextSequence;
-        const highestPendingSequence = pending.reduce((highest, item) => Math.max(highest, item.sequence), 0);
+        const highestPendingSequence = allPending.reduce((highest, item) => Math.max(highest, item.sequence), 0);
         if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER ||
+            allPending.some(item => !Number.isSafeInteger(item.sequence) || item.sequence < 1) ||
             !metadata.deviceId || sequence <= highestPendingSequence ||
             (previousRevision && (
-              !Number.isSafeInteger(previousRevision.localSequence) ||
+              !Number.isSafeInteger(previousRevision.revision) || previousRevision.revision < 0 ||
+              previousRevision.revision > event.revision ||
+              !Number.isSafeInteger(previousRevision.localSequence) || previousRevision.localSequence < 0 ||
               sequence <= previousRevision.localSequence
             ))) {
           failure = new Error('تسلسل عمليات الرقية غير صالح؛ لم ننشئ عملية دمج.');
@@ -1614,7 +1618,11 @@ export class IndexedDbSyncJournal {
       eventRequest.onsuccess = () => { event = eventRequest.result as RemoteInboxEvent | undefined; finish(); };
       conflictRequest.onsuccess = () => { conflict = conflictRequest.result as RemoteProjectionConflict | undefined; finish(); };
       resolutionIntentRequest.onsuccess = () => { resolutionIntent = resolutionIntentRequest.result as ConflictResolutionIntent | undefined; finish(); };
-      pendingRequest.onsuccess = () => { pending = pendingRequest.result as JournalOutboxEntry[]; finish(); };
+      pendingRequest.onsuccess = () => {
+        allPending = pendingRequest.result as JournalOutboxEntry[];
+        pending = allPending.filter(item => item.collection === 'ruqyahProgress' && item.documentId === 'snapshot');
+        finish();
+      };
       transaction.oncomplete = () => resolve(merged);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Ruqyah PN-counter merge transaction aborted.')));
     });
