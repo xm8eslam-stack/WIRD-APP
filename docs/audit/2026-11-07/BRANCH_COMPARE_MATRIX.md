@@ -100,7 +100,7 @@ The baseline matrix remains an exact snapshot of the original 70 refs. Five new 
 
 | Branch | Compare status | Main-only commits | Branch-only commits | Purpose / state |
 |---|---:|---:|---:|---|
-| `chore/full-repository-audit-20261107` | ahead | 0 | 42 | Documentation-only audit branch; all changed paths are under docs/; preserve |
+| `chore/full-repository-audit-20261107` | ahead | 0 | 53 | Documentation-only audit branch; all changed paths are under docs/; preserve |
 | `fix/progress-import-journal-20261107` | ahead | 0 | 4 | PR #61 Draft; journaled backup import fix; exact-head CI PASS |
 | `fix/plan-lifecycle-preserve-revisions-20261107` | ahead | 0 | 10 | PR #62 Draft; plan lifecycle preservation; exact-head CI PASS |
 
