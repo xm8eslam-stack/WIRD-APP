@@ -3,7 +3,8 @@ export interface QuranReciter {
   name: string;
   arabicName: string;
   style?: string;
-  bitrate: 128 | 192;
+  cdnEdition: string;
+  bitrate: 64 | 128 | 192;
 }
 
 export const QURAN_AUDIO_PROVIDER = {
@@ -19,13 +20,13 @@ export const QURAN_AUDIO_PROVIDER = {
  * streaming/embedding and educational use. Do not add dynamic or unreviewed IDs here.
  */
 export const FALLBACK_QURAN_RECITERS: QuranReciter[] = [
-  { id: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري', style: 'Murattal', bitrate: 128 },
-  { id: 'ar.minshawi', name: 'Mohamed Siddiq al-Minshawi', arabicName: 'محمد صديق المنشاوي', style: 'Murattal', bitrate: 128 },
-  { id: 'ar.abdulbasit', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد', style: 'Murattal', bitrate: 192 },
-  { id: 'ar.sudais', name: 'Abdul Rahman Al-Sudais', arabicName: 'عبدالرحمن السديس', style: 'Murattal', bitrate: 192 },
-  { id: 'ar.shuraim', name: 'Saud Al-Shuraim', arabicName: 'سعود الشريم', style: 'Murattal', bitrate: 128 },
-  { id: 'ar.ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي', style: 'Murattal', bitrate: 128 },
-  { id: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي', style: 'Murattal', bitrate: 128 }
+  { id: 'ar.husary', cdnEdition: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.minshawi', cdnEdition: 'ar.minshawi', name: 'Mohamed Siddiq al-Minshawi', arabicName: 'محمد صديق المنشاوي', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.abdulbasit', cdnEdition: 'ar.abdulbasitmurattal', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد', style: 'Murattal', bitrate: 192 },
+  { id: 'ar.sudais', cdnEdition: 'ar.abdurrahmaansudais', name: 'Abdul Rahman Al-Sudais', arabicName: 'عبدالرحمن السديس', style: 'Murattal', bitrate: 192 },
+  { id: 'ar.shuraim', cdnEdition: 'ar.saoodshuraym', name: 'Saud Al-Shuraim', arabicName: 'سعود الشريم', style: 'Murattal', bitrate: 64 },
+  { id: 'ar.ajamy', cdnEdition: 'ar.ahmedajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي', style: 'Murattal', bitrate: 64 },
+  { id: 'ar.alafasy', cdnEdition: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي', style: 'Murattal', bitrate: 128 }
 ];
 
 const APPROVED_RECITER_IDS = new Set(FALLBACK_QURAN_RECITERS.map(reciter => reciter.id));
@@ -73,6 +74,7 @@ export async function fetchQuranReciters(signal?: AbortSignal): Promise<QuranRec
     }
     const expected = FALLBACK_QURAN_RECITERS.find(reciter => reciter.id === item.id);
     if (!expected ||
+        item.cdnEdition !== expected.cdnEdition ||
         item.name !== expected.name ||
         item.arabicName !== expected.arabicName ||
         item.style !== expected.style ||
@@ -97,5 +99,5 @@ export function buildQuranAyahAudioUrl(reciterId: string, globalAyahNumber: numb
   }
   const reciter = FALLBACK_QURAN_RECITERS.find(candidate => candidate.id === reciterId);
   if (!reciter) throw new Error('القارئ الصوتي غير موجود في قائمة المصادر المعتمدة.');
-  return QURAN_AUDIO_PROVIDER.audioCdnBaseUrl + '/' + reciter.bitrate + '/' + reciterId + '/' + String(globalAyahNumber) + '.mp3';
+  return QURAN_AUDIO_PROVIDER.audioCdnBaseUrl + '/' + reciter.bitrate + '/' + reciter.cdnEdition + '/' + String(globalAyahNumber) + '.mp3';
 }
