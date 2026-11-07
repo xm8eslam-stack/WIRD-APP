@@ -47,3 +47,12 @@ The following remain release blockers and must not be waived:
 - Exact-SHA production deployment and post-deploy browser smoke. Vercel build-rate-limit failures are not deployment evidence.
 - Ruqyah progress sync is not implemented. Before enabling it, design a concurrency-safe counter model and test increments from two independent devices.
 - Main checkpoint SHA at this update: e894140c91ec8086d111989dcdb601d3cdbf9ce4. Post-merge CI run 42354517460 was still in progress; recheck before release.
+
+## 2026-11-07 — Updated after Ruqyah sync integration
+
+- Ruqyah progress is now in the revisioned collection model and version-5 backup. PR #94 must close the legacy first-sync scan gap and pass concurrent-offline conflict-preservation tests.
+- Concurrent Ruqyah counter increments are not yet additively merged. Stale writes must remain blocked and both snapshots retained; production activation remains prohibited until the data model can preserve and resolve independent increments deterministically.
+- Manual conflict-resolution UI/state machine remains a release blocker: keep-local, use-remote, and safe merge/rebase must revalidate server revision and preserve Outbox/archives until commit.
+- Tombstone projection remains blocked. Do not remove the guard until delete semantics, stale-event rejection, offline delete, resurrection prevention, and retention/compaction are tested per collection.
+- Cross-tab browser concurrency, full collection coverage, account lifecycle isolation, production Firestore rules deployment, and exact-SHA live deployment/post-deploy smoke remain blockers.
+- Main checkpoint SHA: f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Main Quality Gate run 42355600523 passed; this does not verify production deployment.
