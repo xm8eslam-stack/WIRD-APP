@@ -3,7 +3,7 @@ import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import type { LegacyOutboxState } from './indexedDbSyncJournal';
 import { STORAGE_KEYS, StorageService } from './storageService';
-import { LocalSyncOutbox } from './localSyncOutbox';
+import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
 
 export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
