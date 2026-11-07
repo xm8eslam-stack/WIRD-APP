@@ -1,7 +1,7 @@
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
-import { StorageService } from './storageService';
+import { STORAGE_KEYS, StorageService } from './storageService';
 
-const STORAGE_KEY = 'wird_ruqyah_progress_v1';
+const STORAGE_KEY = STORAGE_KEYS.RUQYAH_PROGRESS;
 const MAX_ITEMS = 200;
 const MAX_COUNT = 1000;
 const KNOWN_ITEM_IDS = new Set(RUQYAH_ITEMS.map(item => item.id));
