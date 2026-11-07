@@ -59,7 +59,18 @@ const RATE_LIMIT_MAX = 30;
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 function send(res: any, statusCode: number, payload: unknown) {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   return res.status(statusCode).json(payload);
+}
+
+function parseUpstreamJson(raw: string): any | null {
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.startsWith('<')) return null;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
 }
 
 function getClientIp(req: any): string {
@@ -128,14 +139,19 @@ export default async function handler(req: any, res: any) {
       const upstream = await fetch(url, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000)
+        signal: AbortSignal.timeout(8_000)
       });
       if (!upstream.ok) {
         res.setHeader('Cache-Control', 'no-store');
         return send(res, 502, { error: 'TAFSIR_SOURCE_UNAVAILABLE' });
       }
 
-      const payload: any = await upstream.json();
+      const upstreamBody = await upstream.text();
+      const payload = parseUpstreamJson(upstreamBody);
+      if (!payload) {
+        res.setHeader('Cache-Control', 'no-store');
+        return send(res, 502, { error: 'INVALID_TAFSIR_SOURCE_RESPONSE' });
+      }
       const rawText = payload?.tafsir?.text;
       if (typeof rawText !== 'string' || !rawText.trim()) {
         res.setHeader('Cache-Control', 'no-store');
@@ -156,8 +172,9 @@ export default async function handler(req: any, res: any) {
         return send(res, 502, { error: 'TAFSIR_SOURCE_UNAVAILABLE' });
       }
 
-      const payload: any = await upstream.json();
-      if (payload?.book?.id !== bookId || !Array.isArray(payload.content) || payload.content.length > 50) {
+      const upstreamBody = await upstream.text();
+      const payload = parseUpstreamJson(upstreamBody);
+      if (!payload || payload?.book?.id !== bookId || !Array.isArray(payload.content) || payload.content.length > 50) {
         res.setHeader('Cache-Control', 'no-store');
         return send(res, 502, { error: 'INVALID_TAFSIR_SOURCE_RESPONSE' });
       }
