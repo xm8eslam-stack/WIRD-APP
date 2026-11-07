@@ -1,6 +1,6 @@
 # WIRD Sync Release Gates
 
-## 2026-11-07 — current release gate refresh after PR #140
+## 2026 11 07 — current release gate refresh after PR #140
 
 - Latest main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305`.
 - PR #140 exact-head Quality Gate passed: 526 assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, 20 desktop/mobile Playwright tests.
