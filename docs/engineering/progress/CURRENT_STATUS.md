@@ -286,3 +286,15 @@ Unresolved release gates: user-directed conflict resolution and rebase; additive
 - Documentation merge PR #132 produced main SHA `3eeb1eb2da419536a1e2fc9db6911961d3bfafcc`.
 - Post-merge main Quality Gate run `42361756445` completed successfully.
 - The full Playwright suite in that run executed 16 tests total: 6 app-shell checks (3 desktop + 3 mobile) and 10 Ruqyah locator-library checks (5 desktop + 5 mobile). The earlier phrase “16 Ruqyah locator-library checks” was inaccurate and has been corrected.
+
+
+## 2026-11-07 — grouped syncMeta conflict evidence checkpoint
+
+- Current code main at checkpoint: `cfc5f211c55e342ed72357025393438d7c481f50` (PR #134 merge).
+- PR #134 exact head `5347890aa15371ddc3fd22e0809604947686b65b` passed 526 automated assertions, 31 Firestore Rules Emulator tests, 16 Playwright tests, dependency audit, TypeScript, production build, and server smoke.
+- PR #134 extends the conflict evidence transaction for grouped `syncMeta` events: it captures the transaction document and pending Outbox mutations from every validated participating collection, while excluding unrelated collections. Evidence remains deduplicated by mutation ID/fingerprint and subject to the combined 500 KB cap. No Outbox entry is deleted and no inbox cursor is advanced by the archive operation.
+- The ordinary-event path continues to capture only the exact UID/collection/document. PR #129 keeps ordinary projection/finalization document-scoped; grouped `syncMeta` remains collection-wide.
+- This is still conflict evidence, not a conflict decision. No keep-local rebase, use-remote discard, field-level merge, latest remote revision revalidation, or crash-resumable user decision has been implemented.
+- Main post-merge Quality Gate run for `cfc5f211c55e342ed72357025393438d7c481f50` was `42362477838`, in progress when this checkpoint was authored. Vercel status was pending on a deployment target at that moment; no deployment/live verification is claimed until its final status and deployed SHA are checked.
+- Remaining blockers: user-directed conflict resolution, tombstones, additive Ruqyah counters, full auth/sync/two-device browser journeys, offline/cross-tab/IDB stress, production Firestore rules deployment, and live device verification.
+- PR #2 remains draft and 115 commits ahead / 276 behind; do not merge wholesale.
