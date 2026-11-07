@@ -384,6 +384,66 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Grouped syncMeta conflict archives pending mutations from every affected collection', async () => {
+      const uid = 'projection-syncmeta-conflict';
+      const { journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'remote-syncmeta-transaction',
+        mutationId: 'remote-syncmeta-transaction',
+        eventType: 'domain-mutation' as const,
+        collection: 'syncMeta' as const,
+        documentId: 'remote-transaction-1',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9300,
+        payload: {
+          transaction: {
+            operations: [{ collection: 'plans' }, { collection: 'tests' }]
+          }
+        },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'pending-plan-snapshot',
+        collection: 'plans',
+        documentId: 'snapshot',
+        payload: { records: [{ id: 'local-plan' }] },
+        nowMs: 9301
+      });
+      await journal.enqueue({
+        mutationId: 'pending-test-record',
+        collection: 'tests',
+        documentId: 'local-test',
+        payload: { id: 'local-test', score: 2 },
+        nowMs: 9302
+      });
+      await journal.enqueue({
+        mutationId: 'unrelated-weak-verse',
+        collection: 'weakVerses',
+        documentId: 'snapshot',
+        payload: { records: [{ id: 'unrelated' }] },
+        nowMs: 9303
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', {
+        plans: '[{"id":"local-plan"}]', tests: '[{"id":"local-test"}]'
+      }, 9304), 'A blocked grouped transaction must be archived');
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const ids = new Set((conflict.localMutations || []).map(mutation => mutation.mutationId));
+      assert(ids.has('pending-plan-snapshot') && ids.has('pending-test-record') &&
+        !ids.has('unrelated-weak-verse'),
+        'The archive must include all pending mutations in transaction collections and exclude unrelated collections');
+      assert(await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1,
+        'Archiving a grouped conflict must not advance or delete the remote inbox event');
+      journal.close();
+    });
+
     await test('Oversized projection conflict snapshots are rejected without touching the inbox event', async () => {
       const { journal } = createJournal('projection-conflict-size-limit');
       const event = {
