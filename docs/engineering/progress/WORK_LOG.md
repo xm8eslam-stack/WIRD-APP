@@ -439,3 +439,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Cross-tab browser concurrency, comprehensive two-device multi-collection coverage, and account lifecycle isolation.
 - Production Firestore rules deployment, production environment verification, exact-SHA deployment, and live post-deploy smoke.
 - Vercel build-rate-limit is not a successful production deployment. No production secrets, rules, or flags changed.
+
+### Subsequent checkpoint update — PR #95 merged
+
+- PR #95 merged at 52e62d6b21057cf0d796cc3b137f4087cbe2e983. Its exact-head Quality Gate passed on c2e9478f6053ddc95aaa5058d7a5ab074255d58b; the merge adds post-success Ruqyah progress notifications for direct backup import and full reset, with rollback-safe notification timing.
+- Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
+- PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
+- PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.
