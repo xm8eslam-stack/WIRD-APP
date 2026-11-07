@@ -22,6 +22,7 @@ for (const sample of samples) {
     });
     const contentType = response.headers.get('content-type') || '';
     const contentRange = response.headers.get('content-range') || '';
+    const responseBody = response.ok ? '' : (await response.clone().text()).slice(0, 500);
     const reader = response.body?.getReader();
     const firstChunk = reader ? await reader.read() : { value: undefined };
     if (reader) await reader.cancel();
@@ -33,7 +34,7 @@ for (const sample of samples) {
 
     if (!valid) {
       failures++;
-      console.error(`FAIL ${sample.label}: HTTP ${response.status}, type=${contentType}, range=${contentRange}`);
+      console.error(`FAIL ${sample.label}: HTTP ${response.status}, type=${contentType}, range=${contentRange}, body=${responseBody}`);
     } else {
       console.log(`PASS ${sample.label}: HTTP 206, ${contentType}, ${contentRange}`);
     }
