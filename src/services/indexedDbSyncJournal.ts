@@ -939,6 +939,8 @@ export class IndexedDbSyncJournal {
         }
         const revisionKey = mutation.collection + ':' + mutation.documentId;
         const remoteRevisions = { ...(metadata?.remoteRevisions || {}) };
+        const initializedCollections = new Set(metadata?.remoteInitializedCollections || []);
+        initializedCollections.add(mutation.collection);
         const current = remoteRevisions[revisionKey];
         if (current && (!Number.isSafeInteger(current.revision) || current.revision > revision)) {
           failure = new Error('وصل إقرار قديم بعد إصدار أحدث؛ تم إيقاف تحديث مؤشر الإصدار.');
@@ -962,7 +964,8 @@ export class IndexedDbSyncJournal {
             uid, deviceId: mutation.deviceId, schemaVersion: 1,
             nextSequence: mutation.sequence + 1, lastProjectedSequence: 0
           }),
-          remoteRevisions
+          remoteRevisions,
+          remoteInitializedCollections: [...initializedCollections]
         } satisfies DeviceMetadata);
         const allAcknowledgementsRequest = acknowledgements.index('uid').getAll(IDBKeyRange.only(uid));
         allAcknowledgementsRequest.onsuccess = () => {
