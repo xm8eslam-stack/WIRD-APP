@@ -63,6 +63,48 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       secondTab.close();
     });
 
+    await test('V2 Ruqyah migration supersedes pending V1 uploads but preserves their immutable journal events', async () => {
+      const { journal } = createJournal('ruqyah-v1-outbox-migration');
+      const legacySnapshot = {
+        schemaVersion: 1 as const,
+        updatedAtMs: 400000,
+        counts: { 'q-fatiha': 6 }
+      };
+      await journal.enqueue({
+        mutationId: 'ruqyah-v1-pending-mutation',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        payload: { snapshot: legacySnapshot },
+        nowMs: 400001
+      });
+      const v2Snapshot = adjustRuqyahProgressCounter(
+        createEmptyRuqyahProgressSnapshot(400002),
+        'q-fatiha',
+        'current-device',
+        6,
+        400003
+      );
+      const migrated = await journal.enqueue({
+        mutationId: 'ruqyah-v2-migrated-mutation',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        payload: { snapshot: v2Snapshot },
+        nowMs: 400003
+      });
+      const pending = await journal.listReady(400100, 10);
+      const events = await journal.listEvents();
+      assert(migrated.status === 'queued' && pending.length === 1 &&
+        pending[0].mutationId === 'ruqyah-v2-migrated-mutation' &&
+        pending[0].sequence === 2,
+        'A V2 full snapshot must replace only pending V1 Ruqyah uploads so an old client payload cannot overwrite PN components');
+      assert(events.length === 2 &&
+        events.some(event => event.mutationId === 'ruqyah-v1-pending-mutation' &&
+          (event.payload.snapshot as { schemaVersion: number }).schemaVersion === 1) &&
+        events.some(event => event.mutationId === 'ruqyah-v2-migrated-mutation'),
+        'Superseding the old Outbox entry must not mutate or delete its append-only journal event');
+      journal.close();
+    });
+
     await test('Mutation ID collisions with changed content are rejected without altering the journal', async () => {
       const { journal } = createJournal();
       await journal.enqueue({ mutationId: 'collision', collection: 'plans', documentId: 'plan-1', payload: { pages: 4 }, nowMs: 2000 });
