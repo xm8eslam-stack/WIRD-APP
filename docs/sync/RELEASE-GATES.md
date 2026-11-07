@@ -87,3 +87,9 @@ The following remain release blockers and must not be waived:
 - Regression test uses identical mutation IDs in accounts A and B and proves stale A operations cannot read, rebase, mark failed, or acknowledge B's pending mutation; both accounts' pending data remains recoverable.
 - Exact PR head `e4865e17707e7f8dbea7bdbad8997bafcda4a414` passed run `42358255018`: 511 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, production build, and production/development startup smoke.
 - Current main is now `31ab27764b5c5db19d0003403adf43905c2bbc8e`; verify its post-merge Quality Gate before claiming main green. Vercel production remains blocked by `build-rate-limit` and no live deployed SHA is verified.
+
+### Subsequent update — PR #111 merged
+
+- PR #111 merged at `48cf9b236072cd3db2603a57cda5f67b30a778cd`. IslamicAPI now exposes only validated Quran locators (`instant` + `from-quran`); provider-authored text/translation/reference fields are stripped, and the UI resolves Arabic text and metadata from WIRD's canonical Quran corpus. Topic/category endpoints are hard-disabled, ambiguous/multi-reference titles and invalid IDs/ranges fail closed, and audio remains disabled pending source/rights verification.
+- Exact PR head `805c6c3d7b0c00ab348be4891f1f027d50529974` passed run `42358956417`: 513 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and startup smoke.
+- Current main SHA is `48cf9b236072cd3db2603a57cda5f67b30a778cd`. Main Quality Gate job `128363308512` passed, but run `42359049396` was still marked in progress at this checkpoint. Vercel remains `build-rate-limit`; production deployment/live SHA is unverified.
