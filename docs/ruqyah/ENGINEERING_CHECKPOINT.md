@@ -6,8 +6,8 @@ Last updated: 2026-11-07
 
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
-- Latest reviewed phase merge: PR #100, merge commit `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d`.
-- Working checkpoint branch: `fix/ruqyah-sunni-source-allowlist-20261107`.
+- Latest reviewed phase merge: PR #105, merge commit `d71908b3e411bcd7d1db2b09318eb3c95564198e`.
+- Working checkpoint branch: `test/ruqyah-source-registry-hardening-20261107`.
 - All nine implementation phases below are merged to `main`.
 
 ## Merged implementation phases
@@ -76,6 +76,17 @@ Working branch: `fix/ruqyah-sunni-source-allowlist-20261107`
 - Added tests for third-party Sunnah rejection, disabled full-program audio, and fail-closed unverified reciter endpoints.
 
 Phase 6 is not merged yet. Wait for exact-head CI before merging.
+
+## Pending Phase 7 — Reviewed source registry hardening
+
+Working branch: `test/ruqyah-source-registry-hardening-20261107`
+
+- Added an explicit code-level allowlist of reviewed source references for every Ruqyah item and guideline.
+- The test suite now rejects any item with a missing, changed, or newly introduced source string until it is reviewed and added to the allowlist.
+- Clarified the grading on all three protective-surah entries: Abu Dawud 5082 is Hasan according to al-Albani; Bukhari 5017 supports the bedtime recitation/nasf.
+- Updated `docs/ruqyah/SUNNI_SOURCE_POLICY.md` with the registry rule.
+
+Phase 7 requires exact-head CI before merge.
 
 ## External source and licensing decisions
 
