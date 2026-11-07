@@ -84,6 +84,16 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
       'A reset subtracts the local known total but must preserve a concurrent unseen device increment');
   });
 
+  test('Two devices resetting the same observed baseline converge to zero without double subtraction', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const base = adjustRuqyahProgressCounter(createEmptyRuqyahProgressSnapshot(215000), itemId, 'device-A', 4, 215001);
+    const resetA = resetRuqyahProgressCounter(base, itemId, 'device-A', 215002);
+    const resetB = resetRuqyahProgressCounter(base, itemId, 'device-B', 215003);
+    const merged = mergeRuqyahProgressSnapshots(resetA, resetB, 215004);
+    assert((merged.counts[itemId] ?? 0) === 0,
+      'Concurrent resets of the same observed increments must merge idempotently without producing a negative count');
+  });
+
   test('Legacy V1 migration shares a single baseline component without double counting', () => {
     const itemId = RUQYAH_ITEMS[0].id;
     const legacy = { schemaVersion: 1 as const, updatedAtMs: 220000, counts: { [itemId]: 7 } };
