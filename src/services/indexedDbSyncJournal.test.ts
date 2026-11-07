@@ -437,6 +437,142 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Keep-local resolution preserves the current snapshot and queues one replacement on the latest remote revision', async () => {
+      const uid = 'keep-local-resolution-owner';
+      const { journal } = createJournal(uid);
+      const localProfile = { ...StorageService.getProfile(), name: 'local-choice' };
+      assert(StorageService.saveProfile(localProfile), 'The local profile fixture must be valid');
+      const event = {
+        uid,
+        eventId: 'keep-local-resolution-event',
+        mutationId: 'keep-local-resolution-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'profile' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9480,
+        payload: { profile: { ...localProfile, name: 'remote-version' } },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'keep-local-original-pending',
+        collection: 'profile',
+        documentId: event.documentId,
+        payload: { profile: localProfile },
+        nowMs: 9481
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('profile');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9482);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const archived = (conflict.localMutations || []).map(item => ({
+        mutationId: item.mutationId,
+        fingerprint: item.fingerprint
+      }));
+      const localPayload = { profile: localProfile };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'keep-local-resolution-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'keep-local',
+        baseRevision: 2,
+        payload: localPayload,
+        localMutationFingerprints: archived,
+        nowMs: 9483
+      });
+      const result = await journal.commitKeepLocalConflictResolution(event.eventId, 2, localPayload, 9484);
+      const pending = await journal.listReady(9600, 10);
+      const revision = await journal.getRemoteRevision('profile', event.documentId);
+      const conflicts = await journal.listProjectionConflicts(10);
+      assert(StorageService.getProfile().name === 'local-choice',
+        'Keep-local must never overwrite the current local projection');
+      assert(pending.length === 1 && pending[0].mutationId === result.mutationId &&
+        pending[0].baseRevision === 2 && pending[0].sequence === result.sequence &&
+        JSON.stringify(pending[0].payload) === JSON.stringify(localPayload),
+        'Archived stale writes must be replaced by one full-snapshot mutation based on the latest remote revision');
+      assert(revision?.revision === 2 && revision.localSequence < result.sequence,
+        'The local revision baseline must be the verified remote revision and the replacement must be newer in local sequence');
+      assert(await journal.getRemoteProjectionCursor() === 1 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 0 &&
+        conflicts.length === 0 &&
+        await journal.getConflictResolutionIntent(event.eventId) === null,
+        'The conflict, blocked inbox event, prepared intent, and projection cursor must commit together');
+      const storedConflicts = await journal.listProjectionConflicts(10);
+      assert(storedConflicts.length === 0,
+        'Resolved keep-local conflict must no longer appear in the open conflict list');
+      journal.close();
+    });
+
+    await test('Keep-local resolution rejects a changed local snapshot without deleting archived writes', async () => {
+      const uid = 'keep-local-stale-snapshot-owner';
+      const { journal } = createJournal(uid);
+      const localProfile = { ...StorageService.getProfile(), name: 'local-before-choice' };
+      assert(StorageService.saveProfile(localProfile), 'The local profile fixture must be valid');
+      const event = {
+        uid,
+        eventId: 'keep-local-stale-snapshot-event',
+        mutationId: 'keep-local-stale-snapshot-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'profile' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9490,
+        payload: { profile: { ...localProfile, name: 'remote-version' } },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'keep-local-stale-original',
+        collection: 'profile',
+        documentId: event.documentId,
+        payload: { profile: localProfile },
+        nowMs: 9491
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('profile');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9492);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const archived = (conflict.localMutations || []).map(item => ({
+        mutationId: item.mutationId,
+        fingerprint: item.fingerprint
+      }));
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'keep-local-stale-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'keep-local',
+        baseRevision: 2,
+        payload: { profile: localProfile },
+        localMutationFingerprints: archived,
+        nowMs: 9493
+      });
+      const changedProfile = { ...localProfile, name: 'changed-after-confirmation' };
+      assert(StorageService.saveProfile(changedProfile), 'The later local change fixture must be saved');
+      let rejected = false;
+      try {
+        await journal.commitKeepLocalConflictResolution(event.eventId, 2, { profile: localProfile }, 9494);
+      } catch { rejected = true; }
+      assert(rejected && (await journal.listReady(9600, 10)).length === 1 &&
+        await journal.getRemoteProjectionCursor() === 0 &&
+        await journal.getProjectionConflictCount() === 1 &&
+        !!await journal.getConflictResolutionIntent(event.eventId),
+        'A stale keep-local decision must preserve the local mutation, conflict archive, inbox event, and cursor');
+      assert(StorageService.getProfile().name === 'changed-after-confirmation',
+        'A stale keep-local decision must not overwrite the newer local data');
+      journal.close();
+    });
+
     await test('Use-remote resolution atomically applies the latest snapshot and supersedes only archived local mutations', async () => {
       const uid = 'use-remote-resolution-owner';
       const { journal } = createJournal(uid);

@@ -1559,27 +1559,59 @@ export const StorageService = {
         );
       }
       switch (collection) {
-        case 'profile':
-          return isValidUserProfile(payload.profile) && equals(this.getProfile(), payload.profile);
-        case 'plans':
-          return Array.isArray(payload.records) && equals(this.getPlans(), payload.records);
-        case 'enginePlans':
-          return Array.isArray(payload.records) && equals(this.getEnginePlans(), payload.records);
-        case 'portions':
-          return Array.isArray(payload.records) && equals(this.getUnifiedPortions(), payload.records);
+        case 'profile': {
+          if (!isValidUserProfile(payload.profile)) return false;
+          const raw = getItem(STORAGE_KEYS.PROFILE);
+          if (raw === null) return false;
+          const current: unknown = JSON.parse(raw);
+          return isValidUserProfile(current) && equals(current, payload.profile);
+        }
+        case 'plans': {
+          if (!Array.isArray(payload.records)) return false;
+          const raw = getItem(STORAGE_KEYS.PLANS);
+          const current: unknown = raw === null ? [] : JSON.parse(raw);
+          return Array.isArray(current) && current.length <= 500 &&
+            current.every(isValidMemorizationPlan) && equals(current, payload.records);
+        }
+        case 'enginePlans': {
+          if (!Array.isArray(payload.records)) return false;
+          const raw = getItem(STORAGE_KEYS.ENGINE_PLANS);
+          const current: unknown = raw === null ? [] : JSON.parse(raw);
+          return Array.isArray(current) && current.length <= 100 &&
+            current.every(isValidEngineGeneratedPlan) && equals(current, payload.records);
+        }
+        case 'portions': {
+          if (!Array.isArray(payload.records)) return false;
+          const prepared = this.prepareDataMigration();
+          return prepared.report.success && Array.isArray(prepared.portions) &&
+            equals(prepared.portions, payload.records);
+        }
         case 'weakVerses': {
           if (!Array.isArray(payload.records)) return false;
-          const raw = this.getRawItem(STORAGE_KEYS.WEAK_VERSES);
-          const current = raw === null ? [] : JSON.parse(raw);
-          return equals(current, payload.records);
+          const raw = getItem(STORAGE_KEYS.WEAK_VERSES);
+          const current: unknown = raw === null ? [] : JSON.parse(raw);
+          return Array.isArray(current) && current.length <= 10000 &&
+            current.every(isValidWeakVerseRecord) && equals(current, payload.records);
         }
-        case 'tests':
-          return Array.isArray(payload.records) && equals(this.getTests(), payload.records);
-        case 'activityEvents':
-          return Array.isArray(payload.records) && equals(this.getLogs(), payload.records);
-        case 'ruqyahProgress':
-          return isValidRuqyahProgressSnapshot(payload.snapshot) &&
-            equals(this.getRuqyahProgressSnapshot(), payload.snapshot);
+        case 'tests': {
+          if (!Array.isArray(payload.records)) return false;
+          const raw = getItem(STORAGE_KEYS.TESTS);
+          const current: unknown = raw === null ? [] : JSON.parse(raw);
+          return Array.isArray(current) && current.length <= 10000 &&
+            current.every(isValidTestResultRecord) && equals(current, payload.records);
+        }
+        case 'activityEvents': {
+          if (!Array.isArray(payload.records)) return false;
+          const raw = getItem(STORAGE_KEYS.LOGS);
+          const current: unknown = raw === null ? [] : JSON.parse(raw);
+          return isValidDailyLogArray(current) && equals(current, payload.records);
+        }
+        case 'ruqyahProgress': {
+          if (!isValidRuqyahProgressSnapshot(payload.snapshot)) return false;
+          const raw = getItem(STORAGE_KEYS.RUQYAH_PROGRESS);
+          const current: unknown = raw === null ? null : JSON.parse(raw);
+          return isValidRuqyahProgressSnapshot(current) && equals(current, payload.snapshot);
+        }
         default:
           return false;
       }
