@@ -66,7 +66,7 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
     const deviceB = adjustRuqyahProgressCounter(base, itemId, 'device-B', 3, 200002);
     const merged = mergeRuqyahProgressSnapshots(deviceA, deviceB, 200003);
     assert(merged.counts[itemId] === 5, 'Two independent increments from the same base must add, not overwrite');
-    assert(isValidRuqyahProgressSnapshot(merged), 'Merged PN-counter snapshot must validate');
+    assert(isValidRuqyahProgressSnapshot(merged), 'Merged per-device resettable counter snapshot must validate');
     const repeated = mergeRuqyahProgressSnapshots(merged, merged, 200004);
     assert(repeated.counts[itemId] === 5, 'Replaying the same remote snapshot must not duplicate increments');
     const reversed = mergeRuqyahProgressSnapshots(deviceB, deviceA, 200005);
