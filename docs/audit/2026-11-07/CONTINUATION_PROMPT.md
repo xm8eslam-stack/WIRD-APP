@@ -176,7 +176,7 @@ Never merge PR #61–#65 without explicit user approval, even if CI is green.
 This addendum supersedes contradictory status lines earlier in this file; fetch live refs again before acting.
 
 - Main remains `6228150c2f7137678ba1079f5d9b2e8aba527523`; no remediation PR has been merged.
-- Audit branch head before this prompt update: `6f4c96661d1a8adfba6cac653d2345a09cb71ec1`. Latest exact compare showed it 53 commits ahead / 0 behind main; all changed paths are documentation-only.
+- Audit branch head before this prompt update: `c8b01198b4d5eb0e8a38d571ad53545b6a5f4179`. Latest exact compare showed it 53 commits ahead / 0 behind main; all changed paths are documentation-only.
 - Current live branch count is 76: the original 70-ref baseline plus the audit branch and five remediation branches.
 - PR #61 exact head `dd5d5d620d03416e96975320a6443b6eab56fbcc`: run 42340818280 SUCCESS, 404 passed / 0 failed; Vercel Preview Ready.
 - PR #62 exact head `48fe031d67c358e3034dd5e64134d6b46513aab4`: run 42342109962 SUCCESS, 407 passed / 0 failed; Vercel Preview blocked by daily build-rate limit.
