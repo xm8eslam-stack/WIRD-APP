@@ -297,7 +297,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         collection: event.collection,
         documentId: event.documentId,
         revision: 1,
-        initializedCollections: [] as const
+        initializedCollections: []
       };
       const conflicting = { ...first, eventId: 'different-mutation-id' };
       assert(await journal.prepareRemoteProjection(first), 'The original intent must be accepted');
