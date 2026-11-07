@@ -1,6 +1,6 @@
 # WIRD Sync Failure Recovery
 
-## 2026-11-07 — refreshed recovery audit after PR #134–#140
+## 2026 11 07 — refreshed recovery audit after PR #134–#140
 
 - Latest main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305`.
 - PR #134 preserves grouped transaction pending Outbox evidence; archive overflow/fingerprint mismatch must remain fail-closed. Inbox and Outbox are not deleted and cursor does not advance.
