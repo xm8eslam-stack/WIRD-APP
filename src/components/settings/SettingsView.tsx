@@ -274,6 +274,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <CloudCheck className="w-3.5 h-3.5 text-emerald-600" />
                 <span>مُزامن بالكامل</span>
               </span>
+            ) : syncStatus === 'partial' ? (
+              <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80 flex items-center gap-1">
+                <CloudAlert className="w-3.5 h-3.5 text-amber-600" />
+                <span>مزامنة جزئية</span>
+              </span>
             ) : syncStatus === 'syncing' || isManualSyncing ? (
               <span className="text-[11px] bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-bold px-2.5 py-0.5 rounded-full border border-amber-300/80 flex items-center gap-1 animate-pulse">
                 <RefreshCw className="w-3.5 h-3.5 text-amber-600 animate-spin" />

@@ -1,4 +1,4 @@
-import { cloudSyncCoordinator, CloudSyncState } from './cloudSyncCoordinator';
+import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus } from './cloudSyncCoordinator';
 import { StorageService } from './storageService';
 import type { SuiteResult } from '../tests/runAllTests';
 
@@ -16,7 +16,16 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     }
   }
 
-  // Test 1: Initial state has valid structure and offline/online status
+  // A remote read is not a completed remote import/projection.
+  assert(getCloudSyncCompletionStatus(0, false) === 'partial',
+    'Zero pending uploads still reports partial when remote changes are not applied');
+  assert(getCloudSyncCompletionStatus(0, true) === 'synced',
+    'Full sync requires zero pending uploads and completed remote reconciliation');
+  assert(getCloudSyncCompletionStatus(2, true) === 'error',
+    'Pending local mutations prevent a synced status even if remote reconciliation passed');
+  assert(getCloudSyncCompletionStatus(-1, false) === 'error',
+    'Invalid pending counts cannot produce a successful sync status');
+
   try {
     const initialState = cloudSyncCoordinator.getState();
     assert(
@@ -29,7 +38,6 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     assert(false, `Initial state test failed: ${err?.message}`);
   }
 
-  // Test 2: Guest scope refuses cloud sync and reports 'guest'
   try {
     StorageService.setStorageScope('guest');
     const result = await cloudSyncCoordinator.triggerSync();
@@ -40,7 +48,6 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     assert(false, `Guest sync test failed: ${err?.message}`);
   }
 
-  // Test 3: State subscription correctly notifies registered listeners
   try {
     let notifiedState: CloudSyncState | null = null;
     const unsub = cloudSyncCoordinator.subscribe((s) => {
@@ -52,7 +59,6 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     assert(false, `Subscription test failed: ${err?.message}`);
   }
 
-  // Test 4: Refresh pending count handles guest scope without throwing
   try {
     StorageService.setStorageScope('guest');
     const count = await cloudSyncCoordinator.refreshPendingCount();
