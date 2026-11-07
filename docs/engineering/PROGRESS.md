@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-07  
 **Repository:** `xm8eslam-stack/WIRD-APP`  
-**Main SHA at checkpoint:** `059e902194811be71ab4dea9da8609a96967214e`
+**Main SHA at checkpoint:** `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`
 
 ## Completed and merged in this work segment
 
@@ -69,3 +69,20 @@ No production data, rules, credentials, service accounts, environment variables,
 - Tombstone projection remains intentionally blocked.
 - Two-device integration still covers profile upserts and a same-document offline conflict; it does not prove all collections or real-browser contexts.
 - Production Vercel check remains `build-rate-limit`; live deployment unverified.
+
+
+## Atomic conflict reconciliation milestone — PR #85
+
+- PR #85 merged as `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
+- Conflict archival now verifies inbox/event identity and fingerprint, enforces a 500 KB snapshot cap, and refuses orphan records.
+- `finalizeRemoteProjection` and `markRemoteProjected` resolve matching open conflict records atomically with cursor advancement and inbox deletion. Late archive attempts after cursor advancement cannot create orphan open conflicts.
+- Projector archives blocked, mismatched-intent, prepare-failure, and finalization-failure paths. Settings shows localized reason and collection details.
+- Exact PR head `b6af08b2d9461a1d3d7cc019404692d779500248`: 462 automated assertions passed; Firestore Rules 27/27; TypeScript/build/dependency audit/startup smoke passed.
+- Post-merge main run `42352594819` passed on `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
+- PR #82 and PR #86 closed as superseded by #85; PR #85 is the merged source of truth for atomic conflict reconciliation.
+
+## Updated limitations
+
+- The archive's `reconciled` state means the corresponding event was safely projected/cursor-committed; it does not represent a user choosing local vs remote data.
+- Manual conflict resolution/merge/rebase UI remains absent. Tombstone projection remains blocked. Profile-only two-device integration and one same-document offline conflict test do not certify all collections or physical devices.
+- Vercel still reports `build-rate-limit`; current main is not verified as deployed.
