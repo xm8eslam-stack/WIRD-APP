@@ -54,7 +54,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
         status: 200, headers: { 'Content-Type': 'application/json' }
       })) as typeof fetch;
       let envelopeRejected = false;
-      try { await fetchRuqyahApiData({ type: 'instant-category' }); } catch { envelopeRejected = true; }
+      try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); } catch { envelopeRejected = true; }
       assert(envelopeRejected, 'Invalid success envelope must be rejected');
     });
 
