@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
-import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS } from '../../services/ruqyahAudioService';
-import type { QuranReciter } from '../../services/ruqyahAudioService';
+import React, { useState, useEffect } from 'react';
+import { getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
 import { STORAGE_KEYS, StorageService } from '../../services/storageService';
@@ -9,8 +7,6 @@ import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
   Volume2, 
-  Play, 
-  Pause, 
   RotateCcw, 
   CheckCircle2, 
   Sparkles, 
@@ -18,10 +14,9 @@ import {
   Heart, 
   Info,
   Headphones,
-  Moon,
 } from 'lucide-react';
-import { RUQYAH_GUIDELINES, RUQYAH_PROGRAM_AUDIO, getRuqyahItemsByCategory } from '../../data/ruqyahData';
-import type { RuqyahCategory, RuqyahItem, RuqyahProgramAudio } from '../../data/ruqyahData';
+import { RUQYAH_GUIDELINES, getRuqyahItemsByCategory } from '../../data/ruqyahData';
+import type { RuqyahCategory, RuqyahItem } from '../../data/ruqyahData';
 
 interface RuqyahViewProps {
   onToast?: (message: string, type?: 'success' | 'info' | 'warn' | 'error') => void;
@@ -39,7 +34,7 @@ const CATEGORY_TABS: { id: RuqyahCategory; label: string; iconName: string; dura
 export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const currentStorageScope = StorageService.getStorageScope();
   const [activeCategory, setActiveCategory] = useState<RuqyahCategory>('brief');
-  const [viewMode, setViewMode] = useState<'interactive' | 'audio_stream' | 'api_library'>('interactive');
+  const [viewMode, setViewMode] = useState<'interactive' | 'api_library'>('interactive');
   
   // Counter states per item (itemId -> current count)
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -48,27 +43,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [progressScope, setProgressScope] = useState(currentStorageScope);
   const [progressCorrupt, setProgressCorrupt] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
-
-  // Audio Verse Playback State
-  const [playingVerseId, setPlayingVerseId] = useState<string | null>(null);
-  const [verseLoopCount, setVerseLoopCount] = useState<number>(0);
-  const [reciters, setReciters] = useState<QuranReciter[]>(FALLBACK_QURAN_RECITERS);
-  const [selectedReciterId, setSelectedReciterId] = useState<string>('husary');
-  const verseQueueRef = useRef<number[]>([]);
-  const verseQueueIndexRef = useRef<number>(0);
-  const verseRepeatTargetRef = useRef<number>(1);
-  const verseRepeatCountRef = useRef<number>(1);
-  const verseItemRef = useRef<RuqyahItem | null>(null);
-  const audioVerseRef = useRef<HTMLAudioElement | null>(null);
-
-  // Full Reciter Audio Stream State
-  const [selectedProgramAudio, setSelectedProgramAudio] = useState<RuqyahProgramAudio>(RUQYAH_PROGRAM_AUDIO[0]);
-  const [isStreamPlaying, setIsStreamPlaying] = useState<boolean>(false);
-  const [streamProgress, setStreamProgress] = useState<number>(0);
-  const [streamDuration, setStreamDuration] = useState<number>(0);
-  const [streamVolume, setStreamVolume] = useState<number>(1);
-  const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
-  const audioStreamRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
@@ -146,62 +120,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     }
   };
 
-  // Initialize audio references
-  useEffect(() => {
-    audioVerseRef.current = new Audio();
-    audioStreamRef.current = new Audio();
-
-    const streamAudio = audioStreamRef.current;
-    if (streamAudio) {
-      streamAudio.volume = streamVolume;
-      const handleTimeUpdate = () => setStreamProgress(streamAudio.currentTime);
-      const handleLoadedMetadata = () => setStreamDuration(Number.isFinite(streamAudio.duration) ? streamAudio.duration : 0);
-      const handleStreamEnded = () => {
-        streamAudio.currentTime = 0;
-        setIsStreamPlaying(false);
-        setStreamProgress(0);
-      };
-      streamAudio.addEventListener('timeupdate', handleTimeUpdate);
-      streamAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
-      streamAudio.addEventListener('durationchange', handleLoadedMetadata);
-      streamAudio.addEventListener('ended', handleStreamEnded);
-      return () => {
-        streamAudio.removeEventListener('timeupdate', handleTimeUpdate);
-        streamAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        streamAudio.removeEventListener('durationchange', handleLoadedMetadata);
-        streamAudio.removeEventListener('ended', handleStreamEnded);
-        streamAudio.pause();
-        if (audioVerseRef.current) {
-          audioVerseRef.current.pause();
-          audioVerseRef.current.onended = null;
-        }
-      };
-    }
-
-    return () => {
-      if (audioVerseRef.current) {
-        audioVerseRef.current.pause();
-        audioVerseRef.current.onended = null;
-      }
-    };
-  }, []);
-
-  // Handle sleep timer countdown
-  useEffect(() => {
-    if (!sleepTimerMinutes || !isStreamPlaying) return;
-
-    const timer = setTimeout(() => {
-      if (audioStreamRef.current) {
-        audioStreamRef.current.pause();
-        setIsStreamPlaying(false);
-      }
-      setSleepTimerMinutes(null);
-      if (onToast) onToast('تم إيقاف الرقية الصوتية لتأقيت مؤقت النوم.', 'info');
-    }, sleepTimerMinutes * 60 * 1000);
-
-    return () => clearTimeout(timer);
-  }, [sleepTimerMinutes, isStreamPlaying, onToast]);
-
   // Click counter handler
   const handleItemClick = (item: RuqyahItem) => {
     const current = counts[item.id] || 0;
@@ -242,142 +160,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     setCounts(updated);
     setProgressDirty(true);
     if (onToast) onToast('تم إعادة ضبط العدادات لهذه القائمة.', 'info');
-  };
-
-  // Play the complete selected Quran passage, verse by verse, using Al Furqan.
-  const playVerseQueuePosition = (index: number) => {
-    const audio = audioVerseRef.current;
-    const queue = verseQueueRef.current;
-    if (!audio || queue.length === 0) return;
-
-    if (index >= queue.length) {
-      if (verseRepeatCountRef.current < verseRepeatTargetRef.current) {
-        verseRepeatCountRef.current += 1;
-        setVerseLoopCount(verseRepeatCountRef.current);
-        playVerseQueuePosition(0);
-        return;
-      }
-      const completedItem = verseItemRef.current;
-      if (completedItem) {
-        setCounts(previous => ({ ...previous, [completedItem.id]: completedItem.repeatTarget ?? Math.max(1, previous[completedItem.id] || 0) }));
-        setProgressDirty(true);
-      }
-      setPlayingVerseId(null);
-      setVerseLoopCount(0);
-      verseItemRef.current = null;
-      return;
-    }
-
-    verseQueueIndexRef.current = index;
-    audio.src = buildQuranAyahAudioUrl(selectedReciterId, queue[index]);
-    audio.play().catch(() => {
-      if (onToast) onToast('تعذر تشغيل التلاوة. تحقق من الاتصال بالإنترنت أو اختر قارئًا آخر.', 'warn');
-      setPlayingVerseId(null);
-    });
-  };
-
-  const handleToggleVerseAudio = (item: RuqyahItem) => {
-    if (playingVerseId === item.id) {
-      audioVerseRef.current?.pause();
-      setPlayingVerseId(null);
-      setVerseLoopCount(0);
-      return;
-    }
-
-    if (audioStreamRef.current && isStreamPlaying) {
-      audioStreamRef.current.pause();
-      setIsStreamPlaying(false);
-    }
-
-    try {
-      const queue = getRuqyahAudioQueue(item).map(ayah => ayah.globalAyahNumber);
-      if (queue.length === 0) throw new Error('لا توجد آيات صالحة للتشغيل.');
-      verseQueueRef.current = queue;
-      verseQueueIndexRef.current = 0;
-      verseRepeatTargetRef.current = Math.max(1, item.repeatTarget ?? 1);
-      verseRepeatCountRef.current = 1;
-      verseItemRef.current = item;
-      setPlayingVerseId(item.id);
-      setVerseLoopCount(1);
-      playVerseQueuePosition(0);
-
-      if (audioVerseRef.current) {
-        audioVerseRef.current.onended = () => {
-          playVerseQueuePosition(verseQueueIndexRef.current + 1);
-        };
-      }
-    } catch (error) {
-      if (onToast) onToast(error instanceof Error ? error.message : 'تعذر تجهيز آيات التلاوة.', 'error');
-      setPlayingVerseId(null);
-    }
-  };
-
-  // Full-program recordings are separate from individual Quran reciter streams.
-  const handleToggleStream = (program?: RuqyahProgramAudio) => {
-    const target = program || selectedProgramAudio;
-
-    if (audioVerseRef.current && playingVerseId) {
-      audioVerseRef.current.pause();
-      setPlayingVerseId(null);
-    }
-
-    if (selectedProgramAudio.id !== target.id) {
-      setSelectedProgramAudio(target);
-      setIsStreamPlaying(false);
-      setStreamProgress(0);
-      setStreamDuration(0);
-      if (audioStreamRef.current) {
-        audioStreamRef.current.pause();
-        audioStreamRef.current.src = target.audioUrl;
-        audioStreamRef.current.load();
-        audioStreamRef.current.play().then(() => {
-          setIsStreamPlaying(true);
-        }).catch(() => {
-          setIsStreamPlaying(false);
-          if (onToast) onToast('تعذر تشغيل تسجيل البرنامج. تحقق من الاتصال بالإنترنت.', 'warn');
-        });
-      }
-      return;
-    }
-
-    if (audioStreamRef.current) {
-      if (isStreamPlaying) {
-        audioStreamRef.current.pause();
-        setIsStreamPlaying(false);
-      } else {
-        if (!audioStreamRef.current.src || audioStreamRef.current.src !== target.audioUrl) {
-          audioStreamRef.current.src = target.audioUrl;
-        }
-        audioStreamRef.current.play().then(() => {
-          setIsStreamPlaying(true);
-        }).catch(() => {
-          setIsStreamPlaying(false);
-          if (onToast) onToast('تعذر تشغيل تسجيل البرنامج.', 'warn');
-        });
-      }
-    }
-  };
-
-  const handleSeekStream = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTime = parseFloat(e.target.value);
-    setStreamProgress(newTime);
-    if (audioStreamRef.current) {
-      audioStreamRef.current.currentTime = newTime;
-    }
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const vol = parseFloat(e.target.value);
-    setStreamVolume(vol);
-    if (audioStreamRef.current) audioStreamRef.current.volume = vol;
-    if (audioVerseRef.current) audioVerseRef.current.volume = vol;
-  };
-
-  const formatTime = (seconds: number) => {
-    if (!Number.isFinite(seconds) || seconds <= 0) return '00:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   // Calculate section progress
@@ -553,7 +335,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             {currentItems.map((item, idx) => {
               const currentCount = counts[item.id] || 0;
               const isCompleted = item.type !== 'guideline' && (item.repeatTarget === null ? currentCount > 0 : currentCount >= item.repeatTarget);
-              const isPlayingVerse = playingVerseId === item.id;
 
               return (
                 <article
@@ -669,140 +450,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 </article>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* Main Mode 2: Continuous Full Reciter Audio Stream */}
-      {viewMode === 'audio_stream' && (
-        <div className="space-y-6">
-          {/* Audio Player Card */}
-          <div className="bg-white dark:bg-stone-900 rounded-3xl p-6 md:p-8 border border-stone-200/90 dark:border-stone-800 shadow-md space-y-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-4 text-right w-full md:w-auto">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-800 to-stone-900 text-amber-300 flex items-center justify-center shadow-lg shrink-0">
-                  <Headphones className="w-8 h-8" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                    مشغل الرقية الصوتية المباشر
-                  </span>
-                  <h2 className="text-lg md:text-xl font-bold text-stone-900 dark:text-stone-100 mt-0.5">
-                    {selectedProgramAudio.name}
-                  </h2>
-                  <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                    {selectedProgramAudio.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Play / Pause Toggle Button */}
-              <button
-                type="button"
-                onClick={() => handleToggleStream()}
-                className="w-14 h-14 rounded-full bg-emerald-800 hover:bg-emerald-700 text-amber-200 flex items-center justify-center shadow-lg transition-transform active:scale-95 shrink-0"
-                aria-label={isStreamPlaying ? 'إيقاف مؤقت' : 'تشغيل الرقية'}
-              >
-                {isStreamPlaying ? <Pause className="w-7 h-7" /> : <Play className="w-7 h-7 translate-x-[-1px]" />}
-              </button>
-            </div>
-
-            {/* Audio Seeker Timeline */}
-            <div className="space-y-2">
-              <input
-                type="range"
-                aria-label="موضع التسجيل الصوتي"
-                min="0"
-                max={streamDuration || 0}
-                value={Math.min(streamProgress, streamDuration || 0)}
-                disabled={!Number.isFinite(streamDuration) || streamDuration <= 0}
-                onChange={handleSeekStream}
-                className="w-full accent-emerald-700 dark:accent-emerald-400 h-2 bg-stone-100 dark:bg-stone-800 rounded-lg cursor-pointer"
-              />
-              <div className="flex items-center justify-between text-xs font-mono text-stone-400 dark:text-stone-500">
-                <span>{formatTime(streamProgress)}</span>
-                <span>{formatTime(streamDuration)}</span>
-              </div>
-            </div>
-
-            {/* Controls Bar: Volume & Sleep Timer */}
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-stone-100 dark:border-stone-800">
-              {/* Volume Slider */}
-              <div className="flex items-center gap-3">
-                <Volume2 className="w-4 h-4 text-stone-400" />
-                <input
-                  type="range"
-                  aria-label="مستوى الصوت"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={streamVolume}
-                  onChange={handleVolumeChange}
-                  className="w-24 accent-emerald-700 dark:accent-emerald-400 h-1.5 bg-stone-100 dark:bg-stone-800 rounded-lg cursor-pointer"
-                />
-              </div>
-
-              {/* Sleep Timer Selector */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Moon className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-medium text-stone-600 dark:text-stone-400">مؤقت النوم:</span>
-                {[15, 30, 45, 60].map(mins => (
-                  <button
-                    key={mins}
-                    type="button"
-                    aria-pressed={sleepTimerMinutes === mins}
-                    onClick={() => setSleepTimerMinutes(prev => prev === mins ? null : mins)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-colors ${
-                      sleepTimerMinutes === mins
-                        ? 'bg-amber-400 text-emerald-950'
-                        : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200'
-                    }`}
-                  >
-                    {mins} دقيقة
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Reciter Selector Cards Grid */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-stone-800 dark:text-stone-200">
-              اختر تسجيل البرنامج الصوتي:
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {RUQYAH_PROGRAM_AUDIO.map(programAudio => {
-                const isSelected = selectedProgramAudio.id === programAudio.id;
-                return (
-                  <button
-                    key={programAudio.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    aria-label={`تشغيل تسجيل ${programAudio.name}`}
-                    onClick={() => handleToggleStream(programAudio)}
-                    className={`w-full text-right p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                      isSelected
-                        ? 'bg-emerald-900 text-white border-emerald-700 shadow-sm'
-                        : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 text-stone-900 dark:text-stone-100 hover:border-emerald-300'
-                    }`}
-                  >
-                    <div className="space-y-1">
-                      <h4 className="font-bold text-sm">{programAudio.name}</h4>
-                      <p className={`text-xs ${isSelected ? 'text-stone-200/80' : 'text-stone-500 dark:text-stone-400'}`}>
-                        {programAudio.description}
-                      </p>
-                    </div>
-
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-amber-400 text-emerald-950' : 'bg-stone-100 dark:bg-stone-800 text-stone-600'
-                    }`}>
-                      {isSelected && isStreamPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
       )}
