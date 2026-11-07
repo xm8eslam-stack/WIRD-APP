@@ -313,6 +313,41 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   }
 
   try {
+    const itemId = 'q-fatihah';
+    const localLegacyV2 = {
+      schemaVersion: 2 as const,
+      updatedAtMs: 5200,
+      counts: { [itemId]: 4 },
+      components: { [itemId]: { increments: { legacy: 4 }, resetWatermarks: {} } }
+    };
+    const remoteLegacyV2 = {
+      schemaVersion: 2 as const,
+      updatedAtMs: 5201,
+      counts: { [itemId]: 6 },
+      components: { [itemId]: { increments: { legacy: 6 }, resetWatermarks: {} } }
+    };
+    const event = makeRemoteEvent({
+      eventId: 'ruqyah-divergent-legacy-v2',
+      mutationId: 'ruqyah-divergent-legacy-v2',
+      collection: 'ruqyahProgress',
+      documentId: 'snapshot',
+      payload: { snapshot: remoteLegacyV2 },
+      baseRevision: 0,
+      revision: 1,
+      serverSequence: 1
+    });
+    const harness = makeProjectionHarness([event], { pending: ['ruqyahProgress'], empty: [] });
+    harness.dependencies.getLocalRuqyahProgressSnapshot = () => localLegacyV2;
+    const result = await projectRemoteInboxBatch(10, harness.dependencies);
+    assert(result.reason === 'blocked_pending_local' && harness.state.cursor === 0 &&
+      harness.state.applied === 0 && harness.state.conflicts[0]?.status === 'open' &&
+      harness.state.projectionIntent === null,
+      'Different migrated legacy baselines must stay archived without creating an unsafe automatic merge intent');
+  } catch (err: any) {
+    assert(false, `Divergent legacy counter baseline guard failed: ${err?.message}`);
+  }
+
+  try {
     const event = makeRemoteEvent();
     const harness = makeProjectionHarness([event], { pending: ['plans'], empty: ['plans'] });
     const result = await projectRemoteInboxBatch(10, harness.dependencies);
