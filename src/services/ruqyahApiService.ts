@@ -91,8 +91,10 @@ export async function fetchRuqyahApiData<T = unknown>(
  * against WIRD's canonical Mushaf metadata and verified Quran text.
  */
 export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQuranEntry {
-  if (!entry || (typeof entry.id !== 'number' && typeof entry.id !== 'string') ||
-      typeof entry.title !== 'string') {
+  const validId = typeof entry?.id === 'number'
+    ? Number.isSafeInteger(entry.id) && entry.id > 0
+    : typeof entry?.id === 'string' && /^[1-9][0-9]{0,8}$/.test(entry.id);
+  if (!entry || !validId || typeof entry.title !== 'string') {
     throw new Error('لا يحتوي فهرس الآيات على موضع صالح.');
   }
   const digitMap = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹';
