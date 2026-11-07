@@ -1,4 +1,4 @@
-import { buildTafsirCacheKey, getTafsirMuyassar } from './tafsirService';
+import { buildTafsirCacheKey, getTafsir, getTafsirMuyassar } from './tafsirService';
 
 export async function runTafsirServiceTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -45,6 +45,81 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
       const second = await getTafsirMuyassar(114, 6);
       assert(second.source === 'cache', 'Second result must come from local memory cache');
       assert(requestCount === 1, 'Cached request must not call the API again');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('HTML SPA fallback is rejected with a clear API routing error', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '<!doctype html><html><body>Application shell</body></html>',
+      { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    )) as typeof fetch;
+    try {
+      let message = '';
+      try { await getTafsir(109, 1, 90); }
+      catch (error) { message = error instanceof Error ? error.message : String(error); }
+      assert(message.includes('صفحة HTML') && message.includes('مسار API'),
+        'HTML fallback must identify the missing API route');
+      assert(!message.includes('Unexpected token'), 'Raw JSON parser errors must not reach the UI');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('HTTP 404 and 500 JSON errors are surfaced before content validation', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () => new Response(JSON.stringify({ error: 'NOT_FOUND' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let notFound = '';
+      try { await getTafsir(109, 2, 90); }
+      catch (error) { notFound = error instanceof Error ? error.message : String(error); }
+      globalThis.fetch = (async () => new Response(JSON.stringify({ error: 'UPSTREAM_FAILURE' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let serverError = '';
+      try { await getTafsir(109, 3, 90); }
+      catch (error) { serverError = error instanceof Error ? error.message : String(error); }
+      assert(notFound.includes('HTTP 404') && serverError.includes('HTTP 500'),
+        'Non-success HTTP responses must not be parsed as Tafsir data');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('Malformed JSON and empty Tafsir content are rejected without caching', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = (async () => new Response('{not-json', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let malformed = '';
+      try { await getTafsir(108, 1, 91); }
+      catch (error) { malformed = error instanceof Error ? error.message : String(error); }
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        book: { id: 94, name: 'تفسير البغوي' },
+        content: []
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let missing = '';
+      try { await getTafsir(108, 2, 94); }
+      catch (error) { missing = error instanceof Error ? error.message : String(error); }
+      assert(malformed.includes('JSON غير صالح') && missing.includes('لا يتوفر نص تفسير'),
+        'Malformed JSON and missing content must produce explicit localized errors');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('Network failures produce an actionable Arabic connection message', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => { throw new TypeError('Failed to fetch'); }) as typeof fetch;
+    try {
+      let message = '';
+      try { await getTafsir(107, 1, 14); }
+      catch (error) { message = error instanceof Error ? error.message : String(error); }
+      assert(message.includes('تعذر الاتصال بخادم التفسير'),
+        'Network errors must be translated instead of leaking browser fetch details');
     } finally { globalThis.fetch = originalFetch; }
   });
 
