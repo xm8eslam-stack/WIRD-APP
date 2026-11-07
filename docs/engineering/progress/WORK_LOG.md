@@ -396,3 +396,15 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #65 exposed and fixed a real target-date planning bug: a block-scoped variable shadowed the validated active-day array. It also rejects invalid dates, invalid coordinates, fractional pace, and no-active-day plans.
 - Current live branch count: 76 (70 original baseline + audit branch + five remediation branches). The audit branch had 53 commits ahead of main at the latest exact comparison, all documentation-only.
 - Main is unchanged. All five PRs remain Draft/unmerged. PR #62–#64 Vercel previews remain blocked by the daily build-rate limit; PR #61 and #65 previews are Ready.
+
+---
+
+## 2026-11-07 — Coordinate validation and honest cloud-sync status
+
+- Reconnected and re-verified main SHA: `6228150c2f7137678ba1079f5d9b2e8aba527523`.
+- PR #62 current head `48fe031d67c358e3034dd5e64134d6b46513aab4`; exact-head Quality Gate run 42342109962 PASS, including test suite, Firestore Rules Emulator, TypeScript, build and production smoke.
+- PR #65 already exists as Draft: `fix/quran-coordinate-validation-20261107`, head `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`. Exact-head run 42342171626 PASS: 417 passed / 0 failed; Firestore Rules 13/13; TypeScript/build and production/development server smoke pass. No deployment.
+- Verified P0 cloud-sync defect in main: coordinator uploads local outbox, reads remote events but discards them, and can still mark status `synced`. This is not bidirectional sync.
+- PR #59 branch has a safer partial-status behavior but is 4 commits behind main and should not be merged wholesale.
+- Created fresh main-based branch `fix/cloud-sync-honest-status-20261107`; changed coordinator so it cannot report `synced` until remote reconciliation is actually complete, added a `partial` status, added Settings UI label, and pure status-resolution tests. Current branch head after these edits: `963271760ea93d61baefaa23a545e194d613f67f`; Quality Gate run 42342306759 pending at this checkpoint.
+- Sync remains partial: no remote inbox/fetch cursor, server CAS revision, remote projection or multi-client integration test. No main change, merge, production deployment or Firestore rule deployment.
