@@ -112,7 +112,7 @@ See `BRANCH_COMPARE_MATRIX.md` for exact ahead/behind counts for every ref. No r
 ## Post-baseline working branches (current live count: 73)
 
 Three branches were created after the original 70-ref snapshot:
-- `chore/full-repository-audit-20261107` — documentation-only audit branch, 26 commits ahead of main.
+- `chore/full-repository-audit-20261107` — documentation-only audit branch, 29 commits ahead of main.
 - `fix/progress-import-journal-20261107` — PR #61 Draft, 4 commits ahead, exact-head CI PASS.
 - `fix/plan-lifecycle-preserve-revisions-20261107` — active plan-history fix branch, 7 commits ahead; latest CI run is in progress after an earlier compile error was corrected.
 
