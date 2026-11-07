@@ -44,3 +44,9 @@
 - PR #94 adds a separate concurrent-offline scenario: two devices increment from the same base revision; the first server mutation is accepted, the stale second mutation is rejected, and the second device retains its Outbox mutation, imported remote Inbox event, local snapshot, archived conflict evidence, and unchanged projection cursor.
 - This test proves conflict preservation, not automatic convergence or additive merge. The user-facing conflict-resolution workflow and a deterministic way to merge additive counter increments remain release blockers.
 - The revisioned sync coordinator legacy-state scan now explicitly includes ruqyahProgress so existing documents cannot be skipped by first-sync detection.
+
+## 2026-11-07 — Multi-collection two-device projection matrix
+
+- PR #101 adds an Emulator-backed round trip for all eight user data collections: profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and ruqyahProgress.
+- The test writes revisioned mutations on device A, imports the ordered immutable event stream on device B, runs the actual remote inbox projector, verifies the local archive for each collection and cursor advancement, and confirms owner reads succeed while cross-user reads fail.
+- This closes the automated collection-projection coverage gap for these eight collection routes. It does not replace real-device/mobile E2E, account lifecycle switching tests, cross-tab browser E2E, or conflict-resolution UI verification.
