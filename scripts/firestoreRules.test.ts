@@ -190,7 +190,7 @@ try {
     await assertSucceeds(getDoc(aliceProfile));
   });
 
-  await test('Verified owner can write V2 PN-counter Ruqyah progress; legacy V1 writes are denied', async () => {
+  await test('Verified owner can write V2 per-device resettable counter Ruqyah progress; legacy V1 writes are denied', async () => {
     let snapshot = createEmptyRuqyahProgressSnapshot(1_799_000_000_050);
     snapshot = adjustRuqyahProgressCounter(snapshot, 'q-fatiha', 'test-device-01', 7, 1_799_000_000_051);
     snapshot = adjustRuqyahProgressCounter(snapshot, 'dua-pain', 'test-device-01', 3, 1_799_000_000_052);
@@ -250,7 +250,7 @@ try {
     const unchanged = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
     if (!legacyRejected || !malformedRejected || unchanged.data()?.revision !== 1 ||
         unchanged.data()?.payload?.snapshot?.counts?.['q-fatiha'] !== 7) {
-      throw new Error('Legacy or malformed V2 clients must not overwrite the valid PN-counter snapshot.');
+      throw new Error('Legacy or malformed V2 clients must not overwrite the valid per-device resettable counter snapshot.');
     }
   });
 
@@ -995,7 +995,7 @@ try {
       }
       // The second device now edits the same snapshot using the exact remote revision.
       if (!received || received.schemaVersion !== 2) {
-        throw new Error('Device B must receive the V2 PN-counter snapshot before incrementing.');
+        throw new Error('Device B must receive the V2 per-device resettable counter snapshot before incrementing.');
       }
       const deviceBId = (await journalB.getSnapshot()).deviceId;
       const nextProgress = adjustRuqyahProgressCounter(
@@ -1054,7 +1054,7 @@ try {
   });
 
 
-  await test('Concurrent offline Ruqyah increments converge through PN-counter merge without losing either device', async () => {
+  await test('Concurrent offline Ruqyah increments converge through per-device resettable counter merge without losing either device', async () => {
     const uid = 'ruqyah-offline-increment-conflict';
     const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
@@ -1090,7 +1090,7 @@ try {
         baseProgress, 'q-fatiha', deviceAId, 1, 1_799_000_300_001
       );
       if (!StorageService.saveRuqyahProgressSnapshot(nextA)) {
-        throw new Error('Device A could not seed its V2 PN-counter snapshot.');
+        throw new Error('Device A could not seed its V2 per-device resettable counter snapshot.');
       }
       const mutationA = await journalA.enqueue({
         mutationId: 'ruqyah-offline-a-001', collection: 'ruqyahProgress', documentId: 'snapshot',
@@ -1098,13 +1098,13 @@ try {
       });
       if (mutationA.status !== 'queued' || mutationA.mutation.baseRevision !== 0 ||
           !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
-        throw new Error('Device A could not journal its offline PN-counter increment.');
+        throw new Error('Device A could not journal its offline per-device resettable counter increment.');
       }
 
       activateIsolatedDevice(localStorageB, uid);
       const deviceBId = (await journalB.getSnapshot()).deviceId;
       if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
-        throw new Error('Device B could not seed the same V2 PN-counter baseline.');
+        throw new Error('Device B could not seed the same V2 per-device resettable counter baseline.');
       }
       const nextB = adjustRuqyahProgressCounter(
         baseProgress, 'q-fatiha', deviceBId, 1, 1_799_000_300_002
@@ -1115,7 +1115,7 @@ try {
       });
       if (mutationB.status !== 'queued' || mutationB.mutation.baseRevision !== 0 ||
           !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation))) {
-        throw new Error('Device B could not journal its independent offline PN-counter increment.');
+        throw new Error('Device B could not journal its independent offline per-device resettable counter increment.');
       }
 
       const acceptedA = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
@@ -1178,7 +1178,7 @@ try {
         baseRevision: mergedMutation.baseRevision, payload: mergedMutation.payload
       });
       if (acceptedB.status !== 'written' || acceptedB.revision !== 2) {
-        throw new Error('The merged PN-counter replacement mutation was not accepted at revision 2.');
+        throw new Error('The merged per-device resettable counter replacement mutation was not accepted at revision 2.');
       }
       await journalB.acknowledgeRemoteMutation(mergedMutation.mutationId, acceptedB.revision, Date.now() + 1);
 
