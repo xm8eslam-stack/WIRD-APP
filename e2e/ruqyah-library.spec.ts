@@ -190,7 +190,7 @@ test.describe('Ruqyah narrow-screen layout', () => {
       await assertNoHorizontalOverflow(width);
     }
 
-    await page.getByRole('button', { name: 'القراءة مع العداد' }).click();
+    await page.getByRole('button', { name: 'القراءة والعداد' }).click();
     for (const width of [320, 360, 390]) {
       await assertNoHorizontalOverflow(width);
     }
