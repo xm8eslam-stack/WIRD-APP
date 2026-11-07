@@ -1825,7 +1825,7 @@ export const StorageService = {
 
     const backup: BackupPayload = {
       format: 'wird_backup',
-      version: 4,
+      version: 5,
       timestamp: new Date().toISOString(),
       isEncrypted: false,
       unencryptedWarning: "تنبيه أمني: هذا الملف نصي غير مشفر بصيغة JSON صريحة ويحتوي على سجلات الحفظ والإعدادات الشخصية. احتفظ به في مكان آمن.",
@@ -1837,7 +1837,8 @@ export const StorageService = {
       tests,
       portions,
       unifiedPortions: canonicalPortions,
-      weakVerses
+      weakVerses,
+      ruqyahProgress: this.getRuqyahProgressSnapshot() ?? undefined
     };
     const validation = validateBackupPayload(backup);
     if (!validation.valid) {
@@ -1878,6 +1879,7 @@ export const StorageService = {
       if (parsed.logs !== undefined) writeAndVerify(STORAGE_KEYS.LOGS, parsed.logs);
       if (parsed.tests !== undefined) writeAndVerify(STORAGE_KEYS.TESTS, parsed.tests);
       if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
+      if (parsed.ruqyahProgress !== undefined) writeAndVerify(STORAGE_KEYS.RUQYAH_PROGRESS, parsed.ruqyahProgress);
 
       if (parsed.unifiedPortions !== undefined) {
         if (!this.saveUnifiedPortions(parsed.unifiedPortions)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
