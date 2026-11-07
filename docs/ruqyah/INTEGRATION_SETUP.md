@@ -5,7 +5,8 @@
 ### IslamicAPI Ruqyah
 
 - API root: https://islamicapi.com/api/v1/ruqyah/
-- The integration currently requests Arabic instant-category and instant endpoints for the brief, medium, and long programs.
+- The provider documents 308 instant recitation entries across the brief, medium, and long programs, plus 146 topic articles in 13 categories and 53 languages.
+- WIRD currently requests only the Arabic instant-category and instant endpoints for the three programs; the topic endpoints are proxied and schema-validated for a later reviewed UI.
 - The API requires an api_key query parameter. WIRD sends it only from the server-side proxy (api/ruqyah.ts); it is never placed in browser code or committed files.
 - The API documentation describes its Ruqyah dataset as free to access/download, but this implementation does not assume that every API key tier is free. Check the provider's current terms and pricing before enabling the key.
 
