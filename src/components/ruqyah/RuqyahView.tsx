@@ -10,7 +10,6 @@ import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
   Volume2,
-  Headphones,
   Play,
   Pause,
   Square,
@@ -450,7 +449,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const progressPercent = trackedItems.length > 0 ? Math.round((completedCount / trackedItems.length) * 100) : 0;
 
   return (
-    <div className="space-y-8 pb-24 max-w-7xl mx-auto" dir="rtl">
+    <div className="space-y-6 md:space-y-8 pb-20 max-w-6xl mx-auto px-1 sm:px-2" dir="rtl">
       {progressCorrupt && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
           <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
@@ -482,37 +481,26 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
 
           {/* Mode Switch Controls */}
-          <div role="group" aria-label="طرق استخدام الرقية" className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
+          <div role="group" aria-label="طرق استخدام الرقية" className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner w-full md:w-auto md:min-w-[320px]">
             <button
               type="button"
               aria-pressed={viewMode === 'interactive'}
               onClick={() => { setShowResetConfirmation(false); setViewMode('interactive'); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`flex items-center justify-center gap-2 px-4 py-3 min-h-12 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'interactive'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
                   : 'text-stone-300 hover:text-white hover:bg-emerald-900/60 '
               }`}
             >
               <Sparkles className="w-4 h-4" />
-              <span>القراءة مع العداد</span>
-            </button>
-
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              title="التسجيلات الكاملة التي تشمل الأدعية لم تعتمد بعد؛ المتاح حاليًا تلاوة الآيات القرآنية من مصدر موثق"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-stone-400/70 cursor-not-allowed opacity-60"
-            >
-              <Headphones className="w-4 h-4" />
-              <span>التسجيل الكامل (قيد التحقق)</span>
+              <span>القراءة والعداد</span>
             </button>
 
             <button
               type="button"
               aria-pressed={viewMode === 'api_library'}
               onClick={() => { stopRuqyahAudio(); setShowResetConfirmation(false); setViewMode('api_library'); }}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`flex items-center justify-center gap-2 px-4 py-3 min-h-12 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'api_library'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
                   : 'text-stone-300 hover:text-white hover:bg-emerald-900/60'
@@ -530,16 +518,16 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         <div className="space-y-6" onKeyDown={(event) => { if (showResetConfirmation && event.key === 'Escape') { event.preventDefault(); closeResetConfirmation(); } }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
             <div>
-              <p className="text-sm font-bold text-stone-800 dark:text-stone-200">التحقق من نص الآيات</p>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُعرض الآيات من مصحف وِرد المعتمد. يمكنك تشغيل تلاوتها من المصدر الصوتي الموثق أدناه.</p>
+              <p className="text-sm font-bold text-stone-800 dark:text-stone-200">مصدر الآيات والتلاوة</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">نصوص الآيات من مصحف وِرد المعتمد، والتلاوة الصوتية تُحمّل من خدمة القرآن المحددة داخل المشغل.</p>
             </div>
             <div className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs text-stone-500 dark:text-stone-400" role="status">
-              التلاوة متاحة للآيات القرآنية؛ التسجيلات الكاملة التي تشمل الأدعية لا تزال قيد التحقق
+              المتاح هنا تلاوة الآيات القرآنية فقط، وليس تسجيلًا كاملًا يضم الأدعية
             </div>
           </div>
 
           {/* Category Tabs Bar */}
-          <div role="group" aria-label="تصنيفات الرقية" className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div role="group" aria-label="تصنيفات الرقية" className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2">
             {CATEGORY_TABS.map(tab => {
               const isActive = activeCategory === tab.id;
               return (
@@ -548,7 +536,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => { stopRuqyahAudio(); setShowResetConfirmation(false); setActiveCategory(tab.id); }}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                  className={`flex flex-col sm:flex-row items-center justify-center gap-1.5 px-2 sm:px-3 py-3 min-h-[64px] rounded-2xl text-[11px] sm:text-xs font-bold text-center whitespace-normal leading-snug transition-all border min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                     isActive
                       ? 'bg-emerald-800 text-amber-200 border-emerald-700 shadow-sm'
                       : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800'
