@@ -3,7 +3,7 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 6;
+const DATABASE_VERSION = 7;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
@@ -302,6 +302,9 @@ export class IndexedDbSyncJournal {
         const outboxStore = upgradeTransaction.objectStore(STORE_OUTBOX);
         if (!outboxStore.indexNames.contains('uidCollectionDocument')) {
           outboxStore.createIndex('uidCollectionDocument', ['uid', 'collection', 'documentId'], { unique: false });
+        }
+        if (!outboxStore.indexNames.contains('uidCollection')) {
+          outboxStore.createIndex('uidCollection', ['uid', 'collection'], { unique: false });
         }
         if (!database.objectStoreNames.contains(STORE_ACKNOWLEDGEMENTS)) {
           const acknowledgements = database.createObjectStore(STORE_ACKNOWLEDGEMENTS, { keyPath: 'key' });
@@ -1133,6 +1136,19 @@ export class IndexedDbSyncJournal {
       transaction.oncomplete = () => resolve(advanced);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection cursor transaction aborted.')));
     });
+  }
+
+  async hasPendingForCollection(collection: SyncCollection): Promise<boolean> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection)) throw new Error('مجموعة المزامنة غير صالحة.');
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_OUTBOX], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_OUTBOX)
+      .index('uidCollection').getAll([uid, collection]);
+    const pending = await requestResult(request) as JournalOutboxEntry[];
+    await completed;
+    return pending.length > 0;
   }
 
   async hasPendingForDocument(collection: SyncCollection, documentId: string): Promise<boolean> {
