@@ -193,6 +193,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setConflictIntents(previous => ({ ...previous, [eventId]: null }));
       setConfirmRemoteConflictId(null);
       onUpdateProfile(StorageService.getProfile());
+      onBackupImported?.();
       onToast?.(
         `تم تطبيق أحدث نسخة سحابية للتعارض ${eventId}. حُفظت أدلة التعديلات المحلية في الأرشيف قبل استبعادها من صندوق الرفع (${result.archivedMutationCount} عملية مؤرشفة).`,
         'success'
@@ -219,6 +220,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       if (cancelled) {
         setConflictIntents(previous => ({ ...previous, [eventId]: null }));
         onToast?.('تم إلغاء القرار غير المنفذ فقط؛ لم تُحذف أدلة التعارض أو العمليات المحلية.', 'info');
+        void triggerSync();
       }
     } catch (error) {
       onToast?.(error instanceof Error ? error.message : 'تعذر إلغاء القرار المحفوظ.', 'error');
