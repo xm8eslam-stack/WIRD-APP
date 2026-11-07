@@ -409,6 +409,19 @@ export const LocalSyncOutbox = {
     );
   },
 
+  /** Atomically preserve the local projection and queue one revision-rebased replacement mutation. */
+  async commitKeepLocalConflictResolution(
+    eventId: string,
+    expectedRevision: number,
+    expectedPayload: Record<string, unknown>,
+    nowMs: number = Date.now()
+  ): Promise<{ mutationId: string; sequence: number }> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().commitKeepLocalConflictResolution(
+      eventId, expectedRevision, expectedPayload, nowMs
+    );
+  },
+
   async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().listProjectionConflicts(limit);
