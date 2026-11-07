@@ -25,6 +25,16 @@ service cloud.firestore {
       ];
     }
 
+    function hasValidCollectionPayload(collection) {
+      let payload = request.resource.data.payload;
+      return collection != 'ruqyahProgress'
+        || (
+          payload.keys().hasAll(['snapshot'])
+          && payload.snapshot is map
+          && payload.snapshot.schemaVersion == 2
+        );
+    }
+
     function hasValidSyncEnvelope() {
       let data = request.resource.data;
       return data.keys().hasAll([
@@ -210,6 +220,7 @@ service cloud.firestore {
       allow create: if ownsUserPath(uid)
         && isAllowedCollection(collection)
         && hasValidSyncEnvelope()
+        && hasValidCollectionPayload(collection)
         && request.resource.data.baseRevision == 0
         && request.resource.data.revision == 1
         && hasMatchingEventAfter(uid);
@@ -218,6 +229,7 @@ service cloud.firestore {
       allow update: if ownsUserPath(uid)
         && isAllowedCollection(collection)
         && hasValidSyncEnvelope()
+        && hasValidCollectionPayload(collection)
         && resource.data.revision is int
         && request.resource.data.baseRevision == resource.data.revision
         && request.resource.data.revision == resource.data.revision + 1
