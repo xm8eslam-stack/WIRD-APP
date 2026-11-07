@@ -243,6 +243,70 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Already-applied remote events resolve their archived conflict with the cursor', async () => {
+      const { journal } = createJournal('projection-conflict-already-applied');
+      const event = {
+        uid: 'projection-conflict-already-applied',
+        eventId: 'projection-conflict-already-applied-event',
+        mutationId: 'projection-conflict-already-applied-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-already-applied',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-already-applied-device',
+        occurredAtMs: 8950,
+        payload: { records: [{ id: 'plan-already-applied' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
+        plans: '{"id":"local-state"}'
+      }, 8951);
+      await journal.setRemoteRevisionFromRemote('plans', event.documentId, 1);
+      assert(await journal.markRemoteProjected(1),
+        'An event already represented by the acknowledged revision may advance without reapplying its snapshot');
+      assert(await journal.getProjectionConflictCount() === 0,
+        'Advancing an already-applied event must resolve its conflict record atomically');
+      journal.close();
+    });
+
+    await test('Oversized projection conflict snapshots are rejected without touching the inbox event', async () => {
+      const { journal } = createJournal('projection-conflict-size-limit');
+      const event = {
+        uid: 'projection-conflict-size-limit',
+        eventId: 'projection-conflict-size-event',
+        mutationId: 'projection-conflict-size-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-large-snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-large-snapshot-device',
+        occurredAtMs: 8990,
+        payload: { records: [{ id: 'plan-large-snapshot' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      let rejected = false;
+      try {
+        await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
+          plans: 'x'.repeat(500_100)
+        }, 8991);
+      } catch { rejected = true; }
+      assert(rejected, 'Oversized local snapshots must be rejected');
+      assert(await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1,
+        'Rejecting an oversized archive must preserve the original inbox event and cursor');
+      journal.close();
+    });
+
     await test('Remote inbox import persists events and advances the durable cursor atomically', async () => {
       const { journal } = createJournal('remote-alpha');
       const event = {
