@@ -831,9 +831,9 @@ export class IndexedDbSyncJournal {
           isValidRuqyahProgressSnapshotV2(payload.snapshot);
         if (isRuqyahV2Mutation && sameDocumentPending.some(item =>
           item.operation !== 'upsert' ||
-          (isRecord(item.payload) && isRecord(item.payload.snapshot) &&
-            item.payload.snapshot.schemaVersion === 1 &&
-            !isValidRuqyahProgressSnapshot(item.payload.snapshot))
+          !isRecord(item.payload) ||
+          !isRecord(item.payload.snapshot) ||
+          !isValidRuqyahProgressSnapshot(item.payload.snapshot)
         )) {
           failure = new Error('توجد عملية رقية قديمة أو غير صالحة لا يمكن إثبات احتوائها في لقطة V2؛ احتفظنا بها ولم نتابع الترحيل.');
           transaction.abort();
