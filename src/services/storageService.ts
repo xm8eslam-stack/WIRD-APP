@@ -318,6 +318,12 @@ function removeItem(key: string): boolean {
   return rawRemoveItem(resolved) && rawGetItem(resolved) === null;
 }
 
+function notifyRuqyahProgressUpdated(): void {
+  if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('wird:ruqyah-progress-updated'));
+  }
+}
+
 // 1. Clean Initial State for New Users (No fabricated identity, streaks, or fake progress)
 export const CLEAN_INITIAL_PROFILE: Readonly<UserProfile> = Object.freeze({
   name: "طالب القرآن",
@@ -1012,9 +1018,7 @@ export const StorageService = {
     const serialized = JSON.stringify(snapshot);
     if (getItem(STORAGE_KEYS.RUQYAH_PROGRESS) === serialized) return true;
     const saved = setItem(STORAGE_KEYS.RUQYAH_PROGRESS, serialized);
-    if (saved && typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('wird:ruqyah-progress-updated'));
-    }
+    if (saved) notifyRuqyahProgressUpdated();
     return saved;
   },
 
@@ -1912,6 +1916,7 @@ export const StorageService = {
           (error instanceof Error ? error.message : 'خطأ غير معروف في التخزين.')
       };
     }
+    let ruqyahProgressChanged = false;
     const writeAndVerify = (key: string, value: unknown): void => {
       const serialized = JSON.stringify(value);
       if (!setItem(key, serialized) || getItem(key) !== serialized) throw new Error('تعذر التحقق من حفظ الحقل ' + key);
@@ -1925,7 +1930,10 @@ export const StorageService = {
       if (parsed.logs !== undefined) writeAndVerify(STORAGE_KEYS.LOGS, parsed.logs);
       if (parsed.tests !== undefined) writeAndVerify(STORAGE_KEYS.TESTS, parsed.tests);
       if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
-      if (parsed.ruqyahProgress !== undefined) writeAndVerify(STORAGE_KEYS.RUQYAH_PROGRESS, parsed.ruqyahProgress);
+      if (parsed.ruqyahProgress !== undefined) {
+        writeAndVerify(STORAGE_KEYS.RUQYAH_PROGRESS, parsed.ruqyahProgress);
+        ruqyahProgressChanged = true;
+      }
 
       if (parsed.unifiedPortions !== undefined) {
         if (!this.saveUnifiedPortions(parsed.unifiedPortions, false, true)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
@@ -1936,6 +1944,7 @@ export const StorageService = {
         if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(migration.portions)) throw new Error('فشل التحقق من بيانات المقاطع بعد الترحيل');
       }
 
+      if (ruqyahProgressChanged) notifyRuqyahProgressUpdated();
       return { success: true, message: 'تم استيراد البيانات والتحقق من حفظها بنجاح.' };
     } catch (e: any) {
       const rollbackVerified = this.restoreStorageSnapshot(snapshot);
@@ -1974,6 +1983,7 @@ export const StorageService = {
         return false;
       }
     }
+    notifyRuqyahProgressUpdated();
     return true;
   },
 
