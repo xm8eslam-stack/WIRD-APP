@@ -2045,6 +2045,218 @@ export class IndexedDbSyncJournal {
     return intent;
   }
 
+  /**
+   * Commit an explicit use-remote decision. The caller must re-fetch the
+   * authoritative Firestore state immediately before this call and pass the
+   * exact revision/payload captured by the prepared intent. Local projection,
+   * Outbox supersession, conflict closure, inbox deletion, revision metadata,
+   * and cursor advancement are committed as one journal transaction.
+   */
+  async commitUseRemoteConflictResolution(
+    eventId: string,
+    expectedRevision: number,
+    expectedPayload: Record<string, unknown>,
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(eventId) || !Number.isSafeInteger(expectedRevision) ||
+        expectedRevision < 1 || !isRecord(expectedPayload) ||
+        !Number.isSafeInteger(nowMs) || nowMs < 0) {
+      throw new Error('بيانات اعتماد قرار استخدام النسخة السحابية غير صالحة.');
+    }
+    let expectedPayloadJson: string;
+    try { expectedPayloadJson = JSON.stringify(expectedPayload); }
+    catch { throw new Error('حمولة النسخة السحابية غير قابلة للتسلسل؛ لم يتم تغيير البيانات المحلية.'); }
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+      throw new Error('حمولة النسخة السحابية تتجاوز الحد الآمن.');
+    }
+
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_OUTBOX, STORE_CONFLICT_RESOLUTION_INTENTS],
+        'readwrite'
+      );
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const intents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
+      const conflictKey = uid + ':' + eventId;
+      const metadataRequest = metadataStore.get(uid);
+      const conflictRequest = conflicts.get(conflictKey);
+      const intentRequest = intents.get(conflictKey);
+      const inboxRequest = inbox.index('uid').getAll(IDBKeyRange.only(uid));
+      const outboxRequest = outbox.index('uid').getAll(IDBKeyRange.only(uid));
+      let metadata: DeviceMetadata | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
+      let resolutionIntent: ConflictResolutionIntent | undefined;
+      let inboxEvents: RemoteInboxEvent[] = [];
+      let pendingMutations: JournalOutboxEntry[] = [];
+      let readsRemaining = 5;
+      let committed = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const event = conflict?.event;
+        const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
+        if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
+            !event || event.eventId !== eventId || event.operation !== 'upsert' ||
+            !resolutionIntent || resolutionIntent.uid !== uid ||
+            resolutionIntent.eventId !== eventId || resolutionIntent.status !== 'prepared' ||
+            resolutionIntent.decision !== 'use-remote' ||
+            resolutionIntent.eventFingerprint !== event.fingerprint ||
+            resolutionIntent.serverSequence !== event.serverSequence ||
+            resolutionIntent.collection !== event.collection ||
+            resolutionIntent.documentId !== event.documentId ||
+            resolutionIntent.baseRevision !== expectedRevision ||
+            expectedRevision < event.revision ||
+            !matchingInbox || matchingInbox.eventId !== eventId ||
+            matchingInbox.fingerprint !== event.fingerprint ||
+            matchingInbox.serverSequence !== event.serverSequence ||
+            stableStringify(resolutionIntent.payload) !== stableStringify(JSON.parse(expectedPayloadJson))) {
+          failure = new Error('لم تعد نية استخدام النسخة السحابية مطابقة للتعارض أو للإصدار السحابي المعاد قراءته.');
+          transaction.abort();
+          return;
+        }
+
+        const currentSnapshot = StorageService.getLocalProjectionSnapshot(event.collection);
+        if (fingerprintConflictSnapshot(currentSnapshot) !== resolutionIntent.localSnapshotFingerprint) {
+          failure = new Error('تغيرت البيانات المحلية بعد تسجيل القرار؛ لم نستبدل أي بيانات.');
+          transaction.abort();
+          return;
+        }
+
+        const archived = [...(conflict.localMutations || [])]
+          .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
+          .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
+        const intended = [...resolutionIntent.localMutationFingerprints]
+          .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
+          .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
+        if (stableStringify(archived) !== stableStringify(intended)) {
+          failure = new Error('تغير سجل أدلة التعديلات المحلية؛ لم نعتمد قراراً قديماً.');
+          transaction.abort();
+          return;
+        }
+
+        const archivedById = new Map(archived.map(item => [item.mutationId, item.fingerprint]));
+        let affectedCollections = new Set<string>([event.collection]);
+        if (event.collection === 'syncMeta') {
+          const operations = isRecord(event.payload.transaction) && Array.isArray(event.payload.transaction.operations)
+            ? event.payload.transaction.operations : [];
+          affectedCollections = new Set(operations
+            .filter(isRecord)
+            .map(operation => operation.collection)
+            .filter((value): value is string => typeof value === 'string'));
+        }
+        const currentPending = pendingMutations.filter(item =>
+          item.collection === event.collection && item.documentId === event.documentId
+        );
+        if (event.collection === 'syncMeta') {
+          currentPending.push(...pendingMutations.filter(item => affectedCollections.has(item.collection)));
+        }
+        if (currentPending.some(item => archivedById.get(item.mutationId) !== item.fingerprint)) {
+          failure = new Error('ظهرت تغييرات محلية أحدث بعد القرار؛ أعد مراجعة التعارض قبل الاستبدال.');
+          transaction.abort();
+          return;
+        }
+
+        const cursor = metadata.remoteProjectionCursor ?? 0;
+        if (event.serverSequence !== cursor + 1 || event.serverSequence > (metadata.remoteCursor ?? 0) ||
+            (metadata.remoteProjectionIntent &&
+              (metadata.remoteProjectionIntent.eventId !== eventId ||
+               metadata.remoteProjectionIntent.sequence !== event.serverSequence))) {
+          failure = new Error('تغير ترتيب الأحداث السحابية؛ لم نتجاوز أي حدث غير محسوم.');
+          transaction.abort();
+          return;
+        }
+        const revisionKey = event.collection + ':' + event.documentId;
+        const remoteRevisions = { ...(metadata.remoteRevisions || {}) };
+        const previousRevision = remoteRevisions[revisionKey];
+        if ((previousRevision && previousRevision.revision > expectedRevision) ||
+            (!previousRevision && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS)) {
+          failure = new Error('الإصدار المحلي المعروف أحدث من النسخة المختارة أو وصل سجل الإصدارات إلى سعته الآمنة.');
+          transaction.abort();
+          return;
+        }
+
+        let applied = false;
+        try {
+          if (event.collection === 'syncMeta') {
+            applied = StorageService.applyJournalEvent({
+              key: event.key,
+              uid,
+              eventId: event.eventId,
+              mutationId: event.mutationId,
+              eventType: 'domain-mutation',
+              collection: 'syncMeta',
+              documentId: event.documentId,
+              operation: 'upsert',
+              schemaVersion: 1,
+              clientUpdatedAtMs: event.occurredAtMs,
+              createdAtMs: event.occurredAtMs,
+              deviceId: event.deviceId,
+              sequence: event.serverSequence,
+              payload: JSON.parse(expectedPayloadJson)
+            });
+          } else {
+            applied = StorageService.applyJournalProjection(
+              event.collection,
+              JSON.parse(expectedPayloadJson)
+            );
+          }
+        } catch (error) {
+          failure = normalizeError(error);
+          transaction.abort();
+          return;
+        }
+        if (!applied) {
+          failure = new Error('رفضت طبقة التخزين النسخة السحابية المختارة؛ بقيت أدلة التعارض والعمليات المحلية محفوظة.');
+          transaction.abort();
+          return;
+        }
+
+        for (const mutation of currentPending) outbox.delete(mutation.key);
+        const localSequence = Math.max(
+          previousRevision?.localSequence ?? 0,
+          (metadata.nextSequence ?? 1) - 1
+        );
+        remoteRevisions[revisionKey] = { revision: expectedRevision, localSequence };
+        const initialized = new Set(metadata.remoteInitializedCollections || []);
+        initialized.add(event.collection);
+        for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
+        const nextMetadata: DeviceMetadata = {
+          ...metadata,
+          remoteRevisions,
+          remoteInitializedCollections: [...initialized],
+          remoteProjectionCursor: event.serverSequence
+        };
+        if (nextMetadata.remoteProjectionIntent?.eventId === eventId) {
+          delete nextMetadata.remoteProjectionIntent;
+        }
+        metadataStore.put(nextMetadata);
+        inbox.delete(matchingInbox.key);
+        conflicts.put({
+          ...conflict,
+          status: 'resolved',
+          resolution: 'use-remote',
+          resolvedAtMs: nowMs,
+          updatedAtMs: nowMs
+        } satisfies RemoteProjectionConflict);
+        intents.delete(conflictKey);
+        committed = true;
+      };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      conflictRequest.onsuccess = () => { conflict = conflictRequest.result as RemoteProjectionConflict | undefined; finishRead(); };
+      intentRequest.onsuccess = () => { resolutionIntent = intentRequest.result as ConflictResolutionIntent | undefined; finishRead(); };
+      inboxRequest.onsuccess = () => { inboxEvents = inboxRequest.result as RemoteInboxEvent[]; finishRead(); };
+      outboxRequest.onsuccess = () => { pendingMutations = outboxRequest.result as JournalOutboxEntry[]; finishRead(); };
+      transaction.oncomplete = () => resolve(committed);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Use-remote conflict resolution transaction aborted.')));
+    });
+  }
+
   async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
     const uid = activeUid();
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
