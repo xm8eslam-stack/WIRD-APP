@@ -1,5 +1,5 @@
 import { QuranMath } from './quranMath';
-import { PlanningEngine, PlanGenerationInput } from './planningEngine';
+import { PlanningEngine, PlanGenerationInput, ScheduledDayPlan } from './planningEngine';
 import { PlanLifecycle } from './planLifecycle';
 import { SpacedRevisionEngine } from './spacedRevisionEngine';
 import { RevisionItem } from '../types/quran';
@@ -150,6 +150,234 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     const task1 = plan.schedule.find(s => s.memorizationTask?.startAyah === 1 && s.memorizationTask?.endAyah === 10);
     assert(task1?.memorizationTask?.completed === true, 'Completed task 1 must be preserved');
     assert(task1?.memorizationTask?.completedAt === '2026-11-01T10:00:00Z', 'Completed timestamp must never be overwritten');
+  });
+
+  runTest('PlanLifecycle: preserves completed revision-only tasks and reschedules pending revisions on resume', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة اختبار المراجعة',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 5,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    const completedRevisionDay: ScheduledDayPlan = {
+      id: 'revision-completed',
+      date: '2026-11-01',
+      dayOfWeek: 0,
+      dayNameAr: 'الأحد',
+      isRestDay: false,
+      minorRevisionTask: {
+        description: 'مراجعة محفوظ سابق',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 5,
+        versesCount: 5,
+        estimatedMinutes: 10,
+        completed: true,
+        type: 'minor'
+      },
+      status: 'completed'
+    };
+    const pendingRevisionDay: ScheduledDayPlan = {
+      id: 'revision-pending',
+      date: '2026-11-02',
+      dayOfWeek: 1,
+      dayNameAr: 'الإثنين',
+      isRestDay: false,
+      majorRevisionTask: {
+        description: 'مراجعة كبرى',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 10,
+        versesCount: 10,
+        estimatedMinutes: 20,
+        completed: false,
+        type: 'major'
+      },
+      status: 'pending'
+    };
+    const pausedPlan = {
+      ...plan,
+      isPaused: true,
+      pausedAt: '2026-11-03',
+      schedule: [completedRevisionDay, pendingRevisionDay]
+    };
+
+    const resumed = PlanLifecycle.resumePlan(pausedPlan, '2026-11-07');
+    const completed = resumed.schedule.find(day => day.id === 'revision-completed');
+    const pending = resumed.schedule.find(day => day.majorRevisionTask?.description === 'مراجعة كبرى');
+
+    assert(completed?.date === '2026-11-01', 'Completed revision-only day must remain on its original date');
+    assert(completed?.minorRevisionTask?.completed === true, 'Completed minor revision must remain completed');
+    assert(Boolean(pending), 'Pending major revision must be rescheduled');
+    assert((pending?.date || '') >= '2026-11-07', 'Pending revision must move to resume date or later');
+    assert(pending?.majorRevisionTask?.completed === false, 'Rescheduled revision must remain incomplete');
+  });
+
+  runTest('PlanLifecycle: keeps completed work on a partial day and moves only unfinished tasks', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة يوم جزئي',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 10,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    const partialDay: ScheduledDayPlan = {
+      id: 'partial-day',
+      date: '2026-11-01',
+      dayOfWeek: 0,
+      dayNameAr: 'الأحد',
+      isRestDay: false,
+      memorizationTask: {
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 10,
+        versesCount: 10,
+        estimatedMinutes: 20,
+        completed: true,
+        completedAt: '2026-11-01T10:00:00Z'
+      },
+      minorRevisionTask: {
+        description: 'مراجعة لم تكتمل',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 11,
+        endAyah: 15,
+        versesCount: 5,
+        estimatedMinutes: 10,
+        completed: false,
+        type: 'minor'
+      },
+      status: 'partially_completed'
+    };
+    const resumed = PlanLifecycle.resumePlan({
+      ...plan,
+      isPaused: true,
+      pausedAt: '2026-11-02',
+      schedule: [partialDay]
+    }, '2026-11-07');
+
+    const history = resumed.schedule.find(day => day.id === 'partial-day');
+    const movedRevision = resumed.schedule.find(day => day.minorRevisionTask?.description === 'مراجعة لم تكتمل');
+    assert(history?.memorizationTask?.completed === true, 'Completed memorization must stay in history');
+    assert(history?.minorRevisionTask === undefined, 'Unfinished revision must not remain on the old day');
+    assert(Boolean(movedRevision), 'Unfinished revision must be rescheduled');
+    assert(movedRevision?.minorRevisionTask?.completed === false, 'Moved revision must remain pending');
+  });
+
+  runTest('PlanLifecycle: recalculation preserves completed revision history and reschedules pending revision work', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة إعادة الحساب',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 5,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    const completedMemorization: ScheduledDayPlan = {
+      id: 'mem-completed',
+      date: '2026-11-01',
+      dayOfWeek: 0,
+      dayNameAr: 'الأحد',
+      isRestDay: false,
+      memorizationTask: {
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 10,
+        versesCount: 10,
+        estimatedMinutes: 20,
+        completed: true,
+        completedAt: '2026-11-01T10:00:00Z'
+      },
+      status: 'completed'
+    };
+    const completedRevision: ScheduledDayPlan = {
+      id: 'major-completed',
+      date: '2026-11-02',
+      dayOfWeek: 1,
+      dayNameAr: 'الإثنين',
+      isRestDay: false,
+      majorRevisionTask: {
+        description: 'مراجعة كبرى مكتملة',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 10,
+        versesCount: 10,
+        estimatedMinutes: 20,
+        completed: true,
+        type: 'major'
+      },
+      status: 'completed'
+    };
+    const pendingRevision: ScheduledDayPlan = {
+      id: 'minor-pending',
+      date: '2026-11-03',
+      dayOfWeek: 2,
+      dayNameAr: 'الثلاثاء',
+      isRestDay: false,
+      minorRevisionTask: {
+        description: 'مراجعة صغرى معلقة',
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 1,
+        endAyah: 5,
+        versesCount: 5,
+        estimatedMinutes: 10,
+        completed: false,
+        type: 'minor'
+      },
+      status: 'pending'
+    };
+    const recalculated = PlanLifecycle.recalculatePlan({
+      ...plan,
+      schedule: [completedMemorization, completedRevision, pendingRevision]
+    }, 5);
+
+    const completedRevisionAfter = recalculated.schedule.find(day => day.id === 'major-completed');
+    const pendingRevisionAfter = recalculated.schedule.find(day => day.minorRevisionTask?.description === 'مراجعة صغرى معلقة');
+    const newMemorization = recalculated.schedule.find(day => day.memorizationTask && !day.memorizationTask.completed);
+
+    assert(completedRevisionAfter?.majorRevisionTask?.completed === true,
+      'Completed major revision must remain in history');
+    assert(Boolean(pendingRevisionAfter), 'Pending minor revision must be rescheduled');
+    assert(pendingRevisionAfter?.minorRevisionTask?.completed === false,
+      'Rescheduled minor revision must remain incomplete');
+    assert(newMemorization?.memorizationTask?.startAyah === 11,
+      'Recalculated memorization must continue after the last completed ayah');
   });
 
   // 6. Spaced Revision SM-2 Engine
