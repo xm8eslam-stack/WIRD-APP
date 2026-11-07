@@ -26,6 +26,7 @@ A source is eligible only after its exact content, attribution, evidence, gradin
 - The three protective surahs morning/evening: Sunan Abi Dawud 5082, graded Hasan by al-Albani; Dorar record: https://dorar.net/h/xgBR2fIt
 - Pain supplication: Sahih Muslim 2202; Dorar record: https://dorar.net/hadith/sharh/64180
 - Ayat al-Kursi before sleep: Sahih al-Bukhari 2311 is cited as a suspended narration (mu'allaq) in the Bukhari placement; Dorar notes connected routes in al-Nasa'i and Ibn Khuzaymah: https://dorar.net/hadith/sharh/1766
+- Medical safety note: NHS, *Herbal medicines and complementary therapies* — do not stop prescribed medicine without first talking to a doctor: https://www.nhs.uk/tests-and-treatments/herbal-medicines-and-complementary-therapies/
 
 Quran text and verse ranges remain checked against WIRD's canonical corpus. The Quran passages selected for general recitation are not represented as fixed-count prescriptions unless a sound narration explicitly establishes a count.
 
