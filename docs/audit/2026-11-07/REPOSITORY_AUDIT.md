@@ -119,9 +119,36 @@ A structural inventory exists for all 147 files. The remaining source files requ
 - [x] Exact current main Quality Gate evidence.
 - [x] PR #59 / #60 exact-head CI and divergence review.
 - [x] Initial critical architecture and readiness findings.
-- [ ] Detailed review of all 147 files.
-- [ ] Exact compare/disposition for all 70 branches.
+- [ ] Detailed review of all 147 files (57 reviewed initially; 90 pending).
+- [x] Exact compare/disposition for all 70 branches (65 diverged, 4 main-only archive candidates, main identical).
 - [ ] Final full architecture report.
 - [ ] Final separate not-ready report.
 - [ ] Final remediation roadmap and continuation prompt.
 - [ ] Begin remediation after reports are complete.
+
+## 9. Additional findings from the second audit pass
+
+### Exact current-main CI evidence
+The latest main Quality Gate run `42295376778` completed successfully on the exact main SHA. The aggregate suite reports **402 passed / 0 failed**. The independent Tanzil check explicitly verifies all **6,236 verses and metadata fields**; failure-looking log lines are expected negative-case assertions inside the test suite, not failing suite results. Firestore Rules Emulator reports **13 passed / 0 failed**. Quran generation reports 114 Surah chunks and a verified 604-page index.
+
+The canonical JSON source files are large and should remain data assets rather than being hand-edited: `completeQuranData.json` is 2,513,293 bytes and `tanzilReferenceData.json` is 2,903,158 bytes. Main currently has a 1,848-byte validation report. Source attribution declares Tanzil / Uthmani / Hafs / CC BY 3.0.
+
+### Additional P1/P2 code findings
+
+- **P1 — Quran library repeated-audio counter:** `QuranLibraryView.handlePlayAyah` installs `audio.onended` with a closure over `currentRepeatCount`. The callback replays the same Audio instance after a state update, so the callback continues reading the original captured count; when target repeats exceed one, it can replay indefinitely. Add a deterministic fake-Audio regression test and replace closure state with a ref or a callback that reads current state.
+- **P1 — Advisor API quota protection:** `api/advisor.ts` exposes a Gemini-consuming POST without Firebase ID-token verification. Wildcard CORS is not authentication. Its in-memory IP rate limiter is per serverless instance and therefore not a reliable abuse-control boundary. Add verified auth/guest policy, distributed quota enforcement, request-size/range validation and usage monitoring before public release. The configured model ID `gemini-3.8-flash` is a valid current Google model; the issue is access control, not the model string.
+- **P1 — Firestore conflict safety:** rules correctly require verified UID ownership, allowlisted collections, typed envelopes and immutable events. However they do not enforce server-owned monotonic revision/CAS or restrict eventType to the supported domain-event set; client-supplied timestamps/payloads are structurally accepted. Do not enable two-device last-writer-wins or remote projection based on these rules.
+- **P1 — Web Locks browser compatibility:** the local journal replayer and journaled writer refuse to proceed when Web Locks are unavailable. This is safe against concurrent corruption, but browser compatibility must be tested on iOS Safari/older browsers and an equally safe locking strategy chosen before declaring all devices supported.
+- **P2 — PWA update lifecycle:** `App.handleApplyPwaUpdate` sends `SKIP_WAITING` then reloads immediately; it should wait for `controllerchange` or an explicit activation acknowledgement to avoid a stale-controller reload race.
+- **P2 — Auth screen lifecycle:** verification resend cooldown timer lacks unmount cleanup; clipboard action does not await/catch the clipboard promise. Fix alongside auth UX tests.
+- **P2 — Domain-event coordinates:** event validator accepts any ayah number up to 286 for any Surah. Use canonical per-Surah verse counts, not a global upper bound.
+- **P2 — PWA orientation and attribution:** manifest is portrait-only; review tablet landscape behavior. Tanzil license/source date is present in metadata but the exact source URL/version/checksum and user-visible attribution need a single authoritative record.
+- **P2 — Error boundaries:** the root app entry has no visible React error boundary. Add a recovery boundary that preserves local data and offers reload/export rather than a blank screen.
+
+### Branch audit completion
+
+The complete matrix is saved in `BRANCH_COMPARE_MATRIX.md`. All 70 refs were compared. Four branches have zero unique commits and are behind main; they are archive candidates, but this connector exposes no branch deletion operation, so they were left untouched. The other 65 non-main refs are diverged and contain unique commits; preserve them until their unique patches are reviewed. The five open PRs remain unchanged.
+
+### Updated file review count
+
+The per-file register now has 147 exact rows: **57 reviewed initially, 90 pending**. "Reviewed initially" is not final sign-off; tests, callers, and full remaining line ranges still need cross-checking. The remaining review must cover all UI, planning, revision, progress, audio, tests, utilities, backup validation, service-worker/PWA assets and all docs/config files.
