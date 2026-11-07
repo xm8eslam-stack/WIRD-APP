@@ -26,6 +26,7 @@ A source is eligible only after its exact content, attribution, evidence, gradin
 - The three protective surahs morning/evening: Sunan Abi Dawud 5082, graded Hasan by al-Albani; Dorar record: https://dorar.net/h/xgBR2fIt
 - Pain supplication: Sahih Muslim 2202; Dorar record: https://dorar.net/hadith/sharh/64180
 - Ayat al-Kursi before sleep: Sahih al-Bukhari 2311 is cited as a suspended narration (mu'allaq) in the Bukhari placement; Dorar notes connected routes in al-Nasa'i and Ibn Khuzaymah: https://dorar.net/hadith/sharh/1766
+- Combining Ruqyah and medical treatment: Shaykh Ibn Baz, *هل يترك العلاج ويكتفى بالتوكل على الله؟* — the fatwa states that combining treatment and supplication is better and that taking medical means is legislated: https://binbaz.org.sa/fatwas/16834/هل-يترك-العلاج-ويكتفى-بالتوكل-على-الله
 
 Quran text and verse ranges remain checked against WIRD's canonical corpus. The Quran passages selected for general recitation are not represented as fixed-count prescriptions unless a sound narration explicitly establishes a count.
 
@@ -54,5 +55,5 @@ Quran text and verse ranges remain checked against WIRD's canonical corpus. The 
 3. Record the narrator, collection, number, and named grading scholar where applicable.
 4. Check the ruling/interpretation with a recognized Sunni scholar or institution; do not derive rulings from an API summary.
 5. Check content rights and attribution separately from religious authenticity.
-6. Add a regression test that prevents unreviewed content from entering the user interface.
+6. Add a regression test that prevents unreviewed content from entering the user interface and add the exact approved reference to the source allowlist.
 7. Only then enable the content through a reviewed pull request.

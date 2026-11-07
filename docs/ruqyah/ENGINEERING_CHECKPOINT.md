@@ -6,9 +6,9 @@ Last updated: 2026-11-07
 
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
-- Latest reviewed phase merge: PR #100, merge commit `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d`.
-- Working checkpoint branch: `fix/ruqyah-sunni-source-allowlist-20261107`.
-- All nine implementation phases below are merged to `main`.
+- Latest reviewed phase merge: PR #105, merge commit `d71908b3e411bcd7d1db2b09318eb3c95564198e`.
+- Working checkpoint branch: `test/ruqyah-source-registry-hardening-20261107`.
+- All ten implementation phases below are merged to `main`.
 
 ## Merged implementation phases
 
@@ -19,12 +19,13 @@ Last updated: 2026-11-07
 | Accessible counters and audio UX | #93 | `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3` | 500 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Backup/reset refresh consistency + release checklist | #95 | `52e62d6b21057cf0d796cc3b137f4087cbe2e983` | 504 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | IslamicAPI proxy hardening + topic gate | #97 | `217f7136244d4d7afd02a9c52be86f520c1baefa` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Sunni source allowlist and unverified audio lockdown | #105 | `d71908b3e411bcd7d1db2b09318eb3c95564198e` | 509 unit tests, 31 Firestore tests, TypeScript, build, server smoke passed |
 | Guarded manual Firestore rules deploy workflow | #98 | `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Firestore Emulator preflight for manual rules deploy | #100 | `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d` | Exact-head Quality Gate passed; manual workflow now runs rules emulator tests before credentials/deploy |
 | Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
 | Ruqyah first-sync scan + concurrent offline conflict preservation | #94 | `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` | Exact-head Quality Gate passed; stale concurrent write is blocked and both snapshots/outbox/inbox/conflict evidence are retained |
 
-Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` had a Vercel `success` status, but the latest main SHA `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` currently has Vercel `failure` with `build-rate-limit`. The Vercel dashboard target is not accessible from this session, so no production alias or live-site SHA is verified.
+Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` had a Vercel `success` status, but the latest main SHA `d71908b3e411bcd7d1db2b09318eb3c95564198e` currently has Vercel `failure` with `build-rate-limit`. The Vercel dashboard target is not accessible from this session, so no production alias or live-site SHA is verified.
 
 ## Implemented architecture and behavior
 
@@ -77,6 +78,17 @@ Working branch: `fix/ruqyah-sunni-source-allowlist-20261107`
 
 Phase 6 is not merged yet. Wait for exact-head CI before merging.
 
+## Pending Phase 7 — Reviewed source registry hardening
+
+Working branch: `test/ruqyah-source-registry-hardening-20261107`
+
+- Added an explicit code-level allowlist of reviewed source references for every Ruqyah item and guideline.
+- The test suite now rejects any item with a missing, changed, or newly introduced source string until it is reviewed and added to the allowlist.
+- Clarified the grading on all three protective-surah entries: Abu Dawud 5082 is Hasan according to al-Albani; Bukhari 5017 supports the bedtime recitation/nasf.
+- Updated `docs/ruqyah/SUNNI_SOURCE_POLICY.md` with the registry rule.
+
+Phase 7 requires exact-head CI before merge.
+
 ## External source and licensing decisions
 
 - MuslimPack Ruqayyah: https://github.com/muslimpack/Ruqayyah — Flutter app under GPL-3.0. No code was copied. Reusing its source code requires a GPL-3.0 compatibility/source-distribution decision or separate permission. Its README attributes content to a published Ruqyah book; do not copy book text wholesale without rights review.
@@ -90,7 +102,7 @@ Phase 6 is not merged yet. Wait for exact-head CI before merging.
    - Required GitHub repository secret: `FIREBASE_SERVICE_ACCOUNT_JSON`.
    - Dispatch only from `main`, enter the exact project ID, and type `DEPLOY_FIRESTORE_RULES`.
    - Workflow deploys only `firestore:rules`; it fails closed when inputs/secrets are missing.
-2. **Vercel production deployment is not fully verified.** The latest main SHA `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` has Vercel `failure` due to `build-rate-limit`; the earlier `success` on `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` is not evidence that the latest main deployed. The dashboard target is inaccessible from this session. Confirm quota recovery, production alias, deployed SHA, and live site smoke before claiming production readiness.
+2. **Vercel production deployment is not fully verified.** The latest main SHA `d71908b3e411bcd7d1db2b09318eb3c95564198e` has Vercel `failure` due to `build-rate-limit`; the earlier `success` on `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` is not evidence that the latest main deployed. The dashboard target is inaccessible from this session. Confirm quota recovery, production alias, deployed SHA, and live site smoke before claiming production readiness.
 3. **Deployed environment variables are not observable from this GitHub session.** Keep both remote-sync flags disabled until every global release gate passes, including manual conflict resolution, deterministic additive Ruqyah counter merge, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing.
    - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
    - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` only after Firestore rules deployment.

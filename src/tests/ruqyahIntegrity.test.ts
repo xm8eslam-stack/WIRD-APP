@@ -47,6 +47,47 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     });
   });
 
+  test('Every published religious item uses an explicitly reviewed Sunni source reference', () => {
+    const reviewedSources: Record<string, string> = {
+      'g-1': 'القرآن الكريم، الشعراء 80',
+      'g-3': 'صحيح البخاري 5017',
+      'g-4': 'ابن باز: هل يترك العلاج ويكتفى بالتوكل على الله؟',
+      'g-5': 'صحيح مسلم 2200',
+      'q-fatihah': 'صحيح البخاري 5736',
+      'q-baqarah-1-5': 'القرآن الكريم، البقرة 1-5',
+      'q-kursi': 'صحيح البخاري 2311 (معلّق؛ وُصل عند النسائي وابن خزيمة)',
+      'q-baqarah-256-257': 'القرآن الكريم، البقرة 256-257',
+      'q-baqarah-last2': 'صحيح البخاري 5009؛ صحيح مسلم 808a',
+      'q-araf-magic': 'القرآن الكريم، الأعراف 117-122',
+      'q-yunus-magic': 'القرآن الكريم، يونس 81-82',
+      'q-ta-ha-magic': 'القرآن الكريم، طه 69',
+      'q-isra-healing': 'القرآن الكريم، الإسراء 82',
+      'q-ikhlas': 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
+      'q-falaq': 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
+      'q-nas': 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
+      'd-1': 'صحيح البخاري 5750',
+      'd-2': 'صحيح مسلم 2186',
+      'd-3': 'صحيح البخاري 3371',
+      'd-4': 'سنن أبي داود 5088 (صحيح، الألباني)؛ حصن المسلم 86',
+      'd-6': 'صحيح مسلم 2202'
+    };
+    const contentItems = [...RUQYAH_GUIDELINES, ...RUQYAH_ITEMS];
+    const seenIds = new Set<string>();
+    assert(contentItems.length === Object.keys(reviewedSources).length,
+      'Every source registry entry must correspond to exactly one published content item');
+    for (const item of contentItems) {
+      assert(!seenIds.has(item.id), 'Duplicate published Ruqyah content id: ' + item.id);
+      seenIds.add(item.id);
+      assert(typeof item.source === 'string' && item.source.trim().length > 0,
+        item.id + ' must identify its source');
+      assert(reviewedSources[item.id] === item.source,
+        item.id + ' source must exactly match its individually reviewed reference');
+    }
+    for (const id of Object.keys(reviewedSources)) {
+      assert(seenIds.has(id), 'Reviewed source registry contains an item that is not published: ' + id);
+    }
+  });
+
   test('Fixed repetition counts are limited to narrations that state a number', () => {
     const byId = new Map(RUQYAH_ITEMS.map(item => [item.id, item]));
     for (const id of ['q-fatihah', 'q-baqarah-1-5', 'q-kursi', 'q-baqarah-256-257', 'q-baqarah-last2', 'q-araf-magic', 'q-yunus-magic', 'q-ta-ha-magic', 'q-isra-healing', 'd-1', 'd-2', 'd-3']) {

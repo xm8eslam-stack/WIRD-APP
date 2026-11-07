@@ -413,7 +413,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </h1>
 
             <p className="text-xs md:text-sm text-stone-200/90 leading-relaxed font-sans">
-              آيات من القرآن وأدعية من السنة، مع أدوات للقراءة والاستماع ومتابعة ما أتممته.
+              آيات من القرآن وأدعية ثابتة من السنة. التقسيمات المختصرة والمتوسطة والمطولة تنظيمية للتيسير، وليست ترتيبًا نبويًا أو عددًا لازمًا.
             </p>
           </div>
 
@@ -466,8 +466,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
             <div>
-              <p className="text-sm font-bold text-stone-800 dark:text-stone-200">قارئ تلاوة الآيات</p>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُشغّل المقاطع متعددة الآيات كاملة وبالترتيب.</p>
+              <p className="text-sm font-bold text-stone-800 dark:text-stone-200">التحقق من نص الآيات</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُعرض الآيات من مصحف وِرد المعتمد. تشغيل الصوت موقوف حتى اعتماد مصدر موثوق.</p>
             </div>
             <div className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs text-stone-500 dark:text-stone-400" role="status">
               التلاوة الصوتية قيد التحقق من مصدر التسجيل ونسبته للقارئ
