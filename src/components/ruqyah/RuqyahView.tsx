@@ -256,7 +256,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
       {/* Main Mode 1: Interactive Reading with Counter */}
       {viewMode === 'interactive' && (
-        <div className="space-y-6">
+        <div className="space-y-6" onKeyDown={(event) => { if (showResetConfirmation && event.key === 'Escape') { event.preventDefault(); closeResetConfirmation(); } }}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
             <div>
               <p className="text-sm font-bold text-stone-800 dark:text-stone-200">التحقق من نص الآيات</p>
@@ -346,7 +346,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           )}
 
           {showResetConfirmation && (
-            <div id="ruqyah-reset-confirmation" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeResetConfirmation(); } }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
+            <div id="ruqyah-reset-confirmation" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
               <div className="min-w-0">
                 <p id="ruqyah-reset-confirmation-title" className="text-sm font-bold text-amber-950 dark:text-amber-100">تأكيد إعادة ضبط القسم</p>
                 <p id="ruqyah-reset-confirmation-description" className="mt-1 text-xs leading-relaxed text-amber-900 dark:text-amber-200">سيتم تصفير عدادات هذا القسم فقط. لن تتغير نصوص القرآن أو الأدعية أو بيانات الأقسام الأخرى.</p>
