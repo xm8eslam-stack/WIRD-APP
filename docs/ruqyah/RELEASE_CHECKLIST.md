@@ -19,6 +19,7 @@ Last reviewed: 2026-11-07
 - Phase 13: PR #137 — add explicit category-reset confirmation/cancel, scope explanation, and disabled reset controls while progress is unhydrated or corrupt; verify on desktop/mobile.
 - Phase 14: PR #139 — restore keyboard focus after reset confirmation actions and support Escape cancellation from the reset trigger; verify on desktop/mobile.
 - Phase 15: PR #141 — assert no horizontal overflow at 320px, 360px, and 390px in both Ruqyah reading and Quran locator library modes on desktop/mobile Chromium.
+- Phase 16: PR #145 — announce counter updates through polite atomic live regions with Arabic labels for free-reading counts and source-defined remaining repetitions.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
