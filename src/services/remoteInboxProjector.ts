@@ -57,10 +57,7 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       remoteEvent.collection,
       remoteEvent.documentId
     );
-    const hasPendingLocalMutation = await LocalSyncOutbox.hasPendingForDocument(
-      remoteEvent.collection,
-      remoteEvent.documentId
-    );
+    let hasPendingLocalMutation = await LocalSyncOutbox.hasPendingForCollection(remoteEvent.collection);
     const remoteCollectionInitialized = await LocalSyncOutbox.isRemoteCollectionInitialized(remoteEvent.collection);
     let localProjectionEmpty = StorageService.isLocalProjectionEmpty(remoteEvent.collection);
     let transactionCollections: string[] = [];
@@ -73,10 +70,13 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
         .filter((value): value is string => typeof value === 'string');
       localProjectionEmpty = true;
       for (const collectionName of transactionCollections) {
-        const initialized = await LocalSyncOutbox.isRemoteCollectionInitialized(collectionName as RemoteInboxEvent['collection']);
-        if (!StorageService.isLocalProjectionEmpty(collectionName as RemoteInboxEvent['collection']) && !initialized) {
+        const collection = collectionName as RemoteInboxEvent['collection'];
+        const initialized = await LocalSyncOutbox.isRemoteCollectionInitialized(collection);
+        if (await LocalSyncOutbox.hasPendingForCollection(collection)) {
+          hasPendingLocalMutation = true;
+        }
+        if (!StorageService.isLocalProjectionEmpty(collection) && !initialized) {
           localProjectionEmpty = false;
-          break;
         }
       }
     }
