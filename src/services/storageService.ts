@@ -984,7 +984,13 @@ export const StorageService = {
 
   saveRuqyahProgressSnapshot(snapshot: unknown): boolean {
     if (!isValidRuqyahProgressSnapshot(snapshot)) return false;
-    return setItem(STORAGE_KEYS.RUQYAH_PROGRESS, JSON.stringify(snapshot));
+    const serialized = JSON.stringify(snapshot);
+    if (getItem(STORAGE_KEYS.RUQYAH_PROGRESS) === serialized) return true;
+    const saved = setItem(STORAGE_KEYS.RUQYAH_PROGRESS, serialized);
+    if (saved && typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wird:ruqyah-progress-updated'));
+    }
+    return saved;
   },
 
   setRawItem(key: string, value: string): boolean {
