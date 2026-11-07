@@ -48,6 +48,23 @@ export async function runLocalSyncOutboxTests(): Promise<{ passed: number; faile
       assert(ready.length === 1 && ready[0].payload.minutes === 12, 'Only the original mutation may remain queued');
     });
 
+    await test('Document-scoped pending lookup does not report unrelated records in the same collection', async () => {
+      activate();
+      await LocalSyncOutbox.enqueue({
+        mutationId: 'tests-local-record',
+        collection: 'tests',
+        documentId: 'test-local',
+        payload: { score: 3 },
+        nowMs: 1500
+      });
+      assert(await LocalSyncOutbox.hasPendingForDocument('tests', 'test-local'),
+        'The exact pending test-result document must be detected');
+      assert(!(await LocalSyncOutbox.hasPendingForDocument('tests', 'test-remote')),
+        'An unrelated test-result document must not be blocked');
+      assert(await LocalSyncOutbox.hasPendingForCollection('tests'),
+        'The collection-wide guard remains available for grouped transactions');
+    });
+
     await test('Acknowledgement removes pending work and reserves the ID fingerprint', async () => {
       activate();
       const input = { mutationId: 'ack-mutation', collection: 'plans' as const, documentId: 'plan-1', payload: { pages: 4 }, nowMs: 2000 };
