@@ -3,13 +3,14 @@ export interface QuranReciter {
   name: string;
   arabicName: string;
   style?: string;
+  bitrate: 128 | 192;
 }
 
 export const QURAN_AUDIO_PROVIDER = {
   name: 'Al Quran Cloud',
   termsUrl: 'https://alquran.cloud/terms-and-conditions',
   cdnDocsUrl: 'https://alquran.cloud/cdn',
-  audioCdnBaseUrl: 'https://cdn.islamic.network/quran/audio/128'
+  audioCdnBaseUrl: 'https://cdn.islamic.network/quran/audio'
 } as const;
 
 /**
@@ -18,13 +19,13 @@ export const QURAN_AUDIO_PROVIDER = {
  * streaming/embedding and educational use. Do not add dynamic or unreviewed IDs here.
  */
 export const FALLBACK_QURAN_RECITERS: QuranReciter[] = [
-  { id: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري', style: 'Murattal' },
-  { id: 'ar.minshawi', name: 'Mohamed Siddiq al-Minshawi', arabicName: 'محمد صديق المنشاوي', style: 'Murattal' },
-  { id: 'ar.abdulbasit', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد', style: 'Murattal' },
-  { id: 'ar.sudais', name: 'Abdul Rahman Al-Sudais', arabicName: 'عبدالرحمن السديس', style: 'Murattal' },
-  { id: 'ar.shuraim', name: 'Saud Al-Shuraim', arabicName: 'سعود الشريم', style: 'Murattal' },
-  { id: 'ar.ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي', style: 'Murattal' },
-  { id: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي', style: 'Murattal' }
+  { id: 'ar.husary', name: 'Mahmoud Khalil Al-Husary', arabicName: 'محمود خليل الحصري', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.minshawi', name: 'Mohamed Siddiq al-Minshawi', arabicName: 'محمد صديق المنشاوي', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.abdulbasit', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد', style: 'Murattal', bitrate: 192 },
+  { id: 'ar.sudais', name: 'Abdul Rahman Al-Sudais', arabicName: 'عبدالرحمن السديس', style: 'Murattal', bitrate: 192 },
+  { id: 'ar.shuraim', name: 'Saud Al-Shuraim', arabicName: 'سعود الشريم', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي', style: 'Murattal', bitrate: 128 },
+  { id: 'ar.alafasy', name: 'Mishary Rashid Alafasy', arabicName: 'مشاري راشد العفاسي', style: 'Murattal', bitrate: 128 }
 ];
 
 const APPROVED_RECITER_IDS = new Set(FALLBACK_QURAN_RECITERS.map(reciter => reciter.id));
@@ -74,7 +75,8 @@ export async function fetchQuranReciters(signal?: AbortSignal): Promise<QuranRec
     return !expected ||
       item.name !== expected.name ||
       item.arabicName !== expected.arabicName ||
-      item.style !== expected.style;
+      item.style !== expected.style ||
+      item.bitrate !== expected.bitrate;
   })) {
     throw new Error('تحتوي قائمة القراء على مصدر أو بيانات غير معتمدة.');
   }
@@ -90,5 +92,7 @@ export function buildQuranAyahAudioUrl(reciterId: string, globalAyahNumber: numb
       !Number.isSafeInteger(globalAyahNumber) || globalAyahNumber < 1 || globalAyahNumber > 6236) {
     throw new Error('بيانات تشغيل الآية الصوتية غير صالحة أو غير معتمدة.');
   }
-  return QURAN_AUDIO_PROVIDER.audioCdnBaseUrl + '/' + reciterId + '/' + String(globalAyahNumber) + '.mp3';
+  const reciter = FALLBACK_QURAN_RECITERS.find(candidate => candidate.id === reciterId);
+  if (!reciter) throw new Error('القارئ الصوتي غير موجود في قائمة المصادر المعتمدة.');
+  return QURAN_AUDIO_PROVIDER.audioCdnBaseUrl + '/' + reciter.bitrate + '/' + reciterId + '/' + String(globalAyahNumber) + '.mp3';
 }
