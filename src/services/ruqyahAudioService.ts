@@ -4,6 +4,16 @@ export interface QuranReciter {
   arabicName: string;
 }
 
+/** Small documented fallback set; the full catalogue is loaded from Al Furqan. */
+export const FALLBACK_QURAN_RECITERS: QuranReciter[] = [
+  { id: 'husary', name: 'Mahmoud Khalil Al-Hussary', arabicName: 'محمود خليل الحصري' },
+  { id: 'minshawy-murattal', name: 'Mohamed Siddiq Al-Minshawi', arabicName: 'محمد صديق المنشاوي' },
+  { id: 'abdul-basit-murattal', name: 'Abdul Basit Abdul Samad', arabicName: 'عبد الباسط عبد الصمد' },
+  { id: 'maher-almuaiqly', name: 'Maher Al-Muaiqly', arabicName: 'ماهر المعيقلي' },
+  { id: 'ghamadi', name: 'Saad Al-Ghamdi', arabicName: 'سعد الغامدي' },
+  { id: 'ahmed-al-ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي' }
+];
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
