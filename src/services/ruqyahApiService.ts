@@ -92,7 +92,11 @@ export function resolveApiQuranEntryText(entry: RuqyahApiEntry): string {
   if (!entry || typeof entry.title !== 'string') {
     throw new Error('لا يحتوي عنصر الرقية الخارجي على عنوان صالح.');
   }
-  const match = entry.title.match(/(\d{1,3})\s*:\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/);
+  const westernTitle = entry.title.replace(/[٠-٩۰-۹]/g, digit => {
+    const index = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(digit);
+    return String(index % 10);
+  });
+  const match = westernTitle.match(/(\d{1,3})\s*:\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/);
   if (!match) {
     throw new Error('تعذر تحديد موضع الآيات في المصحف من مرجع المصدر الخارجي.');
   }
