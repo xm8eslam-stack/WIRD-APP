@@ -1,5 +1,28 @@
 # WIRD — Engineering Work Log
 
+## 2026-11-07 — Re-audit after PR #140
+
+### Repository state
+- Latest main merge commit verified: `d9ad6b51ad8133e32057ff170e9ff0a136b78305` (PR #140).
+- PR #140 checkpoint Quality Gate passed on exact head `90f5aa71046fc376b4937adc3dca5ae647927722`, run `42364663347`: 526 assertions, 31 Rules Emulator tests, dependency audit, TypeScript, build, server smoke, 20 desktop/mobile Playwright tests.
+- PR #141 is open. Its run `42364704191` was still in progress at last inspection; non-browser gates were green and browser tests were running.
+- PR #142 was opened against the pre-#140 base and is not mergeable; superseded by this refreshed checkpoint.
+- Vercel is quota-blocked; production deployment and live verification are not established.
+
+### Conflict resolution audit
+- PR #134 grouped transaction archival captures pending Outbox mutations from validated affected collections. It preserves Inbox/Outbox evidence and does not advance the projection cursor on conflict.
+- Existing `RemoteProjectionIntent` recovers remote event projection; it is not a user decision record.
+- The current archive/Settings inspector does not implement keep-local/use-remote/merge, durable decision intent, latest remote revision revalidation, new idempotent resolution mutation, server acknowledgement, or restart-safe completion.
+- No application source code was changed in this checkpoint. No local tests were run; CI claims above refer only to recorded exact-head workflow results.
+- Remaining: implement separate UID-bound, fingerprint-bound resolution intent and state machine. Preserve original conflict evidence until resolution acknowledgement and safe Inbox reconciliation.
+
+### Release blockers
+- Tombstones and safe compaction remain open.
+- Concurrent cross-device Ruqyah increments are not guaranteed additive.
+- Full multi-tab/auth lifecycle, two-device CRUD and live Firebase verification remain outstanding.
+- Production sync flags remain disabled.
+
+
 ## 2026-11-06 — Repository resumption and engineering checkpoint
 
 ### Repository state verified
@@ -516,3 +539,32 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Documentation merge PR #132 produced main SHA `3eeb1eb2da419536a1e2fc9db6911961d3bfafcc`.
 - Post-merge main Quality Gate run `42361756445` completed successfully.
 - The full Playwright suite in that run executed 16 tests total: 6 app-shell checks (3 desktop + 3 mobile) and 10 Ruqyah locator-library checks (5 desktop + 5 mobile). The earlier phrase “16 Ruqyah locator-library checks” was inaccurate and has been corrected.
+
+
+## 2026-11-07 — Re-audit after PR #139
+
+### Repository state
+- Latest main SHA verified: `28a1c4339d31bb66549402db36cfc40357caf65f`.
+- PR #134 merged: grouped `syncMeta` conflict archive includes pending Outbox entries from all validated participating collections; Inbox event and cursor remain unchanged on archive.
+- PR #135 merged: clear stale Ruqyah counts on corrupt state, preserve corrupt bytes, block writes.
+- PR #137 merged: category reset confirmation and disabled state while hydration/corruption prevents safe reset.
+- PR #139 merged: restore focus after Cancel/Confirm and support Escape cancellation.
+- PR #136/#138 are documentation checkpoints. PR #2 remains Draft, open, and divergent; no wholesale merge.
+- Exact-head Quality Gate evidence is recorded in the PR bodies: #135 (526 assertions, 31 Rules Emulator, 18 Playwright); #137/#139 (526 assertions, 31 Rules Emulator, 20 Playwright), plus audit, TypeScript, build and server smoke.
+- Vercel on current main reports the Free-plan deployment quota. Production deployment and live verification are not established.
+
+### Conflict resolution audit
+- Inspected `RemoteProjectionConflict`, `RemoteProjectionIntent`, `saveProjectionConflict`, `listProjectionConflicts`, `finalizeRemoteProjection`, and `projectRemoteInboxBatch`.
+- Confirmed grouped conflict archive preserves local mutation IDs/fingerprints/base revisions/sequences/payloads within the 500 KB cap and does not advance the Inbox cursor.
+- Confirmed `RemoteProjectionIntent` is the remote-projection crash-recovery intent, not a user conflict-resolution decision.
+- Confirmed `finalizeRemoteProjection` revalidates the immutable Inbox event and blocks if pending local writes remain; it does not implement keep-local/use-remote/merge.
+- `docs/sync/CONFLICT-RESOLUTION.md` explicitly states user-directed choices and revision rebasing are not implemented. Settings inspection is read-only.
+- No source code was changed in this audit. No local test execution was performed in this session; exact-head CI evidence above comes from the recorded PR checks.
+- Remaining: design and implement separate durable resolution intent/state machine with UID binding, conflict fingerprint, decision ID, latest server revision, new mutation identity, server acknowledgement, idempotent retry, and restart recovery. Preserve archive evidence until commit is confirmed.
+
+### Release status
+- Tombstones and safe compaction remain open.
+- Ruqyah concurrent increments are not yet additive across devices; do not use snapshot LWW.
+- Real live two-device verification, production rules deployment, production SHA verification and full auth/cross-tab E2E remain outstanding.
+- Production sync flags remain disabled.
+
