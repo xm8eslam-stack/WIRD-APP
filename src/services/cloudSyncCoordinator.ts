@@ -1,9 +1,8 @@
-import { doc, setDoc, getDocs, collection, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
+import { getDocs, collection, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { LocalSyncOutbox } from './localSyncOutbox';
 import { StorageService } from './storageService';
-import type { SyncCollection } from './localSyncOutbox';
-import { writeImmutableRemoteEvent } from './immutableRemoteEvent';
+import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 
 export type CloudSyncStatus =
   | 'idle'
@@ -181,37 +180,37 @@ class CloudSyncCoordinator {
 
         for (const entry of readyEntries) {
           try {
-            const docRef = doc(db, 'users', uid, entry.collection, entry.documentId);
-            const docData: Record<string, unknown> = {
+            let baseRevision = entry.baseRevision;
+            const cachedRevision = await LocalSyncOutbox.getRemoteRevision(entry.collection, entry.documentId);
+            if (cachedRevision && baseRevision < cachedRevision.revision) {
+              if (entry.sequence <= cachedRevision.localSequence) {
+                throw new Error('REMOTE_REVISION_CONFLICT');
+              }
+              const rebased = await LocalSyncOutbox.rebasePendingMutation(
+                entry.mutationId,
+                baseRevision,
+                cachedRevision.revision
+              );
+              if (!rebased) throw new Error('REMOTE_REVISION_CONFLICT');
+              baseRevision = cachedRevision.revision;
+            } else if (cachedRevision && baseRevision > cachedRevision.revision) {
+              throw new Error('REMOTE_REVISION_CONFLICT');
+            }
+
+            const result = await writeRevisionedRemoteMutation(db, {
+              uid,
+              collection: entry.collection,
+              documentId: entry.documentId,
+              operation: entry.operation,
               schemaVersion: entry.schemaVersion,
-              payload: entry.payload,
-              updatedAtMs: entry.clientUpdatedAtMs,
+              mutationId: entry.mutationId,
+              eventId: entry.eventId || entry.mutationId,
               deviceId: entry.deviceId,
-              mutationId: entry.mutationId
-            };
-            if (entry.operation === 'tombstone') {
-              docData.deletedAt = new Date(entry.clientUpdatedAtMs);
-            }
-            // Commit the immutable event first. If the state snapshot write fails,
-            // retrying the outbox item safely recognizes this same event as already present.
-            if (entry.eventId) {
-              await writeImmutableRemoteEvent(db, uid, {
-                schemaVersion: 1,
-                eventId: entry.eventId,
-                mutationId: entry.mutationId,
-                uid,
-                deviceId: entry.deviceId,
-                occurredAtMs: entry.clientUpdatedAtMs,
-                eventType: 'domain-mutation',
-                payload: entry.payload
-              });
-            }
-
-            // State snapshots remain last-write-wins until the server-revision/CAS
-            // stage is implemented. Never acknowledge before both writes succeed.
-            await setDoc(docRef, docData);
-
-            await LocalSyncOutbox.acknowledge([entry.mutationId]);
+              clientUpdatedAtMs: entry.clientUpdatedAtMs,
+              baseRevision,
+              payload: entry.payload
+            });
+            await LocalSyncOutbox.acknowledgeRemoteMutation(entry.mutationId, result.revision);
           } catch (writeError: any) {
             console.warn('[WIRD CloudSync] Mutation write failed, scheduling retry:', entry.mutationId, writeError);
             const errCode = writeError?.code || writeError?.message || 'firestore-write-error';
