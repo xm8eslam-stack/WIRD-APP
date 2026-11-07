@@ -14,16 +14,6 @@ export const FALLBACK_QURAN_RECITERS: QuranReciter[] = [
   { id: 'ahmed-al-ajamy', name: 'Ahmed ibn Ali al-Ajamy', arabicName: 'أحمد بن علي العجمي' }
 ];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-/** External reciter catalogue is deliberately disabled pending source review. */
-export async function fetchQuranReciters(): Promise<QuranReciter[]> {
-  return FALLBACK_QURAN_RECITERS;
-}
-
-
 /** Audio playback remains disabled until a verified provider and usage rights are approved. */
 export function buildQuranAyahAudioUrl(_reciterId: string, _globalAyahNumber: number): string {
   throw new Error('تلاوة الآيات الصوتية موقوفة لحين اعتماد مصدر موثوق وموثق للتسجيلات.');
