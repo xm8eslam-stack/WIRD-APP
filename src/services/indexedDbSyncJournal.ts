@@ -1621,6 +1621,7 @@ export class IndexedDbSyncJournal {
         metadataStore.put({
           ...metadata,
           nextSequence: sequence + 1,
+          lastProjectedSequence: Math.max(metadata.lastProjectedSequence ?? 0, sequence),
           remoteRevisions,
           remoteInitializedCollections: [...initialized],
           remoteProjectionCursor: event.serverSequence,
