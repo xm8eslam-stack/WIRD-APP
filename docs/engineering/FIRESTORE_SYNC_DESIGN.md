@@ -276,11 +276,11 @@ Do not describe this IndexedDB foundation as completed cloud sync. Keep the curr
 
 Cloud writes using the revisioned protocol are gated by `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`. The default is disabled. Do not set this flag until the matching Firestore rules are deployed and the legacy-document reconciliation path, remote inbox, and two-device tests have passed. This repository change does not deploy rules or change production Firebase data.
 
-### Remaining before bidirectional sync
+### Remaining before bidirectional sync activation
 
-- Remote event records need explicit collection/document routing and a server-ordered cursor.
-- Implement durable remote inbox import and deterministic local projection.
 - Reconcile existing unversioned cloud documents without replacing either local or remote data.
+- Add explicit conflict inspection/resolution so a blocked event does not require indefinite manual recovery.
+- Implement collection-specific tombstone semantics and safe retention.
 - Add two-device tests covering concurrent same-document updates, independent document updates, account switching, offline replay, tombstones, and crash recovery.
 - Keep the release gate in Section 12 closed until the full suite passes.
 
