@@ -221,3 +221,28 @@ The prior checkpoint paragraphs are historical. Current main at this update is f
 - Manual conflict-resolution UI/state machine remains absent. Ruqyah aggregate snapshots safely block/archive concurrent stale writes but do not calculate an additive merge.
 - Tombstones remain blocked; cross-tab browser concurrency, full account lifecycle isolation, and complete multi-collection two-device coverage remain unverified.
 - Keep remote sync flags disabled. Do not deploy rules, alter secrets, or change Vercel production settings without explicit approval.
+
+## Live checkpoint — 2026-11-07 after PR #105/#106
+
+Current main is `d71908b3e411bcd7d1db2b09318eb3c95564198e`; Main Quality Gate run `42357565644` passed on that exact SHA (509 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, startup smoke).
+
+- PR #104 adds a UID-guarded, read-only conflict inspector in Settings. It displays preserved local and remote snapshots; it offers no resolution actions.
+- PR #106 adds reverse B → A projection across the eight revisioned collection routes, including revision-2 checks and a contiguous 16-event stream. Exact-head CI passed. Six array collections still use empty `records` arrays; populated domain-record serialization remains unverified.
+- PR #105 adds a strict Ruqyah source policy: external API Quran text is not displayed, third-party Sunnah is rejected, topics remain disabled, and unverified audio sources are blocked. Main Quality Gate passed.
+- PR #108 is open; do not merge until its exact-source registry maps each item ID to its approved reference and the generic health-guidance source is resolved.
+- Vercel reports `build-rate-limit`; current main production deployment/live SHA is unverified.
+
+Unresolved release gates: user-directed conflict resolution and rebase; additive Ruqyah counter merge; tombstones; cross-tab concurrency; account-switch race tests; populated multi-collection domain fixtures; browser/mobile E2E; production rules deployment; exact-SHA deployment and live smoke. Keep all remote sync flags disabled for production.
+
+### Subsequent update — PR #108 merged
+
+- PR #108 merged at `4ae28edf7d30e41f11727a7b85b67d9056d78408`. It replaces the global source Set with an exact content-ID → source mapping, rejects duplicate/missing/unregistered items, clarifies Abu Dawud 5082 grading for all three protective surahs, and cites the named Ibn Baz fatwa on combining ruqyah and medical treatment. Exact-head runs `42358001268` and `42358006528` passed: 510 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, build, and server startup smoke.
+- Current main is now `4ae28edf7d30e41f11727a7b85b67d9056d78408`; post-merge Main Quality Gate run `42358126271` was still in progress when this update was written. Verify its final result before any release claim.
+- The previous `d71908b3e411bcd7d1db2b09318eb3c95564198e` checkpoint is now historical. Vercel's production deployment status remains a separate `build-rate-limit` failure and no live deployed SHA is verified.
+
+### Subsequent update — PR #110 merged
+
+- PR #110 merged at `31ab27764b5c5db19d0003403adf43905c2bbc8e`. It closes a critical in-flight account-switch race: the coordinator now binds outbox reads, revision lookups, rebases, acknowledgements, retries, and remote event imports to the UID captured at sync start, and rechecks the authenticated UID plus exact `user:<uid>` scope after async boundaries. A stale cycle aborts without mutating the new account's outbox.
+- Regression test uses identical mutation IDs in accounts A and B and proves stale A operations cannot read, rebase, mark failed, or acknowledge B's pending mutation; both accounts' pending data remains recoverable.
+- Exact PR head `e4865e17707e7f8dbea7bdbad8997bafcda4a414` passed run `42358255018`: 511 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, production build, and production/development startup smoke.
+- Current main is now `31ab27764b5c5db19d0003403adf43905c2bbc8e`; verify its post-merge Quality Gate before claiming main green. Vercel production remains blocked by `build-rate-limit` and no live deployed SHA is verified.

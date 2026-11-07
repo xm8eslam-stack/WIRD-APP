@@ -70,3 +70,23 @@ Never enable upload or projection against production until the deployed Firestor
 - The current Ruqyah payload is an aggregate counter snapshot. Sequential edits converge, but two independent offline increments from the same base revision cannot be automatically summed from the current snapshot alone. The safe current behavior is stale-revision rejection, preservation of the local Outbox mutation and remote Inbox event, conflict archival, and no cursor advancement.
 - Do not claim additive convergence. Do not enable production remote sync until a deterministic per-device/event-based counter model or a user-facing merge workflow with sufficient base/delta evidence exists.
 - User-facing conflict resolution remains unimplemented for all collections. Conflict archive state is evidence, not a user decision.
+
+## 2026-11-07 — Conflict visibility and bidirectional collection test coverage
+
+- PR #104 adds a read-only Settings inspector for open conflict archives. It shows the archived remote event payload and local projection snapshot with event identity/revision/time, and requires the active storage scope to exactly match the authenticated UID. It intentionally exposes no keep-local/use-remote/merge actions and changes no journal state.
+- PR #106 adds an Emulator-backed reverse B → A event pass after A → B, across profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and ruqyahProgress. Revision 2 and ordered cursor completion are asserted.
+- Test-fixture limitation: six collection payloads still use empty `records` arrays. This verifies collection routing and projection plumbing, not populated-record serialization or every domain invariant.
+- User-facing conflict resolution, rebase against latest server revision, tombstone semantics, and real cross-tab/browser concurrency remain unimplemented.
+
+### Subsequent update — PR #108 merged
+
+- PR #108 merged at `4ae28edf7d30e41f11727a7b85b67d9056d78408`. It replaces the global source Set with an exact content-ID → source mapping, rejects duplicate/missing/unregistered items, clarifies Abu Dawud 5082 grading for all three protective surahs, and cites the named Ibn Baz fatwa on combining ruqyah and medical treatment. Exact-head runs `42358001268` and `42358006528` passed: 510 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, build, and server startup smoke.
+- Current main is now `4ae28edf7d30e41f11727a7b85b67d9056d78408`; post-merge Main Quality Gate run `42358126271` was still in progress when this update was written. Verify its final result before any release claim.
+- The previous `d71908b3e411bcd7d1db2b09318eb3c95564198e` checkpoint is now historical. Vercel's production deployment status remains a separate `build-rate-limit` failure and no live deployed SHA is verified.
+
+### Subsequent update — PR #110 merged
+
+- PR #110 merged at `31ab27764b5c5db19d0003403adf43905c2bbc8e`. It closes a critical in-flight account-switch race: the coordinator now binds outbox reads, revision lookups, rebases, acknowledgements, retries, and remote event imports to the UID captured at sync start, and rechecks the authenticated UID plus exact `user:<uid>` scope after async boundaries. A stale cycle aborts without mutating the new account's outbox.
+- Regression test uses identical mutation IDs in accounts A and B and proves stale A operations cannot read, rebase, mark failed, or acknowledge B's pending mutation; both accounts' pending data remains recoverable.
+- Exact PR head `e4865e17707e7f8dbea7bdbad8997bafcda4a414` passed run `42358255018`: 511 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, production build, and production/development startup smoke.
+- Current main is now `31ab27764b5c5db19d0003403adf43905c2bbc8e`; verify its post-merge Quality Gate before claiming main green. Vercel production remains blocked by `build-rate-limit` and no live deployed SHA is verified.

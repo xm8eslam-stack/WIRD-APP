@@ -113,3 +113,28 @@
 - PR #94 added Ruqyah first-sync detection and concurrent-offline conflict retention. It does not additively merge counts.
 - Continue with manual conflict resolution (including base/delta-aware Ruqyah merge), tombstone semantics, cross-tab concurrency, account lifecycle isolation, all-collection tests, Playwright E2E, production rules verification, and live deploy smoke.
 - Keep both VITE_WIRD sync flags disabled until every global release gate passes. Keep RUQYAH_TOPICS_ENABLED unset/false pending content review.
+
+## Resume here — live main checkpoint 2026-11-07
+
+- Re-fetch main before editing. Last verified main SHA: `d71908b3e411bcd7d1db2b09318eb3c95564198e`.
+- Main Quality Gate `42357565644` passed on this SHA: 509 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, build, and startup smoke.
+- PR #104 merged: Settings conflict inspector is read-only and UID-scope guarded. Do not describe it as conflict resolution.
+- PR #106 merged: bidirectional A ↔ B revisioned event projection through all eight collection routes, exact-head CI passed. Six collection arrays are empty in the test fixture; populated record schemas remain to be tested.
+- PR #105 merged: Ruqyah source allowlist/audio safety hardening; topic content remains disabled and unverified audio remains blocked.
+- PR #108 open: review exact head/checks and address the source registry ID→reference mapping plus generic `g-4` health source before merge.
+- Current Vercel status is `build-rate-limit`; no current production deployment SHA/live smoke verified.
+- Next sync work: full manual conflict resolution/rebase state machine; safe tombstones; account-switch in-flight isolation; real multi-tab concurrency; populated per-collection fixtures and offline/retry/crash tests.
+- Do not enable `VITE_WIRD_REVISIONED_SYNC_ENABLED` or `VITE_WIRD_REMOTE_PROJECTION_ENABLED`; do not dispatch Firestore deployment workflow without explicit approval and completed release gates.
+
+### Subsequent update — PR #108 merged
+
+- PR #108 merged at `4ae28edf7d30e41f11727a7b85b67d9056d78408`. It replaces the global source Set with an exact content-ID → source mapping, rejects duplicate/missing/unregistered items, clarifies Abu Dawud 5082 grading for all three protective surahs, and cites the named Ibn Baz fatwa on combining ruqyah and medical treatment. Exact-head runs `42358001268` and `42358006528` passed: 510 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, build, and server startup smoke.
+- Current main is now `4ae28edf7d30e41f11727a7b85b67d9056d78408`; post-merge Main Quality Gate run `42358126271` was still in progress when this update was written. Verify its final result before any release claim.
+- The previous `d71908b3e411bcd7d1db2b09318eb3c95564198e` checkpoint is now historical. Vercel's production deployment status remains a separate `build-rate-limit` failure and no live deployed SHA is verified.
+
+### Subsequent update — PR #110 merged
+
+- PR #110 merged at `31ab27764b5c5db19d0003403adf43905c2bbc8e`. It closes a critical in-flight account-switch race: the coordinator now binds outbox reads, revision lookups, rebases, acknowledgements, retries, and remote event imports to the UID captured at sync start, and rechecks the authenticated UID plus exact `user:<uid>` scope after async boundaries. A stale cycle aborts without mutating the new account's outbox.
+- Regression test uses identical mutation IDs in accounts A and B and proves stale A operations cannot read, rebase, mark failed, or acknowledge B's pending mutation; both accounts' pending data remains recoverable.
+- Exact PR head `e4865e17707e7f8dbea7bdbad8997bafcda4a414` passed run `42358255018`: 511 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, production build, and production/development startup smoke.
+- Current main is now `31ab27764b5c5db19d0003403adf43905c2bbc8e`; verify its post-merge Quality Gate before claiming main green. Vercel production remains blocked by `build-rate-limit` and no live deployed SHA is verified.

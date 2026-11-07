@@ -31,3 +31,9 @@ This archive prevents diagnostic evidence from disappearing; it does not resolve
 Conflict archival now validates the immutable event fingerprint against the inbox and any existing conflict record. It rejects stale/orphan archive writes and oversized snapshots. An open conflict is marked `resolved` with resolution `reconciled` only inside the same IndexedDB transaction that advances the projection cursor and deletes the inbox event. This also handles already-applied events through `markRemoteProjected`. A late competing-tab archive cannot recreate an open conflict after the cursor has passed the event.
 
 This is automatic bookkeeping after a successful safe projection, not a user choice between local and remote versions. Manual keep-local/use-remote, field-level merge, and rebase UX remain unimplemented.
+
+## 2026-11-07 — Read-only conflict inspection
+
+PR #104 adds an expandable Settings view of up to 20 open conflict records, including the immutable remote event payload and captured local projection snapshot, guarded by exact active UID scope. This improves user visibility and preserves the archive, but it is deliberately read-only. It does not choose a winner, rebase an Outbox mutation, change the inbox/cursor, or mark a conflict resolved.
+
+Still required: an idempotent user decision state machine for keep-local/use-remote/merge, latest server revision revalidation, preservation of both snapshots until durable commit, failure recovery, and history of the user's decision. Do not infer resolution from the inspector or the existing `reconciled` bookkeeping status.

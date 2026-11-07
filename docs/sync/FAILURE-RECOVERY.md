@@ -22,3 +22,15 @@ PR #73 added failure-injection coverage for failed finalization and retry. It wa
 - IndexedDB blocked/upgrade failure and account-switch races across all coordinator operations.
 - Tombstone replay/retention/garbage collection.
 - Dedicated conflict resolution and rebasing.
+
+## Account scope changes during an in-flight sync
+
+The coordinator captures the authenticated UID and expected storage scope at the start of a sync cycle. Every outbox operation that follows a legacy migration is bound to that UID, and the coordinator revalidates the current authenticated UID, email-verification state, and exact `user:<uid>` storage scope after asynchronous boundaries.
+
+If the account changes while a write is in flight:
+- Abort the old cycle before reading or mutating the new account's outbox.
+- Do not acknowledge, rebase, or mark failed a mutation under the new account's scope.
+- If the old user's Firestore write already committed, leave its local mutation pending; the original account can retry the same mutation ID idempotently when it returns.
+- Keep both users' pending mutations isolated and recoverable.
+
+PR #110 adds a regression test with the same mutation ID in two accounts, checking that stale A operations cannot read or mutate B's outbox. This is automated service/coordinator evidence; real browser auth-switch E2E and multi-tab lifecycle tests remain required.
