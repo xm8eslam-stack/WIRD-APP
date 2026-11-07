@@ -170,6 +170,7 @@ export function buildWeakVerseResolutionSnapshot(
 }
 
 /** Save the canonical weak portion and its mistake counter without leaving a half-written result. */
+/** @deprecated Legacy synchronous local-only path. Authenticated UI must use buildWeakVerseFailureTransaction and persistJournaledTransaction. */
 export function recordWeakVerseFailure(input: RecordWeakVerseFailureInput): RecordWeakVerseFailureResult {
   const surah = Number.isSafeInteger(input.surahNumber)
     ? ALL_SURAHS.find(item => item.number === input.surahNumber)

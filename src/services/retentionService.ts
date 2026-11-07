@@ -341,6 +341,7 @@ export const RetentionService = {
   },
 
   // Update a single portion's status directly
+  /** @deprecated Local-only compatibility API. Authenticated UI must use journal-first portion snapshots. */
   updatePortionStatus(id: string, newStatus: PortionMemorizationStatus): PortionStatusRecord[] {
     if (typeof id !== 'string' || !id.trim() || id.length > 180) {
       throw new Error('معرّف المقطع غير صالح؛ لم يتم تعديل أي بيانات.');
@@ -408,6 +409,7 @@ export const RetentionService = {
 
   // Backward-compatible local-only API for existing callers. New authenticated
   // UI mutation paths should use buildAddPortionSnapshot + journal persistence.
+  /** @deprecated Local-only compatibility API. Use a journal-first portion snapshot for authenticated mutations. */
   addPortion(portion: Omit<PortionStatusRecord, 'id' | 'history'>): PortionStatusRecord {
     const { record, portions } = this.buildAddPortionSnapshot(portion);
     const saveResult = this.savePortionsDetailed(portions);
@@ -479,6 +481,7 @@ export const RetentionService = {
   },
 
   // Backward-compatible local-only API. Authenticated UI uses the journal-first builder above.
+  /** @deprecated Legacy synchronous path. Use persistJournaledSessionCompletion for authenticated sessions. */
   recordMemorizationCompletion(surahNumber: number, startAyah: number, endAyah: number): PortionStatusRecord {
     const { updatedPortion, portions } = this.buildMemorizationCompletionSnapshot(surahNumber, startAyah, endAyah);
     const saveResult = this.savePortionsDetailed(portions);
@@ -593,6 +596,7 @@ export const RetentionService = {
   },
 
   // Record performance after a revision session using canonical SM-2
+  /** @deprecated Legacy synchronous path. Use persistJournaledTransaction for authenticated revision updates. */
   recordRevisionPerformance(
     portionId: string, 
     rating: RevisionRating, 
@@ -818,6 +822,7 @@ export const RetentionService = {
     return StorageService.setRawItem(STORAGE_KEYS.WEAK_VERSES, JSON.stringify(items));
   },
 
+  /** @deprecated Local-only compatibility API. Use buildWeakVerseFailureTransaction for authenticated mutations. */
   addOrIncrementWeakVerse(
     surahNumber: number,
     ayahNumber: number,
@@ -866,6 +871,7 @@ export const RetentionService = {
     return items;
   },
 
+  /** @deprecated Local-only compatibility API. Use a journal-first weak-verse resolution snapshot. */
   resolveWeakVerse(id: string): WeakVerseItem[] {
     if (typeof id !== 'string' || !id.trim() || id.length > 180) {
       throw new Error('معرّف الآية المتعثرة غير صالح.');
@@ -972,6 +978,7 @@ export const RetentionService = {
   },
 
   // Complete reset
+  /** @deprecated Legacy synchronous reset. Use the journal-first backup/reset workflow. */
   resetAll(): void {
     StorageService.removeRawItem(STORAGE_KEYS.WEAK_VERSES);
   }

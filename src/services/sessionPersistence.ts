@@ -133,6 +133,7 @@ export async function persistJournaledSessionCompletion(
  * Legacy synchronous local-only API retained for existing tests and explicit
  * local-only callers. Authenticated application flows must use the journaled API.
  */
+/** @deprecated Legacy synchronous local-only path. Authenticated UI must use persistJournaledSessionCompletion. */
 export function persistSessionCompletion(input: PersistSessionCompletionInput): PersistSessionCompletionResult {
   if (!input || typeof input !== 'object') {
     return { success: false, messageAr: 'بيانات الجلسة غير صالحة؛ لم يتم حفظ أي تغيير.' };
