@@ -4,6 +4,7 @@ import { fingerprintConflictSnapshot, IndexedDbSyncJournal } from './indexedDbSy
 import type { LegacyOutboxState } from './indexedDbSyncJournal';
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot } from './ruqyahProgressSchema';
 
 export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -570,6 +571,103 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         'A stale keep-local decision must preserve the local mutation, conflict archive, inbox event, and cursor');
       assert(StorageService.getProfile().name === 'changed-after-confirmation',
         'A stale keep-local decision must not overwrite the newer local data');
+      journal.close();
+    });
+
+    await test('Ruqyah PN-counter merge atomically preserves independent increments and recovers after interrupted projection', async () => {
+      const uid = 'ruqyah-pn-counter-merge-owner';
+      const { journal } = createJournal(uid);
+      const itemId = 'q-fatihah';
+      const localSnapshot = adjustRuqyahProgressCounter(
+        createEmptyRuqyahProgressSnapshot(300000), itemId, 'local-device', 2, 300001
+      );
+      const remoteSnapshot = adjustRuqyahProgressCounter(
+        createEmptyRuqyahProgressSnapshot(300000), itemId, 'remote-device', 3, 300002
+      );
+      assert(StorageService.saveRuqyahProgressSnapshot(localSnapshot),
+        'The local PN-counter fixture must be stored before the remote event arrives');
+      const event = {
+        uid,
+        eventId: 'ruqyah-pn-counter-remote-event',
+        mutationId: 'ruqyah-pn-counter-remote-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'ruqyahProgress' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 300003,
+        payload: { snapshot: remoteSnapshot },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'ruqyah-pn-counter-local-pending',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        payload: { snapshot: localSnapshot },
+        nowMs: 300004
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localRawSnapshot = StorageService.getLocalProjectionSnapshot('ruqyahProgress');
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localRawSnapshot, 300005),
+        'The original local projection and pending mutation must be archived before merging');
+      const intent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: 'ruqyahProgress' as const,
+        documentId: 'snapshot',
+        revision: 1,
+        initializedCollections: []
+      };
+      assert(await journal.prepareRemoteProjection(intent),
+        'The blocked remote event must have a durable projection intent before merge');
+
+      const originalAdd = IDBObjectStore.prototype.add;
+      let injected = false;
+      (IDBObjectStore.prototype as any).add = function(value: unknown, key?: IDBValidKey) {
+        if (this.name === 'outbox' && !injected) {
+          injected = true;
+          const request = key === undefined
+            ? originalAdd.call(this, value)
+            : originalAdd.call(this, value, key);
+          this.transaction.abort();
+          return request;
+        }
+        return originalAdd.call(this, value, key);
+      };
+      let interrupted = false;
+      try {
+        await journal.finalizeRuqyahProgressMerge(intent, mergedEvent => StorageService.applyJournalEvent(mergedEvent));
+      } catch { interrupted = true; }
+      finally { IDBObjectStore.prototype.add = originalAdd; }
+
+      const afterInterruption = StorageService.getRuqyahProgressSnapshot();
+      assert(injected && interrupted && afterInterruption?.schemaVersion === 2 &&
+        afterInterruption.counts[itemId] === 5 &&
+        (await journal.listReady(300100, 10)).length === 1 &&
+        await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listProjectionConflicts(10)).length === 1,
+        'An interrupted transaction may apply the merged projection, but must keep the old Outbox, inbox, intent, and archive recoverable');
+
+      assert(await journal.finalizeRuqyahProgressMerge(intent, mergedEvent => StorageService.applyJournalEvent(mergedEvent)),
+        'Retry must recognize the exact already-applied merged projection and finish the atomic journal transition');
+      const mergedSnapshot = StorageService.getRuqyahProgressSnapshot();
+      const pending = await journal.listReady(300200, 10);
+      const revision = await journal.getRemoteRevision('ruqyahProgress', 'snapshot');
+      assert(mergedSnapshot?.schemaVersion === 2 && mergedSnapshot.counts[itemId] === 5,
+        'The local projection must contain both devices’ increments exactly once');
+      assert(pending.length === 1 && pending[0].mutationId !== 'ruqyah-pn-counter-local-pending' &&
+        pending[0].baseRevision === 1 &&
+        (pending[0].payload.snapshot as { counts: Record<string, number> }).counts[itemId] === 5,
+        'Old pending writes must be replaced by one merged full-snapshot mutation based on the remote revision');
+      assert(revision?.revision === 1 && revision.localSequence < pending[0].sequence &&
+        await journal.getRemoteProjectionCursor() === 1 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 0 &&
+        (await journal.listProjectionConflicts(10)).length === 0,
+        'Remote revision, local sequence, resolved archive, inbox deletion, and projection cursor must commit together');
       journal.close();
     });
 
