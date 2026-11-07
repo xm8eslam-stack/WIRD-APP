@@ -5,6 +5,7 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
 const MAX_RATE_LIMIT_BUCKETS = 1000;
 const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_EXTERNAL_INDEX_ID = 999_999_999;
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 const ALLOWED_TYPES = new Set(['instant']);
@@ -41,7 +42,7 @@ function parseQuranIndexTitle(value: unknown): QuranIndexCoordinates | null {
     const index = digitMap.indexOf(digit);
     return String(index % 10);
   });
-  const match = normalized.trim().match(/^[^0-9]*?([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))?[^0-9]*$/);
+  const match = normalized.trim().match(/^[^0-9+\\-−﹣－＋]*?([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))?[^0-9+\\-−﹣－＋]*$/);
   if (!match) return null;
   const surahNumber = Number(match[1]);
   const startAyah = Number(match[2]);
@@ -110,7 +111,7 @@ function validPayload(payload: unknown): boolean {
   const rows = rawRows.filter(isRecord);
   if (rows.length !== rawRows.length) return false;
   return !rows.some(row =>
-    !((typeof row.id === 'number' && Number.isSafeInteger(row.id) && row.id > 0) ||
+    !((typeof row.id === 'number' && Number.isSafeInteger(row.id) && row.id > 0 && row.id <= MAX_EXTERNAL_INDEX_ID) ||
       (typeof row.id === 'string' && /^[1-9][0-9]{0,8}$/.test(row.id))) ||
     parseQuranIndexTitle(row.title) === null
   );
