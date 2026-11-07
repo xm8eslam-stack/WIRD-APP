@@ -41,7 +41,6 @@ In the Vercel project settings, verify the following variables are present in th
 - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` — future release only; keep disabled until all global release gates pass.
 - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — future release only; keep disabled until all global release gates pass and Firestore rules are deployed.
 - `ISLAMICAPI_API_KEY` — server-side secret only; never prefix it with `VITE_`, never expose it to browser code.
-- `RUQYAH_TOPICS_ENABLED` — leave unset/false. The educational topic endpoints remain disabled until every article and reference is reviewed; do not enable it as part of normal release.
 
 Redeploy `main` after changing variables. Verify the deployment commit SHA equals the merged `main` commit and the deployment is Ready before testing.
 
@@ -60,31 +59,30 @@ Use two real browsers/devices signed in to the same verified account:
 9. Test simultaneous edits and stale revisions; conflicts must preserve recoverable local and remote values. Do not accept last-write-wins overwrites.
 10. Verify that two offline increments from the same base are not presented as an automatically merged total. Current snapshot semantics block and archive the conflict; they do not compute the additive result. Do not enable production sync until the user-facing resolution flow can resolve this case without losing increments.
 
-### 4. Live audio and API tests
+### 4. Quran index API and disabled audio safety
 
-- Reciter list loads and fallback list works if the catalogue endpoint is unavailable.
-- Play a single Quran ayah and a multi-ayah passage; verify order, repeat behavior, pause, stop, and switching reciters.
-- Switch between full-program recordings while one is playing; confirm the old source stops and timeline resets.
-- Let a full recording end; confirm pressing Play starts it again from the beginning.
-- Test volume, seek, sleep timer, and browser tab backgrounding.
-- Verify IslamicAPI missing-key, 429, upstream HTTP failure, HTML response, malformed JSON, and successful Arabic response.
-- Confirm API key never appears in client bundles, browser network URLs, logs, or error messages.
+- Verify IslamicAPI returns only validated Quran locators; provider-authored Arabic, translation, reference prose, introductions, and category data must never reach the browser.
+- Verify valid ASCII/Arabic/Persian numeral coordinates resolve to WIRD's canonical Quran text and surah metadata.
+- Verify missing-key, 429, upstream HTTP failure, HTML, malformed JSON, out-of-range coordinates, and ambiguous multi-coordinate titles fail safely.
+- Confirm the Ruqyah audio tab, full-program playback, reciter catalogue, and individual verse audio controls remain disabled and cannot be activated by mouse or keyboard.
+- Confirm no hidden audio request or playback starts when switching tabs, changing programs, retrying API requests, or remounting the view.
+- Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
 ### 5. Accessibility and responsive review
 
-- Keyboard-only: mode selectors, category selectors, counter buttons, reciter select, play/pause, seek, volume, timer, and API details.
-- Screen reader: labels, pressed/expanded states, progress percentage, loading and error live regions.
-- Copy/select Quran and Sunnah text without changing counters.
+- Keyboard-only: mode selectors, category selectors, counter buttons, API details, and retry action. Disabled audio controls must not appear as active keyboard targets.
+- Screen reader: labels, disabled audio notice, pressed/expanded states, progress percentage, loading and error live regions.
+- Copy/select canonical Quran and reviewed Sunnah text without changing counters.
 - Mobile widths (320px, 360px, 390px), tablet and desktop.
 - Light/dark theme, Arabic RTL wrapping, long headings, long supplications, and reduced motion.
-- Confirm audio does not overlap when switching between verse and full-program playback.
+- Confirm no audio starts or overlaps while the audio feature remains disabled.
 
 ## Sunni content and audio gate
 
 See `docs/ruqyah/SUNNI_SOURCE_POLICY.md` for the exact source hierarchy and checked hadith references.
 
-- IslamicAPI is permitted only as a Quran index. Its third-party `from-sunnah` data is rejected by the backend; canonical Quran text is rendered from WIRD's verified corpus.
-- Educational topic articles stay disabled until qualified Sunni content review is complete.
+- IslamicAPI is permitted only as a Quran locator. Its `from-sunnah` and category endpoints are rejected; the proxy strips all provider-authored fields and returns only validated numeric coordinates and an item ID. Canonical Quran text and surah metadata are rendered from WIRD's verified corpus.
+- Educational topic and category endpoints are hard-disabled in the proxy. Do not reintroduce them until each article is curated from a named, reviewed Sunni source and passes the source registry tests.
 - Full-program recordings and Al Furqan's dynamic reciter/audio provider are disabled. No unverified audio catalogue or recording URL is exposed.
 - Do not re-enable any disabled content/audio mode without a source record, exact verification, usage-rights review, and regression tests.
 
@@ -117,7 +115,7 @@ Repository: https://github.com/muslimpack/Ruqayyah
 - Live Firestore rules deployment is not verified from this repository session.
 - Vercel reports a build-rate-limit quota error; live production deployment status must be checked in the Vercel dashboard.
 - The deployed values of the three environment variables above are not observable through GitHub CI.
-- The proxy's per-IP limiter is an in-memory, per-serverless-instance safeguard, not a globally coordinated quota. Educational topic endpoints are disabled by default behind the server-side `RUQYAH_TOPICS_ENABLED` flag. The provider's account-level fair-use limits remain authoritative; use a shared rate-limit store only if traffic justifies it.
+- The proxy's per-IP limiter is an in-memory, per-serverless-instance safeguard, not a globally coordinated quota. Educational topic endpoints are hard-disabled regardless of environment variables. The provider's account-level fair-use limits remain authoritative; use a shared rate-limit store only if traffic justifies it.
 - Real browser/device playback and two-device cloud sync have not been run against production.
 
 Never mark these blockers as passed based only on unit tests or emulator results.
