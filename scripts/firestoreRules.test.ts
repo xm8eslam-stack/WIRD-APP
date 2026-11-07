@@ -924,6 +924,12 @@ try {
       const remoteEvent = readRemoteEvent(await getDoc(doc(
         firestoreA, 'users', uid, 'events', queued.mutation.eventId
       )));
+      await journalA.importRemotePage([remoteEvent]);
+      activateIsolatedDevice(localStorageA, uid);
+      const ownProjection = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      if (ownProjection.projectedCount !== 1 || ownProjection.reason) {
+        throw new Error('Device A could not reconcile its own acknowledged Ruqyah progress event.');
+      }
       await journalB.importRemotePage([remoteEvent]);
       activateIsolatedDevice(localStorageB, uid);
       const projected = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
