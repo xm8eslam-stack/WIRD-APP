@@ -43,6 +43,14 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       }
     });
 
+    await test('External Quran entries with invalid provider IDs fail closed', () => {
+      for (const id of [0, -1, 1.5, '0', 'abc', '1234567890']) {
+        let rejected = false;
+        try { resolveApiQuranEntryText({ id, title: '2:255' }); } catch { rejected = true; }
+        assert(rejected, 'Invalid external Quran item ID must be rejected: ' + String(id));
+      }
+    });
+
     await test('API client rejects HTML SPA fallbacks and malformed success envelopes', async () => {
       globalThis.fetch = (async () => new Response('<!doctype html><html></html>', {
         status: 200, headers: { 'Content-Type': 'text/html' }
