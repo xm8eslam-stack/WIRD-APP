@@ -12,14 +12,14 @@ A release gate is passed only with evidence on the exact candidate SHA.
 - [ ] Tombstone projection, offline deletion, stale update rejection, and safe retention/compaction are implemented and tested.
 - [ ] Cross-tab sync serialization is tested in independent real browser contexts.
 - [ ] Account switch/logout/reinstall/schema migration tests pass.
-- [ ] Playwright desktop/mobile/tablet E2E passes.
+- [ ] Playwright desktop/mobile app-shell smoke and Ruqyah locator-library checks pass; full auth/CRUD/sync/two-device browser E2E remains outstanding.
 - [ ] Load/stress tests cover expected queue sizes and bounded retry behavior.
 - [ ] Remote projection and upload feature flags are reviewed and explicitly configured.
 - [ ] Production deployment is tied to the exact candidate SHA and a live URL smoke test passes.
 
 ## Current release decision
 
-**Not approved for full production cloud-sync activation.** The existing feature gates must remain disabled unless a separately approved release process proves the above requirements. The current verified work establishes local durability, revision-checked Firestore transactions, emulator rules, a profile-only two-device round trip, and preservation of one offline conflict case. It does not establish complete cross-collection sync, tombstone behavior, conflict resolution, or live deployment.
+**Not approved for full production cloud-sync activation.** The current verified work now includes populated multi-record service round trips across all eight collection routes, document-scoped projection guards, a bounded local-mutation conflict evidence archive, six desktop/mobile app-shell Playwright checks, and 16 Ruqyah locator-library browser checks. These are meaningful automated gates, not live-device or production proof. User-directed conflict decisions, tombstones, additive Ruqyah counters, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore rules deployment, and exact-SHA live deployment remain open. Keep production sync flags disabled.
 
 
 ## New evidence since the initial checkpoint
@@ -41,7 +41,7 @@ The following remain release blockers and must not be waived:
 
 - User-facing conflict resolution with keep-local/use-remote/merge semantics, durable history, server-revision revalidation, and idempotent recovery.
 - Collection-specific tombstone projection, stale-event rejection, offline deletion and safe retention/compaction.
-- Multi-collection two-device coverage. Current two-device evidence is profile-only plus one offline stale-revision conflict.
+- Multi-collection two-device coverage is now exercised in isolated Emulator-backed service contexts across all eight populated collection routes, including multi-record preservation. Simultaneous concurrent merge, long-offline replay, and real-device verification remain outstanding.
 - Cross-tab concurrency in independent real browser contexts and account-switch/logout/reinstall isolation.
 - Collection-specific Firestore payload validation and negative authorization tests, plus confirmation that production rules match the candidate.
 - Exact-SHA production deployment and post-deploy browser smoke. Vercel build-rate-limit failures are not deployment evidence.
