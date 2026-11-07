@@ -224,3 +224,17 @@ Current live branch count: **76**. Original baseline: 70 branches / 147 files. M
 All five PRs remain Draft and unmerged. Each exact-head CI also passed Firestore Rules Emulator 13/13, dependency audit, TypeScript, production build and server smoke. No production deploy or Firestore rule deployment has occurred.
 
 PR #65 fixed a target-date planning bug exposed by its new regression test: a block-scoped activeDays variable shadowed the validated active-day array. The latest exact-head suite passes.
+
+
+## Live re-check — 2026-11-07
+
+**Confirmed P0 defect in main:** `src/services/cloudSyncCoordinator.ts` drains the local outbox, then `pullRemoteReconciliation()` merely queries up to 20 events and discards the snapshot. The caller may nevertheless set status to `synced` when local pending count reaches zero. This is not bidirectional synchronization and can mislead users. PR #59 contains a safer partial-status change, but its branch is 4 commits behind main and must not be merged wholesale. Port only reviewed changes to a fresh branch from current main.
+
+**Remote replication remains NOT IMPLEMENTED:** no durable remote inbox, remote fetch cursor, remote event projection pipeline, monotonic server revision/CAS, or multi-client integration proof. Existing local IndexedDB journal and local projection replay do not provide remote replication.
+
+Latest remediation status:
+- #61 exact-head CI PASS.
+- #62 current exact-head `48fe031d67c358e3034dd5e64134d6b46513aab4`, run 42342109962 PASS.
+- #63 exact-head CI PASS.
+- #64 exact-head CI PASS.
+- Quran coordinate/domain-event validation working branch `fix/quran-coordinate-validation-20261107`, SHA `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`; run 42342171626 still in progress at last check, with tests, rules, TypeScript and build passed, production smoke pending.
