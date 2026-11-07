@@ -6,7 +6,7 @@ Last verified: 2026-11-07.
 
 - Current main merge SHA: `22fdd996d7aabc0669fef504c50970d5ba015d73` (PR #157, squash merge).
 - Exact tested PR head: `b2752297842d6fd30d7b4ae86eb33d48585e9ce8`; WIRD Quality Gate run `42372550605` (#2977) completed successfully on that exact head.
-- Passed gates: 551 automated assertions; Firestore Rules Emulator 31/31; approved Quran audio CDN/range probes 8/8; TypeScript; production build; production and development server startup smoke; desktop/mobile Playwright 30/30.
+- Passed gates: 551 automated assertions; Firestore Rules Emulator 31/31; approved Quran audio CDN/range probes 8/8; TypeScript; production build; production server startup smoke; desktop/mobile Playwright 30/30.
 - PR #157 replaces scalar last-write-wins Ruqyah progress snapshots with V2 per-device monotonic increment components and reset watermarks. Component-wise max merge is deterministic, idempotent, and order-independent. Independent offline increments are preserved; concurrent resets of the same observed baseline do not double-subtract; increments unseen by a reset survive.
 - The remote projector auto-merges only when both local and remote snapshots are valid V2 and their migrated legacy baselines are compatible. V1 snapshots are migrated through a shared `legacy` baseline. Different non-zero legacy baselines are ambiguous because pre-V2 per-device increments cannot be reconstructed; these conflicts remain archived and blocked rather than guessed.
 - Valid pending V1 Ruqyah Outbox writes are superseded atomically by a validated V2 full-snapshot mutation during migration; immutable journal events remain preserved. Malformed or unsupported pending entries fail closed.
