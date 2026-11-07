@@ -54,10 +54,34 @@ Last verified: 2026-11-07.
 - No Quran text, hadith, fixed repetition values, or source registry changed.
 
 ## Branch hygiene
-- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135), and `a11y/ruqyah-reset-focus-return-escape-20261107` (PR #139), `docs/ruqyah-checkpoint-after-pr139-20261107` (PR #140), and `test/ruqyah-narrow-mobile-overflow-20261107` (PR #141), `docs/ruqyah-checkpoint-after-pr141-20261107` (PR #144), and `a11y/ruqyah-live-progress-announcements-20261107` (PR #145).
-- Two superseded non-PR branches remain and must not be reused: `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` (superseded by the v2 branch after main advanced) and `test/ruqyah-library-ui-states-20261107` (superseded by the v2 branch after adding the supported guest-auth flow).
-- The available GitHub integration exposes branch search and ref updates but no delete-ref operation. These two branches are therefore documented as inactive rather than falsely reported as deleted; remove them through GitHub's branch UI when available.
-- Other Ruqyah-named branches visible in the repository predate this continuation and were not modified or assumed to be active. Audit their associated PRs before deleting.
+### Merged continuation branches
+- PR #116: `docs/ruqyah-checkpoint-pr111-20261107-refresh`
+- PR #117: `refactor/ruqyah-lock-audio-ui-20261107`
+- PR #120: `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107`
+- PR #121: `docs/ruqyah-checkpoint-after-pr117-20261107`
+- PR #123: `feat/ruqyah-library-search-accessibility-20261107`
+- PR #124: `fix/ruqyah-proxy-same-origin-cors-20261107`
+- PR #127: `test/ruqyah-library-ui-states-v2-20261107`
+- PR #130: `docs/ruqyah-checkpoint-after-pr127-20261107`
+- PR #131: `docs/ruqyah-branch-hygiene-20261107`
+- PR #135: `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107`
+- PR #136: `docs/ruqyah-checkpoint-after-pr135-20261107`
+- PR #137: `fix/ruqyah-confirm-progress-reset-20261107`
+- PR #138: `docs/ruqyah-checkpoint-after-pr137-20261107`
+- PR #139: `a11y/ruqyah-reset-focus-return-escape-20261107`
+- PR #140: `docs/ruqyah-checkpoint-after-pr139-20261107`
+- PR #141: `test/ruqyah-narrow-mobile-overflow-20261107`
+- PR #144: `docs/ruqyah-checkpoint-after-pr141-20261107`
+- PR #145: `a11y/ruqyah-live-progress-announcements-20261107`
+- PR #146: `docs/ruqyah-checkpoint-after-pr145-20261107`
+
+### Superseded non-PR branches
+- `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` — superseded by the v2 branch after main advanced.
+- `test/ruqyah-library-ui-states-20261107` — superseded by the v2 branch after adding the supported guest-auth flow.
+
+### Cleanup limitation
+- The available GitHub integration exposes branch search and ref updates but no delete-ref operation. The two superseded branches are documented as inactive, not falsely reported as deleted; remove them through GitHub's branch UI when available.
+- Other Ruqyah-named branches that predate this continuation were not modified or assumed to be active. Audit their associated PRs before deleting.
 
 ## Ruqyah progress corruption isolation — PR #135
 - Both progress hydration and cross-tab/custom-event refresh now clear the in-memory count map when `loadRuqyahProgress()` returns `status: 'corrupt'`.
