@@ -765,6 +765,9 @@ export class IndexedDbSyncJournal {
     }
     const operation = input.operation ?? 'upsert';
     if (operation !== 'upsert' && operation !== 'tombstone') throw new Error('نوع عملية المزامنة غير مسموح به.');
+    if (operation === 'tombstone') {
+      throw new Error('حذف مستندات المزامنة غير مفعّل حتى تُعتمد دلالات حذف آمنة لكل مجموعة؛ لم يتم إنشاء حدث أو تغيير السجل.');
+    }
     if (!isRecord(input.payload)) throw new Error('حمولة عملية المزامنة يجب أن تكون كائناً صالحاً.');
 
     let payloadJson: string;
