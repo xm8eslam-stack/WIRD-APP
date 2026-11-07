@@ -22,8 +22,8 @@ export interface ResolvedRuqyahApiQuranEntry {
 
 export interface RuqyahApiRequest {
   type: 'instant';
-  program?: RuqyahApiProgram;
-  source?: RuqyahApiSource;
+  program: RuqyahApiProgram;
+  source: RuqyahApiSource;
   id?: number;
   random?: boolean;
 }
