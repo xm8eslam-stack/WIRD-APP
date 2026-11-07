@@ -208,7 +208,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 viewMode === 'interactive'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
-                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60'
+                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -269,7 +269,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
                     isActive
                       ? 'bg-emerald-800 text-amber-200 border-emerald-700 shadow-sm'
-                      : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800'
+                      : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
                   }`}
                 >
                   <span>{tab.label}</span>
