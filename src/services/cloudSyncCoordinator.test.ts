@@ -235,7 +235,10 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     assert(
       typeof initialState.status === 'string' &&
       typeof initialState.isOnline === 'boolean' &&
-      typeof initialState.pendingCount === 'number',
+      typeof initialState.pendingCount === 'number' &&
+      typeof initialState.remoteInboxPendingCount === 'number' &&
+      typeof initialState.remoteCursor === 'number' &&
+      typeof initialState.remoteProjectionCursor === 'number',
       'Initial cloud sync state has valid structure'
     );
   } catch (err: any) {
