@@ -313,18 +313,18 @@ export function runBackupTests(): { passed: number; failed: number } {
     assert(!res.valid && Boolean(res.error?.includes('المقطع الموحد')), 'Invalid portion status must be rejected');
   });
 
-  // Canonical data must survive export, reset, and import.
-  test('Backup v4 round-trip preserves canonical memorization portions', () => {
+  // Canonical data and Ruqyah progress must survive export, reset, and import.
+  test('Backup v5 round-trip preserves canonical memorization portions and Ruqyah progress', () => {
     const snapshot = StorageService.getStorageSnapshot();
     try {
       StorageService.resetAllData();
       assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Canonical sample should save');
       const exported = JSON.parse(StorageService.exportFullBackup());
-      assert(exported.version === 4, 'New exports must use version 4');
+      assert(exported.version === 5, 'New exports must use version 5');
       assert(JSON.stringify(exported.unifiedPortions) === JSON.stringify([SAMPLE_PORTION]), 'Export must include canonical portion payload');
       StorageService.resetAllData();
       const imported = StorageService.importBackup(JSON.stringify(exported));
-      assert(imported.success, 'Version 4 backup should import successfully');
+      assert(imported.success, 'Version 5 backup should import successfully');
       assert(JSON.stringify(StorageService.getUnifiedPortions()) === JSON.stringify([SAMPLE_PORTION]), 'Imported canonical portions must exactly match exported data');
     } finally { StorageService.restoreStorageSnapshot(snapshot); }
   });
