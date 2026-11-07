@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
-import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
+import { fingerprintConflictSnapshot, IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import type { LegacyOutboxState } from './indexedDbSyncJournal';
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
@@ -228,12 +228,23 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         decisionId: 'resolution-decision-1',
         eventId: event.eventId,
         eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(conflict.localSnapshot),
         decision: 'keep-local' as const,
         baseRevision: 1,
         payload: { records: [{ id: 'chosen-local' }] },
         localMutationFingerprints: archived,
         nowMs: 9253
       };
+      let staleSnapshotRejected = false;
+      try {
+        await journal.prepareConflictResolutionIntent({
+          ...input,
+          decisionId: 'resolution-decision-stale-snapshot',
+          localSnapshotFingerprint: '0000000000000000'
+        });
+      } catch { staleSnapshotRejected = true; }
+      assert(staleSnapshotRejected,
+        'A decision must be rejected if the raw local snapshot changed after the user inspected the conflict');
       assert(await journal.prepareConflictResolutionIntent(input),
         'A decision must persist only when bound to the open event, latest supplied base revision, and archived local evidence');
       assert(await journal.prepareConflictResolutionIntent(input),
@@ -350,6 +361,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
           decisionId: 'resolution-decision-stale-local',
           eventId: event.eventId,
           eventFingerprint: storedEvent.fingerprint,
+          localSnapshotFingerprint: fingerprintConflictSnapshot(conflict.localSnapshot),
           decision: 'merge',
           baseRevision: 1,
           payload: { id: event.documentId, score: 4 },
