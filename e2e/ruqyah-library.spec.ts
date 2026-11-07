@@ -126,6 +126,32 @@ test.describe('Ruqyah progress recovery isolation', () => {
     });
 
     await expect(page.getByText(/تعذر قراءة تقدم الرقية المحفوظ/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'إعادة الضبط' })).toBeDisabled();
+    await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
+    await expect(fatihahCard.getByText('1 قراءة')).toHaveCount(0);
+  });
+});
+
+test.describe('Ruqyah progress reset safety', () => {
+  test('requires confirmation and allows cancellation before resetting a category', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+    await expect(page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' })).toHaveCount(0);
+    await page.goto('/#/ruqyah');
+    await expect(page.getByRole('heading', { name: 'الرقية الشرعية الكاملة من القرآن والسنة' })).toBeVisible();
+
+    const fatihahCard = page.locator('article').filter({ hasText: 'سورة الفاتحة' }).first();
+    await fatihahCard.getByRole('button', { name: /تسجيل قراءة جديدة لـ سورة الفاتحة/ }).click();
+    await expect(fatihahCard.getByText('1 قراءة')).toBeVisible();
+
+    await page.getByRole('button', { name: 'إعادة الضبط' }).click();
+    await expect(page.getByText('تأكيد إعادة ضبط القسم')).toBeVisible();
+    await page.getByRole('button', { name: 'إلغاء' }).click();
+    await expect(page.getByText('تأكيد إعادة ضبط القسم')).toHaveCount(0);
+    await expect(fatihahCard.getByText('1 قراءة')).toBeVisible();
+
+    await page.getByRole('button', { name: 'إعادة الضبط' }).click();
+    await page.getByRole('button', { name: 'تأكيد إعادة الضبط' }).click();
     await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
     await expect(fatihahCard.getByText('1 قراءة')).toHaveCount(0);
   });
