@@ -115,3 +115,8 @@ The Vercel status check for the audited commit is successful. No Firebase produc
 - Emulator success does not prove production Firestore rules are deployed. No production rules deployment or data mutation was performed.
 - Cloud writes/projection remain behind explicit Vite build flags; production values were not inspected. Vercel currently reports `build-rate-limit`; production deployment is unverified.
 - Full release must remain blocked pending collection-specific rules, all-collection multi-device tests, tombstone implementation, conflict resolution, account lifecycle, browser E2E, and live deployment verification.
+
+
+## 2026-11-07 — conflict archive verification
+
+PR #81 adds a bounded UID-scoped IndexedDB archive for blocked remote projection conflicts. It preserves the remote event and local snapshot, surfaces diagnostics in Settings, and never prunes open records. Exact-head CI passed (459 automated assertions, 27 Firestore Rules tests, TypeScript, build, dependency audit, startup smoke); post-merge main run `42351965332` passed on `059e902194811be71ab4dea9da8609a96967214e`. This does not implement conflict resolution or tombstone propagation. Vercel still reports `build-rate-limit`; live production deployment/rules remain unverified.
