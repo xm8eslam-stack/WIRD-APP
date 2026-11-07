@@ -58,7 +58,7 @@ export async function writeRevisionedRemoteMutation(
       !['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'syncMeta'].includes(input.collection) ||
       (input.operation !== 'upsert' && input.operation !== 'tombstone') ||
       !Number.isSafeInteger(input.clientUpdatedAtMs) || input.clientUpdatedAtMs < 0 ||
-      !Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 ||
+      !Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 || input.baseRevision >= Number.MAX_SAFE_INTEGER ||
       !isRecord(input.payload) || payloadBytes > 128_000) {
     throw new Error('INVALID_REVISIONED_MUTATION');
   }
