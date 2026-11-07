@@ -330,6 +330,16 @@ This source audit does not replace automated failure-injection tests or the two-
 - These diagnostics do not advance cursors or resolve conflicts; they make safe pauses visible instead of presenting a misleading success state.
 
 
+## 17. Durable projection conflict archive — 2026-11-07
+
+- When remote projection blocks on a pending local mutation, unknown base revision, tombstone, or local projection failure, the projector archives the complete remote event and exact relevant local storage bytes in a UID-scoped IndexedDB conflict store.
+- Repeated observations update the reason/time without replacing the original local snapshot.
+- The archive is bounded; only resolved historical records may be pruned to make room. Open conflicts are never silently deleted.
+- Settings exposes the number of open conflicts and the latest affected collection/document/server sequence.
+- The event remains in the remote inbox and the projection cursor remains blocked. This archive is diagnostic/recovery storage, not an automatic conflict resolution policy.
+- Explicit keep-local/use-remote resolution and collection-specific merge semantics remain future work; do not enable remote projection for general users until those actions are implemented and tested.
+
+
 ## 2026-11-07 implementation update
 
 PR #73 added durable remote projection intent and atomic local finalization/recovery. PR #77 proved a bidirectional profile upsert round trip between two isolated emulator devices. PR #78 proved stale same-document offline writes are rejected by server revision while preserving the losing local mutation and remote inbox event without advancing the cursor. See `docs/sync/ARCHITECTURE.md`, `STATE-MACHINE.md`, and `TEST-MATRIX.md` for exact boundaries and evidence.

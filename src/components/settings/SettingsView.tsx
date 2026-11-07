@@ -139,6 +139,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const {
     status: syncStatus, pendingCount, remoteInboxPendingCount,
     remoteProjectionBlockReason, remoteProjectionBlockedAtSequence,
+    projectionConflictCount, latestProjectionConflict,
     lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync
   } = useCloudSync();
   const projectionBlockMessages: Record<string, string> = {
@@ -320,7 +321,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
           <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
             <span className="text-stone-500 dark:text-stone-400 block text-[11px]">حالة الاتصال والشبكة:</span>
             <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
@@ -349,6 +350,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {remoteInboxPendingCount === 0 ? 'لا توجد أحداث معلقة' : `${remoteInboxPendingCount} حدث غير مطبق`}
             </div>
           </div>
+
+          <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
+            <span className="text-stone-500 dark:text-stone-400 block text-[11px]">تعارضات محفوظة للمراجعة:</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200 font-mono">
+              {projectionConflictCount === 0 ? 'لا توجد تعارضات' : `${projectionConflictCount} تعارض محفوظ`}
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
@@ -365,6 +373,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5" role="status">
                 {projectionBlockMessage}
                 {remoteProjectionBlockedAtSequence !== null && ` (الحدث رقم ${remoteProjectionBlockedAtSequence})`}
+              </p>
+            )}
+            {latestProjectionConflict && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5" role="status">
+                آخر تعارض محفوظ: {latestProjectionConflict.collection}/{latestProjectionConflict.documentId}
+                {' · '}الحدث #{latestProjectionConflict.serverSequence}
               </p>
             )}
           </div>

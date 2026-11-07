@@ -58,6 +58,12 @@ export interface RemoteProjectionDependencies {
   setRemoteRevisionFromRemote(collection: SyncCollection, documentId: string, revision: number): Promise<boolean>;
   markRemoteProjected(sequence: number): Promise<boolean>;
   markRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean>;
+  getLocalProjectionSnapshot(collection: SyncCollection): Record<string, string | null>;
+  saveProjectionConflict(
+    event: RemoteInboxEvent,
+    reason: string,
+    localSnapshot: Record<string, string | null>
+  ): Promise<boolean>;
   getRemoteProjectionIntent(): Promise<RemoteProjectionIntent | null>;
   prepareRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean>;
   finalizeRemoteProjection(intent: RemoteProjectionIntent, applyProjection: () => boolean): Promise<boolean>;
@@ -75,6 +81,9 @@ const defaultDependencies: RemoteProjectionDependencies = {
     LocalSyncOutbox.setRemoteRevisionFromRemote(collection, documentId, revision),
   markRemoteProjected: sequence => LocalSyncOutbox.markRemoteProjected(sequence),
   markRemoteCollectionInitialized: collection => LocalSyncOutbox.markRemoteCollectionInitialized(collection),
+  getLocalProjectionSnapshot: collection => StorageService.getLocalProjectionSnapshot(collection),
+  saveProjectionConflict: (event, reason, localSnapshot) =>
+    LocalSyncOutbox.saveProjectionConflict(event, reason, localSnapshot),
   getRemoteProjectionIntent: () => LocalSyncOutbox.getRemoteProjectionIntent(),
   prepareRemoteProjection: intent => LocalSyncOutbox.prepareRemoteProjection(intent),
   finalizeRemoteProjection: (intent, applyProjection) =>
@@ -83,6 +92,19 @@ const defaultDependencies: RemoteProjectionDependencies = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+async function archiveBlockedProjection(
+  event: RemoteInboxEvent,
+  reason: string,
+  transactionCollections: SyncCollection[],
+  dependencies: RemoteProjectionDependencies
+): Promise<boolean> {
+  const snapshot: Record<string, string | null> = {};
+  for (const collection of new Set<SyncCollection>([event.collection, ...transactionCollections])) {
+    Object.assign(snapshot, dependencies.getLocalProjectionSnapshot(collection));
+  }
+  return dependencies.saveProjectionConflict(event, reason, snapshot);
 }
 
 function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
@@ -189,10 +211,16 @@ export async function projectRemoteInboxBatch(
       continue;
     }
     if (decision !== 'apply') {
+      const archived = await archiveBlockedProjection(
+        remoteEvent,
+        decision,
+        transactionCollections,
+        dependencies
+      );
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
-        reason: decision
+        reason: archived ? decision : 'projection_failed'
       };
     }
 
@@ -241,6 +269,12 @@ export async function projectRemoteInboxBatch(
       () => dependencies.applyJournalEvent(localEvent)
     );
     if (!finalized) {
+      await archiveBlockedProjection(
+        remoteEvent,
+        'projection_failed',
+        transactionCollections,
+        dependencies
+      );
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,

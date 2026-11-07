@@ -188,6 +188,46 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Projection conflicts durably preserve both event and local snapshot until resolved', async () => {
+      const { journal } = createJournal('remote-conflict-owner');
+      const event = {
+        key: 'remote-conflict-owner:conflict-event-1',
+        uid: 'remote-conflict-owner',
+        eventId: 'conflict-event-1',
+        mutationId: 'conflict-event-1',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9000,
+        payload: { records: [{ id: 'remote-plan' }] },
+        baseRevision: 1,
+        revision: 2,
+        serverSequence: 7,
+        fingerprint: '0123456789abcdef'
+      };
+      const localSnapshot = { wird_plans: JSON.stringify([{ id: 'local-plan' }]) };
+      assert(await journal.saveProjectionConflict(event, 'blocked_pending_local', localSnapshot, 9100),
+        'A blocked remote event and its local snapshot must be archived');
+      const first = await journal.listProjectionConflicts(10);
+      assert(first.length === 1 && first[0].event.payload.records !== undefined &&
+        first[0].localSnapshot.wird_plans === localSnapshot.wird_plans &&
+        await journal.getProjectionConflictCount() === 1,
+        'The archive must preserve the remote payload and exact local storage bytes');
+      await journal.saveProjectionConflict(event, 'blocked_pending_local', { wird_plans: 'changed-later' }, 9200);
+      const repeated = await journal.listProjectionConflicts(10);
+      assert(repeated.length === 1 && repeated[0].localSnapshot.wird_plans === localSnapshot.wird_plans,
+        'Repeated observations update the reason/time but never replace the original conflict snapshot');
+      assert(await journal.markProjectionConflictResolved('conflict-event-1', 'keep-local', 9300),
+        'An explicit resolution must be durably recorded');
+      assert(await journal.getProjectionConflictCount() === 0 &&
+        (await journal.listProjectionConflicts(10)).length === 0,
+        'Resolved conflicts are not reported as open');
+      journal.close();
+    });
+
     await test('Remote inbox import persists events and advances the durable cursor atomically', async () => {
       const { journal } = createJournal('remote-alpha');
       const event = {

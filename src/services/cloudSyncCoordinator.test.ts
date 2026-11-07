@@ -91,6 +91,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     applied: number;
     revisions: Map<string, RemoteRevisionSnapshot>;
     initialized: Set<string>;
+    conflicts: Array<{ eventId: string; reason: string; snapshot: Record<string, string | null> }>;
   } } {
     const state = {
       cursor: 0,
@@ -98,7 +99,8 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       revisions: new Map<string, RemoteRevisionSnapshot>(
         (options.revisions || []).map(([key, revision]) => [key, { revision, localSequence: 0 }])
       ),
-      initialized: new Set(options.initialized || [])
+      initialized: new Set(options.initialized || []),
+      conflicts: [] as Array<{ eventId: string; reason: string; snapshot: Record<string, string | null> }>
     };
     const pending = new Set(options.pending || []);
     const empty = new Set(options.empty || []);
@@ -135,6 +137,11 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       },
       markRemoteCollectionInitialized: async collection => {
         state.initialized.add(collection);
+        return true;
+      },
+      getLocalProjectionSnapshot: collection => ({ [collection]: 'local-snapshot' }),
+      saveProjectionConflict: async (event, reason, snapshot) => {
+        state.conflicts.push({ eventId: event.eventId, reason, snapshot });
         return true;
       },
       getRemoteProjectionIntent: async () => projectionIntent,
@@ -195,8 +202,11 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     const harness = makeProjectionHarness([event], { pending: ['plans'], empty: ['plans'] });
     const result = await projectRemoteInboxBatch(10, harness.dependencies);
     assert(result.reason === 'blocked_pending_local' && result.blockedAtSequence === 1 &&
-      harness.state.cursor === 0 && harness.state.applied === 0,
-      'Any pending local mutation in the snapshot collection blocks remote projection without cursor movement');
+      harness.state.cursor === 0 && harness.state.applied === 0 &&
+      harness.state.conflicts.length === 1 &&
+      harness.state.conflicts[0].eventId === event.eventId &&
+      harness.state.conflicts[0].snapshot.plans === 'local-snapshot',
+      'A blocked remote projection archives the remote event and local snapshot without cursor movement');
   } catch (err: any) {
     assert(false, `Pending mutation projection guard failed: ${err?.message}`);
   }
@@ -272,7 +282,9 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       typeof initialState.remoteCursor === 'number' &&
       typeof initialState.remoteProjectionCursor === 'number' &&
       initialState.remoteProjectionBlockReason === null &&
-      initialState.remoteProjectionBlockedAtSequence === null,
+      initialState.remoteProjectionBlockedAtSequence === null &&
+      initialState.projectionConflictCount === 0 &&
+      initialState.latestProjectionConflict === null,
       'Initial cloud sync state has valid structure'
     );
   } catch (err: any) {

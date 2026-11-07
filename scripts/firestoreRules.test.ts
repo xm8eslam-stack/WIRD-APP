@@ -62,6 +62,9 @@ function makeDeviceProjectorDependencies(journal: IndexedDbSyncJournal): RemoteP
       journal.setRemoteRevisionFromRemote(collection, documentId, revision),
     markRemoteProjected: sequence => journal.markRemoteProjected(sequence),
     markRemoteCollectionInitialized: collection => journal.markRemoteCollectionInitialized(collection),
+    getLocalProjectionSnapshot: collection => StorageService.getLocalProjectionSnapshot(collection),
+    saveProjectionConflict: (event, reason, snapshot) =>
+      journal.saveProjectionConflict(event, reason, snapshot),
     getRemoteProjectionIntent: () => journal.getRemoteProjectionIntent(),
     prepareRemoteProjection: intent => journal.prepareRemoteProjection(intent),
     finalizeRemoteProjection: (intent, applyProjection) =>
@@ -820,7 +823,9 @@ try {
       if (blocked.reason !== 'blocked_pending_local' || blocked.blockedAtSequence !== 1 ||
           await journalB.getRemoteProjectionCursor() !== 0 ||
           retainedOutbox.length !== 1 || retainedOutbox[0].mutationId !== mutationB.mutation.mutationId ||
-          retainedInbox.length !== 1 || !serverSnapshot.exists() ||
+          retainedInbox.length !== 1 || await journalB.getProjectionConflictCount() !== 1 ||
+          (await journalB.listProjectionConflicts(10))[0]?.localSnapshot[STORAGE_KEYS.PROFILE] === undefined ||
+          !serverSnapshot.exists() ||
           serverSnapshot.data().payload.profile.name !== localProfileA.name ||
           StorageService.getProfile().name !== localProfileB.name) {
         throw new Error('The offline conflict did not preserve both local intent and remote event without advancing the cursor.');
