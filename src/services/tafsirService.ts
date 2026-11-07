@@ -30,6 +30,10 @@ const MULTI_BOOK_CACHE_PREFIX = 'wird_tafsir_edition_v2_';
 const MAX_CACHED_TAFSIRS = 150;
 const memoryCache = new Map<string, string>();
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 export function buildTafsirCacheKey(surahNumber: number, ayahNumber: number, bookId?: number): string {
   if (bookId && bookId !== LEGACY_TAFSIR_BOOK_ID && bookId !== 16) {
     return `${MULTI_BOOK_CACHE_PREFIX}b${bookId}_s${surahNumber}_a${ayahNumber}`;
@@ -104,35 +108,71 @@ export async function getTafsir(
   }
 
   const url = `${API_BASE}?surah=${surahNumber}&ayah=${ayahNumber}&book=${bookId}`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    signal
-  });
-  if (!response.ok) throw new Error('تعذر جلب التفسير (HTTP ' + response.status + ').');
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal
+    });
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error;
+    throw new Error('تعذر الاتصال بخادم التفسير. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
+  }
 
-  const payload: any = await response.json();
-  const validBook = payload?.book?.id === bookId ||
-    (bookId === LEGACY_TAFSIR_BOOK_ID && (payload?.book?.id === LEGACY_TAFSIR_BOOK_ID || payload?.book?.id === 16)) ||
-    (bookId === 16 && (payload?.book?.id === 16 || payload?.book?.id === LEGACY_TAFSIR_BOOK_ID));
+  let responseText: string;
+  try {
+    responseText = await response.text();
+  } catch {
+    throw new Error('تعذر قراءة استجابة خادم التفسير.');
+  }
+  const trimmedResponse = responseText.trim();
+  const contentType = response.headers.get('content-type') || '';
+  if (trimmedResponse.startsWith('<') || /text\\/html/i.test(contentType)) {
+    throw new Error(
+      'خدمة التفسير أعادت صفحة HTML بدل بيانات JSON؛ غالباً مسار API غير متاح في النشر الحالي. لم يتم عرض محتوى بديل.'
+    );
+  }
+  if (!response.ok) {
+    throw new Error('تعذر جلب التفسير (HTTP ' + response.status + ').');
+  }
+  if (!/\\bapplication\\/(?:[a-z0-9.+-]*\\+)?json\\b/i.test(contentType)) {
+    throw new Error('استجابة خادم التفسير ليست بصيغة JSON صالحة؛ لم يتم عرض محتوى بديل.');
+  }
 
-  if (!validBook || !Array.isArray(payload.content)) {
+  let payload: unknown;
+  try {
+    payload = trimmedResponse ? JSON.parse(trimmedResponse) as unknown : null;
+  } catch {
+    throw new Error('تعذر قراءة بيانات التفسير؛ أعاد الخادم JSON غير صالح.');
+  }
+  const payloadRecord = isRecord(payload) ? payload : null;
+  const bookRecord = payloadRecord && isRecord(payloadRecord.book) ? payloadRecord.book : null;
+  const contentParts: unknown[] = payloadRecord && Array.isArray(payloadRecord.content)
+    ? payloadRecord.content
+    : [];
+  const responseBookId = bookRecord?.id;
+  const validBook = responseBookId === bookId ||
+    (bookId === LEGACY_TAFSIR_BOOK_ID && (responseBookId === LEGACY_TAFSIR_BOOK_ID || responseBookId === 16)) ||
+    (bookId === 16 && (responseBookId === 16 || responseBookId === LEGACY_TAFSIR_BOOK_ID));
+
+  if (!validBook || !Array.isArray(payloadRecord?.content)) {
     throw new Error('استجابة مصدر التفسير غير مطابقة للبنية المتوقعة.');
   }
 
-  const tafsirText = payload.content
-    .map((part: any) => typeof part?.text === 'string' ? part.text.trim() : '')
-    .filter((part: string) => part.length > 0)
-    .join('\n\n');
+  const tafsirText = contentParts
+    .map(part => isRecord(part) && typeof part.text === 'string' ? part.text.trim() : '')
+    .filter(part => part.length > 0)
+    .join('\\n\\n');
   if (!tafsirText) throw new Error('لا يتوفر نص تفسير لهذه الآية في المصدر الحالي.');
 
   writeCachedTafsir(key, tafsirText);
   return {
     text: tafsirText,
     source: 'network',
-    bookName: payload?.book?.name || editionInfo.name,
-    bookId: payload?.book?.id || editionInfo.id,
-    author: payload?.book?.author || editionInfo.author
+    bookName: typeof bookRecord?.name === 'string' ? bookRecord.name : editionInfo.name,
+    bookId: typeof responseBookId === 'number' ? responseBookId : editionInfo.id,
+    author: typeof bookRecord?.author === 'string' ? bookRecord.author : editionInfo.author
   };
 }
 
