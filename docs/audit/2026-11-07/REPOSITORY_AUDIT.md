@@ -156,3 +156,15 @@ The per-file register now has 147 exact rows: **57 reviewed initially, 90 pendin
 ## 10. Final file inventory closure
 
 All 147 tracked files now have an individual note in FILE_AUDIT_REGISTER.md. The three PNG files were fetched as base64 and visually inspected: each renders as a flat dark-teal square with no discernible WIRD mark/wordmark. This is a P2 PWA-branding defect, not a missing binary inspection. All 147 file rows are marked REVIEWED (initial); the notes still distinguish initial inspection from deeper follow-up needed for specific call sites/tests.
+
+## 11. Remediation execution checkpoint
+
+The initial audit phase is complete: 147/147 baseline files have per-file notes, and the original 70 branches were compared. The live repository now has 75 branches because four remediation branches and one audit branch were created after the baseline snapshot.
+
+Draft remediation PRs:
+- #61 backup import journal boundary — CI PASS, 404/0, Vercel Preview Ready.
+- #62 plan lifecycle history preservation — CI PASS, 406/0, Vercel daily build-rate limit blocked preview.
+- #63 Quran audio repeat controller — CI PASS, 404/0, Vercel daily build-rate limit blocked preview.
+- #64 Tafsir HTML/JSON guard — CI pending at last check.
+
+Main SHA remains unchanged. No merges, production deployments or Firestore rule deployments have been performed. The remote replication design document referenced by AGENTS.md was added on the audit branch at docs/sync/REMOTE_REPLICATION_PLAN.md.
