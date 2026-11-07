@@ -1,5 +1,6 @@
 import { QuranMath, VerseCoordinate } from './quranMath';
 import { ALL_SURAHS } from '../data/quranMeta';
+import { createSecureId } from './secureId';
 
 export interface PlanGenerationInput {
   title: string;
@@ -358,7 +359,7 @@ export const PlanningEngine = {
 اعتمد المحرك توزيع الورد على ${activeDaysCount} يوماً نشطاً مع تخصيص ${restDaysCount} يوماً للاستراحة وتفريغ الذاكرة، مما يمنع التشتت والنسيان.
 كما تتضمن الخطة مسارين متوازيين: «المراجعة الصغرى» لربط آيات الأيام السابقة فوراً بالورد الجديد، و«المراجعة الكبرى» لتثبيت السور التراكمية وفق فترات زمنية متباعدة.`;
 
-    const planId = `plan-${Date.now()}`;
+    const planId = `plan-${createSecureId()}`;
 
     return {
       id: planId,
