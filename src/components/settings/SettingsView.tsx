@@ -221,6 +221,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         setConflictIntents(previous => ({ ...previous, [eventId]: null }));
         onToast?.('تم إلغاء القرار غير المنفذ فقط؛ لم تُحذف أدلة التعارض أو العمليات المحلية.', 'info');
         void triggerSync();
+        void triggerSync();
       }
     } catch (error) {
       onToast?.(error instanceof Error ? error.message : 'تعذر إلغاء القرار المحفوظ.', 'error');
@@ -540,14 +541,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                               <p className="text-[11px] text-amber-800 dark:text-amber-300">
                                 يوجد قرار محفوظ لم يُعتمد بعد ({conflictIntents[conflict.event.eventId]?.decision}). لن يتجاوزه الإسقاط التلقائي.
                               </p>
-                              <button
-                                type="button"
-                                onClick={() => void handleCancelPreparedConflict(conflict.event.eventId)}
-                                disabled={resolvingConflictId !== null}
-                                className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
-                              >
-                                إلغاء القرار غير المنفذ مع الاحتفاظ بالأدلة
-                              </button>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void handleUseRemoteConflict(conflict.event.eventId)}
+                                  disabled={resolvingConflictId !== null || !isOnline || syncStatus === 'syncing'}
+                                  className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                >
+                                  إعادة محاولة تنفيذ القرار المحفوظ
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleCancelPreparedConflict(conflict.event.eventId)}
+                                  disabled={resolvingConflictId !== null}
+                                  className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
+                                >
+                                  إلغاء القرار غير المنفذ مع الاحتفاظ بالأدلة
+                                </button>
+                              </div>
                             </div>
                           ) : conflict.event.operation === 'tombstone' ? (
                             <p className="text-[11px] text-amber-700 dark:text-amber-300" role="status">
