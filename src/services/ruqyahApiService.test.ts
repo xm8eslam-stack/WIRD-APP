@@ -16,17 +16,18 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
     await test('External Quran locator is sanitized and resolves only canonical WIRD text and metadata', () => {
       const local = RUQYAH_ITEMS.find(item => item.id === 'q-fatihah');
       assert(Boolean(local), 'Canonical Al-Fatiha item must exist');
+      const untrustedArabic = 'نص تجريبي غير صحيح من المصدر';
       const hostileEntry = {
         id: 1,
         title: '1:1-7',
-        arabic: 'نص تجريبي غير صحيح من المصدر',
+        arabic: untrustedArabic,
         reference: 'مرجع غير موثق',
         introduction: 'شرح غير موثق',
         translation: 'ترجمة غير موثقة'
       } as unknown as import('./ruqyahApiService').RuqyahApiEntry;
       const resolved = resolveApiQuranEntry(hostileEntry);
       assert(resolved.text === getRuqyahDisplayText(local!), 'External Quran text must be replaced by canonical WIRD text');
-      assert(resolved.text !== hostileEntry.arabic, 'Unverified API Arabic must never override canonical Quran text');
+      assert(resolved.text !== untrustedArabic, 'Unverified API Arabic must never override canonical Quran text');
       assert(resolved.surahName === 'الفاتحة' && resolved.surahNumber === 1 &&
         resolved.startAyah === 1 && resolved.endAyah === 7, 'Surah metadata must come from WIRD canonical metadata');
       const arabicDigits = resolveApiQuranEntryText({ id: 2, title: '٢:١-٥' });
