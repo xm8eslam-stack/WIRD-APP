@@ -1365,16 +1365,18 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX, STORE_PROJECTION_CONFLICTS],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX, STORE_PROJECTION_CONFLICTS, STORE_CONFLICT_RESOLUTION_INTENTS],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const outbox = transaction.objectStore(STORE_OUTBOX);
       const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const resolutionIntents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
       const conflictRequest = conflicts.get(uid + ':' + intent.eventId);
+      const resolutionIntentRequest = resolutionIntents.get(uid + ':' + intent.eventId);
       const pendingRequests = intent.collection === 'syncMeta'
         ? affectedCollections.map(collection =>
             outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
@@ -1384,9 +1386,10 @@ export class IndexedDbSyncJournal {
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
       let conflict: RemoteProjectionConflict | undefined;
+      let resolutionIntent: ConflictResolutionIntent | undefined;
       let pendingByCollection: JournalOutboxEntry[][] = [];
       let finalized = false;
-      let readsRemaining = 3 + pendingRequests.length;
+      let readsRemaining = 4 + pendingRequests.length;
       let failure: Error | undefined;
       const finish = () => {
         readsRemaining--;
@@ -1399,6 +1402,11 @@ export class IndexedDbSyncJournal {
           currentIntent.initializedCollections.every((collection, index) =>
             collection === intent.initializedCollections[index]
           );
+        if (resolutionIntent) {
+          failure = new Error('يوجد قرار مستخدم محفوظ لهذا التعارض؛ لا يجوز للإسقاط التلقائي تجاوزه.');
+          transaction.abort();
+          return;
+        }
         if (!metadata || !currentIntent ||
             currentIntent.sequence !== intent.sequence ||
             currentIntent.eventId !== intent.eventId ||
@@ -1486,6 +1494,10 @@ export class IndexedDbSyncJournal {
       };
       conflictRequest.onsuccess = () => {
         conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
+        finish();
+      };
+      resolutionIntentRequest.onsuccess = () => {
+        resolutionIntent = resolutionIntentRequest.result as ConflictResolutionIntent | undefined;
         finish();
       };
       pendingRequests.forEach(request => {
@@ -2223,17 +2235,19 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_CONFLICT_RESOLUTION_INTENTS],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const resolutionIntents = transaction.objectStore(STORE_CONFLICT_RESOLUTION_INTENTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, sequence]);
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
       let conflict: RemoteProjectionConflict | undefined;
+      let resolutionIntent: ConflictResolutionIntent | undefined;
       let readsRemaining = 2;
       let advanced = false;
       let failure: Error | undefined;
@@ -2244,6 +2258,7 @@ export class IndexedDbSyncJournal {
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
         if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
+            resolutionIntent ||
             metadata.remoteProjectionIntent?.sequence === sequence ||
             (conflict && (
               conflict.event.fingerprint !== event.fingerprint ||
@@ -2275,7 +2290,12 @@ export class IndexedDbSyncJournal {
       eventRequest.onsuccess = () => {
         event = eventRequest.result as RemoteInboxEvent | undefined;
         if (event) {
-          readsRemaining++;
+          readsRemaining += 2;
+          const resolutionIntentRequest = resolutionIntents.get(uid + ':' + event.eventId);
+          resolutionIntentRequest.onsuccess = () => {
+            resolutionIntent = resolutionIntentRequest.result as ConflictResolutionIntent | undefined;
+            finishRead();
+          };
           const conflictRequest = conflicts.get(uid + ':' + event.eventId);
           conflictRequest.onsuccess = () => {
             conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
