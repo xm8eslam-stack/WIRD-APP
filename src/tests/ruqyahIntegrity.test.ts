@@ -1,7 +1,7 @@
 import { 
   RUQYAH_ITEMS, 
   RUQYAH_GUIDELINES, 
-  RUQYAH_RECITERS, 
+  RUQYAH_PROGRAM_AUDIO, 
   getRuqyahItemsByCategory, 
   RuqyahCategory 
 } from '../data/ruqyahData';
@@ -28,7 +28,7 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     }
   }
 
-  test('Ruqyah items contain complete Uthmani text, titles, and positive repeat targets', () => {
+  test('Ruqyah items contain text, titles, and only valid evidence-based repetition targets', () => {
     assert(RUQYAH_ITEMS.length >= 10, `Expected at least 10 items, got ${RUQYAH_ITEMS.length}`);
     assert(RUQYAH_GUIDELINES.length >= 3, `Expected at least 3 guidelines, got ${RUQYAH_GUIDELINES.length}`);
 
@@ -36,15 +36,26 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
       assert(Boolean(item.id), 'Item must have id');
       assert(Boolean(item.title), `Item ${item.id} must have title`);
       assert(Boolean(item.text), `Item ${item.id} must have text`);
-      assert(item.repeatTarget > 0, `Item ${item.id} must have repeatTarget > 0`);
+      assert(item.repeatTarget === null || (Number.isSafeInteger(item.repeatTarget) && item.repeatTarget > 0), `Item ${item.id} must have a positive fixed target or null when no count is established`);
       assert(item.categories.length > 0, `Item ${item.id} must have categories`);
 
       if (item.type === 'quran') {
         assert(Boolean(item.surahNumber && item.surahNumber > 0), `Quran item ${item.id} must have surahNumber`);
         assert(Boolean(item.surahName), `Quran item ${item.id} must have surahName`);
-        assert(Boolean(item.audioVerseKey && /^\d{6}$/.test(item.audioVerseKey)), `Quran item ${item.id} must have 6-digit audioVerseKey`);
+        assert(Boolean(item.verseRange), `Quran item ${item.id} must have a verse range for complete playback`);
       }
     });
+  });
+
+  test('Fixed repetition counts are limited to narrations that state a number', () => {
+    const byId = new Map(RUQYAH_ITEMS.map(item => [item.id, item]));
+    for (const id of ['q-fatihah', 'q-baqarah-1-5', 'q-kursi', 'q-baqarah-256-257', 'q-baqarah-last2', 'q-araf-magic', 'q-yunus-magic', 'q-ta-ha-magic', 'q-isra-healing', 'd-1', 'd-2', 'd-3']) {
+      assert(byId.get(id)?.repeatTarget === null, id + ' must not impose an unsupported fixed count');
+    }
+    assert(byId.get('d-6')?.repeatTarget === 7, 'Pain supplication must retain its seven repetitions');
+    assert(byId.get('d-4')?.repeatTarget === 3, 'Morning/evening protection remembrance must retain three repetitions');
+    assert(byId.get('q-ikhlas')?.repeatTarget === 3 && byId.get('q-falaq')?.repeatTarget === 3 && byId.get('q-nas')?.repeatTarget === 3, 'The three protective surahs must retain their narrated morning/evening count');
+    assert(byId.get('d-7')?.type === 'guideline', 'Blessing guidance must not be presented as a fixed-count supplication');
   });
 
   test('Ruqyah categories filter accurately', () => {
@@ -62,14 +73,17 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     });
   });
 
-  test('Ruqyah audio reciter streaming configurations are valid', () => {
-    assert(RUQYAH_RECITERS.length >= 4, `Expected at least 4 reciters, got ${RUQYAH_RECITERS.length}`);
-
-    RUQYAH_RECITERS.forEach(reciter => {
-      assert(Boolean(reciter.id), 'Reciter must have id');
-      assert(Boolean(reciter.name), 'Reciter must have name');
-      assert(/^https?:\/\/.+\.mp3$/.test(reciter.audioUrl), `Reciter ${reciter.name} audioUrl must be valid MP3 URL`);
-      assert(Boolean(reciter.durationStr), `Reciter ${reciter.name} must have duration string`);
+  test('Full Ruqyah program recordings use documented program audio, not unrelated Surah 1 streams', () => {
+    assert(RUQYAH_PROGRAM_AUDIO.length === 3, 'Brief, medium, and long program recordings must exist');
+    const expected = [
+      'https://islamicapi.com/audio/ruqyah/total_brief_ruqyah.mp3',
+      'https://islamicapi.com/audio/ruqyah/total_med_ruqyah.mp3',
+      'https://islamicapi.com/audio/ruqyah/total_long_ruqyah.mp3'
+    ];
+    RUQYAH_PROGRAM_AUDIO.forEach((program, index) => {
+      assert(Boolean(program.id) && Boolean(program.name), 'Program metadata must be present');
+      assert(program.audioUrl === expected[index], 'Program must use the documented full Ruqyah audio URL');
+      assert(!/\/001\.mp3$/.test(program.audioUrl), 'A Quran Surah 1 recording must not be mislabeled as full Ruqyah');
     });
   });
 
