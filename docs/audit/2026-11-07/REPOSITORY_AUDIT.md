@@ -119,12 +119,12 @@ A structural inventory exists for all 147 files. The remaining source files requ
 - [x] Exact current main Quality Gate evidence.
 - [x] PR #59 / #60 exact-head CI and divergence review.
 - [x] Initial critical architecture and readiness findings.
-- [ ] Detailed review of all 147 files (57 reviewed initially; 90 pending).
+- [x] Initial review of all 147 tracked files; per-file notes recorded. Three PNGs visually inspected and found to be uniform dark-teal squares without a discernible logo.
 - [x] Exact compare/disposition for all 70 branches (65 diverged, 4 main-only archive candidates, main identical).
-- [ ] Final full architecture report.
-- [ ] Final separate not-ready report.
-- [ ] Final remediation roadmap and continuation prompt.
-- [ ] Begin remediation after reports are complete.
+- [x] Architecture report created.
+- [x] Separate readiness/blocker report created.
+- [x] Remediation roadmap and continuation prompt created.
+- [ ] Begin remediation after user-facing checkpoint; reports are saved, but no application code has been changed yet.
 
 ## 9. Additional findings from the second audit pass
 
@@ -152,3 +152,7 @@ The complete matrix is saved in `BRANCH_COMPARE_MATRIX.md`. All 70 refs were com
 ### Updated file review count
 
 The per-file register now has 147 exact rows: **57 reviewed initially, 90 pending**. "Reviewed initially" is not final sign-off; tests, callers, and full remaining line ranges still need cross-checking. The remaining review must cover all UI, planning, revision, progress, audio, tests, utilities, backup validation, service-worker/PWA assets and all docs/config files.
+
+## 10. Final file inventory closure
+
+All 147 tracked files now have an individual note in FILE_AUDIT_REGISTER.md. The three PNG files were fetched as base64 and visually inspected: each renders as a flat dark-teal square with no discernible WIRD mark/wordmark. This is a P2 PWA-branding defect, not a missing binary inspection. All 147 file rows are marked REVIEWED (initial); the notes still distinguish initial inspection from deeper follow-up needed for specific call sites/tests.
