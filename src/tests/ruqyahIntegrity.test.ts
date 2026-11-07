@@ -51,7 +51,7 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     const reviewedSources: Record<string, string> = {
       'g-1': 'القرآن الكريم، الشعراء 80',
       'g-3': 'صحيح البخاري 5017',
-      'g-4': 'NHS: Herbal medicines and complementary therapies',
+      'g-4': 'ابن باز: هل يترك العلاج ويكتفى بالتوكل على الله؟',
       'g-5': 'صحيح مسلم 2200',
       'q-fatihah': 'صحيح البخاري 5736',
       'q-baqarah-1-5': 'القرآن الكريم، البقرة 1-5',
