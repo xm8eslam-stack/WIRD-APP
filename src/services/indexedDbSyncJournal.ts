@@ -1156,7 +1156,7 @@ export class IndexedDbSyncJournal {
     for (const event of events) {
       if (!event || event.uid !== uid || event.schemaVersion !== 2 ||
           event.eventType !== 'domain-mutation' || !validMutationId(event.eventId) ||
-          !validMutationId(event.mutationId) || !validMutationId(event.deviceId) ||
+          !validMutationId(event.mutationId) || event.eventId !== event.mutationId || !validMutationId(event.deviceId) ||
           !ALLOWED_COLLECTIONS.has(event.collection) ||
           typeof event.documentId !== 'string' || !event.documentId ||
           event.documentId.includes('/') || /[\u0000-\u001f]/.test(event.documentId) || byteLength(event.documentId) > 1500 ||
