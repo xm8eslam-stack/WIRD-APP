@@ -80,8 +80,6 @@ export async function replayJournalProjection(
 
         if (event.projectionRequired === false) {
           skippedAlreadyProjected++;
-        } else if (StorageService.applyJournalEvent(event)) {
-          applied++;
         } else if (event.operation === 'upsert' &&
             StorageService.matchesJournalProjection(event.collection, event.payload)) {
           // A previous attempt may have durably written the projection and then
@@ -89,6 +87,8 @@ export async function replayJournalProjection(
           // snapshot (including every child of a grouped transaction) before
           // advancing; never treat a merely similar or invalid snapshot as done.
           skippedAlreadyProjected++;
+        } else if (StorageService.applyJournalEvent(event)) {
+          applied++;
         } else {
           throw new Error(
             'تعذر إسقاط الحدث رقم ' + event.sequence + ' محلياً (' +
