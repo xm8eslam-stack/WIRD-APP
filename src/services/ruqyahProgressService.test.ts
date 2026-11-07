@@ -49,9 +49,9 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
     assert(StorageService.getRawItem(key) === malformed, 'Malformed bytes must not be overwritten');
   });
 
-  test('Progress rejects unknown IDs, negative counts, and excessive values', () => {
+  test('Progress rejects malformed IDs, negative counts, and excessive values', () => {
     StorageService.__resetStorageForTests();
-    for (const counts of [{ unknown: 1 }, { [RUQYAH_ITEMS[0].id]: -1 }, { [RUQYAH_ITEMS[0].id]: 1001 }]) {
+    for (const counts of [{ 'bad id!': 1 }, { [RUQYAH_ITEMS[0].id]: -1 }, { [RUQYAH_ITEMS[0].id]: 1001 }]) {
       let rejected = false;
       try { saveRuqyahProgress(counts, 123458); } catch { rejected = true; }
       assert(rejected, 'Invalid count payload must be rejected');
