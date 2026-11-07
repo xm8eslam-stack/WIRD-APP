@@ -6,7 +6,7 @@ Last reviewed: 2026-11-07
 
 - Phase 1: PR #88 — Quran mapping, multi-ayah playback, Al Furqan reciters, IslamicAPI proxy, and Shariah content cleanup.
 - Phase 2: PR #91 — UID-scoped journal-first progress sync, revisioned Firestore writes, two-device projection, version-5 backup, and ordered reset.
-- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and API-key error guidance.
+- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and accurate API-key error guidance. Audio was subsequently disabled pending source and rights verification.
 - Phase 4: PR #105 — reviewed Sunni source policy, Quran-index-only external API usage, and lockdown of unverified recitation/audio sources.
 - Phase 5: PR #108 — exact content-ID-to-source registry and named Ibn Baz fatwa reference for combining Ruqyah and medical treatment.
 - Phase 6: PR #111 — strict Quran-coordinate sanitization, hard-disabled topic/category endpoints, and canonical WIRD Quran text rendering.
@@ -37,7 +37,7 @@ Do not turn on remote projection before this deployment is confirmed.
 
 ### 2. Verify Vercel environment and deployment
 
-The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The latest main SHA `66d3ac74d8402fb13718ff38d8c7ad4bb889cd89` reports Vercel `failure` (`build-rate-limit`). PR #120 exact-head Quality Gate run `42359703038` passed 520 assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server startup smoke. The Vercel result is a provider quota issue, not a code Quality Gate failure. No deployed production SHA or live post-deploy smoke is verified.
+The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate.
 
 **STOP — do not enable production sync at the current checkpoint.** The values below are documented for a future release only. Do not set either remote-sync flag until every global gate in docs/sync/RELEASE-GATES.md passes, especially user-facing conflict resolution, deterministic Ruqyah additive-increment resolution, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing. These gates are currently open.
 
@@ -69,8 +69,8 @@ Use two real browsers/devices signed in to the same verified account:
 - Verify IslamicAPI returns only validated Quran locators; provider-authored Arabic, translation, reference prose, introductions, and category data must never reach the browser.
 - Verify valid ASCII/Arabic/Persian numeral coordinates resolve to WIRD's canonical Quran text and surah metadata.
 - Verify missing-key, 429, upstream HTTP failure, HTML, malformed JSON, out-of-range coordinates, and ambiguous multi-coordinate titles fail safely.
-- Confirm the Ruqyah audio tab, full-program playback, reciter catalogue, and individual verse audio controls remain disabled and cannot be activated by mouse or keyboard.
-- Confirm no hidden audio request or playback starts when switching tabs, changing programs, retrying API requests, or remounting the view.
+- Confirm the full-program audio mode selector and individual verse audio controls remain disabled and cannot be activated by mouse or keyboard. The legacy audio-stream mode and player handlers were removed in PR #117.
+- Confirm RuqyahView contains no browser Audio instantiation or playback handler, and no audio request starts when changing programs, retrying API requests, or remounting the view.
 - Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
 ### 5. Accessibility and responsive review
@@ -109,14 +109,8 @@ Repository: https://github.com/muslimpack/Ruqayyah
 - The documented API exposes 308 instant recitation entries across three programs and 146 educational articles across 13 topics, with Arabic and other language support.
 - The API endpoint requires an API key. WIRD uses a server-side proxy; the key must remain a server secret.
 - The API is free of charge but requires registration and an API key. The provider's terms also reserve fair-use rate limiting and suspension rights; do not interpret "free" as unlimited requests. See https://islamicapi.com/terms/.
-- The dataset README describes the data as free/open source, but the public dataset repository currently has no discoverable LICENSE file. Do not vendor or redistribute the raw dataset until a clear written data license is available. Using the documented API remains subject to the provider's current API terms.
+- The public dataset README states that the data may be used for personal, educational, commercial, and other purposes without attribution, but the repository has no separate LICENSE file. Treat this as a README permission statement rather than an SPDX license; do not vendor or redistribute the raw dataset until formal license/legal review. API access still requires a key and remains subject to the provider's fair-use terms. WIRD currently uses the API only as a Quran locator.
 - Topic articles cover sensitive subjects such as sihr, jinn, illness, hijamah, and detoxification. WIRD intentionally does not expose the entire topic corpus as authoritative Shariah/medical guidance until each article and its references have been reviewed. Quran text must continue to resolve to WIRD's canonical Quran corpus.
-
-## Current automated browser baseline
-
-- PR #115 attempted Playwright desktop/iPhone 13 smoke but browser installation failed because `ubuntu-latest` resolved to unsupported Ubuntu 26.04 for Playwright 1.56.1. The failure occurred before browser tests executed.
-- PR #122 reapplies the tests on `ubuntu-24.04`; exact-head CI is pending/in progress. Until that passes, do not claim browser smoke coverage is active or successful.
-- The planned baseline checks app-shell rendering, hard refresh, uncaught page errors, and viewport-level horizontal overflow. It is not a complete authentication, CRUD, sync, or production E2E suite.
 
 ## Known release blockers
 
