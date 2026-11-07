@@ -65,7 +65,10 @@ function makeDeviceProjectorDependencies(journal: IndexedDbSyncJournal): RemoteP
     getRemoteProjectionIntent: () => journal.getRemoteProjectionIntent(),
     prepareRemoteProjection: intent => journal.prepareRemoteProjection(intent),
     finalizeRemoteProjection: (intent, applyProjection) =>
-      journal.finalizeRemoteProjection(intent, applyProjection)
+      journal.finalizeRemoteProjection(intent, applyProjection),
+    getLocalProjectionSnapshot: collection => StorageService.getLocalProjectionSnapshot(collection),
+    saveProjectionConflict: (event, reason, snapshot) =>
+      journal.saveProjectionConflict(event, reason, snapshot)
   };
 }
 
