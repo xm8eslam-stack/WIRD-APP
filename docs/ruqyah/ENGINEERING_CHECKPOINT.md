@@ -23,7 +23,7 @@ Last updated: 2026-11-07
 | Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
 | Ruqyah first-sync scan + concurrent offline conflict preservation | #94 | `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` | Exact-head Quality Gate passed; stale concurrent write is blocked and both snapshots/outbox/inbox/conflict evidence are retained |
 
-Dependency audit passed in phases #93–#98. The GitHub Vercel status is now `success` on exact main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39`; however, the Vercel dashboard deployment target is not accessible from this session, so the production alias and live-site SHA remain unverified. Earlier build-rate-limit errors are historical.
+Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` had a Vercel `success` status, but the latest main SHA `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` currently has Vercel `failure` with `build-rate-limit`. The Vercel dashboard target is not accessible from this session, so no production alias or live-site SHA is verified.
 
 ## Implemented architecture and behavior
 
@@ -73,7 +73,7 @@ Dependency audit passed in phases #93–#98. The GitHub Vercel status is now `su
    - Required GitHub repository secret: `FIREBASE_SERVICE_ACCOUNT_JSON`.
    - Dispatch only from `main`, enter the exact project ID, and type `DEPLOY_FIRESTORE_RULES`.
    - Workflow deploys only `firestore:rules`; it fails closed when inputs/secrets are missing.
-2. **Vercel production deployment is not fully verified.** GitHub reports Vercel `success` for main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39`, but the Vercel dashboard target is inaccessible from this session. Confirm the production alias, deployed SHA, and live site smoke in the dashboard before claiming production readiness. Earlier build-rate-limit errors are historical.
+2. **Vercel production deployment is not fully verified.** The latest main SHA `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` has Vercel `failure` due to `build-rate-limit`; the earlier `success` on `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` is not evidence that the latest main deployed. The dashboard target is inaccessible from this session. Confirm quota recovery, production alias, deployed SHA, and live site smoke before claiming production readiness.
 3. **Deployed environment variables are not observable from this GitHub session.** Keep both remote-sync flags disabled until every global release gate passes, including manual conflict resolution, deterministic additive Ruqyah counter merge, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing.
    - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
    - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` only after Firestore rules deployment.
