@@ -169,6 +169,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       const handleTimeUpdate = () => setStreamProgress(streamAudio.currentTime);
       const handleLoadedMetadata = () => setStreamDuration(Number.isFinite(streamAudio.duration) ? streamAudio.duration : 0);
       const handleStreamEnded = () => {
+        streamAudio.currentTime = 0;
         setIsStreamPlaying(false);
         setStreamProgress(0);
       };
@@ -564,6 +565,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 </label>
 
                 <button
+                  type="button"
                   onClick={handleResetCategoryCounts}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors"
                   title="إعادة ضبط عداد القسم"
