@@ -377,6 +377,66 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Prepared conflict decisions can be canceled without deleting evidence or pending writes', async () => {
+      const uid = 'cancel-resolution-intent-owner';
+      const { journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'cancel-resolution-intent-event',
+        mutationId: 'cancel-resolution-intent-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'cancel-plan',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9450,
+        payload: { records: [] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'cancel-resolution-local-pending',
+        collection: 'plans',
+        documentId: event.documentId,
+        payload: { records: [] },
+        nowMs: 9451
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const snapshot = StorageService.getLocalProjectionSnapshot('plans');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', snapshot, 9452);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'cancel-resolution-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(snapshot),
+        decision: 'use-remote',
+        baseRevision: 1,
+        payload: { records: [] },
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9453
+      });
+      let wrongDecisionRejected = false;
+      try { await journal.cancelPreparedConflictResolutionIntent(event.eventId, 'wrong-decision-id'); }
+      catch { wrongDecisionRejected = true; }
+      assert(wrongDecisionRejected, 'A different decision ID cannot cancel the saved user intent');
+      assert(await journal.cancelPreparedConflictResolutionIntent(event.eventId, 'cancel-resolution-decision'),
+        'The exact prepared decision can be canceled explicitly');
+      assert(await journal.getConflictResolutionIntent(event.eventId) === null &&
+        await journal.getProjectionConflictCount() === 1 &&
+        (await journal.listReady(9500, 10)).some(item => item.mutationId === 'cancel-resolution-local-pending') &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1 &&
+        await journal.getRemoteProjectionCursor() === 0,
+        'Cancellation must remove only the uncommitted intent and preserve the conflict archive, inbox, local write, and cursors');
+      journal.close();
+    });
+
     await test('Use-remote resolution atomically applies the latest snapshot and supersedes only archived local mutations', async () => {
       const uid = 'use-remote-resolution-owner';
       const { journal } = createJournal(uid);
