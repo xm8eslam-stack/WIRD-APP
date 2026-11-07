@@ -355,6 +355,33 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().rebasePendingMutation(mutationId, expectedBaseRevision, nextBaseRevision);
   },
 
+  async saveProjectionConflict(
+    event: RemoteInboxEvent,
+    reason: string,
+    localSnapshot: Record<string, string | null>
+  ): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().saveProjectionConflict(event, reason, localSnapshot);
+  },
+
+  async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().listProjectionConflicts(limit);
+  },
+
+  async getProjectionConflictCount(): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().getProjectionConflictCount();
+  },
+
+  async markProjectionConflictResolved(
+    eventId: string,
+    resolution: 'keep-local' | 'use-remote'
+  ): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().markProjectionConflictResolved(eventId, resolution);
+  },
+
   async isRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().isRemoteCollectionInitialized(collection);
