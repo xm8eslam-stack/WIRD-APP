@@ -100,7 +100,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
         (options.revisions || []).map(([key, revision]) => [key, { revision, localSequence: 0 }])
       ),
       initialized: new Set(options.initialized || []),
-      conflicts: []
+      conflicts: [] as Array<{ eventId: string; reason: string; snapshot: Record<string, string | null> }>
     };
     const pending = new Set(options.pending || []);
     const empty = new Set(options.empty || []);
