@@ -56,3 +56,11 @@ The following remain release blockers and must not be waived:
 - Tombstone projection remains blocked. Do not remove the guard until delete semantics, stale-event rejection, offline delete, resurrection prevention, and retention/compaction are tested per collection.
 - Cross-tab browser concurrency, full collection coverage, account lifecycle isolation, production Firestore rules deployment, and exact-SHA live deployment/post-deploy smoke remain blockers.
 - Main checkpoint SHA: f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Main Quality Gate run 42355600523 passed; this does not verify production deployment.
+
+## 2026-11-07 — Deployment workflow checkpoint
+
+- Current main SHA 8089579d020a6a4831cdc9ba4f25f8672f30cc3d passed Main Quality Gate run 42356505550.
+- PR #98 added a manual-only, main-only, typed-confirmation workflow that deploys only Firestore rules. It has not been dispatched; no production rules deployment is claimed.
+- PR #100 is open to add a Firestore Emulator preflight to the manual deploy workflow. Do not dispatch until this preflight is merged and explicit deployment approval is given.
+- Current main Vercel status is build-rate-limit failure; production alias and deployed SHA are unverified.
+- Do not set VITE_WIRD_REVISIONED_SYNC_ENABLED or VITE_WIRD_REMOTE_PROJECTION_ENABLED until manual conflict resolution, additive Ruqyah counter merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification pass.
