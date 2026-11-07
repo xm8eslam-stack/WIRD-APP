@@ -4,6 +4,7 @@ import { LocalSyncOutbox } from './localSyncOutbox';
 import type { RemoteInboxEventInput } from './indexedDbSyncJournal';
 import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
+import { projectRemoteInboxBatch } from './remoteInboxProjector';
 
 export type CloudSyncStatus =
   | 'idle'
@@ -30,6 +31,11 @@ export function isRevisionedSyncEnabled(): boolean {
   return import.meta.env.VITE_WIRD_REVISIONED_SYNC_ENABLED === 'true';
 }
 
+/** Remote projection stays off until local mutation coverage and conflict UX pass release tests. */
+export function isRemoteProjectionEnabled(): boolean {
+  return import.meta.env.VITE_WIRD_REMOTE_PROJECTION_ENABLED === 'true';
+}
+
 /** Full sync requires durable remote import and local projection, not just upload success. */
 export function getCloudSyncCompletionStatus(
   pendingCount: number,
@@ -50,6 +56,8 @@ function checkIsOnline(): boolean {
 class CloudSyncCoordinator {
   private listeners = new Set<SyncListener>();
   private syncInProgress = false;
+  private legacyCheckUid: string | null = null;
+  private legacyDataDetected: boolean | null = null;
   private autoSyncInterval: ReturnType<typeof setInterval> | null = null;
   private state: CloudSyncState = {
     status: 'idle',
@@ -264,9 +272,42 @@ class CloudSyncCoordinator {
     }
   }
 
+  private async hasLegacyRemoteState(uid: string): Promise<boolean> {
+    if (this.legacyCheckUid === uid && this.legacyDataDetected === false) return false;
+    if (!db) return true;
+    try {
+      const collections = [
+        'profile', 'plans', 'enginePlans', 'portions',
+        'weakVerses', 'tests', 'activityEvents', 'syncMeta'
+      ] as const;
+      for (const collectionName of collections) {
+        const snapshot = await getDocs(collection(db, 'users', uid, collectionName));
+        const hasUnversionedDocument = snapshot.docs.some(item => {
+          if (collectionName === 'syncMeta' && item.id === 'remoteReplication') return false;
+          const data = item.data();
+          return !Number.isSafeInteger(data.revision) ||
+            !Number.isSafeInteger(data.baseRevision);
+        });
+        if (hasUnversionedDocument) {
+          this.legacyCheckUid = uid;
+          this.legacyDataDetected = true;
+          return true;
+        }
+      }
+      this.legacyCheckUid = uid;
+      this.legacyDataDetected = false;
+      return false;
+    } catch (error) {
+      console.warn('[WIRD CloudSync] Could not verify legacy remote documents; projection remains blocked.', error);
+      this.legacyCheckUid = uid;
+      this.legacyDataDetected = true;
+      return true;
+    }
+  }
+
   /**
-   * Pull server-ordered v2 events into the durable IndexedDB inbox.
-   * This is an import stage only; sync remains partial until local projection is complete.
+   * Import server-ordered events, then project only when the local base revision
+   * is known and no pending local mutation would be overwritten.
    */
   private async pullRemoteReconciliation(uid: string): Promise<boolean> {
     if (!db) return false;
@@ -286,9 +327,22 @@ class CloudSyncCoordinator {
         await LocalSyncOutbox.importRemotePage(remoteEvents);
         if (snapshot.size < 100) break;
       }
-      return false;
+
+      if (!isRemoteProjectionEnabled()) return false;
+      if (await this.hasLegacyRemoteState(uid)) return false;
+
+      const projection = await projectRemoteInboxBatch(100);
+      if (projection.reason) {
+        console.warn('[WIRD CloudSync] Remote projection paused without advancing its cursor.', projection);
+        return false;
+      }
+      const [remoteCursor, projectionCursor] = await Promise.all([
+        LocalSyncOutbox.getRemoteCursor(),
+        LocalSyncOutbox.getRemoteProjectionCursor()
+      ]);
+      return remoteCursor === projectionCursor;
     } catch (error) {
-      console.warn('[WIRD CloudSync] Remote inbox import is incomplete; durable cursor was not advanced past an invalid page.', error);
+      console.warn('[WIRD CloudSync] Remote inbox import/projection is incomplete; durable cursors were preserved.', error);
       return false;
     }
   }
