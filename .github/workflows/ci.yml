@@ -16,7 +16,7 @@ permissions:
 jobs:
   verify:
     name: Tests, TypeScript, and production build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Checkout repository
@@ -34,6 +34,8 @@ jobs:
           git diff -- bun.lock
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Install Playwright test runner for TypeScript validation
+        run: npm install --no-save --no-package-lock @playwright/test@1.56.1
       - name: Audit dependency vulnerabilities
         run: npm audit --audit-level=high
       - name: Run automated test suites
@@ -51,3 +53,15 @@ jobs:
         run: npm run build
       - name: Production server startup smoke test
         run: npm run smoke:server
+
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Desktop and mobile browser smoke tests
+        run: npx playwright test
+      - name: Upload Playwright diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-results
+          path: test-results/playwright
+          if-no-files-found: ignore
