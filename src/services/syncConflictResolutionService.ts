@@ -208,8 +208,8 @@ export async function resolveProjectionConflictUsingLocal(
   if (!conflict || conflict.status !== 'open') {
     throw new Error('لم يعد التعارض مفتوحاً؛ حدّث قائمة التعارضات.');
   }
-  if (conflict.event.operation !== 'upsert' || conflict.event.collection === 'syncMeta') {
-    throw new Error('إعادة نشر أحداث الحذف أو المعاملات المجمعة غير مفعّلة حتى تكتمل اختبارات سلامة البيانات الخاصة بها.');
+  if (conflict.event.operation !== 'upsert' || (conflict.event.collection === 'syncMeta' || conflict.event.collection === 'ruqyahProgress')) {
+    throw new Error('إعادة نشر أحداث الحذف أو المعاملات المجمعة أو عدادات الرقية غير مفعّلة حتى تكتمل اختبارات سلامة البيانات والدمج الإضافي الخاصة بها.');
   }
 
   const archivedMutations = [...(conflict.localMutations || [])]
