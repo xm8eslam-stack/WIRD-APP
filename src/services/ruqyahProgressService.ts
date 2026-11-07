@@ -1,10 +1,8 @@
-import { RUQYAH_ITEMS } from '../data/ruqyahData';
 import { STORAGE_KEYS, StorageService } from './storageService';
 
 const STORAGE_KEY = STORAGE_KEYS.RUQYAH_PROGRESS;
 const MAX_ITEMS = 200;
 const MAX_COUNT = 1000;
-const KNOWN_ITEM_IDS = new Set(RUQYAH_ITEMS.map(item => item.id));
 
 export interface RuqyahProgressSnapshot {
   schemaVersion: 1;
@@ -25,7 +23,7 @@ function validateCounts(value: unknown): value is Record<string, number> {
   if (!isRecord(value)) return false;
   const entries = Object.entries(value);
   return entries.length <= MAX_ITEMS && entries.every(([id, count]) =>
-    KNOWN_ITEM_IDS.has(id) &&
+    /^[a-z0-9][a-z0-9-]{0,99}$/.test(id) &&
     Number.isSafeInteger(count) &&
     Number(count) >= 0 &&
     Number(count) <= MAX_COUNT
