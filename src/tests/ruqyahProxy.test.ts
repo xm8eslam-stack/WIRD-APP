@@ -110,6 +110,40 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         'Out-of-range Quran locators must be rejected before they reach the browser');
     });
 
+    await test('Ruqyah proxy rejects signed Quran coordinates and oversized numeric item IDs', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      let ipCounter = 0;
+      for (const title of ['-2:255', '+2:255', 'البقرة -٢:١', '2:-255', '2:255-1', '2:999999999999']) {
+        globalThis.fetch = (async () => new Response(JSON.stringify({
+          status: 'success', data: [{ id: 1, title }]
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+        const res = new MockResponse();
+        ipCounter++;
+        await ruqyahHandler({
+          method: 'GET',
+          query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' },
+          headers: { 'x-real-ip': '198.51.100.' + (100 + ipCounter) }
+        }, res);
+        assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+          'Signed or oversized Quran locator must be rejected: ' + title);
+      }
+
+      for (const id of [1_000_000_000, Number.MAX_SAFE_INTEGER]) {
+        globalThis.fetch = (async () => new Response(JSON.stringify({
+          status: 'success', data: [{ id, title: '2:255' }]
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+        const res = new MockResponse();
+        ipCounter++;
+        await ruqyahHandler({
+          method: 'GET',
+          query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' },
+          headers: { 'x-real-ip': '198.51.100.' + (100 + ipCounter) }
+        }, res);
+        assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+          'Oversized numeric provider ID must be rejected: ' + String(id));
+      }
+    });
+
     await test('Ruqyah proxy rejects third-party Sunnah text even when the provider returns a valid response', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       let called = false;
