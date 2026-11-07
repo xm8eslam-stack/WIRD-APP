@@ -173,6 +173,11 @@ export async function projectRemoteInboxBatch(
       intent.documentId === remoteEvent.documentId &&
       intent.revision === remoteEvent.revision;
     if (intent && !isResumingThisProjection) {
+      await archiveBlockedProjection(
+        remoteEvent,
+        'projection_failed',
+        remoteEvent.collection === 'syncMeta' ? transactionCollections : [remoteEvent.collection]
+      );
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
