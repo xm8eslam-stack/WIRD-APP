@@ -465,7 +465,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                       {/* Repetition Counter Badge */}
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-stone-500">{item.repeatTarget === null ? 'عدد القراءات:' : 'المتبقي:'}</span>
-                        <div className={`px-4 py-2 rounded-2xl font-mono text-sm font-bold transition-all ${
+                        <div
+                          role="status"
+                          aria-live="polite"
+                          aria-atomic="true"
+                          aria-label={item.repeatTarget === null
+                            ? `عدد القراءات: ${currentCount}`
+                            : `المتبقي: ${Math.max(0, item.repeatTarget - currentCount)} من ${item.repeatTarget}`}
+                          className={`px-4 py-2 rounded-2xl font-mono text-sm font-bold transition-all ${
                           isCompleted
                             ? 'bg-emerald-700 text-white shadow-xs'
                             : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-900 dark:text-emerald-300 group-hover:scale-105'
