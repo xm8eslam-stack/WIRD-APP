@@ -32,7 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Fetch Arabic Ruqyah data through WIRD's server proxy; never expose upstream secrets. */
+/** Fetch sanitized Quran locator data through WIRD's server proxy; never expose upstream secrets. */
 export async function fetchRuqyahApiData<T = unknown>(
   request: RuqyahApiRequest,
   signal?: AbortSignal
