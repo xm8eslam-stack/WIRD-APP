@@ -380,6 +380,66 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
       'Recalculated memorization must continue after the last completed ayah');
   });
 
+  runTest('PlanLifecycle: recalculation preserves incomplete gaps when tasks were completed out of order', () => {
+    const input: PlanGenerationInput = {
+      title: 'خطة إكمال غير مرتبة',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-01',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'verses_per_day',
+      paceQuantity: 5,
+      activeDays: [0, 1, 2, 3, 4, 5, 6],
+      restDays: [],
+      schedulePreference: 'single_session'
+    };
+    const plan = PlanningEngine.generatePlan(input);
+    const completedMiddleRange: ScheduledDayPlan = {
+      id: 'middle-range-completed-first',
+      date: '2026-11-01',
+      dayOfWeek: 0,
+      dayNameAr: 'الأحد',
+      isRestDay: false,
+      memorizationTask: {
+        surahNumber: 67,
+        surahName: 'الملك',
+        startAyah: 11,
+        endAyah: 20,
+        versesCount: 10,
+        estimatedMinutes: 20,
+        completed: true,
+        completedAt: '2026-11-01T10:00:00Z'
+      },
+      status: 'completed'
+    };
+
+    const recalculated = PlanLifecycle.recalculatePlan({
+      ...plan,
+      schedule: [completedMiddleRange]
+    }, 5);
+    const newTasks = recalculated.schedule
+      .filter(day => day.memorizationTask && !day.memorizationTask.completed)
+      .map(day => ({
+        start: day.memorizationTask!.startAyah,
+        end: day.memorizationTask!.endAyah
+      }));
+
+    assert(newTasks.some(task => task.start === 1 && task.end === 5),
+      'Uncompleted verses before the furthest completed task must remain scheduled');
+    assert(newTasks.some(task => task.start === 6 && task.end === 10),
+      'The entire earlier gap must remain scheduled');
+    assert(newTasks.some(task => task.start === 21 && task.end === 25),
+      'Uncompleted verses after the completed range must remain scheduled');
+    assert(newTasks.some(task => task.start === 26 && task.end === 30),
+      'The final gap must remain scheduled');
+    assert(!newTasks.some(task => task.start <= 20 && task.end >= 11),
+      'Completed middle verses must not be scheduled again');
+  });
+
   // 6. Spaced Revision SM-2 Engine
   runTest('SpacedRevisionEngine: Grade 5 increases interval, Grade 1 resets to 1 day', () => {
     const testItem: RevisionItem = {
