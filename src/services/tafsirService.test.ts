@@ -1,4 +1,4 @@
-import { buildTafsirCacheKey, getTafsirMuyassar } from './tafsirService';
+import { buildTafsirCacheKey, getTafsir, getTafsirMuyassar } from './tafsirService';
 
 export async function runTafsirServiceTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -45,6 +45,38 @@ export async function runTafsirServiceTests(): Promise<{ passed: number; failed:
       const second = await getTafsirMuyassar(114, 6);
       assert(second.source === 'cache', 'Second result must come from local memory cache');
       assert(requestCount === 1, 'Cached request must not call the API again');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('HTML from a missing API route produces a clear Arabic routing error', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '<!doctype html><html><body>Not Found</body></html>',
+      { status: 404, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    )) as typeof fetch;
+    try {
+      let message = '';
+      try { await getTafsir(109, 1, 90); }
+      catch (error: any) { message = error?.message || ''; }
+      assert(message.includes('صفحة HTML') && message.includes('مسار API'),
+        'HTML fallback must be identified as an API routing failure. Received: ' + message);
+      assert(!message.includes('Unexpected token'), 'Raw JSON parser errors must never reach the user');
+    } finally { globalThis.fetch = originalFetch; }
+  });
+
+  await test('Malformed JSON API responses produce a stable localized error', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(
+      '{not-json',
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )) as typeof fetch;
+    try {
+      let message = '';
+      try { await getTafsir(109, 2, 90); }
+      catch (error: any) { message = error?.message || ''; }
+      assert(message.includes('ليست JSON صالحاً'),
+        'Malformed JSON must produce a stable localized error. Received: ' + message);
+      assert(!message.includes('Unexpected token'), 'Native parser details must not leak into the UI');
     } finally { globalThis.fetch = originalFetch; }
   });
 
