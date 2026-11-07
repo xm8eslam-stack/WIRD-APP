@@ -20,6 +20,7 @@ service cloud.firestore {
         'weakVerses',
         'tests',
         'activityEvents',
+        'ruqyahProgress',
         'syncMeta'
       ];
     }
