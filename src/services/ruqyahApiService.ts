@@ -1,6 +1,17 @@
 export type RuqyahApiProgram = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
 export type RuqyahApiSource = 'from-quran' | 'from-sunnah';
 
+export interface RuqyahApiEntry {
+  id: number | string;
+  title: string;
+  arabic: string;
+  reference?: string;
+  introduction?: string;
+  translation?: string;
+  category?: string;
+  sub_category?: string;
+}
+
 export interface RuqyahApiRequest {
   type: 'instant-category' | 'instant' | 'topic-category' | 'topic';
   program?: RuqyahApiProgram;
@@ -9,6 +20,9 @@ export interface RuqyahApiRequest {
   id?: number;
   random?: boolean;
 }
+
+import { getRuqyahDisplayText } from './ruqyahContentService';
+import type { RuqyahItem } from '../data/ruqyahData';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -66,4 +80,35 @@ export async function fetchRuqyahApiData<T = unknown>(
     throw new Error('استجابة مصدر الرقية لا تطابق البنية المتوقعة.');
   }
   return payload.data as T;
+}
+
+
+/**
+ * API Quran titles carry a numeric surah:ayah reference. Use that reference
+ * to render from WIRD's canonical Quran corpus instead of trusting a second
+ * independently supplied Quran text string.
+ */
+export function resolveApiQuranEntryText(entry: RuqyahApiEntry): string {
+  if (!entry || typeof entry.title !== 'string') {
+    throw new Error('لا يحتوي عنصر الرقية الخارجي على عنوان صالح.');
+  }
+  const match = entry.title.match(/(\d{1,3})\s*:\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/);
+  if (!match) {
+    throw new Error('تعذر تحديد موضع الآيات في المصحف من مرجع المصدر الخارجي.');
+  }
+  const surahNumber = Number(match[1]);
+  const start = Number(match[2]);
+  const end = match[3] === undefined ? start : Number(match[3]);
+  const item: RuqyahItem = {
+    id: 'external-ruqyah-' + String(entry.id),
+    categories: ['brief'],
+    type: 'quran',
+    title: entry.title,
+    surahNumber,
+    verseRange: start === end ? String(start) : start + '-' + end,
+    text: entry.arabic || '',
+    repeatTarget: 1,
+    source: 'IslamicAPI'
+  };
+  return getRuqyahDisplayText(item);
 }
