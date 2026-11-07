@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahDisplayText } from '../../services/ruqyahContentService';
+import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from '../../services/ruqyahProgressService';
 import { 
   ShieldCheck, 
   Volume2, 
@@ -49,6 +50,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   
   // Counter states per item (itemId -> current count)
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [progressHydrated, setProgressHydrated] = useState(false);
+  const [progressCorrupt, setProgressCorrupt] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
 
   // Audio Verse Playback State
@@ -66,6 +69,39 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const audioStreamRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
+
+  // Hydrate the current account's isolated Ruqyah progress before allowing writes.
+  useEffect(() => {
+    const saved = loadRuqyahProgress();
+    if (saved.status === 'corrupt') {
+      setProgressCorrupt(true);
+      if (onToast) onToast('تعذر قراءة تقدم الرقية المحفوظ؛ احتفظنا بالبيانات الأصلية ولم نستبدلها.', 'warn');
+    } else {
+      setCounts(saved.counts);
+    }
+    setProgressHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!progressHydrated || progressCorrupt) return;
+    try {
+      saveRuqyahProgress(counts);
+    } catch {
+      if (onToast) onToast('تعذر حفظ تقدم الرقية على هذا الجهاز.', 'error');
+    }
+  }, [counts, progressHydrated, progressCorrupt, onToast]);
+
+  const handleRecoverProgress = () => {
+    try {
+      resetRuqyahProgress();
+      setCounts({});
+      setProgressCorrupt(false);
+      setProgressHydrated(true);
+      if (onToast) onToast('تمت إعادة ضبط بيانات تقدم الرقية فقط.', 'success');
+    } catch {
+      if (onToast) onToast('تعذر إعادة ضبط بيانات تقدم الرقية.', 'error');
+    }
+  };
 
   // Initialize audio references
   useEffect(() => {
@@ -276,6 +312,16 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   return (
     <div className="space-y-6 pb-12 select-none" dir="rtl">
+      {progressCorrupt && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4">
+          <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
+            تعذر قراءة تقدم الرقية المحفوظ. احتفظنا بالبيانات الأصلية دون استبدالها؛ يمكنك متابعة القراءة دون حفظ حتى تختار إعادة ضبط هذا السجل.
+          </p>
+          <button onClick={handleRecoverProgress} className="shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+            إعادة ضبط سجل الرقية
+          </button>
+        </div>
+      )}
       {/* Top Banner / Hero Header */}
       <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-emerald-800 to-stone-900 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-emerald-700/50">
         <div className="absolute top-0 left-0 translate-x-[-20%] translate-y-[-20%] w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
