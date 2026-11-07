@@ -1,9 +1,9 @@
 # WIRD Security & Data Integrity Audit
 
-**Audit date:** 2026-11-06  
+**Audit date:** 2026-11-07  
 **Audited branch:** `main`  
 **Latest reviewed main HEAD:** `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`  
-**CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
+**CI:** Main Quality Gate run [42361224358](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42361224358) completed successfully on `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`.  
 **Deployment:** Vercel reports `api-deployments-free-per-day` / `build-rate-limit` on reviewed main updates. No exact production deployed SHA or live deployment verification is claimed. Firebase production rules deployment remains unverified.
 
 ## Executive summary
@@ -78,7 +78,7 @@ WIRD now has a local-first journal/outbox, revision-checked Firestore mutation p
 - Path: `users/{uid}/{collection}/{documentId}`
 - Verified Firebase auth required.
 - `request.auth.uid == uid`.
-- Collection allowlist currently includes profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and syncMeta.
+- Collection allowlist currently includes profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, ruqyahProgress, and syncMeta.
 - Generic envelope includes schema version, payload, client update time, device ID, mutation ID, and optional tombstone.
 - Physical deletes denied; unknown paths default denied.
 
