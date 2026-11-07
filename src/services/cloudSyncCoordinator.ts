@@ -20,6 +20,9 @@ export interface CloudSyncState {
   status: CloudSyncStatus;
   lastSyncAtMs: number | null;
   pendingCount: number;
+  remoteInboxPendingCount: number;
+  remoteCursor: number;
+  remoteProjectionCursor: number;
   errorMessage: string | null;
   isOnline: boolean;
 }
@@ -63,6 +66,9 @@ class CloudSyncCoordinator {
     status: 'idle',
     lastSyncAtMs: null,
     pendingCount: 0,
+    remoteInboxPendingCount: 0,
+    remoteCursor: 0,
+    remoteProjectionCursor: 0,
     errorMessage: null,
     isOnline: checkIsOnline()
   };
@@ -116,11 +122,25 @@ class CloudSyncCoordinator {
     try {
       const scope = StorageService.getStorageScope();
       if (!scope.startsWith('user:')) {
-        this.updateState({ pendingCount: 0 });
+        this.updateState({
+          pendingCount: 0,
+          remoteInboxPendingCount: 0,
+          remoteCursor: 0,
+          remoteProjectionCursor: 0
+        });
         return 0;
       }
-      const snapshot = await LocalSyncOutbox.getSnapshot();
-      this.updateState({ pendingCount: snapshot.pendingCount });
+      const [snapshot, remoteCursor, remoteProjectionCursor] = await Promise.all([
+        LocalSyncOutbox.getSnapshot(),
+        LocalSyncOutbox.getRemoteCursor(),
+        LocalSyncOutbox.getRemoteProjectionCursor()
+      ]);
+      this.updateState({
+        pendingCount: snapshot.pendingCount,
+        remoteCursor,
+        remoteProjectionCursor,
+        remoteInboxPendingCount: Math.max(0, remoteCursor - remoteProjectionCursor)
+      });
       return snapshot.pendingCount;
     } catch {
       return this.state.pendingCount;
