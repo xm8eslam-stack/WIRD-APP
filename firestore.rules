@@ -70,7 +70,7 @@ service cloud.firestore {
 
     function hasValidDomainEvent(uid, eventId) {
       let data = request.resource.data;
-      return data.keys().hasAll([
+      let common = data.keys().hasAll([
           'schemaVersion',
           'eventId',
           'mutationId',
@@ -80,18 +80,6 @@ service cloud.firestore {
           'eventType',
           'payload'
         ])
-        && data.keys().hasOnly([
-          'schemaVersion',
-          'eventId',
-          'mutationId',
-          'uid',
-          'deviceId',
-          'occurredAtMs',
-          'eventType',
-          'payload'
-        ])
-        && data.schemaVersion is int
-        && data.schemaVersion == 1
         && data.eventId == eventId
         && data.eventId is string
         && data.eventId.size() > 0
@@ -109,6 +97,71 @@ service cloud.firestore {
         && data.eventType.size() > 0
         && data.eventType.size() <= 64
         && data.payload is map;
+      return common && (
+        (
+          data.schemaVersion == 1
+          && data.keys().hasOnly([
+            'schemaVersion', 'eventId', 'mutationId', 'uid', 'deviceId',
+            'occurredAtMs', 'eventType', 'payload'
+          ])
+        )
+        ||
+        (
+          data.schemaVersion == 2
+          && data.keys().hasAll([
+            'collection', 'documentId', 'operation', 'baseRevision',
+            'revision', 'serverSequence'
+          ])
+          && data.keys().hasOnly([
+            'schemaVersion', 'eventId', 'mutationId', 'uid', 'deviceId',
+            'occurredAtMs', 'eventType', 'payload', 'collection',
+            'documentId', 'operation', 'baseRevision', 'revision',
+            'serverSequence'
+          ])
+          && isAllowedCollection(data.collection)
+          && data.documentId is string
+          && data.documentId.size() > 0
+          && data.documentId.size() <= 1500
+          && !data.documentId.matches('.*[/].*')
+          && data.operation in ['upsert', 'tombstone']
+          && data.baseRevision is int
+          && data.baseRevision >= 0
+          && data.revision is int
+          && data.revision == data.baseRevision + 1
+          && data.serverSequence is int
+          && data.serverSequence > 0
+        )
+      );
+    }
+
+    function hasValidRemoteSequence() {
+      let data = request.resource.data;
+      return data.keys().hasAll([
+          'schemaVersion', 'sequence', 'baseSequence', 'lastEventId',
+          'updatedAtMs', 'deviceId', 'mutationId'
+        ])
+        && data.keys().hasOnly([
+          'schemaVersion', 'sequence', 'baseSequence', 'lastEventId',
+          'updatedAtMs', 'deviceId', 'mutationId'
+        ])
+        && data.schemaVersion is int
+        && data.schemaVersion == 1
+        && data.sequence is int
+        && data.sequence > 0
+        && data.baseSequence is int
+        && data.baseSequence >= 0
+        && data.sequence == data.baseSequence + 1
+        && data.lastEventId is string
+        && data.lastEventId.size() > 0
+        && data.lastEventId.size() <= 128
+        && data.updatedAtMs is int
+        && data.updatedAtMs >= 0
+        && data.deviceId is string
+        && data.deviceId.size() > 0
+        && data.deviceId.size() <= 128
+        && data.mutationId is string
+        && data.mutationId.size() > 0
+        && data.mutationId.size() <= 128;
     }
 
     // Append-only immutable remote event ledger
@@ -135,6 +188,20 @@ service cloud.firestore {
         && request.resource.data.baseRevision == resource.data.revision
         && request.resource.data.revision == resource.data.revision + 1;
       // Deletions are represented by tombstones to prevent offline resurrection.
+      allow delete: if false;
+    }
+
+    match /users/{uid}/syncSystem/remoteReplication {
+      allow read: if ownsUserPath(uid);
+      allow create: if ownsUserPath(uid)
+        && hasValidRemoteSequence()
+        && request.resource.data.baseSequence == 0
+        && request.resource.data.sequence == 1;
+      allow update: if ownsUserPath(uid)
+        && hasValidRemoteSequence()
+        && resource.data.sequence is int
+        && request.resource.data.baseSequence == resource.data.sequence
+        && request.resource.data.sequence == resource.data.sequence + 1;
       allow delete: if false;
     }
 
