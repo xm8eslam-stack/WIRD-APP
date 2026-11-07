@@ -3,11 +3,12 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
+const STORE_REMOTE_INBOX = 'remoteInbox';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
@@ -79,6 +80,27 @@ export interface RemoteRevisionSnapshot {
   localSequence: number;
 }
 
+export interface RemoteInboxEvent {
+  key: string;
+  uid: string;
+  eventId: string;
+  mutationId: string;
+  eventType: 'domain-mutation';
+  collection: SyncCollection;
+  documentId: string;
+  operation: SyncOperation;
+  schemaVersion: 2;
+  deviceId: string;
+  occurredAtMs: number;
+  payload: Record<string, unknown>;
+  baseRevision: number;
+  revision: number;
+  serverSequence: number;
+  fingerprint: string;
+}
+
+export type RemoteInboxEventInput = Omit<RemoteInboxEvent, 'key' | 'fingerprint'>;
+
 interface AcknowledgementRecord {
   key: string;
   uid: string;
@@ -94,6 +116,8 @@ interface DeviceMetadata {
   nextSequence: number;
   lastProjectedSequence: number;
   remoteRevisions?: Record<string, { revision: number; localSequence: number }>;
+  remoteCursor?: number;
+  remoteProjectionCursor?: number;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -264,6 +288,11 @@ export class IndexedDbSyncJournal {
           const acknowledgements = database.createObjectStore(STORE_ACKNOWLEDGEMENTS, { keyPath: 'key' });
           acknowledgements.createIndex('uid', 'uid', { unique: false });
           acknowledgements.createIndex('uidAcknowledgedAt', ['uid', 'acknowledgedAtMs'], { unique: false });
+        }
+        if (!database.objectStoreNames.contains(STORE_REMOTE_INBOX)) {
+          const remoteInbox = database.createObjectStore(STORE_REMOTE_INBOX, { keyPath: 'key' });
+          remoteInbox.createIndex('uid', 'uid', { unique: false });
+          remoteInbox.createIndex('uidServerSequence', ['uid', 'serverSequence'], { unique: true });
         }
         let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
