@@ -814,7 +814,7 @@ try {
       await journalB.importRemotePage([acceptedEvent]);
       activateIsolatedDevice(localStorageB, uid);
       const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
-      const retainedOutbox = await journalB.listPending();
+      const retainedOutbox = await journalB.listReady(1_800_000_000_000, 10);
       const retainedInbox = await journalB.listRemoteInboxAfter(0, 10);
       const serverSnapshot = await getDoc(doc(firestoreA, 'users', uid, 'profile', 'main'));
       if (blocked.reason !== 'blocked_pending_local' || blocked.blockedAtSequence !== 1 ||
