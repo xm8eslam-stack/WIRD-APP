@@ -1,3 +1,48 @@
+# Current verified continuation — supersedes stale pending-phase notes below
+
+Last verified: 2026-11-07, after PR #111.
+
+## Repository and PR state
+- Main merge SHA for PR #111: `48cf9b236072cd3db2603a57cda5f67b30a778cd`.
+- PR #111 merged the external Quran locator sanitizer, canonical Quran text resolution, Arabic/Persian digit normalization, source/topic hard gates, and regression coverage.
+- PR #112 was closed as a duplicate of the already-merged PR #111. Its final comment confirms that seven of eight changed files were byte-identical to main and that the remaining checklist wording was stale.
+- PR #112 exact-head Quality Gate passed on `f5366a737eb347da3fd43c52e2c861b5b1c380d1` (run `42359009685`). This is evidence for that exact head, not a claim that the same run tested a different SHA.
+- No open PRs were returned by the repository PR search at this checkpoint. Branch search is paginated; the first page returned 100 branches and a continuation cursor.
+- The main SHA's combined commit status currently reports Vercel failure due to the provider quota error `api-deployments-free-per-day` / `build-rate-limit`. This is a deployment blocker, not evidence of a code-test failure.
+- The commit-workflow-runs lookup returned no PR-triggered workflow runs for the queried merge SHA. Do not infer that no checks exist; use the exact PR-head Quality Gate evidence above and inspect the GitHub Actions run directly when available.
+
+## Phase 8 — External Quran index sanitization
+**Status: merged in PR #111; do not recreate this work.**
+- The proxy accepts only `instant` with `from-quran`; educational topic/category and external Sunnah endpoints are hard-disabled.
+- Provider data is validated against `ALL_SURAHS`; the browser receives only the validated item ID and normalized numeric locator.
+- Provider-authored Arabic, translations, references, introductions, and category prose are stripped.
+- The client resolves numeric coordinates into WIRD's canonical surah metadata and verified Quran corpus.
+- Regression coverage includes Arabic-Indic/Persian-Indic normalization, bounds, ambiguous locators, hostile provider fields, malformed responses, and disabled endpoints.
+
+## Current source/audio policy
+- The source policy in `docs/ruqyah/SUNNI_SOURCE_POLICY.md` remains authoritative. No new hadith, tafsir, medical claim, or religious instruction was introduced by PR #111.
+- Audio remains disabled pending independent verification of reciter identity, exact recording contents, provenance, and usage rights.
+- IslamicAPI remains a locator only; its dataset must not be vendored or treated as an independently approved Shariah source.
+- MuslimPack Ruqayyah remains GPL-3.0; no code was copied.
+
+## Current UI review findings
+- The full-program audio mode selector is disabled and individual Quran audio controls are disabled in the rendered interactive view.
+- Legacy audio playback state/handlers and an unreachable `audio_stream` rendering branch remain in `RuqyahView.tsx`. They are not exposed by the current controls, but should be removed or isolated in a separately reviewed refactor with regression tests. Do not reactivate audio.
+- The Quran locator library renders canonical Quran text and canonical surah names, not provider-authored text.
+- Production browser/mobile/accessibility smoke tests remain unverified from this session.
+
+## Remaining release blockers
+1. Vercel deployment is blocked by the free-plan deployment quota. No live production SHA or production alias is verified.
+2. Firestore rules deployment and deployed environment-variable values are not verified.
+3. Live two-device sync, cross-tab/browser E2E, offline conflict resolution, additive Ruqyah counter merge, tombstones, and account lifecycle release gates remain open as documented in `docs/sync/RELEASE-GATES.md`.
+4. Live API behavior, mobile RTL, keyboard-only, and screen-reader smoke tests remain unverified.
+5. Audio must remain disabled until all source, content, provenance, and rights gates pass.
+
+## Next engineering action
+Complete the static and test-backed RuqyahView refactor to remove unreachable legacy audio playback code without changing the disabled UI or progress behavior. Then run the full Quality Gate on the exact PR head. Do not merge if any required check fails or is unavailable. Once merged, continue with responsive/accessibility integration tests and live release verification when provider quota and deployment access permit.
+
+---
+
 # WIRD Ruqyah — Engineering Checkpoint
 
 Last updated: 2026-11-07
