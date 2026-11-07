@@ -1,14 +1,17 @@
 # WIRD Sync Release Gates
 
-## Latest verified update — PR #155 (2026-11-07)
+## Latest verified update — PR #157 merged (2026-11-07)
 
+- Current main merge SHA: `22fdd996d7aabc0669fef504c50970d5ba015d73`.
 - PR #149 merged as `78ada24ecadbda3460178550e871632f6d81d770`; exact head `c675a2d164b88994c08a5368bf1695712f2625f3` passed Quality Gate run `42368745026` (#2871), implementing use-latest-remote.
-- PR #154 merged as `52deffc991eb077314fdddd22678205b3212adf0`; documentation-only checkpoint and release-gate updates passed WIRD Quality Gate run `42369614918` (#2884).
-- PR #155 merged as `c620697538ef72eec3d1c2c78bb456c0403232ce`; exact head `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf` passed WIRD Quality Gate run `42370175733` (#2909). It adds a user-confirmed keep-local path for supported single-collection upserts, with latest remote revision revalidation, strict current-local-projection verification, immutable archive retention, and atomic replacement of old pending writes with one new revision-based outbox mutation.
-- The keep-local executor explicitly rejects grouped `syncMeta`, `ruqyahProgress` counters, tombstones, stale local snapshots, invalid sequence metadata, and unarchived newer writes. It queues a mutation; it does not claim the server has acknowledged it.
-- The narrow use-remote and keep-local decisions are implemented, but user-authored merge, additive offline Ruqyah counter merge, tombstone/delete semantics, cross-tab/account lifecycle stress, and live two-device verification remain open.
-- Both production sync flags remain disabled. Vercel still reports `build-rate-limit`; no live deployment or production Firestore rules deployment is claimed.
-
+- PR #155 merged as `c620697538ef72eec3d1c2c78bb456c0403232ce`; exact head `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf` passed Quality Gate run `42370175733` (#2909), implementing a narrow confirmed keep-local path for supported single-collection upserts.
+- PR #156 merged documentation/checkpoint maintenance as `12d4efa62692615defa56cb0bef27b36e4ecc2a8`.
+- PR #157 merged as `22fdd996d7aabc0669fef504c50970d5ba015d73`; exact head `b2752297842d6fd30d7b4ae86eb33d48585e9ce8` passed Quality Gate run `42372550605` (#2977): 551 automated assertions, Firestore Rules Emulator 31/31, approved Quran audio CDN/range probes 8/8, TypeScript, production build, server smoke, and desktop/mobile Playwright 30/30.
+- PR #157 adds V2 per-device monotonic increment components and reset watermarks for Ruqyah progress. Compatible V2 snapshots merge component-wise by max, preserving independent offline increments and making repeated delivery idempotent. Concurrent resets of the same observed baseline do not double-subtract; increments not observed by a reset survive.
+- V1 snapshots migrate through a shared `legacy` baseline. Different non-zero legacy values are ambiguous because pre-V2 offline increments cannot be reconstructed; those conflicts remain archived and blocked rather than being merged by max or sum. Valid pending V1 Outbox entries are superseded by a validated V2 full snapshot while immutable journal events remain preserved.
+- Repository Firestore Rules now require a complete V2 Ruqyah snapshot for new writes, preventing old V1 clients from overwriting V2 components. Production Firestore Rules deployment is not verified.
+- User-authored/grouped merge, tombstone/delete semantics, cross-tab/account lifecycle stress, and real-device production sync remain open. Both production sync flags remain disabled.
+- Vercel still reports `build-rate-limit`; no live production deployment or production playback is claimed.
 
 A release gate is passed only with evidence on the exact candidate SHA.
 
@@ -16,9 +19,9 @@ A release gate is passed only with evidence on the exact candidate SHA.
 
 - [ ] All active user mutation paths are journaled and audited.
 - [ ] Firestore rules are deployed to the intended production Firebase project and verified to match the transaction contract.
-- [ ] Two-device tests cover every supported collection and both directions.
+- [ ] Emulator-backed two-device contexts cover all eight populated collection routes and Ruqyah progress in both directions; real-device browser/device E2E is still required.
 - [ ] Offline retry, idempotent replay, timeout-after-acceptance, and restart tests pass.
-- [ ] Same-document stale revision conflicts preserve both versions and have tested resolution paths. (Use-latest-remote is implemented by PR #149; narrow keep-local re-publication for supported single-collection upserts is implemented by PR #155. User-authored merge remains open.)
+- [ ] Same-document stale revision conflicts preserve both versions and have tested resolution paths. Use-latest-remote is implemented by PR #149; narrow keep-local re-publication for supported single-collection upserts by PR #155; compatible V2 Ruqyah counter merge by PR #157. Divergent legacy baselines, grouped syncMeta decisions, and user-authored merge remain open.
 - [ ] Tombstone projection, offline deletion, stale update rejection, and safe retention/compaction are implemented and tested.
 - [ ] Cross-tab sync serialization is tested in independent real browser contexts.
 - [ ] Account switch/logout/reinstall/schema migration tests pass.
@@ -29,7 +32,7 @@ A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Current release decision
 
-**Not approved for full production cloud-sync activation.** The current verified work now includes populated multi-record service round trips across all eight collection routes, document-scoped projection guards, a bounded local-mutation conflict evidence archive, six desktop/mobile app-shell Playwright checks, and 16 Ruqyah locator-library browser checks. These are meaningful automated gates, not live-device or production proof. Use-latest-remote and supported single-collection keep-local decisions are implemented. User-authored merge, tombstones, additive Ruqyah counters, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore rules deployment, and exact-SHA live deployment remain open. Keep production sync flags disabled.
+**Not approved for full production cloud-sync activation.** The current verified work includes populated multi-record service round trips across all eight collection routes, document-scoped projection guards, a bounded local-mutation conflict evidence archive, use-latest-remote (PR #149), supported single-collection keep-local (PR #155), and compatible V2 Ruqyah counter convergence (PR #157). PR #157 passed 551 automated assertions, 31/31 Firestore Rules Emulator tests, 8/8 Quran audio CDN probes, TypeScript, production build, server smoke, and 30 desktop/mobile Playwright tests on its exact head. These are meaningful automated gates, not live-device or production proof. Divergent V1 legacy baselines remain archived and blocked; user-authored/grouped merge, tombstones, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore Rules deployment, and exact-SHA live deployment remain open. Keep production sync flags disabled.
 
 
 ## New evidence since the initial checkpoint
