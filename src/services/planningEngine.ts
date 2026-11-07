@@ -198,6 +198,23 @@ export const PlanningEngine = {
   generatePlan(input: PlanGenerationInput): EngineGeneratedPlan {
     const startCoord: VerseCoordinate = { surahNumber: input.startSurah, ayahNumber: input.startAyah };
     const endCoord: VerseCoordinate = { surahNumber: input.endSurah, ayahNumber: input.endAyah };
+
+    const parsedStartDate = this.parseDate(input.startDate);
+    if (!Number.isFinite(parsedStartDate.getTime()) || this.formatDate(parsedStartDate) !== input.startDate) {
+      throw new Error('تاريخ بداية الخطة غير صالح.');
+    }
+    if (!Number.isSafeInteger(input.paceQuantity) || input.paceQuantity <= 0) {
+      throw new Error('المقدار اليومي يجب أن يكون عدداً صحيحاً موجباً.');
+    }
+    const activeDays = Array.isArray(input.activeDays) ? input.activeDays : [];
+    const restDays = Array.isArray(input.restDays) ? input.restDays : [];
+    const hasSchedulableDay = activeDays.some(day =>
+      Number.isSafeInteger(day) && day >= 0 && day <= 6 && !restDays.includes(day)
+    );
+    if (!hasSchedulableDay) {
+      throw new Error('يجب اختيار يوم دراسة نشط واحد على الأقل لتوليد الخطة.');
+    }
+
     const totalVerses = QuranMath.countVersesBetween(startCoord, endCoord);
 
     if (totalVerses <= 0) {
@@ -215,6 +232,10 @@ export const PlanningEngine = {
         throw new Error("لا توجد أيام دراسة نشطة متاحة بين تاريخ البداية والنهاية المحدد.");
       }
       dailyPaceVerses = Math.max(1, Math.ceil(totalVerses / activeDays));
+    }
+
+    if (!Number.isSafeInteger(dailyPaceVerses) || dailyPaceVerses <= 0) {
+      throw new Error('المقدار اليومي الناتج غير صالح؛ راجع عدد الآيات أو تاريخ الهدف.');
     }
 
     // Workload & Feasibility Assessment
