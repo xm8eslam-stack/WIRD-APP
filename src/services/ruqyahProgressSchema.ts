@@ -167,6 +167,26 @@ function mergeSide(
 }
 
 /**
+ * V1 snapshots did not record per-device increments. Their migrated `legacy`
+ * component is only a shared baseline when both devices report the same value.
+ * Different non-zero legacy values are ambiguous and must remain a conflict;
+ * adding or taking max would silently lose or invent pre-migration increments.
+ */
+export function areRuqyahLegacyBaselinesCompatible(
+  left: RuqyahProgressSnapshotV2,
+  right: RuqyahProgressSnapshotV2
+): boolean {
+  if (!isValidRuqyahProgressSnapshotV2(left) || !isValidRuqyahProgressSnapshotV2(right)) return false;
+  const itemIds = new Set([...Object.keys(left.components), ...Object.keys(right.components)]);
+  for (const itemId of itemIds) {
+    const leftLegacy = left.components[itemId]?.increments.legacy ?? 0;
+    const rightLegacy = right.components[itemId]?.increments.legacy ?? 0;
+    if (leftLegacy > 0 && rightLegacy > 0 && leftLegacy !== rightLegacy) return false;
+  }
+  return true;
+}
+
+/**
  * Convergent per-device counter merge. Increment and reset-watermark vectors
  * are merged component-wise by max, so delivery order and duplicate delivery
  * cannot change or double-count the result.
@@ -178,6 +198,9 @@ export function mergeRuqyahProgressSnapshots(
 ): RuqyahProgressSnapshotV2 {
   const a = migrateRuqyahProgressSnapshot(left);
   const b = migrateRuqyahProgressSnapshot(right);
+  if (!areRuqyahLegacyBaselinesCompatible(a, b)) {
+    throw new Error('تختلف قواعد البيانات القديمة لعدادات الرقية ولا يمكن دمجها بأمان دون مراجعة التعارض.');
+  }
   if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت دمج تقدم الرقية غير صالح.');
   const components: Record<string, RuqyahCounterComponents> = {};
   const counts: Record<string, number> = {};
