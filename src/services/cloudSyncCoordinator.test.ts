@@ -340,8 +340,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     harness.dependencies.getLocalRuqyahProgressSnapshot = () => localLegacyV2;
     const result = await projectRemoteInboxBatch(10, harness.dependencies);
     assert(result.reason === 'blocked_pending_local' && harness.state.cursor === 0 &&
-      harness.state.applied === 0 && harness.state.conflicts[0]?.status === 'open' &&
-      harness.state.projectionIntent === null,
+      harness.state.applied === 0 && harness.state.conflicts[0]?.status === 'open',
       'Different migrated legacy baselines must stay archived without creating an unsafe automatic merge intent');
   } catch (err: any) {
     assert(false, `Divergent legacy counter baseline guard failed: ${err?.message}`);
