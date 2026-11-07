@@ -91,6 +91,13 @@ service cloud.firestore {
         && getAfter(eventPath).data.serverSequence is int;
     }
 
+    function hasMatchingSequenceEventAfter(uid) {
+      let eventPath = /databases/$(database)/documents/users/$(uid)/events/$(request.resource.data.lastEventId);
+      return existsAfter(eventPath)
+        && getAfter(eventPath).data.mutationId == request.resource.data.mutationId
+        && getAfter(eventPath).data.serverSequence == request.resource.data.sequence;
+    }
+
     function hasValidDomainEvent(uid, eventId) {
       let data = request.resource.data;
       let common = data.keys().hasAll([
@@ -224,13 +231,13 @@ service cloud.firestore {
         && hasValidRemoteSequence()
         && request.resource.data.baseSequence == 0
         && request.resource.data.sequence == 1
-        && hasMatchingEventAfter(uid);
+        && hasMatchingSequenceEventAfter(uid);
       allow update: if ownsUserPath(uid)
         && hasValidRemoteSequence()
         && resource.data.sequence is int
         && request.resource.data.baseSequence == resource.data.sequence
         && request.resource.data.sequence == resource.data.sequence + 1
-        && hasMatchingEventAfter(uid);
+        && hasMatchingSequenceEventAfter(uid);
       allow delete: if false;
     }
 
