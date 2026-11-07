@@ -257,7 +257,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         'A restart must recover the exact in-flight projection intent');
       assert(await restarted.prepareRemoteProjection(intent),
         'Retrying the same projection intent must be idempotent');
-      assert(await restarted.finalizeRemoteProjection(intent),
+      assert(await restarted.finalizeRemoteProjection(intent, () => true),
         'The recovered projection must atomically finalize');
       assert(await restarted.getRemoteProjectionCursor() === 1,
         'The projection cursor must advance in the finalization transaction');
@@ -306,6 +306,149 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       assert(rejected, 'A different event must not overwrite the durable in-flight intent');
       assert((await journal.getRemoteProjectionIntent())?.eventId === event.eventId,
         'The original intent must remain intact after a conflicting attempt');
+      journal.close();
+    });
+
+    await test('Failed remote projection finalization preserves intent, inbox, cursor, and revision for retry', async () => {
+      const { factory, databaseName, journal } = createJournal('remote-finalize-failure');
+      const event = {
+        uid: 'remote-finalize-failure',
+        eventId: 'remote-finalize-event',
+        mutationId: 'remote-finalize-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-finalize',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device-finalize',
+        occurredAtMs: 8500,
+        payload: { records: [{ id: 'plan-finalize' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const intent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: event.collection,
+        documentId: event.documentId,
+        revision: 1,
+        initializedCollections: [] as ('profile' | 'plans' | 'enginePlans' | 'portions' | 'weakVerses' | 'tests' | 'activityEvents' | 'syncMeta')[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      let rejected = false;
+      let projectionAttempts = 0;
+      try {
+        await journal.finalizeRemoteProjection(intent, () => {
+          projectionAttempts++;
+          return false;
+        });
+      } catch { rejected = true; }
+      assert(rejected && projectionAttempts === 1, 'Injected projection failure must abort finalization');
+      assert(await journal.getRemoteProjectionCursor() === 0, 'A failed projection must not advance its cursor');
+      assert((await journal.listRemoteInboxAfter(0, 10)).length === 1, 'A failed projection must retain its inbox event');
+      assert((await journal.getRemoteProjectionIntent())?.eventId === event.eventId, 'A failed projection must retain its durable intent');
+      assert(await journal.getRemoteRevision('plans', 'plan-finalize') === null, 'A failed projection must not commit a revision');
+      assert(await journal.finalizeRemoteProjection(intent, () => {
+        projectionAttempts++;
+        return true;
+      }), 'The same event must finalize successfully on retry');
+      assert(projectionAttempts === 2 && await journal.getRemoteProjectionCursor() === 1,
+        'Retry must apply once more and atomically advance the cursor');
+      assert((await journal.listRemoteInboxAfter(0, 10)).length === 0, 'Successful retry must remove the inbox event');
+      journal.close();
+      const reopened = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      assert(await reopened.getRemoteProjectionIntent() === null, 'Successful retry must clear the intent after restart');
+      reopened.close();
+    });
+
+    await test('Remote projection finalization serializes competing tabs and invokes only one projection', async () => {
+      const { factory, databaseName, journal } = createJournal('remote-two-projectors');
+      const secondTab = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      const event = {
+        uid: 'remote-two-projectors',
+        eventId: 'remote-two-projectors-event',
+        mutationId: 'remote-two-projectors-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-two-projectors',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device-two-projectors',
+        occurredAtMs: 8600,
+        payload: { records: [{ id: 'plan-two-projectors' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const intent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: event.collection,
+        documentId: event.documentId,
+        revision: 1,
+        initializedCollections: [] as ('profile' | 'plans' | 'enginePlans' | 'portions' | 'weakVerses' | 'tests' | 'activityEvents' | 'syncMeta')[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      const applied = { first: 0, second: 0 };
+      const results = await Promise.allSettled([
+        journal.finalizeRemoteProjection(intent, () => { applied.first++; return true; }),
+        secondTab.finalizeRemoteProjection(intent, () => { applied.second++; return true; })
+      ]);
+      const successful = results.filter(result => result.status === 'fulfilled' && result.value === true).length;
+      assert(successful === 1, 'Exactly one competing tab may finalize the event');
+      assert(applied.first + applied.second === 1, 'Exactly one tab may apply the remote projection');
+      assert(await journal.getRemoteProjectionCursor() === 1, 'The shared cursor must advance exactly once');
+      assert((await journal.listRemoteInboxAfter(0, 10)).length === 0, 'The event must be removed only after the winning projection');
+      journal.close();
+      secondTab.close();
+    });
+
+    await test('Remote projection finalization refuses to overwrite a local mutation queued after intent preparation', async () => {
+      const { journal } = createJournal('remote-local-race');
+      const event = {
+        uid: 'remote-local-race',
+        eventId: 'remote-local-race-event',
+        mutationId: 'remote-local-race-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-race',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device-race',
+        occurredAtMs: 8700,
+        payload: { records: [{ id: 'plan-race' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const intent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: event.collection,
+        documentId: event.documentId,
+        revision: 1,
+        initializedCollections: [] as ('profile' | 'plans' | 'enginePlans' | 'portions' | 'weakVerses' | 'tests' | 'activityEvents' | 'syncMeta')[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      await journal.enqueue({
+        mutationId: 'local-race-mutation',
+        collection: 'plans',
+        documentId: 'plan-race',
+        payload: { records: [{ id: 'local-version' }] },
+        nowMs: 8800
+      });
+      let applied = false;
+      let rejected = false;
+      try {
+        await journal.finalizeRemoteProjection(intent, () => { applied = true; return true; });
+      } catch { rejected = true; }
+      assert(rejected && !applied, 'A pending local mutation must block projection before local storage is touched');
+      assert(await journal.getRemoteProjectionCursor() === 0, 'A local conflict must leave the cursor unchanged');
+      assert((await journal.getRemoteProjectionIntent())?.eventId === event.eventId, 'A local conflict must retain the recovery intent');
       journal.close();
     });
 
