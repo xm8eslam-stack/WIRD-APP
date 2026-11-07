@@ -63,7 +63,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
         error: 'RUQYAH_API_KEY_NOT_CONFIGURED'
       }), { status: 503, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
       let message = '';
-      try { await fetchRuqyahApiData({ type: 'instant-category' }); }
+      try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); }
       catch (error) { message = error instanceof Error ? error.message : String(error); }
       assert(message.includes('مفتاح API'), 'Missing key should have a clear setup message');
     });
