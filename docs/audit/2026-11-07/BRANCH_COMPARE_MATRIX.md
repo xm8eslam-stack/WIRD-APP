@@ -96,7 +96,7 @@ All other non-PR branches contain unique commits and must be preserved until tho
 
 ## Additional branches created after the 70-ref baseline snapshot
 
-The baseline matrix remains an exact snapshot of the original 70 refs. Five new working branches were created during audit/remediation; they were also compared to main and are included in the current 75-ref count:
+The baseline matrix remains an exact snapshot of the original 70 refs. Six new working branches were created during audit/remediation; they were also compared to main and are included in the current 76-ref count:
 
 | Branch | Compare status | Main-only commits | Branch-only commits | Purpose / state |
 |---|---:|---:|---:|---|
@@ -104,12 +104,12 @@ The baseline matrix remains an exact snapshot of the original 70 refs. Five new 
 | `fix/progress-import-journal-20261107` | ahead | 0 | 4 | PR #61 Draft; journaled backup import fix; exact-head CI PASS |
 | `fix/plan-lifecycle-preserve-revisions-20261107` | ahead | 0 | 10 | PR #62 Draft; plan lifecycle preservation; exact-head CI PASS |
 
-Current remote branch count after these additions: **75**. Do not confuse the original 70-ref baseline matrix with the current live count.
+Current remote branch count after these additions: **76**. Do not confuse the original 70-ref baseline matrix with the current live count.
 
 | `fix/quran-audio-repeat-20261107` | ahead | 0 | 4 | PR #63 Draft; repeat-controller fix; exact-head CI PASS |
 | `fix/tafsir-json-response-20261107` | ahead | 0 | 4 | PR #64 Draft; HTML/JSON guard; exact-head CI pending at last check |
 
-Current remote branch count after all audit/remediation branches: **75**.
+Current remote branch count after all audit/remediation branches: **76**.
 
 | `fix/quran-coordinate-validation-20261107` | ahead | 0 | 13 | PR #65 Draft; coordinate/domain-event validation; exact-head CI PASS (417/0), Vercel Preview Ready |
 
