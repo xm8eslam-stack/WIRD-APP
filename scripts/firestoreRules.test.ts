@@ -147,7 +147,7 @@ try {
   });
 
   const validEvent = {
-    schemaVersion: 1,
+    schemaVersion: 1 as const,
     eventId: 'event-alice-001',
     mutationId: 'mutation-test-0001',
     uid: 'alice',
