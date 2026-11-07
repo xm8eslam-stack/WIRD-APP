@@ -104,13 +104,18 @@ The baseline matrix remains an exact snapshot of the original 70 refs. Six new w
 | `fix/progress-import-journal-20261107` | ahead | 0 | 4 | PR #61 Draft; journaled backup import fix; exact-head CI PASS |
 | `fix/plan-lifecycle-preserve-revisions-20261107` | ahead | 0 | 10 | PR #62 Draft; plan lifecycle preservation; exact-head CI PASS |
 
-Current remote branch count after these additions: **76**. Do not confuse the original 70-ref baseline matrix with the current live count.
+Current remote branch count at the latest live check: **77**. The original baseline matrix remains 70 branches; the two latest remediation branches are listed below.ns: **76**. Do not confuse the original 70-ref baseline matrix with the current live count.
 
 | `fix/quran-audio-repeat-20261107` | ahead | 0 | 4 | PR #63 Draft; repeat-controller fix; exact-head CI PASS |
 | `fix/tafsir-json-response-20261107` | ahead | 0 | 4 | PR #64 Draft; HTML/JSON guard; exact-head CI pending at last check |
 
-Current remote branch count after all audit/remediation branches: **76**.
+Current remote branch count at the latest live check: **77**. The original baseline matrix remains 70 branches; the two latest remediation branches are listed below.n branches: **76**.
 
 | `fix/quran-coordinate-validation-20261107` | ahead | 0 | 13 | PR #65 Draft; coordinate/domain-event validation; exact-head CI PASS (417/0), Vercel Preview Ready |
 
 Current live remote branch count: **76** (70 baseline + 6 post-baseline branches).
+
+| `fix/quran-coordinate-validation-20261107` | ahead | 0 | 13 | PR #65 Draft; exact-head CI PASS (417/0) |
+| `fix/cloud-sync-honest-status-20261107` | ahead | 0 | 3 | PR #66 Draft; exact-head CI PASS; truthful partial status only |
+
+Current live branch count: **77**.
