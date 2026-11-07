@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
-import { isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import { isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import { LocalSyncOutbox } from './localSyncOutbox';
 
@@ -47,16 +47,16 @@ export async function getRuqyahProgressDeviceId(expectedStorageScope?: string): 
   return snapshot.deviceId;
 }
 
-/** Persist progress atomically through the same account-scoped storage adapter as WIRD. */
+/** @deprecated Legacy local-only adapter. New interactive writes must use the device-aware journaled snapshot path. */
 export function saveRuqyahProgress(counts: Record<string, number>, nowMs = Date.now()): void {
   if (!isValidRuqyahProgressCounts(counts) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
     throw new Error('بيانات تقدم الرقية غير صالحة.');
   }
-  const snapshot: RuqyahProgressSnapshot = {
+  const snapshot: RuqyahProgressSnapshot = migrateRuqyahProgressSnapshot({
     schemaVersion: 1,
     updatedAtMs: nowMs,
     counts: { ...counts }
-  };
+  }, nowMs);
   const serialized = JSON.stringify(snapshot);
   if (!StorageService.saveRuqyahProgressSnapshot(snapshot) ||
       !StorageService.verifyRawItem(STORAGE_KEY, serialized)) {
