@@ -57,7 +57,7 @@ Last verified: 2026-11-07.
 - No Quran text, hadith, fixed repetition values, or source registry changed.
 
 ## Quran audio restoration — active PR branch, not yet merged
-- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; current branch head at checkpoint edit: `631dae87556bd781d5ddeaa2f046eabaeb7a02b5`.
+- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; latest audio implementation commit before checkpoint refresh: `e7af3797df6e60142d7d0c82a6a628ad71b923e6`.
 - Main base verified before this branch: `7b8b92dab41b3996483c38b5da9033c7e350fb5e` (PR #148 merge; PR #147 remains recorded below).
 - Replaced the disabled audio catalogue with a static seven-edition Al Quran Cloud allowlist: `ar.husary`, `ar.minshawi`, `ar.abdulbasit`, `ar.sudais`, `ar.shuraim`, `ar.ajamy`, and `ar.alafasy`.
 - Provider terms: recitations are licensed to Al Quran Cloud by reciters or estates; streaming/embedding is permitted for personal and educational use. WIRD limits this to educational ayah-level streaming and does not mirror or bundle files. Terms and CDN docs are recorded in `SUNNI_SOURCE_POLICY.md`.
@@ -65,7 +65,7 @@ Last verified: 2026-11-07.
 - Full-program recordings containing supplications remain disabled; no unverified recording URLs were reintroduced.
 - Added unit tests, desktop/mobile Playwright coverage, and a CI live-CDN smoke script checking representative MP3 content type and byte-range responses.
 - Files changed on this branch: `api/quran-audio.ts`, `src/services/ruqyahAudioService.ts`, `src/components/ruqyah/RuqyahView.tsx`, `src/tests/ruqyahAudioService.test.ts`, `src/tests/ruqyahViewAudioLock.test.ts`, `src/tests/runAllTests.ts`, `e2e/ruqyah-audio.spec.ts`, `scripts/check-ruqyah-audio-source.mjs`, `.github/workflows/ci.yml`, `index.html`, `docs/ruqyah/SUNNI_SOURCE_POLICY.md`, and `docs/ruqyah/RELEASE_CHECKLIST.md`.
-- Validation is pending the exact-head PR Quality Gate, including the real external CDN smoke test. No production playback or Vercel deployment is claimed.
+- PR #150 is open. Validation is pending the exact-head PR Quality Gate, including the real external CDN smoke test. No production playback or Vercel deployment is claimed.
 - Acoustic limitation: provider metadata, published terms, and CDN endpoint behavior are documented; CI's representative endpoint checks do not constitute human listening verification of every file.
 
 ## Branch hygiene
