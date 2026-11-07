@@ -15,6 +15,15 @@ export type CloudSyncStatus =
   | 'unverified'
   | 'guest'
   | 'error';
+export type RemoteProjectionBlockReason =
+  | 'projection_disabled'
+  | 'legacy_remote_state'
+  | 'events_pending'
+  | 'import_failed'
+  | 'blocked_pending_local'
+  | 'blocked_base_revision'
+  | 'blocked_tombstone'
+  | 'projection_failed';
 
 export interface CloudSyncState {
   status: CloudSyncStatus;
@@ -23,6 +32,8 @@ export interface CloudSyncState {
   remoteInboxPendingCount: number;
   remoteCursor: number;
   remoteProjectionCursor: number;
+  remoteProjectionBlockReason: RemoteProjectionBlockReason | null;
+  remoteProjectionBlockedAtSequence: number | null;
   errorMessage: string | null;
   isOnline: boolean;
 }
@@ -69,6 +80,8 @@ class CloudSyncCoordinator {
     remoteInboxPendingCount: 0,
     remoteCursor: 0,
     remoteProjectionCursor: 0,
+    remoteProjectionBlockReason: null,
+    remoteProjectionBlockedAtSequence: null,
     errorMessage: null,
     isOnline: checkIsOnline()
   };
@@ -364,21 +377,37 @@ class CloudSyncCoordinator {
         if (snapshot.size < 100) break;
       }
 
-      if (!isRemoteProjectionEnabled()) return false;
-      if (await this.hasLegacyRemoteState(uid)) return false;
+      if (!isRemoteProjectionEnabled()) {
+        this.updateState({ remoteProjectionBlockReason: 'projection_disabled', remoteProjectionBlockedAtSequence: null });
+        return false;
+      }
+      if (await this.hasLegacyRemoteState(uid)) {
+        this.updateState({ remoteProjectionBlockReason: 'legacy_remote_state', remoteProjectionBlockedAtSequence: null });
+        return false;
+      }
 
       const projection = await projectRemoteInboxBatch(100);
       if (projection.reason) {
         console.warn('[WIRD CloudSync] Remote projection paused without advancing its cursor.', projection);
+        this.updateState({
+          remoteProjectionBlockReason: projection.reason,
+          remoteProjectionBlockedAtSequence: projection.blockedAtSequence
+        });
         return false;
       }
       const [remoteCursor, projectionCursor] = await Promise.all([
         LocalSyncOutbox.getRemoteCursor(),
         LocalSyncOutbox.getRemoteProjectionCursor()
       ]);
-      return remoteCursor === projectionCursor;
+      if (remoteCursor !== projectionCursor) {
+        this.updateState({ remoteProjectionBlockReason: 'events_pending', remoteProjectionBlockedAtSequence: null });
+        return false;
+      }
+      this.updateState({ remoteProjectionBlockReason: null, remoteProjectionBlockedAtSequence: null });
+      return true;
     } catch (error) {
       console.warn('[WIRD CloudSync] Remote inbox import/projection is incomplete; durable cursors were preserved.', error);
+      this.updateState({ remoteProjectionBlockReason: 'import_failed', remoteProjectionBlockedAtSequence: null });
       return false;
     }
   }
