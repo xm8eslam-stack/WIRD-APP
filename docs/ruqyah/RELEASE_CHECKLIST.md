@@ -20,7 +20,7 @@ Last reviewed: 2026-11-07
 - Phase 14: PR #139 — restore keyboard focus after reset confirmation actions and support Escape cancellation from the reset trigger; verify on desktop/mobile.
 - Phase 15: PR #141 — assert no horizontal overflow at 320px, 360px, and 390px in both Ruqyah reading and Quran locator library modes on desktop/mobile Chromium.
 - Phase 16: PR #145 — announce counter updates through polite atomic live regions with Arabic labels for free-reading counts and source-defined remaining repetitions.
-- Phase 17: PR #150 merged (`c1e480b94c08df152fb75c797ddc0caeebc148e6`) — restore Quran ayah-level audio with seven curated Al Quran Cloud reciter choices mapped to verified CDN folder IDs and bitrates, continuous section playlists, accessible playback controls, and live CDN smoke checks. Exact-head Quality Gate passed: 533 automated assertions, 31 Firestore rules tests, dependency audit, 8/8 CDN samples, TypeScript, production build, server smoke, and 30 desktop/mobile Playwright tests. Full-program recordings remain disabled pending separate content, reciter, and rights review.
+- Phase 17: PR #150 merged (`c1e480b94c08df152fb75c797ddc0caeebc148e6`) — restored Quran ayah-level audio with a curated Al Quran Cloud reciter allowlist, API-to-CDN folder mapping, provider-documented bitrates, continuous section playlists, accessible playback controls, and live CDN smoke checks. Exact-head Quality Gate passed: 533 automated assertions, 31 Firestore Rules tests, 8/8 CDN probes, and 30 desktop/mobile Playwright tests. Production playback remains pending a successful Vercel deployment; full-program recordings remain disabled.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
@@ -46,7 +46,7 @@ Do not turn on remote projection before this deployment is confirmed.
 
 ### 2. Verify Vercel environment and deployment
 
-The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure on the PR #150 merge commit (`c1e480b94c08df152fb75c797ddc0caeebc148e6`). This is a provider quota issue, not a failed code quality gate. Code is merged, but production deployment and live-site audio playback remain unverified until the quota clears and the deployment SHA/alias is checked.
+The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate.
 
 **STOP — do not enable production sync at the current checkpoint.** The values below are documented for a future release only. Do not set either remote-sync flag until every global gate in docs/sync/RELEASE-GATES.md passes, especially user-facing conflict resolution, deterministic Ruqyah additive-increment resolution, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing. These gates are currently open.
 
@@ -81,11 +81,11 @@ Use two real browsers/devices signed in to the same verified account:
 - Audio source: Al Quran Cloud terms explicitly permit streaming/embedding for personal and educational use and describe recitations as licensed by reciters or estates. WIRD uses the source for educational ayah-level streaming only; it does not mirror or bundle audio. See docs/ruqyah/SUNNI_SOURCE_POLICY.md.
 - Verify the reciter catalogue proxy returns only the seven reviewed edition IDs and that client validation rejects unknown provider identities, malformed JSON, duplicate IDs, and unapproved editions.
 - Verify audio URL construction always uses https://cdn.islamic.network/quran/audio, a fixed approved API edition mapped to its verified CDN directory, and the bitrate documented for that directory (64, 128, or 192 kbps), and a global ayah number from 1 to 6236. Never accept arbitrary hosts or user-supplied URLs.
-- CI must pass node scripts/check-ruqyah-audio-source.mjs, confirming all seven approved editions and the final Alafasy ayah return MPEG media with byte-range support.
+- CI passed node scripts/check-ruqyah-audio-source.mjs on PR #150: all seven approved editions and the final Alafasy ayah returned MPEG media with byte-range support (8/8). Repeat after source or bitrate changes.
 - Verify section playback builds its queue only from WIRD's canonical local Quran ayah map; provider audio never supplies the displayed Quran text.
 - Verify pause/resume/stop, seeking, volume, sequential ayah transitions, category changes, library navigation, unmount cleanup, network errors, and no silent source fallback.
 - Verify audio playback never increments or modifies reading counters automatically.
-- Full-program recordings that include supplications remain disabled until a complete reciter/content/rights audit is completed. PR #150 restores ayah-level Al Quran Cloud playback only; do not confuse that with approval of the former full-program files.
+- Full-program recordings that include supplications remain disabled until a complete reciter/content/rights audit is completed.
 - Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
 ### 5. Accessibility and responsive review
@@ -104,7 +104,7 @@ See `docs/ruqyah/SUNNI_SOURCE_POLICY.md` for the exact source hierarchy and chec
 - IslamicAPI is permitted only as a Quran locator. Its `from-sunnah` and category endpoints are rejected; the proxy strips all provider-authored fields and returns only validated numeric coordinates and an item ID. Canonical Quran text and surah metadata are rendered from WIRD's verified corpus.
 - Educational topic and category endpoints are hard-disabled in the proxy. Do not reintroduce them until each article is curated from a named, reviewed Sunni source and passes the source registry tests.
 - Al Quran Cloud is used only for ayah-level educational streaming under its published terms; the seven allowed edition IDs and fixed CDN host are enforced in code and tests.
-- CI checks representative audio assets for media type and byte-range support. This is technical availability evidence, not independent human listening verification of every recording.
+- PR #150 CI checked the first ayah for all seven approved editions plus the final Alafasy ayah (8/8) for MPEG media type and byte-range support. This is technical availability evidence, not independent human listening verification of every recording.
 - Full-program recordings containing supplications and Al Furqan's dynamic reciter/audio provider remain disabled pending exact content, reciter, and rights review.
 - Do not add another source or reciter without a source record, rights review, allowlist update, and regression tests.
 
