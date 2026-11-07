@@ -55,6 +55,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
     await test('Canonical Quran locator search uses only verified surah metadata and supports Arabic numerals', () => {
       const entry = { id: 2, title: '2:1-5' };
       assert(matchesApiQuranEntry(entry, 'البقرة'), 'Canonical Arabic surah name should match');
+      assert(matchesApiQuranEntry(entry, 'البقرة ٢:١-٥'), 'Full Arabic surah name and verse phrase should match');
       assert(matchesApiQuranEntry(entry, '2:1-5'), 'ASCII surah/ayah range should match');
       assert(matchesApiQuranEntry(entry, '٢:١-٥'), 'Arabic-Indic surah/ayah range should match');
       assert(matchesApiQuranEntry(entry, '5'), 'A verse number should match the canonical range');
