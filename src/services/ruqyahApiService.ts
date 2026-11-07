@@ -5,6 +5,8 @@ import type { RuqyahItem } from '../data/ruqyahData';
 export type RuqyahApiProgram = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
 export type RuqyahApiSource = 'from-quran';
 
+const MAX_EXTERNAL_INDEX_ID = 999_999_999;
+
 export interface RuqyahApiEntry {
   id: number | string;
   /** Sanitized numeric locator only, e.g. "2:255-257"; never provider-authored prose. */
@@ -92,7 +94,7 @@ export async function fetchRuqyahApiData<T = unknown>(
  */
 export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQuranEntry {
   const validId = typeof entry?.id === 'number'
-    ? Number.isSafeInteger(entry.id) && entry.id > 0
+    ? Number.isSafeInteger(entry.id) && entry.id > 0 && entry.id <= MAX_EXTERNAL_INDEX_ID
     : typeof entry?.id === 'string' && /^[1-9][0-9]{0,8}$/.test(entry.id);
   if (!entry || !validId || typeof entry.title !== 'string') {
     throw new Error('لا يحتوي فهرس الآيات على موضع صالح.');

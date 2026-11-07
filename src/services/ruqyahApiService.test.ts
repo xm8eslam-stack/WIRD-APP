@@ -44,7 +44,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
     });
 
     await test('External Quran entries with invalid provider IDs fail closed', () => {
-      for (const id of [0, -1, 1.5, '0', 'abc', '1234567890']) {
+      for (const id of [0, -1, 1.5, 1_000_000_000, Number.MAX_SAFE_INTEGER, '0', 'abc', '1234567890']) {
         let rejected = false;
         try { resolveApiQuranEntryText({ id, title: '2:255' }); } catch { rejected = true; }
         assert(rejected, 'Invalid external Quran item ID must be rejected: ' + String(id));
