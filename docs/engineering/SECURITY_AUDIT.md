@@ -4,13 +4,13 @@
 **Audited branch:** `main`  
 **Latest reviewed main HEAD:** `221759fe617e5fd5d719ed6fd36ff3981ed63ed6`  
 **CI:** GitHub Actions run [42169105813](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42169105813) completed successfully.  
-**Deployment:** The user reports `https://wird-app.vercel.app/#/dashboard` is working; the Vercel check for this commit is green. This does not verify Firebase production rules or cloud sync.
+**Deployment:** Vercel reports `api-deployments-free-per-day` / `build-rate-limit` on reviewed main updates. No exact production deployed SHA or live deployment verification is claimed. Firebase production rules deployment remains unverified.
 
 ## Executive summary
 
-WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped local storage and a legacy-data ownership decision are implemented. Several correctness and persistence bugs affecting memorization/revision were fixed and regression-tested in this session, including review/memorization separation, repeat-loop prevention for in-progress passages, single-write page updates, and truthful backup-import feedback.
+WIRD now has a local-first journal/outbox, revision-checked Firestore mutation path, durable remote inbox/projector, UID/account-scope isolation, and a bounded conflict evidence archive. Populated multi-record fixtures exercise all eight user-data collections in sequential A → B → A Emulator-backed service tests. Desktop/mobile Playwright app-shell and Ruqyah locator-library browser checks are also present.
 
-**Cloud sync is not implemented yet.** Firestore rules and emulator tests exist, but there is no Firestore client adapter, local outbox, merge engine, or live rules deployment confirmation. Do not tell users their progress is cloud-synced until the M4–M7 gates in `IMPLEMENTATION_ROADMAP.md` pass.
+**Cloud sync is implemented but not release-ready.** Same-document conflicts remain blocked and preserved; a user-directed keep-local/use-remote/merge state machine is still missing. Tombstone propagation, additive multi-device Ruqyah counters, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore rules deployment, live two-device verification, and a verified production deployment remain open. Do not claim live cloud sync until the release gates pass.
 
 ## Confirmed protections and fixes
 
@@ -39,13 +39,14 @@ WIRD has a sound local-first foundation and Firebase Authentication. UID-scoped 
 
 ## Important unresolved risks
 
-### Critical — cloud sync is absent
+### Critical — cloud sync exists but is not release-ready
 
-- `src/lib/firebase.ts` initializes Firebase App/Auth only.
-- No application Firestore client, `onSnapshot` listener, cloud repository, or sync engine is present.
-- `LocalSyncOutbox` exists but is not yet called by session, review, weak-verse, test, or plan mutation flows.
-- Firestore rules are not confirmed deployed to the live Firebase project.
-- Cross-device progress must be considered unavailable until sync is implemented and verified.
+- Revisioned Firestore mutations, local Outbox, remote Inbox, projector, and account-scope guards are implemented and covered by Emulator-backed tests.
+- Populated records across all eight collections are covered by sequential bidirectional service tests; this is not simultaneous merge proof or real-device verification.
+- PR #126 preserves local pending mutation payloads with conflict evidence; PR #129 scopes ordinary projection/finalization guards by document.
+- User-directed conflict decisions, latest-revision revalidation, keep-local rebase, use-remote semantics, and safe field merge remain unimplemented.
+- Tombstone propagation and additive Ruqyah progress increments remain unimplemented.
+- Firestore rules are not confirmed deployed to the live Firebase project, and no live two-device test or exact-SHA production deployment is verified.
 
 ### High — current Firestore rules are only a foundation
 
