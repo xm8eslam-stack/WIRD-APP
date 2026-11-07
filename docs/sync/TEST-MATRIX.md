@@ -44,3 +44,10 @@
 - PR #94 adds a separate concurrent-offline scenario: two devices increment from the same base revision; the first server mutation is accepted, the stale second mutation is rejected, and the second device retains its Outbox mutation, imported remote Inbox event, local snapshot, archived conflict evidence, and unchanged projection cursor.
 - This test proves conflict preservation, not automatic convergence or additive merge. The user-facing conflict-resolution workflow and a deterministic way to merge additive counter increments remain release blockers.
 - The revisioned sync coordinator legacy-state scan now explicitly includes ruqyahProgress so existing documents cannot be skipped by first-sync detection.
+
+## 2026-11-07 — Multi-collection two-device projection matrix
+
+- PR #101 adds an Emulator-backed **one-way A → B projection pass** through all eight user data collection routes: profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and ruqyahProgress. It is not a bidirectional round-trip test.
+- The test writes revisioned mutations on device A, imports the ordered immutable event stream on device B, runs the actual remote inbox projector, verifies local archive presence/cursor advancement, and checks owner reads plus cross-user read denial for every route.
+- Payload depth is limited: plans, enginePlans, portions, weakVerses, tests, and activityEvents currently use empty `records: []` arrays. Profile and Ruqyah have non-empty representative payloads. Therefore this validates collection routing, event transport, projection dispatch, cursor handling, and owner rules; it does **not** validate populated-record schemas/serialization for those six arrays, reverse B → A flow, simultaneous writes, or conflict convergence.
+- Remaining multi-collection work: add valid populated domain records per collection, assert field-level round-trip equality, test B → A and alternating edits, and exercise offline/retry/crash cases across more than one collection. Real-device/mobile E2E, account lifecycle switching, cross-tab browser E2E, and conflict-resolution UI also remain unverified.
