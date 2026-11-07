@@ -1,5 +1,5 @@
 import quranAudioHandler from '../../api/quran-audio';
-import { buildQuranAyahAudioUrl } from '../services/ruqyahAudioService';
+import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS } from '../services/ruqyahAudioService';
 
 class MockResponse {
   statusCode = 200;
@@ -23,54 +23,31 @@ export async function runRuqyahAudioServiceTests(): Promise<{ passed: number; fa
   const originalFetch = globalThis.fetch;
 
   try {
-    await test('Audio catalog proxy rejects unsupported query and HTTP methods', async () => {
+    await test('Audio catalogue proxy rejects unsupported query and HTTP methods', async () => {
       const invalid = new MockResponse();
-      await quranAudioHandler({ method: 'GET', query: { type: 'audio' }, headers: { 'x-forwarded-for': '198.51.100.71' } }, invalid);
+      await quranAudioHandler({ method: 'GET', query: { type: 'audio' }, headers: {} }, invalid);
       assert(invalid.statusCode === 400, 'Unsupported catalog type must be rejected');
       const post = new MockResponse();
       await quranAudioHandler({ method: 'POST', headers: {} }, post);
       assert(post.statusCode === 405, 'POST must be rejected');
     });
 
-    await test('Audio catalog proxy returns validated reciters and caches the response', async () => {
-      globalThis.fetch = (async () => new Response(JSON.stringify({
-        count: 2,
-        reciters: [
-          { id: 'husary', name: 'Husary', arabicName: 'الحصري', r2Path: 'unused' },
-          { id: 'minshawy-murattal', name: 'Minshawy', arabicName: 'المنشاوي' }
-        ]
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+    await test('Unverified reciter catalogue is blocked before any upstream network request', async () => {
+      let called = false;
+      globalThis.fetch = (async () => { called = true; throw new Error('unverified provider must not be contacted'); }) as typeof fetch;
       const res = new MockResponse();
-      await quranAudioHandler({ method: 'GET', query: { type: 'reciters' }, headers: { 'x-forwarded-for': '198.51.100.72' } }, res);
-      assert(res.statusCode === 200 && res.body?.reciters?.length === 2, 'Valid reciter catalog must be returned');
-      assert(res.body.reciters[0].id === 'husary', 'Reciter IDs must remain unchanged');
-      assert(!('r2Path' in res.body.reciters[0]), 'Unneeded upstream internals must not be exposed');
-      assert(res.headers['Cache-Control'].includes('s-maxage=86400'), 'Catalog should be cached');
+      await quranAudioHandler({ method: 'GET', query: { type: 'reciters' }, headers: {} }, res);
+      assert(res.statusCode === 503 && res.body?.error === 'QURAN_AUDIO_SOURCE_NOT_VERIFIED',
+        'Unverified audio catalogue must fail closed');
+      assert(!called, 'No request may be sent to the unverified provider');
+      assert(res.headers['Cache-Control'] === 'no-store', 'Disabled provider response must not be cached');
     });
 
-    await test('Audio catalog proxy rejects malformed and HTML source responses', async () => {
-      globalThis.fetch = (async () => new Response('<html>fallback</html>', {
-        status: 200, headers: { 'Content-Type': 'text/html' }
-      })) as typeof fetch;
-      const html = new MockResponse();
-      await quranAudioHandler({ method: 'GET', query: { type: 'reciters' }, headers: { 'x-forwarded-for': '198.51.100.73' } }, html);
-      assert(html.statusCode === 502, 'HTML fallback must be rejected');
-      globalThis.fetch = (async () => new Response(JSON.stringify({
-        reciters: [{ id: 'bad/id', name: 'Bad', arabicName: 'سيئ' }]
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
-      const malformed = new MockResponse();
-      await quranAudioHandler({ method: 'GET', query: { type: 'reciters' }, headers: { 'x-forwarded-for': '198.51.100.74' } }, malformed);
-      assert(malformed.statusCode === 502, 'Malformed reciter IDs must be rejected');
-    });
-
-    await test('Audio URL builder accepts only known reciter slug format and global Quran coordinates', () => {
-      assert(buildQuranAyahAudioUrl('husary', 1) === 'https://alfurqan.online/api/v1/audio/husary/1', 'Audio URL format mismatch');
-      assert(buildQuranAyahAudioUrl('minshawy-murattal', 6236).endsWith('/6236'), 'Last Quran ayah must be addressable');
-      for (const [reciter, ayah] of [['bad/id', 1], ['husary', 0], ['husary', 6237], ['husary', 1.5]] as Array<[string, number]>) {
-        let rejected = false;
-        try { buildQuranAyahAudioUrl(reciter, ayah); } catch { rejected = true; }
-        assert(rejected, 'Invalid audio URL input must be rejected');
-      }
+    await test('Only named fallback reciters remain listed while playback is disabled', () => {
+      assert(FALLBACK_QURAN_RECITERS.length >= 1, 'The known reciter list should remain available for future vetted audio');
+      let rejected = false;
+      try { buildQuranAyahAudioUrl('husary', 1); } catch { rejected = true; }
+      assert(rejected, 'Audio URL builder must fail closed until a verified provider is approved');
     });
   } finally {
     globalThis.fetch = originalFetch;
