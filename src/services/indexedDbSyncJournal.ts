@@ -1325,9 +1325,12 @@ export class IndexedDbSyncJournal {
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
       const conflictRequest = conflicts.get(uid + ':' + intent.eventId);
-      const pendingRequests = affectedCollections.map(collection =>
-        outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
-      );
+      const pendingRequests = intent.collection === 'syncMeta'
+        ? affectedCollections.map(collection =>
+            outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
+          )
+        : [outbox.index('uidCollectionDocument')
+            .getAll(IDBKeyRange.only([uid, intent.collection, intent.documentId]))];
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
       let conflict: RemoteProjectionConflict | undefined;
