@@ -328,3 +328,12 @@ This source audit does not replace automated failure-injection tests or the two-
 - Settings now displays the count of remote events awaiting local projection and the separate import/projection cursors.
 - The coordinator exposes a typed pause reason (feature gate, legacy remote data, pending local writes, base-revision mismatch, tombstone, projection failure, or import failure) and the blocked server sequence when known.
 - These diagnostics do not advance cursors or resolve conflicts; they make safe pauses visible instead of presenting a misleading success state.
+
+
+## 2026-11-07 implementation update
+
+PR #73 added durable remote projection intent and atomic local finalization/recovery. PR #77 proved a bidirectional profile upsert round trip between two isolated emulator devices. PR #78 proved stale same-document offline writes are rejected by server revision while preserving the losing local mutation and remote inbox event without advancing the cursor. See `docs/sync/ARCHITECTURE.md`, `STATE-MACHINE.md`, and `TEST-MATRIX.md` for exact boundaries and evidence.
+
+The sync coordinator now has explicit gates: `VITE_WIRD_REVISIONED_SYNC_ENABLED` for revisioned cloud writes and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` for local remote-event projection. Production values were not inspected; do not assume either is active.
+
+Still not release-ready: tombstones are deliberately blocked by the projector/storage adapter; conflict detection has no dedicated conflict record or user-facing resolution/rebase; multi-device tests cover profile only; production rules deployment, Vercel deployment, and browser E2E are unverified.
