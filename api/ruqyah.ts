@@ -154,9 +154,9 @@ async function readBoundedUpstreamText(response: Response): Promise<string | nul
 }
 
 /**
- * Server-side proxy for IslamicAPI Ruqyah. The API key is never sent to the
- * browser. Only the Arabic corpus is exposed; callers cannot choose arbitrary
- * upstream hosts, languages, or query parameters.
+ * Server-side proxy for the external Quran locator only. The API key is never
+ * sent to the browser. Provider-authored text is stripped; only validated
+ * numeric Quran coordinates and item IDs are returned.
  */
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
