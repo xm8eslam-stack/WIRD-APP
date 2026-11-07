@@ -203,7 +203,7 @@ export const PlanningEngine = {
     if (!Number.isFinite(parsedStartDate.getTime()) || this.formatDate(parsedStartDate) !== input.startDate) {
       throw new Error('تاريخ بداية الخطة غير صالح.');
     }
-    if (!Number.isSafeInteger(input.paceQuantity) || input.paceQuantity <= 0) {
+    if (input.paceType !== 'by_target_date' && (!Number.isSafeInteger(input.paceQuantity) || input.paceQuantity <= 0)) {
       throw new Error('المقدار اليومي يجب أن يكون عدداً صحيحاً موجباً.');
     }
     const activeDays = Array.isArray(input.activeDays) ? input.activeDays : [];
