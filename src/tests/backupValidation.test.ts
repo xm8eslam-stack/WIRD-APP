@@ -319,13 +319,17 @@ export function runBackupTests(): { passed: number; failed: number } {
     try {
       StorageService.resetAllData();
       assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Canonical sample should save');
+      const ruqyahProgress = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 5, 'dua-pain': 3 } };
+      assert(StorageService.saveRuqyahProgressSnapshot(ruqyahProgress), 'Ruqyah progress sample should save');
       const exported = JSON.parse(StorageService.exportFullBackup());
       assert(exported.version === 5, 'New exports must use version 5');
       assert(JSON.stringify(exported.unifiedPortions) === JSON.stringify([SAMPLE_PORTION]), 'Export must include canonical portion payload');
+      assert(JSON.stringify(exported.ruqyahProgress?.counts) === JSON.stringify(ruqyahProgress.counts), 'Export must include validated Ruqyah progress');
       StorageService.resetAllData();
       const imported = StorageService.importBackup(JSON.stringify(exported));
       assert(imported.success, 'Version 5 backup should import successfully');
       assert(JSON.stringify(StorageService.getUnifiedPortions()) === JSON.stringify([SAMPLE_PORTION]), 'Imported canonical portions must exactly match exported data');
+      assert(JSON.stringify(StorageService.getRuqyahProgressSnapshot()?.counts) === JSON.stringify(ruqyahProgress.counts), 'Imported Ruqyah progress must exactly match exported counters');
     } finally { StorageService.restoreStorageSnapshot(snapshot); }
   });
 
