@@ -11,6 +11,7 @@ export type SyncCollection =
   | 'weakVerses'
   | 'tests'
   | 'activityEvents'
+  | 'ruqyahProgress'
   | 'syncMeta';
 
 export type SyncOperation = 'upsert' | 'tombstone';
@@ -71,7 +72,7 @@ const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
 const ALLOWED_COLLECTIONS = new Set<SyncCollection>([
   'profile', 'plans', 'enginePlans', 'portions',
-  'weakVerses', 'tests', 'activityEvents', 'syncMeta'
+  'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
 ]);
 
 function byteLength(value: string): number {

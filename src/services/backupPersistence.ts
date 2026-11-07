@@ -138,6 +138,12 @@ export function buildBackupImportOperations(
   if (parsed.weakVerses !== undefined) {
     operations.push({ collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.weakVerses } });
   }
+  if (parsed.ruqyahProgress !== undefined) {
+    operations.push({
+      collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert',
+      payload: { snapshot: parsed.ruqyahProgress }
+    });
+  }
 
   let canonicalPortions = parsed.unifiedPortions;
   if (canonicalPortions === undefined && (parsed.portions !== undefined || parsed.revisionItems !== undefined)) {
@@ -234,7 +240,8 @@ export async function resetAllDataJournaled(
     { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
     { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
     { collection: 'tests', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
-    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } }
+    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert', payload: { snapshot: { schemaVersion: 1, updatedAtMs: Date.now(), counts: {} } } }
   ];
   try {
     const result = await persistJournaledTransaction(
@@ -244,9 +251,7 @@ export async function resetAllDataJournaled(
     if (persisted.success) {
       // This key is a retired legacy projection and is not part of the journal schema.
       if (!StorageService.removeRawItem(STORAGE_KEYS.PROGRESS) ||
-          !StorageService.verifyRawItem(STORAGE_KEYS.PROGRESS, null) ||
-          !StorageService.removeRawItem(STORAGE_KEYS.RUQYAH_PROGRESS) ||
-          !StorageService.verifyRawItem(STORAGE_KEYS.RUQYAH_PROGRESS, null)) {
+          !StorageService.verifyRawItem(STORAGE_KEYS.PROGRESS, null)) {
         return {
           success: false,
           message: 'تم حفظ إعادة الضبط، لكن تعذر حذف أحد مفاتيح التقدم المحلية. لا تكرر العملية؛ أعد فتح التطبيق وراجع البيانات.'

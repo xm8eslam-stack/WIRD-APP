@@ -54,12 +54,50 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
     journal.close();
   });
 
+  await test('Version-five backup import restores Ruqyah progress through the grouped journal transaction', async () => {
+    const journal = createJournal();
+    const progress = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 6 } };
+    const backup = JSON.stringify({
+      format: 'wird_backup', version: 5, timestamp: new Date().toISOString(),
+      isEncrypted: false, unencryptedWarning: 'test',
+      profile: CLEAN_INITIAL_PROFILE, plans: [], logs: [], ruqyahProgress: progress
+    });
+    const result = await importBackupJournaled(backup, { journal, runExclusive: inlineLock });
+    const events = await journal.listEvents();
+    const importedTransaction = events[0]?.payload.transaction as { operations?: Array<{ collection?: string }> } | undefined;
+    assert(result.success, 'A valid version-five backup must import successfully');
+    assert(JSON.stringify(StorageService.getRuqyahProgressSnapshot()?.counts) === JSON.stringify(progress.counts),
+      'The Ruqyah progress snapshot must be restored exactly');
+    assert(events.length === 1 && events[0].collection === 'syncMeta' &&
+      Array.isArray(importedTransaction?.operations) &&
+      importedTransaction.operations.some(operation => operation.collection === 'ruqyahProgress'),
+      'The imported progress must be part of the same durable grouped transaction');
+    journal.close();
+  });
+
+  await test('Legacy version-four backup without Ruqyah field preserves existing progress', async () => {
+    const journal = createJournal();
+    const existing = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 11 } };
+    StorageService.saveRuqyahProgressSnapshot(existing);
+    const backup = JSON.stringify({
+      format: 'wird_backup', version: 4, timestamp: new Date().toISOString(),
+      isEncrypted: false, unencryptedWarning: 'legacy test',
+      profile: CLEAN_INITIAL_PROFILE, plans: [], logs: []
+    });
+    const result = await importBackupJournaled(backup, { journal, runExclusive: inlineLock });
+    assert(result.success, 'A legacy version-four backup must remain importable');
+    assert(JSON.stringify(StorageService.getRuqyahProgressSnapshot()?.counts) === JSON.stringify(existing.counts),
+      'An older backup without the Ruqyah field must not erase current progress');
+    journal.close();
+  });
+
   await test('Reset appends an ordered reset snapshot and clears every active local collection', async () => {
     const journal = createJournal();
     const today = getLocalDateString();
     StorageService.saveProfile({ ...CLEAN_INITIAL_PROFILE, name: 'بيانات قبل إعادة الضبط' });
     StorageService.savePlans(PRESET_PLANS);
     StorageService.saveEnginePlans([]);
+    StorageService.saveRuqyahProgressSnapshot({ schemaVersion: 1, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 8 } });
     RetentionService.addPortion({
       type: 'passage', surahNumber: 67, surahName: 'الملك', startAyah: 1, endAyah: 5,
       status: 'recently_memorized', nextDueDate: today, intervalDays: 1, easeFactor: 2.5,
@@ -84,6 +122,8 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
       'Preset and engine plans must be cleared');
     assert(StorageService.getUnifiedPortions().length === 0 && StorageService.getLogs().length === 0,
       'Canonical portions and activity logs must be cleared');
+    assert(Object.keys(StorageService.getRuqyahProgressSnapshot()?.counts || {}).length === 0,
+      'Ruqyah progress must be reset as part of the ordered cloud transaction');
     const snapshot = await journal.getSnapshot();
     assert(snapshot.eventCount === 2 && snapshot.projectionCursor === 2,
       'The prior event and reset must remain ordered with a completed local projection');

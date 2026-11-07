@@ -1,5 +1,7 @@
 import type { UserProfile, MemorizationPlan, WirdPortion, TestResult } from '../types/quran';
 import type { EngineGeneratedPlan } from './planningEngine';
+import { isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import { isValidDomainEvent, type WirdDomainEvent } from './domainEvents';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal, type JournalMutationInput } from './indexedDbSyncJournal';
@@ -191,6 +193,32 @@ export function persistPortionsSnapshot(
   return persistJournaledSnapshot(
     { collection: 'portions', documentId: 'snapshot', payload: { records: portions } },
     () => StorageService.saveUnifiedPortions(portions),
+    options
+  );
+}
+
+/** Persist Ruqyah completion counts through WIRD's ordered cloud-sync journal. */
+export function persistRuqyahProgressSnapshot(
+  snapshot: RuqyahProgressSnapshot,
+  options: JournaledSnapshotOptions = {}
+): Promise<JournaledSnapshotWriteResult> {
+  if (!isValidRuqyahProgressSnapshot(snapshot)) {
+    return Promise.resolve({
+      success: false,
+      mode: StorageService.getStorageScope().startsWith('user:') ? 'journal' : 'local-only',
+      queued: false,
+      recoveryBlocked: false,
+      recoveredPriorEvents: false,
+      error: 'بيانات تقدم الرقية غير صالحة؛ لم يتم حفظ أي تغيير.'
+    });
+  }
+  return persistJournaledSnapshot(
+    {
+      collection: 'ruqyahProgress',
+      documentId: 'snapshot',
+      payload: { snapshot }
+    },
+    () => StorageService.saveRuqyahProgressSnapshot(snapshot),
     options
   );
 }

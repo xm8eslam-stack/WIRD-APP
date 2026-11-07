@@ -50,6 +50,24 @@ The provider URLs are configured, but browser playback still needs a real deploy
 
 ## Current limitations
 
-- Ruqyah progress is persisted in WIRD's UID-scoped local storage namespace. It is not yet a cloud-sync collection and is not yet part of the journaled backup import/export schema.
+- Ruqyah progress is persisted in WIRD's UID-scoped storage namespace. Its journaled cloud-sync and version-5 backup integration is documented in the Phase 2 section below.
 - The external IslamicAPI library requires the server secret above.
 - Full program MP3 playback and the full 44-reciter catalogue need a deployed browser/device verification pass.
+
+
+## Ruqyah progress cloud sync (Phase 2)
+
+Ruqyah completion counters use the dedicated Firestore collection path:
+
+`users/{uid}/ruqyahProgress/snapshot`
+
+The snapshot is validated and persisted through WIRD's IndexedDB write-ahead journal and revisioned outbox. It is not written directly from the browser to Firestore. Remote events are imported and projected through the existing conflict-aware inbox projector. Guests remain local-only.
+
+The collection is included in version-5 backup exports and imports. Versions 1–4 remain supported; older backups without Ruqyah progress leave the current progress unchanged. The journaled full reset writes an empty progress snapshot as part of the same ordered transaction.
+
+The existing cloud sync feature flags still gate network behavior:
+
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` enables revisioned outbox upload.
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` enables remote inbox projection.
+
+These values must be set in the deployed Vercel environment and a new deployment must complete before cross-device sync can be verified. Never enable remote projection against Firestore rules that do not contain the `ruqyahProgress` collection allowlist.

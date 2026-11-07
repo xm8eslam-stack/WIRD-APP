@@ -186,7 +186,7 @@ export interface IndexedDbSyncJournalOptions {
 
 const ALLOWED_COLLECTIONS = new Set<SyncCollection>([
   'profile', 'plans', 'enginePlans', 'portions',
-  'weakVerses', 'tests', 'activityEvents', 'syncMeta'
+  'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
 ]);
 
 function byteLength(value: string): number {

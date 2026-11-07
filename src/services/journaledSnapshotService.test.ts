@@ -17,6 +17,7 @@ import {
   persistPlansSnapshot,
   persistPortionsSnapshot,
   persistProfileSnapshot,
+  persistRuqyahProgressSnapshot,
   persistTestResultSnapshot
 } from './journaledSnapshotService';
 
@@ -40,6 +41,40 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
   };
 
   try {
+    await test('Ruqyah progress commits to the journal and projects into the active account', async () => {
+      const journal = createJournal();
+      const snapshot = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 7, 'dua-pain': 3 } };
+      const result = await persistRuqyahProgressSnapshot(snapshot, { journal, runExclusive: inlineLock });
+      const journalState = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      const stored = StorageService.getRuqyahProgressSnapshot();
+      assert(result.success && result.mode === 'journal' && result.queued,
+        'Authenticated Ruqyah progress must be persisted through the durable journal');
+      assert(journalState.eventCount === 1 && journalState.pendingCount === 1 && journalState.projectionCursor === 1,
+        'Progress must have one recoverable journal event and outbox mutation');
+      assert(events[0]?.collection === 'ruqyahProgress' && events[0]?.documentId === 'snapshot',
+        'The event must use the dedicated Ruqyah progress collection and stable snapshot document');
+      assert(JSON.stringify(stored?.counts) === JSON.stringify(snapshot.counts),
+        'The validated local projection must match the committed progress snapshot');
+      journal.close();
+    });
+
+    await test('Remote Ruqyah progress projection validates payloads and participates in first-sync protection', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:ruqyah-remote-projection-test');
+      const valid = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 4 } };
+      assert(StorageService.isLocalProjectionEmpty('ruqyahProgress'), 'An absent progress archive must be empty');
+      assert(StorageService.applyJournalProjection('ruqyahProgress', { snapshot: valid }),
+        'A valid remote progress snapshot must project into local storage');
+      assert(!StorageService.isLocalProjectionEmpty('ruqyahProgress'),
+        'A non-empty progress archive must block an unknown first-sync overwrite');
+      const before = StorageService.getRawItem(STORAGE_KEYS.RUQYAH_PROGRESS);
+      assert(!StorageService.applyJournalProjection('ruqyahProgress', { snapshot: { schemaVersion: 1, updatedAtMs: -1, counts: { 'q-fatiha': 4 } } }),
+        'Malformed remote progress must be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.RUQYAH_PROGRESS) === before,
+        'Rejecting malformed remote progress must preserve existing local bytes');
+    });
+
     await test('Demo data loads as one journaled grouped projection and is not partially applied', async () => {
       const journal = createJournal();
       const result = await loadDemoDataJournaled({ journal, runExclusive: inlineLock });

@@ -1,34 +1,14 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
+import { isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 
 const STORAGE_KEY = STORAGE_KEYS.RUQYAH_PROGRESS;
-const MAX_ITEMS = 200;
-const MAX_COUNT = 1000;
-
-export interface RuqyahProgressSnapshot {
-  schemaVersion: 1;
-  updatedAtMs: number;
-  counts: Record<string, number>;
-}
+export type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 
 export type RuqyahProgressLoadResult =
   | { status: 'empty'; counts: Record<string, number> }
   | { status: 'loaded'; counts: Record<string, number>; updatedAtMs: number }
   | { status: 'corrupt'; counts: Record<string, number> };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function validateCounts(value: unknown): value is Record<string, number> {
-  if (!isRecord(value)) return false;
-  const entries = Object.entries(value);
-  return entries.length <= MAX_ITEMS && entries.every(([id, count]) =>
-    /^[a-z0-9][a-z0-9-]{0,99}$/.test(id) &&
-    Number.isSafeInteger(count) &&
-    Number(count) >= 0 &&
-    Number(count) <= MAX_COUNT
-  );
-}
 
 /** Load progress from WIRD's current UID-scoped storage namespace. */
 export function loadRuqyahProgress(): RuqyahProgressLoadResult {
@@ -36,10 +16,7 @@ export function loadRuqyahProgress(): RuqyahProgressLoadResult {
   if (raw === null) return { status: 'empty', counts: {} };
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed) || parsed.schemaVersion !== 1 ||
-        !Number.isSafeInteger(parsed.updatedAtMs) ||
-        Number(parsed.updatedAtMs) < 0 ||
-        !validateCounts(parsed.counts)) {
+    if (!isValidRuqyahProgressSnapshot(parsed)) {
       return { status: 'corrupt', counts: {} };
     }
     return {
@@ -55,7 +32,7 @@ export function loadRuqyahProgress(): RuqyahProgressLoadResult {
 
 /** Persist progress atomically through the same account-scoped storage adapter as WIRD. */
 export function saveRuqyahProgress(counts: Record<string, number>, nowMs = Date.now()): void {
-  if (!validateCounts(counts) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
+  if (!isValidRuqyahProgressCounts(counts) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
     throw new Error('بيانات تقدم الرقية غير صالحة.');
   }
   const snapshot: RuqyahProgressSnapshot = {
@@ -64,7 +41,7 @@ export function saveRuqyahProgress(counts: Record<string, number>, nowMs = Date.
     counts: { ...counts }
   };
   const serialized = JSON.stringify(snapshot);
-  if (!StorageService.setRawItem(STORAGE_KEY, serialized) ||
+  if (!StorageService.saveRuqyahProgressSnapshot(snapshot) ||
       !StorageService.verifyRawItem(STORAGE_KEY, serialized)) {
     throw new Error('تعذر حفظ تقدم الرقية والتحقق من سلامة التخزين.');
   }
