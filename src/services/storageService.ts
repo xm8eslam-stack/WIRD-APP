@@ -40,6 +40,7 @@ export const STORAGE_KEYS = {
   WEAK_VERSES: 'wird_weak_verses',
   UNIFIED_PORTIONS: 'wird_portions_v2',
   SCHEMA_VERSION: 'wird_data_schema_version',
+  RUQYAH_PROGRESS: 'wird_ruqyah_progress_v1',
   SYNC_OUTBOX: 'wird_sync_outbox_v1'
 } as const;
 
