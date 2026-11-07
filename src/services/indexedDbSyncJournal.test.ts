@@ -160,6 +160,91 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Remote inbox import persists events and advances the durable cursor atomically', async () => {
+      const { journal } = createJournal('remote-alpha');
+      const event = {
+        uid: 'remote-alpha',
+        eventId: 'remote-mutation-1',
+        mutationId: 'remote-mutation-1',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-remote-1',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device-1',
+        occurredAtMs: 8000,
+        payload: { records: [{ id: 'plan-remote-1' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      const cursor = await journal.importRemotePage([event]);
+      const retryCursor = await journal.importRemotePage([event]);
+      const inbox = await journal.listRemoteInboxAfter(0, 10);
+      assert(cursor === 1 && retryCursor === 1,
+        'The cursor must advance once and identical page retries must be idempotent');
+      assert(inbox.length === 1 && inbox[0].eventId === event.eventId && inbox[0].serverSequence === 1,
+        'The complete remote event must be durably available in the inbox');
+      assert(await journal.markRemoteProjected(1), 'Projection cursor must advance after a successful local projection');
+      assert(await journal.getRemoteProjectionCursor() === 1,
+        'The projection cursor must be persisted independently from the import cursor');
+      assert((await journal.listRemoteInboxAfter(0, 10)).length === 0,
+        'A successfully projected event must be pruned atomically to free inbox capacity');
+      journal.close();
+    });
+
+    await test('Remote inbox rejects sequence gaps without moving its cursor', async () => {
+      const { journal } = createJournal('remote-gap');
+      const event = {
+        uid: 'remote-gap',
+        eventId: 'remote-gap-mutation-2',
+        mutationId: 'remote-gap-mutation-2',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-gap',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device-2',
+        occurredAtMs: 8100,
+        payload: { records: [] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 2
+      };
+      let rejected = false;
+      try { await journal.importRemotePage([event]); } catch { rejected = true; }
+      assert(rejected && await journal.getRemoteCursor() === 0,
+        'A missing server sequence must stop import before cursor advancement');
+      assert((await journal.listRemoteInboxAfter(0, 10)).length === 0,
+        'A rejected page must not leave a partial inbox record');
+      journal.close();
+    });
+
+    await test('Remote inbox is isolated by UID and refuses foreign events', async () => {
+      const { journal } = createJournal('remote-owner');
+      const event = {
+        uid: 'remote-other',
+        eventId: 'foreign-mutation',
+        mutationId: 'foreign-mutation',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'foreign-plan',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'foreign-device',
+        occurredAtMs: 8200,
+        payload: { records: [] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      let rejected = false;
+      try { await journal.importRemotePage([event]); } catch { rejected = true; }
+      assert(rejected && await journal.getRemoteCursor() === 0,
+        'An event for another UID must not be imported into this account');
+      journal.close();
+    });
+
     await test('Acknowledgement removes delivery work but preserves the append-only event', async () => {
       const { journal } = createJournal();
       await journal.enqueue({ mutationId: 'ack-event', collection: 'activityEvents', documentId: 'session-ack', payload: { minutes: 7 }, nowMs: 4000 });

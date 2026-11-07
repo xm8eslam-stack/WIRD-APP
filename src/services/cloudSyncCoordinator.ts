@@ -1,6 +1,7 @@
 import { getDocs, collection, query, where, orderBy, limit as firestoreLimit } from 'firebase/firestore';
 import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { LocalSyncOutbox } from './localSyncOutbox';
+import type { RemoteInboxEventInput } from './indexedDbSyncJournal';
 import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 
@@ -169,15 +170,7 @@ class CloudSyncCoordinator {
       return false;
     }
 
-    if (!isRevisionedSyncEnabled()) {
-      const pendingCount = await this.refreshPendingCount();
-      this.updateState({
-        status: pendingCount > 0 ? 'error' : 'partial',
-        errorMessage: 'الرفع السحابي الآمن متوقف مؤقتاً حتى نشر قواعد Firestore التي تفرض مقارنة الإصدارات. بياناتك المحلية محفوظة ولم يتم إرسال كتابة قد تستبدل بيانات أحدث.'
-      });
-      return false;
-    }
-
+    const revisionedSyncEnabled = isRevisionedSyncEnabled();
     this.syncInProgress = true;
     this.updateState({ status: 'syncing', errorMessage: null });
 
@@ -185,7 +178,7 @@ class CloudSyncCoordinator {
       let hasMore = true;
       let firstPushError: string | null = null;
 
-      while (hasMore) {
+      while (hasMore && revisionedSyncEnabled) {
         const readyEntries = await LocalSyncOutbox.listReadyEntries(Date.now(), 25);
         if (readyEntries.length === 0) {
           hasMore = false;
@@ -248,11 +241,13 @@ class CloudSyncCoordinator {
       this.updateState({
         status,
         lastSyncAtMs: status === 'synced' ? Date.now() : this.state.lastSyncAtMs,
-        errorMessage: firstPushError || (status === 'error'
-          ? 'بعض التغييرات لم تُرفع بعد؛ احتفظنا بها محلياً وسنعيد المحاولة.'
-          : status === 'partial'
-            ? 'تم رفع التغييرات المحلية، لكن استقبال تغييرات الأجهزة الأخرى وتطبيقها لم يكتمل بعد.'
-            : null)
+        errorMessage: firstPushError || (!revisionedSyncEnabled && finalCount > 0
+          ? 'الرفع السحابي الآمن متوقف مؤقتاً حتى نشر قواعد Firestore ومصالحة البيانات القديمة. بياناتك المحلية محفوظة ولم يتم إرسال كتابة قد تستبدل بيانات أحدث.'
+          : status === 'error'
+            ? 'بعض التغييرات لم تُرفع بعد؛ احتفظنا بها محلياً وسنعيد المحاولة.'
+            : status === 'partial'
+              ? 'تم حفظ الأحداث المستقبلة في صندوق محلي دائم، لكن تطبيقها ودمجها مع البيانات المحلية لم يكتمل بعد.'
+              : null)
       });
 
       return status === 'synced';
@@ -270,22 +265,30 @@ class CloudSyncCoordinator {
   }
 
   /**
-   * A bounded remote read is not a durable import or projection.
-   * Keep returning false until the inbox, cursor and projector are implemented.
+   * Pull server-ordered v2 events into the durable IndexedDB inbox.
+   * This is an import stage only; sync remains partial until local projection is complete.
    */
   private async pullRemoteReconciliation(uid: string): Promise<boolean> {
     if (!db) return false;
     try {
       const eventsRef = collection(db, 'users', uid, 'events');
-      const eventsQuery = query(
-        eventsRef,
-        where('uid', '==', uid),
-        orderBy('occurredAtMs', 'desc'),
-        firestoreLimit(20)
-      );
-      await getDocs(eventsQuery);
+      for (let page = 0; page < 5; page++) {
+        const cursor = await LocalSyncOutbox.getRemoteCursor();
+        const eventsQuery = query(
+          eventsRef,
+          where('serverSequence', '>', cursor),
+          orderBy('serverSequence', 'asc'),
+          firestoreLimit(100)
+        );
+        const snapshot = await getDocs(eventsQuery);
+        if (snapshot.empty) break;
+        const remoteEvents = snapshot.docs.map(item => item.data()) as unknown as RemoteInboxEventInput[];
+        await LocalSyncOutbox.importRemotePage(remoteEvents);
+        if (snapshot.size < 100) break;
+      }
       return false;
-    } catch {
+    } catch (error) {
+      console.warn('[WIRD CloudSync] Remote inbox import is incomplete; durable cursor was not advanced past an invalid page.', error);
       return false;
     }
   }

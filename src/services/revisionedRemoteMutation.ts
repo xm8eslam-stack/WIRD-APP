@@ -22,6 +22,7 @@ export interface RevisionedRemoteMutation {
 export interface RevisionedRemoteMutationResult {
   status: 'written' | 'already_applied';
   revision: number;
+  serverSequence: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -43,9 +44,9 @@ function validId(value: string, max = 128): boolean {
 }
 
 /**
- * Atomically appends the immutable event and advances one document snapshot
- * with optimistic concurrency. A retry of the exact same mutation is safe;
- * a stale base revision or reused event ID with different content is rejected.
+ * Atomically appends a routed immutable event, advances the user's global
+ * server sequence, and updates one state document using optimistic concurrency.
+ * Retries are idempotent; stale revisions never overwrite newer state.
  */
 export async function writeRevisionedRemoteMutation(
   firestore: Firestore,
@@ -53,9 +54,10 @@ export async function writeRevisionedRemoteMutation(
 ): Promise<RevisionedRemoteMutationResult> {
   const payloadBytes = new TextEncoder().encode(stableStringify(input.payload)).byteLength;
   if (!validId(input.uid) || !validId(input.documentId, 1500) ||
-      !validId(input.mutationId) || !validId(input.eventId) ||
+      !validId(input.mutationId) || !validId(input.eventId) || input.eventId !== input.mutationId ||
       !validId(input.deviceId) || input.schemaVersion !== 1 ||
       !['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'syncMeta'].includes(input.collection) ||
+      (input.collection === 'syncMeta' && input.documentId === 'remoteReplication') ||
       (input.operation !== 'upsert' && input.operation !== 'tombstone') ||
       !Number.isSafeInteger(input.clientUpdatedAtMs) || input.clientUpdatedAtMs < 0 ||
       !Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 || input.baseRevision >= Number.MAX_SAFE_INTEGER ||
@@ -65,46 +67,73 @@ export async function writeRevisionedRemoteMutation(
 
   const stateRef = doc(firestore, 'users', input.uid, input.collection, input.documentId);
   const eventRef = doc(firestore, 'users', input.uid, 'events', input.eventId);
-  const eventRecord = {
-    schemaVersion: 1,
+  const sequenceRef = doc(firestore, 'users', input.uid, 'syncSystem', 'remoteReplication');
+  const nextRevision = input.baseRevision + 1;
+  const eventBaseRecord = {
+    schemaVersion: 2,
     eventId: input.eventId,
     mutationId: input.mutationId,
     uid: input.uid,
     deviceId: input.deviceId,
     occurredAtMs: input.clientUpdatedAtMs,
     eventType: 'domain-mutation',
-    payload: input.payload
+    payload: input.payload,
+    collection: input.collection,
+    documentId: input.documentId,
+    operation: input.operation,
+    baseRevision: input.baseRevision,
+    revision: nextRevision
   };
-  const expectedEvent = stableStringify(eventRecord);
-  const nextRevision = input.baseRevision + 1;
 
   return runTransaction(firestore, async transaction => {
-    const [stateSnapshot, eventSnapshot] = await Promise.all([
+    const [stateSnapshot, eventSnapshot, sequenceSnapshot] = await Promise.all([
       transaction.get(stateRef),
-      transaction.get(eventRef)
+      transaction.get(eventRef),
+      transaction.get(sequenceRef)
     ]);
 
-    if (eventSnapshot.exists() && stableStringify(eventSnapshot.data()) !== expectedEvent) {
-      throw new Error('REMOTE_EVENT_ID_COLLISION');
+    if (eventSnapshot.exists()) {
+      const existingEvent = eventSnapshot.data();
+      const { serverSequence: _serverSequence, ...existingEventBase } = existingEvent;
+      if (stableStringify(existingEventBase) !== stableStringify(eventBaseRecord) ||
+          !Number.isSafeInteger(existingEvent.serverSequence) || existingEvent.serverSequence < 1) {
+        throw new Error('REMOTE_EVENT_ID_COLLISION');
+      }
+      if (stateSnapshot.exists()) {
+        const current = stateSnapshot.data();
+        if (current.mutationId === input.mutationId &&
+            current.revision === nextRevision &&
+            current.baseRevision === input.baseRevision &&
+            stableStringify(current.payload) === stableStringify(input.payload) &&
+            current.deviceId === input.deviceId &&
+            current.updatedAtMs === input.clientUpdatedAtMs) {
+          return {
+            status: 'already_applied',
+            revision: nextRevision,
+            serverSequence: existingEvent.serverSequence
+          };
+        }
+      }
+      throw new Error('REMOTE_REVISION_CONFLICT');
     }
 
     if (stateSnapshot.exists()) {
       const current = stateSnapshot.data();
-      if (current.mutationId === input.mutationId &&
-          current.revision === nextRevision &&
-          current.baseRevision === input.baseRevision &&
-          stableStringify(current.payload) === stableStringify(input.payload) &&
-          current.deviceId === input.deviceId &&
-          current.updatedAtMs === input.clientUpdatedAtMs) {
-        if (!eventSnapshot.exists()) transaction.set(eventRef, eventRecord);
-        return { status: 'already_applied', revision: nextRevision };
-      }
       if (!Number.isSafeInteger(current.revision) || current.revision !== input.baseRevision) {
         throw new Error('REMOTE_REVISION_CONFLICT');
       }
     } else if (input.baseRevision !== 0) {
       throw new Error('REMOTE_REVISION_CONFLICT');
     }
+
+    const currentServerSequence = sequenceSnapshot.exists()
+      ? sequenceSnapshot.data().sequence
+      : 0;
+    if (!Number.isSafeInteger(currentServerSequence) || currentServerSequence < 0 ||
+        currentServerSequence >= Number.MAX_SAFE_INTEGER) {
+      throw new Error('REMOTE_SEQUENCE_CONFLICT');
+    }
+    const serverSequence = currentServerSequence + 1;
 
     const stateRecord: Record<string, unknown> = {
       schemaVersion: input.schemaVersion,
@@ -119,8 +148,20 @@ export async function writeRevisionedRemoteMutation(
       stateRecord.deletedAt = new Date(input.clientUpdatedAtMs);
     }
 
-    if (!eventSnapshot.exists()) transaction.set(eventRef, eventRecord);
+    const eventRecord = { ...eventBaseRecord, serverSequence };
+    const sequenceRecord = {
+      schemaVersion: 1,
+      sequence: serverSequence,
+      baseSequence: currentServerSequence,
+      lastEventId: input.eventId,
+      updatedAtMs: input.clientUpdatedAtMs,
+      deviceId: input.deviceId,
+      mutationId: input.mutationId
+    };
+
+    transaction.set(eventRef, eventRecord);
     transaction.set(stateRef, stateRecord);
-    return { status: 'written', revision: nextRevision };
+    transaction.set(sequenceRef, sequenceRecord);
+    return { status: 'written', revision: nextRevision, serverSequence };
   });
 }

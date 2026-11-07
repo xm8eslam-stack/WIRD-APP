@@ -3,14 +3,16 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 4;
+const DATABASE_VERSION = 5;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
+const STORE_REMOTE_INBOX = 'remoteInbox';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
+const MAX_REMOTE_INBOX_EVENTS = 1_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -79,6 +81,27 @@ export interface RemoteRevisionSnapshot {
   localSequence: number;
 }
 
+export interface RemoteInboxEvent {
+  key: string;
+  uid: string;
+  eventId: string;
+  mutationId: string;
+  eventType: 'domain-mutation';
+  collection: SyncCollection;
+  documentId: string;
+  operation: SyncOperation;
+  schemaVersion: 2;
+  deviceId: string;
+  occurredAtMs: number;
+  payload: Record<string, unknown>;
+  baseRevision: number;
+  revision: number;
+  serverSequence: number;
+  fingerprint: string;
+}
+
+export type RemoteInboxEventInput = Omit<RemoteInboxEvent, 'key' | 'fingerprint'>;
+
 interface AcknowledgementRecord {
   key: string;
   uid: string;
@@ -94,6 +117,8 @@ interface DeviceMetadata {
   nextSequence: number;
   lastProjectedSequence: number;
   remoteRevisions?: Record<string, { revision: number; localSequence: number }>;
+  remoteCursor?: number;
+  remoteProjectionCursor?: number;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -189,6 +214,19 @@ function fingerprintMutation(
     (hashB >>> 0).toString(16).padStart(8, '0');
 }
 
+function fingerprintRemoteInboxEvent(event: RemoteInboxEventInput): string {
+  const source = stableStringify(event);
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    hashA = Math.imul(hashA ^ code, 0x01000193);
+    hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+  }
+  return (hashA >>> 0).toString(16).padStart(8, '0') +
+    (hashB >>> 0).toString(16).padStart(8, '0');
+}
+
 function normalizeError(error: unknown): Error {
   if (error && typeof error === 'object' && 'name' in error &&
       (error as { name?: string }).name === 'QuotaExceededError') {
@@ -264,6 +302,11 @@ export class IndexedDbSyncJournal {
           const acknowledgements = database.createObjectStore(STORE_ACKNOWLEDGEMENTS, { keyPath: 'key' });
           acknowledgements.createIndex('uid', 'uid', { unique: false });
           acknowledgements.createIndex('uidAcknowledgedAt', ['uid', 'acknowledgedAtMs'], { unique: false });
+        }
+        if (!database.objectStoreNames.contains(STORE_REMOTE_INBOX)) {
+          const remoteInbox = database.createObjectStore(STORE_REMOTE_INBOX, { keyPath: 'key' });
+          remoteInbox.createIndex('uid', 'uid', { unique: false });
+          remoteInbox.createIndex('uidServerSequence', ['uid', 'serverSequence'], { unique: true });
         }
         let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
@@ -1086,6 +1129,231 @@ export class IndexedDbSyncJournal {
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection cursor transaction aborted.')));
     });
   }
+
+  async getRemoteCursor(): Promise<number> {
+    const uid = activeUid();
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    const cursor = metadata?.remoteCursor ?? 0;
+    if (!Number.isSafeInteger(cursor) || cursor < 0) {
+      throw new Error('مؤشر استقبال الأحداث السحابية غير صالح؛ لم يتم تجاوزه.');
+    }
+    return cursor;
+  }
+
+  /** Persist a contiguous remote page and its cursor in one IndexedDB transaction. */
+  async importRemotePage(events: RemoteInboxEventInput[]): Promise<number> {
+    const uid = activeUid();
+    if (!Array.isArray(events) || events.length > 100) {
+      throw new Error('حجم صفحة الأحداث السحابية غير صالح.');
+    }
+    const normalized: RemoteInboxEvent[] = [];
+    let previousSequence = 0;
+    for (const event of events) {
+      if (!event || event.uid !== uid || event.schemaVersion !== 2 ||
+          event.eventType !== 'domain-mutation' || !validMutationId(event.eventId) ||
+          !validMutationId(event.mutationId) || event.eventId !== event.mutationId || !validMutationId(event.deviceId) ||
+          !ALLOWED_COLLECTIONS.has(event.collection) ||
+          typeof event.documentId !== 'string' || !event.documentId ||
+          event.documentId.includes('/') || /[\u0000-\u001f]/.test(event.documentId) || byteLength(event.documentId) > 1500 ||
+          (event.operation !== 'upsert' && event.operation !== 'tombstone') ||
+          !Number.isSafeInteger(event.occurredAtMs) || event.occurredAtMs < 0 ||
+          !Number.isSafeInteger(event.baseRevision) || event.baseRevision < 0 ||
+          !Number.isSafeInteger(event.revision) || event.revision !== event.baseRevision + 1 ||
+          !Number.isSafeInteger(event.serverSequence) || event.serverSequence < 1 ||
+          !isRecord(event.payload) ||
+          byteLength(JSON.stringify(event.payload) || '') > MAX_MUTATION_PAYLOAD_BYTES) {
+        throw new Error('REMOTE_INBOX_EVENT_INVALID');
+      }
+      if (event.serverSequence <= previousSequence) {
+        throw new Error('REMOTE_INBOX_PAGE_NOT_SORTED');
+      }
+      previousSequence = event.serverSequence;
+      const fingerprint = fingerprintRemoteInboxEvent(event);
+      normalized.push({
+        ...event,
+        key: uid + ':' + event.eventId,
+        fingerprint
+      });
+    }
+
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_REMOTE_INBOX, STORE_METADATA], 'readwrite');
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const metadataRequest = metadataStore.get(uid);
+      const countRequest = inbox.index('uid').count(IDBKeyRange.only(uid));
+      const existingRequests = normalized.map(event => inbox.get(event.key));
+      let metadata: DeviceMetadata | undefined;
+      let inboxCount = 0;
+      const existing: Array<RemoteInboxEvent | undefined> = new Array(normalized.length);
+      let readsRemaining = 2 + existingRequests.length;
+      let resultCursor = 0;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const cursor = metadata?.remoteCursor ?? 0;
+        const projectionCursor = metadata?.remoteProjectionCursor ?? 0;
+        if (!Number.isSafeInteger(cursor) || cursor < 0 ||
+            !Number.isSafeInteger(projectionCursor) || projectionCursor < 0 ||
+            projectionCursor > cursor) {
+          failure = new Error('بيانات مؤشر صندوق الاستقبال تالفة؛ لم يتم تغييرها.');
+          transaction.abort();
+          return;
+        }
+        let additions = 0;
+        for (let index = 0; index < normalized.length; index++) {
+          if (normalized[index].serverSequence > cursor && !existing[index]) additions++;
+        }
+        if (inboxCount + additions > MAX_REMOTE_INBOX_EVENTS) {
+          failure = new Error('امتلأ صندوق الأحداث السحابية قبل اكتمال تطبيق الأحداث؛ لم نحذف أي حدث أو نحرك المؤشر.');
+          transaction.abort();
+          return;
+        }
+        let nextCursor = cursor;
+        for (let index = 0; index < normalized.length; index++) {
+          const event = normalized[index];
+          const stored = existing[index];
+          if (stored && stored.fingerprint !== event.fingerprint) {
+            failure = new Error('تعارض معرف حدث داخل صندوق الاستقبال؛ تم الحفاظ على النسخة الأصلية.');
+            transaction.abort();
+            return;
+          }
+          if (event.serverSequence <= nextCursor) {
+            if (!stored) {
+              failure = new Error('مؤشر الاستقبال تجاوز حدثاً غير محفوظ؛ أوقفنا المزامنة لحماية السجل.');
+              transaction.abort();
+              return;
+            }
+            continue;
+          }
+          if (event.serverSequence !== nextCursor + 1) {
+            failure = new Error('توجد فجوة في تسلسل الأحداث السحابية؛ لم يتم تحريك المؤشر.');
+            transaction.abort();
+            return;
+          }
+          if (!stored) inbox.add(event);
+          nextCursor = event.serverSequence;
+        }
+        if (nextCursor > cursor) {
+          metadataStore.put({
+            ...(metadata || {
+              uid, deviceId: createSecureId(), schemaVersion: 1,
+              nextSequence: 1, lastProjectedSequence: 0
+            }),
+            remoteCursor: nextCursor,
+            remoteProjectionCursor: projectionCursor
+          } satisfies DeviceMetadata);
+        }
+        resultCursor = nextCursor;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finishRead();
+      };
+      countRequest.onsuccess = () => {
+        inboxCount = countRequest.result;
+        finishRead();
+      };
+      existingRequests.forEach((request, index) => {
+        request.onsuccess = () => {
+          existing[index] = request.result as RemoteInboxEvent | undefined;
+          finishRead();
+        };
+      });
+      transaction.oncomplete = () => resolve(resultCursor);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote inbox import transaction aborted.')));
+      transaction.onerror = () => {
+        // IndexedDB aborts the page and cursor update together.
+      };
+    });
+  }
+
+  async listRemoteInboxAfter(sequence: number = 0, limit: number = 100): Promise<RemoteInboxEvent[]> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(sequence) || sequence < 0 ||
+        !Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error('معاملات قراءة صندوق الأحداث السحابية غير صالحة.');
+    }
+    if (sequence === Number.MAX_SAFE_INTEGER) return [];
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_REMOTE_INBOX], 'readonly');
+    const completed = transactionComplete(transaction);
+    const range = IDBKeyRange.bound([uid, sequence + 1], [uid, Number.MAX_SAFE_INTEGER]);
+    const request = transaction.objectStore(STORE_REMOTE_INBOX)
+      .index('uidServerSequence').getAll(range, limit);
+    const events = await requestResult(request) as RemoteInboxEvent[];
+    await completed;
+    return events.sort((a, b) => a.serverSequence - b.serverSequence);
+  }
+
+  async getRemoteProjectionCursor(): Promise<number> {
+    const uid = activeUid();
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    const cursor = metadata?.remoteProjectionCursor ?? 0;
+    if (!Number.isSafeInteger(cursor) || cursor < 0) {
+      throw new Error('مؤشر تطبيق الأحداث السحابية غير صالح.');
+    }
+    return cursor;
+  }
+
+  /** Advance the projection cursor only after the corresponding event is durably applied locally. */
+  async markRemoteProjected(sequence: number): Promise<boolean> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('رقم تسلسل الإسقاط السحابي غير صالح.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_METADATA, STORE_REMOTE_INBOX], 'readwrite');
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const metadataRequest = metadataStore.get(uid);
+      const eventRequest = inbox.index('uidServerSequence').get([uid, sequence]);
+      let metadata: DeviceMetadata | undefined;
+      let event: RemoteInboxEvent | undefined;
+      let readsRemaining = 2;
+      let advanced = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const cursor = metadata?.remoteProjectionCursor ?? 0;
+        const importedCursor = metadata?.remoteCursor ?? 0;
+        if (sequence <= cursor) return;
+        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event) {
+          failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
+          transaction.abort();
+          return;
+        }
+        metadataStore.put({ ...metadata, remoteProjectionCursor: sequence } satisfies DeviceMetadata);
+        inbox.delete(event.key);
+        advanced = true;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finishRead();
+      };
+      eventRequest.onsuccess = () => {
+        event = eventRequest.result as RemoteInboxEvent | undefined;
+        finishRead();
+      };
+      transaction.oncomplete = () => resolve(advanced);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote projection cursor transaction aborted.')));
+    });
+  }
+
 
   async getSnapshot(): Promise<JournalSnapshot> {
     const uid = activeUid();

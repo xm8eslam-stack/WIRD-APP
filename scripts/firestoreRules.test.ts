@@ -67,26 +67,52 @@ try {
   const alicePlan = doc(alice, 'users/alice/plans/plan-1');
 
   await test('Verified owner can create and read a valid profile envelope', async () => {
-    await assertSucceeds(setDoc(aliceProfile, validEnvelope));
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'profile',
+      documentId: 'main',
+      operation: 'upsert',
+      schemaVersion: 1,
+      mutationId: 'mutation-test-0001',
+      eventId: 'mutation-test-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: validEnvelope.updatedAtMs,
+      baseRevision: 0,
+      payload: validEnvelope.payload
+    });
     await assertSucceeds(getDoc(aliceProfile));
   });
 
   await test('Verified owner can write allowlisted plan documents', async () => {
-    await assertSucceeds(setDoc(alicePlan, {
-      ...validEnvelope,
-      payload: { title: 'Test plan', dailyTarget: 5 },
-      mutationId: 'mutation-plan-0001'
-    }));
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'plans',
+      documentId: 'plan-1',
+      operation: 'upsert',
+      schemaVersion: 1,
+      mutationId: 'mutation-plan-0001',
+      eventId: 'mutation-plan-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: validEnvelope.updatedAtMs,
+      baseRevision: 0,
+      payload: { title: 'Test plan', dailyTarget: 5 }
+    });
   });
+
   await test('Verified owner can update a state document only with its exact base revision', async () => {
-    await assertSucceeds(setDoc(aliceProfile, {
-      ...validEnvelope,
-      payload: { displayName: 'WIRD revision 2' },
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'profile',
+      documentId: 'main',
+      operation: 'upsert',
+      schemaVersion: 1,
       mutationId: 'mutation-test-0002',
+      eventId: 'mutation-test-0002',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: 1_799_000_000_001,
       baseRevision: 1,
-      revision: 2,
-      updatedAtMs: 1_799_000_000_001
-    }));
+      payload: { displayName: 'WIRD revision 2' }
+    });
   });
 
   await test('Stale revision and legacy unversioned writes are denied', async () => {
@@ -155,12 +181,19 @@ try {
   });
 
   await test('Valid tombstones are accepted but physical deletes are denied', async () => {
-    const tombstone = doc(alice, 'users/alice/plans/deleted-plan');
-    await assertSucceeds(setDoc(tombstone, {
-      ...validEnvelope,
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'plans',
+      documentId: 'deleted-plan',
+      operation: 'tombstone',
+      schemaVersion: 1,
       mutationId: 'mutation-tombstone-0001',
-      deletedAt: new Date('2026-11-05T00:00:00.000Z')
-    }));
+      eventId: 'mutation-tombstone-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: validEnvelope.updatedAtMs,
+      baseRevision: 0,
+      payload: { deleted: true }
+    });
     await assertFails(deleteDoc(alicePlan));
   });
 
@@ -206,10 +239,10 @@ try {
     const first = await writeRevisionedRemoteMutation(alice as unknown as Firestore, input);
     const retry = await writeRevisionedRemoteMutation(alice as unknown as Firestore, input);
     const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-1'));
-    if (first.status !== 'written' || first.revision !== 1 ||
+    if (first.status !== 'written' || first.revision !== 1 || first.serverSequence < 1 ||
         retry.status !== 'already_applied' || retry.revision !== 1 ||
-        state.data()?.revision !== 1) {
-      throw new Error('CAS create/retry did not converge on revision 1');
+        retry.serverSequence !== first.serverSequence || state.data()?.revision !== 1) {
+      throw new Error('CAS create/retry did not converge on one revision and server sequence');
     }
   });
 
@@ -233,8 +266,10 @@ try {
       baseRevision: first.revision, payload: { title: 'Revision two' }
     });
     const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-update'));
-    if (first.revision !== 1 || second.revision !== 2 || state.data()?.payload?.title !== 'Revision two') {
-      throw new Error('A valid CAS update did not advance exactly one revision');
+    if (first.revision !== 1 || second.revision !== 2 ||
+        second.serverSequence !== first.serverSequence + 1 ||
+        state.data()?.payload?.title !== 'Revision two') {
+      throw new Error('A valid CAS update did not advance its revision and global server sequence');
     }
   });
 
