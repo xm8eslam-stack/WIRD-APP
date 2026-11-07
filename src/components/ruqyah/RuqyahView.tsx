@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters, QuranReciter } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from '../../services/ruqyahProgressService';
+import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
   Volume2, 
@@ -37,17 +38,17 @@ interface RuqyahViewProps {
 }
 
 const CATEGORY_TABS: { id: RuqyahCategory; label: string; iconName: string; duration: string }[] = [
-  { id: 'brief', label: 'الرقية المختصرة', iconName: 'Sparkles', duration: '5-7 دقائق' },
-  { id: 'medium', label: 'الرقية المتوسطة', iconName: 'BookOpen', duration: '15-20 دقيقة' },
-  { id: 'full', label: 'الرقية المطولة الكاملة', iconName: 'ShieldCheck', duration: '30-45 دقيقة' },
-  { id: 'eye_envy', label: 'رقية العين والحسد', iconName: 'Heart', duration: '10-15 دقيقة' },
-  { id: 'illness', label: 'رقية المرض والألم', iconName: 'Sparkles', duration: '10 دقائق' },
+  { id: 'brief', label: 'الرقية المختصرة', iconName: 'Sparkles', duration: 'مختصر' },
+  { id: 'medium', label: 'الرقية المتوسطة', iconName: 'BookOpen', duration: 'متوسط' },
+  { id: 'full', label: 'الرقية المطولة الكاملة', iconName: 'ShieldCheck', duration: 'مطول' },
+  { id: 'eye_envy', label: 'رقية العين والحسد', iconName: 'Heart', duration: 'حسب المحتوى' },
+  { id: 'illness', label: 'رقية المرض والألم', iconName: 'Sparkles', duration: 'حسب المحتوى' },
   { id: 'guidelines', label: 'آداب وإرشادات الرقية', iconName: 'Info', duration: 'إرشادات' },
 ];
 
 export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [activeCategory, setActiveCategory] = useState<RuqyahCategory>('brief');
-  const [viewMode, setViewMode] = useState<'interactive' | 'audio_stream'>('interactive');
+  const [viewMode, setViewMode] = useState<'interactive' | 'audio_stream' | 'api_library'>('interactive');
   
   // Counter states per item (itemId -> current count)
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -363,7 +364,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-200 border border-amber-300/30 rounded-full text-xs font-bold">
               <ShieldCheck className="w-4 h-4 text-amber-300" />
-              <span>حصن المسلم والشعر الشافي</span>
+              <span>الرقية من القرآن والسنة</span>
             </div>
 
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran leading-relaxed">
@@ -371,7 +372,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </h1>
 
             <p className="text-xs md:text-sm text-stone-200/90 leading-relaxed font-sans">
-              آيات وأدعية الشفاء والاستعاذة المأثورة عن النبي ﷺ والدكتور خالد الجريسي، مع العداد التفاعلي والمشغل الصوتي المزدوج.
+              آيات من القرآن وأدعية من السنة، مع أدوات للقراءة والاستماع ومتابعة ما أتممته.
             </p>
           </div>
 
@@ -399,6 +400,18 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             >
               <Headphones className="w-4 h-4" />
               <span>الرقية الصوتية الكاملة</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode('api_library')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === 'api_library'
+                  ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
+                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>المكتبة الموسعة</span>
             </button>
           </div>
         </div>
@@ -736,6 +749,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
         </div>
       )}
+
+      {viewMode === 'api_library' && <RuqyahApiLibrary />}
     </div>
   );
 };
