@@ -1,10 +1,145 @@
-import { EngineGeneratedPlan, ScheduledDayPlan, PlanningEngine } from './planningEngine';
-import { QuranMath, VerseCoordinate } from './quranMath';
+import {
+  EngineGeneratedPlan,
+  ScheduledDayPlan,
+  PlanningEngine
+} from './planningEngine';
+import { QuranMath } from './quranMath';
+
+const DAY_NAMES_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+type PendingTaskBundle = Pick<
+  ScheduledDayPlan,
+  'memorizationTask' | 'minorRevisionTask' | 'majorRevisionTask' | 'notes'
+>;
+
+function splitDayTasks(day: ScheduledDayPlan): {
+  historical?: ScheduledDayPlan;
+  pending?: PendingTaskBundle;
+} {
+  const dayMarkedComplete = day.status === 'completed';
+  const completedMemorization = day.memorizationTask &&
+    (day.memorizationTask.completed || dayMarkedComplete)
+    ? { ...day.memorizationTask, completed: true }
+    : undefined;
+  const completedMinorRevision = day.minorRevisionTask &&
+    (day.minorRevisionTask.completed || dayMarkedComplete)
+    ? { ...day.minorRevisionTask, completed: true }
+    : undefined;
+  const completedMajorRevision = day.majorRevisionTask &&
+    (day.majorRevisionTask.completed || dayMarkedComplete)
+    ? { ...day.majorRevisionTask, completed: true }
+    : undefined;
+
+  const pendingMemorization = day.memorizationTask && !completedMemorization
+    ? day.memorizationTask
+    : undefined;
+  const pendingMinorRevision = day.minorRevisionTask && !completedMinorRevision
+    ? day.minorRevisionTask
+    : undefined;
+  const pendingMajorRevision = day.majorRevisionTask && !completedMajorRevision
+    ? day.majorRevisionTask
+    : undefined;
+
+  const hasCompletedTask = Boolean(
+    completedMemorization || completedMinorRevision || completedMajorRevision
+  );
+  const hasPendingTask = Boolean(
+    pendingMemorization || pendingMinorRevision || pendingMajorRevision
+  );
+
+  const historical = hasCompletedTask || dayMarkedComplete
+    ? {
+        ...day,
+        memorizationTask: completedMemorization,
+        minorRevisionTask: completedMinorRevision,
+        majorRevisionTask: completedMajorRevision,
+        isRestDay: false,
+        status: hasPendingTask ? 'partially_completed' as const : 'completed' as const
+      }
+    : undefined;
+
+  const pending = hasPendingTask
+    ? {
+        memorizationTask: pendingMemorization,
+        minorRevisionTask: pendingMinorRevision,
+        majorRevisionTask: pendingMajorRevision,
+        notes: day.notes
+      }
+    : undefined;
+
+  return { historical, pending };
+}
+
+function hasSchedulableDay(input: EngineGeneratedPlan['input']): boolean {
+  const activeDays = Array.isArray(input.activeDays) ? input.activeDays : [];
+  const restDays = Array.isArray(input.restDays) ? input.restDays : [];
+  return activeDays.some(day =>
+    Number.isSafeInteger(day) && day >= 0 && day <= 6 && !restDays.includes(day)
+  );
+}
+
+function schedulePendingBundles(
+  bundles: PendingTaskBundle[],
+  startDate: Date,
+  input: EngineGeneratedPlan['input'],
+  idPrefix: string
+): ScheduledDayPlan[] {
+  if (!hasSchedulableDay(input)) {
+    throw new Error('لا توجد أيام دراسة نشطة لإعادة جدولة المهام المعلقة؛ تم الحفاظ على الخطة دون تغيير.');
+  }
+  const schedule: ScheduledDayPlan[] = [];
+  const currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  let pendingIndex = 0;
+
+  while (pendingIndex < bundles.length) {
+    const dateStr = PlanningEngine.formatDate(currentDate);
+    const dayOfWeek = currentDate.getDay();
+    const isRest = input.restDays.includes(dayOfWeek) || !input.activeDays.includes(dayOfWeek);
+
+    if (isRest) {
+      schedule.push({
+        id: idPrefix + '-rest-' + dateStr,
+        date: dateStr,
+        dayOfWeek,
+        dayNameAr: DAY_NAMES_AR[dayOfWeek],
+        isRestDay: true,
+        status: 'pending',
+        notes: 'استراحة أسبوعية'
+      });
+    } else {
+      const bundle = bundles[pendingIndex];
+      schedule.push({
+        id: idPrefix + '-' + dateStr + '-' + (pendingIndex + 1),
+        date: dateStr,
+        dayOfWeek,
+        dayNameAr: DAY_NAMES_AR[dayOfWeek],
+        isRestDay: false,
+        memorizationTask: bundle.memorizationTask,
+        minorRevisionTask: bundle.minorRevisionTask,
+        majorRevisionTask: bundle.majorRevisionTask,
+        status: 'pending',
+        notes: bundle.notes
+      });
+      pendingIndex++;
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return schedule;
+}
+
+function getLastScheduledWorkDate(schedule: ScheduledDayPlan[], fallback: string): string {
+  const workDays = schedule.filter(day =>
+    !day.isRestDay && Boolean(day.memorizationTask || day.minorRevisionTask || day.majorRevisionTask)
+  );
+  return workDays.length ? workDays[workDays.length - 1].date : fallback;
+}
 
 export const PlanLifecycle = {
   /**
-   * Mark a task as completed or update individual properties
-   * PRESERVES all historical completion records!
+   * Mark a task as completed or update individual properties.
+   * Completion timestamps are preserved once written.
    */
   updateTask(
     plan: EngineGeneratedPlan,
@@ -15,24 +150,15 @@ export const PlanLifecycle = {
       if (day.id !== taskId) return day;
 
       const merged = { ...day, ...updates };
-      // If memorization task completed, record timestamp if not set
       if (merged.memorizationTask?.completed && !merged.memorizationTask.completedAt) {
         merged.memorizationTask.completedAt = new Date().toISOString();
       }
       return merged;
     });
 
-    const updatedPlan = {
-      ...plan,
-      schedule: updatedSchedule
-    };
-
-    return this.refreshActualVsPlanned(updatedPlan);
+    return this.refreshActualVsPlanned({ ...plan, schedule: updatedSchedule });
   },
 
-  /**
-   * Calculate planned verses up to current date vs actually completed verses
-   */
   refreshActualVsPlanned(plan: EngineGeneratedPlan): EngineGeneratedPlan {
     const today = PlanningEngine.formatDate(new Date());
     let plannedToDate = 0;
@@ -40,13 +166,8 @@ export const PlanLifecycle = {
 
     for (const day of plan.schedule) {
       if (day.isRestDay || !day.memorizationTask) continue;
-
-      if (day.date <= today) {
-        plannedToDate += day.memorizationTask.versesCount;
-      }
-      if (day.memorizationTask.completed) {
-        actualCompleted += day.memorizationTask.versesCount;
-      }
+      if (day.date <= today) plannedToDate += day.memorizationTask.versesCount;
+      if (day.memorizationTask.completed) actualCompleted += day.memorizationTask.versesCount;
     }
 
     const variance = actualCompleted - plannedToDate;
@@ -65,74 +186,47 @@ export const PlanLifecycle = {
     };
   },
 
-  /**
-   * Pause an active plan
-   */
   pausePlan(plan: EngineGeneratedPlan, pauseDate?: string): EngineGeneratedPlan {
     const pDate = pauseDate || PlanningEngine.formatDate(new Date());
-    return {
-      ...plan,
-      isPaused: true,
-      pausedAt: pDate
-    };
+    return { ...plan, isPaused: true, pausedAt: pDate };
   },
 
   /**
-   * Resume a paused plan and shift remaining uncompleted tasks forward to resumeDate.
-   * Completely preserves historical completed tasks!
+   * Resume all unfinished work, including revision-only tasks. Completed task
+   * components remain on their original dates; only unfinished components move.
    */
   resumePlan(plan: EngineGeneratedPlan, resumeDateStr?: string): EngineGeneratedPlan {
     const rDateStr = resumeDateStr || PlanningEngine.formatDate(new Date());
     if (!plan.isPaused && !plan.pausedAt) return plan;
 
-    // Separate completed tasks (never touched) from pending tasks
-    const completedTasks = plan.schedule.filter(s => s.memorizationTask?.completed);
-    const uncompletedTasks = plan.schedule.filter(s => !s.memorizationTask?.completed && !s.isRestDay && s.memorizationTask);
+    const historical: ScheduledDayPlan[] = [];
+    const pendingBundles: PendingTaskBundle[] = [];
 
-    if (uncompletedTasks.length === 0) {
-      return { ...plan, isPaused: false, pausedAt: undefined };
-    }
-
-    // Re-schedule uncompleted chunks starting from resumeDate
-    const newSchedule: ScheduledDayPlan[] = [...completedTasks];
-    const curDate = PlanningEngine.parseDate(rDateStr);
-    let pendingIdx = 0;
-
-    while (pendingIdx < uncompletedTasks.length) {
-      const dateStr = PlanningEngine.formatDate(curDate);
-      const dayOfWeek = curDate.getDay();
-      const isRest = plan.input.restDays.includes(dayOfWeek) || !plan.input.activeDays.includes(dayOfWeek);
-
-      if (isRest) {
-        newSchedule.push({
-          id: `task-${dateStr}`,
-          date: dateStr,
-          dayOfWeek,
-          dayNameAr: dayOfWeek === 5 ? 'الجمعة' : dayOfWeek === 6 ? 'السبت' : 'يوم دراسة',
-          isRestDay: true,
-          status: 'pending',
-          notes: 'استراحة أسبوعية'
-        });
-      } else {
-        const origTask = uncompletedTasks[pendingIdx];
-        newSchedule.push({
-          ...origTask,
-          id: `task-${dateStr}`,
-          date: dateStr,
-          dayOfWeek,
-          isRestDay: false,
-          status: 'pending'
-        });
-        pendingIdx++;
+    for (const day of plan.schedule) {
+      if (day.isRestDay) {
+        if (day.date < rDateStr) historical.push(day);
+        continue;
       }
 
-      curDate.setDate(curDate.getDate() + 1);
+      const split = splitDayTasks(day);
+      if (split.historical) historical.push(split.historical);
+      if (split.pending) pendingBundles.push(split.pending);
     }
 
-    // Sort by date
-    newSchedule.sort((a, b) => a.date.localeCompare(b.date));
+    if (pendingBundles.length === 0) {
+      return { ...plan, isPaused: false, pausedAt: undefined };
+    }
+    if (!hasSchedulableDay(plan.input)) return plan;
 
-    const lastTask = newSchedule.filter(s => !s.isRestDay).pop();
+    const rescheduled = schedulePendingBundles(
+      pendingBundles,
+      PlanningEngine.parseDate(rDateStr),
+      plan.input,
+      'resume'
+    );
+    const newSchedule = [...historical, ...rescheduled].sort((a, b) =>
+      a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
+    );
     const updatedPlan: EngineGeneratedPlan = {
       ...plan,
       isPaused: false,
@@ -140,7 +234,7 @@ export const PlanLifecycle = {
       schedule: newSchedule,
       meta: {
         ...plan.meta,
-        projectedEndDate: lastTask ? lastTask.date : plan.meta.projectedEndDate
+        projectedEndDate: getLastScheduledWorkDate(newSchedule, plan.meta.projectedEndDate)
       }
     };
 
@@ -148,118 +242,167 @@ export const PlanLifecycle = {
   },
 
   /**
-   * Recalculate future tasks when schedule or user pace changes.
-   * NEVER overwrites completed memorization records!
+   * Recalculate future memorization chunks while preserving completed
+   * memorization/revision history and rescheduling unfinished revision tasks.
    */
   recalculatePlan(
     plan: EngineGeneratedPlan,
     newPaceVerses?: number,
     newTargetEndDate?: string
   ): EngineGeneratedPlan {
-    // 1. Identify what has already been memorized
-    const completedTasks = plan.schedule.filter(s => s.memorizationTask?.completed);
-    
-    // Find the furthest verse completed
-    let lastCompletedCoord: VerseCoordinate | null = null;
-    for (const t of completedTasks) {
-      if (t.memorizationTask) {
-        const taskEndCoord = { 
-          surahNumber: t.memorizationTask.surahNumber, 
-          ayahNumber: t.memorizationTask.endAyah 
+    const todayStr = PlanningEngine.formatDate(new Date());
+    const historical: ScheduledDayPlan[] = [];
+    const pendingRevisionBundles: PendingTaskBundle[] = [];
+    const completedMemorizationTasks: ScheduledDayPlan[] = [];
+
+    for (const day of plan.schedule) {
+      if (day.isRestDay) {
+        if (day.date <= todayStr) historical.push(day);
+        continue;
+      }
+
+      const split = splitDayTasks(day);
+      if (split.historical) {
+        historical.push(split.historical);
+        if (split.historical.memorizationTask?.completed) {
+          completedMemorizationTasks.push(split.historical);
+        }
+      }
+      if (split.pending) {
+        const pendingRevision = {
+          minorRevisionTask: split.pending.minorRevisionTask,
+          majorRevisionTask: split.pending.majorRevisionTask,
+          notes: split.pending.notes
         };
-        if (!lastCompletedCoord || QuranMath.getAbsoluteAyahIndex(taskEndCoord.surahNumber, taskEndCoord.ayahNumber) > QuranMath.getAbsoluteAyahIndex(lastCompletedCoord.surahNumber, lastCompletedCoord.ayahNumber)) {
-          lastCompletedCoord = taskEndCoord;
+        if (pendingRevision.minorRevisionTask || pendingRevision.majorRevisionTask) {
+          pendingRevisionBundles.push(pendingRevision);
         }
       }
     }
 
-    // If all completed, return as is
-    const totalVerses = QuranMath.countVersesBetween(plan.meta.startCoordinate, plan.meta.endCoordinate);
-    let remainingStartCoord = plan.meta.startCoordinate;
+    const planStartIndex = QuranMath.getAbsoluteAyahIndex(
+      plan.meta.startCoordinate.surahNumber,
+      plan.meta.startCoordinate.ayahNumber
+    );
+    const planEndIndex = QuranMath.getAbsoluteAyahIndex(
+      plan.meta.endCoordinate.surahNumber,
+      plan.meta.endCoordinate.ayahNumber
+    );
+    const completedIndexes = new Set<number>();
 
-    if (lastCompletedCoord) {
-      if (QuranMath.getAbsoluteAyahIndex(lastCompletedCoord.surahNumber, lastCompletedCoord.ayahNumber) >= QuranMath.getAbsoluteAyahIndex(plan.meta.endCoordinate.surahNumber, plan.meta.endCoordinate.ayahNumber)) {
-        // All completed!
-        return this.refreshActualVsPlanned(plan);
+    for (const day of completedMemorizationTasks) {
+      const task = day.memorizationTask;
+      if (!task) continue;
+      const taskStart = QuranMath.getAbsoluteAyahIndex(task.surahNumber, task.startAyah);
+      const taskEnd = QuranMath.getAbsoluteAyahIndex(task.surahNumber, task.endAyah);
+      const boundedStart = Math.max(planStartIndex, taskStart);
+      const boundedEnd = Math.min(planEndIndex, taskEnd);
+      if (boundedEnd < boundedStart) continue;
+      for (let index = boundedStart; index <= boundedEnd; index++) {
+        completedIndexes.add(index);
       }
-      remainingStartCoord = QuranMath.addVerses(lastCompletedCoord, 1);
     }
 
-    const remainingVerses = QuranMath.countVersesBetween(remainingStartCoord, plan.meta.endCoordinate);
-    const todayStr = PlanningEngine.formatDate(new Date());
+    // Preserve every gap, including work before a later task completed out of order.
+    const remainingRanges: Array<{ startIndex: number; endIndex: number }> = [];
+    let rangeStart: number | null = null;
+    for (let index = planStartIndex; index <= planEndIndex; index++) {
+      if (!completedIndexes.has(index)) {
+        if (rangeStart === null) rangeStart = index;
+      } else if (rangeStart !== null) {
+        remainingRanges.push({ startIndex: rangeStart, endIndex: index - 1 });
+        rangeStart = null;
+      }
+    }
+    if (rangeStart !== null) {
+      remainingRanges.push({ startIndex: rangeStart, endIndex: planEndIndex });
+    }
 
-    // Compute updated pace
-    let pace = newPaceVerses || plan.input.paceQuantity;
+    const remainingVerses = remainingRanges.reduce(
+      (total, range) => total + range.endIndex - range.startIndex + 1,
+      0
+    );
+
+    if (remainingVerses === 0 && pendingRevisionBundles.length === 0) {
+      return this.refreshActualVsPlanned(plan);
+    }
+
+    let pace = Number.isInteger(newPaceVerses) && (newPaceVerses || 0) > 0
+      ? newPaceVerses as number
+      : plan.input.paceQuantity;
+
     if (newTargetEndDate) {
-      const activeDays = PlanningEngine.countActiveDaysBetween(todayStr, newTargetEndDate, plan.input.activeDays, plan.input.restDays);
-      if (activeDays > 0) {
-        pace = Math.max(1, Math.ceil(remainingVerses / activeDays));
-      }
+      const activeDays = PlanningEngine.countActiveDaysBetween(
+        todayStr,
+        newTargetEndDate,
+        plan.input.activeDays,
+        plan.input.restDays
+      );
+      if (activeDays > 0) pace = Math.max(1, Math.ceil(remainingVerses / activeDays));
     }
 
-    // Slice remaining verses into chunks
-    const chunks = QuranMath.sliceRangeIntoChunks(remainingStartCoord, plan.meta.endCoordinate, pace);
+    const chunks = remainingRanges.flatMap(range =>
+      QuranMath.sliceRangeIntoChunks(
+        QuranMath.getCoordinateFromAbsoluteIndex(range.startIndex),
+        QuranMath.getCoordinateFromAbsoluteIndex(range.endIndex),
+        pace
+      )
+    );
+    const workBundles: PendingTaskBundle[] = [];
+    const workCount = Math.max(chunks.length, pendingRevisionBundles.length);
 
-    // Schedule remaining tasks starting from tomorrow (or today if no completed tasks today)
-    const newSchedule: ScheduledDayPlan[] = [...completedTasks];
-    const curDate = new Date();
-    // Start scheduling from next day
-    curDate.setDate(curDate.getDate() + 1);
+    for (let index = 0; index < workCount; index++) {
+      const chunk = chunks[index];
+      const revisionBundle = pendingRevisionBundles[index];
+      let memorizationTask: ScheduledDayPlan['memorizationTask'];
 
-    let chunkIdx = 0;
-    while (chunkIdx < chunks.length) {
-      const dateStr = PlanningEngine.formatDate(curDate);
-      const dayOfWeek = curDate.getDay();
-      const isRest = plan.input.restDays.includes(dayOfWeek) || !plan.input.activeDays.includes(dayOfWeek);
-
-      if (isRest) {
-        newSchedule.push({
-          id: `task-${dateStr}`,
-          date: dateStr,
-          dayOfWeek,
-          dayNameAr: dayOfWeek === 5 ? 'الجمعة' : 'يوم دراسة',
-          isRestDay: true,
-          status: 'pending',
-          notes: 'استراحة أسبوعية'
-        });
-      } else {
-        const chunk = chunks[chunkIdx];
+      if (chunk) {
         const surah = QuranMath.getSurah(chunk.start.surahNumber);
-        const estMinutes = QuranMath.estimateMemorizationMinutes(chunk.totalVerses, plan.input.level);
-
-        newSchedule.push({
-          id: `task-${dateStr}`,
-          date: dateStr,
-          dayOfWeek,
-          dayNameAr: 'يوم دراسة',
-          isRestDay: false,
-          memorizationTask: {
-            surahNumber: chunk.start.surahNumber,
-            surahName: surah?.name || '',
-            startAyah: chunk.start.ayahNumber,
-            endAyah: chunk.end.ayahNumber,
-            versesCount: chunk.totalVerses,
-            estimatedMinutes: estMinutes,
-            completed: false
-          },
-          status: 'pending'
-        });
-        chunkIdx++;
+        memorizationTask = {
+          surahNumber: chunk.start.surahNumber,
+          surahName: surah?.name || '',
+          startAyah: chunk.start.ayahNumber,
+          endAyah: chunk.end.ayahNumber,
+          versesCount: chunk.totalVerses,
+          estimatedMinutes: QuranMath.estimateMemorizationMinutes(
+            chunk.totalVerses,
+            plan.input.level
+          ),
+          completed: false
+        };
       }
 
-      curDate.setDate(curDate.getDate() + 1);
+      workBundles.push({
+        memorizationTask,
+        minorRevisionTask: revisionBundle?.minorRevisionTask,
+        majorRevisionTask: revisionBundle?.majorRevisionTask,
+        notes: revisionBundle?.notes
+      });
     }
 
-    // Sort by date
-    newSchedule.sort((a, b) => a.date.localeCompare(b.date));
-    const lastTask = newSchedule.filter(s => !s.isRestDay).pop();
-
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+    if (workBundles.length > 0 && !hasSchedulableDay(plan.input)) return plan;
+    const rescheduled = schedulePendingBundles(
+      workBundles,
+      startDate,
+      plan.input,
+      'recalc'
+    );
+    const newSchedule = [...historical, ...rescheduled].sort((a, b) =>
+      a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
+    );
     const updatedPlan: EngineGeneratedPlan = {
       ...plan,
+      input: {
+        ...plan.input,
+        paceQuantity: pace,
+        targetEndDate: newTargetEndDate || plan.input.targetEndDate
+      },
       schedule: newSchedule,
       meta: {
         ...plan.meta,
-        projectedEndDate: lastTask ? lastTask.date : plan.meta.projectedEndDate
+        projectedEndDate: getLastScheduledWorkDate(newSchedule, plan.meta.projectedEndDate)
       }
     };
 
