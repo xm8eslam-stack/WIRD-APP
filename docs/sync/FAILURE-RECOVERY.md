@@ -34,3 +34,10 @@ If the account changes while a write is in flight:
 - Keep both users' pending mutations isolated and recoverable.
 
 PR #110 adds a regression test with the same mutation ID in two accounts, checking that stale A operations cannot read or mutate B's outbox. This is automated service/coordinator evidence; real browser auth-switch E2E and multi-tab lifecycle tests remain required.
+
+
+## 2026-11-07 — conflict evidence and bounded recovery
+
+Conflict archiving now captures pending local outbox entries together with the local raw snapshot. The archive is updated atomically with the inbox/conflict stores and is bounded to 500 KB combined. If serialization fails, a mutation fingerprint changes, or the evidence exceeds the bound, the transaction aborts and leaves the inbox event, outbox entries, and projection cursor unchanged. Repeated observations append previously unseen mutation IDs without replacing original evidence.
+
+After a future user decision is implemented, the next recovery requirement is to persist the decision and its idempotency key before applying any local/remote mutation, then revalidate the latest remote revision inside the same transaction boundary. Until then, conflicts remain blocked and recoverable rather than being automatically resolved.
