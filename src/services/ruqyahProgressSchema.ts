@@ -99,6 +99,7 @@ export function isValidRuqyahProgressSnapshotV2(value: unknown): value is Ruqyah
   }
 
   const allCountIds = new Set([...Object.keys(snapshot.counts), ...Object.keys(derivedCounts)]);
+  if (allCountIds.size > MAX_ITEMS) return false;
   for (const itemId of allCountIds) {
     if ((snapshot.counts as Record<string, number>)[itemId] !== (derivedCounts[itemId] ?? 0)) return false;
   }
