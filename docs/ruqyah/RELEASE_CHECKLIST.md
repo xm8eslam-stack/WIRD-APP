@@ -4,9 +4,12 @@ Last reviewed: 2026-11-07
 
 ## Current merged implementation
 
-- Phase 1: PR #88 — Quran mapping, multi-ayah playback, Al Furqan reciters, IslamicAPI proxy, and Shariah content cleanup.
+- Phase 1: PR #88 — canonical Quran mapping, multi-ayah playback, initial IslamicAPI proxy, and content cleanup.
 - Phase 2: PR #91 — UID-scoped journal-first progress sync, revisioned Firestore writes, two-device projection, version-5 backup, and ordered reset.
-- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and accurate API-key error guidance. Audio was subsequently disabled pending source and rights verification.
+- Phase 3: PR #93 — accessible counter actions, selectable Quran text, responsive layout, and API-key error guidance.
+- Phase 4: PR #105 — reviewed Sunni source policy, Quran-index-only external API usage, and lockdown of unverified recitation/audio sources.
+- Phase 5: PR #108 — exact content-ID-to-source registry and named Ibn Baz fatwa reference for combining Ruqyah and medical treatment.
+- Phase 6: PR #111 — strict Quran-coordinate sanitization, hard-disabled topic/category endpoints, canonical WIRD Quran text rendering, and rejection of ambiguous/out-of-range references.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
@@ -32,7 +35,7 @@ Do not turn on remote projection before this deployment is confirmed.
 
 ### 2. Verify Vercel environment and deployment
 
-The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate.
+The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate. The latest main SHA `48cf9b236072cd3db2603a57cda5f67b30a778cd` still reports Vercel `failure` (`build-rate-limit`). Main Quality Gate job `128363308512` passed, but workflow run `42359049396` remained `in_progress` at this checkpoint. No deployed production SHA or live post-deploy smoke is verified.
 
 **STOP — do not enable production sync at the current checkpoint.** The values below are documented for a future release only. Do not set either remote-sync flag until every global gate in docs/sync/RELEASE-GATES.md passes, especially user-facing conflict resolution, deterministic Ruqyah additive-increment resolution, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing. These gates are currently open.
 
