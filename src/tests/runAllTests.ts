@@ -42,6 +42,7 @@ import { runRuqyahProxyTests } from './ruqyahProxy.test';
 import { runRuqyahAudioServiceTests } from './ruqyahAudioService.test';
 import { runRuqyahProgressServiceTests } from '../services/ruqyahProgressService.test';
 import { runRuqyahApiServiceTests } from '../services/ruqyahApiService.test';
+import { runRuqyahViewAudioLockTests } from './ruqyahViewAudioLock.test';
 
 export interface SuiteResult {
   passed: number;
@@ -131,6 +132,7 @@ async function main() {
     { name: 'Ruqyah API Proxy Security, Validation & Key Isolation', runner: runRuqyahProxyTests },
     { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
+    { name: 'Ruqyah UI Audio Lock & Disabled Controls', runner: runRuqyahViewAudioLockTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
