@@ -50,7 +50,7 @@
 - PR #61 — fix/progress-import-journal-20261107: Draft, CI PASS, 404 passed / 0 failed, Vercel Preview Ready.
 - PR #62 — fix/plan-lifecycle-preserve-revisions-20261107: Draft, CI PASS, 406 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
 - PR #63 — fix/quran-audio-repeat-20261107: Draft, CI PASS, 404 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
-- PR #64 — fix/tafsir-json-response-20261107: Draft, run 42341419175 pending with no job assigned at last check.
+- PR #64 — fix/tafsir-json-response-20261107: Draft, run 42341419175 remains pending with no job assigned; Vercel check failed due daily build-rate limit.
 - None of these PRs has been merged. Main is still 6228150c2f7137678ba1079f5d9b2e8aba527523.
 - Remote sync design gate is now documented at docs/sync/REMOTE_REPLICATION_PLAN.md; it is not implemented.
 - Vercel production deployment is not confirmed. Do not confuse green GitHub CI with a live production deploy.
@@ -149,3 +149,21 @@ P2:
 - رابط GitHub للفرع/PR إن وُجد.
 
 ابدأ الآن بقراءة ملفات التدقيق والتحقق من رؤوس الفروع، ثم أغلق المرحلة 0 وأكمل التنفيذ دون إعادة العمل المنجز.
+
+
+## 9. Current execution branch heads
+
+Fetch these refs before continuing; the SHAs below are the last verified heads at this checkpoint:
+- fix/progress-import-journal-20261107 — dd5d5d620d03416e96975320a6443b6eab56fbcc (PR #61, CI PASS).
+- fix/plan-lifecycle-preserve-revisions-20261107 — 651f03e9891a8cec0f09a8dd22085fefd502574d (PR #62, CI PASS).
+- fix/quran-audio-repeat-20261107 — 6a7a2b8c3a6cb1b6bbca58ea6674834096a8de93 (PR #63, CI PASS).
+- fix/tafsir-json-response-20261107 — aee5b433122a234d6f36edd38e383c964fca1e10 (PR #64, CI pending/no jobs).
+- chore/full-repository-audit-20261107 — fetch the current ref; this prompt refresh itself creates a new documentation commit.
+
+Next engineering tasks after PR #64 CI is resolved:
+1. QuranMath and domain-event coordinate validation.
+2. Advisor metric correctness (unique ayah count, real retention score, computed best day).
+3. Design and implement authenticated Advisor quota protection; do not ship unauthenticated Gemini quota use.
+4. Then resume full remote sync only under docs/sync/REMOTE_REPLICATION_PLAN.md.
+
+Never merge PR #61–#64 without explicit user approval, even if CI is green.
