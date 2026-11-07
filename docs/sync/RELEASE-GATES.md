@@ -132,8 +132,8 @@ The following remain release blockers and must not be waived:
 - Next: implement deterministic additive Ruqyah counter reconciliation and collection-specific tombstone/delete semantics; then grouped syncMeta resolution, cross-tab/account lifecycle stress, broader Playwright workflows, backup/restore stress, and live two-device tests.
 
 
-## 2026-11-07 — current release-gate decision
+## Historical release-gate decision at the PR #129 checkpoint (superseded by PR #155)
 
 The desktop/mobile Playwright app-shell baseline is now merged and passing (PR #122: 6/6 checks); the Ruqyah locator-library browser suite is also merged (PR #127: 10 locator-library checks (five desktop and five mobile)). PR #125 adds populated multi-record coverage across the eight data collections. PR #126 preserves pending local mutation evidence on conflicts, and PR #129 makes projection guards document-scoped for ordinary events while retaining collection-wide syncMeta protection.
 
-**Release remains blocked.** Conflict decisions (keep local/use remote/merge) are not implemented; tombstones and additive Ruqyah increments remain outstanding; full auth/CRUD/two-device browser journeys and real Firebase live verification have not been completed; production rules are not claimed deployed; Vercel deployment remains rate-limited. Do not enable production sync flags.
+**At this historical checkpoint, release remained blocked.** PRs #149/#155 later implemented narrow use-remote and supported keep-local decisions. User-authored merge, tombstones, additive Ruqyah increments, full auth/CRUD/two-device browser journeys and real Firebase live verification remain outstanding; production rules are not claimed deployed; Vercel deployment remains rate-limited. Do not enable production sync flags.
