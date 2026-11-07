@@ -1316,27 +1316,44 @@ export class IndexedDbSyncJournal {
     }
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_METADATA], 'readwrite');
-      const store = transaction.objectStore(STORE_METADATA);
-      const request = store.get(uid);
+      const transaction = database.transaction([STORE_METADATA, STORE_REMOTE_INBOX], 'readwrite');
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const metadataRequest = metadataStore.get(uid);
+      const eventRequest = inbox.index('uidServerSequence').get([uid, sequence]);
+      let metadata: DeviceMetadata | undefined;
+      let event: RemoteInboxEvent | undefined;
+      let readsRemaining = 2;
       let advanced = false;
       let failure: Error | undefined;
-      request.onsuccess = () => {
-        const metadata = request.result as DeviceMetadata | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
         const cursor = metadata?.remoteProjectionCursor ?? 0;
         const importedCursor = metadata?.remoteCursor ?? 0;
-        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor) {
-          failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث لم يُحفظ في صندوق الاستقبال.');
+        if (sequence <= cursor) return;
+        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event) {
+          failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;
         }
-        store.put({ ...metadata, remoteProjectionCursor: sequence } satisfies DeviceMetadata);
+        metadataStore.put({ ...metadata, remoteProjectionCursor: sequence } satisfies DeviceMetadata);
+        inbox.delete(event.key);
         advanced = true;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finishRead();
+      };
+      eventRequest.onsuccess = () => {
+        event = eventRequest.result as RemoteInboxEvent | undefined;
+        finishRead();
       };
       transaction.oncomplete = () => resolve(advanced);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote projection cursor transaction aborted.')));
     });
   }
+
 
   async getSnapshot(): Promise<JournalSnapshot> {
     const uid = activeUid();
