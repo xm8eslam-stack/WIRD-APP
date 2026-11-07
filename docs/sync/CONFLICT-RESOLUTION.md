@@ -1,5 +1,20 @@
 # WIRD Conflict Resolution Policy
 
+## 2026-11-07 — keep-local executor (PR #155 merged)
+
+PR #155 adds the second narrow, user-confirmed conflict choice: keep the current local full snapshot and queue one replacement mutation based on the latest authoritative Firestore revision.
+
+- The executor is limited to single-collection upsert conflicts with at least one archived local mutation. It selects the last archived mutation by local sequence and requires its complete payload to match the exact current local projection.
+- The service fetches and validates the latest Firestore state envelope, prepares a `keep-local` intent bound to the event fingerprint, local snapshot fingerprint, archived mutation identities, and remote revision, then re-fetches Firestore immediately before commit.
+- The IndexedDB commit verifies the conflict/inbox/cursor identity, active UID scope, exact local snapshot, archived mutation set, latest payload fingerprint, absence of unarchived newer pending writes, and monotonic local sequence metadata.
+- In one transaction it deletes only the matching stale pending Outbox entries, appends a new journal event, queues one consolidated replacement mutation with `baseRevision` equal to the verified remote revision, advances the projection cursor, closes the conflict as `keep-local`, and clears the prepared intent. The raw local projection is not overwritten and the conflict archive remains available.
+- The new mutation is only queued. The normal revisioned sync coordinator must later upload it and acknowledge `baseRevision + 1`; no UI success message claims server acceptance merely because the queue transaction committed.
+- Fail closed for grouped `syncMeta`, `ruqyahProgress` (until additive counter merge exists), tombstones, invalid/corrupt local projection bytes, stale snapshots, changed remote state, unarchived newer writes, invalid sequence metadata, and queue-capacity overflow.
+- Exact tested PR head `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf` passed WIRD Quality Gate run `42370175733` (#2909); squash merge SHA `c620697538ef72eec3d1c2c78bb456c0403232ce`.
+
+**Still not implemented:** user-authored merge, deterministic additive Ruqyah counter merge, collection-specific tombstone/delete resolution, grouped syncMeta conflict resolution, cross-tab coordination, comprehensive account lifecycle isolation, and live two-device production verification. Production sync flags remain disabled.
+
+
 ## 2026-11-07 — explicit use-remote resolution path (PR #149 merged)
 
 PR #149 implements a deliberately narrow, user-confirmed **use latest remote snapshot** path. Its exact tested head `c675a2d164b88994c08a5368bf1695712f2625f3` passed WIRD Quality Gate run `42368745026` (#2871), and the squash merge commit is `78ada24ecadbda3460178550e871632f6d81d770`.
@@ -12,7 +27,7 @@ PR #149 implements a deliberately narrow, user-confirmed **use latest remote sna
 - A prepared decision can be explicitly canceled without deleting the conflict archive or pending writes.
 - Recovery recognizes the exact selected remote snapshot if the local projection completed immediately before an IndexedDB interruption, then safely finishes the journal commit. A different local snapshot remains a hard stop.
 
-**Still not implemented:** keep-local re-publication, user-authored merge, collection-specific tombstone resolution, and production multi-device verification. Do not infer that the whole conflict-resolution engine is complete from the use-remote path alone. Production sync flags remain disabled.
+**Still not implemented after PR #155:** user-authored merge, collection-specific tombstone resolution, deterministic additive Ruqyah counter merge, grouped syncMeta resolution, and production multi-device verification. The use-remote and supported keep-local executors are narrow choices, not a general merge engine. Production sync flags remain disabled.
 
 ## 2026-11-07 — durable decision-intent foundation (PR #148)
 
@@ -20,7 +35,7 @@ PR #148 introduces a versioned, UID-scoped IndexedDB store for a single immutabl
 
 Preparation rechecks that the conflict is still open, the exact event remains in the inbox, the archived mutation set and raw local snapshot have not changed since inspection, no newer relevant local Outbox mutations appeared, and the locally known revision is not newer than the supplied revision. The intent survives reload and exact retries; a different decision cannot overwrite it. Retention is bounded and fails closed rather than silently pruning decision evidence.
 
-**At the PR #148 foundation stage, this was not yet an executable conflict resolver.** The prepared intent alone was not a server acknowledgement, did not replace or acknowledge local Outbox mutations, did not apply a local or remote snapshot, and did not advance the Inbox/projection cursor. Normal projection finalization and direct cursor advancement were blocked while a prepared intent existed, so the automatic projector could not bypass a saved user decision. PR #149 subsequently added the first narrow executor for the use-remote decision; keep-local re-publication and user-authored merge remain separate work.
+**At the PR #148 foundation stage, this was not yet an executable conflict resolver.** The prepared intent alone was not a server acknowledgement, did not replace or acknowledge local Outbox mutations, did not apply a local or remote snapshot, and did not advance the Inbox/projection cursor. Normal projection finalization and direct cursor advancement were blocked while a prepared intent existed, so the automatic projector could not bypass a saved user decision. PR #149 and PR #155 subsequently added narrow executors for use-remote and supported keep-local decisions; user-authored merge remains separate work.
 
 Production sync flags remain disabled. No Firestore rules, secrets, or production settings changed.
 
@@ -33,29 +48,29 @@ When a normal remote event arrives while a local mutation for the same UID/colle
 
 PR #78 verifies this with two independently stored devices: one write is accepted, the stale competing write is rejected, and the losing device retains both its local edit and the accepted remote event without overwriting either.
 
-## Not yet implemented
+## Remaining conflict-resolution work
 
-- Keep-local re-publication as a separately confirmed and revision-safe decision.
 - User-authored merge with collection-specific validation and explicit preservation of both sides.
-- Collection-specific tombstone/deletion resolution.
-- Deterministic additive merge for independent offline Ruqyah counter increments.
+- Collection-specific tombstone/deletion resolution and safe offline delete/resurrection semantics.
+- Deterministic additive merge for independent offline Ruqyah counter increments; keep-local is intentionally disabled for this collection.
+- Grouped syncMeta transaction conflict resolution.
 - Cross-tab coordination, comprehensive account lifecycle isolation, and live two-device verification.
 
-The use-remote path is a completed narrow resolution, not completion of the full conflict-resolution engine. A blocked mutation without an explicitly completed decision remains an unresolved conflict. Do not silently discard or automatically rebase the losing local mutation.
+Use-remote and supported single-collection keep-local are completed narrow resolutions, not completion of the full conflict-resolution engine. A blocked mutation without an explicitly completed decision remains an unresolved conflict. Do not silently discard or automatically rebase the losing local mutation.
 
 
 ## Durable conflict archive — implemented in PR #81
 
 Blocked projection archives the full remote inbox event and raw local storage bytes in a UID-scoped IndexedDB store. PR #126 extends this to preserve pending local outbox mutations for the exact conflicting document, including mutation ID, fingerprint, base revision, sequence, and payload. Repeated observations append newly pending mutations by ID without replacing the first snapshot. Combined evidence is capped at 500 KB; fingerprint mismatch or overflow aborts without deleting inbox/outbox entries or advancing the cursor. Settings displays up to ten archived mutation payloads.
 
-This archive prevents diagnostic evidence from disappearing; it does not itself resolve the conflict. At the time PR #126 was implemented, no keep-local/use-remote UI existed. PR #149 later added the explicit use-latest-remote path; keep-local re-publication, user-authored merge, and automatic merge remain unimplemented.
+This archive prevents diagnostic evidence from disappearing. PR #149 later added the explicit use-latest-remote path, and PR #155 added supported single-collection keep-local re-publication. User-authored merge and automatic merge remain unimplemented.
 
 
 ## Atomic reconciliation semantics — PR #85
 
 Conflict archival now validates the immutable event fingerprint against the inbox and any existing conflict record. It rejects stale/orphan archive writes and oversized snapshots. An open conflict is marked `resolved` with resolution `reconciled` only inside the same IndexedDB transaction that advances the projection cursor and deletes the inbox event. This also handles already-applied events through `markRemoteProjected`. A late competing-tab archive cannot recreate an open conflict after the cursor has passed the event.
 
-This is automatic bookkeeping after a successful safe projection, not a user choice between local and remote versions. Manual keep-local/use-remote, field-level merge, and rebase UX remain unimplemented.
+This is automatic bookkeeping after a successful safe projection, not a user choice between local and remote versions. User-confirmed use-remote and supported keep-local choices are now implemented by PRs #149/#155; user-authored field-level merge and broader rebase UX remain unimplemented.
 
 ## 2026-11-07 — Read-only conflict inspection
 
@@ -86,7 +101,7 @@ PR #126 now stores the raw local projection snapshot and pending local outbox mu
 
 PR #129 narrows ordinary projection blocking to the exact UID/collection/document at both projector and atomic finalization layers. Same-document pending writes still block. Grouped syncMeta transactions remain collection-wide.
 
-**Not implemented yet:** persisted user decision intents, keep-local rebasing, use-remote discard semantics, field-level merge, latest remote revision revalidation, idempotent resolution completion, and recovery of a resolution interrupted by a crash. The archive is evidence, not a resolution workflow. No conflict is silently overwritten.
+PRs #149 and #155 now provide persisted, user-confirmed use-remote and supported keep-local decisions with latest-revision revalidation and atomic IndexedDB completion. The archive remains evidence for unsupported cases. User-authored merge, additive Ruqyah counter semantics, tombstones, grouped syncMeta, and live multi-device verification remain open; no conflict is silently overwritten.
 
 
 ## Current conflict evidence bound (PR #126)
