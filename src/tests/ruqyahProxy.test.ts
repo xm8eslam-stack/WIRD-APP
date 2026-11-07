@@ -33,6 +33,16 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(post.statusCode === 405 && post.body?.error === 'METHOD_NOT_ALLOWED', 'POST must be rejected');
     });
 
+    await test('Ruqyah proxy rejects unreviewed category indexes before upstream access', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      let called = false;
+      globalThis.fetch = (async () => { called = true; throw new Error('unexpected upstream call'); }) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.50' } }, res);
+      assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY' && !called,
+        'Provider-authored category names and descriptions must not be exposed');
+    });
+
     await test('Ruqyah proxy validates query parameters before upstream access', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       let called = false;
@@ -47,27 +57,57 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       let called = false;
       globalThis.fetch = (async () => { called = true; throw new Error('unexpected upstream call'); }) as typeof fetch;
       const res = new MockResponse();
-      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.52' } }, res);
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.52' } }, res);
       assert(res.statusCode === 503 && res.body?.error === 'RUQYAH_API_KEY_NOT_CONFIGURED', 'Missing key must be explicit');
       assert(!called, 'Missing key must not reach upstream');
     });
 
-    await test('Ruqyah proxy returns validated Arabic data without exposing the API key', async () => {
+    await test('Ruqyah proxy returns only validated Quran coordinates and strips provider-authored content', async () => {
       process.env.ISLAMICAPI_API_KEY = 'private-test-key';
       let requestedUrl = '';
       globalThis.fetch = (async (input: RequestInfo | URL) => {
         requestedUrl = String(input);
         return new Response(JSON.stringify({
           status: 'success',
-          data: [{ title: 'Brief Ruqya', subcategories: [] }]
+          data: [{
+            id: 1,
+            title: 'الفاتحة ١:١-٧',
+            arabic: 'نص خارجي غير موثوق',
+            reference: 'مرجع خارجي',
+            introduction: 'شرح خارجي',
+            translation: 'ترجمة خارجية'
+          }]
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }) as typeof fetch;
       const res = new MockResponse();
-      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.53' } }, res);
-      assert(res.statusCode === 200 && res.body?.status === 'success', 'Valid payload must be returned');
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.53' } }, res);
+      assert(res.statusCode === 200 && res.body?.status === 'success', 'Valid Quran locator must be returned');
+      assert(JSON.stringify(res.body?.data) === JSON.stringify([{ id: 1, title: '1:1-7' }]),
+        'Only normalized numeric Quran coordinates and the item ID may reach the browser');
+      assert(!JSON.stringify(res.body).includes('نص خارجي') &&
+        !JSON.stringify(res.body).includes('مرجع خارجي') &&
+        !JSON.stringify(res.body).includes('شرح خارجي') &&
+        !JSON.stringify(res.body).includes('ترجمة خارجية'),
+        'Provider-authored Arabic, references, introductions, and translations must be stripped');
       assert(requestedUrl.includes('lang=ar') && requestedUrl.includes('api_key=private-test-key'), 'Proxy must call Arabic API using server key');
       assert(!JSON.stringify(res.body).includes('private-test-key'), 'API key must never be returned to browser');
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
+    });
+
+    await test('Ruqyah proxy rejects Quran locators outside canonical surah and ayah bounds', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: [{ id: 1, title: '2:287', arabic: 'نص' }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({
+        method: 'GET',
+        query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' },
+        headers: { 'x-real-ip': '198.51.100.57' }
+      }, res);
+      assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+        'Out-of-range Quran locators must be rejected before they reach the browser');
     });
 
     await test('Ruqyah proxy rejects third-party Sunnah text even when the provider returns a valid response', async () => {
@@ -93,7 +133,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         upstreamCalls++;
         return new Response(JSON.stringify({
           status: 'success',
-          data: [{ title: 'Brief Ruqya', subcategories: [] }]
+          data: [{ id: 1, title: '2:255', arabic: 'نص خارجي لا يعرض' }]
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }) as typeof fetch;
       let finalResponse: MockResponse | null = null;
@@ -101,7 +141,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         const response = new MockResponse();
         await ruqyahHandler({
           method: 'GET',
-          query: { type: 'instant-category' },
+          query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' },
           headers: {
             'x-real-ip': '203.0.113.207',
             'x-forwarded-for': `198.51.100.${index + 1}`
@@ -135,7 +175,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         return response;
       }) as typeof fetch;
       const res = new MockResponse();
-      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.208' } }, res);
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.208' } }, res);
       assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
         'Oversized declared upstream response must be rejected');
       assert(!bodyRead, 'The proxy must reject an oversized declared response before reading its body');
@@ -150,40 +190,27 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         }
       }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
       const res = new MockResponse();
-      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.210' } }, res);
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.210' } }, res);
       assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
         'Chunked provider response above the byte limit must be rejected');
     });
 
-    await test('Ruqyah educational topics remain disabled until content review is explicitly enabled', async () => {
-      delete process.env.RUQYAH_TOPICS_ENABLED;
-      let called = false;
-      globalThis.fetch = (async () => { called = true; throw new Error('unexpected upstream call'); }) as typeof fetch;
-      const res = new MockResponse();
-      await ruqyahHandler({
-        method: 'GET',
-        query: { type: 'topic', topic: 'introduction-to-ruqyah' },
-        headers: { 'x-real-ip': '198.51.100.211' }
-      }, res);
-      assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY' && !called,
-        'Topic endpoints must remain unavailable unless the server-side review flag is enabled');
-    });
-
-    await test('Ruqyah proxy rejects unknown topic content block types', async () => {
+    await test('All unreviewed educational topic endpoints remain hard-disabled even if an environment flag is set', async () => {
       process.env.RUQYAH_TOPICS_ENABLED = 'true';
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
-      globalThis.fetch = (async () => new Response(JSON.stringify({
-        status: 'success',
-        data: { title: 'مقالة', sub_id: 1, content: [{ type: 'script', content: '<script>alert(1)</script>' }] }
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
-      const res = new MockResponse();
-      await ruqyahHandler({
-        method: 'GET',
-        query: { type: 'topic', topic: 'introduction-to-ruqyah' },
-        headers: { 'x-real-ip': '198.51.100.209' }
-      }, res);
-      assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
-        'Unknown topic block types must be rejected before reaching the client');
+      let called = false;
+      globalThis.fetch = (async () => { called = true; throw new Error('unreviewed topic endpoint must not be contacted'); }) as typeof fetch;
+      for (const type of ['topic', 'topic-category']) {
+        const res = new MockResponse();
+        await ruqyahHandler({
+          method: 'GET',
+          query: { type, topic: 'introduction-to-ruqyah' },
+          headers: { 'x-real-ip': type === 'topic' ? '198.51.100.211' : '198.51.100.212' }
+        }, res);
+        assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY',
+          type + ' must remain disabled until content is curated and reviewed');
+      }
+      assert(!called, 'No unreviewed educational content endpoint may reach the provider');
     });
 
     await test('Ruqyah proxy rejects HTML fallbacks and malformed upstream payloads', async () => {
@@ -192,15 +219,24 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         status: 200, headers: { 'Content-Type': 'text/html' }
       })) as typeof fetch;
       const html = new MockResponse();
-      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.54' } }, html);
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.54' } }, html);
       assert(html.statusCode === 502 && html.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE', 'HTML fallback must be rejected');
 
-      globalThis.fetch = (async () => new Response(JSON.stringify({ status: 'success', data: [{ id: 1, title: 'missing Arabic' }] }), {
+      globalThis.fetch = (async () => new Response(JSON.stringify({ status: 'success', data: [{ id: 1, title: 'missing numeric Quran coordinates' }] }), {
         status: 200, headers: { 'Content-Type': 'application/json' }
       })) as typeof fetch;
       const malformed = new MockResponse();
       await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.55' } }, malformed);
       assert(malformed.statusCode === 502 && malformed.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE', 'Malformed item data must be rejected');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: [{ id: 2, title: '2:255, 3:33', arabic: 'نص خارجي لا يعرض' }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const ambiguous = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.57' } }, ambiguous);
+      assert(ambiguous.statusCode === 502 && ambiguous.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+        'A title containing multiple Quran coordinates must be rejected as ambiguous');
     });
   } finally {
     globalThis.fetch = originalFetch;
