@@ -215,7 +215,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       }
       const completedItem = verseItemRef.current;
       if (completedItem) {
-        setCounts(previous => ({ ...previous, [completedItem.id]: completedItem.repeatTarget }));
+        setCounts(previous => ({ ...previous, [completedItem.id]: completedItem.repeatTarget ?? Math.max(1, previous[completedItem.id] || 0) }));
       }
       setPlayingVerseId(null);
       setVerseLoopCount(0);
