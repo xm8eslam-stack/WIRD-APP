@@ -237,35 +237,31 @@ Cloud sync is not complete until the two-device emulator suite passes, productio
 
 Exact-head PR and push Quality Gates passed for PRs #43, #44, and #45. Post-merge main Quality Gates passed after PR #43 (run `42258433095`) and PR #44 (run `42261020224`). Post-merge main run `42262136009` for PR #45 **passed** on the exact main SHA.
 
-### Remaining local mutation work
+### App-facing local mutation work — audited
 
-- Journal-first revision ratings, grouping canonical portions, optional weak-verse changes, activity logs, and profile streak into one event.
-- Journal-first memorization/session completion and related activity/profile/plan changes.
-- Journal backup import/reset with pending-event ordering, crash recovery, and quota handling.
-- Audit every remaining domain mutation path and confirm that no stale snapshot can be appended behind an unreplayed event.
-- Add failure injection for durable-read failure, partial child projection failure, rollback-verification failure, quota exhaustion, blocked IndexedDB, and reload recovery across each mutation type.
+- Authenticated production UI paths for profile/theme, plans, engine plans, tests, session completion, revision ratings, weak-verse failure/resolution, portion status, backup import, reset, and demo data now route through journal-first snapshot or grouped transaction APIs.
+- The source audit and the existing journaled snapshot, session, backup, and weak-verse suites cover these paths.
+- Legacy synchronous methods remain for compatibility/tests and are explicitly deprecated; do not wire them to new authenticated UI actions.
 
-### Event-model work required before cloud sync
+### Remaining local recovery coverage
 
-- Current test-result and weak-verse flows journal full-snapshot local projections. The journal itself is append-only, but this does not yet satisfy the intended immutable remote event model.
-- Define immutable event records for sessions, revision attempts, tests, and weak-verse mistakes; derive daily logs, counters, and dashboard metrics locally.
-- Specify deterministic remote conflict handling, tombstones, bounded pull/push, acknowledgements, retry/backoff, and server-side idempotency.
-- Expand Firestore rules from generic-envelope validation to collection-specific schemas, size limits, create-only event rules, and validated tombstones.
+- Expand failure injection systematically across every mutation type for durable-read failure, partial child projection failure, rollback-verification failure, quota exhaustion, blocked IndexedDB, and reload recovery.
+- Verify grouped event replay and backup/reset recovery under multi-tab/account-switch races.
 
-### Next implementation sequence
+### Remaining cloud-sync work
 
-1. Finish the remaining local mutation audit and recovery failure-injection tests.
-2. Add immutable domain events and deterministic aggregate derivation for activity, revision, tests, and weak-verse mistakes.
-3. Finalize the per-record Firestore document model and deterministic conflict policy.
-4. Implement the Firestore adapter/worker, remote acknowledgements, retries/backoff, tombstones, collection-specific rules, and two-device/offline tests behind an inactive feature gate.
-5. Deploy production rules and activate cloud writes only after backup/migration review, explicit approval, and the full release gate passes.
+- Define collection-specific conflict resolution that preserves both versions and allows a user or deterministic domain merge to resolve a blocked event.
+- Implement collection-specific tombstone application and safe retention/pruning.
+- Complete two-device/offline integration tests, including same-document concurrency, independent documents, account switching, crash recovery, and retries.
+- Reconcile legacy remote snapshots before allowing projection or writes; no automatic replacement of unversioned cloud data.
+- Keep both cloud-write and remote-projection flags disabled until the complete release gate passes.
 
 Do not describe this IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
 
 
 ## 14. Revision compare-and-swap implementation — 2026-11-07
 
-### Implemented on the development branch; exact-head CI pending
+### Implemented on main; exact-head CI passed
 
 - State envelopes now carry `baseRevision` and `revision`.
 - Firestore create rules require revision 1 from base revision 0.
@@ -291,7 +287,7 @@ Cloud writes using the revisioned protocol are gated by `VITE_WIRD_REVISIONED_SY
 
 ## 15. Remote inbox projection — 2026-11-07
 
-### Implemented on the development branch; exact-head CI pending
+### Implemented on main; exact-head CI passed
 
 - Remote events are projected in server-sequence order through the existing validated local journal projection APIs.
 - A remote event applies only when its base revision matches the locally acknowledged revision, or when it is the first revision for a demonstrably empty local collection.
