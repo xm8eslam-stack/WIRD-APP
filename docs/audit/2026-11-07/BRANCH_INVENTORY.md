@@ -108,3 +108,12 @@ All 70 branches were compared to the exact main baseline:
 - All five open PRs (#2, #8, #48, #59, #60) are diverged and preserved.
 
 See `BRANCH_COMPARE_MATRIX.md` for exact ahead/behind counts for every ref. No refs were deleted because the connected GitHub tool set does not expose a safe branch-delete operation. This is a tooling limitation, not a claim that the branches were deleted.
+
+## Post-baseline working branches (current live count: 73)
+
+Three branches were created after the original 70-ref snapshot:
+- `chore/full-repository-audit-20261107` — documentation-only audit branch, 26 commits ahead of main.
+- `fix/progress-import-journal-20261107` — PR #61 Draft, 4 commits ahead, exact-head CI PASS.
+- `fix/plan-lifecycle-preserve-revisions-20261107` — active plan-history fix branch, 7 commits ahead; latest CI run is in progress after an earlier compile error was corrected.
+
+These branches are additional to the original 70-ref baseline. Current remote branch count is 73. The branch compare matrix records their current comparisons.
