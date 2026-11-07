@@ -183,6 +183,42 @@ export async function importBackupJournaled(
   }
 }
 
+export type BackupFileLike = {
+  name?: string;
+  text: () => Promise<string>;
+};
+
+/**
+ * Shared file-import boundary for every UI entrypoint. Reading the file and
+ * applying it both go through one journal-first path, so a screen cannot
+ * accidentally bypass the write-ahead event/outbox.
+ */
+export async function importBackupFile(
+  file: BackupFileLike | null | undefined,
+  options: JournaledSnapshotOptions = {}
+): Promise<BackupPersistenceResult> {
+  if (!file || typeof file.text !== 'function') {
+    return { success: false, message: 'لم يتم اختيار ملف نسخة احتياطية صالح.' };
+  }
+  if (file.name && !file.name.toLowerCase().endsWith('.json')) {
+    return { success: false, message: 'يجب اختيار ملف نسخة احتياطية بصيغة JSON.' };
+  }
+  try {
+    const content = await file.text();
+    if (!content.trim()) {
+      return { success: false, message: 'ملف النسخة الاحتياطية فارغ؛ لم يتم تغيير بياناتك.' };
+    }
+    return await importBackupJournaled(content, options);
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error
+        ? error.message
+        : 'تعذر قراءة ملف النسخة الاحتياطية؛ لم يتم تغيير بياناتك.'
+    };
+  }
+}
+
 /**
  * Reset is an ordered snapshot mutation rather than a direct localStorage
  * wipe. Older journal events are replayed first, then this reset event becomes

@@ -22,6 +22,7 @@ import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, JUZ_NAMES, ALL_SURAHS } from '..
 import { DailyLog, UserProfile, PortionMemorizationStatus, PortionStatusRecord } from '../../types/quran';
 import { StorageService } from '../../services/storageService';
 import { persistPortionsSnapshot } from '../../services/journaledSnapshotService';
+import { importBackupFile } from '../../services/backupPersistence';
 import { RetentionService } from '../../services/retentionService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { buildPageStatusUpdate, getPageAyahSegments, getPageProgressStatus, PageAyahSegment } from '../../services/pageProgressService';
@@ -63,6 +64,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   const [selectedJuz, setSelectedJuz] = useState<number>(30); // Default Juz Amma
   const [statusFilter, setStatusFilter] = useState<PortionMemorizationStatus | 'all'>('all');
   const [isExportSuccess, setIsExportSuccess] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [portions, setPortions] = useState<PortionStatusRecord[]>(() => RetentionService.getPortions());
 
   // Page inspection / edit modal
@@ -132,37 +134,32 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     setTimeout(() => setIsExportSuccess(false), 3000);
   };
 
-  // Handle Import Backup
-  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Handle Import Backup through the same journal-first boundary as Settings.
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const file = input.files?.[0];
+    if (!file || isImporting) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result;
-      if (typeof content !== 'string' || content.length === 0) {
-        onToast?.('تعذر قراءة ملف النسخة الاحتياطية؛ لم يتم تغيير بياناتك.', 'error');
-        e.target.value = '';
-        return;
-      }
-
-      const result = StorageService.importBackup(content);
+    setIsImporting(true);
+    try {
+      const result = await importBackupFile(file);
       if (result.success) {
-        onToast?.(result.message, 'success');
         setPortions(RetentionService.getPortions());
         onRefreshData();
+        onToast?.(result.message, 'success');
       } else {
-        // importBackup returns a result object; testing the object itself is
-        // always truthy and previously showed false success for failed imports.
-        onToast?.(result.message, 'warn');
+        if (result.recoveredPriorEvents) onRefreshData();
+        onToast?.(result.message, 'error');
       }
-      e.target.value = '';
-    };
-    reader.onerror = () => {
-      onToast?.('تعذر قراءة ملف النسخة الاحتياطية؛ لم يتم تغيير بياناتك.', 'error');
-      e.target.value = '';
-    };
-    reader.readAsText(file);
+    } catch (error) {
+      onToast?.(
+        error instanceof Error ? error.message : 'تعذر استيراد النسخة الاحتياطية؛ لم يتم تغيير بياناتك.',
+        'error'
+      );
+    } finally {
+      setIsImporting(false);
+      input.value = '';
+    }
   };
 
   // Surahs in selected Juz
@@ -215,11 +212,12 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
 
           <label className="flex items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer">
             <Upload className="w-3.5 h-3.5" />
-            <span>استيراد بيانات</span>
+            <span>{isImporting ? 'جارٍ الاستيراد...' : 'استيراد بيانات'}</span>
             <input 
               type="file" 
               accept=".json" 
-              onChange={handleImportBackup} 
+              onChange={handleImportBackup}
+              disabled={isImporting}
               className="hidden" 
             />
           </label>

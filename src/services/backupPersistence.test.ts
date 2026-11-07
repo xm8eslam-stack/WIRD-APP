@@ -3,7 +3,7 @@ import { IDBFactory } from 'fake-indexeddb';
 import { CLEAN_INITIAL_PROFILE, StorageService } from './storageService';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
-import { importBackupJournaled, resetAllDataJournaled } from './backupPersistence';
+import { importBackupFile, importBackupJournaled, resetAllDataJournaled } from './backupPersistence';
 import { RetentionService } from './retentionService';
 import { getLocalDateString } from './unifiedPortionService';
 
@@ -99,6 +99,39 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
     assert(StorageService.getProfile().name === 'الحالة الأصلية', 'Invalid import must preserve existing profile');
     assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
       'Invalid import must not enqueue any journal event');
+    journal.close();
+  });
+
+  await test('File-based backup import uses the shared journal-first transaction', async () => {
+    const journal = createJournal();
+    const importedProfile = { ...CLEAN_INITIAL_PROFILE, name: 'استيراد من ملف' };
+    const file = {
+      name: 'wird-backup.json',
+      text: async () => JSON.stringify({ version: 4, profile: importedProfile, plans: [], logs: [] })
+    };
+    const result = await importBackupFile(file, { journal, runExclusive: inlineLock });
+    assert(result.success, 'Valid JSON backup file must import through the journal');
+    assert(StorageService.getProfile().name === importedProfile.name, 'Imported profile must be projected');
+    const snapshot = await journal.getSnapshot();
+    assert(snapshot.eventCount === 1 && snapshot.projectionCursor === 1,
+      'File import must append and project one durable event');
+    journal.close();
+  });
+
+  await test('File-based backup import rejects non-JSON and empty files without writes', async () => {
+    const journal = createJournal();
+    const wrongExtension = await importBackupFile({
+      name: 'backup.txt',
+      text: async () => JSON.stringify({ version: 4, profile: CLEAN_INITIAL_PROFILE })
+    }, { journal, runExclusive: inlineLock });
+    const empty = await importBackupFile({
+      name: 'backup.json',
+      text: async () => '   '
+    }, { journal, runExclusive: inlineLock });
+    const snapshot = await journal.getSnapshot();
+    assert(!wrongExtension.success && !empty.success, 'Invalid file inputs must be rejected');
+    assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0,
+      'Rejected files must not create journal events');
     journal.close();
   });
 
