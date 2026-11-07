@@ -80,7 +80,7 @@ Use two real browsers/devices signed in to the same verified account:
 - Verify missing-key, 429, upstream HTTP failure, HTML, malformed JSON, out-of-range coordinates, and ambiguous multi-coordinate titles fail safely.
 - Audio source: Al Quran Cloud terms explicitly permit streaming/embedding for personal and educational use and describe recitations as licensed by reciters or estates. WIRD uses the source for educational ayah-level streaming only; it does not mirror or bundle audio. See docs/ruqyah/SUNNI_SOURCE_POLICY.md.
 - Verify the reciter catalogue proxy returns only the seven reviewed edition IDs and that client validation rejects unknown provider identities, malformed JSON, duplicate IDs, and unapproved editions.
-- Verify audio URL construction always uses https://cdn.islamic.network/quran/audio/128, a fixed approved edition ID, and a global ayah number from 1 to 6236. Never accept arbitrary hosts or user-supplied URLs.
+- Verify audio URL construction always uses https://cdn.islamic.network/quran/audio, a fixed approved edition ID, the bitrate documented for that edition (128 or 192 kbps), and a global ayah number from 1 to 6236. Never accept arbitrary hosts or user-supplied URLs.
 - CI must pass node scripts/check-ruqyah-audio-source.mjs, confirming representative Al-Husary and Alafasy audio samples return MPEG media with byte-range support.
 - Verify section playback builds its queue only from WIRD's canonical local Quran ayah map; provider audio never supplies the displayed Quran text.
 - Verify pause/resume/stop, seeking, volume, sequential ayah transitions, category changes, library navigation, unmount cleanup, network errors, and no silent source fallback.
