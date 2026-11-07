@@ -268,54 +268,54 @@ export const PlanLifecycle = {
       }
     }
 
-    let lastCompletedCoord: VerseCoordinate | null = null;
+    const planStartIndex = QuranMath.getAbsoluteAyahIndex(
+      plan.meta.startCoordinate.surahNumber,
+      plan.meta.startCoordinate.ayahNumber
+    );
+    const planEndIndex = QuranMath.getAbsoluteAyahIndex(
+      plan.meta.endCoordinate.surahNumber,
+      plan.meta.endCoordinate.ayahNumber
+    );
+    const completedIndexes = new Set<number>();
+
     for (const day of completedMemorizationTasks) {
       const task = day.memorizationTask;
       if (!task) continue;
-      const taskEndCoord = { surahNumber: task.surahNumber, ayahNumber: task.endAyah };
-      if (
-        !lastCompletedCoord ||
-        QuranMath.getAbsoluteAyahIndex(taskEndCoord.surahNumber, taskEndCoord.ayahNumber) >
-          QuranMath.getAbsoluteAyahIndex(lastCompletedCoord.surahNumber, lastCompletedCoord.ayahNumber)
-      ) {
-        lastCompletedCoord = taskEndCoord;
+      const taskStart = QuranMath.getAbsoluteAyahIndex(task.surahNumber, task.startAyah);
+      const taskEnd = QuranMath.getAbsoluteAyahIndex(task.surahNumber, task.endAyah);
+      const boundedStart = Math.max(planStartIndex, taskStart);
+      const boundedEnd = Math.min(planEndIndex, taskEnd);
+      if (boundedEnd < boundedStart) continue;
+      for (let index = boundedStart; index <= boundedEnd; index++) {
+        completedIndexes.add(index);
       }
     }
 
-    let remainingStartCoord = plan.meta.startCoordinate;
-
-    if (lastCompletedCoord) {
-      if (
-        QuranMath.getAbsoluteAyahIndex(lastCompletedCoord.surahNumber, lastCompletedCoord.ayahNumber) >=
-        QuranMath.getAbsoluteAyahIndex(plan.meta.endCoordinate.surahNumber, plan.meta.endCoordinate.ayahNumber)
-      ) {
-        // All memorization is complete, but pending revision work is still retained.
-        if (pendingRevisionBundles.length === 0) return this.refreshActualVsPlanned(plan);
-        const revisionSchedule = schedulePendingBundles(
-          pendingRevisionBundles,
-          PlanningEngine.parseDate(todayStr),
-          plan.input,
-          'recalc-revision'
-        );
-        const schedule = [...historical, ...revisionSchedule].sort((a, b) =>
-          a.date.localeCompare(b.date) || a.id.localeCompare(b.id)
-        );
-        return this.refreshActualVsPlanned({
-          ...plan,
-          schedule,
-          meta: {
-            ...plan.meta,
-            projectedEndDate: getLastScheduledWorkDate(schedule, plan.meta.projectedEndDate)
-          }
-        });
+    // Preserve every gap, including work before a later task completed out of order.
+    const remainingRanges: Array<{ startIndex: number; endIndex: number }> = [];
+    let rangeStart: number | null = null;
+    for (let index = planStartIndex; index <= planEndIndex; index++) {
+      if (!completedIndexes.has(index)) {
+        if (rangeStart === null) rangeStart = index;
+      } else if (rangeStart !== null) {
+        remainingRanges.push({ startIndex: rangeStart, endIndex: index - 1 });
+        rangeStart = null;
       }
-      remainingStartCoord = QuranMath.addVerses(lastCompletedCoord, 1);
+    }
+    if (rangeStart !== null) {
+      remainingRanges.push({ startIndex: rangeStart, endIndex: planEndIndex });
     }
 
-    const remainingVerses = QuranMath.countVersesBetween(
-      remainingStartCoord,
-      plan.meta.endCoordinate
+    const remainingVerses = remainingRanges.reduce(
+      (total, range) => total + range.endIndex - range.startIndex + 1,
+      0
     );
+    const todayStr = PlanningEngine.formatDate(new Date());
+
+    if (remainingVerses === 0 && pendingRevisionBundles.length === 0) {
+      return this.refreshActualVsPlanned(plan);
+    }
+
     let pace = Number.isInteger(newPaceVerses) && (newPaceVerses || 0) > 0
       ? newPaceVerses as number
       : plan.input.paceQuantity;
@@ -330,9 +330,13 @@ export const PlanLifecycle = {
       if (activeDays > 0) pace = Math.max(1, Math.ceil(remainingVerses / activeDays));
     }
 
-    const chunks = remainingVerses > 0
-      ? QuranMath.sliceRangeIntoChunks(remainingStartCoord, plan.meta.endCoordinate, pace)
-      : [];
+    const chunks = remainingRanges.flatMap(range =>
+      QuranMath.sliceRangeIntoChunks(
+        QuranMath.getCoordinateFromAbsoluteIndex(range.startIndex),
+        QuranMath.getCoordinateFromAbsoluteIndex(range.endIndex),
+        pace
+      )
+    );
     const workBundles: PendingTaskBundle[] = [];
     const workCount = Math.max(chunks.length, pendingRevisionBundles.length);
 
