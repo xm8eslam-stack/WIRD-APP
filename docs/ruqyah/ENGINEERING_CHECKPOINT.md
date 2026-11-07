@@ -1,4 +1,4 @@
-# Current verified continuation — after PR #135
+# Current verified continuation — after PR #139
 
 Last verified: 2026-11-07.
 
@@ -30,8 +30,15 @@ Last verified: 2026-11-07.
 - PR #137 exact-head Quality Gate: `5875e5851c6e81fe4397389079badef4e360a0c0`, run `42363918110`: 526 unit/integration assertions, 31 Firestore Rules tests, dependency audit, TypeScript, production build, server smoke, and 20 desktop/mobile Playwright tests passed.
 - The Vercel status remains a Free-plan `build-rate-limit` failure; production deployment is not verified. No live production claim is made.
 
+## Keyboard reset accessibility — PR #139
+- PR #139 restores keyboard focus to the reset trigger after Cancel and Confirm, and supports Escape to cancel without changing progress. The Escape handler is attached to the shared interactive section so it receives the key while focus remains on the reset trigger.
+- PR #139 merge SHA: `28a1c4339d31bb66549402db36cfc40357caf65f`.
+- The initial PR #139 browser run on `0b84daf09f154109ccd5b818c7ac8865572cb880`, run `42364241818`, correctly failed the Escape regression on desktop and mobile because the key handler was scoped only to the confirmation panel. The handler was moved to the interactive section and re-tested.
+- Exact-head Quality Gate passed on `5e84ffd443d6d4657c8c61cd7958892deccc6e72`, run `42364428561`: 526 automated assertions, 31 Firestore Rules tests, dependency audit, TypeScript, production build, server smoke, and all 20 desktop/mobile Playwright tests passed.
+- No religious content, API policy, audio source, or sync semantics changed.
+
 ## Branch hygiene
-- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135).
+- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135), and `a11y/ruqyah-reset-focus-return-escape-20261107` (PR #139).
 - Two superseded non-PR branches remain and must not be reused: `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` (superseded by the v2 branch after main advanced) and `test/ruqyah-library-ui-states-20261107` (superseded by the v2 branch after adding the supported guest-auth flow).
 - The available GitHub integration exposes branch search and ref updates but no delete-ref operation. These two branches are therefore documented as inactive rather than falsely reported as deleted; remove them through GitHub's branch UI when available.
 - Other Ruqyah-named branches visible in the repository predate this continuation and were not modified or assumed to be active. Audit their associated PRs before deleting.
