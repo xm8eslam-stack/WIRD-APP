@@ -46,11 +46,12 @@
 
 - Phase 0 audit: COMPLETE؛ 147/147 ملفًا لها ملاحظة، 70/70 فرع baseline تمت مقارنتها، والأيقونات الثلاث ظهرت كمربعات teal فارغة بلا علامة واضحة.
 - Audit branch head: f0e9cf92c3c816e440441032c4ae9419373f238f (تحقق من الرأس قبل أي تعديل).
-- Current live branch count: 75.
+- Current live branch count: 76.
 - PR #61 — fix/progress-import-journal-20261107: Draft, CI PASS, 404 passed / 0 failed, Vercel Preview Ready.
-- PR #62 — fix/plan-lifecycle-preserve-revisions-20261107: Draft, CI PASS, 406 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
+- PR #62 — fix/plan-lifecycle-preserve-revisions-20261107: Draft, latest exact-head CI PASS, 407 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
 - PR #63 — fix/quran-audio-repeat-20261107: Draft, CI PASS, 404 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
-- PR #64 — fix/tafsir-json-response-20261107: Draft, run 42341419175 remains pending with no job assigned; Vercel check failed due daily build-rate limit.
+- PR #64 — fix/tafsir-json-response-20261107: Draft, exact-head CI PASS, 405 passed / 0 failed; Vercel Preview blocked by Vercel daily build-rate limit.
+- PR #65 — fix/quran-coordinate-validation-20261107: Draft, exact-head CI PASS, 417 passed / 0 failed; Vercel Preview Ready.
 - None of these PRs has been merged. Main is still 6228150c2f7137678ba1079f5d9b2e8aba527523.
 - Remote sync design gate is now documented at docs/sync/REMOTE_REPLICATION_PLAN.md; it is not implemented.
 - Vercel production deployment is not confirmed. Do not confuse green GitHub CI with a live production deploy.
@@ -155,18 +156,19 @@ P2:
 
 Fetch these refs before continuing; the SHAs below are the last verified heads at this checkpoint:
 - fix/progress-import-journal-20261107 — dd5d5d620d03416e96975320a6443b6eab56fbcc (PR #61, CI PASS).
-- fix/plan-lifecycle-preserve-revisions-20261107 — 651f03e9891a8cec0f09a8dd22085fefd502574d (PR #62, CI PASS).
+- fix/plan-lifecycle-preserve-revisions-20261107 — 48fe031d67c358e3034dd5e64134d6b46513aab4 (PR #62, latest CI PASS 407/0).
 - fix/quran-audio-repeat-20261107 — 6a7a2b8c3a6cb1b6bbca58ea6674834096a8de93 (PR #63, CI PASS).
-- fix/tafsir-json-response-20261107 — aee5b433122a234d6f36edd38e383c964fca1e10 (PR #64, CI pending/no jobs).
+- fix/tafsir-json-response-20261107 — aee5b433122a234d6f36edd38e383c964fca1e10 (PR #64, CI PASS 405/0).
+- fix/quran-coordinate-validation-20261107 — 25d73e93e60bd6cc57102b7cfa643addbaa6ced2 (PR #65, CI PASS 417/0).
 - chore/full-repository-audit-20261107 — fetch the current ref; this prompt refresh itself creates a new documentation commit.
 
-Next engineering tasks after PR #64 CI is resolved:
-1. QuranMath and domain-event coordinate validation.
-2. Advisor metric correctness (unique ayah count, real retention score, computed best day).
-3. Design and implement authenticated Advisor quota protection; do not ship unauthenticated Gemini quota use.
+Next engineering tasks after PR #65 CI is resolved:
+1. Advisor metric correctness (unique ayah count, real retention score, computed best day).
+2. Design and implement authenticated Advisor quota protection; do not ship unauthenticated Gemini quota use.
+3. Review the 65 diverged original branches' unique diffs before any archive/delete operation.
 4. Then resume full remote sync only under docs/sync/REMOTE_REPLICATION_PLAN.md.
 
-Never merge PR #61–#64 without explicit user approval, even if CI is green.
+Never merge PR #61–#65 without explicit user approval, even if CI is green.
 
 
 ## Live continuation correction — 2026-11-07 (verified after reconnect)
@@ -184,3 +186,6 @@ This addendum supersedes contradictory status lines earlier in this file; fetch 
 - Critical finding confirmed directly in main `cloudSyncCoordinator.ts`: it uploads outbox documents, reads at most 20 remote events, does not persist or project them, then can report `synced` when pending outbox is empty. This is a false-completion defect. The #59 branch changes that to `partial` while remote reconciliation is incomplete.
 - `REMOTE_REPLICATION_PLAN.md` is design only. The existing main implementation has a local IndexedDB journal/outbox and projection replay, but no durable remote inbox/fetch cursor, no remote event import/projector, and no revision/CAS transaction. Firestore rules still accept generic snapshot envelopes and generic domain event payloads; no server-owned monotonic revision enforcement.
 - Never claim multi-device sync works or merge/deploy without the required independent-client evidence and explicit authorization.
+
+
+Last verified audit branch head before this refresh: 6a6bfb3622886ac464e5484b35abbd0d4784e448.
