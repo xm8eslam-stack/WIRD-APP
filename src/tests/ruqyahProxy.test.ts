@@ -179,35 +179,22 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         'Chunked provider response above the byte limit must be rejected');
     });
 
-    await test('Ruqyah educational topics remain disabled until content review is explicitly enabled', async () => {
-      delete process.env.RUQYAH_TOPICS_ENABLED;
-      let called = false;
-      globalThis.fetch = (async () => { called = true; throw new Error('unexpected upstream call'); }) as typeof fetch;
-      const res = new MockResponse();
-      await ruqyahHandler({
-        method: 'GET',
-        query: { type: 'topic', topic: 'introduction-to-ruqyah' },
-        headers: { 'x-real-ip': '198.51.100.211' }
-      }, res);
-      assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY' && !called,
-        'Topic endpoints must remain unavailable unless the server-side review flag is enabled');
-    });
-
-    await test('Ruqyah proxy rejects unknown topic content block types', async () => {
+    await test('All unreviewed educational topic endpoints remain hard-disabled even if an environment flag is set', async () => {
       process.env.RUQYAH_TOPICS_ENABLED = 'true';
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
-      globalThis.fetch = (async () => new Response(JSON.stringify({
-        status: 'success',
-        data: { title: 'مقالة', sub_id: 1, content: [{ type: 'script', content: '<script>alert(1)</script>' }] }
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
-      const res = new MockResponse();
-      await ruqyahHandler({
-        method: 'GET',
-        query: { type: 'topic', topic: 'introduction-to-ruqyah' },
-        headers: { 'x-real-ip': '198.51.100.209' }
-      }, res);
-      assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
-        'Unknown topic block types must be rejected before reaching the client');
+      let called = false;
+      globalThis.fetch = (async () => { called = true; throw new Error('unreviewed topic endpoint must not be contacted'); }) as typeof fetch;
+      for (const type of ['topic', 'topic-category']) {
+        const res = new MockResponse();
+        await ruqyahHandler({
+          method: 'GET',
+          query: { type, topic: 'introduction-to-ruqyah' },
+          headers: { 'x-real-ip': type === 'topic' ? '198.51.100.211' : '198.51.100.212' }
+        }, res);
+        assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY',
+          type + ' must remain disabled until content is curated and reviewed');
+      }
+      assert(!called, 'No unreviewed educational content endpoint may reach the provider');
     });
 
     await test('Ruqyah proxy rejects HTML fallbacks and malformed upstream payloads', async () => {
