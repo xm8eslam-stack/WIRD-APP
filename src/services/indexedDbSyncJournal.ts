@@ -114,10 +114,9 @@ export interface RemoteProjectionConflict {
   createdAtMs: number;
   updatedAtMs: number;
   status: 'open' | 'resolved';
-  resolution?: 'keep-local' | 'use-remote';
+  resolution?: 'reconciled';
   resolvedAtMs?: number;
 }
-
 
 interface AcknowledgementRecord {
   key: string;
@@ -1313,22 +1312,25 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX, STORE_PROJECTION_CONFLICTS],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const outbox = transaction.objectStore(STORE_OUTBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
+      const conflictRequest = conflicts.get(uid + ':' + intent.eventId);
       const pendingRequests = affectedCollections.map(collection =>
         outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
       );
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
       let pendingByCollection: JournalOutboxEntry[][] = [];
       let finalized = false;
-      let readsRemaining = 2 + pendingRequests.length;
+      let readsRemaining = 3 + pendingRequests.length;
       let failure: Error | undefined;
       const finish = () => {
         readsRemaining--;
@@ -1352,7 +1354,12 @@ export class IndexedDbSyncJournal {
             cursor + 1 !== intent.sequence || !event ||
             event.eventId !== intent.eventId || event.revision !== intent.revision ||
             event.serverSequence !== intent.sequence || event.collection !== intent.collection ||
-            event.documentId !== intent.documentId) {
+            event.documentId !== intent.documentId ||
+            (conflict && (
+              conflict.event.fingerprint !== event.fingerprint ||
+              conflict.event.serverSequence !== event.serverSequence ||
+              conflict.event.revision !== event.revision
+            ))) {
           failure = new Error('تعذر اعتماد الإسقاط؛ ستظل نية الإسقاط والحدث محفوظين لإعادة المحاولة.');
           transaction.abort();
           return;
@@ -1401,6 +1408,16 @@ export class IndexedDbSyncJournal {
           remoteProjectionIntent: undefined
         } satisfies DeviceMetadata);
         inbox.delete(event.key);
+        if (conflict?.status === 'open') {
+          const nowMs = Date.now();
+          conflicts.put({
+            ...conflict,
+            status: 'resolved',
+            resolution: 'reconciled',
+            resolvedAtMs: nowMs,
+            updatedAtMs: nowMs
+          } satisfies RemoteProjectionConflict);
+        }
         finalized = true;
       };
       metadataRequest.onsuccess = () => {
@@ -1409,6 +1426,10 @@ export class IndexedDbSyncJournal {
       };
       eventRequest.onsuccess = () => {
         event = eventRequest.result as RemoteInboxEvent | undefined;
+        finish();
+      };
+      conflictRequest.onsuccess = () => {
+        conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
         finish();
       };
       pendingRequests.forEach(request => {
@@ -1522,24 +1543,75 @@ export class IndexedDbSyncJournal {
     try { snapshotBytes = byteLength(JSON.stringify(localSnapshot)); }
     catch { throw new Error('تعذر تجهيز نسخة محلية آمنة للتعارض.'); }
     if (snapshotBytes > MAX_CONFLICT_SNAPSHOT_BYTES) {
-      throw new Error('نسخة التعارض المحلية أكبر من الحد الآمن؛ لم يتم تغيير بياناتك أو حذف الحدث.');
+      throw new Error('نسخة التعارض المحلية أكبر من الحد الآمن؛ بقي الحدث محفوظًا دون تغيير.');
     }
 
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readwrite');
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        'readwrite'
+      );
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const key = uid + ':' + event.eventId;
+      const metadataRequest = metadataStore.get(uid);
+      const inboxRequest = inbox.index('uidServerSequence').get([uid, event.serverSequence]);
       const existingRequest = store.get(key);
       const recordsRequest = store.index('uid').getAll(IDBKeyRange.only(uid));
+      let metadata: DeviceMetadata | undefined;
+      let inboxEvent: RemoteInboxEvent | undefined;
       let existing: RemoteProjectionConflict | undefined;
       let records: RemoteProjectionConflict[] = [];
-      let readsRemaining = 2;
+      let readsRemaining = 4;
       let saved = false;
       let failure: Error | undefined;
       const finishRead = () => {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
+        if (!metadata) {
+          failure = new Error('تعذر العثور على بيانات المزامنة المحلية لحفظ التعارض.');
+          transaction.abort();
+          return;
+        }
+        if (existing && (
+          existing.event.eventId !== event.eventId ||
+          existing.event.fingerprint !== event.fingerprint ||
+          existing.event.serverSequence !== event.serverSequence ||
+          existing.event.revision !== event.revision ||
+          existing.event.collection !== event.collection ||
+          existing.event.documentId !== event.documentId ||
+          existing.event.mutationId !== event.mutationId
+        )) {
+          failure = new Error('هوية حدث التعارض لا تطابق السجل المحفوظ؛ رفضنا استبدال دليل التعافي.');
+          transaction.abort();
+          return;
+        }
+        const cursor = metadata.remoteProjectionCursor ?? 0;
+        if (cursor >= event.serverSequence) {
+          if (existing?.status === 'open') {
+            store.put({
+              ...existing,
+              status: 'resolved',
+              resolution: 'reconciled',
+              resolvedAtMs: nowMs,
+              updatedAtMs: nowMs
+            } satisfies RemoteProjectionConflict);
+          }
+          saved = true;
+          return;
+        }
+        if (!inboxEvent || inboxEvent.eventId !== event.eventId ||
+            inboxEvent.fingerprint !== event.fingerprint ||
+            inboxEvent.serverSequence !== event.serverSequence ||
+            inboxEvent.revision !== event.revision ||
+            inboxEvent.collection !== event.collection ||
+            inboxEvent.documentId !== event.documentId) {
+          failure = new Error('الحدث لم يعد موجودًا في صندوق الاستقبال؛ رفضنا إنشاء تعارض يتيم.');
+          transaction.abort();
+          return;
+        }
         if (existing?.status === 'resolved') {
           saved = true;
           return;
@@ -1554,7 +1626,7 @@ export class IndexedDbSyncJournal {
             records = records.filter(record => record.key !== oldest.key);
           }
           if (records.length >= MAX_PROJECTION_CONFLICTS) {
-            failure = new Error('وصل سجل التعارضات المفتوحة إلى الحد الآمن؛ بقي الحدث محفوظًا في صندوق الاستقبال.');
+            failure = new Error('وصل سجل التعارضات إلى الحد الآمن؛ بقي الحدث محفوظًا في صندوق الاستقبال.');
             transaction.abort();
             return;
           }
@@ -1575,6 +1647,14 @@ export class IndexedDbSyncJournal {
         }
         store.put(record);
         saved = true;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finishRead();
+      };
+      inboxRequest.onsuccess = () => {
+        inboxEvent = inboxRequest.result as RemoteInboxEvent | undefined;
+        finishRead();
       };
       existingRequest.onsuccess = () => {
         existing = existingRequest.result as RemoteProjectionConflict | undefined;
@@ -1616,38 +1696,6 @@ export class IndexedDbSyncJournal {
     const records = await requestResult(request) as RemoteProjectionConflict[];
     await completed;
     return records.filter(record => record.status === 'open').length;
-  }
-
-  async markProjectionConflictResolved(
-    eventId: string,
-    resolution: 'keep-local' | 'use-remote',
-    nowMs: number = Date.now()
-  ): Promise<boolean> {
-    const uid = activeUid();
-    if (!validMutationId(eventId) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
-      throw new Error('بيانات حل التعارض غير صالحة.');
-    }
-    const database = await this.openDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readwrite');
-      const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
-      const request = store.get(uid + ':' + eventId);
-      let updated = false;
-      request.onsuccess = () => {
-        const conflict = request.result as RemoteProjectionConflict | undefined;
-        if (!conflict || conflict.status !== 'open') return;
-        store.put({
-          ...conflict,
-          status: 'resolved',
-          resolution,
-          resolvedAtMs: nowMs,
-          updatedAtMs: nowMs
-        } satisfies RemoteProjectionConflict);
-        updated = true;
-      };
-      transaction.oncomplete = () => resolve(updated);
-      transaction.onabort = () => reject(normalizeError(transaction.error || new Error('Projection conflict resolution record failed.')));
-    });
   }
 
   async getRemoteCursor(): Promise<number> {
@@ -1836,13 +1884,18 @@ export class IndexedDbSyncJournal {
     }
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_METADATA, STORE_REMOTE_INBOX], 'readwrite');
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        'readwrite'
+      );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const conflicts = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, sequence]);
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
+      let conflict: RemoteProjectionConflict | undefined;
       let readsRemaining = 2;
       let advanced = false;
       let failure: Error | undefined;
@@ -1853,13 +1906,28 @@ export class IndexedDbSyncJournal {
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
         if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
-            metadata.remoteProjectionIntent?.sequence === sequence) {
+            metadata.remoteProjectionIntent?.sequence === sequence ||
+            (conflict && (
+              conflict.event.fingerprint !== event.fingerprint ||
+              conflict.event.serverSequence !== event.serverSequence ||
+              conflict.event.revision !== event.revision
+            ))) {
           failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;
         }
         metadataStore.put({ ...metadata, remoteProjectionCursor: sequence } satisfies DeviceMetadata);
         inbox.delete(event.key);
+        if (conflict?.status === 'open') {
+          const nowMs = Date.now();
+          conflicts.put({
+            ...conflict,
+            status: 'resolved',
+            resolution: 'reconciled',
+            resolvedAtMs: nowMs,
+            updatedAtMs: nowMs
+          } satisfies RemoteProjectionConflict);
+        }
         advanced = true;
       };
       metadataRequest.onsuccess = () => {
@@ -1868,13 +1936,20 @@ export class IndexedDbSyncJournal {
       };
       eventRequest.onsuccess = () => {
         event = eventRequest.result as RemoteInboxEvent | undefined;
+        if (event) {
+          readsRemaining++;
+          const conflictRequest = conflicts.get(uid + ':' + event.eventId);
+          conflictRequest.onsuccess = () => {
+            conflict = conflictRequest.result as RemoteProjectionConflict | undefined;
+            finishRead();
+          };
+        }
         finishRead();
       };
       transaction.oncomplete = () => resolve(advanced);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote projection cursor transaction aborted.')));
     });
   }
-
 
   async getSnapshot(): Promise<JournalSnapshot> {
     const uid = activeUid();
