@@ -1279,8 +1279,11 @@ try {
         date: '2026-11-06', memorizedAyahsCount: 1, reviewedPagesCount: 2,
         minutesSpent: 9, completedTasks: ['مراجعة سورة البقرة']
       };
-      const ruqyahA = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_700_000, counts: { 'q-fatiha': 3, 'dua-pain': 2 } };
-      const ruqyahB = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_701_100, counts: { 'q-fatiha': 4, 'dua-pain': 5 } };
+      let ruqyahA = createEmptyRuqyahProgressSnapshot(1_799_000_700_000);
+      ruqyahA = adjustRuqyahProgressCounter(ruqyahA, 'q-fatiha', 'matrix-device-a', 3, 1_799_000_700_001);
+      ruqyahA = adjustRuqyahProgressCounter(ruqyahA, 'dua-pain', 'matrix-device-a', 2, 1_799_000_700_002);
+      let ruqyahB = adjustRuqyahProgressCounter(ruqyahA, 'q-fatiha', 'matrix-device-b', 1, 1_799_000_701_100);
+      ruqyahB = adjustRuqyahProgressCounter(ruqyahB, 'dua-pain', 'matrix-device-b', 3, 1_799_000_701_101);
 
       const collections = [
         { collection: 'profile', payload: { profile: profileA }, reversePayload: { profile: profileB }, expected: profileA, reverseExpected: profileB, key: STORAGE_KEYS.PROFILE, kind: 'object' },
