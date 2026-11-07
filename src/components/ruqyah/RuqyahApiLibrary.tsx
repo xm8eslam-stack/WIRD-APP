@@ -152,7 +152,7 @@ export const RuqyahApiLibrary: React.FC = () => {
               <p className="text-sm font-bold text-amber-900 dark:text-amber-100">تعذر تحميل المكتبة الخارجية</p>
               <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200 mt-1">{error}</p>
               <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-200/80 mt-2">
-                يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub.
+                يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub، وتحقق من شروط استخدام الخدمة قبل تفعيلها.
               </p>
               <button onClick={retry} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
                 <RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة
