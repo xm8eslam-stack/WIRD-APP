@@ -403,7 +403,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
             تعذر قراءة تقدم الرقية المحفوظ. احتفظنا بالبيانات الأصلية دون استبدالها؛ يمكنك متابعة القراءة دون حفظ حتى تختار إعادة ضبط هذا السجل.
           </p>
-          <button onClick={handleRecoverProgress} className="shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+          <button type="button" onClick={handleRecoverProgress} className="shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
             إعادة ضبط سجل الرقية
           </button>
         </div>
@@ -657,7 +657,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
                   {/* Card Bottom Row: Counter Controls */}
                   {item.type !== 'guideline' && (
-                    <div className="flex items-center justify-between gap-4 pt-2 border-t border-stone-100 dark:border-stone-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-stone-100 dark:border-stone-800">
                       <div className="flex items-center gap-2">
                         {isCompleted ? (
                           <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/80 px-3 py-1 rounded-xl">
@@ -774,7 +774,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               </div>
 
               {/* Sleep Timer Selector */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Moon className="w-4 h-4 text-amber-500" />
                 <span className="text-xs font-medium text-stone-600 dark:text-stone-400">مؤقت النوم:</span>
                 {[15, 30, 45, 60].map(mins => (
