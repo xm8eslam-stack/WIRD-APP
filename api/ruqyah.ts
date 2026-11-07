@@ -6,7 +6,7 @@ const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TOPIC_BLOCK_TYPES = new Set(['text', 'arabic', 'translation', 'header', 'transliteration']);
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
-const ALLOWED_TYPES = new Set(['instant-category', 'instant', 'topic-category', 'topic']);
+const ALLOWED_TYPES = new Set(['instant-category', 'instant']);
 const ALLOWED_PROGRAMS = new Set(['brief-ruqya', 'a-medium-ruqya', 'a-long-ruqya']);
 const ALLOWED_SOURCES = new Set(['from-quran', 'from-sunnah']);
 const ALLOWED_TOPICS = new Set([
@@ -37,6 +37,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readQueryValue(value: unknown): string {
   const candidate = Array.isArray(value) ? value[0] : value;
   return typeof candidate === 'string' ? candidate.trim() : '';
+}
+
+function isAllowedType(type: string): boolean {
+  if (ALLOWED_TYPES.has(type)) return true;
+  // Educational topic content remains disabled until its Shariah/medical
+  // references are reviewed for WIRD. Enable only through a server-side flag.
+  return process.env.RUQYAH_TOPICS_ENABLED === 'true' &&
+    (type === 'topic-category' || type === 'topic');
 }
 
 function getClientIp(req: any): string {
@@ -167,7 +175,7 @@ export default async function handler(req: any, res: any) {
 
   const query = req.query || {};
   const type = readQueryValue(query.type);
-  if (!ALLOWED_TYPES.has(type)) return send(res, 400, { error: 'INVALID_RUQYAH_QUERY' });
+  if (!isAllowedType(type)) return send(res, 400, { error: 'INVALID_RUQYAH_QUERY' });
 
   const params = new URLSearchParams({ type, lang: 'ar' });
   if (type === 'instant') {
