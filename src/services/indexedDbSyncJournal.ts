@@ -2432,7 +2432,7 @@ export class IndexedDbSyncJournal {
               item.documentId !== event.documentId ||
               item.operation !== 'upsert'
             )) {
-          failure = new Error('لا توجد مجموعة عمليات محلية متجانسة وآمنة لإعادة النشر؛ تعارضات المعاملات المجمعة والحذف تحتاج مساراً مستقلاً.');
+          failure = new Error('لا توجد مجموعة عمليات محلية متجانسة وآمنة لإعادة النشر؛ تعارضات المعاملات المجمعة وعدادات الرقية والحذف تحتاج مساراً مستقلاً.');
           transaction.abort();
           return;
         }
