@@ -6,6 +6,7 @@ import { STORAGE_KEYS, StorageService } from '../../services/storageService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
   ShieldCheck, 
+  Volume2,
   RotateCcw, 
   CheckCircle2, 
   Sparkles, 
