@@ -221,7 +221,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         setConflictIntents(previous => ({ ...previous, [eventId]: null }));
         onToast?.('تم إلغاء القرار غير المنفذ فقط؛ لم تُحذف أدلة التعارض أو العمليات المحلية.', 'info');
         void triggerSync();
-        void triggerSync();
       }
     } catch (error) {
       onToast?.(error instanceof Error ? error.message : 'تعذر إلغاء القرار المحفوظ.', 'error');
