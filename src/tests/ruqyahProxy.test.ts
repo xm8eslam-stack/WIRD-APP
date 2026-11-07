@@ -94,6 +94,22 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
     });
 
+    await test('Ruqyah proxy rejects Quran locators outside canonical surah and ayah bounds', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: [{ id: 1, title: '2:287', arabic: 'نص' }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({
+        method: 'GET',
+        query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' },
+        headers: { 'x-real-ip': '198.51.100.57' }
+      }, res);
+      assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+        'Out-of-range Quran locators must be rejected before they reach the browser');
+    });
+
     await test('Ruqyah proxy rejects third-party Sunnah text even when the provider returns a valid response', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       let called = false;
