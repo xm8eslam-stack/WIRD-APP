@@ -429,7 +429,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           </div>
 
           {/* Mode Switch Controls */}
-          <div className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
+          <div role="group" aria-label="طرق استخدام الرقية" className="flex flex-wrap items-center gap-2 p-1 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner self-stretch md:self-auto justify-center">
             <button
               type="button"
               aria-pressed={viewMode === 'interactive'}
@@ -806,10 +806,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               {RUQYAH_PROGRAM_AUDIO.map(programAudio => {
                 const isSelected = selectedProgramAudio.id === programAudio.id;
                 return (
-                  <div
+                  <button
                     key={programAudio.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    aria-label={`تشغيل تسجيل ${programAudio.name}`}
                     onClick={() => handleToggleStream(programAudio)}
-                    className={`p-5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
+                    className={`w-full text-right p-5 rounded-2xl border transition-all flex items-center justify-between gap-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                       isSelected
                         ? 'bg-emerald-900 text-white border-emerald-700 shadow-sm'
                         : 'bg-white dark:bg-stone-900 border-stone-200/80 dark:border-stone-800 text-stone-900 dark:text-stone-100 hover:border-emerald-300'
