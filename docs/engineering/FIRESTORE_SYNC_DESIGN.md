@@ -305,3 +305,23 @@ Cloud writes using the revisioned protocol are gated by `VITE_WIRD_REVISIONED_SY
 ### Activation guard
 
 Remote projection is gated by `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true`, default disabled. Do not enable it until every local mutation path is journal-first, conflict resolution is designed, and the two-device/offline test suite passes. Keep `VITE_WIRD_REVISIONED_SYNC_ENABLED` disabled until matching Firestore rules and legacy state reconciliation are also verified.
+
+
+## 16. App-facing local mutation audit — 2026-11-07
+
+### Reviewed production UI write paths
+
+- `App.tsx`: profile/theme, preset plans, engine plans, test results, session completion/streak/activity, weak-verse failure, backup import, and full reset all route through journal-first persistence APIs.
+- `RevisionCenterView`: revision ratings, grouped portion/weak-verse/activity/profile changes, weak-verse resolution, and manual portion additions use journal-first snapshot/transaction persistence.
+- `ProgressAnalyticsView`: page-status changes use the journal-first portion snapshot path.
+- `MemorizationSessionView` and `MemorizationTestsView`: mutation callbacks are supplied by the journal-first App handlers.
+- `SettingsView`: profile saves, backup import, reset, and demo data use journal-first handlers.
+- Other reviewed views do not write cloud-synchronized progress directly. Mushaf page position/bookmarks and tafsir display preferences remain device-local reading preferences, not part of the cloud-sync allowlist.
+
+### Legacy compatibility APIs
+
+Synchronous local-only methods remain in `RetentionService`, `sessionPersistence`, and `weakVerseRecording` for compatibility and tests. They are not wired to the authenticated production UI mutation handlers reviewed above. Do not use them for new authenticated features.
+
+### Release note
+
+This source audit does not replace automated failure-injection tests or the two-device suite. Keep remote projection disabled until those suites cover the full production mutation surface and conflict-resolution behavior.
