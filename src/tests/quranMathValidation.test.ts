@@ -83,6 +83,27 @@ export async function runQuranMathValidationTests(): Promise<{ passed: number; f
     ).length === 0, 'Invalid coordinates must not produce chunks');
   });
 
+  test('Chunk generation keeps each scheduled range within one Surah across boundaries', () => {
+    const chunks = QuranMath.sliceRangeIntoChunks(
+      { surahNumber: 1, ayahNumber: 5 },
+      { surahNumber: 2, ayahNumber: 5 },
+      5
+    );
+    assert(chunks.length === 2, 'The cross-Surah range must be split into two valid task chunks');
+    assert(chunks[0].start.surahNumber === 1 && chunks[0].start.ayahNumber === 5 &&
+      chunks[0].end.surahNumber === 1 && chunks[0].end.ayahNumber === 7 &&
+      chunks[0].totalVerses === 3, 'The first chunk must stop at Al-Fatihah ayah 7');
+    assert(chunks[1].start.surahNumber === 2 && chunks[1].start.ayahNumber === 1 &&
+      chunks[1].end.surahNumber === 2 && chunks[1].end.ayahNumber === 5 &&
+      chunks[1].totalVerses === 5, 'The next chunk must resume at Al-Baqarah ayah 1');
+    assert(chunks.every(chunk =>
+      chunk.start.surahNumber === chunk.end.surahNumber &&
+      chunk.totalVerses === chunk.end.ayahNumber - chunk.start.ayahNumber + 1
+    ), 'Every generated chunk must satisfy the single-Surah task schema');
+    assert(chunks.reduce((total, chunk) => total + chunk.totalVerses, 0) === 8,
+      'Splitting must preserve every verse in the requested range');
+  });
+
   test('Time estimates return zero for invalid verse counts', () => {
     assert(QuranMath.estimateMemorizationMinutes(0, 'beginner') === 0, 'Zero memorization verses must take zero minutes');
     assert(QuranMath.estimateMemorizationMinutes(Number.NaN, 'beginner') === 0, 'NaN memorization count must be rejected');
