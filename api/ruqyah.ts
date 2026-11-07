@@ -42,7 +42,7 @@ function parseQuranIndexTitle(value: unknown): QuranIndexCoordinates | null {
     const index = digitMap.indexOf(digit);
     return String(index % 10);
   });
-  const match = normalized.trim().match(/^[^0-9+\\-−﹣－＋]*?([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))?[^0-9+\\-−﹣－＋]*$/);
+  const match = normalized.trim().match(/^[^0-9+−﹣－＋-]*?([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))?[^0-9+−﹣－＋-]*$/);
   if (!match) return null;
   const surahNumber = Number(match[1]);
   const startAyah = Number(match[2]);
