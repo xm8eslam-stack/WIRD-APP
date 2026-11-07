@@ -3,13 +3,14 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
+const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -39,6 +40,7 @@ export interface JournalEvent {
   payload: Record<string, unknown>;
   fingerprint: string;
   sequence: number;
+  baseRevision?: number;
   projectionRequired?: boolean;
 }
 
@@ -59,6 +61,8 @@ export interface JournalOutboxEntry {
   nextAttemptAtMs: number;
   lastErrorCode?: string;
   fingerprint: string;
+  sequence: number;
+  baseRevision: number;
 }
 
 export interface JournalSnapshot {
@@ -68,6 +72,11 @@ export interface JournalSnapshot {
   acknowledgedCount: number;
   eventCount: number;
   projectionCursor: number;
+}
+
+export interface RemoteRevisionSnapshot {
+  revision: number;
+  localSequence: number;
 }
 
 interface AcknowledgementRecord {
@@ -84,6 +93,7 @@ interface DeviceMetadata {
   schemaVersion: 1;
   nextSequence: number;
   lastProjectedSequence: number;
+  remoteRevisions?: Record<string, { revision: number; localSequence: number }>;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -101,6 +111,7 @@ export interface LegacyOutboxMutation {
   attemptCount: number;
   nextAttemptAtMs: number;
   lastErrorCode?: string;
+  baseRevision?: number;
 }
 
 export interface LegacyOutboxState {
@@ -314,6 +325,38 @@ export class IndexedDbSyncJournal {
             }
           };
         }
+
+        if (upgradeEvent.oldVersion < 4) {
+          // Add delivery revision metadata without changing any existing event or payload.
+          const eventRequest = events.getAll();
+          const outboxStore = upgradeTransaction.objectStore(STORE_OUTBOX);
+          const outboxRequest = outboxStore.getAll();
+          let eventsReady = false;
+          let outboxReady = false;
+          let existingEvents: JournalEvent[] = [];
+          let existingOutbox: JournalOutboxEntry[] = [];
+          const migrateOutbox = () => {
+            if (!eventsReady || !outboxReady) return;
+            const sequenceByKey = new Map(existingEvents.map(event => [event.key, event.sequence]));
+            for (const mutation of existingOutbox) {
+              outboxStore.put({
+                ...mutation,
+                sequence: sequenceByKey.get(mutation.key) ?? 0,
+                baseRevision: 0
+              });
+            }
+          };
+          eventRequest.onsuccess = () => {
+            existingEvents = eventRequest.result as JournalEvent[];
+            eventsReady = true;
+            migrateOutbox();
+          };
+          outboxRequest.onsuccess = () => {
+            existingOutbox = outboxRequest.result as JournalOutboxEntry[];
+            outboxReady = true;
+            migrateOutbox();
+          };
+        }
       };
       request.onsuccess = () => {
         const database = request.result;
@@ -370,6 +413,7 @@ export class IndexedDbSyncJournal {
           !Number.isSafeInteger(item.queuedAtMs) || item.queuedAtMs < 0 ||
           !Number.isSafeInteger(item.attemptCount) || item.attemptCount < 0 ||
           !Number.isSafeInteger(item.nextAttemptAtMs) || item.nextAttemptAtMs < 0 ||
+          (item.baseRevision !== undefined && (!Number.isSafeInteger(item.baseRevision) || item.baseRevision < 0)) ||
           (item.lastErrorCode !== undefined && (typeof item.lastErrorCode !== 'string' || item.lastErrorCode.length > 64))) {
         throw new Error('تحتوي قائمة العمليات القديمة على سجل غير صالح؛ لم يتم بدء الترحيل.');
       }
@@ -460,12 +504,15 @@ export class IndexedDbSyncJournal {
           }
           if (existingAck) continue;
 
+          const sequence = existingEvent?.sequence ?? nextSequence++;
           const mutation: JournalOutboxEntry = {
             ...legacy,
             key,
             uid,
             eventId: legacy.mutationId,
-            fingerprint
+            fingerprint,
+            sequence,
+            baseRevision: legacy.baseRevision ?? 0
           };
           if (!existingEvent) {
             events.add({
@@ -474,7 +521,8 @@ export class IndexedDbSyncJournal {
               documentId: legacy.documentId, operation: legacy.operation,
               schemaVersion: 1, clientUpdatedAtMs: legacy.clientUpdatedAtMs,
               createdAtMs: legacy.queuedAtMs, deviceId: legacy.deviceId,
-              payload: legacy.payload, fingerprint, sequence: nextSequence++, projectionRequired: false
+              payload: legacy.payload, fingerprint, sequence, baseRevision: legacy.baseRevision ?? 0,
+              projectionRequired: false
             } satisfies JournalEvent);
           }
           if (!existingOutbox) {
@@ -525,6 +573,7 @@ export class IndexedDbSyncJournal {
           schemaVersion: 1,
           nextSequence,
           lastProjectedSequence: currentMetadata?.lastProjectedSequence ?? 0,
+          remoteRevisions: currentMetadata?.remoteRevisions ?? {},
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
@@ -625,8 +674,14 @@ export class IndexedDbSyncJournal {
 
         const deviceId = deviceMetadata?.deviceId || createSecureId();
         const sequence = deviceMetadata?.nextSequence ?? 1;
-        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER) {
-          failure = new Error('وصل تسلسل سجل الأحداث إلى الحد الآمن؛ لم يتم إنشاء عملية جديدة.');
+        const revisionKey = input.collection + ':' + input.documentId;
+        const cachedRevision = deviceMetadata?.remoteRevisions?.[revisionKey];
+        const baseRevision = cachedRevision?.revision ?? 0;
+        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER ||
+            !Number.isSafeInteger(baseRevision) || baseRevision < 0 ||
+            (cachedRevision !== undefined &&
+              (!Number.isSafeInteger(cachedRevision.localSequence) || cachedRevision.localSequence < 0))) {
+          failure = new Error('بيانات تسلسل الأحداث أو إصدار المزامنة المحلي غير صالحة؛ لم يتم إنشاء عملية جديدة.');
           transaction.abort();
           return;
         }
@@ -645,7 +700,9 @@ export class IndexedDbSyncJournal {
           queuedAtMs: now,
           attemptCount: 0,
           nextAttemptAtMs: 0,
-          fingerprint
+          fingerprint,
+          sequence,
+          baseRevision
         };
         const event: JournalEvent = {
           key,
@@ -663,6 +720,7 @@ export class IndexedDbSyncJournal {
           payload,
           fingerprint,
           sequence,
+          baseRevision,
           projectionRequired: true
         };
         events.add(event);
@@ -762,6 +820,157 @@ export class IndexedDbSyncJournal {
       }
       transaction.oncomplete = () => resolve(acknowledgedCount);
       transaction.onabort = () => reject(normalizeError(transaction.error || new Error('IndexedDB acknowledgement transaction aborted.')));
+    });
+  }
+
+  async getRemoteRevision(
+    collection: SyncCollection,
+    documentId: string
+  ): Promise<RemoteRevisionSnapshot | null> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection) || !documentId || documentId.includes('/')) {
+      throw new Error('معرّف مستند الإصدار السحابي غير صالح.');
+    }
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    const value = metadata?.remoteRevisions?.[collection + ':' + documentId];
+    if (!value) return null;
+    if (!Number.isSafeInteger(value.revision) || value.revision < 0 ||
+        !Number.isSafeInteger(value.localSequence) || value.localSequence < 0) {
+      throw new Error('بيانات الإصدار السحابي المحلية تالفة؛ تم إيقاف المزامنة لحماية البيانات.');
+    }
+    return { revision: value.revision, localSequence: value.localSequence };
+  }
+
+  /** Atomically persist the server revision and acknowledge the exact outbox mutation. */
+  async acknowledgeRemoteMutation(
+    mutationId: string,
+    revision: number,
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(mutationId) || !Number.isSafeInteger(revision) || revision < 1 ||
+        !Number.isSafeInteger(nowMs) || nowMs < 0) {
+      throw new Error('بيانات إقرار المزامنة ذات الإصدار غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_OUTBOX, STORE_ACKNOWLEDGEMENTS, STORE_METADATA],
+        'readwrite'
+      );
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const acknowledgements = transaction.objectStore(STORE_ACKNOWLEDGEMENTS);
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const key = uid + ':' + mutationId;
+      const mutationRequest = outbox.get(key);
+      const metadataRequest = metadataStore.get(uid);
+      let mutation: JournalOutboxEntry | undefined;
+      let metadata: DeviceMetadata | undefined;
+      let readsRemaining = 2;
+      let failure: Error | undefined;
+      let acknowledged = false;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        if (!mutation) return;
+        if (revision !== mutation.baseRevision + 1) {
+          failure = new Error('إصدار الخادم لا يطابق الإصدار المتوقع للعملية؛ لم يتم إقرارها محلياً.');
+          transaction.abort();
+          return;
+        }
+        const revisionKey = mutation.collection + ':' + mutation.documentId;
+        const remoteRevisions = { ...(metadata?.remoteRevisions || {}) };
+        const current = remoteRevisions[revisionKey];
+        if (current && (!Number.isSafeInteger(current.revision) || current.revision > revision)) {
+          failure = new Error('وصل إقرار قديم بعد إصدار أحدث؛ تم إيقاف تحديث مؤشر الإصدار.');
+          transaction.abort();
+          return;
+        }
+        if (!current && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS) {
+          failure = new Error('وصل سجل إصدارات المستندات إلى الحد الآمن؛ لم نحذف أي سجل محفوظ.');
+          transaction.abort();
+          return;
+        }
+        acknowledgements.put({
+          key, uid, mutationId,
+          fingerprint: mutation.fingerprint,
+          acknowledgedAtMs: nowMs
+        } satisfies AcknowledgementRecord);
+        outbox.delete(key);
+        remoteRevisions[revisionKey] = { revision, localSequence: Math.max(current?.localSequence ?? 0, mutation.sequence) };
+        metadataStore.put({
+          ...(metadata || {
+            uid, deviceId: mutation.deviceId, schemaVersion: 1,
+            nextSequence: mutation.sequence + 1, lastProjectedSequence: 0
+          }),
+          remoteRevisions
+        } satisfies DeviceMetadata);
+        const allAcknowledgementsRequest = acknowledgements.index('uid').getAll(IDBKeyRange.only(uid));
+        allAcknowledgementsRequest.onsuccess = () => {
+          const all = allAcknowledgementsRequest.result as AcknowledgementRecord[];
+          all.sort((a, b) => a.acknowledgedAtMs - b.acknowledgedAtMs);
+          for (const oldAcknowledgement of all.slice(0, Math.max(0, all.length - MAX_ACKNOWLEDGED_IDS))) {
+            acknowledgements.delete(oldAcknowledgement.key);
+          }
+        };
+        acknowledged = true;
+      };
+      mutationRequest.onsuccess = () => { mutation = mutationRequest.result as JournalOutboxEntry | undefined; finishRead(); };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      transaction.oncomplete = () => resolve(acknowledged);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Revision acknowledgement transaction aborted.')));
+    });
+  }
+
+  /** Rebase only a later local event after an earlier local event advanced this document. */
+  async rebasePendingMutation(
+    mutationId: string,
+    expectedBaseRevision: number,
+    nextBaseRevision: number
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(mutationId) || !Number.isSafeInteger(expectedBaseRevision) ||
+        expectedBaseRevision < 0 || !Number.isSafeInteger(nextBaseRevision) ||
+        nextBaseRevision <= expectedBaseRevision) {
+      throw new Error('بيانات إعادة تأسيس إصدار العملية غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_OUTBOX, STORE_METADATA], 'readwrite');
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const key = uid + ':' + mutationId;
+      const mutationRequest = outbox.get(key);
+      const metadataRequest = metadataStore.get(uid);
+      let mutation: JournalOutboxEntry | undefined;
+      let metadata: DeviceMetadata | undefined;
+      let readsRemaining = 2;
+      let rebased = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure || !mutation) return;
+        const revisionKey = mutation.collection + ':' + mutation.documentId;
+        const cached = metadata?.remoteRevisions?.[revisionKey];
+        if (!cached || cached.revision !== nextBaseRevision ||
+            mutation.baseRevision !== expectedBaseRevision ||
+            mutation.sequence <= cached.localSequence) {
+          failure = new Error('لا يمكن إعادة تأسيس عملية قديمة أو غير متتابعة على إصدار أحدث؛ يلزم حل التعارض أولاً.');
+          transaction.abort();
+          return;
+        }
+        outbox.put({ ...mutation, baseRevision: nextBaseRevision } satisfies JournalOutboxEntry);
+        rebased = true;
+      };
+      mutationRequest.onsuccess = () => { mutation = mutationRequest.result as JournalOutboxEntry | undefined; finishRead(); };
+      metadataRequest.onsuccess = () => { metadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
+      transaction.oncomplete = () => resolve(rebased);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Outbox revision rebase transaction aborted.')));
     });
   }
 
