@@ -66,3 +66,16 @@ PR #129 narrows ordinary projection blocking to the exact UID/collection/documen
 ## Current conflict evidence bound (PR #126)
 
 The conflict archive transaction includes the outbox store and captures pending mutations for the exact conflicting document. The immutable local snapshot plus all captured mutation payloads share a 500 KB limit. If the combined evidence exceeds that limit or a mutation ID is observed with a different fingerprint, the transaction aborts; the remote inbox event, local outbox, and projection cursor remain unchanged. The archive is diagnostic/recovery evidence, not a resolution decision.
+
+
+## 2026-11-07 — refreshed audit after PR #134–#139
+
+- Latest main SHA: `28a1c4339d31bb66549402db36cfc40357caf65f`.
+- PR #134 extends grouped `syncMeta` archival to collect pending local Outbox mutations from each validated transaction collection. The regression test verifies relevant plans/tests mutations are archived, unrelated weak-verse writes are excluded, and the Inbox event/cursor remain untouched.
+- The existing conflict record still contains the remote event, local snapshot, archived local mutation evidence, timestamps and open/resolved bookkeeping. This is not a user decision record.
+- The existing `RemoteProjectionIntent` is scoped to applying a remote Inbox event and recovering that projection after a crash. It must not be repurposed as a user resolution intent.
+- **Still not implemented:** user-visible comparison and decision UI; durable keep-local/use-remote/merge decision intent; field-level merge policy; latest authoritative remote revision revalidation at decision time; resolution mutation with a new idempotency identity; server acknowledgement; restart-safe/idempotent completion and decision history.
+- PR #135–#139 changed Ruqyah corruption/reset/accessibility behavior, not conflict semantics.
+- Vercel remains quota-blocked; no live conflict resolution or production sync is claimed.
+- Next implementation must use a separate persisted resolution state machine and retain the original conflict evidence until the new mutation is acknowledged and the Inbox event can be safely reconciled. No LWW and no deletion of pending Outbox evidence.
+
