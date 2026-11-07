@@ -801,7 +801,8 @@ export class IndexedDbSyncJournal {
       let acknowledgedRecord: AcknowledgementRecord | undefined;
       let deviceMetadata: DeviceMetadata | undefined;
       let pendingCount = 0;
-      let readsRemaining = 4;
+      let sameDocumentPending: JournalOutboxEntry[] = [];
+      let readsRemaining = 5;
       let result: JournalEnqueueResult | undefined;
       let failure: Error | undefined;
       const finishRead = () => {
@@ -824,6 +825,19 @@ export class IndexedDbSyncJournal {
           }
           return;
         }
+        const legacyRuqyahPending = input.collection === 'ruqyahProgress' &&
+          operation === 'upsert' &&
+          isRecord(payload.snapshot) &&
+          payload.snapshot.schemaVersion === 2 &&
+          isValidRuqyahProgressSnapshotV2(payload.snapshot)
+          ? sameDocumentPending.filter(item =>
+              item.operation === 'upsert' &&
+              isRecord(item.payload.snapshot) &&
+              item.payload.snapshot.schemaVersion === 1
+            )
+          : [];
+        for (const legacyMutation of legacyRuqyahPending) outbox.delete(legacyMutation.key);
+        pendingCount = Math.max(0, pendingCount - legacyRuqyahPending.length);
         if (pendingCount >= MAX_PENDING_MUTATIONS) {
           failure = new Error('وصل صندوق المزامنة إلى سعته الآمنة؛ لم نحذف أي عملية معلقة.');
           return;
@@ -901,6 +915,9 @@ export class IndexedDbSyncJournal {
       metadataRequest.onsuccess = () => { deviceMetadata = metadataRequest.result as DeviceMetadata | undefined; finishRead(); };
       const countRequest = outbox.index('uid').count(IDBKeyRange.only(uid));
       countRequest.onsuccess = () => { pendingCount = countRequest.result; finishRead(); };
+      const sameDocumentRequest = outbox.index('uidCollectionDocument')
+        .getAll(IDBKeyRange.only([uid, input.collection, input.documentId]));
+      sameDocumentRequest.onsuccess = () => { sameDocumentPending = sameDocumentRequest.result as JournalOutboxEntry[]; finishRead(); };
 
       transaction.oncomplete = () => {
         if (failure) reject(failure);
