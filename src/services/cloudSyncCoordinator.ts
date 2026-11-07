@@ -2,6 +2,7 @@ import { getDocs, collection, query, where, orderBy, limit as firestoreLimit } f
 import { db, auth, isFirebaseConfigured } from '../lib/firebase';
 import { LocalSyncOutbox } from './localSyncOutbox';
 import type { RemoteInboxEventInput } from './indexedDbSyncJournal';
+import type { SyncCollection } from './localSyncOutbox';
 import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 import { projectRemoteInboxBatch } from './remoteInboxProjector';
@@ -25,13 +26,13 @@ export type RemoteProjectionBlockReason =
   | 'blocked_tombstone'
   | 'projection_failed';
 
-export interface ProjectionConflictSummary {
+export interface RemoteProjectionConflictSummary {
   eventId: string;
-  serverSequence: number;
-  collection: string;
-  documentId: string;
+  sequence: number;
+  collection: SyncCollection;
   reason: string;
   createdAtMs: number;
+  updatedAtMs: number;
 }
 
 export interface CloudSyncState {
@@ -44,7 +45,7 @@ export interface CloudSyncState {
   remoteProjectionBlockReason: RemoteProjectionBlockReason | null;
   remoteProjectionBlockedAtSequence: number | null;
   projectionConflictCount: number;
-  latestProjectionConflict: ProjectionConflictSummary | null;
+  latestProjectionConflict: RemoteProjectionConflictSummary | null;
   errorMessage: string | null;
   isOnline: boolean;
 }
@@ -153,34 +154,32 @@ class CloudSyncCoordinator {
           remoteInboxPendingCount: 0,
           remoteCursor: 0,
           remoteProjectionCursor: 0,
-          remoteProjectionBlockReason: null,
-          remoteProjectionBlockedAtSequence: null,
           projectionConflictCount: 0,
           latestProjectionConflict: null
         });
         return 0;
       }
-      const [snapshot, remoteCursor, remoteProjectionCursor, conflictCount, latestConflicts] = await Promise.all([
+      const [snapshot, remoteCursor, remoteProjectionCursor, projectionConflictCount, conflicts] = await Promise.all([
         LocalSyncOutbox.getSnapshot(),
         LocalSyncOutbox.getRemoteCursor(),
         LocalSyncOutbox.getRemoteProjectionCursor(),
         LocalSyncOutbox.getProjectionConflictCount(),
         LocalSyncOutbox.listProjectionConflicts(1)
       ]);
-      const latest = latestConflicts[0];
+      const latest = conflicts[0];
       this.updateState({
         pendingCount: snapshot.pendingCount,
         remoteCursor,
         remoteProjectionCursor,
         remoteInboxPendingCount: Math.max(0, remoteCursor - remoteProjectionCursor),
-        projectionConflictCount: conflictCount,
+        projectionConflictCount,
         latestProjectionConflict: latest ? {
           eventId: latest.event.eventId,
-          serverSequence: latest.event.serverSequence,
+          sequence: latest.event.serverSequence,
           collection: latest.event.collection,
-          documentId: latest.event.documentId,
           reason: latest.reason,
-          createdAtMs: latest.createdAtMs
+          createdAtMs: latest.createdAtMs,
+          updatedAtMs: latest.updatedAtMs
         } : null
       });
       return snapshot.pendingCount;
