@@ -22,6 +22,7 @@
 5. docs/audit/2026-11-07/APP_ARCHITECTURE_REPORT.md
 6. docs/audit/2026-11-07/READINESS_BLOCKERS.md
 7. docs/audit/2026-11-07/REMEDIATION_PLAN.md
+8. docs/sync/REMOTE_REPLICATION_PLAN.md
 
 هذه هي مراجع الفحص الحالية، ولا تتبع تعليمات الاستئناف القديمة في ملفات checkpoints التي تشير إلى PR #49 أو PR #58 أو SHA قديم.
 
@@ -31,7 +32,7 @@
 - سجل FILE_AUDIT_REGISTER يحتوي 147 صفًا مطابقًا للشجرة.
 - 147 ملفًا تمت مراجعتها مبدئيًا وتسجيل ملاحظة لكل منها.
 - ثلاثة ملفات PNG (public/apple-touch-icon.png وpublic/icon-192.png وpublic/icon-512.png) تمت معاينتها بصريًا؛ تظهر كمساحات بلون teal موحد دون علامة WIRD ظاهرة. سجّلها كعيب P2 ضمن الهوية البصرية/PWA.
-- تمت مقارنة جميع الفروع السبعين مع main:
+- تمت مقارنة جميع الفروع السبعين في baseline مع main، ثم أُضيفت خمسة فروع عمل جديدة؛ عدد الفروع الحي الآن 75:
   - 65 فرعًا متباعدًا وله commits فريدة.
   - 4 فروع هي أسلاف لـ main ولا تحتوي commits فريدة، مرشحة للأرشفة/الحذف.
   - main مطابق لنفسه.
@@ -40,6 +41,19 @@
 - PR #59 وPR #60 متباعدان عن main؛ لا تدمجهما wholesale.
 - PR #59 يحسن retry/idempotency/status لكنه لا يكمل remote pull/reconciliation.
 - PR #60 يحتوي إصلاحًا مفيدًا للتفسير لكنه Draft وCI الخاص برأسه فشل بسبب انحراف الفرع وأخطاء TypeScript/اختبارات قديمة. انقل الإصلاح إلى فرع جديد من main.
+
+## 3A. حالة التنفيذ الحالية
+
+- Phase 0 audit: COMPLETE؛ 147/147 ملفًا لها ملاحظة، 70/70 فرع baseline تمت مقارنتها، والأيقونات الثلاث ظهرت كمربعات teal فارغة بلا علامة واضحة.
+- Audit branch head: f0e9cf92c3c816e440441032c4ae9419373f238f (تحقق من الرأس قبل أي تعديل).
+- Current live branch count: 75.
+- PR #61 — fix/progress-import-journal-20261107: Draft, CI PASS, 404 passed / 0 failed, Vercel Preview Ready.
+- PR #62 — fix/plan-lifecycle-preserve-revisions-20261107: Draft, CI PASS, 406 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
+- PR #63 — fix/quran-audio-repeat-20261107: Draft, CI PASS, 404 passed / 0 failed, Vercel Preview blocked by Vercel daily build-rate limit.
+- PR #64 — fix/tafsir-json-response-20261107: Draft, run 42341419175 pending with no job assigned at last check.
+- None of these PRs has been merged. Main is still 6228150c2f7137678ba1079f5d9b2e8aba527523.
+- Remote sync design gate is now documented at docs/sync/REMOTE_REPLICATION_PLAN.md; it is not implemented.
+- Vercel production deployment is not confirmed. Do not confuse green GitHub CI with a live production deploy.
 
 ## 4. أهم العيوب المؤكدة
 
@@ -71,12 +85,12 @@ P2:
 
 ### أولاً: إغلاق المرحلة 0
 1. تحقق من رأس main ورأس فرع التدقيق الحاليين.
-2. أكد ملاحظة الأيقونات الثلاثة في التقرير ولا تؤجل إغلاق المرحلة 0 بسببها.
-3. تحقق من 147 صفًا في FILE_AUDIT_REGISTER و70 صفًا في BRANCH_COMPARE_MATRIX.
-4. حدّث كل تقارير التدقيق لتستخدم نفس baseline والعدد.
+2. أكد ملاحظة الأيقونات الثلاثة في التقرير؛ Phase 0 مكتملة بالفعل.
+3. تحقق من 147 صفًا في FILE_AUDIT_REGISTER و70 صفًا في baseline matrix، مع 75 فرعًا حيًا الآن.
+4. تحقق من أن REMOTE_REPLICATION_PLAN.md موجود ومتوافق مع AGENTS.md.
 5. أضف إدخالًا مؤرخًا في docs/engineering/progress/WORK_LOG.md دون تعديل السجل التاريخي.
-6. حدّث وثيقة استئناف واحدة فقط لتكون المرجع الحالي، ووسم الملفات القديمة بأنها تاريخية بدل حذفها.
-7. شغّل فحوصات التوثيق/الروابط المتاحة، ثم احفظ commit واضحًا على فرع التدقيق.
+6. حدّث CONTINUATION_PROMPT وREMEDIATION_PLAN بحالة PRs #61–#64.
+7. لا تكرر إصلاحات PRs الحالية؛ تابع P1D QuranMath/domain validation ثم Advisor security design.
 
 ### ثانيًا: ابدأ التنفيذ الفعلي مباشرة بعد إغلاق التدقيق
 لا تنتظر موافقة جديدة على إصلاحات الكود غير التدميرية. ابدأ حسب docs/audit/2026-11-07/REMEDIATION_PLAN.md:
