@@ -1,5 +1,7 @@
 import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
 import { StorageService } from './storageService';
+import { isValidRuqyahProgressSnapshotV2 } from './ruqyahProgressSchema';
+import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import type {
   JournalEvent,
   RemoteInboxEvent,
@@ -68,6 +70,11 @@ export interface RemoteProjectionDependencies {
   getRemoteProjectionIntent(): Promise<RemoteProjectionIntent | null>;
   prepareRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean>;
   finalizeRemoteProjection(intent: RemoteProjectionIntent, applyProjection: () => boolean): Promise<boolean>;
+  getLocalRuqyahProgressSnapshot?(): RuqyahProgressSnapshot | null;
+  finalizeRuqyahProgressMerge?(
+    intent: RemoteProjectionIntent,
+    applyMergedProjection: (event: JournalEvent) => boolean
+  ): Promise<boolean>;
 }
 
 const defaultDependencies: RemoteProjectionDependencies = {
@@ -89,7 +96,10 @@ const defaultDependencies: RemoteProjectionDependencies = {
   getRemoteProjectionIntent: () => LocalSyncOutbox.getRemoteProjectionIntent(),
   prepareRemoteProjection: intent => LocalSyncOutbox.prepareRemoteProjection(intent),
   finalizeRemoteProjection: (intent, applyProjection) =>
-    LocalSyncOutbox.finalizeRemoteProjection(intent, applyProjection)
+    LocalSyncOutbox.finalizeRemoteProjection(intent, applyProjection),
+  getLocalRuqyahProgressSnapshot: () => StorageService.getRuqyahProgressSnapshot(),
+  finalizeRuqyahProgressMerge: (intent, applyMergedProjection) =>
+    LocalSyncOutbox.finalizeRuqyahProgressMerge(intent, applyMergedProjection)
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -215,6 +225,74 @@ export async function projectRemoteInboxBatch(
           localProjectionEmpty,
           remoteCollectionInitialized
         });
+
+    const localRuqyahSnapshot = remoteEvent.collection === 'ruqyahProgress'
+      ? dependencies.getLocalRuqyahProgressSnapshot?.() ?? null
+      : null;
+    const canMergeRuqyahCounters = remoteEvent.collection === 'ruqyahProgress' &&
+      remoteEvent.documentId === 'snapshot' &&
+      remoteEvent.operation === 'upsert' &&
+      hasPendingLocalMutation &&
+      (cached?.revision ?? 0) < remoteEvent.revision &&
+      !!dependencies.finalizeRuqyahProgressMerge &&
+      isValidRuqyahProgressSnapshotV2(localRuqyahSnapshot) &&
+      isValidRuqyahProgressSnapshotV2(remoteEvent.payload.snapshot);
+
+    if (canMergeRuqyahCounters) {
+      const preProjectionSnapshot = captureLocalProjectionSnapshot(remoteEvent, [], dependencies);
+      const archived = await archiveBlockedProjection(
+        remoteEvent,
+        'blocked_pending_local',
+        [],
+        dependencies,
+        preProjectionSnapshot
+      );
+      if (!archived) {
+        return {
+          projectedCount,
+          blockedAtSequence: remoteEvent.serverSequence,
+          reason: 'blocked_pending_local'
+        };
+      }
+
+      const projectionIntent: RemoteProjectionIntent = {
+        sequence: remoteEvent.serverSequence,
+        eventId: remoteEvent.eventId,
+        collection: remoteEvent.collection,
+        documentId: remoteEvent.documentId,
+        revision: remoteEvent.revision,
+        initializedCollections: []
+      };
+      const prepared = isResumingThisProjection ||
+        await dependencies.prepareRemoteProjection(projectionIntent);
+      if (!prepared) {
+        await archiveBlockedProjection(remoteEvent, 'projection_failed', [], dependencies, preProjectionSnapshot);
+        return {
+          projectedCount,
+          blockedAtSequence: remoteEvent.serverSequence,
+          reason: 'projection_failed'
+        };
+      }
+      let finalized = false;
+      try {
+        finalized = await dependencies.finalizeRuqyahProgressMerge!(
+          projectionIntent,
+          mergedEvent => dependencies.applyJournalEvent(mergedEvent)
+        );
+      } catch {
+        finalized = false;
+      }
+      if (!finalized) {
+        await archiveBlockedProjection(remoteEvent, 'projection_failed', [], dependencies, preProjectionSnapshot);
+        return {
+          projectedCount,
+          blockedAtSequence: remoteEvent.serverSequence,
+          reason: 'projection_failed'
+        };
+      }
+      projectedCount++;
+      continue;
+    }
 
     if (decision === 'already_applied') {
       if (isResumingThisProjection && intent) {
