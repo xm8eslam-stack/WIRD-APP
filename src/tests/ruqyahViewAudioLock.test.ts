@@ -17,7 +17,7 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
 
   test(
     'Ruqyah view does not instantiate audio or invoke browser playback',
-    !viewSource.includes('new Audio(') && !/\\.play\\s*\\(/.test(viewSource)
+    !viewSource.includes('new Audio(') && !/\.play\s*\(/.test(viewSource)
   );
   test(
     'Ruqyah view contains no legacy audio player state or handlers',
@@ -25,16 +25,16 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
   test(
     'Full-program audio mode remains visibly disabled pending source and rights review',
-    /disabled\\s+title="سيُتاح بعد التحقق/.test(viewSource) &&
+    /disabled\s+title="سيُتاح بعد التحقق/.test(viewSource) &&
       viewSource.includes('التسجيل الكامل (قيد التحقق)')
   );
   test(
     'Individual Quran audio controls remain disabled and explicitly labelled',
-    /disabled\\s+aria-disabled="true"[\\s\\S]{0,240}الصوت قيد التحقق/.test(viewSource)
+    /disabled\s+aria-disabled="true"[\s\S]{0,240}الصوت قيد التحقق/.test(viewSource)
   );
   test(
     'The rendered view exposes only interactive reading and the Quran locator library',
-    /useState<'interactive' \\| 'api_library'>\\('interactive'\\)/.test(viewSource) &&
+    /useState<'interactive' \| 'api_library'>\('interactive'\)/.test(viewSource) &&
       !viewSource.includes("setViewMode('audio_stream')")
   );
 
