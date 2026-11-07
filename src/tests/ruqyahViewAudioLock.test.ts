@@ -16,26 +16,44 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   };
 
   test(
-    'Ruqyah view does not instantiate audio or invoke browser playback',
-    !viewSource.includes('new Audio(') && !/\.play\s*\(/.test(viewSource)
+    'Ruqyah uses one managed HTML audio instance with event cleanup',
+    (viewSource.match(/new Audio\(\)/g) || []).length === 1 &&
+      viewSource.includes("audio.removeEventListener('ended', handleEnded)") &&
+      viewSource.includes("audio.removeAttribute('src')")
   );
   test(
-    'Ruqyah view contains no legacy audio player state or handlers',
-    !/audio_stream|audioStreamRef|audioVerseRef|handleToggleStream|handleToggleVerseAudio|sleepTimerMinutes/.test(viewSource)
+    'Quran playback uses the canonical local ayah queue and fixed approved CDN builder',
+    viewSource.includes('getRuqyahAudioQueue(target)') &&
+      viewSource.includes('buildQuranAyahAudioUrl(selectedReciterIdRef.current, entry.globalAyahNumber)')
+  );
+  const audioStart = viewSource.indexOf('const startRuqyahAudio');
+  const audioEnd = viewSource.indexOf('const stopRuqyahAudio', audioStart);
+  test(
+    'Audio queue does not automatically increment reading progress',
+    audioStart >= 0 && audioEnd > audioStart && !viewSource.slice(audioStart, audioEnd).includes('setCounts(')
   );
   test(
-    'Full-program audio mode remains visibly disabled pending source and rights review',
-    /disabled[\s\S]{0,180}title="سيُتاح بعد التحقق/.test(viewSource) &&
+    'Individual Quran cards expose active play/pause controls',
+    viewSource.includes('onClick={() => toggleItemAudio(item)}') &&
+      viewSource.includes('استمع للآيات') &&
+      !viewSource.includes('الصوت قيد التحقق')
+  );
+  test(
+    'Section playlist, reciter selection, volume, seek, and stop controls are present',
+    viewSource.includes('تشغيل آيات القسم') &&
+      viewSource.includes('اختيار قارئ الرقية') &&
+      viewSource.includes('موضع التلاوة الصوتية') &&
+      viewSource.includes('مستوى صوت التلاوة') &&
+      viewSource.includes('stopRuqyahAudio')
+  );
+  test(
+    'Full-program recordings containing unverified supplication audio remain disabled',
+    /disabled[\s\S]{0,240}title="التسجيلات الكاملة التي تشمل الأدعية لم تعتمد بعد/.test(viewSource) &&
       viewSource.includes('التسجيل الكامل (قيد التحقق)')
   );
   test(
-    'Individual Quran audio controls remain disabled and explicitly labelled',
-    /disabled[\s\S]{0,600}الصوت قيد التحقق/.test(viewSource)
-  );
-  test(
-    'The rendered view exposes only interactive reading and the Quran locator library',
-    /useState<'interactive' \| 'api_library'>\('interactive'\)/.test(viewSource) &&
-      !viewSource.includes("setViewMode('audio_stream')")
+    'Playback errors never silently switch to another source',
+    viewSource.includes('لم يتم استبداله بتسجيل من مصدر آخر')
   );
 
   return { passed, failed };

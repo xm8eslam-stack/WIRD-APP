@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getRuqyahDisplayText } from '../../services/ruqyahContentService';
+import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
+import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
 import { STORAGE_KEYS, StorageService } from '../../services/storageService';
@@ -8,6 +9,9 @@ import {
   ShieldCheck, 
   Volume2,
   Headphones,
+  Play,
+  Pause,
+  Square,
   RotateCcw, 
   CheckCircle2, 
   Sparkles, 
@@ -45,11 +49,239 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const resetTriggerRef = useRef<HTMLButtonElement>(null);
+  const [reciters, setReciters] = useState(FALLBACK_QURAN_RECITERS);
+  const [selectedReciterId, setSelectedReciterId] = useState('ar.husary');
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false);
+  const [audioIsLoading, setAudioIsLoading] = useState(false);
+  const [audioError, setAudioError] = useState('');
+  const [audioStatusMessage, setAudioStatusMessage] = useState('');
+  const [audioQueueLabel, setAudioQueueLabel] = useState('');
+  const [audioCurrentItemTitle, setAudioCurrentItemTitle] = useState('');
+  const [audioCurrentItemId, setAudioCurrentItemId] = useState<string | null>(null);
+  const [audioQueuePosition, setAudioQueuePosition] = useState(0);
+  const [audioQueueLength, setAudioQueueLength] = useState(0);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioVolume, setAudioVolume] = useState(0.85);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const selectedReciterIdRef = useRef(selectedReciterId);
+  const audioQueueRef = useRef<Array<{ globalAyahNumber: number; itemId: string; title: string }>>([]);
+  const audioQueueIndexRef = useRef(0);
+  const audioRequestIdRef = useRef(0);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
-  // External reciter catalogue and audio host are intentionally not loaded
-  // until their recitation provenance and usage permissions are reviewed.
+  const formatAudioTime = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds <= 0) return '00:00';
+    const minutes = Math.floor(seconds / 60);
+    const remainder = Math.floor(seconds % 60);
+    return String(minutes).padStart(2, '0') + ':' + String(remainder).padStart(2, '0');
+  };
+
+  const playAudioQueuePosition = async (index: number) => {
+    const requestId = ++audioRequestIdRef.current;
+    const audio = audioRef.current;
+    const entry = audioQueueRef.current[index];
+    if (!audio || !entry) return;
+
+    audioQueueIndexRef.current = index;
+    setAudioQueuePosition(index + 1);
+    setAudioCurrentItemId(entry.itemId);
+    setAudioCurrentItemTitle(entry.title);
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
+    setAudioIsLoading(true);
+    setAudioError('');
+    setAudioStatusMessage('');
+
+    try {
+      audio.src = buildQuranAyahAudioUrl(selectedReciterIdRef.current, entry.globalAyahNumber);
+      audio.load();
+      await audio.play();
+      if (requestId !== audioRequestIdRef.current) return;
+      setAudioIsPlaying(true);
+      setAudioIsLoading(false);
+    } catch {
+      if (requestId !== audioRequestIdRef.current) return;
+      setAudioIsPlaying(false);
+      setAudioIsLoading(false);
+      setAudioError('تعذر تشغيل التلاوة من المصدر المعتمد. تحقق من الاتصال ثم أعد المحاولة.');
+    }
+  };
+
+  const startRuqyahAudio = (item?: RuqyahItem) => {
+    try {
+      const targetItems = item ? [item] : currentItems.filter(candidate => candidate.type === 'quran');
+      const seenAyahs = new Set<number>();
+      const queue = targetItems.flatMap(target =>
+        getRuqyahAudioQueue(target).map(ayah => ({
+          globalAyahNumber: ayah.globalAyahNumber,
+          itemId: target.id,
+          title: target.title
+        }))
+      ).filter(entry => {
+        if (seenAyahs.has(entry.globalAyahNumber)) return false;
+        seenAyahs.add(entry.globalAyahNumber);
+        return true;
+      });
+
+      if (queue.length === 0) throw new Error('لا توجد آيات قرآنية صالحة للتشغيل في هذا القسم.');
+      audioQueueRef.current = queue;
+      setAudioQueueLength(queue.length);
+      setAudioQueuePosition(0);
+      setAudioQueueLabel(item ? item.title : 'آيات قسم ' + CATEGORY_TABS.find(tab => tab.id === activeCategory)?.label);
+      setAudioError('');
+      setAudioStatusMessage('');
+      void playAudioQueuePosition(0);
+    } catch (error) {
+      setAudioError(error instanceof Error ? error.message : 'تعذر تجهيز تلاوة آيات الرقية.');
+    }
+  };
+
+  const stopRuqyahAudio = () => {
+    audioRequestIdRef.current += 1;
+    audioQueueRef.current = [];
+    audioQueueIndexRef.current = 0;
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    }
+    setAudioIsPlaying(false);
+    setAudioIsLoading(false);
+    setAudioQueueLength(0);
+    setAudioQueuePosition(0);
+    setAudioCurrentItemId(null);
+    setAudioCurrentItemTitle('');
+    setAudioCurrentTime(0);
+    setAudioDuration(0);
+    setAudioQueueLabel('');
+    setAudioError('');
+    setAudioStatusMessage('');
+  };
+
+  const toggleAudioPlayback = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audioIsPlaying) {
+      audio.pause();
+      setAudioIsPlaying(false);
+      return;
+    }
+    if (audio.src && audioQueueLength > 0) {
+      setAudioIsLoading(true);
+      const requestId = audioRequestIdRef.current;
+      void audio.play().then(() => {
+        if (requestId !== audioRequestIdRef.current) return;
+        setAudioIsPlaying(true);
+        setAudioIsLoading(false);
+      }).catch(() => {
+        if (requestId !== audioRequestIdRef.current) return;
+        setAudioIsPlaying(false);
+        setAudioIsLoading(false);
+        setAudioError('تعذر استكمال التلاوة. تحقق من الاتصال بالإنترنت.');
+      });
+    }
+  };
+
+  const handleAudioReciterChange = (reciterId: string) => {
+    stopRuqyahAudio();
+    setSelectedReciterId(reciterId);
+  };
+
+  const toggleItemAudio = (item: RuqyahItem) => {
+    if (audioCurrentItemId === item.id && audioIsPlaying) {
+      audioRef.current?.pause();
+      setAudioIsPlaying(false);
+      return;
+    }
+    startRuqyahAudio(item);
+  };
+
+  useEffect(() => {
+    selectedReciterIdRef.current = selectedReciterId;
+  }, [selectedReciterId]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetchQuranReciters(controller.signal).then(setReciters).catch(() => {
+      // The reviewed, bundled allowlist remains available when the catalogue proxy is offline.
+    });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = 'none';
+    audio.volume = audioVolume;
+    audioRef.current = audio;
+
+    const handleTimeUpdate = () => setAudioCurrentTime(Number.isFinite(audio.currentTime) ? audio.currentTime : 0);
+    const handleLoadedMetadata = () => setAudioDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const handlePlay = () => { setAudioIsPlaying(true); setAudioIsLoading(false); };
+    const handlePause = () => setAudioIsPlaying(false);
+    const handleWaiting = () => setAudioIsLoading(true);
+    const handleCanPlay = () => setAudioIsLoading(false);
+    const handleEnded = () => {
+      if (audioQueueRef.current.length === 0) return;
+      const nextIndex = audioQueueIndexRef.current + 1;
+      if (nextIndex < audioQueueRef.current.length) {
+        void playAudioQueuePosition(nextIndex);
+      } else {
+        setAudioIsPlaying(false);
+        setAudioIsLoading(false);
+        setAudioCurrentItemId(null);
+        setAudioCurrentTime(0);
+        setAudioQueueLength(0);
+        setAudioStatusMessage('اكتملت التلاوة الصوتية للآيات المحددة.');
+      }
+    };
+    const handleError = () => {
+      if (audioQueueRef.current.length === 0) return;
+      setAudioIsPlaying(false);
+      setAudioIsLoading(false);
+      setAudioError('تعذر تحميل ملف التلاوة. لم يتم استبداله بتسجيل من مصدر آخر.');
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+      audioRequestIdRef.current += 1;
+      audioQueueRef.current = [];
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+      audioRef.current = null;
+      audioQueueRef.current = [];
+    };
+  }, []);
+
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.volume = audioVolume;
+  }, [audioVolume]);
+
+  useEffect(() => {
+    return () => {
+      audioRef.current?.pause();
+      audioQueueRef.current = [];
+    };
+  }, [activeCategory]);
 
   // Hydrate progress whenever WIRD switches guest/account storage namespaces.
   useEffect(() => {
@@ -230,7 +462,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               type="button"
               disabled
               aria-disabled="true"
-              title="سيُتاح بعد التحقق من التسجيل كاملًا ومراجعة مصدره ومحتواه"
+              title="التسجيلات الكاملة التي تشمل الأدعية لم تعتمد بعد؛ المتاح حاليًا تلاوة الآيات القرآنية من مصدر موثق"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-stone-400/70 cursor-not-allowed opacity-60"
             >
               <Headphones className="w-4 h-4" />
@@ -240,7 +472,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             <button
               type="button"
               aria-pressed={viewMode === 'api_library'}
-              onClick={() => { setShowResetConfirmation(false); setViewMode('api_library'); }}
+              onClick={() => { stopRuqyahAudio(); setShowResetConfirmation(false); setViewMode('api_library'); }}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'api_library'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
@@ -260,10 +492,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4">
             <div>
               <p className="text-sm font-bold text-stone-800 dark:text-stone-200">التحقق من نص الآيات</p>
-              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُعرض الآيات من مصحف وِرد المعتمد. تشغيل الصوت موقوف حتى اعتماد مصدر موثوق.</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">تُعرض الآيات من مصحف وِرد المعتمد. يمكنك تشغيل تلاوتها من المصدر الصوتي الموثق أدناه.</p>
             </div>
             <div className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs text-stone-500 dark:text-stone-400" role="status">
-              التلاوة الصوتية قيد التحقق من مصدر التسجيل ونسبته للقارئ
+              التلاوة متاحة للآيات القرآنية؛ التسجيلات الكاملة التي تشمل الأدعية لا تزال قيد التحقق
             </div>
           </div>
 
@@ -276,7 +508,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   key={tab.id}
                   type="button"
                   aria-pressed={isActive}
-                  onClick={() => { setShowResetConfirmation(false); setActiveCategory(tab.id); }}
+                  onClick={() => { stopRuqyahAudio(); setShowResetConfirmation(false); setActiveCategory(tab.id); }}
                   className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                     isActive
                       ? 'bg-emerald-800 text-amber-200 border-emerald-700 shadow-sm'
@@ -295,6 +527,63 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               );
             })}
           </div>
+
+          {activeCategory !== 'guidelines' && (
+            <section aria-label="مشغل تلاوة آيات الرقية" className="rounded-2xl border border-emerald-200/80 dark:border-emerald-900 bg-white dark:bg-stone-900 p-4 md:p-5 space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-sm font-extrabold text-stone-900 dark:text-stone-100">تلاوة آيات الرقية</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">تشغيل متتابع للآيات القرآنية المعروضة، مع إبقاء نص المصحف من نسخة وِرد المعتمدة. لا تُحتسب التلاوة تلقائيًا ضمن عدادات القراءة.</p>
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300">
+                    <span>القارئ</span>
+                    <select aria-label="اختيار قارئ الرقية" value={selectedReciterId} onChange={event => handleAudioReciterChange(event.target.value)} className="min-w-48 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                      {reciters.map(reciter => <option key={reciter.id} value={reciter.id}>{reciter.arabicName}</option>)}
+                    </select>
+                  </label>
+                  <button type="button" onClick={() => startRuqyahAudio()} disabled={audioIsLoading || !currentItems.some(item => item.type === 'quran')} className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                    <Play className="w-4 h-4" />
+                    <span>تشغيل آيات القسم</span>
+                  </button>
+                  {audioQueueLength > 0 && (
+                    <>
+                      <button type="button" onClick={toggleAudioPlayback} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                        {audioIsPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        <span>{audioIsPlaying ? 'إيقاف مؤقت' : 'استكمال'}</span>
+                      </button>
+                      <button type="button" onClick={stopRuqyahAudio} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                        <Square className="w-3.5 h-3.5" />
+                        <span>إيقاف</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {audioQueueLength > 0 && (
+                <div className="space-y-2 rounded-xl bg-stone-50 dark:bg-stone-800/70 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <p role="status" aria-live="polite" className="font-bold text-emerald-800 dark:text-emerald-300">
+                      {audioIsLoading ? 'جارٍ تحميل التلاوة...' : audioIsPlaying ? 'يتم التشغيل: ' + audioCurrentItemTitle : 'متوقف مؤقتًا: ' + audioCurrentItemTitle}
+                    </p>
+                    <span className="font-mono text-stone-500">{audioQueuePosition} / {audioQueueRef.current.length} — {audioQueueLabel}</span>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <input type="range" min="0" max={audioDuration || 0} step="0.1" value={Math.min(audioCurrentTime, audioDuration || 0)} disabled={!audioDuration} aria-label="موضع التلاوة الصوتية" onChange={event => { const nextTime = Number(event.target.value); setAudioCurrentTime(nextTime); if (audioRef.current) audioRef.current.currentTime = nextTime; }} className="w-full accent-emerald-700 disabled:opacity-50" />
+                    <span className="shrink-0 font-mono text-[11px] text-stone-500">{formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}</span>
+                    <label className="flex shrink-0 items-center gap-2 text-[11px] text-stone-500">
+                      <Volume2 className="w-4 h-4" />
+                      <span>الصوت</span>
+                      <input type="range" min="0" max="1" step="0.05" value={audioVolume} aria-label="مستوى صوت التلاوة" onChange={event => setAudioVolume(Number(event.target.value))} className="w-20 accent-emerald-700" />
+                    </label>
+                  </div>
+                </div>
+              )}
+              {audioError && <p role="alert" className="text-xs text-red-700 dark:text-red-300">{audioError}</p>}
+              {audioStatusMessage && <p role="status" className="text-xs text-emerald-700 dark:text-emerald-300">{audioStatusMessage}</p>}
+              <p className="text-[10px] text-stone-400 dark:text-stone-500">المصدر الصوتي: Al Quran Cloud — تلاوات الآيات من القراء المعتمدين في القائمة. التسجيلات الكاملة التي تتضمن الأدعية لا تزال قيد التحقق.</p>
+            </section>
+          )}
 
           {/* Progress Header & Settings Control */}
           {activeCategory !== 'guidelines' && (
@@ -404,14 +693,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     {item.type === 'quran' && (
                       <button
                         type="button"
-                        disabled
-                        aria-disabled="true"
-                        aria-label={'التلاوة الصوتية قيد التحقق: ' + item.title}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-stone-400 bg-stone-100 dark:bg-stone-800 cursor-not-allowed opacity-70"
-                        title="لن يُفعّل التشغيل حتى يتم التحقق من مصدر التسجيل ونسبته للقارئ"
+                        onClick={() => toggleItemAudio(item)}
+                        aria-pressed={audioCurrentItemId === item.id && audioIsPlaying}
+                        aria-label={audioCurrentItemId === item.id && audioIsPlaying ? 'إيقاف تلاوة ' + item.title : 'تشغيل تلاوة ' + item.title}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                          audioCurrentItemId === item.id && audioIsPlaying
+                            ? 'bg-emerald-800 text-white'
+                            : 'text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900'
+                        }`}
                       >
-                        <Volume2 className="w-4 h-4" />
-                        <span>الصوت قيد التحقق</span>
+                        {audioCurrentItemId === item.id && audioIsPlaying ? <Pause className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span>{audioCurrentItemId === item.id && audioIsPlaying ? 'إيقاف مؤقت' : 'استمع للآيات'}</span>
                       </button>
                     )}
                   </div>
