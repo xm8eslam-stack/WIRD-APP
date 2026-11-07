@@ -378,7 +378,11 @@ export const PlanLifecycle = {
     );
     const updatedPlan: EngineGeneratedPlan = {
       ...plan,
-      input: { ...plan.input, paceQuantity: pace },
+      input: {
+        ...plan.input,
+        paceQuantity: pace,
+        targetEndDate: newTargetEndDate || plan.input.targetEndDate
+      },
       schedule: newSchedule,
       meta: {
         ...plan.meta,
