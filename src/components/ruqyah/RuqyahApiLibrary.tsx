@@ -3,8 +3,8 @@ import { Loader2, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
 import {
   fetchRuqyahApiData,
   resolveApiQuranEntryText,
-  type RuqyahApiEntry
 } from '../../services/ruqyahApiService';
+import type { RuqyahApiEntry } from '../../services/ruqyahApiService';
 
 type ProgramId = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
 type SourceId = 'from-quran' | 'from-sunnah';
