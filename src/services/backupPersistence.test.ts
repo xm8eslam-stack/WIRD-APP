@@ -75,6 +75,22 @@ export async function runBackupPersistenceTests(): Promise<{ passed: number; fai
     journal.close();
   });
 
+  await test('Legacy version-four backup without Ruqyah field preserves existing progress', async () => {
+    const journal = createJournal();
+    const existing = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 11 } };
+    StorageService.saveRuqyahProgressSnapshot(existing);
+    const backup = JSON.stringify({
+      format: 'wird_backup', version: 4, timestamp: new Date().toISOString(),
+      isEncrypted: false, unencryptedWarning: 'legacy test',
+      profile: CLEAN_INITIAL_PROFILE, plans: [], logs: []
+    });
+    const result = await importBackupJournaled(backup, { journal, runExclusive: inlineLock });
+    assert(result.success, 'A legacy version-four backup must remain importable');
+    assert(JSON.stringify(StorageService.getRuqyahProgressSnapshot()?.counts) === JSON.stringify(existing.counts),
+      'An older backup without the Ruqyah field must not erase current progress');
+    journal.close();
+  });
+
   await test('Reset appends an ordered reset snapshot and clears every active local collection', async () => {
     const journal = createJournal();
     const today = getLocalDateString();
