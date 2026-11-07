@@ -471,6 +471,17 @@ function isValidRevisionLogRecord(value: unknown): boolean {
     (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
 }
 
+function isValidLegacyRevisionLogRecord(value: unknown): boolean {
+  if (!isPlainRecord(value)) return false;
+  return (value.id === undefined || value.id === '' ||
+      (typeof value.id === 'string' && value.id.length <= 160)) &&
+    isValidDateOnly(value.date) &&
+    ['successful', 'difficult', 'failed'].includes(value.rating) &&
+    isIntegerBetween(value.intervalDaysBefore, 0, 100000) &&
+    isIntegerBetween(value.intervalDaysAfter, 0, 100000) &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
 function isValidMemorizationPlan(value: unknown): value is MemorizationPlan {
   if (!isPlainRecord(value)) return false;
   const validTypes = ['whole_quran', 'juz', 'surahs', 'custom'];
@@ -576,8 +587,9 @@ function isValidPortionRecord(value: unknown, requireCanonicalId = false): value
   const repetitionValid = requireCanonicalId
     ? isIntegerBetween(value.repetitionCount, 0, 100000)
     : value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000);
+  const historyValidator = requireCanonicalId ? isValidRevisionLogRecord : isValidLegacyRevisionLogRecord;
   const historyValid = value.history === undefined ||
-    (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(isValidRevisionLogRecord));
+    (Array.isArray(value.history) && value.history.length <= 10000 && value.history.every(historyValidator));
   const auditValid = value.conflictAudit === undefined ||
     (Array.isArray(value.conflictAudit) && value.conflictAudit.length <= 1000 &&
       value.conflictAudit.every((item: unknown) => isPlainRecord(item) &&
@@ -895,6 +907,19 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     }
   }
 
+  if (Array.isArray(payload.unifiedPortions)) {
+    const portionIds = new Set<string>();
+    const portionCoordinates = new Set<string>();
+    for (const portion of payload.unifiedPortions as WirdPortion[]) {
+      const coordinate = portion.surahNumber + ':' + portion.startAyah + ':' + portion.endAyah;
+      if (portionIds.has(portion.id) || portionCoordinates.has(coordinate)) {
+        return { valid: false, error: 'يحتوي أرشيف المقاطع الموحد على معرف أو نطاق قرآني مكرر' };
+      }
+      portionIds.add(portion.id);
+      portionCoordinates.add(coordinate);
+    }
+  }
+
   if (Array.isArray(payload.logs) &&
       new Set(payload.logs.map((log: DailyLog) => log.date)).size !== payload.logs.length) {
     return { valid: false, error: 'يحتوي سجل النشاط اليومي على أكثر من سجل للتاريخ نفسه' };
@@ -1065,7 +1090,7 @@ export const StorageService = {
     return prepared.report.success && prepared.portions ? prepared.portions : [];
   },
 
-  saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false): boolean {
+  saveUnifiedPortions(portions: WirdPortion[], allowRecoveryOverwrite = false, allowMigrationWrite = false): boolean {
     let transactionSnapshot: Map<string, string | null> | null = null;
     const rollback = (reason: string): false => {
       const restored = transactionSnapshot ? restoreRawStorageValues(transactionSnapshot) : false;
@@ -1075,6 +1100,18 @@ export const StorageService = {
 
     try {
       const currentSchemaVersion = getItem(STORAGE_KEYS.SCHEMA_VERSION);
+      if (currentSchemaVersion !== '2' && !allowMigrationWrite) {
+        const unversionedCanonical = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
+        if (unversionedCanonical !== null) {
+          console.error('[WIRD Storage] Refusing to overwrite an unversioned canonical portions archive.');
+          return false;
+        }
+        const migrationState = this.prepareDataMigration();
+        if (!migrationState.report.success || migrationState.needsMigration) {
+          console.error('[WIRD Storage] Refusing a direct canonical write while legacy migration is pending.');
+          return false;
+        }
+      }
       if (currentSchemaVersion === '2' && !allowRecoveryOverwrite) {
         const currentRaw = getItem(STORAGE_KEYS.UNIFIED_PORTIONS);
         if (currentRaw === null) {
@@ -1193,6 +1230,9 @@ export const StorageService = {
         return failure('تعذرت قراءة أرشيف المقاطع الموحد بشكل موثوق؛ لم يتم تنفيذ الترحيل.');
       }
       const hasInvalidCanonicalPayload = currentVersion === '2';
+      if (currentVersion !== '2' && unifiedData !== null) {
+        return failure('يوجد أرشيف موحد دون علامة إصدار موثوقة؛ تم الحفاظ على بايتاته ومنع الترحيل أو الاستبدال التلقائي.');
+      }
 
       if (currentVersion === '2' && unifiedData) {
         try {
@@ -1420,7 +1460,7 @@ export const StorageService = {
       case 'enginePlans':
         return Array.isArray(payload.records) && this.saveEnginePlans(payload.records as EngineGeneratedPlan[]);
       case 'portions':
-        return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[], payload.recoveryFromLegacy === true);
+        return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[], payload.recoveryFromLegacy === true, payload.migration === true);
       case 'weakVerses':
         return Array.isArray(payload.records) && this.saveWeakVerses(payload.records as WeakVerseItem[]);
       case 'tests':
