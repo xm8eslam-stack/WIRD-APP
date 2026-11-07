@@ -325,7 +325,7 @@ export class IndexedDbSyncJournal {
           };
         }
 
-        if (upgradeEvent.oldVersion >= 3 && upgradeEvent.oldVersion < 4) {
+        if (upgradeEvent.oldVersion < 4) {
           // Add delivery revision metadata without changing any existing event or payload.
           const eventRequest = events.getAll();
           const outboxStore = upgradeTransaction.objectStore(STORE_OUTBOX);
