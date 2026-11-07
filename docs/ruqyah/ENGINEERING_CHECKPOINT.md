@@ -1,4 +1,4 @@
-# Current verified continuation — after PR #147; audio restoration under review
+# Current verified continuation — after PR #150 (Quran ayah audio restored)
 
 Last verified: 2026-11-07.
 
@@ -56,17 +56,17 @@ Last verified: 2026-11-07.
 - Regression verifies that the free Al-Fatihah count changes from 0 to 1 with a live label, and the Al-Ikhlas source-defined remaining count changes to 2 of 3 after recording.
 - No Quran text, hadith, fixed repetition values, or source registry changed.
 
-## Quran audio restoration — active PR branch, not yet merged
-- Current branch: `feat/ruqyah-audio-restoration-alqurancloud-20261107`; latest audio implementation commit before checkpoint refresh: `8c6537f249eb519bd9fe3afb185ba29152b6b147`.
-- Main base verified before this branch: `7b8b92dab41b3996483c38b5da9033c7e350fb5e` (PR #148 merge; PR #147 remains recorded below).
-- Replaced the disabled audio catalogue with a static seven-edition Al Quran Cloud allowlist: `ar.husary`, `ar.minshawi`, `ar.abdulbasit`, `ar.sudais`, `ar.shuraim`, `ar.ajamy`, and `ar.alafasy`.
-- Provider terms: recitations are licensed to Al Quran Cloud by reciters or estates; streaming/embedding is permitted for personal and educational use. WIRD limits this to educational ayah-level streaming and does not mirror or bundle files. Terms and CDN docs are recorded in `SUNNI_SOURCE_POLICY.md`.
-- Restored per-ayah and section playlist playback using WIRD's canonical local ayah coordinates. Added pause/resume/stop, seek, volume, reciter selection, cleanup on navigation, no silent source fallback, and no automatic reading-counter increments.
-- Full-program recordings containing supplications remain disabled; no unverified recording URLs were reintroduced.
-- Added unit tests, desktop/mobile Playwright coverage, and a CI live-CDN smoke script checking the first ayah for all seven editions plus the final Alafasy ayah for MPEG content type and byte-range responses.
-- Files changed on this branch: `api/quran-audio.ts`, `src/services/ruqyahAudioService.ts`, `src/components/ruqyah/RuqyahView.tsx`, `src/tests/ruqyahAudioService.test.ts`, `src/tests/ruqyahViewAudioLock.test.ts`, `src/tests/runAllTests.ts`, `e2e/ruqyah-audio.spec.ts`, `scripts/check-ruqyah-audio-source.mjs`, `.github/workflows/ci.yml`, `index.html`, `docs/ruqyah/SUNNI_SOURCE_POLICY.md`, and `docs/ruqyah/RELEASE_CHECKLIST.md`.
-- PR #150 is open. Validation is pending the exact-head PR Quality Gate, including the real external CDN smoke test. No production playback or Vercel deployment is claimed.
-- Acoustic limitation: provider metadata, published terms, and CDN endpoint behavior are documented; CI's representative endpoint checks do not constitute human listening verification of every file.
+## Quran audio restoration — PR #150 merged
+- PR #150: [feat(ruqyah-audio): restore verified Quran ayah playback](https://github.com/xm8eslam-stack/WIRD-APP/pull/150) merged to `main`.
+- Merge commit: `c1e480b94c08df152fb75c797ddc0caeebc148e6`; exact tested PR head: `36fa7642b5027cb70d1bdaf7cd95653be82bcee4`.
+- Exact-head Quality Gate passed, run `42367520935`: 533 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, live CDN checks, TypeScript, production build, server smoke, and 30 desktop/mobile Playwright tests all passed.
+- Audio source: Al Quran Cloud. Recitations are licensed to Al Quran Cloud by reciters or their estates; published terms permit streaming/embedding for personal and educational use. WIRD uses educational ayah-level streaming only and does not mirror or bundle audio.
+- Seven curated reciter choices are mapped to the actual CDN directories and published bitrates: Husary (128), Minshawi (128), Abdul Basit (192), Al-Sudais (192), Al-Shuraim (64), Al-Ajamy (64), and Alafasy (128) kbps. Internal reciter IDs are mapped to the exact CDN folder IDs; arbitrary hosts/IDs are rejected.
+- CI live CDN smoke passed 8/8 samples with HTTP 206, MPEG content type, and byte-range responses, including the final Alafasy ayah.
+- Restored per-ayah and section playlists using WIRD's canonical local Quran ayah map. Added reciter selection, pause/resume/stop, seek, volume, sequential playback, category/navigation/unmount cleanup, no silent source fallback, and no automatic reading-counter increments.
+- Full-program recordings containing supplications remain disabled. IslamicAPI documents those files but its published terms do not establish a clear audio-content licence, and the complete recordings have not passed reciter/content/rights review.
+- Acoustic limitation: CI verifies representative CDN file availability and technical streaming behavior; it does not constitute human listening verification of every ayah recording.
+- Vercel still reports the Free-plan `build-rate-limit` failure on the merge commit. The code is merged, but no production deployment or live-site audio playback is claimed.
 
 ## Branch hygiene
 ### Merged continuation branches
@@ -90,6 +90,7 @@ Last verified: 2026-11-07.
 - PR #145: `a11y/ruqyah-live-progress-announcements-20261107`
 - PR #146: `docs/ruqyah-checkpoint-after-pr145-20261107`
 - PR #147: `docs/ruqyah-complete-branch-hygiene-20261107`
+- PR #150: `feat/ruqyah-audio-restoration-alqurancloud-20261107`
 
 ### Superseded non-PR branches
 - `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` — superseded by the v2 branch after main advanced.
@@ -295,6 +296,6 @@ Phase 8 requires exact-head CI before merge.
 3. Review any pending PR diff and exact-head CI runs before merging.
 4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
 5. Do not expose educational topic endpoints; any future locally curated article must have named Sunni source review, rights review, and source-registry tests before implementation.
-6. Complete and merge the active Al Quran Cloud ayah-audio restoration PR only after exact-head CI, including live CDN range checks, passes. Full-program recordings remain disabled pending separate verification.
+6. PR #150 restored Al Quran Cloud ayah-level streaming and is merged after exact-head Quality Gate and 8/8 live CDN sample checks. Full-program recordings remain disabled pending separate content, reciter, and rights verification.
 7. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
 7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.
