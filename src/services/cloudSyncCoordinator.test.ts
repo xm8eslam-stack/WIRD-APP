@@ -251,18 +251,18 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       serverSequence: 1
     });
     const harness = makeProjectionHarness([event], { pending: ['ruqyahProgress'], empty: [] });
-    let mergedSnapshot: ReturnType<typeof mergeRuqyahProgressSnapshots> | null = null;
+    const mergeResult: { snapshot?: ReturnType<typeof mergeRuqyahProgressSnapshots> } = {};
     harness.dependencies.getLocalRuqyahProgressSnapshot = () => localSnapshot;
     harness.dependencies.finalizeRuqyahProgressMerge = async (intent, applyMergedProjection) => {
       if (intent.sequence !== 1 || intent.eventId !== event.eventId) return false;
-      mergedSnapshot = mergeRuqyahProgressSnapshots(localSnapshot, remoteSnapshot, 5003);
+      mergeResult.snapshot = mergeRuqyahProgressSnapshots(localSnapshot, remoteSnapshot, 5003);
       const replacementEvent = {
         ...event,
         key: 'remote-user:merged-ruqyah-event',
         eventId: 'merged-ruqyah-event',
         mutationId: 'merged-ruqyah-event',
         deviceId: 'local-device',
-        payload: { snapshot: mergedSnapshot },
+        payload: { snapshot: mergeResult.snapshot },
         baseRevision: 1,
         revision: 2,
         serverSequence: 2,
@@ -279,7 +279,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     const result = await projectRemoteInboxBatch(10, harness.dependencies);
     assert(result.projectedCount === 1 && harness.state.cursor === 1 &&
       harness.state.applied === 1 && !harness.state.pending.has('ruqyahProgress') &&
-      mergedSnapshot?.counts[itemId] === 5 &&
+      mergeResult.snapshot?.counts[itemId] === 5 &&
       harness.state.conflicts[0]?.status === 'resolved',
       'Concurrent V2 Ruqyah counters are merged additively and atomically replace stale local pending state');
   } catch (err: any) {
