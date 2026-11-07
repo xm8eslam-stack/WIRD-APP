@@ -1460,7 +1460,7 @@ export const StorageService = {
       case 'enginePlans':
         return Array.isArray(payload.records) && this.saveEnginePlans(payload.records as EngineGeneratedPlan[]);
       case 'portions':
-        return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[], payload.recoveryFromLegacy === true, payload.migration === true);
+        return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[], payload.recoveryFromLegacy === true, payload.migration === true || payload.validatedImport === true);
       case 'weakVerses':
         return Array.isArray(payload.records) && this.saveWeakVerses(payload.records as WeakVerseItem[]);
       case 'tests':
@@ -1883,11 +1883,11 @@ export const StorageService = {
       if (parsed.weakVerses !== undefined) writeAndVerify(STORAGE_KEYS.WEAK_VERSES, parsed.weakVerses);
 
       if (parsed.unifiedPortions !== undefined) {
-        if (!this.saveUnifiedPortions(parsed.unifiedPortions)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
+        if (!this.saveUnifiedPortions(parsed.unifiedPortions, false, true)) throw new Error('فشل حفظ المقاطع القرآنية الموحدة');
         if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(parsed.unifiedPortions)) throw new Error('فشل التحقق من استعادة المقاطع القرآنية الموحدة');
       } else if (parsed.portions !== undefined || parsed.revisionItems !== undefined) {
         const migration = migrateLegacyDataLosslessly(parsed.portions || [], parsed.revisionItems || []);
-        if (!migration.report.success || !this.saveUnifiedPortions(migration.portions)) throw new Error(migration.report.error || 'تعذر ترحيل المقاطع من النسخة الاحتياطية القديمة');
+        if (!migration.report.success || !this.saveUnifiedPortions(migration.portions, false, true)) throw new Error(migration.report.error || 'تعذر ترحيل المقاطع من النسخة الاحتياطية القديمة');
         if (JSON.stringify(this.getUnifiedPortions()) !== JSON.stringify(migration.portions)) throw new Error('فشل التحقق من بيانات المقاطع بعد الترحيل');
       }
 
