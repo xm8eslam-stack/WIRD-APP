@@ -36,12 +36,14 @@ const CATEGORY_TABS: { id: RuqyahCategory; label: string; iconName: string; dura
 ];
 
 export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
+  const currentStorageScope = StorageService.getStorageScope();
   const [activeCategory, setActiveCategory] = useState<RuqyahCategory>('brief');
   const [viewMode, setViewMode] = useState<'interactive' | 'audio_stream' | 'api_library'>('interactive');
   
   // Counter states per item (itemId -> current count)
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [progressHydrated, setProgressHydrated] = useState(false);
+  const [progressScope, setProgressScope] = useState(currentStorageScope);
   const [progressCorrupt, setProgressCorrupt] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
 
@@ -67,7 +69,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const audioStreamRef = useRef<HTMLAudioElement | null>(null);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
-  const currentStorageScope = StorageService.getStorageScope();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -95,17 +96,18 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     } else {
       setCounts(saved.counts);
     }
+    setProgressScope(currentStorageScope);
     setProgressHydrated(true);
   }, [currentStorageScope]);
 
   useEffect(() => {
-    if (!progressHydrated || progressCorrupt) return;
+    if (!progressHydrated || progressCorrupt || progressScope !== currentStorageScope) return;
     try {
       saveRuqyahProgress(counts);
     } catch {
       if (onToast) onToast('تعذر حفظ تقدم الرقية على هذا الجهاز.', 'error');
     }
-  }, [counts, progressHydrated, progressCorrupt, onToast]);
+  }, [counts, progressHydrated, progressCorrupt, progressScope, currentStorageScope, onToast]);
 
   const handleRecoverProgress = () => {
     try {
