@@ -16,6 +16,14 @@
       "destination": "/api/advisor"
     },
     {
+      "source": "/api/tafsir/(.*)",
+      "destination": "/api/tafsir"
+    },
+    {
+      "source": "/api/tafsir",
+      "destination": "/api/tafsir"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

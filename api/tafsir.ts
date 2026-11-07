@@ -99,6 +99,15 @@ function isRateLimited(ip: string): boolean {
   return current.count > RATE_LIMIT_MAX;
 }
 
+function createTimeoutSignal(timeoutMs: number): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), timeoutMs);
+  return controller.signal;
+}
+
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -111,30 +120,30 @@ export default async function handler(req: any, res: any) {
     return send(res, 405, { error: 'METHOD_NOT_ALLOWED' });
   }
 
-  const query = req.query || {};
-  const surahNumber = Number(Array.isArray(query.surah) ? query.surah[0] : query.surah);
-  const ayahNumber = Number(Array.isArray(query.ayah) ? query.ayah[0] : query.ayah);
-  const rawBook = query.book || query.tafsir_id;
-  const requestedBookId = Number(Array.isArray(rawBook) ? rawBook[0] : rawBook);
-
-  const bookId = Number.isInteger(requestedBookId) && SUPPORTED_TAFSIR_BOOKS[requestedBookId]
-    ? requestedBookId
-    : DEFAULT_BOOK_ID;
-
-  const bookMeta = SUPPORTED_TAFSIR_BOOKS[bookId];
-
-  const surahMeta = ALL_SURAHS.find(surah => surah.number === surahNumber);
-  if (!surahMeta || !Number.isInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > surahMeta.versesCount) {
-    return send(res, 400, { error: 'INVALID_QURAN_COORDINATES' });
-  }
-
-  const clientIp = getClientIp(req);
-  if (isRateLimited(clientIp)) {
-    res.setHeader('Retry-After', '60');
-    return send(res, 429, { error: 'RATE_LIMITED' });
-  }
-
   try {
+    const query = req.query || {};
+    const surahNumber = Number(Array.isArray(query.surah) ? query.surah[0] : query.surah);
+    const ayahNumber = Number(Array.isArray(query.ayah) ? query.ayah[0] : query.ayah);
+    const rawBook = query.book || query.tafsir_id;
+    const requestedBookId = Number(Array.isArray(rawBook) ? rawBook[0] : rawBook);
+
+    const bookId = Number.isInteger(requestedBookId) && SUPPORTED_TAFSIR_BOOKS[requestedBookId]
+      ? requestedBookId
+      : DEFAULT_BOOK_ID;
+
+    const bookMeta = SUPPORTED_TAFSIR_BOOKS[bookId];
+
+    const surahMeta = ALL_SURAHS.find(surah => surah.number === surahNumber);
+    if (!surahMeta || !Number.isInteger(ayahNumber) || ayahNumber < 1 || ayahNumber > surahMeta.versesCount) {
+      return send(res, 400, { error: 'INVALID_QURAN_COORDINATES' });
+    }
+
+    const clientIp = getClientIp(req);
+    if (isRateLimited(clientIp)) {
+      res.setHeader('Retry-After', '60');
+      return send(res, 429, { error: 'RATE_LIMITED' });
+    }
+
     let content: Array<{ text: string; part?: number; page?: number; ayahs?: string }> = [];
 
     if (bookMeta.source === 'qurancom') {
@@ -143,7 +152,7 @@ export default async function handler(req: any, res: any) {
       const upstream = await fetch(url, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000)
+        signal: createTimeoutSignal(10_000)
       });
       if (!upstream.ok) {
         res.setHeader('Cache-Control', 'no-store');
@@ -168,7 +177,7 @@ export default async function handler(req: any, res: any) {
       const upstream = await fetch(url, {
         method: 'GET',
         headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(10_000)
+        signal: createTimeoutSignal(10_000)
       });
       if (!upstream.ok) {
         res.setHeader('Cache-Control', 'no-store');
@@ -215,7 +224,7 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Cache-Control', 'no-store');
     return send(res, 502, {
       error: 'TAFSIR_SOURCE_ERROR',
-      message: error?.name === 'TimeoutError' ? 'SOURCE_TIMEOUT' : 'SOURCE_ERROR'
+      message: error?.message || 'UNEXPECTED_SERVER_ERROR'
     });
   }
 }

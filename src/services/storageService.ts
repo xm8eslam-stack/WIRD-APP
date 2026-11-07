@@ -380,12 +380,17 @@ function readJsonArrayArchive<T>(key: string, label: string, isValidRecord: (val
   if (raw === null) return [];
   try {
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length > 10000 || !parsed.every(isValidRecord)) {
-      throw new Error('Archive contains malformed records.');
+    if (!Array.isArray(parsed) || parsed.length > 10000) {
+      console.warn('[WIRD Storage] ' + label + ' archive needs recovery; preserving original bytes.');
+      return [];
     }
-    return parsed as T[];
-  } catch (error) {
-    console.error('[WIRD Storage] ' + label + ' archive needs recovery; preserving original bytes:', error);
+    const valid = parsed.filter(isValidRecord);
+    if (valid.length < parsed.length) {
+      console.warn('[WIRD Storage] ' + label + ' archive contains malformed records; filtered ' + (parsed.length - valid.length) + ' invalid records while preserving raw storage bytes.');
+    }
+    return valid;
+  } catch {
+    console.warn('[WIRD Storage] ' + label + ' archive needs recovery; preserving original bytes.');
     return [];
   }
 }

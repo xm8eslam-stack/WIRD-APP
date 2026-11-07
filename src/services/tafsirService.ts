@@ -74,8 +74,53 @@ function writeCachedTafsir(key: string, text: string): void {
   } catch { /* Keep the in-memory result even if persistent cache quota is exhausted. */ }
 }
 
+async function fetchDirectUpstreamTafsir(
+  surahNumber: number,
+  ayahNumber: number,
+  bookId: number,
+  signal?: AbortSignal
+): Promise<string> {
+  const isQuranpedia = bookId === LEGACY_TAFSIR_BOOK_ID;
+  const directUrl = isQuranpedia
+    ? `https://api.quranpedia.net/v1/ayah/${surahNumber}/${ayahNumber}/book/${bookId}`
+    : `https://api.quran.com/api/v4/tafsirs/${bookId}/by_ayah/${surahNumber}:${ayahNumber}`;
+
+  const res = await fetch(directUrl, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal
+  });
+
+  if (!res.ok) {
+    throw new Error(`Direct upstream returned HTTP ${res.status}`);
+  }
+
+  const rawText = await res.text();
+  if (rawText.trim().startsWith('<')) {
+    throw new Error('Upstream returned HTML instead of JSON');
+  }
+
+  const data = JSON.parse(rawText);
+
+  if (isQuranpedia) {
+    if (data?.content && Array.isArray(data.content)) {
+      const text = data.content
+        .map((part: any) => typeof part?.text === 'string' ? part.text.trim() : '')
+        .filter((part: string) => part.length > 0)
+        .join('\n\n');
+      if (text) return text;
+    }
+  } else {
+    if (data?.tafsir?.text && typeof data.tafsir.text === 'string' && data.tafsir.text.trim()) {
+      return data.tafsir.text.trim();
+    }
+  }
+
+  throw new Error('No valid tafsir text in direct upstream response');
+}
+
 /**
- * Universal Tafsir fetcher supporting multiple editions from Quran.com API v4
+ * Universal Tafsir fetcher supporting multiple editions with resilient direct client fallback
  */
 export async function getTafsir(
   surahNumber: number,
@@ -108,7 +153,8 @@ export async function getTafsir(
   }
 
   const url = `${API_BASE}?surah=${surahNumber}&ayah=${ayahNumber}&book=${bookId}`;
-  let response: Response;
+  let response: Response | null = null;
+
   try {
     response = await fetch(url, {
       method: 'GET',
@@ -117,63 +163,109 @@ export async function getTafsir(
     });
   } catch (error) {
     if (signal?.aborted || (error instanceof Error && error.name === 'AbortError')) throw error;
+  }
+
+  if (response) {
+    let responseText = '';
+    try {
+      responseText = await response.text();
+    } catch {
+      throw new Error('تعذر قراءة استجابة خادم التفسير.');
+    }
+
+    const trimmedResponse = responseText.trim();
+    const contentType = response.headers.get('content-type') || '';
+
+    if (trimmedResponse.startsWith('<') || /text\/html/i.test(contentType)) {
+      try {
+        const directText = await fetchDirectUpstreamTafsir(surahNumber, ayahNumber, bookId, signal);
+        writeCachedTafsir(key, directText);
+        return {
+          text: directText,
+          source: 'network',
+          bookName: editionInfo.name,
+          bookId: editionInfo.id,
+          author: editionInfo.author
+        };
+      } catch {
+        throw new Error(
+          'خدمة التفسير أعادت صفحة HTML بدل بيانات JSON؛ غالباً مسار API غير متاح في النشر الحالي. لم يتم عرض محتوى بديل.'
+        );
+      }
+    }
+
+    if (!response.ok) {
+      try {
+        const directText = await fetchDirectUpstreamTafsir(surahNumber, ayahNumber, bookId, signal);
+        writeCachedTafsir(key, directText);
+        return {
+          text: directText,
+          source: 'network',
+          bookName: editionInfo.name,
+          bookId: editionInfo.id,
+          author: editionInfo.author
+        };
+      } catch {
+        throw new Error('تعذر جلب التفسير (HTTP ' + response.status + ').');
+      }
+    }
+
+    if (!/\bapplication\/(?:[a-z0-9.+-]*\+)?json\b/i.test(contentType)) {
+      throw new Error('استجابة خادم التفسير ليست بصيغة JSON صالحة؛ لم يتم عرض محتوى بديل.');
+    }
+
+    let payload: unknown;
+    try {
+      payload = trimmedResponse ? JSON.parse(trimmedResponse) as unknown : null;
+    } catch {
+      throw new Error('تعذر قراءة بيانات التفسير؛ أعاد الخادم JSON غير صالح.');
+    }
+
+    const payloadRecord = isRecord(payload) ? payload : null;
+    const bookRecord = payloadRecord && isRecord(payloadRecord.book) ? payloadRecord.book : null;
+    const contentParts: unknown[] = payloadRecord && Array.isArray(payloadRecord.content)
+      ? payloadRecord.content
+      : [];
+    const responseBookId = bookRecord?.id;
+    const validBook = responseBookId === bookId ||
+      (bookId === LEGACY_TAFSIR_BOOK_ID && (responseBookId === LEGACY_TAFSIR_BOOK_ID || responseBookId === 16)) ||
+      (bookId === 16 && (responseBookId === 16 || responseBookId === LEGACY_TAFSIR_BOOK_ID));
+
+    if (!validBook || !Array.isArray(payloadRecord?.content)) {
+      throw new Error('استجابة مصدر التفسير غير مطابقة للبنية المتوقعة.');
+    }
+
+    const tafsirText = contentParts
+      .map(part => isRecord(part) && typeof part.text === 'string' ? part.text.trim() : '')
+      .filter(part => part.length > 0)
+      .join('\n\n');
+
+    if (!tafsirText) throw new Error('لا يتوفر نص تفسير لهذه الآية في المصدر الحالي.');
+
+    writeCachedTafsir(key, tafsirText);
+    return {
+      text: tafsirText,
+      source: 'network',
+      bookName: typeof bookRecord?.name === 'string' ? bookRecord.name : editionInfo.name,
+      bookId: typeof responseBookId === 'number' ? responseBookId : editionInfo.id,
+      author: typeof bookRecord?.author === 'string' ? bookRecord.author : editionInfo.author
+    };
+  }
+
+  // Network error on /api/tafsir -> Try direct client fallback
+  try {
+    const directText = await fetchDirectUpstreamTafsir(surahNumber, ayahNumber, bookId, signal);
+    writeCachedTafsir(key, directText);
+    return {
+      text: directText,
+      source: 'network',
+      bookName: editionInfo.name,
+      bookId: editionInfo.id,
+      author: editionInfo.author
+    };
+  } catch {
     throw new Error('تعذر الاتصال بخادم التفسير. تحقق من اتصال الإنترنت ثم أعد المحاولة.');
   }
-
-  let responseText: string;
-  try {
-    responseText = await response.text();
-  } catch {
-    throw new Error('تعذر قراءة استجابة خادم التفسير.');
-  }
-  const trimmedResponse = responseText.trim();
-  const contentType = response.headers.get('content-type') || '';
-  if (trimmedResponse.startsWith('<') || /text\/html/i.test(contentType)) {
-    throw new Error(
-      'خدمة التفسير أعادت صفحة HTML بدل بيانات JSON؛ غالباً مسار API غير متاح في النشر الحالي. لم يتم عرض محتوى بديل.'
-    );
-  }
-  if (!response.ok) {
-    throw new Error('تعذر جلب التفسير (HTTP ' + response.status + ').');
-  }
-  if (!/\bapplication\/(?:[a-z0-9.+-]*\+)?json\b/i.test(contentType)) {
-    throw new Error('استجابة خادم التفسير ليست بصيغة JSON صالحة؛ لم يتم عرض محتوى بديل.');
-  }
-
-  let payload: unknown;
-  try {
-    payload = trimmedResponse ? JSON.parse(trimmedResponse) as unknown : null;
-  } catch {
-    throw new Error('تعذر قراءة بيانات التفسير؛ أعاد الخادم JSON غير صالح.');
-  }
-  const payloadRecord = isRecord(payload) ? payload : null;
-  const bookRecord = payloadRecord && isRecord(payloadRecord.book) ? payloadRecord.book : null;
-  const contentParts: unknown[] = payloadRecord && Array.isArray(payloadRecord.content)
-    ? payloadRecord.content
-    : [];
-  const responseBookId = bookRecord?.id;
-  const validBook = responseBookId === bookId ||
-    (bookId === LEGACY_TAFSIR_BOOK_ID && (responseBookId === LEGACY_TAFSIR_BOOK_ID || responseBookId === 16)) ||
-    (bookId === 16 && (responseBookId === 16 || responseBookId === LEGACY_TAFSIR_BOOK_ID));
-
-  if (!validBook || !Array.isArray(payloadRecord?.content)) {
-    throw new Error('استجابة مصدر التفسير غير مطابقة للبنية المتوقعة.');
-  }
-
-  const tafsirText = contentParts
-    .map(part => isRecord(part) && typeof part.text === 'string' ? part.text.trim() : '')
-    .filter(part => part.length > 0)
-    .join('\n\n');
-  if (!tafsirText) throw new Error('لا يتوفر نص تفسير لهذه الآية في المصدر الحالي.');
-
-  writeCachedTafsir(key, tafsirText);
-  return {
-    text: tafsirText,
-    source: 'network',
-    bookName: typeof bookRecord?.name === 'string' ? bookRecord.name : editionInfo.name,
-    bookId: typeof responseBookId === 'number' ? responseBookId : editionInfo.id,
-    author: typeof bookRecord?.author === 'string' ? bookRecord.author : editionInfo.author
-  };
 }
 
 /**
