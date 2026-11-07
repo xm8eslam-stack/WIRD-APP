@@ -209,17 +209,36 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.importRemotePage([event]);
       const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
       const localSnapshot = { wird_plans: JSON.stringify([{ id: 'local-plan' }]) };
+      await journal.enqueue({
+        mutationId: 'local-conflict-mutation-1',
+        collection: 'plans',
+        documentId: 'snapshot',
+        payload: { records: [{ id: 'local-plan', title: 'local pending intent' }] },
+        nowMs: 9050
+      });
       assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9100),
         'A blocked remote event and its local snapshot must be archived');
       const first = await journal.listProjectionConflicts(10);
       assert(first.length === 1 && first[0].event.payload.records !== undefined &&
         first[0].localSnapshot.wird_plans === localSnapshot.wird_plans &&
+        first[0].localMutations?.length === 1 &&
+        first[0].localMutations[0].mutationId === 'local-conflict-mutation-1' &&
+        first[0].localMutations[0].payload.records[0].title === 'local pending intent' &&
         await journal.getProjectionConflictCount() === 1,
-        'The archive must preserve the remote payload and exact local storage bytes');
+        'The archive must preserve remote payload, raw local bytes, and the exact pending local mutation');
+      await journal.enqueue({
+        mutationId: 'local-conflict-mutation-2',
+        collection: 'plans',
+        documentId: 'snapshot',
+        payload: { records: [{ id: 'local-plan', title: 'second local intent' }] },
+        nowMs: 9150
+      });
       await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', { wird_plans: 'changed-later' }, 9200);
       const repeated = await journal.listProjectionConflicts(10);
-      assert(repeated.length === 1 && repeated[0].localSnapshot.wird_plans === localSnapshot.wird_plans,
-        'Repeated observations update the reason/time but never replace the original conflict snapshot');
+      assert(repeated.length === 1 && repeated[0].localSnapshot.wird_plans === localSnapshot.wird_plans &&
+        repeated[0].localMutations?.length === 2 &&
+        repeated[0].localMutations[1].mutationId === 'local-conflict-mutation-2',
+        'Repeated observations preserve the first raw snapshot and append new pending mutation evidence without duplicates');
       let identityRejected = false;
       try {
         await journal.saveProjectionConflict({
@@ -303,10 +322,17 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       };
       await journal.importRemotePage([event]);
       const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      await journal.enqueue({
+        mutationId: 'large-conflict-pending-mutation',
+        collection: 'plans',
+        documentId: 'plan-large-snapshot',
+        payload: { content: 'y'.repeat(30_000) },
+        nowMs: 8990
+      });
       let rejected = false;
       try {
         await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
-          plans: 'x'.repeat(500_100)
+          plans: 'x'.repeat(480_000)
         }, 8991);
       } catch { rejected = true; }
       assert(rejected, 'Oversized local snapshots must be rejected');
