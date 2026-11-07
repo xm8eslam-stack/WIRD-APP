@@ -1,4 +1,4 @@
-import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus } from './cloudSyncCoordinator';
+import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus, LEGACY_REMOTE_STATE_COLLECTIONS } from './cloudSyncCoordinator';
 import { StorageService } from './storageService';
 import type { SuiteResult } from '../tests/runAllTests';
 import { decideRemoteProjection, projectRemoteInboxBatch, type RemoteProjectionDependencies } from './remoteInboxProjector';
@@ -31,7 +31,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   // Every private revisioned collection must participate in legacy first-sync detection.
   // Ruqyah progress was added after the original collection scan and must not be skipped.
   assert(
-    (await import('./cloudSyncCoordinator')).LEGACY_REMOTE_STATE_COLLECTIONS.includes('ruqyahProgress'),
+    LEGACY_REMOTE_STATE_COLLECTIONS.includes('ruqyahProgress'),
     'Ruqyah progress participates in the legacy remote-state first-sync scan'
   );
 
