@@ -1548,19 +1548,33 @@ export class IndexedDbSyncJournal {
 
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readwrite');
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        'readwrite'
+      );
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
       const key = uid + ':' + event.eventId;
+      const metadataRequest = metadataStore.get(uid);
+      const inboxRequest = inbox.index('uidServerSequence').get([uid, event.serverSequence]);
       const existingRequest = store.get(key);
       const recordsRequest = store.index('uid').getAll(IDBKeyRange.only(uid));
+      let metadata: DeviceMetadata | undefined;
+      let inboxEvent: RemoteInboxEvent | undefined;
       let existing: RemoteProjectionConflict | undefined;
       let records: RemoteProjectionConflict[] = [];
-      let readsRemaining = 2;
+      let readsRemaining = 4;
       let saved = false;
       let failure: Error | undefined;
       const finishRead = () => {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
+        if (!metadata) {
+          failure = new Error('تعذر العثور على بيانات المزامنة المحلية لحفظ التعارض.');
+          transaction.abort();
+          return;
+        }
         if (existing && (
           existing.event.eventId !== event.eventId ||
           existing.event.fingerprint !== event.fingerprint ||
@@ -1571,6 +1585,30 @@ export class IndexedDbSyncJournal {
           existing.event.mutationId !== event.mutationId
         )) {
           failure = new Error('هوية حدث التعارض لا تطابق السجل المحفوظ؛ رفضنا استبدال دليل التعافي.');
+          transaction.abort();
+          return;
+        }
+        const cursor = metadata.remoteProjectionCursor ?? 0;
+        if (cursor >= event.serverSequence) {
+          if (existing?.status === 'open') {
+            store.put({
+              ...existing,
+              status: 'resolved',
+              resolution: 'reconciled',
+              resolvedAtMs: nowMs,
+              updatedAtMs: nowMs
+            } satisfies RemoteProjectionConflict);
+          }
+          saved = true;
+          return;
+        }
+        if (!inboxEvent || inboxEvent.eventId !== event.eventId ||
+            inboxEvent.fingerprint !== event.fingerprint ||
+            inboxEvent.serverSequence !== event.serverSequence ||
+            inboxEvent.revision !== event.revision ||
+            inboxEvent.collection !== event.collection ||
+            inboxEvent.documentId !== event.documentId) {
+          failure = new Error('الحدث لم يعد موجودًا في صندوق الاستقبال؛ رفضنا إنشاء تعارض يتيم.');
           transaction.abort();
           return;
         }
@@ -1609,6 +1647,14 @@ export class IndexedDbSyncJournal {
         }
         store.put(record);
         saved = true;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finishRead();
+      };
+      inboxRequest.onsuccess = () => {
+        inboxEvent = inboxRequest.result as RemoteInboxEvent | undefined;
+        finishRead();
       };
       existingRequest.onsuccess = () => {
         existing = existingRequest.result as RemoteProjectionConflict | undefined;
