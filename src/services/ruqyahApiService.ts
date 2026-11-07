@@ -92,7 +92,15 @@ export async function fetchRuqyahApiData<T = unknown>(
  * The proxy sends only a normalized numeric locator. Resolve every locator
  * against WIRD's canonical Mushaf metadata and verified Quran text.
  */
-export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQuranEntry {
+interface ValidatedApiQuranLocator {
+  id: number | string;
+  surahNumber: number;
+  surahName: string;
+  startAyah: number;
+  endAyah: number;
+}
+
+function resolveApiQuranLocator(entry: RuqyahApiEntry): ValidatedApiQuranLocator {
   const validId = typeof entry?.id === 'number'
     ? Number.isSafeInteger(entry.id) && entry.id > 0 && entry.id <= MAX_EXTERNAL_INDEX_ID
     : typeof entry?.id === 'string' && /^[1-9][0-9]{0,8}$/.test(entry.id);
@@ -114,28 +122,31 @@ export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQu
       startAyah < 1 || endAyah < startAyah || endAyah > surah.versesCount) {
     throw new Error('موضع الآيات في الفهرس الخارجي خارج حدود المصحف المعتمد.');
   }
+  return { id: entry.id, surahNumber, surahName: surah.name, startAyah, endAyah };
+}
+
+/**
+ * The proxy sends only a normalized numeric locator. Resolve it against
+ * WIRD's canonical Mushaf metadata and verified Quran text.
+ */
+export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQuranEntry {
+  const locator = resolveApiQuranLocator(entry);
   const item: RuqyahItem = {
-    id: 'external-ruqyah-' + String(entry.id),
+    id: 'external-ruqyah-' + String(locator.id),
     categories: ['brief'],
     type: 'quran',
     title: 'موضع قرآني من الفهرس',
-    surahNumber,
-    surahName: surah.name,
-    verseRange: startAyah === endAyah ? String(startAyah) : startAyah + '-' + endAyah,
+    surahNumber: locator.surahNumber,
+    surahName: locator.surahName,
+    verseRange: locator.startAyah === locator.endAyah
+      ? String(locator.startAyah)
+      : locator.startAyah + '-' + locator.endAyah,
     text: '',
     repeatTarget: null,
     source: 'WIRD canonical Quran corpus'
   };
-  return {
-    id: entry.id,
-    surahNumber,
-    surahName: surah.name,
-    startAyah,
-    endAyah,
-    text: getRuqyahDisplayText(item)
-  };
+  return { ...locator, text: getRuqyahDisplayText(item) };
 }
-
 
 /** Match only canonical WIRD surah metadata and verse coordinates, never provider-authored titles. */
 export function matchesApiQuranEntry(entry: RuqyahApiEntry, query: string): boolean {
@@ -147,16 +158,16 @@ export function matchesApiQuranEntry(entry: RuqyahApiEntry, query: string): bool
   if (!normalizedQuery) return true;
 
   try {
-    const resolved = resolveApiQuranEntry(entry);
+    const locator = resolveApiQuranLocator(entry);
     const canonicalIndex = [
-      resolved.surahName,
-      resolved.surahName + ' ' + resolved.surahNumber + ':' + resolved.startAyah + '-' + resolved.endAyah,
-      String(resolved.surahNumber),
-      String(resolved.startAyah),
-      String(resolved.endAyah),
-      resolved.surahNumber + ':' + resolved.startAyah,
-      resolved.surahNumber + ':' + resolved.startAyah + '-' + resolved.endAyah,
-      resolved.surahNumber + ' ' + resolved.startAyah + ' ' + resolved.endAyah
+      locator.surahName,
+      locator.surahName + ' ' + locator.surahNumber + ':' + locator.startAyah + '-' + locator.endAyah,
+      String(locator.surahNumber),
+      String(locator.startAyah),
+      String(locator.endAyah),
+      locator.surahNumber + ':' + locator.startAyah,
+      locator.surahNumber + ':' + locator.startAyah + '-' + locator.endAyah,
+      locator.surahNumber + ' ' + locator.startAyah + ' ' + locator.endAyah
     ].join(' ').toLocaleLowerCase();
     return canonicalIndex.includes(normalizedQuery);
   } catch {
