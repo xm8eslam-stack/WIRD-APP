@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
@@ -44,6 +44,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [progressCorrupt, setProgressCorrupt] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const resetTriggerRef = useRef<HTMLButtonElement>(null);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
@@ -154,6 +155,11 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     }
   };
 
+  const closeResetConfirmation = () => {
+    setShowResetConfirmation(false);
+    resetTriggerRef.current?.focus();
+  };
+
   // Reset counters for current active category
   const handleResetCategoryCounts = () => {
     if (!progressHydrated || progressCorrupt) return;
@@ -163,7 +169,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     });
     setCounts(updated);
     setProgressDirty(true);
-    setShowResetConfirmation(false);
+    closeResetConfirmation();
     if (onToast) onToast('تم إعادة ضبط العدادات لهذه القائمة.', 'info');
   };
 
@@ -324,6 +330,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
                 <button
                   type="button"
+                  ref={resetTriggerRef}
                   onClick={() => setShowResetConfirmation(true)}
                   disabled={!progressHydrated || progressCorrupt}
                   aria-expanded={showResetConfirmation}
@@ -339,13 +346,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           )}
 
           {showResetConfirmation && (
-            <div id="ruqyah-reset-confirmation" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
+            <div id="ruqyah-reset-confirmation" onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeResetConfirmation(); } }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-300/70 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4" role="group" aria-labelledby="ruqyah-reset-confirmation-title" aria-describedby="ruqyah-reset-confirmation-description" aria-live="polite">
               <div className="min-w-0">
                 <p id="ruqyah-reset-confirmation-title" className="text-sm font-bold text-amber-950 dark:text-amber-100">تأكيد إعادة ضبط القسم</p>
                 <p id="ruqyah-reset-confirmation-description" className="mt-1 text-xs leading-relaxed text-amber-900 dark:text-amber-200">سيتم تصفير عدادات هذا القسم فقط. لن تتغير نصوص القرآن أو الأدعية أو بيانات الأقسام الأخرى.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <button type="button" onClick={() => setShowResetConfirmation(false)} className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">إلغاء</button>
+                <button type="button" onClick={closeResetConfirmation} className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">إلغاء</button>
                 <button type="button" onClick={handleResetCategoryCounts} disabled={!progressHydrated || progressCorrupt} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">تأكيد إعادة الضبط</button>
               </div>
             </div>
