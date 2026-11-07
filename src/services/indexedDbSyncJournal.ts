@@ -1421,6 +1421,7 @@ export class IndexedDbSyncJournal {
           currentIntent.collection === intent.collection &&
           currentIntent.documentId === intent.documentId &&
           currentIntent.revision === intent.revision &&
+          Array.isArray(currentIntent.initializedCollections) &&
           currentIntent.initializedCollections.length === intent.initializedCollections.length &&
           currentIntent.initializedCollections.every((collection, index) =>
             collection === intent.initializedCollections[index]
@@ -1431,6 +1432,7 @@ export class IndexedDbSyncJournal {
             event.collection !== 'ruqyahProgress' ||
             event.documentId !== 'snapshot' ||
             event.revision !== intent.revision ||
+            !Number.isSafeInteger(event.baseRevision) || event.baseRevision + 1 !== event.revision ||
             event.operation !== 'upsert' ||
             !isRecord(event.payload) ||
             !isValidRuqyahProgressSnapshotV2(event.payload.snapshot) ||
@@ -1508,7 +1510,10 @@ export class IndexedDbSyncJournal {
         const revisionKey = 'ruqyahProgress:snapshot';
         const remoteRevisions = { ...(metadata.remoteRevisions || {}) };
         const previousRevision = remoteRevisions[revisionKey];
-        if ((previousRevision && previousRevision.revision > event.revision) ||
+        if ((previousRevision && (
+              !Number.isSafeInteger(previousRevision.revision) || previousRevision.revision < 0 ||
+              previousRevision.revision > event.revision
+            )) ||
             (!previousRevision && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS)) {
           failure = new Error('إصدار الرقية المحلي أحدث من الحدث السحابي أو تجاوز سجل الإصدارات سعته.');
           transaction.abort();
