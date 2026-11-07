@@ -108,7 +108,7 @@ export async function persistJournaledSnapshot(
       const previousReplay = await replayJournalProjection(journal, inlineProjectionLock);
       assertExpectedScope();
       preflightPassed = true;
-      if (previousReplay.applied > 0) {
+      if (previousReplay.applied > 0 || previousReplay.recoveredAlreadyProjected > 0) {
         recoveredPriorEvents = true;
         return 'recovered-prior-events' as const;
       }
