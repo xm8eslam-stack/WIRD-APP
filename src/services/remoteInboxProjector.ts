@@ -13,6 +13,7 @@ export interface RemoteProjectionState {
   cachedRevision: number | null;
   hasPendingLocalMutation: boolean;
   localProjectionEmpty: boolean;
+  remoteCollectionInitialized: boolean;
 }
 
 /** Pure conflict gate: never replace unknown local state or a pending local mutation. */
@@ -28,7 +29,8 @@ export function decideRemoteProjection(
   if (state.cachedRevision !== null && state.cachedRevision === event.baseRevision) {
     return 'apply';
   }
-  if (state.cachedRevision === null && event.baseRevision === 0 && state.localProjectionEmpty) {
+  if (state.cachedRevision === null && event.baseRevision === 0 &&
+      (state.localProjectionEmpty || state.remoteCollectionInitialized)) {
     return 'apply';
   }
   return 'blocked_base_revision';
@@ -59,10 +61,30 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       remoteEvent.collection,
       remoteEvent.documentId
     );
+    const remoteCollectionInitialized = await LocalSyncOutbox.isRemoteCollectionInitialized(remoteEvent.collection);
+    let localProjectionEmpty = StorageService.isLocalProjectionEmpty(remoteEvent.collection);
+    let transactionCollections: string[] = [];
+    if (remoteEvent.collection === 'syncMeta' && remoteEvent.payload.transaction &&
+        typeof remoteEvent.payload.transaction === 'object' &&
+        Array.isArray((remoteEvent.payload.transaction as { operations?: unknown }).operations)) {
+      const operations = (remoteEvent.payload.transaction as { operations: Array<{ collection?: unknown }> }).operations;
+      transactionCollections = operations
+        .map(operation => operation.collection)
+        .filter((value): value is string => typeof value === 'string');
+      localProjectionEmpty = true;
+      for (const collectionName of transactionCollections) {
+        const initialized = await LocalSyncOutbox.isRemoteCollectionInitialized(collectionName as RemoteInboxEvent['collection']);
+        if (!StorageService.isLocalProjectionEmpty(collectionName as RemoteInboxEvent['collection']) && !initialized) {
+          localProjectionEmpty = false;
+          break;
+        }
+      }
+    }
     const decision = decideRemoteProjection(remoteEvent, {
       cachedRevision: cached?.revision ?? null,
       hasPendingLocalMutation,
-      localProjectionEmpty: StorageService.isLocalProjectionEmpty(remoteEvent.collection)
+      localProjectionEmpty,
+      remoteCollectionInitialized
     });
 
     if (decision === 'already_applied') {
@@ -125,6 +147,11 @@ export async function projectRemoteInboxBatch(limit: number = 100): Promise<Remo
       }
     }
 
+    if (remoteEvent.collection === 'syncMeta') {
+      for (const collectionName of transactionCollections) {
+        await LocalSyncOutbox.markRemoteCollectionInitialized(collectionName as RemoteInboxEvent['collection']);
+      }
+    }
     await LocalSyncOutbox.markRemoteProjected(remoteEvent.serverSequence);
     projectedCount++;
   }
