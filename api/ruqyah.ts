@@ -82,7 +82,16 @@ function validPayload(type: string, payload: unknown): boolean {
   )) return false;
 
   if (isCategory && rows.some(row =>
-    typeof row.title !== 'string' || !Array.isArray(row.subcategories)
+    typeof row.title !== 'string' || !row.title.trim() ||
+    !Array.isArray(row.subcategories) || row.subcategories.length > 10 ||
+    row.subcategories.some(subcategory => !isRecord(subcategory) ||
+      typeof subcategory.subcategory !== 'string' ||
+      typeof subcategory['subcategory-slug'] !== 'string' ||
+      !Array.isArray(subcategory.ruqyah) || subcategory.ruqyah.length > 300 ||
+      subcategory.ruqyah.some(entry => !isRecord(entry) ||
+        (typeof entry.id !== 'string' && typeof entry.id !== 'number') ||
+        typeof entry.title !== 'string' || !entry.title.trim())
+    )
   )) return false;
 
   return true;
