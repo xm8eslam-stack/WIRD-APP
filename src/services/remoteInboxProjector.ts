@@ -23,7 +23,7 @@ export interface RemoteProjectionState {
   remoteCollectionInitialized?: boolean;
 }
 
-/** Pure conflict gate: never replace unknown local state or a pending local mutation. */
+/** Generic conflict gate; V2 Ruqyah counters use a dedicated convergent merge path below. */
 export function decideRemoteProjection(
   event: Pick<RemoteInboxEvent, 'baseRevision' | 'revision' | 'operation'>,
   state: RemoteProjectionState
