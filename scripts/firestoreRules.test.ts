@@ -100,6 +100,19 @@ function readRemoteEvent(snapshot: Awaited<ReturnType<typeof getDoc>>): RemoteIn
   return snapshot.data() as unknown as RemoteInboxEventInput;
 }
 
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return '[' + value.map(item => item === undefined ? 'null' : stableStringify(item)).join(',') + ']';
+  }
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return '{' + Object.keys(record).filter(key => record[key] !== undefined).sort().map(key =>
+      JSON.stringify(key) + ':' + stableStringify(record[key])
+    ).join(',') + '}';
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
 const projectId = 'demo-wird-rules';
 const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
 const testEnv = await initializeTestEnvironment({
@@ -1241,7 +1254,7 @@ try {
         }
         const parsed = JSON.parse(raw);
         const actual = item.kind === 'ruqyah' ? parsed : parsed;
-        if (JSON.stringify(actual) !== JSON.stringify(item.expected)) {
+        if (stableStringify(actual) !== stableStringify(item.expected)) {
           throw new Error('Device B field-level projection mismatch for ' + item.collection +
             ': expected ' + JSON.stringify(item.expected) + ', received ' + JSON.stringify(actual));
         }
@@ -1249,7 +1262,7 @@ try {
           firestoreB, 'users', uid, item.collection, 'snapshot'
         )));
         if (!ownerState.exists() || ownerState.data().revision !== 1 ||
-            JSON.stringify(ownerState.data().payload) !== JSON.stringify(item.payload)) {
+            stableStringify(ownerState.data().payload) !== stableStringify(item.payload)) {
           throw new Error('Owner cannot read revisioned state for ' + item.collection);
         }
         const otherDb = testEnv.authenticatedContext(uid + '-other').firestore();
@@ -1318,7 +1331,7 @@ try {
           throw new Error('Device A is missing the reverse-projected archive for ' + item.collection);
         }
         const parsed = JSON.parse(raw);
-        if (JSON.stringify(parsed) !== JSON.stringify(item.reverseExpected)) {
+        if (stableStringify(parsed) !== stableStringify(item.reverseExpected)) {
           throw new Error('Device A reverse field-level projection mismatch for ' + item.collection +
             ': expected ' + JSON.stringify(item.reverseExpected) + ', received ' + JSON.stringify(parsed));
         }
@@ -1326,7 +1339,7 @@ try {
           firestoreA, 'users', uid, item.collection, 'snapshot'
         )));
         if (!ownerState.exists() || ownerState.data().revision !== 2 ||
-            JSON.stringify(ownerState.data().payload) !== JSON.stringify(item.reversePayload)) {
+            stableStringify(ownerState.data().payload) !== stableStringify(item.reversePayload)) {
           throw new Error('Device A did not observe revision 2 for ' + item.collection);
         }
       }
