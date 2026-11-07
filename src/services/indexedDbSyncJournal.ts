@@ -10,6 +10,7 @@ const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
+const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -890,6 +891,11 @@ export class IndexedDbSyncJournal {
           transaction.abort();
           return;
         }
+        if (!current && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS) {
+          failure = new Error('وصل سجل إصدارات المستندات إلى الحد الآمن؛ لم نحذف أي سجل محفوظ.');
+          transaction.abort();
+          return;
+        }
         acknowledgements.put({
           key, uid, mutationId,
           fingerprint: mutation.fingerprint,
@@ -904,6 +910,14 @@ export class IndexedDbSyncJournal {
           }),
           remoteRevisions
         } satisfies DeviceMetadata);
+        const allAcknowledgementsRequest = acknowledgements.index('uid').getAll(IDBKeyRange.only(uid));
+        allAcknowledgementsRequest.onsuccess = () => {
+          const all = allAcknowledgementsRequest.result as AcknowledgementRecord[];
+          all.sort((a, b) => a.acknowledgedAtMs - b.acknowledgedAtMs);
+          for (const oldAcknowledgement of all.slice(0, Math.max(0, all.length - MAX_ACKNOWLEDGED_IDS))) {
+            acknowledgements.delete(oldAcknowledgement.key);
+          }
+        };
         acknowledged = true;
       };
       mutationRequest.onsuccess = () => { mutation = mutationRequest.result as JournalOutboxEntry | undefined; finishRead(); };
