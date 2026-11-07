@@ -361,3 +361,23 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - AuthGate now replays older committed events first, then commits legacy portions/revision migration through one journaled transaction before mounting the app. Guest migration remains local-only and rollback-safe.
 - Validated recovery from corrupt schema-v2 data is represented by an explicit journal projection flag; corrupt canonical bytes are not replaced until the validated legacy snapshot is journal-committed.
 - PR #58 adds account-scope guards to journaled persistence and AuthGate migration to prevent a stale startup task from projecting one account's migration into another account after an auth/scope change.
+
+
+---
+
+## 2026-11-07 — Full repository audit and first remediation milestones
+
+**Baseline:** main @ 6228150c2f7137678ba1079f5d9b2e8aba527523.
+
+- Inventoried 147 files / 34 directories and recorded per-file notes for all 147. The three PWA PNGs were visually inspected and appear as flat dark-teal squares without a discernible WIRD mark.
+- Compared all 70 branches in the original baseline. Current live branch count is 75 after creating one audit branch and four remediation branches. Four original branches are archive candidates but were not deleted because the connected GitHub tool set has no safe branch-delete operation.
+- Added docs/audit/2026-11-07/ architecture, readiness, branch matrix, file register, remediation roadmap and continuation prompt.
+- Added docs/sync/REMOTE_REPLICATION_PLAN.md because AGENTS.md referenced a missing document. This is a design gate only; remote sync is not implemented or deployed.
+- Confirmed main Quality Gate run 42295376778: 402 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass; independent Tanzil verification 6,236/6,236.
+- PR #61: journaled backup file import shared by Settings and Progress Analytics. Exact-head CI run 42340818280 PASS, 404/0. Vercel Preview Ready.
+- PR #62: preserve revision-only/partial plan task history and uncompleted verse gaps during recalculation. Exact-head CI run 42341126825 PASS, 406/0. Vercel Preview blocked by daily build-rate limit.
+- PR #63: QuranLibrary repeat controller uses mutable refs, exact repeat target and correct pause/resume/cleanup. Exact-head CI run 42341365536 PASS, 404/0. Vercel Preview blocked by daily build-rate limit.
+- PR #64: Tafsir client/proxy handle HTML and malformed JSON safely; exact-head CI run 42341419175 was pending/no job assigned at the time of this entry.
+- All four remediation PRs are Draft and unmerged. Main remains unchanged. No production Firestore rules, user data, Vercel project settings or production deployment were changed.
+
+**Next:** confirm PR #64 exact-head CI; then fix QuranMath/domain event coordinate validation; design Advisor auth/quota protection before changing the public endpoint; keep cloud sync marked partial until remote inbox, CAS, cursor, conflict and two-device gates pass.
