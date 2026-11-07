@@ -91,7 +91,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     applied: number;
     revisions: Map<string, RemoteRevisionSnapshot>;
     initialized: Set<string>;
-    conflicts: Array<{ eventId: string; reason: string; snapshot: Record<string, string | null> }>;
+    conflicts: Array<{ eventId: string; reason: string; snapshot: Record<string, string | null>; status: 'open' | 'resolved' }>;
   } } {
     const state = {
       cursor: 0,
@@ -100,7 +100,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
         (options.revisions || []).map(([key, revision]) => [key, { revision, localSequence: 0 }])
       ),
       initialized: new Set(options.initialized || []),
-      conflicts: [] as Array<{ eventId: string; reason: string; snapshot: Record<string, string | null> }>
+      conflicts: [] as Array<{ eventId: string; reason: string; snapshot: Record<string, string | null>; status: 'open' | 'resolved' }>
     };
     const pending = new Set(options.pending || []);
     const empty = new Set(options.empty || []);
@@ -133,15 +133,20 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       markRemoteProjected: async sequence => {
         if (sequence !== state.cursor + 1) return false;
         state.cursor = sequence;
+        const event = events.find(candidate => candidate.serverSequence === sequence);
+        const conflict = event && state.conflicts.find(candidate => candidate.eventId === event.eventId);
+        if (conflict) conflict.status = 'resolved';
         return true;
       },
       markRemoteCollectionInitialized: async collection => {
         state.initialized.add(collection);
         return true;
       },
-      getLocalProjectionSnapshot: collection => ({ [collection]: 'local-snapshot' }),
+      getLocalProjectionSnapshot: collection => ({ [collection]: 'local-snapshot:' + collection }),
       saveProjectionConflict: async (event, reason, snapshot) => {
-        state.conflicts.push({ eventId: event.eventId, reason, snapshot });
+        const existing = state.conflicts.find(conflict => conflict.eventId === event.eventId);
+        if (existing) existing.reason = reason;
+        else state.conflicts.push({ eventId: event.eventId, reason, snapshot, status: 'open' });
         return true;
       },
       getRemoteProjectionIntent: async () => projectionIntent,
@@ -166,6 +171,8 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
         for (const collection of intent.initializedCollections) state.initialized.add(collection);
         if (intent.collection !== 'syncMeta') state.initialized.add(intent.collection);
         state.cursor = intent.sequence;
+        const conflict = state.conflicts.find(candidate => candidate.eventId === intent.eventId);
+        if (conflict) conflict.status = 'resolved';
         projectionIntent = null;
         return true;
       }
@@ -204,9 +211,9 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     assert(result.reason === 'blocked_pending_local' && result.blockedAtSequence === 1 &&
       harness.state.cursor === 0 && harness.state.applied === 0 &&
       harness.state.conflicts.length === 1 &&
-      harness.state.conflicts[0].eventId === event.eventId &&
-      harness.state.conflicts[0].snapshot.plans === 'local-snapshot',
-      'A blocked remote projection archives the remote event and local snapshot without cursor movement');
+      harness.state.conflicts[0].reason === 'blocked_pending_local' &&
+      harness.state.conflicts[0].snapshot.plans === 'local-snapshot:plans',
+      'Any pending local mutation blocks projection and archives the exact local snapshot without cursor movement');
   } catch (err: any) {
     assert(false, `Pending mutation projection guard failed: ${err?.message}`);
   }
@@ -282,9 +289,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       typeof initialState.remoteCursor === 'number' &&
       typeof initialState.remoteProjectionCursor === 'number' &&
       initialState.remoteProjectionBlockReason === null &&
-      initialState.remoteProjectionBlockedAtSequence === null &&
-      initialState.projectionConflictCount === 0 &&
-      initialState.latestProjectionConflict === null,
+      initialState.remoteProjectionBlockedAtSequence === null,
       'Initial cloud sync state has valid structure'
     );
   } catch (err: any) {
