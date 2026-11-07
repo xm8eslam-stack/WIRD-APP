@@ -4,14 +4,13 @@
 
 The server uses optimistic concurrency. Every mutation carries `baseRevision`; the Firestore transaction compares it with the authoritative current revision. A stale write is rejected with `REMOTE_REVISION_CONFLICT`. No client clock or Last-Write-Wins policy is used.
 
-When a remote event arrives while a local mutation for that collection is pending, the projector returns `blocked_pending_local`. The remote event remains in the inbox and the projection cursor does not advance. The local outbox mutation remains pending.
+When a normal remote event arrives while a local mutation for the same UID/collection/document is pending, the projector and atomic finalization return `blocked_pending_local`. The remote event remains in the inbox and the projection cursor does not advance. A pending mutation for another document in the same collection does not block it. Grouped `syncMeta` transactions retain collection-wide pending checks.
 
 PR #78 verifies this with two independently stored devices: one write is accepted, the stale competing write is rejected, and the losing device retains both its local edit and the accepted remote event without overwriting either.
 
 ## Not yet implemented
 
-- Dedicated durable conflict entity/state with both local and remote snapshots.
-- User-facing compare/choose/merge workflow.
+- User-facing compare/choose/merge workflow and persisted decision intent.
 - Safe automatic field-level merge for collections where fields are independently mergeable.
 - Conflict-resolution mutation that rebases the chosen result on the latest server revision.
 - Recovery/retention policy for unresolved conflicts.
@@ -21,7 +20,7 @@ Until these exist, a blocked mutation is a safe unresolved conflict, not a compl
 
 ## Durable conflict archive — implemented in PR #81
 
-Blocked projection now archives the full remote inbox event and relevant local storage bytes in a UID-scoped IndexedDB store. The original local snapshot is retained across repeated observations. Open records are never pruned; the archive is bounded to 100 entries per UID and may prune only resolved historical records. Settings displays the open conflict count and latest affected record.
+Blocked projection archives the full remote inbox event and raw local storage bytes in a UID-scoped IndexedDB store. PR #126 extends this to preserve pending local outbox mutations for the exact conflicting document, including mutation ID, fingerprint, base revision, sequence, and payload. Repeated observations append newly pending mutations by ID without replacing the first snapshot. Combined evidence is capped at 500 KB; fingerprint mismatch or overflow aborts without deleting inbox/outbox entries or advancing the cursor. Settings displays up to ten archived mutation payloads.
 
 This archive prevents diagnostic evidence from disappearing; it does not resolve the conflict. No keep-local/use-remote UI or automatic merge exists. The event remains in the inbox and the projection cursor remains blocked until a separately tested resolution workflow is implemented.
 
@@ -34,7 +33,7 @@ This is automatic bookkeeping after a successful safe projection, not a user cho
 
 ## 2026-11-07 — Read-only conflict inspection
 
-PR #104 adds an expandable Settings view of up to 20 open conflict records, including the immutable remote event payload and captured local projection snapshot, guarded by exact active UID scope. This improves user visibility and preserves the archive, but it is deliberately read-only. It does not choose a winner, rebase an Outbox mutation, change the inbox/cursor, or mark a conflict resolved.
+PR #104 adds an expandable Settings view of up to 20 open conflict records, including the immutable remote event payload and captured local projection snapshot. PR #126 adds a bounded preview of preserved pending local mutation payloads (up to ten rendered entries), guarded by exact active UID scope. The inspector remains read-only: it does not choose a winner, rebase an Outbox mutation, change the inbox/cursor, or mark a conflict resolved.
 
 Still required: an idempotent user decision state machine for keep-local/use-remote/merge, latest server revision revalidation, preservation of both snapshots until durable commit, failure recovery, and history of the user's decision. Do not infer resolution from the inspector or the existing `reconciled` bookkeeping status.
 
@@ -62,3 +61,8 @@ PR #126 now stores the raw local projection snapshot and pending local outbox mu
 PR #129 narrows ordinary projection blocking to the exact UID/collection/document at both projector and atomic finalization layers. Same-document pending writes still block. Grouped syncMeta transactions remain collection-wide.
 
 **Not implemented yet:** persisted user decision intents, keep-local rebasing, use-remote discard semantics, field-level merge, latest remote revision revalidation, idempotent resolution completion, and recovery of a resolution interrupted by a crash. The archive is evidence, not a resolution workflow. No conflict is silently overwritten.
+
+
+## Current conflict evidence bound (PR #126)
+
+The conflict archive transaction includes the outbox store and captures pending mutations for the exact conflicting document. The immutable local snapshot plus all captured mutation payloads share a 500 KB limit. If the combined evidence exceeds that limit or a mutation ID is observed with a different fingerprint, the transaction aborts; the remote inbox event, local outbox, and projection cursor remain unchanged. The archive is diagnostic/recovery evidence, not a resolution decision.
