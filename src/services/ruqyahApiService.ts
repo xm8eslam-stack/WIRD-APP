@@ -150,6 +150,7 @@ export function matchesApiQuranEntry(entry: RuqyahApiEntry, query: string): bool
     const resolved = resolveApiQuranEntry(entry);
     const canonicalIndex = [
       resolved.surahName,
+      resolved.surahName + ' ' + resolved.surahNumber + ':' + resolved.startAyah + '-' + resolved.endAyah,
       String(resolved.surahNumber),
       String(resolved.startAyah),
       String(resolved.endAyah),
