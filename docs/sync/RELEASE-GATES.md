@@ -1,5 +1,16 @@
 # WIRD Sync Release Gates
 
+## 2026-11-07 — current release gate refresh after PR #140
+
+- Latest main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305`.
+- PR #140 exact-head Quality Gate passed: 526 assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, 20 desktop/mobile Playwright tests.
+- PR #141 exact-head run `42364704191` was in progress at last inspection; non-browser gates passed and desktop/mobile Playwright was running. Do not merge before completion.
+- PR #142 is not mergeable against the advanced main base and is superseded.
+- Vercel is blocked by the Free-plan daily deployment quota. No deployed SHA, production alias or live browser smoke is verified.
+- Conflict resolution, tombstones, additive Ruqyah events, full auth/multi-device E2E and production verification remain hard blockers.
+- Keep both production sync flags disabled. No production rules deployment, secrets changes or sync activation is authorized.
+
+
 A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Required before enabling production sync
@@ -127,3 +138,16 @@ The following remain release blockers and must not be waived:
 The desktop/mobile Playwright app-shell baseline is now merged and passing (PR #122: 6/6 checks); the Ruqyah locator-library browser suite is also merged (PR #127: 10 locator-library checks (five desktop and five mobile)). PR #125 adds populated multi-record coverage across the eight data collections. PR #126 preserves pending local mutation evidence on conflicts, and PR #129 makes projection guards document-scoped for ordinary events while retaining collection-wide syncMeta protection.
 
 **Release remains blocked.** Conflict decisions (keep local/use remote/merge) are not implemented; tombstones and additive Ruqyah increments remain outstanding; full auth/CRUD/two-device browser journeys and real Firebase live verification have not been completed; production rules are not claimed deployed; Vercel deployment remains rate-limited. Do not enable production sync flags.
+
+
+## 2026-11-07 — current main refresh after PR #139
+
+- Candidate main SHA: `28a1c4339d31bb66549402db36cfc40357caf65f`.
+- PR #134–#139 are merged. Exact PR Quality Gate evidence: PR #135 — 526 assertions, 31 Firestore Rules Emulator tests, 18 Playwright tests; PR #137 and #139 — 526 assertions, 31 Rules Emulator tests, 20 Playwright tests, with dependency audit, TypeScript, production build and server smoke passing.
+- Current main Vercel check fails with `build-rate-limit` / `api-deployments-free-per-day`; this is not a verified production deployment. Exact deployed SHA, production alias, and live browser smoke remain unverified.
+- Conflict resolution is still a hard blocker: the archive/read-only inspector is not a decision engine. User-directed keep-local/use-remote/merge, latest server revision validation, idempotent resolution intent, and restart recovery are absent.
+- Tombstone projection/resurrection prevention/retention remains a hard blocker.
+- Ruqyah independent cross-device increments are not yet additively merged with immutable events or per-device monotonic counters; snapshot LWW is prohibited.
+- Real multi-tab/browser auth lifecycle tests, broad two-device CRUD and full live Firebase verification remain open.
+- Keep both production sync feature flags disabled. No production rules deployment, secrets change, or production sync activation is authorized by this checkpoint.
+
