@@ -6,9 +6,9 @@ Last updated: 2026-11-07
 
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
-- Latest reviewed phase merge: PR #98, merge commit `8089579d020a6a4831cdc9ba4f25f8672f30cc3d`.
+- Latest reviewed phase merge: PR #100, merge commit `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d`.
 - Working checkpoint branch: `docs/ruqyah-checkpoint-refresh-20261107`.
-- All eight implementation phases below are merged to `main`.
+- All nine implementation phases below are merged to `main`.
 
 ## Merged implementation phases
 
@@ -20,6 +20,7 @@ Last updated: 2026-11-07
 | Backup/reset refresh consistency + release checklist | #95 | `52e62d6b21057cf0d796cc3b137f4087cbe2e983` | 504 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | IslamicAPI proxy hardening + topic gate | #97 | `217f7136244d4d7afd02a9c52be86f520c1baefa` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Guarded manual Firestore rules deploy workflow | #98 | `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Firestore Emulator preflight for manual rules deploy | #100 | `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d` | Exact-head Quality Gate passed; manual workflow now runs rules emulator tests before credentials/deploy |
 | Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
 | Ruqyah first-sync scan + concurrent offline conflict preservation | #94 | `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` | Exact-head Quality Gate passed; stale concurrent write is blocked and both snapshots/outbox/inbox/conflict evidence are retained |
 
@@ -99,5 +100,5 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 3. Review any pending PR diff and exact-head CI runs before merging.
 4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
 5. Do not enable educational topic endpoints until a scholar/content reviewer has approved each article and its references.
-6. Only after explicit approval, all release gates, and the PR #100 emulator preflight are complete, configure deployment credentials and dispatch the manual rules workflow. Then redeploy `main` and run every live verification item above.
+6. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
 7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.
