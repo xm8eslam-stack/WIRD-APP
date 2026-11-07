@@ -107,6 +107,21 @@ export interface RemoteInboxEvent {
 
 export type RemoteInboxEventInput = Omit<RemoteInboxEvent, 'key' | 'fingerprint'>;
 
+/** Stable, bounded fingerprint for the immutable raw local snapshot shown in Conflict Archive. */
+export function fingerprintConflictSnapshot(snapshot: Record<string, string | null>): string {
+  if (!isRecord(snapshot)) throw new Error('بيانات لقطة التعارض المحلية غير صالحة.');
+  const source = stableStringify(snapshot);
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    hashA = Math.imul(hashA ^ code, 0x01000193);
+    hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+  }
+  return (hashA >>> 0).toString(16).padStart(8, '0') +
+    (hashB >>> 0).toString(16).padStart(8, '0');
+}
+
 export interface ConflictResolutionMutationFingerprint {
   mutationId: string;
   fingerprint: string;
@@ -124,6 +139,7 @@ export interface ConflictResolutionIntent {
   uid: string;
   eventId: string;
   eventFingerprint: string;
+  localSnapshotFingerprint: string;
   serverSequence: number;
   collection: SyncCollection;
   documentId: string;
@@ -141,6 +157,7 @@ export interface PrepareConflictResolutionIntentInput {
   decisionId: string;
   eventId: string;
   eventFingerprint: string;
+  localSnapshotFingerprint: string;
   decision: ConflictResolutionDecision;
   /** Latest authoritative server revision fetched immediately before prepare. */
   baseRevision: number;
@@ -1820,6 +1837,7 @@ export class IndexedDbSyncJournal {
     const uid = activeUid();
     if (!input || !validMutationId(input.decisionId) || !validMutationId(input.eventId) ||
         typeof input.eventFingerprint !== 'string' || !/^[0-9a-f]{16}$/.test(input.eventFingerprint) ||
+        typeof input.localSnapshotFingerprint !== 'string' || !/^[0-9a-f]{16}$/.test(input.localSnapshotFingerprint) ||
         !['keep-local', 'use-remote', 'merge'].includes(input.decision) ||
         !Number.isSafeInteger(input.baseRevision) || input.baseRevision < 1 ||
         !isRecord(input.payload) || !Array.isArray(input.localMutationFingerprints) ||
@@ -1902,6 +1920,12 @@ export class IndexedDbSyncJournal {
           return;
         }
 
+        const actualLocalSnapshotFingerprint = fingerprintConflictSnapshot(conflict.localSnapshot);
+        if (actualLocalSnapshotFingerprint !== input.localSnapshotFingerprint) {
+          failure = new Error('تغيرت لقطة البيانات المحلية منذ عرض التعارض؛ أعد تحميله قبل تسجيل القرار.');
+          transaction.abort();
+          return;
+        }
         const archived = [...(conflict.localMutations || [])]
           .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
           .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
@@ -1937,6 +1961,7 @@ export class IndexedDbSyncJournal {
           uid,
           eventId: event.eventId,
           eventFingerprint: event.fingerprint,
+          localSnapshotFingerprint: actualLocalSnapshotFingerprint,
           serverSequence: event.serverSequence,
           collection: event.collection,
           documentId: event.documentId,
@@ -1976,6 +2001,7 @@ export class IndexedDbSyncJournal {
           uid,
           eventId: event.eventId,
           eventFingerprint: event.fingerprint,
+          localSnapshotFingerprint: actualLocalSnapshotFingerprint,
           serverSequence: event.serverSequence,
           collection: event.collection,
           documentId: event.documentId,
