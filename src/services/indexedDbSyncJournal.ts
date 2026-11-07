@@ -2174,8 +2174,12 @@ export class IndexedDbSyncJournal {
         }
 
         const currentSnapshot = StorageService.getLocalProjectionSnapshot(event.collection);
-        if (fingerprintConflictSnapshot(currentSnapshot) !== resolutionIntent.localSnapshotFingerprint) {
-          failure = new Error('تغيرت البيانات المحلية بعد تسجيل القرار؛ لم نستبدل أي بيانات.');
+        const snapshotStillMatchesDecision =
+          fingerprintConflictSnapshot(currentSnapshot) === resolutionIntent.localSnapshotFingerprint;
+        const snapshotAlreadyApplied =
+          StorageService.matchesJournalProjection(event.collection, JSON.parse(expectedPayloadJson));
+        if (!snapshotStillMatchesDecision && !snapshotAlreadyApplied) {
+          failure = new Error('تغيرت البيانات المحلية بعد تسجيل القرار ولم تطابق النسخة المختارة؛ لم نستبدل أي بيانات.');
           transaction.abort();
           return;
         }
