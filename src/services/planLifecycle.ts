@@ -3,7 +3,7 @@ import {
   ScheduledDayPlan,
   PlanningEngine
 } from './planningEngine';
-import { QuranMath, VerseCoordinate } from './quranMath';
+import { QuranMath } from './quranMath';
 
 const DAY_NAMES_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
