@@ -288,8 +288,10 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
 
   try {
     const itemId = 'q-fatihah';
-    const localLegacy = { schemaVersion: 1 as const, updatedAtMs: 5100, counts: { [itemId]: 2 } };
-    const remoteLegacy = { schemaVersion: 1 as const, updatedAtMs: 5101, counts: { [itemId]: 3 } };
+    const localV2 = adjustRuqyahProgressCounter(
+      createEmptyRuqyahProgressSnapshot(5100), itemId, 'local-device', 2, 5101
+    );
+    const remoteLegacy = { schemaVersion: 1 as const, updatedAtMs: 5102, counts: { [itemId]: 3 } };
     const event = makeRemoteEvent({
       eventId: 'ruqyah-legacy-conflict',
       mutationId: 'ruqyah-legacy-conflict',
@@ -301,11 +303,11 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       serverSequence: 1
     });
     const harness = makeProjectionHarness([event], { pending: ['ruqyahProgress'], empty: [] });
-    harness.dependencies.getLocalRuqyahProgressSnapshot = () => localLegacy;
+    harness.dependencies.getLocalRuqyahProgressSnapshot = () => localV2;
     const result = await projectRemoteInboxBatch(10, harness.dependencies);
     assert(result.reason === 'blocked_pending_local' && harness.state.cursor === 0 &&
       harness.state.applied === 0 && harness.state.conflicts[0]?.status === 'open',
-      'Legacy V1 concurrent counters remain archived instead of being merged with guessed additive semantics');
+      'Legacy V1 remote snapshots remain archived against V2 local counters instead of being merged with guessed additive semantics');
   } catch (err: any) {
     assert(false, `Legacy Ruqyah migration conflict guard failed: ${err?.message}`);
   }
