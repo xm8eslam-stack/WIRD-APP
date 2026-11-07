@@ -162,7 +162,9 @@ export async function projectRemoteInboxBatch(
           ? 'blocked_pending_local'
           : remoteEvent.operation === 'tombstone'
             ? 'blocked_tombstone'
-            : 'apply')
+            : cached?.revision !== undefined && cached.revision !== null && cached.revision >= remoteEvent.revision
+              ? 'already_applied'
+              : 'apply')
       : decideRemoteProjection(remoteEvent, {
           cachedRevision: cached?.revision ?? null,
           hasPendingLocalMutation,
@@ -171,7 +173,18 @@ export async function projectRemoteInboxBatch(
         });
 
     if (decision === 'already_applied') {
-      await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+      if (isResumingThisProjection && intent) {
+        const finalized = await dependencies.finalizeRemoteProjection(intent, () => true);
+        if (!finalized) {
+          return {
+            projectedCount,
+            blockedAtSequence: remoteEvent.serverSequence,
+            reason: 'projection_failed'
+          };
+        }
+      } else {
+        await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+      }
       projectedCount++;
       continue;
     }
