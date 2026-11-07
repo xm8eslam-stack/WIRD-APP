@@ -50,7 +50,7 @@ The provider URLs are configured, but browser playback still needs a real deploy
 
 ## Current limitations
 
-- Ruqyah progress is persisted in WIRD's UID-scoped local storage namespace. It is not yet a cloud-sync collection and is not yet part of the journaled backup import/export schema.
+- Ruqyah progress is persisted in WIRD's UID-scoped storage namespace. Its journaled cloud-sync and version-5 backup integration is documented in the Phase 2 section below.
 - The external IslamicAPI library requires the server secret above.
 - Full program MP3 playback and the full 44-reciter catalogue need a deployed browser/device verification pass.
 
