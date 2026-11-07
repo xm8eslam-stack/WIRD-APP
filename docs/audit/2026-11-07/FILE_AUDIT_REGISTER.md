@@ -49,7 +49,7 @@ Every row is a note. Update the note after full inspection; never mark a file re
 | `public/sw.js` | Service worker/cache/update lifecycle; audit stale asset handling, cache versioning, API exclusions, offline behavior and update safety. | PENDING |
 | `scripts/firestoreRules.test.ts` | Firestore Rules Emulator tests; inspected initially. Covers auth/UID/allowlist/envelope/event immutability/tombstones; verify collection-specific and server revision constraints. | REVIEWED (initial) |
 | `scripts/smoke-server.mjs` | Production/development API smoke test; verify it checks expected JSON/error paths and cleans up server processes. | PENDING |
-| `scripts/split-quran-data.mjs` | Quran chunk/index generator; audit deterministic output, validation strictness, source license, and pre-script side effects. | PENDING |
+| `scripts/split-quran-data.mjs` | Generator inspected. Checks 114 Surahs, local coordinates/text, page bounds, 6,236 total, 604 pages, 30 Juz and 240 Hizb quarters; writes chunks and generated indexes before dev/build/test/lint. Add global ayah continuity, juz/hizb value bounds and output cleanup/atomic generation. | REVIEWED (initial) |
 | `server.ts` | Express server/dev middleware/API mounting; inspected initially. Verify route order, Vite fallback, API error handling, security headers and production parity. | REVIEWED (initial) |
 | `tsconfig.json` | TypeScript compiler policy; review strictness, path aliases, test inclusion and noEmit. | PENDING |
 | `vercel.json` | Vercel routes/functions config; inspected. SPA fallback may return HTML for missing API paths; ensure API route precedence and per-function limits. | REVIEWED (initial) |
@@ -61,14 +61,14 @@ Every row is a note. Update the note after full inspection; never mark a file re
 |---|---|---|
 | `src/App.tsx` | Main composition/state/navigation and journaled mutations; inspected initially. Large orchestration surface; review state ownership, async lifecycle and split responsibilities. | REVIEWED (initial) |
 | `src/components/assistant/QuranAdvisorView.tsx` | Advisor chat UI; review prompt safety, loading/error states, Arabic UX and response provenance. | PENDING |
-| `src/components/auth/AuthGate.tsx` | Auth/guest gate and account-scope initialization; inspect race conditions, scope switching, journal replay and migration ordering. | PENDING |
-| `src/components/auth/AuthScreen.tsx` | Sign-in/sign-up UI; inspect Google redirect/popup fallback, validation, verification and accessibility. | PENDING |
-| `src/components/dashboard/DashboardView.tsx` | Daily overview; verify metrics are derived consistently and do not double-count overlapping portions. | PENDING |
-| `src/components/layout/Header.tsx` | Global header; inspect responsive navigation, auth state and accessible controls. | PENDING |
-| `src/components/layout/Sidebar.tsx` | Main navigation; inspect route parity, RTL/mobile behavior and active states. | PENDING |
-| `src/components/library/QuranLibraryView.tsx` | Quran browse/library UI; inspect Surah/Juz/page navigation, loading, selection and audio entry points. | PENDING |
-| `src/components/library/QuranMushafReader.tsx` | Mushaf reader; inspect page mapping, text rendering, bookmarks, audio, keyboard/touch and scroll restoration. | PENDING |
-| `src/components/library/TafsirSheet.tsx` | Tafsir UI; inspect HTML/error state, source attribution, book switching, cache and stale request cancellation. | PENDING |
+| `src/components/auth/AuthGate.tsx` | Scope is derived from guest or verified UID; initializes scope, replays authenticated journal, then runs legacy portion migration, with cancellation/scope checks. Review edge races during account changes and duplicate initialization under React StrictMode. | REVIEWED (initial) |
+| `src/components/auth/AuthScreen.tsx` | Email/Google/guest and verification UI inspected. Clipboard write is not awaited/caught; resend cooldown uses an interval without unmount cleanup; validate accessible feedback and avoid silent password mismatch submission. | REVIEWED (initial) |
+| `src/components/dashboard/DashboardView.tsx` | Daily task derives from due revisions/active plan and unique retention metrics; async ayah preview is cancellation-safe. Verify logs are chronological before `slice(-7)` and remove/check the weak-verse value if unused. | REVIEWED (initial) |
+| `src/components/layout/Header.tsx` | Responsive header inspected. It independently mounts `useCloudSync` and presents the coordinator's `synced` status as complete; wording must change until true remote projection exists. | REVIEWED (initial) |
+| `src/components/layout/Sidebar.tsx` | Navigation inventory inspected: nine tabs, mobile drawer and profile card. Verify focus trap/Escape handling and route/tab parity in App/router; profile display is local projection. | REVIEWED (initial) |
+| `src/components/library/QuranLibraryView.tsx` | Surah/Juz/study and Mushaf entry, lazy loading and cancellation inspected. **Bug candidate confirmed by closure semantics:** `audio.onended` captures stale `currentRepeatCount`, so multi-repeat playback can loop indefinitely; add a regression test and use a ref/functional counter. | REVIEWED (initial) |
+| `src/components/library/QuranMushafReader.tsx` | Page-based local chunks, 604-page navigation, Juz/Hizb, bookmarks and sequential audio inspected. Last-page/bookmark keys are global localStorage keys, not UID-scoped; decide whether they are intentionally device preferences or need account scoping. | REVIEWED (initial) |
+| `src/components/library/TafsirSheet.tsx` | Tafsir modal inspected. Uses AbortController, book selection, font prefs, sanitized segments and retry UI. Clipboard fallback cleanup and accurate source attribution/error messaging need tests. | REVIEWED (initial) |
 | `src/components/plans/MemorizationPlansView.tsx` | Preset/active plan management; review scope validation, journal writes and empty/error states. | PENDING |
 | `src/components/plans/PlanningEngineWizard.tsx` | Smart planning wizard; review constraints, date/time calculations, impossible schedules and accessibility. | PENDING |
 | `src/components/progress/ProgressAnalyticsView.tsx` | Analytics/reporting; verify date boundaries, unique ayah metrics and chart performance. | PENDING |
@@ -88,7 +88,7 @@ Every row is a note. Update the note after full inspection; never mark a file re
 | `src/data/mutashabihatData.ts` | Similar-verse dataset; verify each coordinate/text and scholarly/source provenance. | PENDING |
 | `src/data/presetPlans.ts` | Preset memorization plans; validate ranges, boundaries and user-facing descriptions. | PENDING |
 | `src/data/quranDataInfo.ts` | Quran dataset metadata; reconcile count/version/source/license with canonical JSON. | PENDING |
-| `src/data/quranDataLoader.ts` | Lazy Quran chunk loader; review cache/error fallback and invalid chunk handling. | PENDING |
+| `src/data/quranDataLoader.ts` | `import.meta.glob` lazy-loads per-Surah JSON and caches in-flight promises; failed imports evict cache. Missing chunks throw explicitly. Validate generated-chunk existence in build and no fallback to unverified text. | REVIEWED (initial) |
 | `src/data/quranMeta.ts` | Canonical Surah metadata; cross-check names, counts and order. | PENDING |
 | `src/data/quranNavigation.ts` | Page/Juz/Hizb navigation index; verify exact 604-page/30-Juz/240-quarter boundaries. | PENDING |
 | `src/data/quranValidationReport.json` | Generated verification report; verify timestamp/checksum and whether it matches current dataset. | REVIEWED (initial) |
@@ -174,7 +174,7 @@ Every row is a note. Update the note after full inspection; never mark a file re
 | `src/utils/tafsirSanitizer.test.ts` | Tafsir sanitization tests; test malformed HTML, unsafe markup and valid Arabic formatting. | PENDING |
 | `src/utils/tafsirSanitizer.ts` | Tafsir text sanitization; inspect XSS boundary and whether rendering uses safe text/HTML. | PENDING |
 | `src/index.css` | Global design system, RTL and responsive styling; audit token consistency, contrast, focus, dark mode and unused CSS. | PENDING |
-| `src/main.tsx` | React entry/provider composition; review StrictMode, auth gate, error boundaries and PWA registration. | PENDING |
+| `src/main.tsx` | React root wraps AuthProvider/AuthGate/App and registers service worker in production. No visible top-level error boundary; verify process.env replacement in Vite and add SW update/recovery tests. | REVIEWED (initial) |
 | `src/lib/firebase.ts` | Firebase config and initialization; inspected. Uses public client config/environment fallbacks and optional initialization; verify target project/database and no privileged secrets. | REVIEWED (initial) |
 
 ## Audit note format for every future review
