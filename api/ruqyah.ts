@@ -63,8 +63,10 @@ function validPayload(type: string, payload: unknown): boolean {
   const rawData = payload.data;
   const isCategory = type === 'instant-category' || type === 'topic-category';
   if (isCategory && !Array.isArray(rawData)) return false;
-  const rows = Array.isArray(rawData) ? rawData : [rawData];
-  if (rows.length === 0 || rows.length > 500 || rows.some(row => !isRecord(row))) return false;
+  const rawRows: unknown[] = Array.isArray(rawData) ? rawData : [rawData];
+  if (rawRows.length === 0 || rawRows.length > 500) return false;
+  const rows = rawRows.filter(isRecord);
+  if (rows.length !== rawRows.length) return false;
 
   if (type === 'instant' && rows.some(row =>
     !Number.isInteger(row.id) ||
