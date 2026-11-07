@@ -119,6 +119,32 @@ export async function runJournalProjectionReplayerTests(): Promise<{ passed: num
       journal.close();
     });
 
+    await test('Replay recovers an exact projection written before a cursor-commit interruption', async () => {
+      const journal = createJournal();
+      await journal.enqueue({
+        mutationId: 'projection-written-before-cursor',
+        collection: 'plans',
+        documentId: 'plans-snapshot',
+        payload: { records: PRESET_PLANS },
+        nowMs: 350
+      });
+      const event = (await journal.listEvents())[0];
+      assert(StorageService.applyJournalEvent(event),
+        'The simulated first attempt must write the complete local projection');
+      const beforeRetry = await journal.getSnapshot();
+      assert(beforeRetry.projectionCursor === 0,
+        'The simulated interruption must happen before the durable cursor advances');
+
+      const replay = await replayJournalProjection(journal, inlineLock);
+      const afterRetry = await journal.getSnapshot();
+      assert(replay.applied === 0 && replay.skippedAlreadyProjected === 1 && replay.cursor === 1,
+        'Retry must recognize the exact durable snapshot and safely commit its cursor');
+      assert(afterRetry.projectionCursor === 1 &&
+        JSON.stringify(StorageService.getPlans()) === JSON.stringify(PRESET_PLANS),
+        'Recovery must preserve the exact projection without duplicating or losing records');
+      journal.close();
+    });
+
     await test('Guest scope does not open or replay a UID-scoped journal', async () => {
       StorageService.__resetStorageForTests();
       StorageService.setStorageScope('guest');
