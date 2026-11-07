@@ -2,7 +2,7 @@ import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus } fr
 import { StorageService } from './storageService';
 import type { SuiteResult } from '../tests/runAllTests';
 import { decideRemoteProjection, projectRemoteInboxBatch, type RemoteProjectionDependencies } from './remoteInboxProjector';
-import type { RemoteInboxEvent, RemoteRevisionSnapshot } from './indexedDbSyncJournal';
+import type { RemoteInboxEvent, RemoteRevisionSnapshot, RemoteProjectionIntent } from './indexedDbSyncJournal';
 
 export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   let passed = 0;
@@ -103,6 +103,13 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     const pending = new Set(options.pending || []);
     const empty = new Set(options.empty || []);
     const keyOf = (collection: string, documentId: string) => collection + ':' + documentId;
+    let projectionIntent: RemoteProjectionIntent | null = null;
+    const sameIntent = (left: RemoteProjectionIntent | null, right: RemoteProjectionIntent) =>
+      !!left && left.sequence === right.sequence && left.eventId === right.eventId &&
+      left.collection === right.collection && left.documentId === right.documentId &&
+      left.revision === right.revision &&
+      left.initializedCollections.length === right.initializedCollections.length &&
+      left.initializedCollections.every((collection, index) => collection === right.initializedCollections[index]);
     const dependencies: RemoteProjectionDependencies = {
       getRemoteProjectionCursor: async () => state.cursor,
       listRemoteInboxAfter: async (sequence, limit) =>
@@ -128,6 +135,31 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       },
       markRemoteCollectionInitialized: async collection => {
         state.initialized.add(collection);
+        return true;
+      },
+      getRemoteProjectionIntent: async () => projectionIntent,
+      prepareRemoteProjection: async intent => {
+        if (projectionIntent && !sameIntent(projectionIntent, intent)) return false;
+        projectionIntent = intent;
+        return true;
+      },
+      finalizeRemoteProjection: async (intent, applyProjection) => {
+        if (!sameIntent(projectionIntent, intent) || intent.sequence !== state.cursor + 1) return false;
+        const affected = new Set([intent.collection, ...intent.initializedCollections]);
+        if ([...affected].some(collection => pending.has(collection))) return false;
+        const key = keyOf(intent.collection, intent.documentId);
+        const current = state.revisions.get(key);
+        if (!current || current.revision < intent.revision) {
+          if (!applyProjection()) return false;
+        }
+        state.revisions.set(key, {
+          revision: Math.max(current?.revision ?? 0, intent.revision),
+          localSequence: current?.localSequence ?? 0
+        });
+        for (const collection of intent.initializedCollections) state.initialized.add(collection);
+        if (intent.collection !== 'syncMeta') state.initialized.add(intent.collection);
+        state.cursor = intent.sequence;
+        projectionIntent = null;
         return true;
       }
     };

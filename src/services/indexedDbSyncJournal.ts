@@ -110,6 +110,15 @@ interface AcknowledgementRecord {
   acknowledgedAtMs: number;
 }
 
+export interface RemoteProjectionIntent {
+  sequence: number;
+  eventId: string;
+  collection: SyncCollection;
+  documentId: string;
+  revision: number;
+  initializedCollections: SyncCollection[];
+}
+
 interface DeviceMetadata {
   uid: string;
   deviceId: string;
@@ -120,6 +129,7 @@ interface DeviceMetadata {
   remoteCursor?: number;
   remoteProjectionCursor?: number;
   remoteInitializedCollections?: SyncCollection[];
+  remoteProjectionIntent?: RemoteProjectionIntent;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -628,6 +638,7 @@ export class IndexedDbSyncJournal {
           remoteCursor: currentMetadata?.remoteCursor ?? 0,
           remoteProjectionCursor: currentMetadata?.remoteProjectionCursor ?? 0,
           remoteInitializedCollections: currentMetadata?.remoteInitializedCollections ?? [],
+          remoteProjectionIntent: currentMetadata?.remoteProjectionIntent,
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
@@ -1173,6 +1184,222 @@ export class IndexedDbSyncJournal {
   }
 
   /** Record a revision learned from a remote event without treating it as a local mutation. */
+  async getRemoteProjectionIntent(): Promise<RemoteProjectionIntent | null> {
+    const uid = activeUid();
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    return metadata?.remoteProjectionIntent || null;
+  }
+
+  /**
+   * Persist a projection intent before touching local snapshots. If the tab crashes
+   * after one or more local writes, the same event can be replayed safely.
+   */
+  async prepareRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(intent.sequence) || intent.sequence < 1 ||
+        !validMutationId(intent.eventId) || !ALLOWED_COLLECTIONS.has(intent.collection) ||
+        !intent.documentId || intent.documentId.includes('/') ||
+        !Number.isSafeInteger(intent.revision) || intent.revision < 1 ||
+        !Array.isArray(intent.initializedCollections) ||
+        !intent.initializedCollections.every(item => ALLOWED_COLLECTIONS.has(item))) {
+      throw new Error('بيانات نية إسقاط الحدث البعيد غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_METADATA, STORE_REMOTE_INBOX], 'readwrite');
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const metadataRequest = metadataStore.get(uid);
+      const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
+      let metadata: DeviceMetadata | undefined;
+      let event: RemoteInboxEvent | undefined;
+      let accepted = false;
+      let readsRemaining = 2;
+      let failure: Error | undefined;
+      const finish = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const cursor = metadata?.remoteProjectionCursor ?? 0;
+        const currentIntent = metadata?.remoteProjectionIntent;
+        if (currentIntent) {
+          accepted = currentIntent.sequence === intent.sequence &&
+            currentIntent.eventId === intent.eventId &&
+            currentIntent.collection === intent.collection &&
+            currentIntent.documentId === intent.documentId &&
+            currentIntent.revision === intent.revision &&
+            Array.isArray(currentIntent.initializedCollections) &&
+            currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+            currentIntent.initializedCollections.every((collection, index) =>
+              collection === intent.initializedCollections[index]
+            );
+          if (!accepted) {
+            failure = new Error('يوجد إسقاط بعيد سابق لم يكتمل؛ لن يتم استبداله.');
+            transaction.abort();
+          }
+          return;
+        }
+        if (intent.sequence !== cursor + 1 || !event ||
+            event.eventId !== intent.eventId || event.collection !== intent.collection ||
+            event.documentId !== intent.documentId || event.revision !== intent.revision) {
+          failure = new Error('لا تتطابق نية الإسقاط مع الحدث التالي المحفوظ في صندوق الاستقبال.');
+          transaction.abort();
+          return;
+        }
+        metadataStore.put({
+          ...(metadata || {
+            uid, deviceId: createSecureId(), schemaVersion: 1,
+            nextSequence: 1, lastProjectedSequence: 0
+          }),
+          remoteProjectionIntent: intent
+        } satisfies DeviceMetadata);
+        accepted = true;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finish();
+      };
+      eventRequest.onsuccess = () => {
+        event = eventRequest.result as RemoteInboxEvent | undefined;
+        finish();
+      };
+      transaction.oncomplete = () => resolve(accepted);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection intent transaction aborted.')));
+    });
+  }
+
+  /** Atomically commit revision, collection baselines, inbox deletion and projection cursor. */
+  async finalizeRemoteProjection(
+    intent: RemoteProjectionIntent,
+    applyProjection: () => boolean
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(intent.sequence) || intent.sequence < 1 ||
+        !validMutationId(intent.eventId) || !ALLOWED_COLLECTIONS.has(intent.collection) ||
+        !intent.documentId || intent.documentId.includes('/') ||
+        !Number.isSafeInteger(intent.revision) || intent.revision < 1 ||
+        !Array.isArray(intent.initializedCollections) ||
+        !intent.initializedCollections.every(item => ALLOWED_COLLECTIONS.has(item))) {
+      throw new Error('بيانات نية إسقاط الحدث البعيد غير صالحة.');
+    }
+    const affectedCollections = [...new Set([intent.collection, ...intent.initializedCollections])]
+      .filter(collection => collection !== 'syncMeta');
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX],
+        'readwrite'
+      );
+      const metadataStore = transaction.objectStore(STORE_METADATA);
+      const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
+      const metadataRequest = metadataStore.get(uid);
+      const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
+      const pendingRequests = affectedCollections.map(collection =>
+        outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
+      );
+      let metadata: DeviceMetadata | undefined;
+      let event: RemoteInboxEvent | undefined;
+      let pendingByCollection: JournalOutboxEntry[][] = [];
+      let finalized = false;
+      let readsRemaining = 2 + pendingRequests.length;
+      let failure: Error | undefined;
+      const finish = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        const currentIntent = metadata?.remoteProjectionIntent;
+        const cursor = metadata?.remoteProjectionCursor ?? 0;
+        const sameInitializedCollections = !!currentIntent &&
+          Array.isArray(currentIntent.initializedCollections) &&
+          currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+          currentIntent.initializedCollections.every((collection, index) =>
+            collection === intent.initializedCollections[index]
+          );
+        if (!metadata || !currentIntent ||
+            currentIntent.sequence !== intent.sequence ||
+            currentIntent.eventId !== intent.eventId ||
+            currentIntent.collection !== intent.collection ||
+            currentIntent.documentId !== intent.documentId ||
+            currentIntent.revision !== intent.revision ||
+            !sameInitializedCollections ||
+            currentIntent.initializedCollections.some(collection => !ALLOWED_COLLECTIONS.has(collection)) ||
+            cursor + 1 !== intent.sequence || !event ||
+            event.eventId !== intent.eventId || event.revision !== intent.revision ||
+            event.serverSequence !== intent.sequence || event.collection !== intent.collection ||
+            event.documentId !== intent.documentId) {
+          failure = new Error('تعذر اعتماد الإسقاط؛ ستظل نية الإسقاط والحدث محفوظين لإعادة المحاولة.');
+          transaction.abort();
+          return;
+        }
+        if (pendingByCollection.some(records => records.length > 0)) {
+          failure = new Error('توجد تغييرات محلية معلقة في مجموعة الحدث؛ أوقفنا الإسقاط لمنع استبدالها.');
+          transaction.abort();
+          return;
+        }
+        const revisionKey = intent.collection + ':' + intent.documentId;
+        const remoteRevisions = { ...(metadata.remoteRevisions || {}) };
+        const previous = remoteRevisions[revisionKey];
+        if (!previous && Object.keys(remoteRevisions).length >= MAX_REMOTE_REVISION_RECORDS) {
+          failure = new Error('وصل سجل إصدارات المستندات إلى الحد الآمن؛ لم يتم اعتماد الإسقاط أو حذف الحدث.');
+          transaction.abort();
+          return;
+        }
+        // A later acknowledged local revision supersedes this older inbox event.
+        // In that case commit the cursor without replaying the stale snapshot.
+        if (!previous || previous.revision < intent.revision) {
+          try {
+            if (!applyProjection()) {
+              failure = new Error('تعذر تطبيق الإسقاط المحلي؛ احتفظنا بالحدث ونية التعافي.');
+              transaction.abort();
+              return;
+            }
+          } catch (error) {
+            failure = normalizeError(error);
+            transaction.abort();
+            return;
+          }
+        }
+        const nextSequence = metadata.nextSequence ?? 1;
+        remoteRevisions[revisionKey] = {
+          revision: Math.max(previous?.revision ?? 0, intent.revision),
+          localSequence: Math.max(previous?.localSequence ?? 0, nextSequence - 1)
+        };
+        const initialized = new Set(metadata.remoteInitializedCollections || []);
+        for (const collection of intent.initializedCollections) initialized.add(collection);
+        if (intent.collection !== 'syncMeta') initialized.add(intent.collection);
+        metadataStore.put({
+          ...metadata,
+          remoteRevisions,
+          remoteInitializedCollections: [...initialized],
+          remoteProjectionCursor: intent.sequence,
+          remoteProjectionIntent: undefined
+        } satisfies DeviceMetadata);
+        inbox.delete(event.key);
+        finalized = true;
+      };
+      metadataRequest.onsuccess = () => {
+        metadata = metadataRequest.result as DeviceMetadata | undefined;
+        finish();
+      };
+      eventRequest.onsuccess = () => {
+        event = eventRequest.result as RemoteInboxEvent | undefined;
+        finish();
+      };
+      pendingRequests.forEach(request => {
+        request.onsuccess = () => {
+          pendingByCollection.push(request.result as JournalOutboxEntry[]);
+          finish();
+        };
+      });
+      transaction.oncomplete = () => resolve(finalized);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote projection finalization aborted.')));
+    });
+  }
+
   async setRemoteRevisionFromRemote(
     collection: SyncCollection,
     documentId: string,
@@ -1459,7 +1686,8 @@ export class IndexedDbSyncJournal {
         const cursor = metadata?.remoteProjectionCursor ?? 0;
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
-        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event) {
+        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
+            metadata.remoteProjectionIntent?.sequence === sequence) {
           failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;

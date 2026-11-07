@@ -375,6 +375,24 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().hasPendingForDocument(collection, documentId);
   },
 
+  async getRemoteProjectionIntent() {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().getRemoteProjectionIntent();
+  },
+
+  async prepareRemoteProjection(intent: Parameters<ReturnType<typeof getIndexedDbJournal>['prepareRemoteProjection']>[0]): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().prepareRemoteProjection(intent);
+  },
+
+  async finalizeRemoteProjection(
+    intent: Parameters<ReturnType<typeof getIndexedDbJournal>['finalizeRemoteProjection']>[0],
+    applyProjection: () => boolean
+  ): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().finalizeRemoteProjection(intent, applyProjection);
+  },
+
   async setRemoteRevisionFromRemote(collection: SyncCollection, documentId: string, revision: number): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().setRemoteRevisionFromRemote(collection, documentId, revision);
