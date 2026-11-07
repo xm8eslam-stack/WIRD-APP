@@ -46,8 +46,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
 
-  // External reciter catalogue and audio host are intentionally not loaded
-  // until their recitation provenance and usage permissions are reviewed.
+  // Ruqyah playback is intentionally unavailable; only disabled safety notices remain
+  // until reciter identity, exact recordings, provenance, and usage permissions are reviewed.
 
   // Hydrate progress whenever WIRD switches guest/account storage namespaces.
   useEffect(() => {
