@@ -50,8 +50,10 @@ export function getRuqyahDisplayText(item: RuqyahItem): string {
 }
 
 export function getRuqyahAudioQueue(item: RuqyahItem): RuqyahAudioAyah[] {
+  const surahNumber = item.surahNumber;
+  if (!surahNumber) throw new Error('رقم السورة غير صالح لتجهيز التلاوة.');
   return getRuqyahAyahs(item).map(ayah => ({
-    surahNumber: ayah.surahNumber,
+    surahNumber,
     ayahNumber: ayah.numberInSurah,
     globalAyahNumber: ayah.number
   }));
