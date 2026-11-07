@@ -29,3 +29,11 @@
 
 | Atomic conflict reconciliation | PR #85 head `b6af08b2d9461a1d3d7cc019404692d779500248` | Passed | 462 automated assertions; 27/27 Firestore Rules; first snapshot preserved, already-applied event resolution, late archive/orphan guard, oversized snapshot rejection |
 | Post-merge main gate | Main SHA `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`, run `42352594819` | Passed | Exact merge commit verified by main workflow |
+
+## 2026-11-07 coverage update
+
+- Plan lifecycle regression tests were added in PR #62; exact-head Quality Gate 42342109962 passed and post-merge main run 42354256341 passed.
+- Quran audio repeat controller tests were added in PR #89; exact-head runs 42354410219 and 42354399498 passed. Main post-merge run 42354517460 was still in progress at checkpoint time.
+- Ruqyah progress currently has local persistence, account-scope isolation, corrupt archive preservation, validation and reset tests. These are not cloud sync tests.
+- Required but not yet implemented for Ruqyah cloud sync: two-device concurrent increments, offline increment replay, duplicate increment delivery, event ordering, account switching with pending increments, crash during journal enqueue, remote projection, and reset propagation.
+- The observed experimental Ruqyah sync branch run 42354431882 failed 3 local progress tests due to a missing StorageService method; it is not mergeable evidence.
