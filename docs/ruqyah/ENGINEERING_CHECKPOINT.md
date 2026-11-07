@@ -10,8 +10,9 @@ Last updated: 2026-11-07
 - Phase 2 PR #91 is merged. Merge commit: `a618036b995ff45749748e90e2a4d3ec1037c838`.
 - Phase 3 PR #93 is merged. Merge commit: `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3`.
 - Phase 4 PR #95 is merged. Merge commit: `52e62d6b21057cf0d796cc3b137f4087cbe2e983`.
-- Phase 5 branch: `fix/ruqyah-api-proxy-hardening-20261107`
-- Phase 5 objective: harden the IslamicAPI proxy against spoofed rate-limit identities, oversized responses, and malformed topic content.
+- Phase 5 PR #97 is merged. Merge commit: `217f7136244d4d7afd02a9c52be86f520c1baefa`.
+- Phase 6 branch: `ci/firestore-rules-manual-deploy-20261107`
+- Phase 6 objective: add a guarded manual production deployment path for Firestore Security Rules, without auto-deploying production changes.
 
 ## Phase 1 completed and merged
 
@@ -99,6 +100,21 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 - Review Vercel header behavior for `x-real-ip` in production before relying on the proxy's per-IP limit; local fallback uses the socket address.
 - Do not describe the in-memory limiter as a global rate limit. Provider fair-use restrictions remain authoritative.
 
+## Phase 6 changes implemented on the working branch
+
+1. Added `.github/workflows/deploy-firestore-rules.yml`, a manual-only workflow restricted to the `main` branch.
+2. The workflow deploys only `firestore:rules`, pins Firebase CLI to 15.0.0, validates the repository variable `FIREBASE_PROJECT_ID`, requires the input project ID to match exactly, and requires the typed confirmation `DEPLOY_FIRESTORE_RULES`.
+3. Credentials are read only from the `FIREBASE_SERVICE_ACCOUNT_JSON` repository secret, written to a short-lived runner file with restricted permissions, and deleted in an `always()` cleanup step.
+4. Updated the release checklist with one-time GitHub variable/secret setup and verification steps.
+5. This workflow has not been run; the deployment secret and project variable are not visible to this session. Production rules are not claimed deployed.
+
+## Phase 6 verification status
+
+- Workflow YAML and GitHub Actions behavior require review after PR creation.
+- Required checks: unit tests, Firestore emulator, dependency audit, TypeScript, production build, server smoke test.
+- The production workflow must remain manual and must fail closed when the project ID, typed confirmation, or service-account secret is missing.
+- Do not dispatch the production deployment until the target project ID and authorized service account are confirmed by the repository owner.
+
 ## Critical correctness rules
 
 - Do not auto-persist an empty progress object on first mount. It can race the first remote pull and create an avoidable revision conflict.
@@ -126,4 +142,5 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 5. Merge only after all required code checks pass. Treat a Vercel quota failure separately from code CI.
 6. Complete Phase 4 CI and review; merge only after the exact head passes.
 7. Complete Phase 5 proxy security CI and review; merge only after the exact head passes.
-8. Deploy Firestore rules, verify Vercel environment and deployment, then run the live smoke checklist.
+8. Review and merge the guarded manual deployment workflow only after CI passes.
+9. Configure the authorized Firebase project variable/secret, dispatch the rules deployment with explicit confirmation, verify the deployed rules, then run the live smoke checklist.
