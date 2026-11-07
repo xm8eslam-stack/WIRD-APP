@@ -49,7 +49,7 @@ export async function writeImmutableRemoteEvent(
   event: ImmutableRemoteDomainEvent
 ): Promise<ImmutableEventWriteResult> {
   const validPathId = (value: string): boolean =>
-    value.length > 0 && value.length <= 128 && !/[\\u0000-\\u001f/]/.test(value);
+    value.length > 0 && value.length <= 128 && !/[\u0000-\u001f/]/.test(value);
   const payloadBytes = new TextEncoder().encode(stableStringify(event.payload)).byteLength;
   if (!validPathId(uid) || event.uid !== uid || !validPathId(event.eventId) ||
       !validPathId(event.mutationId) || event.schemaVersion !== 1 ||
