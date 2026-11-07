@@ -51,3 +51,10 @@
 - The test writes revisioned mutations on device A, imports the ordered immutable event stream on device B, runs the actual remote inbox projector, verifies local archive presence/cursor advancement, and checks owner reads plus cross-user read denial for every route.
 - Payload depth is limited: plans, enginePlans, portions, weakVerses, tests, and activityEvents currently use empty `records: []` arrays. Profile and Ruqyah have non-empty representative payloads. Therefore this validates collection routing, event transport, projection dispatch, cursor handling, and owner rules; it does **not** validate populated-record schemas/serialization for those six arrays, reverse B → A flow, simultaneous writes, or conflict convergence.
 - Remaining multi-collection work: add valid populated domain records per collection, assert field-level round-trip equality, test B → A and alternating edits, and exercise offline/retry/crash cases across more than one collection. Real-device/mobile E2E, account lifecycle switching, cross-tab browser E2E, and conflict-resolution UI also remain unverified.
+
+## 2026-11-07 — Bidirectional route coverage update (PR #106)
+
+- PR #106 extends the earlier A → B pass with B → A revision-2 writes for all eight routes and imports the complete contiguous 16-event stream on A, including A's own already-applied events. Exact-head runs `42357426174` and `42357436438` passed (510 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, build, startup smoke).
+- This is bidirectional route/event projection coverage, not complete domain-record coverage: plans, enginePlans, portions, weakVerses, tests, and activityEvents still use empty `records: []` payloads. Profile and Ruqyah have representative non-empty payloads; Ruqyah is asserted to change from 3 to 4.
+- Remaining: populate valid records for each collection, assert field-level equality in both directions, and add simultaneous edits, offline replay, duplicate delivery, out-of-order, crash, and account-switch cases per collection.
+- PR #104's Settings conflict inspector is read-only; it is not evidence that manual resolution has shipped.
