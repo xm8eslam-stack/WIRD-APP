@@ -164,3 +164,35 @@ test.describe('Ruqyah progress reset safety', () => {
     await expect(fatihahCard.getByText('1 قراءة')).toHaveCount(0);
   });
 });
+
+test.describe('Ruqyah narrow-screen layout', () => {
+  test('keeps the document and Ruqyah content free of horizontal overflow at 320, 360, and 390px', async ({ page }) => {
+    await openExtendedLibrary(page);
+
+    const assertNoHorizontalOverflow = async (width: number) => {
+      await page.setViewportSize({ width, height: 900 });
+      const metrics = await page.evaluate(() => {
+        const content = document.querySelector<HTMLElement>('div[dir="rtl"].max-w-7xl');
+        return {
+          viewport: window.innerWidth,
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+          content: content?.scrollWidth ?? 0,
+          contentClient: content?.clientWidth ?? 0
+        };
+      });
+      expect(metrics.document, 'Document overflow: ' + JSON.stringify(metrics)).toBeLessThanOrEqual(metrics.viewport);
+      expect(metrics.body, 'Body overflow: ' + JSON.stringify(metrics)).toBeLessThanOrEqual(metrics.viewport);
+      expect(metrics.content, 'Ruqyah container overflow: ' + JSON.stringify(metrics)).toBeLessThanOrEqual(metrics.contentClient);
+    };
+
+    for (const width of [320, 360, 390]) {
+      await assertNoHorizontalOverflow(width);
+    }
+
+    await page.getByRole('button', { name: 'القراءة مع العداد' }).click();
+    for (const width of [320, 360, 390]) {
+      await assertNoHorizontalOverflow(width);
+    }
+  });
+});
