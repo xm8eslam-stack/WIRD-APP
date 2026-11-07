@@ -463,3 +463,9 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #105 merged at `d71908b3e411bcd7d1db2b09318eb3c95564198e`: IslamicAPI Quran locator only, canonical WIRD Quran text, source allowlist, topic gate, and disabled unverified audio. Main run `42357565644` passed 509 unit assertions and 31 Firestore rules tests.
 - PR #108 source-registry hardening remains under review. The initial global Set permits a content item to swap to another item's approved reference; require exact item-ID-to-source mapping. `g-4` has a generic non-authoritative source label and must be resolved before merge.
 - Vercel deployment is still blocked by provider quota; no live production SHA is verified.
+
+### Subsequent update — PR #108 merged
+
+- PR #108 merged at `4ae28edf7d30e41f11727a7b85b67d9056d78408`. It replaces the global source Set with an exact content-ID → source mapping, rejects duplicate/missing/unregistered items, clarifies Abu Dawud 5082 grading for all three protective surahs, and cites the NHS page for the medical-safety reminder. Exact-head runs `42358001268` and `42358006528` passed: 510 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, build, and server startup smoke.
+- Current main is now `4ae28edf7d30e41f11727a7b85b67d9056d78408`; post-merge Main Quality Gate run `42358126271` was still in progress when this update was written. Verify its final result before any release claim.
+- The previous `d71908b3e411bcd7d1db2b09318eb3c95564198e` checkpoint is now historical. Vercel's production deployment status remains a separate `build-rate-limit` failure and no live deployed SHA is verified.
