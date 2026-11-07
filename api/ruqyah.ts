@@ -1,3 +1,5 @@
+import { ALL_SURAHS } from '../src/data/quranMeta';
+
 const API_BASE = 'https://islamicapi.com/api/v1/ruqyah/';
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
@@ -6,7 +8,7 @@ const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
 const ALLOWED_TOPIC_BLOCK_TYPES = new Set(['text', 'arabic', 'translation', 'header', 'transliteration']);
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
-const ALLOWED_TYPES = new Set(['instant-category', 'instant']);
+const ALLOWED_TYPES = new Set(['instant']);
 const ALLOWED_PROGRAMS = new Set(['brief-ruqya', 'a-medium-ruqya', 'a-long-ruqya']);
 // Only use the external API as an index for Quran references. Hadith/dua text
 // from third-party payloads is not trusted or rendered in WIRD.
@@ -39,6 +41,45 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function readQueryValue(value: unknown): string {
   const candidate = Array.isArray(value) ? value[0] : value;
   return typeof candidate === 'string' ? candidate.trim() : '';
+}
+
+interface QuranIndexCoordinates {
+  surahNumber: number;
+  startAyah: number;
+  endAyah: number;
+}
+
+function parseQuranIndexTitle(value: unknown): QuranIndexCoordinates | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const digitMap = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹';
+  const normalized = value.replace(/[٠-٩۰-۹]/g, digit => {
+    const index = digitMap.indexOf(digit);
+    return String(index % 10);
+  });
+  const match = normalized.trim().match(/(?:^|[^\\d])(\\d{1,3})\\s*:\\s*(\\d{1,3})(?:\\s*[-–—]\\s*(\\d{1,3}))?\\s*$/);
+  if (!match) return null;
+  const surahNumber = Number(match[1]);
+  const startAyah = Number(match[2]);
+  const endAyah = match[3] === undefined ? startAyah : Number(match[3]);
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  if (!surah || !Number.isSafeInteger(startAyah) || !Number.isSafeInteger(endAyah) ||
+      startAyah < 1 || endAyah < startAyah || endAyah > surah.versesCount) return null;
+  return { surahNumber, startAyah, endAyah };
+}
+
+function sanitizeQuranIndexData(data: unknown): unknown {
+  const rows = Array.isArray(data) ? data : [data];
+  const sanitized = rows.map(row => {
+    const record = row as Record<string, unknown>;
+    const coordinates = parseQuranIndexTitle(record.title);
+    if (!coordinates) throw new Error('Invalid Quran index coordinates');
+    const { surahNumber, startAyah, endAyah } = coordinates;
+    return {
+      id: record.id,
+      title: `${surahNumber}:${startAyah}-${endAyah}`
+    };
+  });
+  return Array.isArray(data) ? sanitized : sanitized[0];
 }
 
 function isAllowedType(type: string): boolean {
@@ -83,7 +124,7 @@ function isRateLimited(ip: string): boolean {
 function validPayload(type: string, payload: unknown): boolean {
   if (!isRecord(payload) || payload.status !== 'success' || !('data' in payload)) return false;
   const rawData = payload.data;
-  const isCategory = type === 'instant-category' || type === 'topic-category';
+  const isCategory = type === 'topic-category';
   if (isCategory && !Array.isArray(rawData)) return false;
   const rawRows: unknown[] = Array.isArray(rawData) ? rawData : [rawData];
   if (rawRows.length === 0 || rawRows.length > 500) return false;
@@ -91,9 +132,9 @@ function validPayload(type: string, payload: unknown): boolean {
   if (rows.length !== rawRows.length) return false;
 
   if (type === 'instant' && rows.some(row =>
-    !Number.isInteger(row.id) ||
-    typeof row.title !== 'string' || !row.title.trim() ||
-    typeof row.arabic !== 'string' || !row.arabic.trim()
+    !((typeof row.id === 'number' && Number.isSafeInteger(row.id) && row.id > 0) ||
+      (typeof row.id === 'string' && /^[1-9]\\d{0,8}$/.test(row.id))) ||
+    parseQuranIndexTitle(row.title) === null
   )) return false;
 
   if (type === 'topic' && rows.some(row =>
@@ -258,7 +299,9 @@ export default async function handler(req: any, res: any) {
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
     return send(res, 200, {
       status: 'success',
-      data: (payload as Record<string, unknown>).data,
+      data: type === 'instant'
+        ? sanitizeQuranIndexData((payload as Record<string, unknown>).data)
+        : (payload as Record<string, unknown>).data,
       source: 'IslamicAPI',
       language: 'ar',
       type
