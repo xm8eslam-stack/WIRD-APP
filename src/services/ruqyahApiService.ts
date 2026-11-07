@@ -136,6 +136,33 @@ export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQu
   };
 }
 
+
+/** Match only canonical WIRD surah metadata and verse coordinates, never provider-authored titles. */
+export function matchesApiQuranEntry(entry: RuqyahApiEntry, query: string): boolean {
+  const digitMap = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹';
+  const normalizedQuery = query.trim().replace(/[٠-٩۰-۹]/g, digit => {
+    const index = digitMap.indexOf(digit);
+    return String(index % 10);
+  }).toLocaleLowerCase();
+  if (!normalizedQuery) return true;
+
+  try {
+    const resolved = resolveApiQuranEntry(entry);
+    const canonicalIndex = [
+      resolved.surahName,
+      String(resolved.surahNumber),
+      String(resolved.startAyah),
+      String(resolved.endAyah),
+      resolved.surahNumber + ':' + resolved.startAyah,
+      resolved.surahNumber + ':' + resolved.startAyah + '-' + resolved.endAyah,
+      resolved.surahNumber + ' ' + resolved.startAyah + ' ' + resolved.endAyah
+    ].join(' ').toLocaleLowerCase();
+    return canonicalIndex.includes(normalizedQuery);
+  } catch {
+    return false;
+  }
+}
+
 export function resolveApiQuranEntryText(entry: RuqyahApiEntry): string {
   return resolveApiQuranEntry(entry).text;
 }
