@@ -2173,6 +2173,11 @@ export class IndexedDbSyncJournal {
           return;
         }
 
+        if (StorageService.getStorageScope() !== 'user:' + uid) {
+          failure = new Error('تغير حساب التخزين أثناء حل التعارض؛ أوقفنا العملية قبل لمس بيانات الحساب الآخر.');
+          transaction.abort();
+          return;
+        }
         const currentSnapshot = StorageService.getLocalProjectionSnapshot(event.collection);
         const snapshotStillMatchesDecision =
           fingerprintConflictSnapshot(currentSnapshot) === resolutionIntent.localSnapshotFingerprint;
@@ -2237,6 +2242,11 @@ export class IndexedDbSyncJournal {
           return;
         }
 
+        if (StorageService.getStorageScope() !== 'user:' + uid) {
+          failure = new Error('تغير حساب التخزين قبل تطبيق النسخة السحابية؛ لم نكتب إلى نطاق آخر.');
+          transaction.abort();
+          return;
+        }
         let applied = false;
         try {
           if (event.collection === 'syncMeta') {
@@ -2269,6 +2279,11 @@ export class IndexedDbSyncJournal {
         }
         if (!applied) {
           failure = new Error('رفضت طبقة التخزين النسخة السحابية المختارة؛ بقيت أدلة التعارض والعمليات المحلية محفوظة.');
+          transaction.abort();
+          return;
+        }
+        if (StorageService.getStorageScope() !== 'user:' + uid) {
+          failure = new Error('تغير حساب التخزين أثناء تطبيق النسخة؛ أوقفنا إكمال معاملة الحساب الحالي.');
           transaction.abort();
           return;
         }
