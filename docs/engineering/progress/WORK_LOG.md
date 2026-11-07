@@ -568,3 +568,9 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Real live two-device verification, production rules deployment, production SHA verification and full auth/cross-tab E2E remain outstanding.
 - Production sync flags remain disabled.
 
+
+
+### Correction after PR #141 merge — 2026-11-07
+- PR #141 is now merged as `55eb7519772eaf9e7fa5bdb8611ed557df2d3ae2`. Exact-head Quality Gate passed on `6faa9efa07d700c0f4782f9306cddb3958ff78c0`, run `42364704191`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 22 desktop/mobile Playwright tests, including six narrow-width layout checks across the two Ruqyah views.
+- Current main base for this checkpoint is therefore `55eb7519772eaf9e7fa5bdb8611ed557df2d3ae2`, not the PR #140 merge commit alone.
+- PR #142 is closed as superseded. PR #143 is the active refreshed documentation PR.
