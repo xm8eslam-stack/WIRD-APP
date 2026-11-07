@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
-import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters, QuranReciter } from '../../services/ruqyahAudioService';
+import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
+import type { QuranReciter } from '../../services/ruqyahAudioService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from '../../services/ruqyahProgressService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
 import { 
@@ -17,14 +18,8 @@ import {
   Headphones,
   Moon,
 } from 'lucide-react';
-import { 
-  RuqyahCategory, 
-  RuqyahItem, 
-  RUQYAH_GUIDELINES, 
-  RUQYAH_PROGRAM_AUDIO, 
-  getRuqyahItemsByCategory, 
-  RuqyahProgramAudio 
-} from '../../data/ruqyahData';
+import { RUQYAH_GUIDELINES, RUQYAH_PROGRAM_AUDIO, getRuqyahItemsByCategory } from '../../data/ruqyahData';
+import type { RuqyahCategory, RuqyahItem, RuqyahProgramAudio } from '../../data/ruqyahData';
 
 interface RuqyahViewProps {
   onToast?: (message: string, type?: 'success' | 'info' | 'warn' | 'error') => void;
