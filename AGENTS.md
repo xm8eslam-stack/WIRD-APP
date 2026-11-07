@@ -131,3 +131,17 @@ Always distinguish what was implemented, what was actually tested, what remains 
 ## Current continuation context
 
 The active synchronization work is tracked in PR #59 on branch `fix/cloud-sync-retry-and-status`. Re-check its exact current head before acting. Keep the PR Draft until remote revision/CAS, safe remote import/projection, durable cursors, conflict handling, multi-client tests, exact-SHA CI, and matching deployment evidence are complete. Do not merge or deploy without explicit authorization.
+
+## 2026-11-07 audit and remediation addendum
+
+The canonical audit package is under docs/audit/2026-11-07/. The original main baseline is 6228150c2f7137678ba1079f5d9b2e8aba527523. All 147 baseline files have per-file notes; the original 70 branches were compared. The live branch count later grew to 75 due to this audit and remediation work.
+
+The previously referenced docs/sync/REMOTE_REPLICATION_PLAN.md now exists on the audit branch. It is design-only; it does not authorize enabling remote projection or production sync.
+
+Current remediation Draft PRs:
+- #61 backup import journal boundary — exact-head CI PASS (404/0); Vercel Preview Ready.
+- #62 plan lifecycle history preservation — exact-head CI PASS (406/0); Vercel daily build-rate limit blocked preview.
+- #63 Quran audio repeat controller — exact-head CI PASS (404/0); Vercel daily build-rate limit blocked preview.
+- #64 Tafsir HTML/JSON response guard — exact-head CI pending/no job assigned at last check.
+
+Do not merge any PR without explicit user approval. Main remains unchanged at the baseline SHA. Keep PR #59 and #60 as separate historical work; port only reviewed changes. Do not claim cloud sync is complete.
