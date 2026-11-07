@@ -59,24 +59,23 @@ Use two real browsers/devices signed in to the same verified account:
 9. Test simultaneous edits and stale revisions; conflicts must preserve recoverable local and remote values. Do not accept last-write-wins overwrites.
 10. Verify that two offline increments from the same base are not presented as an automatically merged total. Current snapshot semantics block and archive the conflict; they do not compute the additive result. Do not enable production sync until the user-facing resolution flow can resolve this case without losing increments.
 
-### 4. Live audio and API tests
+### 4. Quran index API and disabled audio safety
 
-- Reciter list loads and fallback list works if the catalogue endpoint is unavailable.
-- Play a single Quran ayah and a multi-ayah passage; verify order, repeat behavior, pause, stop, and switching reciters.
-- Switch between full-program recordings while one is playing; confirm the old source stops and timeline resets.
-- Let a full recording end; confirm pressing Play starts it again from the beginning.
-- Test volume, seek, sleep timer, and browser tab backgrounding.
-- Verify IslamicAPI missing-key, 429, upstream HTTP failure, HTML response, malformed JSON, and successful Arabic response.
-- Confirm API key never appears in client bundles, browser network URLs, logs, or error messages.
+- Verify IslamicAPI returns only validated Quran locators; provider-authored Arabic, translation, reference prose, introductions, and category data must never reach the browser.
+- Verify valid ASCII/Arabic/Persian numeral coordinates resolve to WIRD's canonical Quran text and surah metadata.
+- Verify missing-key, 429, upstream HTTP failure, HTML, malformed JSON, out-of-range coordinates, and ambiguous multi-coordinate titles fail safely.
+- Confirm the Ruqyah audio tab, full-program playback, reciter catalogue, and individual verse audio controls remain disabled and cannot be activated by mouse or keyboard.
+- Confirm no hidden audio request or playback starts when switching tabs, changing programs, retrying API requests, or remounting the view.
+- Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
 ### 5. Accessibility and responsive review
 
-- Keyboard-only: mode selectors, category selectors, counter buttons, reciter select, play/pause, seek, volume, timer, and API details.
-- Screen reader: labels, pressed/expanded states, progress percentage, loading and error live regions.
-- Copy/select Quran and Sunnah text without changing counters.
+- Keyboard-only: mode selectors, category selectors, counter buttons, API details, and retry action. Disabled audio controls must not appear as active keyboard targets.
+- Screen reader: labels, disabled audio notice, pressed/expanded states, progress percentage, loading and error live regions.
+- Copy/select canonical Quran and reviewed Sunnah text without changing counters.
 - Mobile widths (320px, 360px, 390px), tablet and desktop.
 - Light/dark theme, Arabic RTL wrapping, long headings, long supplications, and reduced motion.
-- Confirm audio does not overlap when switching between verse and full-program playback.
+- Confirm no audio starts or overlaps while the audio feature remains disabled.
 
 ## Sunni content and audio gate
 
