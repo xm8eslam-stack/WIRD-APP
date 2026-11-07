@@ -72,15 +72,18 @@ export async function fetchQuranReciters(signal?: AbortSignal): Promise<QuranRec
       return true;
     }
     const expected = FALLBACK_QURAN_RECITERS.find(reciter => reciter.id === item.id);
-    return !expected ||
-      item.name !== expected.name ||
-      item.arabicName !== expected.arabicName ||
-      item.style !== expected.style ||
-      item.bitrate !== expected.bitrate;
+    if (!expected ||
+        item.name !== expected.name ||
+        item.arabicName !== expected.arabicName ||
+        item.style !== expected.style ||
+        item.bitrate !== expected.bitrate) {
+      return true;
+    }
+    seen.add(item.id);
+    return false;
   })) {
     throw new Error('تحتوي قائمة القراء على مصدر أو بيانات غير معتمدة.');
   }
-  for (const item of reciters as QuranReciter[]) seen.add(item.id);
   if (seen.size !== APPROVED_RECITER_IDS.size) {
     throw new Error('قائمة القراء لا تحتوي على جميع المصادر المعتمدة.');
   }
