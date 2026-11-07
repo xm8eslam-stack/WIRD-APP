@@ -14,7 +14,7 @@ import {
   Heart, 
   Info,
 } from 'lucide-react';
-import { RUQYAH_GUIDELINES, getRuqyahItemsByCategory } from '../../data/ruqyahData';
+import { getRuqyahItemsByCategory } from '../../data/ruqyahData';
 import type { RuqyahCategory, RuqyahItem } from '../../data/ruqyahData';
 
 interface RuqyahViewProps {
