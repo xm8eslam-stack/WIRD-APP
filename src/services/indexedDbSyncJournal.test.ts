@@ -188,6 +188,8 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       assert(await journal.markRemoteProjected(1), 'Projection cursor must advance after a successful local projection');
       assert(await journal.getRemoteProjectionCursor() === 1,
         'The projection cursor must be persisted independently from the import cursor');
+      assert((await journal.listRemoteInboxAfter(0, 10)).length === 0,
+        'A successfully projected event must be pruned atomically to free inbox capacity');
       journal.close();
     });
 
