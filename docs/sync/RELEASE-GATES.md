@@ -34,3 +34,16 @@ This closes the conflict-evidence preservation gap, but not the resolution gate.
 Atomic conflict reconciliation is now implemented: an open archive record is marked reconciled in the same IndexedDB transaction as cursor advancement and inbox deletion, with event fingerprint/inbox validation and bounded snapshot size. PR #85 exact-head CI passed (462 assertions, 27/27 Firestore Rules, TypeScript, build, dependency audit, startup smoke); post-merge main run `42352594819` passed on `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
 
 Still not approved for production sync: user-directed conflict choices/merge/rebase remain absent, tombstone projection remains blocked, two-device tests cover a limited collection set, and live Vercel/production rules verification remains outstanding.
+
+## 2026-11-07 checkpoint update
+
+The following remain release blockers and must not be waived:
+
+- User-facing conflict resolution with keep-local/use-remote/merge semantics, durable history, server-revision revalidation, and idempotent recovery.
+- Collection-specific tombstone projection, stale-event rejection, offline deletion and safe retention/compaction.
+- Multi-collection two-device coverage. Current two-device evidence is profile-only plus one offline stale-revision conflict.
+- Cross-tab concurrency in independent real browser contexts and account-switch/logout/reinstall isolation.
+- Collection-specific Firestore payload validation and negative authorization tests, plus confirmation that production rules match the candidate.
+- Exact-SHA production deployment and post-deploy browser smoke. Vercel build-rate-limit failures are not deployment evidence.
+- Ruqyah progress sync is not implemented. Before enabling it, design a concurrency-safe counter model and test increments from two independent devices.
+- Main checkpoint SHA at this update: e894140c91ec8086d111989dcdb601d3cdbf9ce4. Post-merge CI run 42354517460 was still in progress; recheck before release.

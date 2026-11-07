@@ -73,3 +73,15 @@
 - Exact PR gate: 462 assertions, 27/27 Firestore Rules, TypeScript, build, dependency audit, startup smoke passed. Post-merge main run `42352594819` passed.
 - PR #82 and #86 closed as superseded.
 - Next: manual conflict resolution/rebase workflow, then safe tombstone semantics, all-collection/device coverage, multi-tab and browser E2E. Do not enable production sync.
+
+## Live resume checkpoint — 2026-11-07 after PR #89
+
+- Current main SHA: e894140c91ec8086d111989dcdb601d3cdbf9ce4. Re-fetch before editing.
+- PR #62 merged: 8535802d3609c854b1c91742135c84894e5e074f; exact PR CI and post-merge Main run 42354256341 passed.
+- PR #89 merged: e894140c91ec8086d111989dcdb601d3cdbf9ce4; exact PR CI runs 42354410219 and 42354399498 passed. PR #63 is closed as superseded.
+- Main run 42354517460 was in progress at checkpoint time; verify its final conclusion on the exact SHA.
+- PR #88 Ruqyah integration is on main. Its progress counters are UID-scoped local-only data, not cloud sync.
+- Review the active branch feat/ruqyah-cloud-sync-20261107 before continuing. At observed head ec15084e9a1f20013476af5df83144f45456a595, run 42354431882 failed 3 progress persistence tests because StorageService.saveRuqyahProgressSnapshot was missing. The branch is incomplete; do not merge. Re-fetch latest branch and logs before changing it.
+- Ruqyah counters need a concurrency-safe merge model (per-device counters or immutable increment events) before adding them to sync. Do not use blind last-write-wins snapshots.
+- Highest sync priorities remain: manual conflict-resolution state machine with preserved outbox/local/remote snapshots; collection-specific tombstone semantics; expand two-device tests beyond profile; multi-tab/browser concurrency; account lifecycle isolation; negative Firestore rules tests; Playwright E2E.
+- Keep VITE_WIRD_REVISIONED_SYNC_ENABLED and VITE_WIRD_REMOTE_PROJECTION_ENABLED disabled for real users until every release gate passes. Do not deploy production rules or change production settings without explicit approval.

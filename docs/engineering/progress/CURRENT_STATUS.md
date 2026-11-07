@@ -176,3 +176,17 @@ The detailed historical checkpoint entries below are retained for traceability. 
 - PR #82 and #86 closed as superseded by #85.
 - Current main SHA: `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
 - Manual conflict choice/rebase UI, tombstone projection, all-collection multi-device coverage, browser E2E, load tests, and live production deployment/rules remain unverified.
+
+## Authoritative live status — 2026-11-07 after PR #89
+
+The historical checkpoint above is not the current main state. Re-fetch GitHub before further changes.
+
+- Current main SHA at this checkpoint: e894140c91ec8086d111989dcdb601d3cdbf9ce4.
+- PR #62 merged as 8535802d3609c854b1c91742135c84894e5e074f; exact-head run 42342109962 and post-merge main run 42354256341 succeeded.
+- PR #89 merged as e894140c91ec8086d111989dcdb601d3cdbf9ce4; exact-head runs 42354410219 and 42354399498 succeeded. PR #63 was closed as superseded, not merged.
+- Post-merge Main run 42354517460 was in progress at checkpoint time; do not mark post-merge validation complete until it finishes successfully on this exact SHA.
+- PR #88 Ruqyah integration is merged. Its progress service stores counts in UID-scoped local storage, but Ruqyah progress is not cloud-synchronized.
+- The separate Ruqyah sync experiment branch feat/ruqyah-cloud-sync-20261107 had a failing exact-head run 42354431882 (491 passed, 3 failed). Failure: missing StorageService.saveRuqyahProgressSnapshot. Re-fetch latest branch state because it may have advanced since this observation.
+- Do not add Ruqyah counts to cloud sync until a deterministic concurrent-increment model exists. A full-snapshot last-write-wins policy can lose increments from independent devices.
+- Cloud sync is NOT approved for production activation. Manual conflict resolution, safe tombstone projection, all-collection sync tests, cross-tab browser tests, account lifecycle, production Firestore rules verification, and exact-SHA production deployment/live smoke remain open.
+- Vercel deployment remains unverified due the build-rate-limit quota failure. This is separate from GitHub Actions.
