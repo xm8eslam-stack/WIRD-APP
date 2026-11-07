@@ -381,3 +381,18 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - All four remediation PRs are Draft and unmerged. Main remains unchanged. No production Firestore rules, user data, Vercel project settings or production deployment were changed.
 
 **Next:** confirm PR #64 exact-head CI; then fix QuranMath/domain event coordinate validation; design Advisor auth/quota protection before changing the public endpoint; keep cloud sync marked partial until remote inbox, CAS, cursor, conflict and two-device gates pass.
+
+
+---
+
+## 2026-11-07 — Remediation checkpoint: PRs #61–#65
+
+- PR #61 backup import: exact-head CI PASS 404/0; Vercel Preview Ready.
+- PR #62 plan lifecycle: after adding a guard for legacy plans with no active days, exact-head SHA 48fe031d67c358e3034dd5e64134d6b46513aab4 passed CI 407/0; Vercel Preview blocked by daily build-rate limit.
+- PR #63 audio repeat: exact-head CI PASS 404/0; Vercel Preview blocked by daily build-rate limit.
+- PR #64 Tafsir response guard: exact-head CI PASS 405/0; Vercel Preview blocked by daily build-rate limit.
+- PR #65 Quran coordinate/domain-event validation: exact-head SHA 25d73e93e60bd6cc57102b7cfa643addbaa6ced2 passed CI 417/0; Vercel Preview Ready.
+- All five exact-head CI runs also passed Firestore Rules Emulator 13/13, dependency audit, TypeScript, production build and server smoke.
+- PR #65 exposed and fixed a real target-date planning bug: a block-scoped variable shadowed the validated active-day array. It also rejects invalid dates, invalid coordinates, fractional pace, and no-active-day plans.
+- Current live branch count: 76 (70 original baseline + audit branch + five remediation branches). The audit branch has 42 commits ahead of main, all documentation-only.
+- Main is unchanged. All five PRs remain Draft/unmerged. PR #62–#64 Vercel previews remain blocked by the daily build-rate limit; PR #61 and #65 previews are Ready.
