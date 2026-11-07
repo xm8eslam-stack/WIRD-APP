@@ -261,3 +261,29 @@ Exact-head PR and push Quality Gates passed for PRs #43, #44, and #45. Post-merg
 5. Deploy production rules and activate cloud writes only after backup/migration review, explicit approval, and the full release gate passes.
 
 Do not describe this IndexedDB foundation as completed cloud sync. Keep the current local-only behavior available until the complete release gate in Section 12 passes.
+
+
+## 14. Revision compare-and-swap implementation — 2026-11-07
+
+### Implemented on the development branch; exact-head CI pending
+
+- State envelopes now carry `baseRevision` and `revision`.
+- Firestore create rules require revision 1 from base revision 0.
+- Firestore update rules require the supplied base revision to equal the current stored revision and the next revision to increment by exactly one.
+- The revisioned mutation adapter commits the immutable event and state snapshot in one Firestore transaction.
+- Identical retries are recognized by mutation ID, revision, device, timestamp, and payload; a stale base revision is rejected rather than overwriting newer data.
+- IndexedDB now records the server revision acknowledged for each local document. Acknowledgement and revision-cache updates share one transaction.
+- Later local events may be rebased only when their local journal sequence proves that an earlier event from the same device was already applied.
+- Existing cloud documents without a revision are intentionally not overwritten. They require the remote reconciliation/migration stage first.
+
+### Activation guard
+
+Cloud writes using the revisioned protocol are gated by `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`. The default is disabled. Do not set this flag until the matching Firestore rules are deployed and the legacy-document reconciliation path, remote inbox, and two-device tests have passed. This repository change does not deploy rules or change production Firebase data.
+
+### Remaining before bidirectional sync
+
+- Remote event records need explicit collection/document routing and a server-ordered cursor.
+- Implement durable remote inbox import and deterministic local projection.
+- Reconcile existing unversioned cloud documents without replacing either local or remote data.
+- Add two-device tests covering concurrent same-document updates, independent document updates, account switching, offline replay, tombstones, and crash recovery.
+- Keep the release gate in Section 12 closed until the full suite passes.
