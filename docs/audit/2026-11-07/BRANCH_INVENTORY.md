@@ -117,3 +117,9 @@ Three branches were created after the original 70-ref snapshot:
 - `fix/plan-lifecycle-preserve-revisions-20261107` — active plan-history fix branch, 7 commits ahead; latest CI run is in progress after an earlier compile error was corrected.
 
 These branches are additional to the original 70-ref baseline. Current remote branch count is 73. The branch compare matrix records their current comparisons.
+
+Additional current branches:
+- `fix/quran-audio-repeat-20261107` — PR #63 Draft, 4 commits ahead; exact-head Quality Gate run 42341365536 PASS (404/0); Vercel Preview blocked by daily build-rate limit.
+- `fix/tafsir-json-response-20261107` — PR #64 Draft, 4 commits ahead; exact-head run 42341419175 pending/no jobs at last check.
+
+Current live branch count: **75** (70 original baseline + audit branch + four remediation branches).
