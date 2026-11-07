@@ -64,6 +64,30 @@ test.describe('Ruqyah verified Quran audio playback', () => {
     await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
   });
 
+  test('ignores a delayed play() completion after the user changes Ruqyah category', async ({ page }) => {
+    await openRuqyah(page);
+    await page.evaluate(() => {
+      Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+        configurable: true,
+        value: function () {
+          return new Promise<void>(resolve => {
+            (window as any).__resolvePendingAudioPlay = resolve;
+          });
+        }
+      });
+    });
+
+    const player = page.getByRole('region', { name: 'مشغل تلاوة آيات الرقية' });
+    await player.getByRole('button', { name: 'تشغيل آيات القسم' }).click();
+    await page.waitForFunction(() => typeof (window as any).__resolvePendingAudioPlay === 'function');
+
+    await page.getByRole('button', { name: 'الرقية المتوسطة' }).click();
+    await page.evaluate(() => (window as any).__resolvePendingAudioPlay?.());
+
+    await expect(player.getByRole('button', { name: 'إيقاف مؤقت' })).toHaveCount(0);
+    await expect(player.getByRole('status')).not.toContainText('يتم التشغيل:');
+  });
+
   test('changing Ruqyah category stops active audio before the new section is shown', async ({ page }) => {
     await openRuqyah(page);
     const player = page.getByRole('region', { name: 'مشغل تلاوة آيات الرقية' });
