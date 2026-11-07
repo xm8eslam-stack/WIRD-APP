@@ -51,3 +51,17 @@ jobs:
         run: npm run build
       - name: Production server startup smoke test
         run: npm run smoke:server
+
+      - name: Install Playwright test runner
+        run: npm install --no-save --no-package-lock @playwright/test@1.56.1
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Desktop and mobile browser smoke tests
+        run: npx playwright test
+      - name: Upload Playwright diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-results
+          path: test-results/playwright
+          if-no-files-found: ignore
