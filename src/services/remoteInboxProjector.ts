@@ -94,17 +94,30 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-async function archiveBlockedProjection(
+function captureLocalProjectionSnapshot(
   event: RemoteInboxEvent,
-  reason: string,
   transactionCollections: SyncCollection[],
   dependencies: RemoteProjectionDependencies
-): Promise<boolean> {
+): Record<string, string | null> {
   const snapshot: Record<string, string | null> = {};
   for (const collection of new Set<SyncCollection>([event.collection, ...transactionCollections])) {
     Object.assign(snapshot, dependencies.getLocalProjectionSnapshot(collection));
   }
-  return dependencies.saveProjectionConflict(event, reason, snapshot);
+  return snapshot;
+}
+
+async function archiveBlockedProjection(
+  event: RemoteInboxEvent,
+  reason: string,
+  transactionCollections: SyncCollection[],
+  dependencies: RemoteProjectionDependencies,
+  snapshot?: Record<string, string | null>
+): Promise<boolean> {
+  return dependencies.saveProjectionConflict(
+    event,
+    reason,
+    snapshot || captureLocalProjectionSnapshot(event, transactionCollections, dependencies)
+  );
 }
 
 function readTransactionCollections(event: RemoteInboxEvent): SyncCollection[] {
@@ -172,6 +185,11 @@ export async function projectRemoteInboxBatch(
       intent.documentId === remoteEvent.documentId &&
       intent.revision === remoteEvent.revision;
     if (intent && !isResumingThisProjection) {
+      await archiveBlockedProjection(remoteEvent, 'projection_failed', transactionCollections, dependencies);
+      if (await dependencies.getRemoteProjectionCursor() >= remoteEvent.serverSequence) {
+        projectedCount++;
+        continue;
+      }
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
@@ -198,6 +216,11 @@ export async function projectRemoteInboxBatch(
       if (isResumingThisProjection && intent) {
         const finalized = await dependencies.finalizeRemoteProjection(intent, () => true);
         if (!finalized) {
+          await archiveBlockedProjection(remoteEvent, 'projection_failed', transactionCollections, dependencies);
+          if (await dependencies.getRemoteProjectionCursor() >= remoteEvent.serverSequence) {
+            projectedCount++;
+            continue;
+          }
           return {
             projectedCount,
             blockedAtSequence: remoteEvent.serverSequence,
@@ -205,7 +228,19 @@ export async function projectRemoteInboxBatch(
           };
         }
       } else {
-        await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+        const marked = await dependencies.markRemoteProjected(remoteEvent.serverSequence);
+        if (!marked) {
+          await archiveBlockedProjection(remoteEvent, 'projection_failed', transactionCollections, dependencies);
+          if (await dependencies.getRemoteProjectionCursor() >= remoteEvent.serverSequence) {
+            projectedCount++;
+            continue;
+          }
+          return {
+            projectedCount,
+            blockedAtSequence: remoteEvent.serverSequence,
+            reason: 'projection_failed'
+          };
+        }
       }
       projectedCount++;
       continue;
@@ -217,6 +252,10 @@ export async function projectRemoteInboxBatch(
         transactionCollections,
         dependencies
       );
+      if (await dependencies.getRemoteProjectionCursor() >= remoteEvent.serverSequence) {
+        projectedCount++;
+        continue;
+      }
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
@@ -252,8 +291,24 @@ export async function projectRemoteInboxBatch(
       revision: remoteEvent.revision,
       initializedCollections: transactionCollections
     };
+    const preProjectionSnapshot = captureLocalProjectionSnapshot(
+      remoteEvent,
+      transactionCollections,
+      dependencies
+    );
     const prepared = await dependencies.prepareRemoteProjection(projectionIntent);
     if (!prepared) {
+      await archiveBlockedProjection(
+        remoteEvent,
+        'projection_failed',
+        transactionCollections,
+        dependencies,
+        preProjectionSnapshot
+      );
+      if (await dependencies.getRemoteProjectionCursor() >= remoteEvent.serverSequence) {
+        projectedCount++;
+        continue;
+      }
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
@@ -273,8 +328,13 @@ export async function projectRemoteInboxBatch(
         remoteEvent,
         'projection_failed',
         transactionCollections,
-        dependencies
+        dependencies,
+        preProjectionSnapshot
       );
+      if (await dependencies.getRemoteProjectionCursor() >= remoteEvent.serverSequence) {
+        projectedCount++;
+        continue;
+      }
       return {
         projectedCount,
         blockedAtSequence: remoteEvent.serverSequence,
