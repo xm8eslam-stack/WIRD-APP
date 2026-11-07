@@ -136,7 +136,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const { user, isGuest, isEmailVerified, logout } = useAuth();
-  const { status: syncStatus, pendingCount, lastSyncAtMs, isOnline, triggerSync } = useCloudSync();
+  const {
+    status: syncStatus, pendingCount, remoteInboxPendingCount,
+    remoteProjectionBlockReason, remoteProjectionBlockedAtSequence,
+    lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync
+  } = useCloudSync();
+  const projectionBlockMessages: Record<string, string> = {
+    projection_disabled: 'استقبال الأحداث غير مفعّل بعد؛ نحتفظ بها دون تطبيقها.',
+    legacy_remote_state: 'توجد بيانات سحابية قديمة تحتاج إلى مصالحة آمنة.',
+    events_pending: 'توجد أحداث سحابية أخرى بانتظار التطبيق.',
+    import_failed: 'تعذر استيراد الأحداث أو التحقق منها؛ لم نحرك المؤشرات.',
+    blocked_pending_local: 'هناك تغييرات محلية معلقة في مجموعة البيانات نفسها.',
+    blocked_base_revision: 'الإصدار المحلي لا يطابق الإصدار السابق للحدث السحابي.',
+    blocked_tombstone: 'حدث حذف ينتظر سياسة حذف آمنة.',
+    projection_failed: 'تعذر تطبيق الحدث محليًا؛ احتفظنا به لإعادة المحاولة.'
+  };
+  const projectionBlockMessage = remoteProjectionBlockReason
+    ? projectionBlockMessages[remoteProjectionBlockReason] || 'تطبيق الأحداث السحابية متوقف بأمان.'
+    : null;
   const [isManualSyncing, setIsManualSyncing] = useState(false);
 
   const handleManualSync = async () => {
@@ -303,7 +320,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
           <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
             <span className="text-stone-500 dark:text-stone-400 block text-[11px]">حالة الاتصال والشبكة:</span>
             <div className="font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
@@ -325,12 +342,32 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {lastSyncAtMs ? new Date(lastSyncAtMs).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'لم تتم بعد'}
             </div>
           </div>
+
+          <div className="bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/80 dark:border-stone-700/80 space-y-1">
+            <span className="text-stone-500 dark:text-stone-400 block text-[11px]">أحداث سحابية بانتظار التطبيق:</span>
+            <div className="font-bold text-stone-800 dark:text-stone-200 font-mono">
+              {remoteInboxPendingCount === 0 ? 'لا توجد أحداث معلقة' : `${remoteInboxPendingCount} حدث غير مطبق`}
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
-          <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
-            تتم مزامنة بيانات حفظك ومراجعاتك وسجل الإنجازات اليومي تلقائياً عند توفر الإنترنت، مع حماية تامة ومطابقة خالية من تعارضات الحفظ.
-          </p>
+          <div className="space-y-1 max-w-xl">
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
+              المزامنة الثنائية ما زالت تمر باختبارات الحماية والتعارض. بياناتك المحلية لا تُحذف عند تعذر الرفع أو تطبيق الأحداث المستقبلة.
+            </p>
+            {syncErrorMessage && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5" role="status">
+                {syncErrorMessage}
+              </p>
+            )}
+            {projectionBlockMessage && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 leading-5" role="status">
+                {projectionBlockMessage}
+                {remoteProjectionBlockedAtSequence !== null && ` (الحدث رقم ${remoteProjectionBlockedAtSequence})`}
+              </p>
+            )}
+          </div>
 
           <button
             type="button"

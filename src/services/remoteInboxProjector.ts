@@ -39,7 +39,7 @@ export function decideRemoteProjection(
 export interface RemoteProjectionBatchResult {
   projectedCount: number;
   blockedAtSequence: number | null;
-  reason: RemoteProjectionDecision | 'projection_failed' | null;
+  reason: Exclude<RemoteProjectionDecision, 'apply' | 'already_applied'> | 'projection_failed' | null;
 }
 
 /**
