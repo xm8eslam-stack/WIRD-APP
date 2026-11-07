@@ -267,8 +267,16 @@ function getIndexedDbJournal(): IndexedDbSyncJournal {
   return indexedDbJournal;
 }
 
-async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 'already_migrated'> {
+function assertExpectedUid(expectedUid?: string): void {
+  if (expectedUid && StorageService.getStorageScope() !== `user:${expectedUid}`) {
+    throw new Error('SYNC_SCOPE_CHANGED');
+  }
+}
+
+async function migrateLegacyOutboxToIndexedDb(expectedUid?: string): Promise<'empty' | 'migrated' | 'already_migrated'> {
   const uid = getActiveUid();
+  assertExpectedUid(expectedUid);
+  if (expectedUid && uid !== expectedUid) throw new Error('SYNC_SCOPE_CHANGED');
   const key = STORAGE_KEYS.SYNC_OUTBOX;
   const raw = StorageService.getRawItem(key);
   if (raw === null) {
@@ -294,7 +302,8 @@ async function migrateLegacyOutboxToIndexedDb(): Promise<'empty' | 'migrated' | 
   }
 
   const result = await getIndexedDbJournal().importLegacyState(normalized as LegacyOutboxState);
-  // Keep the source as a recovery copy. Older tabs may still write the v1 key;
+  assertExpectedUid(expectedUid);
+  // Keep the source as a recovery copy; Older tabs may still write the v1 key;
   // later imports merge new entries by fingerprint without deleting that source.
   if (!StorageService.verifyRawItem(key, raw)) {
     throw new Error('تغير صندوق المزامنة القديم أثناء الترحيل؛ تم الاحتفاظ بالمصدر وأُوقف تأكيد المزامنة حتى إعادة الدمج.');
@@ -327,8 +336,9 @@ export const LocalSyncOutbox = {
   },
 
   /** Return ready journal outbox entries including eventId and fingerprint */
-  async listReadyEntries(nowMs: number = Date.now(), limit: number = 25): Promise<JournalOutboxEntry[]> {
-    await migrateLegacyOutboxToIndexedDb();
+  async listReadyEntries(nowMs: number = Date.now(), limit: number = 25, expectedUid?: string): Promise<JournalOutboxEntry[]> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().listReady(nowMs, limit);
   },
 
@@ -339,20 +349,23 @@ export const LocalSyncOutbox = {
   },
 
   /** Read the last server revision durably acknowledged for one document. */
-  async getRemoteRevision(collection: SyncCollection, documentId: string) {
-    await migrateLegacyOutboxToIndexedDb();
+  async getRemoteRevision(collection: SyncCollection, documentId: string, expectedUid?: string) {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().getRemoteRevision(collection, documentId);
   },
 
   /** Atomically acknowledge a remote write and persist its new server revision. */
-  async acknowledgeRemoteMutation(mutationId: string, revision: number, nowMs: number = Date.now()): Promise<boolean> {
-    await migrateLegacyOutboxToIndexedDb();
+  async acknowledgeRemoteMutation(mutationId: string, revision: number, nowMs: number = Date.now(), expectedUid?: string): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().acknowledgeRemoteMutation(mutationId, revision, nowMs);
   },
 
   /** Rebase a later pending mutation only after a preceding local mutation advanced its document. */
-  async rebasePendingMutation(mutationId: string, expectedBaseRevision: number, nextBaseRevision: number): Promise<boolean> {
-    await migrateLegacyOutboxToIndexedDb();
+  async rebasePendingMutation(mutationId: string, expectedBaseRevision: number, nextBaseRevision: number, expectedUid?: string): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().rebasePendingMutation(mutationId, expectedBaseRevision, nextBaseRevision);
   },
 
@@ -420,14 +433,16 @@ export const LocalSyncOutbox = {
   },
 
   /** Read the durable remote event cursor for the active UID. */
-  async getRemoteCursor(): Promise<number> {
-    await migrateLegacyOutboxToIndexedDb();
+  async getRemoteCursor(expectedUid?: string): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().getRemoteCursor();
   },
 
   /** Import one contiguous server page and advance its cursor atomically. */
-  async importRemotePage(events: RemoteInboxEventInput[]): Promise<number> {
-    await migrateLegacyOutboxToIndexedDb();
+  async importRemotePage(events: RemoteInboxEventInput[], expectedUid?: string): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().importRemotePage(events);
   },
 
@@ -437,8 +452,9 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().listRemoteInboxAfter(sequence, limit);
   },
 
-  async getRemoteProjectionCursor(): Promise<number> {
-    await migrateLegacyOutboxToIndexedDb();
+  async getRemoteProjectionCursor(expectedUid?: string): Promise<number> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().getRemoteProjectionCursor();
   },
 
@@ -448,8 +464,9 @@ export const LocalSyncOutbox = {
   },
 
   /** Record a retryable failure with capped exponential backoff; keep the mutation. */
-  async markFailed(mutationId: string, errorCode: string, nowMs: number = Date.now()): Promise<boolean> {
-    await migrateLegacyOutboxToIndexedDb();
+  async markFailed(mutationId: string, errorCode: string, nowMs: number = Date.now(), expectedUid?: string): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb(expectedUid);
+    assertExpectedUid(expectedUid);
     return getIndexedDbJournal().markFailed(mutationId, errorCode, nowMs);
   },
 
