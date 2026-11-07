@@ -1,11 +1,11 @@
 # WIRD — Resume Here
 
-**Authoritative checkpoint: 2026-11-06. Re-fetch GitHub before any new edit.**
+**Authoritative checkpoint: 2026-11-07 after PR #114 merge. Re-fetch GitHub before any new edit.**
 
 ## Canonical repository
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Canonical branch: `main` (Google AI Studio source)
-- Latest main SHA: `a6a4eabf2572f1c0f7812fe891ddbaec27b3536d`
+- Latest main SHA: `8ac5d87d84077f209eaf49881dd1354ce10d3565`
 - PRs #49–#57 are merged. PR #54 added typed domain-event envelopes; PR #55 journaled demo fixture writes; PR #57 removed read-side mutations and journaled legacy portion migration.
 - PR #57 exact-head runs `42283803166` and `42283813448` passed; post-merge main run `42284039747` passed.
 - Latest PR #55 main merge includes the preceding direct Quran Library tabs/Juz-index commit `033b8abda6bbf4f5c58d9b20d835f3268230abb6`.
@@ -138,3 +138,16 @@
 - Regression test uses identical mutation IDs in accounts A and B and proves stale A operations cannot read, rebase, mark failed, or acknowledge B's pending mutation; both accounts' pending data remains recoverable.
 - Exact PR head `e4865e17707e7f8dbea7bdbad8997bafcda4a414` passed run `42358255018`: 511 unit assertions, 31 Firestore Rules Emulator tests, TypeScript, production build, and production/development startup smoke.
 - Current main is now `31ab27764b5c5db19d0003403adf43905c2bbc8e`; verify its post-merge Quality Gate before claiming main green. Vercel production remains blocked by `build-rate-limit` and no live deployed SHA is verified.
+
+
+## 2026-11-07 — PR #111 and populated eight-collection sync verification
+
+- PR #111 merged as `48cf9b236072cd3db2603a57cda5f67b30a778cd`. It restricts IslamicAPI to validated Quran locator coordinates; displayed Quran text and metadata resolve from WIRD's canonical corpus. Duplicate PR #112 was closed after all code/test files were confirmed identical to main and its only remaining difference was stale checklist wording.
+- PR #114 merged as `8ac5d87d84077f209eaf49881dd1354ce10d3565`; exact PR head `9ff200bc731ac99db0d662f76dad97b370d00c9b` passed both push and pull-request Quality Gate runs `42359408488` and `42359412200`.
+- Exact-head evidence: 513 automated assertions passed, 31 Firestore Rules Emulator tests passed, dependency audit passed, TypeScript passed, production build passed, and production/development server startup smoke passed.
+- PR #114 replaces empty fixtures for plans, enginePlans, portions, weakVerses, tests, and activityEvents with valid non-empty domain records. All eight collections now have populated fixtures. The Emulator test performs sequential A → B → A projection with distinct B-side edits and compares complete local projection records and remote payload fields, plus revision 1/2.
+- This does not prove simultaneous concurrent merge for every collection, long-offline replay, real-browser cross-tab behavior, or Playwright/device E2E. It closes the empty-record serialization/round-trip gap documented under PR #101/#106.
+- Current main SHA: `8ac5d87d84077f209eaf49881dd1354ce10d3565`. Post-merge Main Quality Gate run `42359547235` was in progress when this checkpoint was prepared; recheck its final conclusion before claiming main's post-merge gate passed.
+- Vercel status remains `build-rate-limit`; this is a provider deployment quota failure, not a successful deployment. No production Firebase rules deployment, live deployed SHA, live two-device verification, environment-variable change, secret change, or production sync activation is claimed.
+- PR #2 remains a draft and is 115 commits ahead / 262 behind current main; do not merge it wholesale. Review and selectively reapply any still-useful changes only.
+- Next priority: design and implement an idempotent user-directed conflict-resolution state machine with durable preservation and latest-revision revalidation; then tombstone semantics, additive Ruqyah counters, cross-tab/Playwright, and account lifecycle stress tests. Keep production sync gates disabled.
