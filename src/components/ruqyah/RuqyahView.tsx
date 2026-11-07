@@ -462,7 +462,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               type="button"
               disabled
               aria-disabled="true"
-              title="سيُتاح بعد التحقق من التسجيل كاملًا ومراجعة مصدره ومحتواه"
+              title="التسجيلات الكاملة التي تشمل الأدعية لم تعتمد بعد؛ المتاح حاليًا تلاوة الآيات القرآنية من مصدر موثق"
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-stone-400/70 cursor-not-allowed opacity-60"
             >
               <Headphones className="w-4 h-4" />
