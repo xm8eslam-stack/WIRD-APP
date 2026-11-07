@@ -82,8 +82,8 @@ export const RUQYAH_GUIDELINES: RuqyahItem[] = [
     title: 'لا تجعل الرقية بديلًا عن العلاج الطبي',
     text: 'اجمع بين الدعاء والرقية والأخذ بالأسباب الطبية، ولا توقف دواءً موصوفًا أو تؤخر مراجعة الطبيب بسبب الرقية.',
     repeatTarget: null,
-    source: 'إرشاد صحي عام',
-    explanation: 'الرقية عبادة ودعاء، والأخذ بالأسباب الطبية لا يتعارض مع التوكل على الله.'
+    source: 'NHS: Herbal medicines and complementary therapies',
+    explanation: 'لا توقف دواءً موصوفًا ولا تؤخر مراجعة الطبيب بسبب الرقية؛ استشر مختصًا صحيًا بشأن العلاج.'
   },
   {
     id: 'g-5',
