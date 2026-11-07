@@ -30,21 +30,23 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
     } as unknown as HTMLAudioElement;
     const current = { current: 1 };
     const target = { current: 3 };
+    const getPlayCalls = () => playCalls;
+    const getCurrentRepeat = () => current.current;
 
     attachAyahRepeatHandler(audio, current, target, count => counts.push(count), () => {
       completed++;
     });
 
     audio.onended?.(new Event('ended'));
-    if (playCalls !== 1 || current.current !== 2 || audio.currentTime !== 0) {
+    if (getPlayCalls() !== 1 || getCurrentRepeat() !== 2 || audio.currentTime !== 0) {
       throw new Error('First completion should replay and advance to repeat 2');
     }
     audio.onended?.(new Event('ended'));
-    if (playCalls !== 2 || current.current !== 3) {
+    if (getPlayCalls() !== 2 || getCurrentRepeat() !== 3) {
       throw new Error('Second completion should replay and advance to repeat 3');
     }
     audio.onended?.(new Event('ended'));
-    if (playCalls !== 2 || completed !== 1 || current.current !== 1) {
+    if (getPlayCalls() !== 2 || completed !== 1 || getCurrentRepeat() !== 1) {
       throw new Error('Third completion should stop at the exact target and reset the counter');
     }
     if (counts.join(',') !== '2,3,1') throw new Error('Repeat count UI updates are out of order');
