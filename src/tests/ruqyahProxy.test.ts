@@ -117,7 +117,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
         upstreamCalls++;
         return new Response(JSON.stringify({
           status: 'success',
-          data: [{ title: 'Brief Ruqya', subcategories: [] }]
+          data: [{ id: 1, title: '2:255', arabic: 'نص خارجي لا يعرض' }]
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }) as typeof fetch;
       let finalResponse: MockResponse | null = null;
