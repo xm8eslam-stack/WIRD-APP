@@ -3,6 +3,7 @@ import { PlanningEngine, PlanGenerationInput, ScheduledDayPlan } from './plannin
 import { PlanLifecycle } from './planLifecycle';
 import { SpacedRevisionEngine } from './spacedRevisionEngine';
 import { RevisionItem } from '../types/quran';
+import { StorageService } from './storageService';
 
 function assert(condition: boolean, testName: string) {
   if (!condition) {
@@ -170,6 +171,44 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     threw = false;
     try { PlanningEngine.generatePlan({ ...base, startDate: 'not-a-date' }); } catch { threw = true; }
     assert(threw, 'Invalid start date must be rejected');
+  });
+
+  runTest('PlanningEngine: creates and persists valid plans spanning multiple Surahs', () => {
+    StorageService.__resetStorageForTests();
+    try {
+      const input: PlanGenerationInput = {
+        title: 'خطة من الفاتحة إلى البقرة',
+        startSurah: 1,
+        startAyah: 5,
+        endSurah: 2,
+        endAyah: 5,
+        startDate: '2026-11-08',
+        level: 'intermediate',
+        dailyAvailableMinutes: 30,
+        dailyRevisionMinutes: 15,
+        paceType: 'verses_per_day',
+        paceQuantity: 5,
+        activeDays: [0, 1, 2, 3, 4, 5, 6],
+        restDays: [],
+        schedulePreference: 'single_session'
+      };
+      const plan = PlanningEngine.generatePlan(input);
+      const tasks = plan.schedule.flatMap(day => day.memorizationTask ? [day.memorizationTask] : []);
+      assert(tasks.length === 2, `Expected 2 valid tasks across the Surah boundary, got ${tasks.length}`);
+      assert(tasks[0].surahNumber === 1 && tasks[0].startAyah === 5 &&
+        tasks[0].endAyah === 7 && tasks[0].versesCount === 3,
+        'First task must stop at the final ayah of Al-Fatihah');
+      assert(tasks[1].surahNumber === 2 && tasks[1].startAyah === 1 &&
+        tasks[1].endAyah === 5 && tasks[1].versesCount === 5,
+        'Second task must continue from the first ayah of Al-Baqarah');
+      assert(StorageService.saveEnginePlans([plan]),
+        'A generated cross-Surah plan must pass the same validator used by local persistence');
+      const saved = StorageService.getEnginePlans();
+      assert(saved.length === 1 && saved[0].id === plan.id,
+        'A generated cross-Surah plan must round-trip through storage without being discarded');
+    } finally {
+      StorageService.__resetStorageForTests();
+    }
   });
 
   // 4. Workload Limits & Feasibility
