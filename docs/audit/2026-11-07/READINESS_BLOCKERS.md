@@ -198,3 +198,13 @@ Same journal tests pass across supported browser engines, including concurrent t
 - UID-scoped local storage and guest/account isolation exist.
 - Backup validation and rollback tests are extensive.
 - Do not rebuild these foundations from scratch; close the specific gaps above.
+
+## Remediation branch status (2026-11-07)
+
+The following fixes are implemented in separate Draft PRs but are **not merged**, so main retains the blockers until review and merge:
+- PR #61: journaled backup import across Settings and Progress Analytics; exact CI PASS (404/0), Vercel Preview Ready.
+- PR #62: preserve revision-only/partial task history and out-of-order memorization gaps; exact CI PASS (406/0), Vercel Preview blocked by Vercel daily build-rate limit.
+- PR #63: exact ayah repeat count and live target handling; exact CI PASS (404/0), Vercel Preview blocked by Vercel daily build-rate limit.
+- PR #64: Tafsir HTML/malformed JSON guards; exact CI pending/no job assigned at last check.
+
+No PR was merged because AGENTS.md explicitly requires user approval before merge. No production Firestore or Vercel configuration was changed.
