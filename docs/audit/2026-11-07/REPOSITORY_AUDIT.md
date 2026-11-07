@@ -159,7 +159,7 @@ All 147 tracked files now have an individual note in FILE_AUDIT_REGISTER.md. The
 
 ## 11. Remediation execution checkpoint
 
-The initial audit phase is complete: 147/147 baseline files have per-file notes, and the original 70 branches were compared. The live repository now has 75 branches because four remediation branches and one audit branch were created after the baseline snapshot.
+The initial audit phase is complete: 147/147 baseline files have per-file notes, and the original 70 branches were compared. The live repository now has 76 branches because five remediation branches and one audit branch were created after the baseline snapshot.
 
 Draft remediation PRs:
 - #61 backup import journal boundary — CI PASS, 404/0, Vercel Preview Ready.
