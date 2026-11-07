@@ -27,3 +27,10 @@ A release gate is passed only with evidence on the exact candidate SHA.
 PR #81 added a bounded UID-scoped durable archive for blocked remote projection conflicts and Settings diagnostics. Exact-head PR CI passed with 459 automated assertions, Firestore Rules Emulator 27/27, TypeScript, production build, dependency audit, and production startup smoke. Post-merge main run `42351965332` passed on `059e902194811be71ab4dea9da8609a96967214e`.
 
 This closes the conflict-evidence preservation gap, but not the resolution gate. Production sync remains not approved.
+
+
+## PR #85 update
+
+Atomic conflict reconciliation is now implemented: an open archive record is marked reconciled in the same IndexedDB transaction as cursor advancement and inbox deletion, with event fingerprint/inbox validation and bounded snapshot size. PR #85 exact-head CI passed (462 assertions, 27/27 Firestore Rules, TypeScript, build, dependency audit, startup smoke); post-merge main run `42352594819` passed on `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`.
+
+Still not approved for production sync: user-directed conflict choices/merge/rebase remain absent, tombstone projection remains blocked, two-device tests cover a limited collection set, and live Vercel/production rules verification remains outstanding.
