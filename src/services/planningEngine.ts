@@ -227,7 +227,7 @@ export const PlanningEngine = {
       // Average 15 verses per page in standard Quranic distribution
       dailyPaceVerses = Math.max(1, Math.round(input.paceQuantity * 15));
     } else if (input.paceType === 'by_target_date' && input.targetEndDate) {
-      const activeDays = this.countActiveDaysBetween(input.startDate, input.targetEndDate, input.activeDays, input.restDays);
+      const activeDays = this.countActiveDaysBetween(input.startDate, input.targetEndDate, activeDays, restDays);
       if (activeDays <= 0) {
         throw new Error("لا توجد أيام دراسة نشطة متاحة بين تاريخ البداية والنهاية المحدد.");
       }
@@ -262,7 +262,7 @@ export const PlanningEngine = {
     while (chunkIndex < chunks.length) {
       const dateStr = this.formatDate(curDate);
       const dayOfWeek = curDate.getDay();
-      const isRest = input.restDays.includes(dayOfWeek) || !input.activeDays.includes(dayOfWeek);
+      const isRest = restDays.includes(dayOfWeek) || !activeDays.includes(dayOfWeek);
 
       if (isRest) {
         restDaysCount++;
