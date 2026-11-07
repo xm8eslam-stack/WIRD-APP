@@ -384,6 +384,12 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().prepareConflictResolutionIntent(input);
   },
 
+  /** Cancel a prepared decision without touching its conflict archive or pending writes. */
+  async cancelPreparedConflictResolutionIntent(eventId: string, decisionId: string): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().cancelPreparedConflictResolutionIntent(eventId, decisionId);
+  },
+
   /** Recover the exact prepared decision after reload or account-tab restart. */
   async getConflictResolutionIntent(eventId: string): Promise<ConflictResolutionIntent | null> {
     await migrateLegacyOutboxToIndexedDb();
