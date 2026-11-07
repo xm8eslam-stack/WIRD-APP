@@ -301,6 +301,16 @@ export async function runLocalSyncOutboxTests(): Promise<{ passed: number; faile
         accountBEntries[0]?.baseRevision === 0 &&
         accountBEntries[0]?.attemptCount === 0,
         'Account B mutation payload, base revision, and retry state must remain untouched');
+
+      StorageService.setStorageScope('user:' + accountA);
+      const restoredA = await LocalSyncOutbox.getSnapshot();
+      const restoredAEntries = await LocalSyncOutbox.listReadyEntries(7500, 25);
+      assert(restoredA.pendingCount === 1 && restoredAEntries[0]?.payload.displayName === 'Account A',
+        'Account A original pending mutation must remain recoverable after the stale sync aborts');
+      StorageService.setStorageScope('user:' + accountA + '-other');
+      const restoredB = await LocalSyncOutbox.getSnapshot();
+      assert(restoredB.pendingCount === 1,
+        'Account B pending mutation must remain isolated when switching back');
     });
   } finally {
     StorageService.__resetStorageForTests();
