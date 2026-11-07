@@ -58,3 +58,16 @@
 - This is bidirectional route/event projection coverage, not complete domain-record coverage: plans, enginePlans, portions, weakVerses, tests, and activityEvents still use empty `records: []` payloads. Profile and Ruqyah have representative non-empty payloads; Ruqyah is asserted to change from 3 to 4.
 - Remaining: populate valid records for each collection, assert field-level equality in both directions, and add simultaneous edits, offline replay, duplicate delivery, out-of-order, crash, and account-switch cases per collection.
 - PR #104's Settings conflict inspector is read-only; it is not evidence that manual resolution has shipped.
+
+
+## 2026-11-07 — PR #111 and populated eight-collection sync verification
+
+- PR #111 merged as `48cf9b236072cd3db2603a57cda5f67b30a778cd`. It restricts IslamicAPI to validated Quran locator coordinates; displayed Quran text and metadata resolve from WIRD's canonical corpus. Duplicate PR #112 was closed after all code/test files were confirmed identical to main and its only remaining difference was stale checklist wording.
+- PR #114 merged as `8ac5d87d84077f209eaf49881dd1354ce10d3565`; exact PR head `9ff200bc731ac99db0d662f76dad97b370d00c9b` passed both push and pull-request Quality Gate runs `42359408488` and `42359412200`.
+- Exact-head evidence: 513 automated assertions passed, 31 Firestore Rules Emulator tests passed, dependency audit passed, TypeScript passed, production build passed, and production/development server startup smoke passed.
+- PR #114 replaces empty fixtures for plans, enginePlans, portions, weakVerses, tests, and activityEvents with valid non-empty domain records. All eight collections now have populated fixtures. The Emulator test performs sequential A → B → A projection with distinct B-side edits and compares complete local projection records and remote payload fields, plus revision 1/2.
+- This does not prove simultaneous concurrent merge for every collection, long-offline replay, real-browser cross-tab behavior, or Playwright/device E2E. It closes the empty-record serialization/round-trip gap documented under PR #101/#106.
+- Current main SHA: `8ac5d87d84077f209eaf49881dd1354ce10d3565`. Post-merge Main Quality Gate run `42359547235` was in progress when this checkpoint was prepared; recheck its final conclusion before claiming main's post-merge gate passed.
+- Vercel status remains `build-rate-limit`; this is a provider deployment quota failure, not a successful deployment. No production Firebase rules deployment, live deployed SHA, live two-device verification, environment-variable change, secret change, or production sync activation is claimed.
+- PR #2 remains a draft and is 115 commits ahead / 262 behind current main; do not merge it wholesale. Review and selectively reapply any still-useful changes only.
+- Next priority: design and implement an idempotent user-directed conflict-resolution state machine with durable preservation and latest-revision revalidation; then tombstone semantics, additive Ruqyah counters, cross-tab/Playwright, and account lifecycle stress tests. Keep production sync gates disabled.
