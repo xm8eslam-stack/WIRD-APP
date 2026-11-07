@@ -314,8 +314,19 @@ export function runBackupTests(): { passed: number; failed: number } {
   });
 
   // Canonical data and Ruqyah progress must survive export, reset, and import.
-  test('Backup v5 round-trip preserves canonical memorization portions and Ruqyah progress', () => {
+  test('Backup v5 round-trip preserves Ruqyah progress and notifies mounted readers', () => {
     const snapshot = StorageService.getStorageSnapshot();
+    const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+    const dispatchedEvents: string[] = [];
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: {
+        dispatchEvent: (event: Event) => {
+          dispatchedEvents.push(event.type);
+          return true;
+        }
+      } as unknown as Window
+    });
     try {
       StorageService.resetAllData();
       assert(StorageService.saveUnifiedPortions([SAMPLE_PORTION]), 'Canonical sample should save');
@@ -330,7 +341,13 @@ export function runBackupTests(): { passed: number; failed: number } {
       assert(imported.success, 'Version 5 backup should import successfully');
       assert(JSON.stringify(StorageService.getUnifiedPortions()) === JSON.stringify([SAMPLE_PORTION]), 'Imported canonical portions must exactly match exported data');
       assert(JSON.stringify(StorageService.getRuqyahProgressSnapshot()?.counts) === JSON.stringify(ruqyahProgress.counts), 'Imported Ruqyah progress must exactly match exported counters');
-    } finally { StorageService.restoreStorageSnapshot(snapshot); }
+      assert(dispatchedEvents.filter(type => type === 'wird:ruqyah-progress-updated').length >= 4,
+        'Save, direct reset, and direct backup import must notify mounted Ruqyah readers');
+    } finally {
+      if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+      else Reflect.deleteProperty(globalThis, 'window');
+      StorageService.restoreStorageSnapshot(snapshot);
+    }
   });
 
   test('Legacy version 3 portions migrate into the canonical schema', () => {
