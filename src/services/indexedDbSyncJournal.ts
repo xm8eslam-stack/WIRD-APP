@@ -2056,15 +2056,16 @@ export class IndexedDbSyncJournal {
       const finishRead = () => {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
-        if (!intent) return;
+        const currentIntent = intent;
+        if (!currentIntent) return;
         const event = conflict?.event;
-        const matchingInbox = inboxEvents.find(item => item.serverSequence === intent.serverSequence);
+        const matchingInbox = inboxEvents.find(item => item.serverSequence === currentIntent.serverSequence);
         if (!conflict || conflict.status !== 'open' || !event ||
-            event.eventId !== eventId || event.fingerprint !== intent.eventFingerprint ||
-            intent.uid !== uid || intent.eventId !== eventId ||
-            intent.decisionId !== decisionId || intent.status !== 'prepared' ||
+            event.eventId !== eventId || event.fingerprint !== currentIntent.eventFingerprint ||
+            currentIntent.uid !== uid || currentIntent.eventId !== eventId ||
+            currentIntent.decisionId !== decisionId || currentIntent.status !== 'prepared' ||
             !matchingInbox || matchingInbox.eventId !== eventId ||
-            matchingInbox.fingerprint !== intent.eventFingerprint) {
+            matchingInbox.fingerprint !== currentIntent.eventFingerprint) {
           failure = new Error('لا يمكن إلغاء هذا القرار؛ لم تعد النية أو أدلة التعارض في الحالة المتوقعة.');
           transaction.abort();
           return;
@@ -2264,6 +2265,7 @@ export class IndexedDbSyncJournal {
               createdAtMs: event.occurredAtMs,
               deviceId: event.deviceId,
               sequence: event.serverSequence,
+              fingerprint: event.fingerprint,
               payload: JSON.parse(expectedPayloadJson)
             });
           } else {
