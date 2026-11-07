@@ -1,3 +1,34 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-07 (through PR #158)
+
+This section supersedes older "not implemented" summaries below where the listed PRs have since landed.
+
+## Exact-head Quality Gate results
+
+| PR | Feature | Exact head | Quality Gate run | Result |
+|---|---|---|---|---|
+| #149 | Confirmed use-remote conflict resolution | `c675a2d164b88994c08a5368bf1695712f2625f3` | `42368745026` | Passed |
+| #155 | Confirmed keep-local resolution for supported single-collection upserts | `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf` | `42370175733` | Passed |
+| #157 | Ruqyah V2 per-device counter convergence | `b2752297842d6fd30d7b4ae86eb33d48585e9ce8` | `42372550605` | Passed |
+| #158 | Release/checkpoint documentation | `c90af2e8838a52136e50f422981737966e104d29` | `42372993374` | Passed |
+
+Each run's complete job finished with conclusion `success`. The Quality Gate covers the repository's configured automated tests, Firestore Rules Emulator, dependency audit, TypeScript, production build, server startup smoke, and desktop/mobile Playwright steps. Verify job-step details on the run before quoting test counts or asserting a specific sub-suite.
+
+## Verified new behaviors
+
+- PR #149: use-remote conflict resolution, exact Firestore revalidation, archived mutation identity checks, atomic cursor/inbox/outbox/revision finalization, cancellation, and retry after an interrupted local projection.
+- PR #155: keep-local re-publication for supported single-collection upsert conflicts; exact local snapshot validation; latest remote revision revalidation; atomic replacement outbox enqueue; old evidence retained.
+- PR #157: V2 Ruqyah component-wise PN-counter merge, reset-watermark convergence, concurrent increments/resets, V1 migration guards, malformed payload rejection, deterministic crash recovery, and a two-device Firestore Emulator scenario proving offline concurrent increment convergence.
+
+## Still not proven / required next tests
+
+- Tombstone application, conflict resolution, resurrection prevention, and safe retention remain intentionally unsupported.
+- Grouped `syncMeta` keep-local/merge resolution remains unsupported; tests must prove atomicity across every child collection.
+- Divergent V1 Ruqyah baselines must remain blocked and preserved; no automatic reconciliation may infer missing increments.
+- Full cross-tab concurrency, account lifecycle isolation under browser reload/sign-out, long-offline event replay, out-of-order delivery, and broad crash/failure injection remain incomplete.
+- Real production two-device behavior, deployed Firestore rules, production environment flags, Vercel deployed SHA, and live browser/audio smoke are not proven by these CI runs.
+
+---
+
 # WIRD Sync Test Matrix
 
 **Evidence checkpoint:** 2026-11-07. Test results apply only to the exact SHAs listed.
