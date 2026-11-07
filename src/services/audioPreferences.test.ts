@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PLAYBACK_RATES, normalizePlaybackRate } from './audioPreferences';
+import { attachAyahRepeatHandler } from './audioRepeatController';
 
 export function runAudioPreferencesTests(): { passed: number; failed: number } {
   let passed = 0;
@@ -15,8 +16,75 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
   test('Playback rate normalization rejects unsupported values', () => {
     if (normalizePlaybackRate(1.5) !== 1.5 || normalizePlaybackRate(3) !== 1 || normalizePlaybackRate('invalid') !== 1) throw new Error('Invalid playback-rate normalization');
   });
+  test('Ayah repeat controller plays the exact target count', () => {
+    let playCalls = 0;
+    let completed = 0;
+    const counts: number[] = [];
+    const audio = {
+      currentTime: 4,
+      play: () => {
+        playCalls++;
+        return Promise.resolve();
+      },
+      onended: null
+    } as unknown as HTMLAudioElement;
+    const current = { current: 1 };
+    const target = { current: 3 };
+    const getPlayCalls = () => playCalls;
+    const getCurrentRepeat = () => current.current;
+
+    attachAyahRepeatHandler(audio, current, target, count => counts.push(count), () => {
+      completed++;
+    });
+
+    audio.onended?.(new Event('ended'));
+    if (getPlayCalls() !== 1 || getCurrentRepeat() !== 2 || audio.currentTime !== 0) {
+      throw new Error('First completion should replay and advance to repeat 2');
+    }
+    audio.onended?.(new Event('ended'));
+    if (getPlayCalls() !== 2 || getCurrentRepeat() !== 3) {
+      throw new Error('Second completion should replay and advance to repeat 3');
+    }
+    audio.onended?.(new Event('ended'));
+    if (getPlayCalls() !== 2 || completed !== 1 || getCurrentRepeat() !== 1) {
+      throw new Error('Third completion should stop at the exact target and reset the counter');
+    }
+    if (counts.join(',') !== '2,3,1') throw new Error('Repeat count UI updates are out of order');
+  });
+
+  test('Ayah repeat controller reads a target changed during playback', () => {
+    let playCalls = 0;
+    let completed = 0;
+    const audio = {
+      currentTime: 0,
+      play: () => {
+        playCalls++;
+        return Promise.resolve();
+      },
+      onended: null
+    } as unknown as HTMLAudioElement;
+    const current = { current: 1 };
+    const target = { current: 5 };
+    attachAyahRepeatHandler(audio, current, target, () => {}, () => {
+      completed++;
+    });
+
+    audio.onended?.(new Event('ended'));
+    target.current = 1;
+    audio.onended?.(new Event('ended'));
+    if (playCalls !== 1 || completed !== 1 || current.current !== 1) {
+      throw new Error('Updated repeat target must be read at the next audio-ended event');
+    }
+  });
+
   test('Every existing audio view applies the shared speed and renders the common control', () => {
     const library = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranLibraryView.tsx'), 'utf8');
+    if (!library.includes('attachAyahRepeatHandler') || !library.includes('currentRepeatCountRef') || !library.includes('repeatTargetRef')) {
+      throw new Error('Quran library must use mutable repeat refs and the tested repeat controller');
+    }
+    if (library.includes('if (currentRepeatCount < repeatTarget)')) {
+      throw new Error('Stale React state must not control the audio ended callback');
+    }
     const session = fs.readFileSync(path.resolve(process.cwd(), 'src/components/session/MemorizationSessionView.tsx'), 'utf8');
     const mushaf = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranMushafReader.tsx'), 'utf8');
     for (const [name, source] of [['Quran library', library], ['Memorization session', session], ['Full Mushaf reader', mushaf]] as const) {
