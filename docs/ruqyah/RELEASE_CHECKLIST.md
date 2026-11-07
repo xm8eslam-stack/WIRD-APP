@@ -36,10 +36,12 @@ Do not turn on remote projection before this deployment is confirmed.
 
 The repository's `vercel.json` enables automatic deployment for `main` and disables preview deployments for other branches. The Vercel integration returned a build-rate-limit quota failure during the reviewed PRs. This is a provider quota issue, not a failed code quality gate.
 
+**STOP — do not enable production sync at the current checkpoint.** The values below are documented for a future release only. Do not set either remote-sync flag until every global gate in docs/sync/RELEASE-GATES.md passes, especially user-facing conflict resolution, deterministic Ruqyah additive-increment resolution, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing. These gates are currently open.
+
 In the Vercel project settings, verify the following variables are present in the correct Production environment:
 
-- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
-- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — only after Firestore rules are deployed.
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` — future release only; keep disabled until all global release gates pass.
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — future release only; keep disabled until all global release gates pass and Firestore rules are deployed.
 - `ISLAMICAPI_API_KEY` — server-side secret only; never prefix it with `VITE_`, never expose it to browser code.
 
 Redeploy `main` after changing variables. Verify the deployment commit SHA equals the merged `main` commit and the deployment is Ready before testing.
@@ -57,6 +59,7 @@ Use two real browsers/devices signed in to the same verified account:
 7. Switch to another account and confirm the first account's Ruqyah progress is not visible.
 8. Test guest mode; guest progress must remain local-only.
 9. Test simultaneous edits and stale revisions; conflicts must preserve recoverable local and remote values. Do not accept last-write-wins overwrites.
+10. Verify that two offline increments from the same base are not presented as an automatically merged total. Current snapshot semantics block and archive the conflict; they do not compute the additive result. Do not enable production sync until the user-facing resolution flow can resolve this case without losing increments.
 
 ### 4. Live audio and API tests
 
@@ -99,6 +102,9 @@ Repository: https://github.com/muslimpack/Ruqayyah
 
 ## Known release blockers
 
+- User-facing keep-local/use-remote/merge conflict resolution is not implemented.
+- Ruqyah aggregate counter snapshots do not yet support deterministic additive merge for independent offline increments.
+- Tombstone projection, cross-tab coordination, comprehensive account lifecycle isolation, and all-collection conflict handling remain unverified.
 - Live Firestore rules deployment is not verified from this repository session.
 - Vercel reports a build-rate-limit quota error; live production deployment status must be checked in the Vercel dashboard.
 - The deployed values of the three environment variables above are not observable through GitHub CI.
