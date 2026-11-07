@@ -40,6 +40,7 @@ export const STORAGE_KEYS = {
   WEAK_VERSES: 'wird_weak_verses',
   UNIFIED_PORTIONS: 'wird_portions_v2',
   SCHEMA_VERSION: 'wird_data_schema_version',
+  RUQYAH_PROGRESS: 'wird_ruqyah_progress_v1',
   SYNC_OUTBOX: 'wird_sync_outbox_v1'
 } as const;
 
@@ -1877,7 +1878,7 @@ export const StorageService = {
       STORAGE_KEYS.PROFILE, STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS,
       STORAGE_KEYS.PROGRESS, STORAGE_KEYS.REVISION, STORAGE_KEYS.LOGS,
       STORAGE_KEYS.TESTS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.WEAK_VERSES,
-      STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.SCHEMA_VERSION, STORAGE_KEYS.SYNC_OUTBOX
+      STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.SCHEMA_VERSION, STORAGE_KEYS.RUQYAH_PROGRESS, STORAGE_KEYS.SYNC_OUTBOX
     ];
     for (const key of keys) {
       if (!removeItem(key) || !verifyItem(key, null) || memoryStorage.has(resolveStorageKey(key))) {
