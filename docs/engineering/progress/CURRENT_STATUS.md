@@ -154,3 +154,14 @@ The detailed historical checkpoint entries below are retained for traceability. 
 - Tombstone projection remains deliberately blocked pending collection-specific delete semantics. Production rules deployment and Vercel production deployment remain unverified; Vercel status is `build-rate-limit`.
 - New detailed documents: `docs/sync/ARCHITECTURE.md`, `STATE-MACHINE.md`, `CONFLICT-RESOLUTION.md`, `FAILURE-RECOVERY.md`, `TEST-MATRIX.md`, `RELEASE-GATES.md`, and `docs/engineering/PROGRESS.md`.
 - Current main at this checkpoint: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`; post-merge main workflow was queued and requires exact-SHA verification.
+
+
+## 2026-11-07 — Durable conflict archive merged
+
+- PR #81 merged as `059e902194811be71ab4dea9da8609a96967214e`.
+- IndexedDB v8 adds a UID-scoped bounded `projectionConflicts` store. Blocked projector decisions preserve the remote event and relevant local snapshot; repeated observations do not overwrite the first snapshot; open conflicts are never pruned.
+- Settings exposes open conflict count and latest conflict summary. This is diagnostic/recovery support, not conflict resolution.
+- Exact-head PR CI: 459 automated assertions, 27 Firestore Rules Emulator tests, TypeScript, production build, dependency audit, and startup smoke passed. Post-merge main run `42351965332` passed.
+- PR #76 and #59 closed as superseded; no stale-base changes were merged directly.
+- Current main SHA: `059e902194811be71ab4dea9da8609a96967214e`.
+- Remaining blockers: user-facing conflict resolution/rebase, tombstone projection/retention, all-collection two-device coverage, real-browser E2E, long-offline/load tests, and live production deployment/rules verification.

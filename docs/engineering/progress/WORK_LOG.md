@@ -373,3 +373,14 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Current main at checkpoint: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`; post-merge main workflow was queued; recheck it before considering main verification complete.
 - Known blockers: tombstones remain intentionally blocked; no durable conflict record/user resolution UX; profile-only two-device coverage; no Playwright browser contexts/long-offline stress; production rules deployment and Vercel deployment not verified (`build-rate-limit`).
 - No production data, secrets, Firebase rules deployment, environment variables, or Vercel settings changed.
+
+
+## 2026-11-07 — Durable conflict archive
+
+- Ported the useful conflict archive changes from stale PR #76 onto latest main in PR #81 rather than merging a diverged branch.
+- Added IndexedDB schema v8 `projectionConflicts` store, UID-scoped indexes, a 100-record cap, resolved-only pruning, original-snapshot preservation, and remote-event retention.
+- Added projector archival for blocked decisions/finalization failures, coordinator summaries, Settings diagnostics, and regression tests.
+- Initial exact-head CI failed because the Firestore integration helper lacked the new snapshot/archive dependencies. Updated the helper and asserted the offline conflict is archived. Final exact-head SHA `415cbe33389a6108d08f9d5785818e8e12458fee` passed: 459 automated assertions, 27/27 rules, TypeScript, build, dependency audit, startup smoke.
+- PR #81 merged as `059e902194811be71ab4dea9da8609a96967214e`; post-merge main run `42351965332` passed.
+- Closed stale PR #76 and superseded PR #59; neither was merged. PR #59's old `domain-mutation.v2` serverTimestamp envelope did not match the current revisioned schema and was intentionally not ported.
+- Vercel still reports `build-rate-limit`; no live deployment verification.

@@ -56,3 +56,12 @@
 - Tombstones are still blocked; no collection-specific delete projection or tombstone GC. Conflict detection preserves pending local work but no conflict record/UI/rebase workflow exists.
 - Runtime upload/projection are controlled by explicit Vite flags; production flag values have not been checked. Production Firebase rules and Vercel deploy remain unverified (`build-rate-limit`).
 - Read `docs/engineering/PROGRESS.md` and `docs/sync/RELEASE-GATES.md` before continuing.
+
+
+## Latest checkpoint — PR #81
+- Main SHA: `059e902194811be71ab4dea9da8609a96967214e`.
+- PR #81 merged: bounded UID-scoped durable conflict archive + Settings diagnostics.
+- Exact PR gate: 459 assertions, 27/27 Firestore Rules, TypeScript, build, dependency audit, startup smoke passed. Post-merge main run `42351965332` passed.
+- PR #76 and #59 are closed as superseded.
+- Conflict evidence is persisted, but resolution/rebase UI is not implemented. Tombstone projection remains blocked.
+- Continue with conflict-resolution protocol, then tombstone semantics, broader collection/device coverage, and browser E2E. Do not enable production projection.
