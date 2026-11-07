@@ -210,3 +210,14 @@ The prior checkpoint paragraphs are historical. Current main at this update is f
 - Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
 - PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
 - PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.
+
+## Authoritative live status — 2026-11-07 after PR #98
+
+- Current main: 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. Main Quality Gate run 42356505550 passed on this exact SHA.
+- PR #97 merged at 217f7136244d4d7afd02a9c52be86f520c1baefa; exact-head Quality Gate runs 42356248195 and 42356243586 passed. The API proxy keeps the provider key server-side, allowlists topic block types, bounds streamed response bodies to 2 MiB, and leaves educational topic endpoints disabled by default.
+- PR #98 merged at 8089579d020a6a4831cdc9ba4f25f8672f30cc3d; exact-head run 42356412901 passed. It adds a guarded manual Firestore rules deployment workflow. It has not been dispatched; production rules are not claimed deployed.
+- PR #100 is open to add Firestore Emulator tests as a pre-deploy gate. Do not dispatch the workflow until PR #100 is merged and deployment is explicitly approved.
+- Vercel status for current main SHA 8089579d020a6a4831cdc9ba4f25f8672f30cc3d is failure: build-rate-limit. Earlier success on f2c3f32f does not verify the current main deployment. No production alias/live SHA is confirmed.
+- Manual conflict-resolution UI/state machine remains absent. Ruqyah aggregate snapshots safely block/archive concurrent stale writes but do not calculate an additive merge.
+- Tombstones remain blocked; cross-tab browser concurrency, full account lifecycle isolation, and complete multi-collection two-device coverage remain unverified.
+- Keep remote sync flags disabled. Do not deploy rules, alter secrets, or change Vercel production settings without explicit approval.

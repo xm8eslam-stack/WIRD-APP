@@ -133,3 +133,12 @@ Conflict archival validates the stored inbox event and fingerprint, checks exist
 - Current main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3 passed Main Quality Gate run 42355600523. No production secrets, Vercel environment variables, Firebase project configuration, or remote-sync flags were changed.
 - Revisioned sync flags must remain disabled until manual conflict resolution, tombstone semantics, Ruqyah concurrent increment resolution, cross-tab concurrency, account lifecycle isolation, and production rules/deployment gates pass.
 - Vercel build-rate-limit is a provider quota issue; it is not evidence of a deployed artifact. Confirm deployed SHA and live smoke separately.
+
+## 2026-11-07 — API proxy and deployment safety checkpoint
+
+- PR #97 merged with a server-side IslamicAPI proxy. The provider key is read only from server environment, upstream content blocks are allowlisted, streamed response bodies are bounded to 2 MiB, and topic endpoints are disabled unless the server-side RUQYAH_TOPICS_ENABLED flag is explicitly true.
+- Rate limiting uses Vercel-provided x-real-ip when available and is bounded per serverless instance. It is best-effort, not a globally coordinated quota; provider fair-use limits remain authoritative.
+- PR #98 merged a manual-only Firestore rules deployment workflow requiring main, exact project-ID match, typed confirmation, and a service-account secret. It has not been dispatched.
+- PR #100 is open to add the Firestore Emulator preflight before credential creation/deployment. Do not dispatch until merged and explicitly approved.
+- Main SHA 8089579d020a6a4831cdc9ba4f25f8672f30cc3d passed run 42356505550. Its Vercel status is build-rate-limit failure; no live production SHA or rules deployment is verified.
+- No production secrets, Vercel settings, Firebase rules, or sync flags were changed by this session.

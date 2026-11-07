@@ -2,145 +2,103 @@
 
 Last updated: 2026-11-07
 
-## Project state
+## Current repository state
 
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Default branch: `main`
-- Phase 1 PR #88 is merged. Merge commit: `6af7ce1d27543429911ca686550bc26f446ec2e0`.
-- Phase 2 PR #91 is merged. Merge commit: `a618036b995ff45749748e90e2a4d3ec1037c838`.
-- Phase 3 PR #93 is merged. Merge commit: `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3`.
-- Phase 4 PR #95 is merged. Merge commit: `52e62d6b21057cf0d796cc3b137f4087cbe2e983`.
-- Phase 5 PR #97 is merged. Merge commit: `217f7136244d4d7afd02a9c52be86f520c1baefa`.
-- Phase 6 branch: `ci/firestore-rules-manual-deploy-20261107`
-- Phase 6 objective: add a guarded manual production deployment path for Firestore Security Rules, without auto-deploying production changes.
+- Latest reviewed phase merge: PR #100, merge commit `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d`.
+- Working checkpoint branch: `docs/ruqyah-checkpoint-refresh-20261107`.
+- All nine implementation phases below are merged to `main`.
 
-## Phase 1 completed and merged
+## Merged implementation phases
 
-1. Quran display uses WIRD's verified Quran corpus and validated surah/ayah ranges.
-2. Multi-ayah audio queues use canonical global ayah numbers.
-3. Al Furqan reciter catalogue and per-ayah playback integration are proxied and validated server-side.
-4. IslamicAPI Ruqyah library is integrated through an allowlisted server proxy with API-key isolation, validation, timeout, rate-limit and cache controls.
-5. Full-program recordings are distinct from individual Quran reciter audio.
-6. Local Ruqyah progress has corruption detection and UID-scoped storage.
-7. Repetition counts and descriptions were audited; unsupported fixed counts and unsubstantiated medical/magic claims were removed.
-8. Regression tests and setup documentation were added.
+| Phase | PR | Merge commit | Verification |
+|---|---:|---|---|
+| Canonical Quran, audio, API, content audit | #88 | `6af7ce1d27543429911ca686550bc26f446ec2e0` | 488 unit tests, 27 Firestore tests, TypeScript, build, server smoke passed |
+| Journal-first Ruqyah progress sync + backup v5 | #91 | `a618036b995ff45749748e90e2a4d3ec1037c838` | 500 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Accessible counters and audio UX | #93 | `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3` | 500 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Backup/reset refresh consistency + release checklist | #95 | `52e62d6b21057cf0d796cc3b137f4087cbe2e983` | 504 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| IslamicAPI proxy hardening + topic gate | #97 | `217f7136244d4d7afd02a9c52be86f520c1baefa` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Guarded manual Firestore rules deploy workflow | #98 | `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Firestore Emulator preflight for manual rules deploy | #100 | `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d` | Exact-head Quality Gate passed; manual workflow now runs rules emulator tests before credentials/deploy |
+| Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
+| Ruqyah first-sync scan + concurrent offline conflict preservation | #94 | `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` | Exact-head Quality Gate passed; stale concurrent write is blocked and both snapshots/outbox/inbox/conflict evidence are retained |
 
-Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and server startup smoke test. Vercel preview was blocked by a provider build-rate-limit quota; live audio/API browser checks remain a deployment task.
+Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` had a Vercel `success` status, but the latest main SHA `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` currently has Vercel `failure` with `build-rate-limit`. The Vercel dashboard target is not accessible from this session, so no production alias or live-site SHA is verified.
 
-## Phase 2 changes implemented on the working branch
+## Implemented architecture and behavior
 
-1. Added a shared strict schema for progress snapshots (schema v1, maximum 200 item IDs, maximum count 1000, safe timestamp and ID validation).
-2. Added `ruqyahProgress` as a dedicated sync collection in:
-   - local outbox validation;
-   - IndexedDB journal validation;
-   - remote transaction projector allowlist;
-   - Firestore security rules.
-3. Added storage projection support:
-   - exact local conflict snapshot bytes;
-   - conservative first-sync empty/non-empty detection;
-   - validated remote projection;
-   - grouped journal transaction rollback coverage.
-4. Added `persistRuqyahProgressSnapshot` using WIRD's existing journal-first write path. Authenticated users enqueue durable mutations; guests retain local-only behavior.
-5. Updated the Ruqyah UI to persist through the journal, guard account-scope changes, avoid auto-uploading an empty initial snapshot, and refresh mounted views when local or remote progress projections change.
-6. Added progress to version-5 backup export/import while retaining support for backup versions 1–4.
-7. Added progress to the ordered journaled reset transaction; reset no longer deletes the journal-managed progress projection out of band.
-8. Added tests for journal persistence, remote projection validation, version-5 backup restore, reset behavior, Firestore allowlisting, and a two-device progress sync round trip.
+### Ruqyah content and audio
+1. Quran passages resolve to WIRD's canonical Quran corpus using validated surah/ayah coordinates.
+2. Multi-ayah audio uses ordered global ayah queues; the first-ayah-only playback bug was removed.
+3. Al Furqan reciter catalogue and per-ayah audio are served through a validated server proxy.
+4. Full-program recordings are separate from individual Quran reciter audio.
+5. IslamicAPI provides Arabic instant-category and instant entries through a server-only proxy.
+6. Unsupported repetition counts and unsubstantiated disease/magic claims were removed.
+7. Educational topic endpoints remain disabled by default behind server-only `RUQYAH_TOPICS_ENABLED`; do not enable until each article and reference is reviewed.
 
-## Phase 3 changes implemented on the working branch
+### Progress and synchronization
+1. Progress schema v1: max 200 item IDs, each count 0–1000, validated IDs and timestamp.
+2. Dedicated UID-scoped `ruqyahProgress` collection is allowlisted in local outbox, IndexedDB journal, revisioned mutation validator, remote projector, and Firestore rules.
+3. Authenticated progress writes use WIRD's journal-first revisioned sync path; guests remain local-only.
+4. Remote projection validates snapshots, protects pending local changes, and participates in grouped transaction rollback.
+5. Initial empty UI state is not auto-uploaded before remote sync; mounted views refresh after same-tab and cross-tab progress projection.
+6. Version-5 backup exports/imports progress while versions 1–4 remain supported. Legacy backups without the field preserve existing progress.
+7. Journaled reset writes an empty progress snapshot as an ordered mutation; direct reset/import notify mounted readers only after successful completion.
 
-1. Removed the page-wide `select-none` behavior so Quran and supplication text can be selected and copied.
-2. Replaced card-wide click-to-increment behavior with an explicit accessible counter button. This prevents accidental counter increments while selecting or copying Quran text.
-3. Added a safe upper bound to repeatable counters and disabled fixed-target controls after completion.
-4. Converted full-program audio selection cards into semantic buttons with selected state and keyboard focus styling.
-5. Added accessible state labels to view modes, categories, audio controls, progress meter, seek slider, volume slider, and sleep timer.
-6. Improved full-program audio switching: pause old source, reset timeline metadata, load the new source, and restore stopped state on play failure.
-7. Cleaned up audio event listeners on component unmount.
-8. Stopped the current verse playback when the selected reciter changes so the UI cannot imply a new reader while the old reader continues.
-9. API library only displays the server-key setup instructions for the specific missing-key response; other network/rate-limit/upstream errors now show their own error without misleading configuration advice.
-10. Added loading/error live-region semantics and expanded/collapsed state for external-library details.
+### UI and accessibility
+1. Quran and supplication text can be selected and copied.
+2. Counter increments require an explicit button; clicking/selecting text no longer changes progress.
+3. Counter values are bounded; fixed-target actions disable after completion.
+4. Mode/category controls, program audio selectors, progress meter, seek/volume sliders and sleep timer expose accessible states.
+5. Audio switching resets the correct source/timeline, event listeners are cleaned up, and changing reciter stops the old recitation.
+6. API-key setup guidance appears only for an actual missing-key response, not generic network failures.
 
-## Phase 3 verification status
+### API proxy security
+1. Rate limiting uses Vercel-provided `x-real-ip` where available; client-controlled `x-forwarded-for` is not used as the identity.
+2. In-memory rate-limit buckets are bounded; this is per-serverless-instance best effort, not a global quota.
+3. Upstream body declared length is checked before reading and streaming is capped at 2 MiB, including chunked responses.
+4. Topic content blocks are type-allowlisted.
+5. Topic and topic-category API endpoints require server-side `RUQYAH_TOPICS_ENABLED=true`; default is disabled.
 
-- PR #93 passed Actions run #2070 on exact head `7d2b44f7a4fe49686abe433fe8f535b97d2b1866`.
-- Unit tests: 500 passed, 0 failed.
-- Firestore Security Rules Emulator: 29 passed, 0 failed.
-- Dependency audit, TypeScript, production build, and server startup smoke tests passed.
-- Manual deployed review remains outstanding: mobile widths, keyboard-only navigation, text selection/copy, light/dark theme, Arabic RTL layout, and actual audio playback switching.
+## External source and licensing decisions
 
-## Phase 4 changes implemented on the working branch
+- MuslimPack Ruqayyah: https://github.com/muslimpack/Ruqayyah — Flutter app under GPL-3.0. No code was copied. Reusing its source code requires a GPL-3.0 compatibility/source-distribution decision or separate permission. Its README attributes content to a published Ruqyah book; do not copy book text wholesale without rights review.
+- IslamicAPI: https://islamicapi.com/doc/ruqyah/ and https://islamicapi.com/terms/ — API is described as free but requires registration/API key and is subject to fair-use restrictions. Keep `ISLAMICAPI_API_KEY` server-side.
+- IslamicAPI dataset repository has no discoverable LICENSE file on its main branch. WIRD uses the documented API and does not vendor or redistribute the raw dataset. Keep topic articles disabled until content and references are reviewed.
 
-1. Direct (non-journaled) version-5 backup import now notifies mounted Ruqyah views only after the entire import succeeds; rollback does not emit a false success event.
-2. Direct full-storage reset notifies mounted Ruqyah views after all removals are verified.
-3. Added a regression assertion that save, direct reset, and direct backup import dispatch the progress update event.
-4. Added `docs/ruqyah/RELEASE_CHECKLIST.md` covering live Firestore rules deployment, Vercel environment, two-device sync, audio/API, accessibility, and external source/license review.
-5. Reviewed MuslimPack Ruqayyah: GPL-3.0 Flutter project. No code was copied. Reuse requires an explicit GPL compatibility/source-distribution decision.
-6. Reviewed IslamicAPI dataset: the API docs describe free API access with an API key; the public dataset repository has no discoverable LICENSE file. WIRD uses the API proxy and does not vendor the raw dataset. Topic articles remain gated pending content/reference review.
+## Production release blockers — NOT VERIFIED
 
-## Phase 4 verification status
+1. **Firestore rules are not claimed deployed.** The repository now has a guarded manual workflow `.github/workflows/deploy-firestore-rules.yml`, but it has not been dispatched.
+   - Required GitHub repository variable: `FIREBASE_PROJECT_ID`.
+   - Required GitHub repository secret: `FIREBASE_SERVICE_ACCOUNT_JSON`.
+   - Dispatch only from `main`, enter the exact project ID, and type `DEPLOY_FIRESTORE_RULES`.
+   - Workflow deploys only `firestore:rules`; it fails closed when inputs/secrets are missing.
+2. **Vercel production deployment is not fully verified.** The latest main SHA `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` has Vercel `failure` due to `build-rate-limit`; the earlier `success` on `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` is not evidence that the latest main deployed. The dashboard target is inaccessible from this session. Confirm quota recovery, production alias, deployed SHA, and live site smoke before claiming production readiness.
+3. **Deployed environment variables are not observable from this GitHub session.** Keep both remote-sync flags disabled until every global release gate passes, including manual conflict resolution, deterministic additive Ruqyah counter merge, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing.
+   - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
+   - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` only after Firestore rules deployment.
+   - `ISLAMICAPI_API_KEY` server-side secret only.
+   - Leave `RUQYAH_TOPICS_ENABLED` unset/false.
+4. Live two-device sync, production audio, production API, mobile RTL, and keyboard/screen-reader smoke tests have not been executed against the deployed site.
 
-- Working branch requires a fresh full CI run.
-- After CI, merge only if tests, Firestore emulator, dependency audit, TypeScript, production build, and server smoke tests pass.
-- Live Firestore rules deployment and Vercel environment values are external release blockers; do not claim production cloud sync is active until verified.
-- The Vercel integration has reported build-rate-limit quota failures; treat them as provider capacity failures, not code test results.
+## Required live verification after deployment
 
-## Phase 5 changes implemented on the working branch
-
-1. Rate limiting now prefers Vercel's trusted `x-real-ip` and does not trust the client-controlled `x-forwarded-for` header.
-2. Rate-limit bucket cleanup now evicts expired/oldest entries to keep the per-instance map bounded.
-3. Upstream response size is checked against declared content length and enforced with a streaming 2 MiB byte cap, including chunked responses, before JSON parsing.
-4. Topic content block types are allowlisted to the documented text/Arabic/translation/header/transliteration types.
-5. Added regression tests for spoofed forwarded-for bypass attempts, oversized declared and chunked provider payloads, disabled-by-default educational topics, and unknown topic block types.
-6. Keep educational topic endpoints disabled by default behind server-side `RUQYAH_TOPICS_ENABLED`; enable only after references/content review.
-7. Clarified IslamicAPI fair-use limits and the per-serverless-instance nature of the local limiter in the release checklist.
-
-## Phase 5 verification status
-
-- Working branch requires a fresh full CI run.
-- Required gates: unit tests, Firestore rules emulator, dependency audit, TypeScript, production build, server smoke test.
-- Review Vercel header behavior for `x-real-ip` in production before relying on the proxy's per-IP limit; local fallback uses the socket address.
-- Do not describe the in-memory limiter as a global rate limit. Provider fair-use restrictions remain authoritative.
-
-## Phase 6 changes implemented on the working branch
-
-1. Added `.github/workflows/deploy-firestore-rules.yml`, a manual-only workflow restricted to the `main` branch.
-2. The workflow deploys only `firestore:rules`, pins Firebase CLI to 15.0.0, validates the repository variable `FIREBASE_PROJECT_ID`, requires the input project ID to match exactly, and requires the typed confirmation `DEPLOY_FIRESTORE_RULES`.
-3. Credentials are read only from the `FIREBASE_SERVICE_ACCOUNT_JSON` repository secret, written to a short-lived runner file with restricted permissions, and deleted in an `always()` cleanup step.
-4. Updated the release checklist with one-time GitHub variable/secret setup and verification steps.
-5. This workflow has not been run; the deployment secret and project variable are not visible to this session. Production rules are not claimed deployed.
-
-## Phase 6 verification status
-
-- Workflow YAML and GitHub Actions behavior require review after PR creation.
-- Required checks: unit tests, Firestore emulator, dependency audit, TypeScript, production build, server smoke test.
-- The production workflow must remain manual and must fail closed when the project ID, typed confirmation, or service-account secret is missing.
-- Do not dispatch the production deployment until the target project ID and authorized service account are confirmed by the repository owner.
-
-## Critical correctness rules
-
-- Do not auto-persist an empty progress object on first mount. It can race the first remote pull and create an avoidable revision conflict.
-- Remote projection must not overwrite non-empty local progress when a local mutation is pending or the remote collection is not initialized.
-- Do not directly mutate the Ruqyah progress key from the UI for authenticated users; use `persistRuqyahProgressSnapshot`.
-- Do not remove the progress key after journaled reset. The reset snapshot is a normal journaled collection mutation.
-- Preserve local and remote data on revision conflict. Never use last-write-wins or timestamp-only overwrites.
-- The collection remains private under `users/{uid}/ruqyahProgress/snapshot`, protected by the same verified-owner revision envelope as the other collections.
-
-## Verification status
-
-- Source edits and regression tests are committed to the working branch.
-- Full CI has not yet been observed for the latest branch head.
-- Required gates: `npm test`, Firestore Rules Emulator tests, TypeScript (`npm run lint`), production build, server startup smoke test, dependency audit.
-- After CI passes, review exact PR head SHA and all checks before merge.
-- After merge, verify Vercel deploy and perform two-device browser smoke test: update counters on device A, observe device B, update from B, then reload A. Also test offline edits, conflict retention, guest-only mode, account switching, backup export/import and reset.
-- Cloud upload/download remains gated by the existing Vite flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`; verify their deployed values before claiming live sync is enabled.
+1. On verified account A, increment a Ruqyah counter; confirm device B receives the exact count without reload.
+2. Increment from B; confirm A receives it; reload both and verify convergence.
+3. Test offline edit/reconnect, simultaneous edits, stale revision conflict retention, guest local-only behavior, and account switching.
+4. Test version-5 export/import and legacy v4 import preservation.
+5. Test reset on two devices and confirm progress is cleared through the journal.
+6. Test reciter list, one-ayah and multi-ayah audio order, pause/resume, reciter switching, full-program switching, replay after end, seek, volume and sleep timer.
+7. Test API missing key, 429, upstream 5xx, HTML, malformed JSON, oversized/chunked body, and Arabic success.
+8. Test keyboard-only navigation, screen-reader labels, text selection/copy, 320px–390px mobile widths, RTL wrapping, light/dark themes.
 
 ## Resume procedure
 
-1. Read this file and fetch the current `main`, branch and PR heads; do not trust any copied SHA.
-2. Inspect every current diff, especially the collection allowlists and storage projection maps.
-3. Inspect CI logs and fix all test/type/build/rules failures.
-4. Run/review two-device Firestore emulator test and confirm the progress collection round trip.
-5. Merge only after all required code checks pass. Treat a Vercel quota failure separately from code CI.
-6. Complete Phase 4 CI and review; merge only after the exact head passes.
-7. Complete Phase 5 proxy security CI and review; merge only after the exact head passes.
-8. Review and merge the guarded manual deployment workflow only after CI passes.
-9. Configure the authorized Firebase project variable/secret, dispatch the rules deployment with explicit confirmation, verify the deployed rules, then run the live smoke checklist.
+1. Read this checkpoint and `docs/ruqyah/RELEASE_CHECKLIST.md`.
+2. Fetch current `main` SHA and all open PRs; never trust a copied SHA.
+3. Review any pending PR diff and exact-head CI runs before merging.
+4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
+5. Do not enable educational topic endpoints until a scholar/content reviewer has approved each article and its references.
+6. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
+7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.

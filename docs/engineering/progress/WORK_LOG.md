@@ -446,3 +446,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
 - PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
 - PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.
+
+## 2026-11-07 — API proxy and guarded rules deployment workflow
+
+- PR #97 merged at 217f7136244d4d7afd02a9c52be86f520c1baefa. Exact-head runs 42356248195 and 42356243586 passed. Added server-only IslamicAPI proxy, topic block allowlist, disabled-by-default topic endpoints, and bounded streaming response reads.
+- PR #98 merged at 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. Exact-head run 42356412901 passed 509 unit tests, 29 Firestore rules tests, dependency audit, TypeScript, production build, and server smoke. Added a manual-only rules deployment workflow; it has not been dispatched.
+- PR #100 is open to add a pre-deploy Firestore Emulator test to that workflow. Do not dispatch before the preflight is merged and explicit approval is given.
+- Main run 42356505550 passed on 8089579d020a6a4831cdc9ba4f25f8672f30cc3d.
+- Vercel status on current main is build-rate-limit failure; a previous SHA had Vercel success but the latest main deployment is not verified. No production alias/live smoke is claimed.
+- Outstanding: user-facing conflict resolution, additive Ruqyah counter merge, tombstone projection, cross-tab concurrency, account lifecycle isolation, full collection coverage, Playwright E2E, production rules deployment, exact-SHA production deploy/live smoke.

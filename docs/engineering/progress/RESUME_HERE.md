@@ -103,3 +103,13 @@
 - Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
 - PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
 - PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.
+
+## Live resume checkpoint — 2026-11-07 after PR #98
+
+- Re-fetch main before work; checkpoint SHA is 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. Main Quality Gate 42356505550 passed on this SHA.
+- PR #97 merged: 217f7136244d4d7afd02a9c52be86f520c1baefa. API proxy hardening and bounded upstream stream reads are present; topic endpoints remain disabled by default.
+- PR #98 merged: 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. Manual-only Firestore rules deploy workflow is present but not dispatched. PR #100 adds the missing pre-deploy Emulator gate; review exact head and checks before merging. Do not dispatch until explicit approval.
+- Current main Vercel status is build-rate-limit failure. Previous Vercel success on f2c3f32f is not evidence that current main is deployed. Production alias/live SHA remain unknown.
+- PR #94 added Ruqyah first-sync detection and concurrent-offline conflict retention. It does not additively merge counts.
+- Continue with manual conflict resolution (including base/delta-aware Ruqyah merge), tombstone semantics, cross-tab concurrency, account lifecycle isolation, all-collection tests, Playwright E2E, production rules verification, and live deploy smoke.
+- Keep both VITE_WIRD sync flags disabled until every global release gate passes. Keep RUQYAH_TOPICS_ENABLED unset/false pending content review.
