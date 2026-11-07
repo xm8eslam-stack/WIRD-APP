@@ -5,7 +5,6 @@ import type { RemoteInboxEventInput } from './indexedDbSyncJournal';
 import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 import { projectRemoteInboxBatch } from './remoteInboxProjector';
-import type { RemoteProjectionConflict } from './indexedDbSyncJournal';
 
 export type CloudSyncStatus =
   | 'idle'
@@ -154,6 +153,8 @@ class CloudSyncCoordinator {
           remoteInboxPendingCount: 0,
           remoteCursor: 0,
           remoteProjectionCursor: 0,
+          remoteProjectionBlockReason: null,
+          remoteProjectionBlockedAtSequence: null,
           projectionConflictCount: 0,
           latestProjectionConflict: null
         });
