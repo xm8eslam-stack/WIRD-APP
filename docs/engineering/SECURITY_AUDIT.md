@@ -102,3 +102,16 @@ The Vercel status check for the audited commit is successful. No Firebase produc
 4. Harden rules with collection-specific schemas, immutable events, and size limits.
 5. Run two-client emulator tests for account isolation, concurrency, retries, and offline replay.
 6. Request explicit approval before deploying rules or enabling cloud sync for real users.
+
+
+## 2026-11-07 cloud-sync audit update
+
+- PR #73: projection crash recovery intent and atomic finalization merged; post-merge CI run `42350476806` passed.
+- PR #77: emulator-backed bidirectional profile sync across independent IndexedDB/localStorage devices merged; exact-head CI passed with 450 automated assertions and 26 Firestore Rules tests.
+- PR #78: stale offline same-document mutation rejected by server revision; losing local mutation and remote inbox event preserved; projection blocked without cursor advance. Exact-head CI passed with 450 automated assertions and 27 rules tests.
+- Firestore transactions use server revisions and a monotonic per-user sequence; client timestamps are not used to resolve conflicts.
+- Tombstones remain blocked from local projection. Do not interpret remote tombstone write support as end-to-end delete propagation.
+- Conflict preservation/detection is tested, but durable conflict records and user-facing resolution are absent.
+- Emulator success does not prove production Firestore rules are deployed. No production rules deployment or data mutation was performed.
+- Cloud writes/projection remain behind explicit Vite build flags; production values were not inspected. Vercel currently reports `build-rate-limit`; production deployment is unverified.
+- Full release must remain blocked pending collection-specific rules, all-collection multi-device tests, tombstone implementation, conflict resolution, account lifecycle, browser E2E, and live deployment verification.

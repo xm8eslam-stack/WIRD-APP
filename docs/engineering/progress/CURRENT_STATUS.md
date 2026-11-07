@@ -142,3 +142,15 @@ The detailed historical checkpoint entries below are retained for traceability. 
 - Exact-head Quality Gate on PR SHA `148e7b27873219f552edee41b819f7b08949e7a5`: 348 automated assertions, 10 Firestore rules tests, TypeScript, production build, dependency audit, and server smoke test all passed.
 - Post-merge main Quality Gate run `42241532674` passed on exact main SHA `bfff3969d510c49da6d0224a375b87ca2959c651`.
 - Next: implement replay into localStorage before app state initialization, then connect actual domain mutation paths. Firestore sync remains inactive.
+
+
+## 2026-11-07 — Revisioned remote sync verification update
+
+- PR #73 merged as `cc887a6bfa07aec880f495221e64dd36edb14ca8`: durable remote projection intent, recovery, and atomic finalization.
+- PR #77 merged as `716cf301bff9a8c7777ee3931dba6366a01afe3b`: Firestore Emulator two-device profile round trip using independent IndexedDB/localStorage and authenticated clients; exact-head checks passed; Rules 26/26.
+- PR #78 merged as `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`: same-document offline conflict regression; stale revision rejected, local pending mutation and remote inbox preserved, projection cursor blocked; exact-head checks passed; Rules 27/27.
+- Exact-head CI for PR #77/#78: 450 automated assertions, Firestore Rules Emulator, TypeScript, production build, startup smoke, and dependency audit passed.
+- Important boundary: tests cover profile upserts and one same-document conflict. They do not certify all collections, browser E2E, load/stress, conflict-resolution UI, or tombstones.
+- Tombstone projection remains deliberately blocked pending collection-specific delete semantics. Production rules deployment and Vercel production deployment remain unverified; Vercel status is `build-rate-limit`.
+- New detailed documents: `docs/sync/ARCHITECTURE.md`, `STATE-MACHINE.md`, `CONFLICT-RESOLUTION.md`, `FAILURE-RECOVERY.md`, `TEST-MATRIX.md`, `RELEASE-GATES.md`, and `docs/engineering/PROGRESS.md`.
+- Current main at this checkpoint: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`; post-merge main workflow was queued and requires exact-SHA verification.

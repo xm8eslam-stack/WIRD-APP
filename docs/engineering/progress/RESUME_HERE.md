@@ -45,3 +45,14 @@
 - Run exact-head GitHub Quality Gate, inspect every job, review the diff, merge, and verify main SHA.
 - Vercel failure is not a merge blocker by owner's instruction; it remains an unverified deployment state.
 - Do not merge stale/diverged PRs #2 or #8 wholesale; reapply only reviewed useful changes.
+
+
+## New verified checkpoint — 2026-11-07
+- PR #73 merged: `cc887a6bfa07aec880f495221e64dd36edb14ca8` (projection crash recovery).
+- PR #77 merged: `716cf301bff9a8c7777ee3931dba6366a01afe3b` (profile round trip between two independent emulator devices; 26 rules tests).
+- PR #78 merged: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9` (offline stale revision conflict preservation; 27 rules tests).
+- Exact PR gates: 450 automated assertions, rules emulator, TypeScript, build, startup smoke, and dependency audit passed.
+- Current main at checkpoint: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`; post-merge main CI must be rechecked.
+- Tombstones are still blocked; no collection-specific delete projection or tombstone GC. Conflict detection preserves pending local work but no conflict record/UI/rebase workflow exists.
+- Runtime upload/projection are controlled by explicit Vite flags; production flag values have not been checked. Production Firebase rules and Vercel deploy remain unverified (`build-rate-limit`).
+- Read `docs/engineering/PROGRESS.md` and `docs/sync/RELEASE-GATES.md` before continuing.
