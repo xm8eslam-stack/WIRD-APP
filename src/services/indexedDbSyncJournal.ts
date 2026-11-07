@@ -2487,7 +2487,13 @@ export class IndexedDbSyncJournal {
           return;
         }
         const sequence = metadata.nextSequence;
+        const highestPendingSequence = pendingMutations.reduce(
+          (highest, mutation) => Math.max(highest, mutation.sequence),
+          0
+        );
         if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER ||
+            sequence <= highestPendingSequence ||
+            (previousRevision && sequence <= previousRevision.localSequence) ||
             !metadata.deviceId) {
           failure = new Error('بيانات تسلسل العمليات المحلية غير صالحة؛ لم ننشئ عملية إعادة نشر.');
           transaction.abort();
