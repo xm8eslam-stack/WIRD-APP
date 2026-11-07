@@ -9,7 +9,8 @@ import {
   BarChart3, 
   Compass, 
   Settings, 
-  X
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
 
@@ -22,6 +23,7 @@ export type NavTabId =
   | 'tests' 
   | 'progress' 
   | 'advisor' 
+  | 'ruqyah'
   | 'settings';
 
 interface SidebarProps {
@@ -57,6 +59,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'tests', label: 'اختبارات الحفظ', icon: CheckCircle },
     { id: 'progress', label: 'التقارير والمصحف', icon: BarChart3 },
     { id: 'advisor', label: 'المستشار القرآني', icon: Compass },
+    { id: 'ruqyah', label: 'الرقية الشرعية', icon: ShieldCheck },
     { id: 'settings', label: 'الإعدادات والملف', icon: Settings },
   ];
 

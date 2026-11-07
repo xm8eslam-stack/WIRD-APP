@@ -1,0 +1,24 @@
+### GOOGLE AI STUDIO HANDOFF
+- Date: 2026-11-06
+- Task: إنجاز وتنفيذ قسم الرقية الشرعية الكاملة (Ruqyah Shariah Feature Complete)
+- Modified files:
+  - `src/data/ruqyahData.ts` (قاعدة بيانات الآيات بالتشكيل العثماني والأدعية النبوية والمستويات والقراء)
+  - `src/components/ruqyah/RuqyahView.tsx` (واجهة الرقية التفاعلية بالعداد الذكي والإنصات المزدوج)
+  - `src/components/layout/Sidebar.tsx` (إضافة تبويب الرقية الشرعية بالنافبار)
+  - `src/App.tsx` (ربط الرقية بالراوتر والعنوان الرئيسي والمشهد)
+  - `src/services/router.ts` (إضافة ruqyah إلى المسارات المعتمدة)
+  - `src/tests/ruqyahIntegrity.test.ts` (اختبارات ناهزة لسلامة بيانات الصوت والتكرارات)
+  - `src/tests/runAllTests.ts` (تضمين سوئيت الرقية في مشغل الاختبارات الشامل)
+  - `docs/agent-handoffs/LATEST-GOOGLE-STUDIO.md`
+- Changes:
+  - بناء قسم الرقية الشرعية الكاملة استناداً إلى كتاب د. خالد الجريسي ومستودع `muslimpack/Ruqayyah`.
+  - نمذجة كافة النصوص القرآنية بالتشكيل العثماني والتكرارات المستهدفة وتخريج المصادر.
+  - دعم مود القراءة التفاعلية مع العداد التنازلي التفاعلي والاهتزاز الحسي (Haptic Feedback) والتنقل الآلي (Auto-Scroll).
+  - دعم الاستماع للآية آية مع التكرار التلقائي (EveryAyah CDN) بدعم كبار القراء.
+  - دعم مشغل الرقية الصوتية المباشر المتصل لكبار القراء (مشاري العفاسي، سعد الغامدي، أحمد العجمي، ماهر المعيقلي) مع التحكم بالصوت ومؤقت النوم (Sleep Timer).
+  - إضافة 3 اختبارات موثقة ومجربة بنجاح ضمن الـ Test Suite.
+- Tests: 447/447 passing (`npm test` - 0 failures)
+- Commit SHA: Local main branch working state (Verified)
+- Status: Completed
+- Next step: المتابعة وفق أي توجيهات جديدة من المستخدم.
+- Warnings: لا توجد أي تحذيرات. تم الحفاظ بالكامل على IndexedDB وبنية المزامنة وكافة وظائف التطبيق السابقة.

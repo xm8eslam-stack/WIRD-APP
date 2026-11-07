@@ -25,6 +25,7 @@ const RevisionCenterView = React.lazy(() => import('./components/revision/Revisi
 const MemorizationTestsView = React.lazy(() => import('./components/tests/MemorizationTestsView').then(m => ({ default: m.MemorizationTestsView })));
 const ProgressAnalyticsView = React.lazy(() => import('./components/progress/ProgressAnalyticsView').then(m => ({ default: m.ProgressAnalyticsView })));
 const QuranAdvisorView = React.lazy(() => import('./components/assistant/QuranAdvisorView').then(m => ({ default: m.QuranAdvisorView })));
+const RuqyahView = React.lazy(() => import('./components/ruqyah/RuqyahView').then(m => ({ default: m.RuqyahView })));
 const SettingsView = React.lazy(() => import('./components/settings/SettingsView').then(m => ({ default: m.SettingsView })));
 
 export default function App() {
@@ -141,6 +142,7 @@ export default function App() {
     tests: 'اختبارات الحفظ والتقييم',
     progress: 'المصحف التفاعلي والتقارير',
     advisor: 'المستشار القرآني ومنهجيات الحفظ',
+    ruqyah: 'الرقية الشرعية الكاملة (آيات وأدعية الشفاء)',
     settings: 'الإعدادات والملف الشخصي'
   };
 
@@ -605,6 +607,10 @@ export default function App() {
                 logs={logs}
                 onStartSessionWithSurah={handleStartSession}
               />
+            )}
+
+            {currentTab === 'ruqyah' && (
+              <RuqyahView onToast={showToast} />
             )}
 
             {currentTab === 'settings' && (
