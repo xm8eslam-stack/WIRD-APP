@@ -60,6 +60,8 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
     });
 
     await test('Remote Ruqyah progress projection validates payloads and participates in first-sync protection', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:ruqyah-remote-projection-test');
       const valid = { schemaVersion: 1 as const, updatedAtMs: 1_800_000_000_000, counts: { 'q-fatiha': 4 } };
       assert(StorageService.isLocalProjectionEmpty('ruqyahProgress'), 'An absent progress archive must be empty');
       assert(StorageService.applyJournalProjection('ruqyahProgress', { snapshot: valid }),
