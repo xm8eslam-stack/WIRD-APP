@@ -10,7 +10,7 @@
 - Main audit baseline SHA: 6228150c2f7137678ba1079f5d9b2e8aba527523
 - Main exact-head Quality Gate: run 42295376778 — PASS
 - Main test evidence: 402 passed / 0 failed; Firestore Rules Emulator 13 passed / 0 failed; TypeScript, production build, Quran data generation and production/development server smoke passed.
-- Last known audit-branch commit created during this work: 2323b1e7af0831e0d6e0f230c04d198ee07cac16. Always fetch the current audit branch head before editing; do not assume this SHA is still its head.
+- Last verified audit-branch commit before the latest documentation refresh: 9fc106e6dcf4c54ac5b1d1d96410446c8ca507bc. Always fetch the current audit branch head before editing. Always fetch the current audit branch head before editing; do not assume this SHA is still its head.
 
 ## 2. اقرأ هذه الملفات أولاً
 
@@ -29,8 +29,8 @@
 
 - تم حصر 147 ملفًا و34 مجلدًا في main.
 - سجل FILE_AUDIT_REGISTER يحتوي 147 صفًا مطابقًا للشجرة.
-- 144 ملفًا تمت مراجعتها مبدئيًا وتسجيل ملاحظة لكل منها.
-- ثلاثة ملفات PNG (public/apple-touch-icon.png وpublic/icon-192.png وpublic/icon-512.png) لم يتمكن GitHub text endpoint من فكها؛ أكمل فحصها بصريًا إن أمكن، وإلا سجّل القيد صراحة.
+- 147 ملفًا تمت مراجعتها مبدئيًا وتسجيل ملاحظة لكل منها.
+- ثلاثة ملفات PNG (public/apple-touch-icon.png وpublic/icon-192.png وpublic/icon-512.png) تمت معاينتها بصريًا؛ تظهر كمساحات بلون teal موحد دون علامة WIRD ظاهرة. سجّلها كعيب P2 ضمن الهوية البصرية/PWA.
 - تمت مقارنة جميع الفروع السبعين مع main:
   - 65 فرعًا متباعدًا وله commits فريدة.
   - 4 فروع هي أسلاف لـ main ولا تحتوي commits فريدة، مرشحة للأرشفة/الحذف.
@@ -71,7 +71,7 @@ P2:
 
 ### أولاً: إغلاق المرحلة 0
 1. تحقق من رأس main ورأس فرع التدقيق الحاليين.
-2. أكمل الفحص البصري للـ PNGs الثلاثة إن أمكن.
+2. أكد ملاحظة الأيقونات الثلاثة في التقرير ولا تؤجل إغلاق المرحلة 0 بسببها.
 3. تحقق من 147 صفًا في FILE_AUDIT_REGISTER و70 صفًا في BRANCH_COMPARE_MATRIX.
 4. حدّث كل تقارير التدقيق لتستخدم نفس baseline والعدد.
 5. أضف إدخالًا مؤرخًا في docs/engineering/progress/WORK_LOG.md دون تعديل السجل التاريخي.
