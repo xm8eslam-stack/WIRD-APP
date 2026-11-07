@@ -56,5 +56,12 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
     viewSource.includes('لم يتم استبداله بتسجيل من مصدر آخر')
   );
 
+  test(
+    'Requested Quran ayahs use eager buffering only after an explicit playback request',
+    viewSource.includes("audio.preload = 'auto'") &&
+      viewSource.includes('audio.src = buildQuranAyahAudioUrl') &&
+      viewSource.includes('audio.load();')
+  );
+
   return { passed, failed };
 }

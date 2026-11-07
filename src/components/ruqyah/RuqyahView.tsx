@@ -217,7 +217,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   useEffect(() => {
     const audio = new Audio();
-    audio.preload = 'none';
+    // The audio element has no source until the user presses Play; once requested, buffer the ayah aggressively to reduce stalls.
+    audio.preload = 'auto';
     audio.volume = audioVolume;
     audioRef.current = audio;
 
