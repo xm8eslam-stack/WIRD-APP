@@ -3,7 +3,6 @@ const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
 const MAX_RATE_LIMIT_BUCKETS = 1000;
 const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
-const MAX_UPSTREAM_RESPONSE_CHARS = 1_000_000;
 const ALLOWED_TOPIC_BLOCK_TYPES = new Set(['text', 'arabic', 'translation', 'header', 'transliteration']);
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
@@ -118,6 +117,37 @@ function parseUpstreamJson(raw: string): unknown | null {
   try { return JSON.parse(trimmed) as unknown; } catch { return null; }
 }
 
+async function readBoundedUpstreamText(response: Response): Promise<string | null> {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      totalBytes += result.value.byteLength;
+      if (totalBytes > MAX_UPSTREAM_RESPONSE_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(result.value);
+    }
+    const combined = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(combined);
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    try { reader.releaseLock(); } catch { /* stream already cancelled or closed */ }
+  }
+}
+
 /**
  * Server-side proxy for IslamicAPI Ruqyah. The API key is never sent to the
  * browser. Only the Arabic corpus is exposed; callers cannot choose arbitrary
@@ -195,8 +225,8 @@ export default async function handler(req: any, res: any) {
       res.setHeader('Cache-Control', 'no-store');
       return send(res, 502, { error: 'INVALID_RUQYAH_SOURCE_RESPONSE' });
     }
-    const raw = await upstream.text();
-    if (raw.length > MAX_UPSTREAM_RESPONSE_CHARS) {
+    const raw = await readBoundedUpstreamText(upstream);
+    if (raw === null) {
       res.setHeader('Cache-Control', 'no-store');
       return send(res, 502, { error: 'INVALID_RUQYAH_SOURCE_RESPONSE' });
     }
