@@ -82,7 +82,8 @@ export async function replayJournalProjection(
           skippedAlreadyProjected++;
         } else if (StorageService.applyJournalEvent(event)) {
           applied++;
-        } else if (StorageService.matchesJournalProjection(event.collection, event.payload)) {
+        } else if (event.operation === 'upsert' &&
+            StorageService.matchesJournalProjection(event.collection, event.payload)) {
           // A previous attempt may have durably written the projection and then
           // stopped before committing the IndexedDB cursor. Confirm the exact
           // snapshot (including every child of a grouped transaction) before
