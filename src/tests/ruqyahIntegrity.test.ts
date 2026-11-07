@@ -48,32 +48,43 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
   });
 
   test('Every published religious item uses an explicitly reviewed Sunni source reference', () => {
-    const reviewedSources = new Set([
-      'القرآن الكريم، الشعراء 80',
-      'صحيح البخاري 5017',
-      'إرشاد صحي عام',
-      'صحيح مسلم 2200',
-      'صحيح البخاري 5736',
-      'القرآن الكريم، البقرة 1-5',
-      'صحيح البخاري 2311 (معلّق؛ وُصل عند النسائي وابن خزيمة)',
-      'القرآن الكريم، البقرة 256-257',
-      'صحيح البخاري 5009؛ صحيح مسلم 808a',
-      'القرآن الكريم، الأعراف 117-122',
-      'القرآن الكريم، يونس 81-82',
-      'القرآن الكريم، طه 69',
-      'القرآن الكريم، الإسراء 82',
-      'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
-      'صحيح البخاري 5750',
-      'صحيح مسلم 2186',
-      'صحيح البخاري 3371',
-      'سنن أبي داود 5088 (صحيح، الألباني)؛ حصن المسلم 86',
-      'صحيح مسلم 2202'
-    ]);
-    for (const item of [...RUQYAH_GUIDELINES, ...RUQYAH_ITEMS]) {
+    const reviewedSources: Record<string, string> = {
+      'g-1': 'القرآن الكريم، الشعراء 80',
+      'g-3': 'صحيح البخاري 5017',
+      'g-4': 'NHS: Herbal medicines and complementary therapies',
+      'g-5': 'صحيح مسلم 2200',
+      'q-fatihah': 'صحيح البخاري 5736',
+      'q-baqarah-1-5': 'القرآن الكريم، البقرة 1-5',
+      'q-kursi': 'صحيح البخاري 2311 (معلّق؛ وُصل عند النسائي وابن خزيمة)',
+      'q-baqarah-256-257': 'القرآن الكريم، البقرة 256-257',
+      'q-baqarah-last2': 'صحيح البخاري 5009؛ صحيح مسلم 808a',
+      'q-araf-magic': 'القرآن الكريم، الأعراف 117-122',
+      'q-yunus-magic': 'القرآن الكريم، يونس 81-82',
+      'q-ta-ha-magic': 'القرآن الكريم، طه 69',
+      'q-isra-healing': 'القرآن الكريم، الإسراء 82',
+      'q-ikhlas': 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
+      'q-falaq': 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
+      'q-nas': 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
+      'd-1': 'صحيح البخاري 5750',
+      'd-2': 'صحيح مسلم 2186',
+      'd-3': 'صحيح البخاري 3371',
+      'd-4': 'سنن أبي داود 5088 (صحيح، الألباني)؛ حصن المسلم 86',
+      'd-6': 'صحيح مسلم 2202'
+    };
+    const contentItems = [...RUQYAH_GUIDELINES, ...RUQYAH_ITEMS];
+    const seenIds = new Set<string>();
+    assert(contentItems.length === Object.keys(reviewedSources).length,
+      'Every source registry entry must correspond to exactly one published content item');
+    for (const item of contentItems) {
+      assert(!seenIds.has(item.id), 'Duplicate published Ruqyah content id: ' + item.id);
+      seenIds.add(item.id);
       assert(typeof item.source === 'string' && item.source.trim().length > 0,
         item.id + ' must identify its source');
-      assert(reviewedSources.has(item.source || ''),
-        item.id + ' uses a source reference that has not been explicitly reviewed: ' + item.source);
+      assert(reviewedSources[item.id] === item.source,
+        item.id + ' source must exactly match its individually reviewed reference');
+    }
+    for (const id of Object.keys(reviewedSources)) {
+      assert(seenIds.has(id), 'Reviewed source registry contains an item that is not published: ' + id);
     }
   });
 
