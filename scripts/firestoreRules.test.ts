@@ -1040,7 +1040,7 @@ try {
   });
 
 
-  await test('Concurrent offline Ruqyah increments preserve both snapshots and block stale projection', async () => {
+  await test('Concurrent offline Ruqyah increments converge through PN-counter merge without losing either device', async () => {
     const uid = 'ruqyah-offline-increment-conflict';
     const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
     const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
@@ -1062,36 +1062,46 @@ try {
       const firestoreB = testEnv.authenticatedContext(uid, {
         email: 'ruqyah-offline@example.com', email_verified: true, device: 'ruqyah-offline-b'
       }).firestore();
-      const baseProgress = {
-        schemaVersion: 1 as const,
-        updatedAtMs: 1_799_000_300_000,
-        counts: { 'q-fatiha': 5 }
-      };
+
       activateIsolatedDevice(localStorageA, uid);
-      if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
-        throw new Error('Device A could not seed the shared offline baseline.');
+      const deviceAId = (await journalA.getSnapshot()).deviceId;
+      const baseProgress = adjustRuqyahProgressCounter(
+        createEmptyRuqyahProgressSnapshot(1_799_000_300_000),
+        'q-fatiha',
+        'legacy',
+        5,
+        1_799_000_300_000
+      );
+      const nextA = adjustRuqyahProgressCounter(
+        baseProgress, 'q-fatiha', deviceAId, 1, 1_799_000_300_001
+      );
+      if (!StorageService.saveRuqyahProgressSnapshot(nextA)) {
+        throw new Error('Device A could not seed its V2 PN-counter snapshot.');
       }
-      const nextA = { ...baseProgress, updatedAtMs: baseProgress.updatedAtMs + 1, counts: { 'q-fatiha': 6 } };
       const mutationA = await journalA.enqueue({
         mutationId: 'ruqyah-offline-a-001', collection: 'ruqyahProgress', documentId: 'snapshot',
         payload: { snapshot: nextA }, nowMs: nextA.updatedAtMs
       });
-      if (mutationA.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
-        throw new Error('Device A could not journal its offline increment.');
+      if (mutationA.status !== 'queued' || mutationA.mutation.baseRevision !== 0 ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
+        throw new Error('Device A could not journal its offline PN-counter increment.');
       }
 
       activateIsolatedDevice(localStorageB, uid);
+      const deviceBId = (await journalB.getSnapshot()).deviceId;
       if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
-        throw new Error('Device B could not seed the same offline baseline.');
+        throw new Error('Device B could not seed the same V2 PN-counter baseline.');
       }
-      const nextB = { ...baseProgress, updatedAtMs: baseProgress.updatedAtMs + 2, counts: { 'q-fatiha': 6 } };
+      const nextB = adjustRuqyahProgressCounter(
+        baseProgress, 'q-fatiha', deviceBId, 1, 1_799_000_300_002
+      );
       const mutationB = await journalB.enqueue({
         mutationId: 'ruqyah-offline-b-001', collection: 'ruqyahProgress', documentId: 'snapshot',
         payload: { snapshot: nextB }, nowMs: nextB.updatedAtMs
       });
-      if (mutationB.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation)) ||
-          mutationA.mutation.baseRevision !== 0 || mutationB.mutation.baseRevision !== 0) {
-        throw new Error('Both devices must persist independent increments from the same remote base revision.');
+      if (mutationB.status !== 'queued' || mutationB.mutation.baseRevision !== 0 ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation))) {
+        throw new Error('Device B could not journal its independent offline PN-counter increment.');
       }
 
       const acceptedA = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
@@ -1100,6 +1110,9 @@ try {
         deviceId: mutationA.mutation.deviceId, clientUpdatedAtMs: mutationA.mutation.clientUpdatedAtMs,
         baseRevision: mutationA.mutation.baseRevision, payload: mutationA.mutation.payload
       });
+      if (acceptedA.status !== 'written' || acceptedA.revision !== 1) {
+        throw new Error('Device A did not publish the first V2 counter snapshot.');
+      }
       await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, acceptedA.revision, nextA.updatedAtMs + 1);
 
       let conflictCode = '';
@@ -1114,7 +1127,7 @@ try {
         conflictCode = error instanceof Error ? error.message : String(error);
       }
       if (conflictCode !== 'REMOTE_REVISION_CONFLICT') {
-        throw new Error('The stale offline Ruqyah increment must be rejected as a revision conflict: ' + conflictCode);
+        throw new Error('The stale offline Ruqyah mutation must first be rejected by revision CAS: ' + conflictCode);
       }
 
       const acceptedEvent = readRemoteEvent(await getDoc(doc(
@@ -1122,20 +1135,47 @@ try {
       )));
       await journalB.importRemotePage([acceptedEvent]);
       activateIsolatedDevice(localStorageB, uid);
-      const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
-      const retainedOutbox = await journalB.listReady(1_800_000_000_000, 10);
-      const retainedInbox = await journalB.listRemoteInboxAfter(0, 10);
-      const conflicts = await journalB.listProjectionConflicts(10);
-      const remote = await getDoc(doc(firestoreA, 'users', uid, 'ruqyahProgress', 'snapshot'));
-      const local = StorageService.getRuqyahProgressSnapshot();
-      if (blocked.reason !== 'blocked_pending_local' || blocked.blockedAtSequence !== 1 ||
-          await journalB.getRemoteProjectionCursor() !== 0 ||
-          retainedOutbox.length !== 1 || retainedOutbox[0].mutationId !== mutationB.mutation.mutationId ||
-          retainedInbox.length !== 1 || conflicts.length !== 1 ||
-          conflicts[0]?.localSnapshot[STORAGE_KEYS.RUQYAH_PROGRESS] === undefined ||
-          !remote.exists() || remote.data().payload.snapshot.counts['q-fatiha'] !== 6 ||
-          local?.counts['q-fatiha'] !== 6) {
-        throw new Error('Concurrent offline increments must preserve local outbox, remote event, both snapshots, and cursor without false convergence.');
+      const merged = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      const mergedLocal = StorageService.getRuqyahProgressSnapshot();
+      const replacementQueue = await journalB.listReady(1_800_000_000_000, 10);
+      if (merged.projectedCount !== 1 || merged.reason ||
+          await journalB.getRemoteProjectionCursor() !== 1 ||
+          replacementQueue.length !== 1 ||
+          replacementQueue[0].mutationId === mutationB.mutation.mutationId ||
+          replacementQueue[0].baseRevision !== 1 ||
+          mergedLocal?.schemaVersion !== 2 || mergedLocal.counts['q-fatiha'] !== 7) {
+        throw new Error('Device B did not automatically merge the two device components into a revision-1 replacement mutation.');
+      }
+
+      const mergedMutation = replacementQueue[0];
+      const acceptedB = await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
+        uid, collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert', schemaVersion: 1,
+        mutationId: mergedMutation.mutationId, eventId: mergedMutation.eventId,
+        deviceId: mergedMutation.deviceId, clientUpdatedAtMs: mergedMutation.clientUpdatedAtMs,
+        baseRevision: mergedMutation.baseRevision, payload: mergedMutation.payload
+      });
+      if (acceptedB.status !== 'written' || acceptedB.revision !== 2) {
+        throw new Error('The merged PN-counter replacement mutation was not accepted at revision 2.');
+      }
+      await journalB.acknowledgeRemoteMutation(mergedMutation.mutationId, acceptedB.revision, Date.now() + 1);
+
+      const mergedEvent = readRemoteEvent(await getDoc(doc(
+        firestoreB, 'users', uid, 'events', mergedMutation.eventId
+      )));
+      await journalA.importRemotePage([mergedEvent]);
+      activateIsolatedDevice(localStorageA, uid);
+      const projectedA = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      const finalA = StorageService.getRuqyahProgressSnapshot();
+      const finalB = await getDoc(doc(firestoreB, 'users', uid, 'ruqyahProgress', 'snapshot'));
+      const openConflictsB = await journalB.listProjectionConflicts(10);
+      if (projectedA.projectedCount !== 1 || projectedA.reason ||
+          finalA?.schemaVersion !== 2 || finalA.counts['q-fatiha'] !== 7 ||
+          mergedLocal?.counts['q-fatiha'] !== 7 ||
+          finalB.data()?.payload?.snapshot?.counts?.['q-fatiha'] !== 7 ||
+          await journalA.getRemoteProjectionCursor() !== 2 ||
+          openConflictsB.length !== 0 ||
+          (await journalB.getSnapshot()).pendingCount !== 0) {
+        throw new Error('Both devices and Firestore did not converge on the additive total with no pending conflict.');
       }
     } finally {
       journalA.close();
@@ -1148,7 +1188,6 @@ try {
       else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
     }
   });
-
 
   await test('Two-device revisioned sync projects every user data collection', async () => {
     const uid = 'multi-collection-sync-matrix';
