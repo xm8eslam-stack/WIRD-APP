@@ -3,16 +3,19 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 7;
+const DATABASE_VERSION = 8;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
 const STORE_METADATA = 'metadata';
 const STORE_REMOTE_INBOX = 'remoteInbox';
+const STORE_PROJECTION_CONFLICTS = 'projectionConflicts';
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_REMOTE_INBOX_EVENTS = 1_000;
+const MAX_PROJECTION_CONFLICTS = 100;
+const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
@@ -101,6 +104,20 @@ export interface RemoteInboxEvent {
 }
 
 export type RemoteInboxEventInput = Omit<RemoteInboxEvent, 'key' | 'fingerprint'>;
+
+export interface RemoteProjectionConflict {
+  key: string;
+  uid: string;
+  event: RemoteInboxEvent;
+  reason: string;
+  localSnapshot: Record<string, string | null>;
+  createdAtMs: number;
+  updatedAtMs: number;
+  status: 'open' | 'resolved';
+  resolution?: 'keep-local' | 'use-remote';
+  resolvedAtMs?: number;
+}
+
 
 interface AcknowledgementRecord {
   key: string;
@@ -325,6 +342,11 @@ export class IndexedDbSyncJournal {
           const remoteInbox = database.createObjectStore(STORE_REMOTE_INBOX, { keyPath: 'key' });
           remoteInbox.createIndex('uid', 'uid', { unique: false });
           remoteInbox.createIndex('uidServerSequence', ['uid', 'serverSequence'], { unique: true });
+        }
+        if (!database.objectStoreNames.contains(STORE_PROJECTION_CONFLICTS)) {
+          const conflicts = database.createObjectStore(STORE_PROJECTION_CONFLICTS, { keyPath: 'key' });
+          conflicts.createIndex('uid', 'uid', { unique: false });
+          conflicts.createIndex('uidCreatedAt', ['uid', 'createdAtMs'], { unique: false });
         }
         let metadataStore: IDBObjectStore;
         if (!database.objectStoreNames.contains(STORE_METADATA)) {
@@ -1481,6 +1503,150 @@ export class IndexedDbSyncJournal {
       };
       transaction.oncomplete = () => resolve(updated);
       transaction.onabort = () => reject(normalizeError(transaction.error || new Error('Remote collection initialization transaction aborted.')));
+    });
+  }
+
+  async saveProjectionConflict(
+    event: RemoteInboxEvent,
+    reason: string,
+    localSnapshot: Record<string, string | null>,
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (event.uid !== uid || !validMutationId(event.eventId) ||
+        typeof reason !== 'string' || reason.length === 0 || reason.length > 80 ||
+        !Number.isSafeInteger(nowMs) || nowMs < 0 || !isRecord(localSnapshot)) {
+      throw new Error('بيانات تعارض المزامنة غير صالحة.');
+    }
+    let snapshotBytes = 0;
+    try { snapshotBytes = byteLength(JSON.stringify(localSnapshot)); }
+    catch { throw new Error('تعذر تجهيز نسخة محلية آمنة للتعارض.'); }
+    if (snapshotBytes > MAX_CONFLICT_SNAPSHOT_BYTES) {
+      throw new Error('نسخة التعارض المحلية أكبر من الحد الآمن؛ لم يتم تغيير بياناتك أو حذف الحدث.');
+    }
+
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readwrite');
+      const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const key = uid + ':' + event.eventId;
+      const existingRequest = store.get(key);
+      const recordsRequest = store.index('uid').getAll(IDBKeyRange.only(uid));
+      let existing: RemoteProjectionConflict | undefined;
+      let records: RemoteProjectionConflict[] = [];
+      let readsRemaining = 2;
+      let saved = false;
+      let failure: Error | undefined;
+      const finishRead = () => {
+        readsRemaining--;
+        if (readsRemaining !== 0 || failure) return;
+        if (existing?.status === 'resolved') {
+          saved = true;
+          return;
+        }
+        if (!existing) {
+          const resolved = records
+            .filter(record => record.status === 'resolved')
+            .sort((a, b) => a.createdAtMs - b.createdAtMs);
+          while (records.length >= MAX_PROJECTION_CONFLICTS && resolved.length > 0) {
+            const oldest = resolved.shift()!;
+            store.delete(oldest.key);
+            records = records.filter(record => record.key !== oldest.key);
+          }
+          if (records.length >= MAX_PROJECTION_CONFLICTS) {
+            failure = new Error('وصل سجل التعارضات المفتوحة إلى الحد الآمن؛ بقي الحدث محفوظًا في صندوق الاستقبال.');
+            transaction.abort();
+            return;
+          }
+        }
+        const record: RemoteProjectionConflict = existing || {
+          key,
+          uid,
+          event,
+          reason,
+          localSnapshot,
+          createdAtMs: nowMs,
+          updatedAtMs: nowMs,
+          status: 'open'
+        };
+        if (existing) {
+          record.reason = reason;
+          record.updatedAtMs = nowMs;
+        }
+        store.put(record);
+        saved = true;
+      };
+      existingRequest.onsuccess = () => {
+        existing = existingRequest.result as RemoteProjectionConflict | undefined;
+        finishRead();
+      };
+      recordsRequest.onsuccess = () => {
+        records = recordsRequest.result as RemoteProjectionConflict[];
+        finishRead();
+      };
+      transaction.oncomplete = () => resolve(saved);
+      transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Projection conflict archive transaction aborted.')));
+    });
+  }
+
+  async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
+    const uid = activeUid();
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) {
+      throw new Error('عدد تعارضات المزامنة المطلوب غير صالح.');
+    }
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_PROJECTION_CONFLICTS)
+      .index('uid').getAll(IDBKeyRange.only(uid));
+    const records = await requestResult(request) as RemoteProjectionConflict[];
+    await completed;
+    return records.filter(record => record.status === 'open')
+      .sort((a, b) => b.createdAtMs - a.createdAtMs || b.event.serverSequence - a.event.serverSequence)
+      .slice(0, limit);
+  }
+
+  async getProjectionConflictCount(): Promise<number> {
+    const uid = activeUid();
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_PROJECTION_CONFLICTS)
+      .index('uid').getAll(IDBKeyRange.only(uid));
+    const records = await requestResult(request) as RemoteProjectionConflict[];
+    await completed;
+    return records.filter(record => record.status === 'open').length;
+  }
+
+  async markProjectionConflictResolved(
+    eventId: string,
+    resolution: 'keep-local' | 'use-remote',
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    const uid = activeUid();
+    if (!validMutationId(eventId) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
+      throw new Error('بيانات حل التعارض غير صالحة.');
+    }
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_PROJECTION_CONFLICTS], 'readwrite');
+      const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const request = store.get(uid + ':' + eventId);
+      let updated = false;
+      request.onsuccess = () => {
+        const conflict = request.result as RemoteProjectionConflict | undefined;
+        if (!conflict || conflict.status !== 'open') return;
+        store.put({
+          ...conflict,
+          status: 'resolved',
+          resolution,
+          resolvedAtMs: nowMs,
+          updatedAtMs: nowMs
+        } satisfies RemoteProjectionConflict);
+        updated = true;
+      };
+      transaction.oncomplete = () => resolve(updated);
+      transaction.onabort = () => reject(normalizeError(transaction.error || new Error('Projection conflict resolution record failed.')));
     });
   }
 
