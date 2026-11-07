@@ -32,9 +32,20 @@ import { StorageService } from '../../services/storageService';
 import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
 import { useCloudSync } from '../../hooks/useCloudSync';
+import { LocalSyncOutbox } from '../../services/localSyncOutbox';
+import type { RemoteProjectionConflict } from '../../services/indexedDbSyncJournal';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupFile } from '../../services/backupPersistence';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
+
+function formatConflictSnapshotValue(value: string | null): string {
+  if (value === null) return 'null';
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2);
+  } catch {
+    return value;
+  }
+}
 
 interface SettingsViewProps {
   profile: UserProfile;
@@ -142,6 +153,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     projectionConflictCount, latestProjectionConflict,
     lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync
   } = useCloudSync();
+  const [conflictDetails, setConflictDetails] = useState<RemoteProjectionConflict[]>([]);
+  useEffect(() => {
+    let active = true;
+    if (!user?.uid || isGuest || StorageService.getStorageScope() !== 'user:' + user.uid) {
+      setConflictDetails([]);
+      return () => { active = false; };
+    }
+    void LocalSyncOutbox.listProjectionConflicts(20)
+      .then(records => { if (active) setConflictDetails(records); })
+      .catch(() => { if (active) setConflictDetails([]); });
+    return () => { active = false; };
+  }, [user?.uid, isGuest, projectionConflictCount, latestProjectionConflict?.eventId]);
+
   const projectionBlockMessages: Record<string, string> = {
     projection_disabled: 'استقبال الأحداث غير مفعّل بعد؛ نحتفظ بها دون تطبيقها.',
     legacy_remote_state: 'توجد بيانات سحابية قديمة تحتاج إلى مصالحة آمنة.',
@@ -380,6 +404,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 آخر تعارض محفوظ: {latestProjectionConflict.collection}/{latestProjectionConflict.documentId}
                 {' · '}الحدث #{latestProjectionConflict.serverSequence}
               </p>
+            )}
+            {projectionConflictCount > 0 && (
+              <section className="w-full space-y-3 pt-3 border-t border-amber-200/70 dark:border-amber-900/60" aria-labelledby="sync-conflict-review-title">
+                <div className="space-y-1">
+                  <h3 id="sync-conflict-review-title" className="text-xs font-bold text-stone-800 dark:text-stone-100">
+                    تفاصيل النسخ المحفوظة للتعارضات
+                  </h3>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
+                    هذه معاينة للنسختين المحفوظتين فقط. لم يُتخذ قرار بالاستبدال أو الدمج، ولن تُحذف أي نسخة من هذه الشاشة.
+                  </p>
+                </div>
+                {conflictDetails.length === 0 ? (
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400" role="status">
+                    تعذر تحميل تفاصيل التعارضات الآن؛ الأدلة الأصلية ما زالت محفوظة محليًا.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {conflictDetails.map(conflict => (
+                      <details key={conflict.event.eventId} className="rounded-xl border border-amber-200 dark:border-amber-900/70 bg-amber-50/50 dark:bg-stone-900/50 p-3">
+                        <summary className="cursor-pointer flex flex-wrap items-center justify-between gap-2 text-xs font-semibold text-stone-800 dark:text-stone-100">
+                          <span>{conflict.event.collection} / {conflict.event.documentId}</span>
+                          <span className="text-[10px] font-normal text-stone-500 dark:text-stone-400">
+                            الحدث #{conflict.event.serverSequence} · {new Date(conflict.createdAtMs).toLocaleString('ar-EG')}
+                          </span>
+                        </summary>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-[11px]">
+                          <div className="space-y-1">
+                            <p className="font-bold text-stone-700 dark:text-stone-200">بيانات الحدث البعيد</p>
+                            <p className="text-stone-500 dark:text-stone-400">العملية: {conflict.event.operation} · الإصدار: {conflict.event.baseRevision} ← {conflict.event.revision}</p>
+                            <pre dir="ltr" className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-white dark:bg-black/30 border border-stone-200 dark:border-stone-700 p-2 text-[10px] text-stone-700 dark:text-stone-200">{JSON.stringify(conflict.event.payload, null, 2)}</pre>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-bold text-stone-700 dark:text-stone-200">لقطة البيانات المحلية وقت اكتشاف التعارض</p>
+                            {Object.entries(conflict.localSnapshot).map(([key, value]) => (
+                              <div key={key} className="space-y-1">
+                                <p className="text-stone-500 dark:text-stone-400 break-all">{key}</p>
+                                <pre dir="ltr" className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-white dark:bg-black/30 border border-stone-200 dark:border-stone-700 p-2 text-[10px] text-stone-700 dark:text-stone-200">{formatConflictSnapshotValue(value)}</pre>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[10px] text-stone-500 dark:text-stone-400">
+                          سبب الإيقاف: {conflict.reason} · معرّف الحدث: <span dir="ltr">{conflict.event.eventId}</span>
+                        </p>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </section>
             )}
           </div>
 
