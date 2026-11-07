@@ -43,6 +43,7 @@ In the Vercel project settings, verify the following variables are present in th
 - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` — future release only; keep disabled until all global release gates pass.
 - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — future release only; keep disabled until all global release gates pass and Firestore rules are deployed.
 - `ISLAMICAPI_API_KEY` — server-side secret only; never prefix it with `VITE_`, never expose it to browser code.
+- `RUQYAH_TOPICS_ENABLED` — leave unset/false. The educational topic endpoints remain disabled until every article and reference is reviewed; do not enable it as part of normal release.
 
 Redeploy `main` after changing variables. Verify the deployment commit SHA equals the merged `main` commit and the deployment is Ready before testing.
 
@@ -97,7 +98,8 @@ Repository: https://github.com/muslimpack/Ruqayyah
 - API documentation: https://islamicapi.com/doc/ruqyah/
 - The documented API exposes 308 instant recitation entries across three programs and 146 educational articles across 13 topics, with Arabic and other language support.
 - The API endpoint requires an API key. WIRD uses a server-side proxy; the key must remain a server secret.
-- The API documentation and dataset README describe the data/API as free to use, but the public dataset repository currently has no discoverable LICENSE file. Do not vendor or redistribute the raw dataset until a clear written data license is available. Using the documented API remains subject to the provider's current API terms.
+- The API is free of charge but requires registration and an API key. The provider's terms also reserve fair-use rate limiting and suspension rights; do not interpret "free" as unlimited requests. See https://islamicapi.com/terms/.
+- The dataset README describes the data as free/open source, but the public dataset repository currently has no discoverable LICENSE file. Do not vendor or redistribute the raw dataset until a clear written data license is available. Using the documented API remains subject to the provider's current API terms.
 - Topic articles cover sensitive subjects such as sihr, jinn, illness, hijamah, and detoxification. WIRD intentionally does not expose the entire topic corpus as authoritative Shariah/medical guidance until each article and its references have been reviewed. Quran text must continue to resolve to WIRD's canonical Quran corpus.
 
 ## Known release blockers
@@ -108,6 +110,7 @@ Repository: https://github.com/muslimpack/Ruqayyah
 - Live Firestore rules deployment is not verified from this repository session.
 - Vercel reports a build-rate-limit quota error; live production deployment status must be checked in the Vercel dashboard.
 - The deployed values of the three environment variables above are not observable through GitHub CI.
+- The proxy's per-IP limiter is an in-memory, per-serverless-instance safeguard, not a globally coordinated quota. Educational topic endpoints are disabled by default behind the server-side `RUQYAH_TOPICS_ENABLED` flag. The provider's account-level fair-use limits remain authoritative; use a shared rate-limit store only if traffic justifies it.
 - Real browser/device playback and two-device cloud sync have not been run against production.
 
 Never mark these blockers as passed based only on unit tests or emulator results.

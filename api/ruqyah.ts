@@ -1,9 +1,12 @@
 const API_BASE = 'https://islamicapi.com/api/v1/ruqyah/';
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
+const MAX_RATE_LIMIT_BUCKETS = 1000;
+const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
+const ALLOWED_TOPIC_BLOCK_TYPES = new Set(['text', 'arabic', 'translation', 'header', 'transliteration']);
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
-const ALLOWED_TYPES = new Set(['instant-category', 'instant', 'topic-category', 'topic']);
+const ALLOWED_TYPES = new Set(['instant-category', 'instant']);
 const ALLOWED_PROGRAMS = new Set(['brief-ruqya', 'a-medium-ruqya', 'a-long-ruqya']);
 const ALLOWED_SOURCES = new Set(['from-quran', 'from-sunnah']);
 const ALLOWED_TOPICS = new Set([
@@ -36,17 +39,34 @@ function readQueryValue(value: unknown): string {
   return typeof candidate === 'string' ? candidate.trim() : '';
 }
 
+function isAllowedType(type: string): boolean {
+  if (ALLOWED_TYPES.has(type)) return true;
+  // Educational topic content remains disabled until its Shariah/medical
+  // references are reviewed for WIRD. Enable only through a server-side flag.
+  return process.env.RUQYAH_TOPICS_ENABLED === 'true' &&
+    (type === 'topic-category' || type === 'topic');
+}
+
 function getClientIp(req: any): string {
-  const forwarded = req.headers?.['x-forwarded-for'];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  return String(raw || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+  // On Vercel, x-real-ip is set by the trusted edge. Do not trust the
+  // client-controlled leftmost x-forwarded-for value for rate-limit identity.
+  const realIp = req.headers?.['x-real-ip'];
+  const candidate = Array.isArray(realIp) ? realIp[0] : realIp;
+  if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  const remoteAddress = req.socket?.remoteAddress;
+  return typeof remoteAddress === 'string' && remoteAddress.trim() ? remoteAddress.trim() : 'unknown';
 }
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
-  if (rateLimits.size > 1000) {
+  if (rateLimits.size > MAX_RATE_LIMIT_BUCKETS) {
     for (const [key, record] of rateLimits.entries()) {
       if (now >= record.resetAt) rateLimits.delete(key);
+    }
+    while (rateLimits.size > MAX_RATE_LIMIT_BUCKETS) {
+      const oldestKey = rateLimits.keys().next().value;
+      if (typeof oldestKey !== 'string') break;
+      rateLimits.delete(oldestKey);
     }
   }
   const current = rateLimits.get(ip);
@@ -79,7 +99,7 @@ function validPayload(type: string, payload: unknown): boolean {
     !Array.isArray(row.content) ||
     row.content.length > 500 ||
     row.content.some(part => !isRecord(part) ||
-      typeof part.type !== 'string' ||
+      typeof part.type !== 'string' || !ALLOWED_TOPIC_BLOCK_TYPES.has(part.type) ||
       typeof part.content !== 'string')
   )) return false;
 
@@ -105,6 +125,37 @@ function parseUpstreamJson(raw: string): unknown | null {
   try { return JSON.parse(trimmed) as unknown; } catch { return null; }
 }
 
+async function readBoundedUpstreamText(response: Response): Promise<string | null> {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      totalBytes += result.value.byteLength;
+      if (totalBytes > MAX_UPSTREAM_RESPONSE_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(result.value);
+    }
+    const combined = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return new TextDecoder().decode(combined);
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
+  } finally {
+    try { reader.releaseLock(); } catch { /* stream already cancelled or closed */ }
+  }
+}
+
 /**
  * Server-side proxy for IslamicAPI Ruqyah. The API key is never sent to the
  * browser. Only the Arabic corpus is exposed; callers cannot choose arbitrary
@@ -124,7 +175,7 @@ export default async function handler(req: any, res: any) {
 
   const query = req.query || {};
   const type = readQueryValue(query.type);
-  if (!ALLOWED_TYPES.has(type)) return send(res, 400, { error: 'INVALID_RUQYAH_QUERY' });
+  if (!isAllowedType(type)) return send(res, 400, { error: 'INVALID_RUQYAH_QUERY' });
 
   const params = new URLSearchParams({ type, lang: 'ar' });
   if (type === 'instant') {
@@ -176,7 +227,17 @@ export default async function handler(req: any, res: any) {
       signal: AbortSignal.timeout(12_000)
     });
     const contentType = upstream.headers.get('content-type') || '';
-    const raw = await upstream.text();
+    const declaredLengthHeader = upstream.headers.get('content-length');
+    const declaredLength = declaredLengthHeader === null ? null : Number(declaredLengthHeader);
+    if (declaredLength !== null && Number.isFinite(declaredLength) && declaredLength > MAX_UPSTREAM_RESPONSE_BYTES) {
+      res.setHeader('Cache-Control', 'no-store');
+      return send(res, 502, { error: 'INVALID_RUQYAH_SOURCE_RESPONSE' });
+    }
+    const raw = await readBoundedUpstreamText(upstream);
+    if (raw === null) {
+      res.setHeader('Cache-Control', 'no-store');
+      return send(res, 502, { error: 'INVALID_RUQYAH_SOURCE_RESPONSE' });
+    }
     const payload = /application\/(?:[a-z0-9.+-]*\+)?json/i.test(contentType)
       ? parseUpstreamJson(raw)
       : null;
