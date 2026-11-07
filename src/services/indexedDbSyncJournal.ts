@@ -1462,7 +1462,7 @@ export class IndexedDbSyncJournal {
           mergedSnapshot = mergeRuqyahProgressSnapshots(
             localSnapshot,
             remoteSnapshot,
-            Math.max(Date.now(), localSnapshot.updatedAtMs, remoteSnapshot.updatedAtMs)
+            Math.max(localSnapshot.updatedAtMs, remoteSnapshot.updatedAtMs)
           );
         } catch (error) {
           failure = normalizeError(error);
