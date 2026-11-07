@@ -1231,7 +1231,12 @@ export class IndexedDbSyncJournal {
             currentIntent.eventId === intent.eventId &&
             currentIntent.collection === intent.collection &&
             currentIntent.documentId === intent.documentId &&
-            currentIntent.revision === intent.revision;
+            currentIntent.revision === intent.revision &&
+            Array.isArray(currentIntent.initializedCollections) &&
+            currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+            currentIntent.initializedCollections.every((collection, index) =>
+              collection === intent.initializedCollections[index]
+            );
           if (!accepted) {
             failure = new Error('يوجد إسقاط بعيد سابق لم يكتمل؛ لن يتم استبداله.');
             transaction.abort();
@@ -1309,6 +1314,7 @@ export class IndexedDbSyncJournal {
         const currentIntent = metadata?.remoteProjectionIntent;
         const cursor = metadata?.remoteProjectionCursor ?? 0;
         const sameInitializedCollections = !!currentIntent &&
+          Array.isArray(currentIntent.initializedCollections) &&
           currentIntent.initializedCollections.length === intent.initializedCollections.length &&
           currentIntent.initializedCollections.every((collection, index) =>
             collection === intent.initializedCollections[index]
@@ -1334,20 +1340,6 @@ export class IndexedDbSyncJournal {
           transaction.abort();
           return;
         }
-        // Keep this callback synchronous and inside the IndexedDB transaction.
-        // Enqueue transactions use STORE_OUTBOX and STORE_METADATA too, so a
-        // local mutation cannot slip between the pending check and projection.
-        try {
-          if (!applyProjection()) {
-            failure = new Error('تعذر تطبيق الإسقاط المحلي؛ احتفظنا بالحدث ونية التعافي.');
-            transaction.abort();
-            return;
-          }
-        } catch (error) {
-          failure = normalizeError(error);
-          transaction.abort();
-          return;
-        }
         const revisionKey = intent.collection + ':' + intent.documentId;
         const remoteRevisions = { ...(metadata.remoteRevisions || {}) };
         const previous = remoteRevisions[revisionKey];
@@ -1355,6 +1347,21 @@ export class IndexedDbSyncJournal {
           failure = new Error('وصل سجل إصدارات المستندات إلى الحد الآمن؛ لم يتم اعتماد الإسقاط أو حذف الحدث.');
           transaction.abort();
           return;
+        }
+        // A later acknowledged local revision supersedes this older inbox event.
+        // In that case commit the cursor without replaying the stale snapshot.
+        if (!previous || previous.revision < intent.revision) {
+          try {
+            if (!applyProjection()) {
+              failure = new Error('تعذر تطبيق الإسقاط المحلي؛ احتفظنا بالحدث ونية التعافي.');
+              transaction.abort();
+              return;
+            }
+          } catch (error) {
+            failure = normalizeError(error);
+            transaction.abort();
+            return;
+          }
         }
         const nextSequence = metadata.nextSequence ?? 1;
         remoteRevisions[revisionKey] = {
@@ -1679,7 +1686,9 @@ export class IndexedDbSyncJournal {
         const cursor = metadata?.remoteProjectionCursor ?? 0;
         const importedCursor = metadata?.remoteCursor ?? 0;
         if (sequence <= cursor) return;
-        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event) {
+        if (!metadata || sequence !== cursor + 1 || sequence > importedCursor || !event ||
+            (metadata.remoteProjectionIntent?.sequence === sequence &&
+              metadata.remoteProjectionIntent.eventId === event.eventId)) {
           failure = new Error('لا يمكن تجاوز حدث غير مطبق أو حدث غير محفوظ في صندوق الاستقبال.');
           transaction.abort();
           return;
