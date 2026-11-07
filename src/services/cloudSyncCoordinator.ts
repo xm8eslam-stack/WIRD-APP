@@ -24,6 +24,11 @@ export interface CloudSyncState {
 
 type SyncListener = (state: CloudSyncState) => void;
 
+/** Cloud writes stay disabled until the matching revision-enforcing Firestore rules are deployed. */
+export function isRevisionedSyncEnabled(): boolean {
+  return import.meta.env.VITE_WIRD_REVISIONED_SYNC_ENABLED === 'true';
+}
+
 /** Full sync requires durable remote import and local projection, not just upload success. */
 export function getCloudSyncCompletionStatus(
   pendingCount: number,
@@ -160,6 +165,15 @@ class CloudSyncCoordinator {
       this.updateState({
         status: 'error',
         errorMessage: 'نطاق التخزين المحلي غير متطابق مع هوية المستخدم المسجل.'
+      });
+      return false;
+    }
+
+    if (!isRevisionedSyncEnabled()) {
+      const pendingCount = await this.refreshPendingCount();
+      this.updateState({
+        status: pendingCount > 0 ? 'error' : 'partial',
+        errorMessage: 'الرفع السحابي الآمن متوقف مؤقتاً حتى نشر قواعد Firestore التي تفرض مقارنة الإصدارات. بياناتك المحلية محفوظة ولم يتم إرسال كتابة قد تستبدل بيانات أحدث.'
       });
       return false;
     }
