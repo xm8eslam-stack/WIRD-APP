@@ -129,3 +129,16 @@ No production data, rules, credentials, service accounts, environment variables,
 - PR #94 merged the Ruqyah legacy first-sync scan and a concurrent-offline conflict-preservation test. This proves safe blocking/archive retention, not additive counter merge.
 - Keep VITE_WIRD_REVISIONED_SYNC_ENABLED and VITE_WIRD_REMOTE_PROJECTION_ENABLED disabled until manual conflict resolution, deterministic Ruqyah additive merge, tombstone semantics, cross-tab concurrency, account isolation, and live two-device verification pass.
 - No production rules deployment, production secret update, Vercel setting change, or remote-sync activation occurred.
+
+## 2026-11-07 — Main checkpoint after bidirectional sync and Ruqyah source hardening
+
+- Current main: `d71908b3e411bcd7d1db2b09318eb3c95564198e`. Main Quality Gate run `42357565644` passed on this exact SHA: 509 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and production-server startup smoke.
+- PR #101 merged at `014d958dd358b3a98e7ac67db7c4a57d241fbc52`. It adds A → B projection coverage through all eight collection routes. Its first version used empty arrays for six collections; this limitation is documented rather than overstated.
+- PR #103 merged at `c8e420573a588e22b78bf8f3702fb9812a3f282d` and corrects the matrix: PR #101 was one-way and did not validate populated records in six arrays.
+- PR #104 merged at `46ed9e5976b2f22f2495a270edf8c2255e27962b`. Settings now shows a read-only view of preserved local/remote conflict snapshots, guarded by exact active UID scope. It does not resolve conflicts.
+- PR #106 merged at `14390679530f5a523a77997d882f12160c3ad1c9`. It adds the reverse B → A pass through all eight collection routes, revision 2 checks, and full ordered event stream projection. Exact-head runs `42357426174` and `42357436438` passed; 510 unit assertions and 31 Firestore Rules tests passed. Six collection payloads remain empty arrays, so populated-record serialization is still unverified.
+- PR #105 merged at `d71908b3e411bcd7d1db2b09318eb3c95564198e`. It restricts IslamicAPI to Quran reference indexing, renders Quran text only from WIRD's verified corpus, keeps topic content disabled, removes unverified optional religious content, and disables unverified full-program and individual-verse Ruqyah audio. Exact-head CI passed; post-merge Main run `42357565644` passed.
+- PR #108 is open for a stricter ID-to-source registry test. Review requested two fixes before merge: map each content ID to its exact source (not a global Set), and replace or explicitly classify the generic `إرشاد صحي عام` source on guideline `g-4`.
+- Vercel status for current main remains `failure` (`build-rate-limit` / free deployment quota). No deployed production SHA or live post-deploy smoke is verified.
+- Remaining release blockers: keep-local/use-remote/merge conflict state machine, deterministic additive Ruqyah increments, safe tombstone projection, real cross-tab/browser concurrency, account lifecycle race testing, populated domain-record coverage for all collections, full Playwright E2E, production Firestore rules deployment, and verified live deployment.
+- Remote sync flags remain disabled for real users. No production secrets, variables, Firebase rules, user data, or deployments were changed.
