@@ -121,7 +121,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'صحيح البخاري 5736',
     explanation: 'ثبتت مشروعية قراءة الفاتحة في الرقية في حديث أبي سعيد الخدري، ولم يحدد الحديث عددًا ثابتًا لتكرارها.',
-    audioVerseKey: '001001'
   },
   {
     id: 'q-baqarah-1-5',
@@ -135,7 +134,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، البقرة 1-5',
     explanation: 'آيات من القرآن الكريم تُقرأ ضمن الرقية العامة، دون تخصيصها بعدد أو ادعاء أثر مستقل لها.',
-    audioVerseKey: '002001'
   },
   {
     id: 'q-kursi',
@@ -149,7 +147,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'صحيح البخاري 2311',
     explanation: 'ثبت فضل قراءتها عند النوم، ولا يثبت في هذا الحديث تكرارها ثلاث مرات.',
-    audioVerseKey: '002255'
   },
   {
     id: 'q-baqarah-256-257',
@@ -163,7 +160,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، البقرة 256-257',
     explanation: 'آيات قرآنية تُقرأ ضمن عموم القرآن، دون عدد مخصوص ثابت للرقية.',
-    audioVerseKey: '002256'
   },
   {
     id: 'q-baqarah-last2',
@@ -177,7 +173,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'صحيح البخاري 5009؛ صحيح مسلم 808a',
     explanation: 'ثبت أن من قرأ الآيتين في ليلة كفتاه؛ ولا يذكر الحديث تكرارهما ثلاث مرات.',
-    audioVerseKey: '002285'
   },
   {
     id: 'q-araf-magic',
@@ -191,7 +186,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، الأعراف 117-122',
     explanation: 'آيات من قصة موسى عليه السلام. تُقرأ من القرآن دون تخصيص عدد أو الجزم بأنها وصفة مستقلة لإبطال السحر.',
-    audioVerseKey: '007117'
   },
   {
     id: 'q-yunus-magic',
@@ -205,7 +199,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، يونس 81-82',
     explanation: 'آيات من القرآن الكريم، ولا يثبت لها عدد مخصوص أو أثر مستقل خارج عموم الرقية بالقرآن.',
-    audioVerseKey: '010081'
   },
   {
     id: 'q-ta-ha-magic',
@@ -219,7 +212,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، طه 69',
     explanation: 'آية من القرآن الكريم، تُقرأ دون تحديد عدد مخصوص لم يثبت به دليل.',
-    audioVerseKey: '020069'
   },
   {
     id: 'q-isra-healing',
@@ -233,7 +225,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، الإسراء 82',
     explanation: 'تصف الآية القرآن بأنه شفاء ورحمة للمؤمنين، ولا تجعل منها وصفة علاجية بعدد محدد.',
-    audioVerseKey: '017082'
   },
   {
     id: 'q-ikhlas',
@@ -247,7 +238,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: 3,
     source: 'صحيح البخاري 5017؛ سنن أبي داود 5082',
     explanation: 'تقرأ مع سورتي الفلق والناس ثلاث مرات صباحًا ومساءً، وثبت قراءتها قبل النوم مع النفث والمسح.',
-    audioVerseKey: '112001'
   },
   {
     id: 'q-falaq',
@@ -261,7 +251,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: 3,
     source: 'صحيح البخاري 5017؛ سنن أبي داود 5082',
     explanation: 'تقرأ مع سورتي الإخلاص والناس ثلاث مرات صباحًا ومساءً، وثبتت قراءتها قبل النوم مع النفث والمسح.',
-    audioVerseKey: '113001'
   },
   {
     id: 'q-nas',
@@ -275,7 +264,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     repeatTarget: 3,
     source: 'صحيح البخاري 5017؛ سنن أبي داود 5082',
     explanation: 'تقرأ مع سورتي الإخلاص والفلق ثلاث مرات صباحًا ومساءً، وثبتت قراءتها قبل النوم مع النفث والمسح.',
-    audioVerseKey: '114001'
   },
 
   // --- الأدعية والأذكار النبوية ---
