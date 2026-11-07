@@ -7,6 +7,8 @@ import { runBackupPersistenceTests } from '../services/backupPersistence.test';
 import { runCleanInitializationTests } from './cleanInitialization.test';
 import { runGeminiSecurityTests } from './geminiSecurity.test';
 import { runQuranIntegrityTests } from './quranContentIntegrity.test';
+import { runQuranMathValidationTests } from './quranMathValidation.test';
+import { runDomainEventCoordinateTests } from './domainEventCoordinateValidation.test';
 import { runIndependentTanzilComparison, runNegativeComparisonTests } from './independentTanzilComparison';
 import { runPwaIntegrationTests } from './pwaIntegration.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
@@ -87,6 +89,8 @@ async function main() {
     { name: 'Clean User Initialization & Zero Fake Progress (Phase 1)', runner: runCleanInitializationTests },
     { name: 'Gemini Free Tier Security & Isolation (Phase 2)', runner: runGeminiSecurityTests },
     { name: 'Quran Data Structural Integrity & Coverage', runner: runQuranIntegrityTests },
+    { name: 'Quran Coordinate and Range Validation', runner: runQuranMathValidationTests },
+    { name: 'Domain Event Quran Coordinate Validation', runner: runDomainEventCoordinateTests },
     { name: 'Independent Tanzil Character-by-Character Verification', runner: () => runIndependentTanzilComparison() },
     { name: 'Tanzil Comparison Detector Sensitivity (Negative Tests)', runner: () => runNegativeComparisonTests() },
     { name: 'PWA Compliance & Service Worker Infrastructure', runner: runPwaIntegrationTests },
