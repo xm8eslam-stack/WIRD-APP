@@ -1,9 +1,9 @@
 # WIRD — Resume Here
 
-## Live resume checkpoint — 2026-11-07 after PR #140
+## Live resume checkpoint — 2026-11-07 after RR #140
 
 - Re-fetch `main` before every source edit. Latest verified main commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305`.
-- PR #140 merged with a passing exact-head gate: run `42364663347`, 526 assertions, 31 Rules Emulator tests, dependency audit, TypeScript, production build, server smoke and 20 desktop/mobile Playwright tests.
+- RR #140 merged with a passing exact-head gate: run `42364663347`, 526 assertions, 31 Rules Emulator tests, dependency audit, TypeScript, production build, server smoke and 20 desktop/mobile Playwright tests.
 - PR #141 is open for narrow-screen overflow regression tests; exact-head run `42364704191` is in progress (browser tests were running at last inspection). Wait for completion and inspect the final run before considering merge.
 - PR #142 is stale against the previous main base and GitHub reports it not mergeable. A refreshed checkpoint PR supersedes it; do not merge #142.
 - Highest engineering priority remains a separate durable Conflict Resolution state machine. The archive/read-only inspector are not user-directed resolution.
