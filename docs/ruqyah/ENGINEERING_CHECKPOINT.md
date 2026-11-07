@@ -1,4 +1,4 @@
-# Current verified continuation — after PR #141
+# Current verified continuation — after PR #145
 
 Last verified: 2026-11-07.
 
@@ -45,8 +45,16 @@ Last verified: 2026-11-07.
 - Exact-head Quality Gate passed on `6faa9efa07d700c0f4782f9306cddb3958ff78c0`, run `42364704191`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 22 desktop/mobile Playwright tests passed.
 - No responsive overflow was detected at the tested widths in either Ruqyah mode. This is automated browser evidence, not a substitute for manual device/screen-reader review.
 
+## Screen-reader progress announcements — PR #145
+- PR #144 refreshed this checkpoint and release checklist through the narrow-screen regression coverage; merge SHA: `fff12b41aa87103ea9cfc53054ef583240f7c860`.
+- PR #145 marks each reading counter as an atomic polite live status region and supplies explicit Arabic accessible labels for both free-reading counts and source-defined remaining repetition counts.
+- PR #145 merge SHA: `3452c7bfe8c2ac5095fe6c7ced454a3588dc3c7c`.
+- Exact-head Quality Gate passed on `a19038862946025780f4f9f41c2609900d022ff3`, run `42365003132`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 24 desktop/mobile Playwright tests passed.
+- Regression verifies that the free Al-Fatihah count changes from 0 to 1 with a live label, and the Al-Ikhlas source-defined remaining count changes to 2 of 3 after recording.
+- No Quran text, hadith, fixed repetition values, or source registry changed.
+
 ## Branch hygiene
-- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135), and `a11y/ruqyah-reset-focus-return-escape-20261107` (PR #139), `docs/ruqyah-checkpoint-after-pr139-20261107` (PR #140), and `test/ruqyah-narrow-mobile-overflow-20261107` (PR #141).
+- Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135), and `a11y/ruqyah-reset-focus-return-escape-20261107` (PR #139), `docs/ruqyah-checkpoint-after-pr139-20261107` (PR #140), and `test/ruqyah-narrow-mobile-overflow-20261107` (PR #141), `docs/ruqyah-checkpoint-after-pr141-20261107` (PR #144), and `a11y/ruqyah-live-progress-announcements-20261107` (PR #145).
 - Two superseded non-PR branches remain and must not be reused: `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` (superseded by the v2 branch after main advanced) and `test/ruqyah-library-ui-states-20261107` (superseded by the v2 branch after adding the supported guest-auth flow).
 - The available GitHub integration exposes branch search and ref updates but no delete-ref operation. These two branches are therefore documented as inactive rather than falsely reported as deleted; remove them through GitHub's branch UI when available.
 - Other Ruqyah-named branches visible in the repository predate this continuation and were not modified or assumed to be active. Audit their associated PRs before deleting.
