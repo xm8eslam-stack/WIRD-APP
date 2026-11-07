@@ -244,10 +244,12 @@ export async function resetAllDataJournaled(
     if (persisted.success) {
       // This key is a retired legacy projection and is not part of the journal schema.
       if (!StorageService.removeRawItem(STORAGE_KEYS.PROGRESS) ||
-          !StorageService.verifyRawItem(STORAGE_KEYS.PROGRESS, null)) {
+          !StorageService.verifyRawItem(STORAGE_KEYS.PROGRESS, null) ||
+          !StorageService.removeRawItem(STORAGE_KEYS.RUQYAH_PROGRESS) ||
+          !StorageService.verifyRawItem(STORAGE_KEYS.RUQYAH_PROGRESS, null)) {
         return {
           success: false,
-          message: 'تم حفظ إعادة الضبط، لكن تعذر حذف مفتاح تقدم قديم غير مستخدم. لا تكرر العملية؛ أعد فتح التطبيق وراجع البيانات.'
+          message: 'تم حفظ إعادة الضبط، لكن تعذر حذف أحد مفاتيح التقدم المحلية. لا تكرر العملية؛ أعد فتح التطبيق وراجع البيانات.'
         };
       }
     }
