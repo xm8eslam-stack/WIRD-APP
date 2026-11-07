@@ -21,10 +21,9 @@ export interface ResolvedRuqyahApiQuranEntry {
 }
 
 export interface RuqyahApiRequest {
-  type: 'instant-category' | 'instant' | 'topic-category' | 'topic';
+  type: 'instant';
   program?: RuqyahApiProgram;
   source?: RuqyahApiSource;
-  topic?: string;
   id?: number;
   random?: boolean;
 }
@@ -41,7 +40,6 @@ export async function fetchRuqyahApiData<T = unknown>(
   const params = new URLSearchParams({ type: request.type, lang: 'ar' });
   if (request.program) params.set('program', request.program);
   if (request.source) params.set('source', request.source);
-  if (request.topic) params.set('topic', request.topic);
   if (request.id !== undefined) params.set('id', String(request.id));
   if (request.random !== undefined) params.set('random', String(request.random));
 
