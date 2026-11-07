@@ -34,3 +34,9 @@ If the account changes while a write is in flight:
 - Keep both users' pending mutations isolated and recoverable.
 
 PR #110 adds a regression test with the same mutation ID in two accounts, checking that stale A operations cannot read or mutate B's outbox. This is automated service/coordinator evidence; real browser auth-switch E2E and multi-tab lifecycle tests remain required.
+
+### Subsequent update — PR #111 merged
+
+- PR #111 merged at `48cf9b236072cd3db2603a57cda5f67b30a778cd`. IslamicAPI now exposes only validated Quran locators (`instant` + `from-quran`); provider-authored text/translation/reference fields are stripped, and the UI resolves Arabic text and metadata from WIRD's canonical Quran corpus. Topic/category endpoints are hard-disabled, ambiguous/multi-reference titles and invalid IDs/ranges fail closed, and audio remains disabled pending source/rights verification.
+- Exact PR head `805c6c3d7b0c00ab348be4891f1f027d50529974` passed run `42358956417`: 513 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and startup smoke.
+- Current main SHA is `48cf9b236072cd3db2603a57cda5f67b30a778cd`. Main Quality Gate job `128363308512` passed, but run `42359049396` was still marked in progress at this checkpoint. Vercel remains `build-rate-limit`; production deployment/live SHA is unverified.
