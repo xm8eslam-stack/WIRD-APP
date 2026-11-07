@@ -1,5 +1,19 @@
 # WIRD Conflict Resolution Policy
 
+## 2026-11-07 — explicit use-remote resolution path (next executor phase)
+
+The follow-on implementation adds a deliberately narrow, user-confirmed **use latest remote snapshot** path:
+
+- The UI requires a separate confirmation and disables the action while offline, syncing, guest, or unverified.
+- The service reads the latest Firestore state document and validates its schema/revision envelope. Missing, malformed, or tombstoned documents are rejected.
+- The decision is bound to the exact local snapshot and archived mutation identities, then the journal revalidates them at commit time.
+- Normal single-collection projections and grouped `syncMeta` transactions are applied through the existing validated storage projection paths.
+- The journal atomically closes the conflict, removes only relevant pending Outbox entries already preserved in the archive, updates the authoritative revision baseline, deletes the blocked Inbox event, clears the prepared intent, and advances the projection cursor.
+- A prepared decision can be explicitly canceled without deleting the conflict archive or pending writes.
+- Recovery recognizes the exact selected remote snapshot if the local projection completed immediately before an IndexedDB interruption, then safely finishes the journal commit. A different local snapshot remains a hard stop.
+
+**Still not implemented:** keep-local re-publication, user-authored merge, collection-specific tombstone resolution, and production multi-device verification. Do not infer that the whole conflict-resolution engine is complete from the use-remote path alone. Production sync flags remain disabled.
+
 ## 2026-11-07 — durable decision-intent foundation (PR #148)
 
 PR #148 introduces a versioned, UID-scoped IndexedDB store for a single immutable prepared decision per conflict. A prepared intent is bound to the exact remote event fingerprint and sequence, the raw local snapshot fingerprint, the selected complete snapshot, decision ID/type, supplied server revision, and archived local mutation IDs/fingerprints.
