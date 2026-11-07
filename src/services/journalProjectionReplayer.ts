@@ -6,6 +6,7 @@ export interface JournalProjectionReplayResult {
   uid: string;
   applied: number;
   skippedAlreadyProjected: number;
+  recoveredAlreadyProjected: number;
   cursor: number;
 }
 
@@ -39,7 +40,7 @@ export async function replayJournalProjection(
   const scope = StorageService.getStorageScope();
   const uid = scope.startsWith('user:') ? scope.slice('user:'.length) : '';
   if (!uid) {
-    return { uid: '', applied: 0, skippedAlreadyProjected: 0, cursor: 0 };
+    return { uid: '', applied: 0, skippedAlreadyProjected: 0, recoveredAlreadyProjected: 0, cursor: 0 };
   }
 
   let initialCursor: number;
@@ -51,12 +52,12 @@ export async function replayJournalProjection(
     if (error instanceof Error && error.message.includes('IndexedDB غير متاح في هذا المتصفح')) {
       // No IndexedDB means this browser cannot have a journal to replay. Keep
       // the existing localStorage-only experience rather than blocking login.
-      return { uid, applied: 0, skippedAlreadyProjected: 0, cursor: 0 };
+      return { uid, applied: 0, skippedAlreadyProjected: 0, recoveredAlreadyProjected: 0, cursor: 0 };
     }
     throw error;
   }
   if (initialEvents.length === 0) {
-    return { uid, applied: 0, skippedAlreadyProjected: 0, cursor: initialCursor };
+    return { uid, applied: 0, skippedAlreadyProjected: 0, recoveredAlreadyProjected: 0, cursor: initialCursor };
   }
 
   return runExclusive('wird-journal-projection:' + uid, async () => {
@@ -67,6 +68,7 @@ export async function replayJournalProjection(
     let cursor = await journal.getProjectionCursor();
     let applied = 0;
     let skippedAlreadyProjected = 0;
+    let recoveredAlreadyProjected = 0;
     let events = await journal.listEventsAfter(cursor, 100);
 
     while (events.length > 0) {
@@ -87,6 +89,7 @@ export async function replayJournalProjection(
           // snapshot (including every child of a grouped transaction) before
           // advancing; never treat a merely similar or invalid snapshot as done.
           skippedAlreadyProjected++;
+          recoveredAlreadyProjected++;
         } else if (StorageService.applyJournalEvent(event)) {
           applied++;
         } else {
@@ -106,6 +109,6 @@ export async function replayJournalProjection(
       events = await journal.listEventsAfter(cursor, 100);
     }
 
-    return { uid, applied, skippedAlreadyProjected, cursor };
+    return { uid, applied, skippedAlreadyProjected, recoveredAlreadyProjected, cursor };
   });
 }
