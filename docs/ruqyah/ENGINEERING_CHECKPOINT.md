@@ -15,17 +15,17 @@ Last verified: 2026-11-07.
 - Next: design deterministic additive Ruqyah counter reconciliation, then tombstone/delete semantics and grouped `syncMeta` resolution; continue cross-tab/account lifecycle and live two-device tests before any production activation.
 
 
-## Latest sync continuation — PR #149 merged
+## Historical sync continuation — PR #149 merged (superseded by PR #155)
 
 - Current verified main head after the merge: `78ada24ecadbda3460178550e871632f6d81d770`.
 - PR #149 (feat(sync): add confirmed use-remote conflict resolution) merged successfully with squash merge SHA `78ada24ecadbda3460178550e871632f6d81d770`.
 - Exact tested PR head: `c675a2d164b88994c08a5368bf1695712f2625f3`; WIRD Quality Gate run `42368745026` (#2871) completed successfully on that exact head.
 - Passed gates: dependency audit, automated test suites, approved Quran audio CDN availability/byte-range checks, Firestore Rules Emulator, TypeScript, production build, production server startup smoke, and desktop/mobile Playwright smoke.
 - PR #149 implements only the explicit, user-confirmed use latest remote snapshot decision. It validates the full remote revision/schema envelope, rechecks the snapshot immediately before commit, archives the relevant local mutations, atomically commits journal transitions, supports safe cancellation, and detects the already-projected snapshot recovery case.
-- Still not implemented: keep-local re-publication, user-authored merge, collection-specific tombstone resolution, deterministic additive merge for independent offline Ruqyah increments, cross-tab coordination, and verified live two-device production sync.
+- At the PR #149 checkpoint, keep-local re-publication had not yet been implemented; PR #155 later added a narrow supported path. User-authored merge, collection-specific tombstone resolution, deterministic additive merge for independent offline Ruqyah increments, cross-tab coordination, and verified live two-device production sync remain open.
 - Both production sync feature flags remain disabled. No Firebase rules, production settings, secrets, or user records were changed by PR #149.
 - Vercel production deployment and live audio playback remain unverified due the previously reported Free-plan build/deployment quota. Do not treat CI success as a production deployment.
-- Next engineering phase: implement and test keep-local re-publication and merge as separate explicit user decisions, then cover tombstones/additive-counter semantics and cross-tab/account lifecycle safety before any production sync activation.
+- Next after PR #155: implement deterministic additive Ruqyah counter reconciliation, then tombstone/delete semantics and grouped syncMeta resolution, followed by cross-tab/account lifecycle and live two-device tests.
 
 
 ## Current repository and merged work
