@@ -3,7 +3,7 @@ import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import type { LegacyOutboxState } from './indexedDbSyncJournal';
 import { STORAGE_KEYS, StorageService } from './storageService';
-import { LocalSyncOutbox } from './localSyncOutbox';
+import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
 
 export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -188,10 +188,9 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
-    await test('Projection conflicts durably preserve both event and local snapshot until resolved', async () => {
+    await test('Projection conflicts preserve the first local snapshot and resolve with the cursor commit', async () => {
       const { journal } = createJournal('remote-conflict-owner');
       const event = {
-        key: 'remote-conflict-owner:conflict-event-1',
         uid: 'remote-conflict-owner',
         eventId: 'conflict-event-1',
         mutationId: 'conflict-event-1',
@@ -203,28 +202,117 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         deviceId: 'remote-device',
         occurredAtMs: 9000,
         payload: { records: [{ id: 'remote-plan' }] },
-        baseRevision: 1,
-        revision: 2,
-        serverSequence: 7,
-        fingerprint: '0123456789abcdef'
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
       };
+      await journal.importRemotePage([event]);
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
       const localSnapshot = { wird_plans: JSON.stringify([{ id: 'local-plan' }]) };
-      assert(await journal.saveProjectionConflict(event, 'blocked_pending_local', localSnapshot, 9100),
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9100),
         'A blocked remote event and its local snapshot must be archived');
       const first = await journal.listProjectionConflicts(10);
       assert(first.length === 1 && first[0].event.payload.records !== undefined &&
         first[0].localSnapshot.wird_plans === localSnapshot.wird_plans &&
         await journal.getProjectionConflictCount() === 1,
         'The archive must preserve the remote payload and exact local storage bytes');
-      await journal.saveProjectionConflict(event, 'blocked_pending_local', { wird_plans: 'changed-later' }, 9200);
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', { wird_plans: 'changed-later' }, 9200);
       const repeated = await journal.listProjectionConflicts(10);
       assert(repeated.length === 1 && repeated[0].localSnapshot.wird_plans === localSnapshot.wird_plans,
         'Repeated observations update the reason/time but never replace the original conflict snapshot');
-      assert(await journal.markProjectionConflictResolved('conflict-event-1', 'keep-local', 9300),
-        'An explicit resolution must be durably recorded');
+      let identityRejected = false;
+      try {
+        await journal.saveProjectionConflict({
+          ...storedEvent,
+          fingerprint: 'different-event-fingerprint'
+        }, 'blocked_pending_local', localSnapshot, 9250);
+      } catch { identityRejected = true; }
+      assert(identityRejected,
+        'An event ID reused with a different fingerprint must not replace archived recovery evidence');
+
+      const intent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: event.collection,
+        documentId: event.documentId,
+        revision: 1,
+        initializedCollections: [] as SyncCollection[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      assert(await journal.finalizeRemoteProjection(intent, () => true),
+        'A reconciled event must finalize successfully');
       assert(await journal.getProjectionConflictCount() === 0 &&
         (await journal.listProjectionConflicts(10)).length === 0,
-        'Resolved conflicts are not reported as open');
+        'The conflict must resolve atomically with the cursor and inbox event');
+      assert(await journal.saveProjectionConflict(storedEvent, 'projection_failed', {
+        wird_plans: 'stale-tab-snapshot'
+      }, 9300), 'A stale tab must treat the already committed event as reconciled');
+      assert(await journal.getProjectionConflictCount() === 0,
+        'A late archive attempt must not create an orphan conflict after cursor advancement');
+      journal.close();
+    });
+
+    await test('Already-applied remote events resolve their archived conflict with the cursor', async () => {
+      const { journal } = createJournal('projection-conflict-already-applied');
+      const event = {
+        uid: 'projection-conflict-already-applied',
+        eventId: 'projection-conflict-already-applied-event',
+        mutationId: 'projection-conflict-already-applied-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-already-applied',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-already-applied-device',
+        occurredAtMs: 8950,
+        payload: { records: [{ id: 'plan-already-applied' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
+        plans: '{"id":"local-state"}'
+      }, 8951);
+      await journal.setRemoteRevisionFromRemote('plans', event.documentId, 1);
+      assert(await journal.markRemoteProjected(1),
+        'An event already represented by the acknowledged revision may advance without reapplying its snapshot');
+      assert(await journal.getProjectionConflictCount() === 0,
+        'Advancing an already-applied event must resolve its conflict record atomically');
+      journal.close();
+    });
+
+    await test('Oversized projection conflict snapshots are rejected without touching the inbox event', async () => {
+      const { journal } = createJournal('projection-conflict-size-limit');
+      const event = {
+        uid: 'projection-conflict-size-limit',
+        eventId: 'projection-conflict-size-event',
+        mutationId: 'projection-conflict-size-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-large-snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-large-snapshot-device',
+        occurredAtMs: 8990,
+        payload: { records: [{ id: 'plan-large-snapshot' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      let rejected = false;
+      try {
+        await journal.saveProjectionConflict(storedEvent, 'blocked_base_revision', {
+          plans: 'x'.repeat(500_100)
+        }, 8991);
+      } catch { rejected = true; }
+      assert(rejected, 'Oversized local snapshots must be rejected');
+      assert(await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1,
+        'Rejecting an oversized archive must preserve the original inbox event and cursor');
       journal.close();
     });
 
