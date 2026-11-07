@@ -363,6 +363,43 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       reopened.close();
     });
 
+    await test('A newer acknowledged revision supersedes an interrupted older projection without replaying its snapshot', async () => {
+      const { journal } = createJournal('remote-superseded-revision');
+      const event = {
+        uid: 'remote-superseded-revision',
+        eventId: 'remote-old-event',
+        mutationId: 'remote-old-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'plan-superseded',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device-old',
+        occurredAtMs: 8550,
+        payload: { records: [{ id: 'stale-remote' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const intent = {
+        sequence: 1,
+        eventId: event.eventId,
+        collection: event.collection,
+        documentId: event.documentId,
+        revision: 1,
+        initializedCollections: [] as ('profile' | 'plans' | 'enginePlans' | 'portions' | 'weakVerses' | 'tests' | 'activityEvents' | 'syncMeta')[]
+      };
+      await journal.prepareRemoteProjection(intent);
+      await journal.setRemoteRevisionFromRemote('plans', 'plan-superseded', 2);
+      let applied = false;
+      assert(await journal.finalizeRemoteProjection(intent, () => { applied = true; return true; }),
+        'A superseded event can be retired without replacing the newer snapshot');
+      assert(!applied, 'The older remote snapshot must not be replayed over a newer acknowledged revision');
+      assert(await journal.getRemoteProjectionCursor() === 1, 'The superseded event cursor must still advance safely');
+      journal.close();
+    });
+
     await test('Remote projection finalization serializes competing tabs and invokes only one projection', async () => {
       const { factory, databaseName, journal } = createJournal('remote-two-projectors');
       const secondTab = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
