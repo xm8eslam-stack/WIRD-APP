@@ -8,8 +8,9 @@ Last updated: 2026-11-07
 - Default branch: `main`
 - Phase 1 PR #88 is merged. Merge commit: `6af7ce1d27543429911ca686550bc26f446ec2e0`.
 - Phase 2 PR #91 is merged. Merge commit: `a618036b995ff45749748e90e2a4d3ec1037c838`.
-- Phase 3 branch: `feat/ruqyah-ux-accessibility-20261107`
-- Phase 3 objective: remove accidental counter mutations, improve keyboard/screen-reader operation, and correct audio/API error handling while preserving WIRD's visual language.
+- Phase 3 PR #93 is merged. Merge commit: `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3`.
+- Phase 4 branch: `fix/ruqyah-release-readiness-20261107`
+- Phase 4 objective: close direct backup/reset refresh gaps, document live deployment gates, and record external source/license constraints.
 
 ## Phase 1 completed and merged
 
@@ -58,9 +59,27 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 
 ## Phase 3 verification status
 
-- Working branch has not yet completed full CI.
-- Required gates: 500+ unit suites, Firestore rules emulator, dependency audit, TypeScript, production build, server smoke test.
-- Manual review still required at mobile widths, keyboard-only navigation, text selection/copy, light/dark theme, Arabic RTL layout, and actual audio playback switching.
+- PR #93 passed Actions run #2070 on exact head `7d2b44f7a4fe49686abe433fe8f535b97d2b1866`.
+- Unit tests: 500 passed, 0 failed.
+- Firestore Security Rules Emulator: 29 passed, 0 failed.
+- Dependency audit, TypeScript, production build, and server startup smoke tests passed.
+- Manual deployed review remains outstanding: mobile widths, keyboard-only navigation, text selection/copy, light/dark theme, Arabic RTL layout, and actual audio playback switching.
+
+## Phase 4 changes implemented on the working branch
+
+1. Direct (non-journaled) version-5 backup import now notifies mounted Ruqyah views only after the entire import succeeds; rollback does not emit a false success event.
+2. Direct full-storage reset notifies mounted Ruqyah views after all removals are verified.
+3. Added a regression assertion that save, direct reset, and direct backup import dispatch the progress update event.
+4. Added `docs/ruqyah/RELEASE_CHECKLIST.md` covering live Firestore rules deployment, Vercel environment, two-device sync, audio/API, accessibility, and external source/license review.
+5. Reviewed MuslimPack Ruqayyah: GPL-3.0 Flutter project. No code was copied. Reuse requires an explicit GPL compatibility/source-distribution decision.
+6. Reviewed IslamicAPI dataset: the API docs describe free API access with an API key; the public dataset repository has no discoverable LICENSE file. WIRD uses the API proxy and does not vendor the raw dataset. Topic articles remain gated pending content/reference review.
+
+## Phase 4 verification status
+
+- Working branch requires a fresh full CI run.
+- After CI, merge only if tests, Firestore emulator, dependency audit, TypeScript, production build, and server smoke tests pass.
+- Live Firestore rules deployment and Vercel environment values are external release blockers; do not claim production cloud sync is active until verified.
+- The Vercel integration has reported build-rate-limit quota failures; treat them as provider capacity failures, not code test results.
 
 ## Critical correctness rules
 
@@ -87,5 +106,5 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 3. Inspect CI logs and fix all test/type/build/rules failures.
 4. Run/review two-device Firestore emulator test and confirm the progress collection round trip.
 5. Merge only after all required code checks pass. Treat a Vercel quota failure separately from code CI.
-6. Complete Phase 3 UI/accessibility CI and review; merge only after the exact head passes.
-7. Continue with post-deploy audio/API smoke tests and the remaining RTL/accessibility review.
+6. Complete Phase 4 CI and review; merge only after the exact head passes.
+7. Deploy Firestore rules, verify Vercel environment and deployment, then run the live smoke checklist.
