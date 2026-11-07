@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { 
   ShieldCheck, 
   Volume2, 
@@ -467,7 +468,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     <p className={`text-base md:text-xl text-stone-800 dark:text-stone-100 leading-loose text-center font-quran ${
                       item.type === 'quran' ? 'tracking-normal' : 'font-sans font-medium'
                     }`}>
-                      {item.text}
+                      {getRuqyahDisplayText(item)}
                     </p>
                   </div>
 
