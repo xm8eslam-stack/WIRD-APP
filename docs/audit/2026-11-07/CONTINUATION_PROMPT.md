@@ -189,3 +189,11 @@ This addendum supersedes contradictory status lines earlier in this file; fetch 
 - `docs/sync/REMOTE_REPLICATION_PLAN.md` is design only. Main has a local IndexedDB journal/outbox and projection replay, but no durable remote inbox/fetch cursor, no remote event import/projector, and no revision/CAS transaction. Firestore rules still accept generic snapshot envelopes and generic domain event payloads; no server-owned monotonic revision enforcement.
 - Never claim multi-device sync works or merge/deploy without the required independent-client evidence and explicit authorization.
 
+
+
+## Latest work after the live correction
+
+- PR #65 is already open as Draft on `fix/quran-coordinate-validation-20261107`, exact head `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`. Exact-head Quality Gate run 42342171626 PASS: 417 passed / 0 failed; Firestore Rules 13/13; TypeScript, production build, production and development server smoke passed.
+- Fresh branch `fix/cloud-sync-honest-status-20261107` is being used to port the safe part of PR #59. It changes sync status to `partial` until remote import/projection is implemented, adds an honest Settings indicator, and tests status resolution. Last verified branch head `963271760ea93d61baefaa23a545e194d613f67f`; run 42342306759 was pending at last check. Re-fetch before proceeding.
+- Do not merge PR #59 or #61–#65. Keep all fixes as Draft until reviewed and explicitly approved.
+- Next: finish exact-head CI for honest-status branch; open/update Draft PR if green; then implement the actual remote inbox/fetch cursor/import/projector and revision CAS only as a separately tested protocol phase.
