@@ -116,7 +116,11 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       setProgressDirty(false);
     };
     window.addEventListener('wird:ruqyah-progress-updated', refreshProgress);
-    return () => window.removeEventListener('wird:ruqyah-progress-updated', refreshProgress);
+    window.addEventListener('storage', refreshProgress);
+    return () => {
+      window.removeEventListener('wird:ruqyah-progress-updated', refreshProgress);
+      window.removeEventListener('storage', refreshProgress);
+    };
   }, [currentStorageScope]);
 
   useEffect(() => {
