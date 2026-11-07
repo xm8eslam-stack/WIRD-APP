@@ -63,7 +63,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       let message = '';
       try { await fetchRuqyahApiData({ type: 'instant-category' }); }
       catch (error) { message = error instanceof Error ? error.message : String(error); }
-      assert(message.includes('مفتاحه المجاني'), 'Missing key should have a clear setup message');
+      assert(message.includes('مفتاح API'), 'Missing key should have a clear setup message');
     });
   } finally {
     globalThis.fetch = originalFetch;
