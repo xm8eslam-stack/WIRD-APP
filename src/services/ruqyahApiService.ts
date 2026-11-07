@@ -1,4 +1,5 @@
 import { getRuqyahDisplayText } from './ruqyahContentService';
+import { ALL_SURAHS } from '../data/quranMeta';
 import type { RuqyahItem } from '../data/ruqyahData';
 
 export type RuqyahApiProgram = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
@@ -6,20 +7,23 @@ export type RuqyahApiSource = 'from-quran';
 
 export interface RuqyahApiEntry {
   id: number | string;
+  /** Sanitized numeric locator only, e.g. "2:255-257"; never provider-authored prose. */
   title: string;
-  arabic: string;
-  reference?: string;
-  introduction?: string;
-  translation?: string;
-  category?: string;
-  sub_category?: string;
+}
+
+export interface ResolvedRuqyahApiQuranEntry {
+  id: number | string;
+  surahNumber: number;
+  surahName: string;
+  startAyah: number;
+  endAyah: number;
+  text: string;
 }
 
 export interface RuqyahApiRequest {
-  type: 'instant-category' | 'instant' | 'topic-category' | 'topic';
-  program?: RuqyahApiProgram;
-  source?: RuqyahApiSource;
-  topic?: string;
+  type: 'instant';
+  program: RuqyahApiProgram;
+  source: RuqyahApiSource;
   id?: number;
   random?: boolean;
 }
@@ -28,7 +32,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/** Fetch Arabic Ruqyah data through WIRD's server proxy; never expose upstream secrets. */
+/** Fetch sanitized Quran locator data through WIRD's server proxy; never expose upstream secrets. */
 export async function fetchRuqyahApiData<T = unknown>(
   request: RuqyahApiRequest,
   signal?: AbortSignal
@@ -36,7 +40,6 @@ export async function fetchRuqyahApiData<T = unknown>(
   const params = new URLSearchParams({ type: request.type, lang: 'ar' });
   if (request.program) params.set('program', request.program);
   if (request.source) params.set('source', request.source);
-  if (request.topic) params.set('topic', request.topic);
   if (request.id !== undefined) params.set('id', String(request.id));
   if (request.random !== undefined) params.set('random', String(request.random));
 
@@ -84,35 +87,53 @@ export async function fetchRuqyahApiData<T = unknown>(
 
 
 /**
- * API Quran titles carry a numeric surah:ayah reference. Use that reference
- * to render from WIRD's canonical Quran corpus instead of trusting a second
- * independently supplied Quran text string.
+ * The proxy sends only a normalized numeric locator. Resolve every locator
+ * against WIRD's canonical Mushaf metadata and verified Quran text.
  */
-export function resolveApiQuranEntryText(entry: RuqyahApiEntry): string {
-  if (!entry || typeof entry.title !== 'string') {
-    throw new Error('لا يحتوي عنصر الرقية الخارجي على عنوان صالح.');
+export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQuranEntry {
+  const validId = typeof entry?.id === 'number'
+    ? Number.isSafeInteger(entry.id) && entry.id > 0
+    : typeof entry?.id === 'string' && /^[1-9][0-9]{0,8}$/.test(entry.id);
+  if (!entry || !validId || typeof entry.title !== 'string') {
+    throw new Error('لا يحتوي فهرس الآيات على موضع صالح.');
   }
-  const westernTitle = entry.title.replace(/[٠-٩۰-۹]/g, digit => {
-    const index = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹'.indexOf(digit);
+  const digitMap = '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹';
+  const normalized = entry.title.replace(/[٠-٩۰-۹]/g, digit => {
+    const index = digitMap.indexOf(digit);
     return String(index % 10);
   });
-  const match = westernTitle.match(/(\d{1,3})\s*:\s*(\d{1,3})(?:\s*[-–—]\s*(\d{1,3}))?/);
-  if (!match) {
-    throw new Error('تعذر تحديد موضع الآيات في المصحف من مرجع المصدر الخارجي.');
-  }
+  const match = normalized.trim().match(/^([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))? *$/);
+  if (!match) throw new Error('مرجع الآيات في الفهرس الخارجي غير صالح.');
   const surahNumber = Number(match[1]);
-  const start = Number(match[2]);
-  const end = match[3] === undefined ? start : Number(match[3]);
+  const startAyah = Number(match[2]);
+  const endAyah = match[3] === undefined ? startAyah : Number(match[3]);
+  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+  if (!surah || !Number.isSafeInteger(startAyah) || !Number.isSafeInteger(endAyah) ||
+      startAyah < 1 || endAyah < startAyah || endAyah > surah.versesCount) {
+    throw new Error('موضع الآيات في الفهرس الخارجي خارج حدود المصحف المعتمد.');
+  }
   const item: RuqyahItem = {
     id: 'external-ruqyah-' + String(entry.id),
     categories: ['brief'],
     type: 'quran',
-    title: entry.title,
+    title: 'موضع قرآني من الفهرس',
     surahNumber,
-    verseRange: start === end ? String(start) : start + '-' + end,
-    text: entry.arabic || '',
-    repeatTarget: 1,
-    source: 'IslamicAPI'
+    surahName: surah.name,
+    verseRange: startAyah === endAyah ? String(startAyah) : startAyah + '-' + endAyah,
+    text: '',
+    repeatTarget: null,
+    source: 'WIRD canonical Quran corpus'
   };
-  return getRuqyahDisplayText(item);
+  return {
+    id: entry.id,
+    surahNumber,
+    surahName: surah.name,
+    startAyah,
+    endAyah,
+    text: getRuqyahDisplayText(item)
+  };
+}
+
+export function resolveApiQuranEntryText(entry: RuqyahApiEntry): string {
+  return resolveApiQuranEntry(entry).text;
 }
