@@ -662,8 +662,14 @@ export class IndexedDbSyncJournal {
 
         const deviceId = deviceMetadata?.deviceId || createSecureId();
         const sequence = deviceMetadata?.nextSequence ?? 1;
-        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER) {
-          failure = new Error('وصل تسلسل سجل الأحداث إلى الحد الآمن؛ لم يتم إنشاء عملية جديدة.');
+        const revisionKey = input.collection + ':' + input.documentId;
+        const cachedRevision = deviceMetadata?.remoteRevisions?.[revisionKey];
+        const baseRevision = cachedRevision?.revision ?? 0;
+        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence >= Number.MAX_SAFE_INTEGER ||
+            !Number.isSafeInteger(baseRevision) || baseRevision < 0 ||
+            (cachedRevision !== undefined &&
+              (!Number.isSafeInteger(cachedRevision.localSequence) || cachedRevision.localSequence < 0))) {
+          failure = new Error('بيانات تسلسل الأحداث أو إصدار المزامنة المحلي غير صالحة؛ لم يتم إنشاء عملية جديدة.');
           transaction.abort();
           return;
         }
@@ -682,7 +688,9 @@ export class IndexedDbSyncJournal {
           queuedAtMs: now,
           attemptCount: 0,
           nextAttemptAtMs: 0,
-          fingerprint
+          fingerprint,
+          sequence,
+          baseRevision
         };
         const event: JournalEvent = {
           key,
@@ -700,6 +708,7 @@ export class IndexedDbSyncJournal {
           payload,
           fingerprint,
           sequence,
+          baseRevision,
           projectionRequired: true
         };
         events.add(event);
