@@ -192,7 +192,7 @@ Phase 1:
 - 1A Backup import journal boundary — implemented on PR #61 (Draft, not merged). Exact-head Quality Gate run 42340818280 PASS: 404 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass. Vercel Preview Ready.
 - 1B Plan lifecycle/history — implemented on PR #62 (Draft, not merged). Latest exact-head Quality Gate run 42342109962 PASS: 407 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass. Vercel Preview failed due Vercel daily build-rate limit.
 - 1C QuranLibrary repeat controller — implemented on PR #63 (Draft, not merged). Exact-head Quality Gate run 42341365536 PASS: 404 passed / 0 failed; Firestore Rules 13/13; TypeScript/build/smoke pass. Vercel Preview failed due Vercel daily build-rate limit.
-- 1D QuranMath/domain event validation — NOT STARTED.
+- 1D QuranMath/domain event validation — implemented on PR #65 (Draft, not merged). Exact-head run 42342171626 PASS: 417 passed / 0 failed; Firestore Rules 13/13; TypeScript/build and production/development server smoke pass.
 
 Phase 2 Tafsir:
 - HTML/non-JSON handling and regression tests implemented on PR #64 (Draft, not merged). Exact-head Quality Gate run 42341419175 PASS: 405 passed / 0 failed; Vercel Preview is blocked by the daily build-rate limit.
@@ -214,3 +214,25 @@ Current live branch count: **76**. Original baseline: 70 branches / 147 files. M
 All five PRs remain Draft and unmerged. Each exact-head CI also passed Firestore Rules Emulator 13/13, dependency audit, TypeScript, production build and server smoke. No production deploy or Firestore rule deployment has occurred.
 
 PR #65 fixed a target-date planning bug exposed by its new regression test: a block-scoped activeDays variable shadowed the validated active-day array. The latest exact-head suite passes.
+
+
+## Live execution checkpoint — 2026-11-07 (post PR #66)
+
+Current live branch count: **77** (70 original baseline + audit/remediation branches). Main remains unchanged at `6228150c2f7137678ba1079f5d9b2e8aba527523`.
+
+| PR | Scope | Exact-head Quality Gate | Status |
+|---|---|---|---|
+| #61 | Journal-first backup import | 42340818280 PASS | Draft, unmerged |
+| #62 | Preserve completed/partial revision task history and recalculate uncovered gaps | 42342109962 PASS — 407/0 | Draft, unmerged |
+| #63 | Quran audio repeat controller | 42341365536 PASS | Draft, unmerged |
+| #64 | Tafsir HTML and malformed JSON handling | 42341470582 PASS | Draft, unmerged |
+| #65 | QuranMath/domain-event coordinate validation; PlanningEngine guards | 42342171626 PASS — 417/0 | Draft, unmerged |
+| #66 | Prevent false fully-synced UI state; add partial status | 42342306759 PASS | Draft, unmerged |
+
+PR #66 is a safety correction only. It does not implement remote replication. It ensures a zero local outbox count cannot be presented as full sync while remote events are only queried and discarded.
+
+### Current release gates
+- Main is unchanged; no PR has been merged.
+- PR #61 Vercel Preview Ready. PRs #62–#64 had Vercel daily build-rate limits. PR #65 Preview Ready. PR #66 has no production deployment.
+- Remote inbox, durable remote fetch cursor, server-owned monotonic revision/CAS, remote projector, conflict resolution and two-client integration tests remain NOT IMPLEMENTED.
+- Do not label cloud sync complete. Keep user-facing state partial until the complete remote replication protocol passes.
