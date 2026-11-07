@@ -70,3 +70,10 @@ Never enable upload or projection against production until the deployed Firestor
 - The current Ruqyah payload is an aggregate counter snapshot. Sequential edits converge, but two independent offline increments from the same base revision cannot be automatically summed from the current snapshot alone. The safe current behavior is stale-revision rejection, preservation of the local Outbox mutation and remote Inbox event, conflict archival, and no cursor advancement.
 - Do not claim additive convergence. Do not enable production remote sync until a deterministic per-device/event-based counter model or a user-facing merge workflow with sufficient base/delta evidence exists.
 - User-facing conflict resolution remains unimplemented for all collections. Conflict archive state is evidence, not a user decision.
+
+## 2026-11-07 — Conflict visibility and bidirectional collection test coverage
+
+- PR #104 adds a read-only Settings inspector for open conflict archives. It shows the archived remote event payload and local projection snapshot with event identity/revision/time, and requires the active storage scope to exactly match the authenticated UID. It intentionally exposes no keep-local/use-remote/merge actions and changes no journal state.
+- PR #106 adds an Emulator-backed reverse B → A event pass after A → B, across profile, plans, enginePlans, portions, weakVerses, tests, activityEvents, and ruqyahProgress. Revision 2 and ordered cursor completion are asserted.
+- Test-fixture limitation: six collection payloads still use empty `records` arrays. This verifies collection routing and projection plumbing, not populated-record serialization or every domain invariant.
+- User-facing conflict resolution, rebase against latest server revision, tombstone semantics, and real cross-tab/browser concurrency remain unimplemented.
