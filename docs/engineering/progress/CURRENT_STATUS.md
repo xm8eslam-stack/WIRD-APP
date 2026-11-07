@@ -317,3 +317,9 @@ Unresolved release gates: user-directed conflict resolution and rebase; additive
 - Documentation merge PR #132 produced main SHA `3eeb1eb2da419536a1e2fc9db6911961d3bfafcc`.
 - Post-merge main Quality Gate run `42361756445` completed successfully.
 - The full Playwright suite in that run executed 16 tests total: 6 app-shell checks (3 desktop + 3 mobile) and 10 Ruqyah locator-library checks (5 desktop + 5 mobile). The earlier phrase “16 Ruqyah locator-library checks” was inaccurate and has been corrected.
+
+
+### Correction after PR #141 merge — 2026-11-07
+- PR #141 is now merged as `55eb7519772eaf9e7fa5bdb8611ed557df2d3ae2`. Exact-head Quality Gate passed on `6faa9efa07d700c0f4782f9306cddb3958ff78c0`, run `42364704191`: 526 automated assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 22 desktop/mobile Playwright tests, including six narrow-width layout checks across the two Ruqyah views.
+- Current main base for this checkpoint is therefore `55eb7519772eaf9e7fa5bdb8611ed557df2d3ae2`, not the PR #140 merge commit alone.
+- PR #142 is closed as superseded. PR #143 is the active refreshed documentation PR.
