@@ -71,7 +71,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
           status: 'success',
           data: [{
             id: 1,
-            title: 'Al-Fatiha 1:1-7',
+            title: 'الفاتحة ١:١-٧',
             arabic: 'نص خارجي غير موثوق',
             reference: 'مرجع خارجي',
             introduction: 'شرح خارجي',
