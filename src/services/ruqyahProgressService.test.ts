@@ -1,7 +1,7 @@
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
 import { STORAGE_KEYS, StorageService } from './storageService';
 import { loadRuqyahProgress, resetRuqyahProgress, saveRuqyahProgress } from './ruqyahProgressService';
-import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, isValidRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, migrateRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, isValidRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, migrateRuqyahProgressSnapshot, resetRuqyahProgressCounter } from './ruqyahProgressSchema';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);
@@ -78,7 +78,7 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
     const base = createEmptyRuqyahProgressSnapshot(210000);
     const local = adjustRuqyahProgressCounter(base, itemId, 'device-A', 4, 210001);
     const remoteConcurrent = adjustRuqyahProgressCounter(base, itemId, 'device-B', 2, 210002);
-    const resetLocal = adjustRuqyahProgressCounter(local, itemId, 'device-A', -4, 210003);
+    const resetLocal = resetRuqyahProgressCounter(local, itemId, 'device-A', 210003);
     const merged = mergeRuqyahProgressSnapshots(resetLocal, remoteConcurrent, 210004);
     assert(merged.counts[itemId] === 2,
       'A reset subtracts the local known total but must preserve a concurrent unseen device increment');
