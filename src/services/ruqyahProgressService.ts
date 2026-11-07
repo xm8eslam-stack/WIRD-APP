@@ -32,7 +32,7 @@ export function loadRuqyahProgress(): RuqyahProgressLoadResult {
   }
 }
 
-/** Stable per-account device identity used by the PN-counter; guests remain local-only. */
+/** Stable per-account device identity used by the per-device resettable counter; guests remain local-only. */
 export async function getRuqyahProgressDeviceId(expectedStorageScope?: string): Promise<string> {
   const scope = StorageService.getStorageScope();
   if (expectedStorageScope && expectedStorageScope !== scope) {
