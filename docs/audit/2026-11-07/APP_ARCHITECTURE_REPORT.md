@@ -4,7 +4,7 @@ Repository: xm8eslam-stack/WIRD-APP
 Baseline: main @ 6228150c2f7137678ba1079f5d9b2e8aba527523  
 Audit branch: chore/full-repository-audit-20261107  
 Date: 2026-11-07  
-Review coverage: 144/147 tracked files reviewed initially; 3 PNG assets require visual inspection. See FILE_AUDIT_REGISTER.md for per-file notes.
+Review coverage: 147/147 tracked files reviewed initially; all three PNG assets were visually inspected. See FILE_AUDIT_REGISTER.md for per-file notes.
 
 ## 1. Product and runtime overview
 
@@ -166,7 +166,7 @@ Test gaps: cloud coordinator suite has only basic state/guest/subscription tests
 
 ## 9. Documentation and configuration status
 
-Main tree is 147 files/34 directories; 144 text/config/source/data files were reviewed and recorded. Three PNG icon assets could not be decoded by the GitHub text-file endpoint and need visual inspection.
+Main tree is 147 files/34 directories; all 147 files have per-file notes. Three PWA PNG icons visually render as uniform dark-teal squares without a discernible WIRD mark; replace with approved brand assets.
 
 Several documents are stale: AI Studio blueprint, Development Checkpoint, Work Session Checkpoint, Implementation Roadmap, Master Roadmap and Security Audit refer to old SHAs, old PRs or no-sync architecture. Treat them as historical records, not current operational instructions. Keep WORK_LOG append-only; append a current audit entry rather than rewriting history.
 
