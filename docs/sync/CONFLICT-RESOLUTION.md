@@ -1,8 +1,8 @@
 # WIRD Conflict Resolution Policy
 
-## 2026-11-07 — explicit use-remote resolution path (next executor phase)
+## 2026-11-07 — explicit use-remote resolution path (PR #149 merged)
 
-The follow-on implementation adds a deliberately narrow, user-confirmed **use latest remote snapshot** path:
+PR #149 implements a deliberately narrow, user-confirmed **use latest remote snapshot** path. Its exact tested head `c675a2d164b88994c08a5368bf1695712f2625f3` passed WIRD Quality Gate run `42368745026` (#2871), and the squash merge commit is `78ada24ecadbda3460178550e871632f6d81d770`.
 
 - The UI requires a separate confirmation and disables the action while offline, syncing, guest, or unverified.
 - The service reads the latest Firestore state document and validates its schema/revision envelope. Missing, malformed, or tombstoned documents are rejected.
@@ -35,12 +35,13 @@ PR #78 verifies this with two independently stored devices: one write is accepte
 
 ## Not yet implemented
 
-- User-facing compare/choose/merge workflow and persisted decision intent.
-- Safe automatic field-level merge for collections where fields are independently mergeable.
-- Conflict-resolution mutation that rebases the chosen result on the latest server revision.
-- Recovery/retention policy for unresolved conflicts.
+- Keep-local re-publication as a separately confirmed and revision-safe decision.
+- User-authored merge with collection-specific validation and explicit preservation of both sides.
+- Collection-specific tombstone/deletion resolution.
+- Deterministic additive merge for independent offline Ruqyah counter increments.
+- Cross-tab coordination, comprehensive account lifecycle isolation, and live two-device verification.
 
-Until these exist, a blocked mutation is a safe unresolved conflict, not a completed resolution. Do not silently discard or automatically rebase the losing local mutation.
+The use-remote path is a completed narrow resolution, not completion of the full conflict-resolution engine. A blocked mutation without an explicitly completed decision remains an unresolved conflict. Do not silently discard or automatically rebase the losing local mutation.
 
 
 ## Durable conflict archive — implemented in PR #81
