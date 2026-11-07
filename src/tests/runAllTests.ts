@@ -37,6 +37,7 @@ import { runAudioPreferencesTests } from '../services/audioPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
 import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.test';
 import { runRuqyahIntegrityTests } from './ruqyahIntegrity.test';
+import { runRuqyahContentServiceTests } from '../services/ruqyahContentService.test';
 
 export interface SuiteResult {
   passed: number;
@@ -120,6 +121,7 @@ async function main() {
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
     { name: 'Cloud Sync Coordinator & Remote Reconciliation', runner: runCloudSyncCoordinatorTests },
+    { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
   ];
 
