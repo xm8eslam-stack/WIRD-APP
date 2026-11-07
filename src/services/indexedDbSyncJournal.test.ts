@@ -461,6 +461,11 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         'The conflict record must resolve atomically with the projection cursor');
       assert((await journal.listProjectionConflicts(10)).length === 0,
         'Resolved conflicts must not appear in the open-conflict list');
+      assert(await journal.saveProjectionConflict(event, 'projection_failed', {
+        plans: '{"id":"stale-tab-snapshot"}'
+      }, 8903), 'A stale competing tab must treat an already committed event as reconciled');
+      assert(await journal.getProjectionConflictCount() === 0,
+        'A late archive attempt must never create an orphan conflict after the cursor has advanced');
       journal.close();
     });
 
