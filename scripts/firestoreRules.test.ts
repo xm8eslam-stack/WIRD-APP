@@ -239,10 +239,10 @@ try {
     const first = await writeRevisionedRemoteMutation(alice as unknown as Firestore, input);
     const retry = await writeRevisionedRemoteMutation(alice as unknown as Firestore, input);
     const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-1'));
-    if (first.status !== 'written' || first.revision !== 1 ||
+    if (first.status !== 'written' || first.revision !== 1 || first.serverSequence < 1 ||
         retry.status !== 'already_applied' || retry.revision !== 1 ||
-        state.data()?.revision !== 1) {
-      throw new Error('CAS create/retry did not converge on revision 1');
+        retry.serverSequence !== first.serverSequence || state.data()?.revision !== 1) {
+      throw new Error('CAS create/retry did not converge on one revision and server sequence');
     }
   });
 
@@ -266,8 +266,10 @@ try {
       baseRevision: first.revision, payload: { title: 'Revision two' }
     });
     const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-update'));
-    if (first.revision !== 1 || second.revision !== 2 || state.data()?.payload?.title !== 'Revision two') {
-      throw new Error('A valid CAS update did not advance exactly one revision');
+    if (first.revision !== 1 || second.revision !== 2 ||
+        second.serverSequence !== first.serverSequence + 1 ||
+        state.data()?.payload?.title !== 'Revision two') {
+      throw new Error('A valid CAS update did not advance its revision and global server sequence');
     }
   });
 
