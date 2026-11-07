@@ -30,6 +30,18 @@ function assertActiveConflictScope(uid: string): void {
   }
 }
 
+export async function cancelPreparedProjectionConflictResolution(
+  eventId: string,
+  decisionId: string
+): Promise<boolean> {
+  const user = auth?.currentUser;
+  if (!user || !user.emailVerified) throw new Error('يلزم تسجيل الدخول ببريد موثق لإلغاء القرار المحفوظ.');
+  assertActiveConflictScope(user.uid);
+  const cancelled = await LocalSyncOutbox.cancelPreparedConflictResolutionIntent(eventId, decisionId);
+  assertActiveConflictScope(user.uid);
+  return cancelled;
+}
+
 export interface UseRemoteConflictResolutionResult {
   eventId: string;
   revision: number;
