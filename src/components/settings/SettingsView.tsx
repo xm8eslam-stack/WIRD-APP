@@ -518,6 +518,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       const localMutations = conflict.localMutations || [];
                       const canKeepLocal = conflict.event.operation === 'upsert' &&
                         conflict.event.collection !== 'syncMeta' &&
+                        conflict.event.collection !== 'ruqyahProgress' &&
                         localMutations.length > 0 &&
                         localMutations.every(item =>
                           item.collection === conflict.event.collection &&
