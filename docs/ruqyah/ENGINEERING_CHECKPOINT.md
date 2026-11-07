@@ -8,7 +8,7 @@ Last updated: 2026-11-07
 - Default branch: `main`
 - Latest reviewed phase merge: PR #98, merge commit `8089579d020a6a4831cdc9ba4f25f8672f30cc3d`.
 - Working checkpoint branch: `docs/ruqyah-checkpoint-refresh-20261107`.
-- All six implementation phases below are merged to `main`.
+- All eight implementation phases below are merged to `main`.
 
 ## Merged implementation phases
 
@@ -20,8 +20,10 @@ Last updated: 2026-11-07
 | Backup/reset refresh consistency + release checklist | #95 | `52e62d6b21057cf0d796cc3b137f4087cbe2e983` | 504 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | IslamicAPI proxy hardening + topic gate | #97 | `217f7136244d4d7afd02a9c52be86f520c1baefa` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Guarded manual Firestore rules deploy workflow | #98 | `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
+| Ruqyah first-sync scan + concurrent offline conflict preservation | #94 | `f2c3f32f6440bfd387168ed7fe32f66760cd9d39` | Exact-head Quality Gate passed; stale concurrent write is blocked and both snapshots/outbox/inbox/conflict evidence are retained |
 
-Dependency audit passed in phases #93–#98. The Vercel status continued to report a build-rate-limit quota failure; this is separate from the successful GitHub Actions quality gates.
+Dependency audit passed in phases #93–#98. The GitHub Vercel status is now `success` on exact main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39`; however, the Vercel dashboard deployment target is not accessible from this session, so the production alias and live-site SHA remain unverified. Earlier build-rate-limit errors are historical.
 
 ## Implemented architecture and behavior
 
@@ -71,8 +73,8 @@ Dependency audit passed in phases #93–#98. The Vercel status continued to repo
    - Required GitHub repository secret: `FIREBASE_SERVICE_ACCOUNT_JSON`.
    - Dispatch only from `main`, enter the exact project ID, and type `DEPLOY_FIRESTORE_RULES`.
    - Workflow deploys only `firestore:rules`; it fails closed when inputs/secrets are missing.
-2. **Vercel deployment is not verified.** The integration reports build-rate-limit quota failures. Check the Vercel dashboard after quota recovery; confirm the deployed SHA equals the latest `main` SHA.
-3. **Deployed environment variables are not observable from this GitHub session.**
+2. **Vercel production deployment is not fully verified.** GitHub reports Vercel `success` for main SHA `f2c3f32f6440bfd387168ed7fe32f66760cd9d39`, but the Vercel dashboard target is inaccessible from this session. Confirm the production alias, deployed SHA, and live site smoke in the dashboard before claiming production readiness. Earlier build-rate-limit errors are historical.
+3. **Deployed environment variables are not observable from this GitHub session.** Keep both remote-sync flags disabled until every global release gate passes, including manual conflict resolution, deterministic additive Ruqyah counter merge, tombstone semantics, cross-tab concurrency, account isolation, and verified live two-device testing.
    - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
    - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` only after Firestore rules deployment.
    - `ISLAMICAPI_API_KEY` server-side secret only.
@@ -95,7 +97,7 @@ Dependency audit passed in phases #93–#98. The Vercel status continued to repo
 1. Read this checkpoint and `docs/ruqyah/RELEASE_CHECKLIST.md`.
 2. Fetch current `main` SHA and all open PRs; never trust a copied SHA.
 3. Review any pending PR diff and exact-head CI runs before merging.
-4. Do not enable remote projection until live Firestore rules are confirmed deployed.
+4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
 5. Do not enable educational topic endpoints until a scholar/content reviewer has approved each article and its references.
-6. Once credentials and Vercel quota are available, deploy rules, redeploy `main`, then run every live verification item above.
+6. Only after explicit approval, all release gates, and the PR #100 emulator preflight are complete, configure deployment credentials and dispatch the manual rules workflow. Then redeploy `main` and run every live verification item above.
 7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.
