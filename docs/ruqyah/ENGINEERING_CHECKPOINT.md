@@ -22,6 +22,14 @@ Last verified: 2026-11-07.
 - PR #135 exact-head Quality Gate passed on `da312046dec7192cd0a2da6b025542c7f407e579`, run `42363462082`: 526 automated unit/integration assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and all 18 desktop/mobile Playwright tests passed.
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit`. This is a deployment quota failure, not a code Quality Gate failure. No live production alias or deployed SHA is verified.
 
+## Latest Ruqyah UI state — after PR #137
+- PR #135 fixed stale in-memory Ruqyah counts when stored progress becomes corrupt during hydration or a progress refresh. Merge SHA: `9e62e26c06fb1821095390db4c32e5f81b8233a8`.
+- PR #135 exact-head Quality Gate: `da312046dec7192cd0a2da6b025542c7f407e579`, run `42363462082`: 526 unit/integration assertions, 31 Firestore Rules tests, dependency audit, TypeScript, production build, server smoke, and 18 desktop/mobile Playwright tests passed.
+- PR #136 refreshed this checkpoint and release checklist. Merge SHA: `0d71633b9fe69fdb4b3928c8698f20e539ef57f0`.
+- PR #137 adds an explicit in-context confirmation before clearing category counters, supports cancellation, explains the scope of the reset, closes the prompt on category/mode changes, and disables reset controls while progress is unhydrated or corrupt. Merge SHA: `900bd989299a08ea09eb046d5579395d0bab7064`.
+- PR #137 exact-head Quality Gate: `5875e5851c6e81fe4397389079badef4e360a0c0`, run `42363918110`: 526 unit/integration assertions, 31 Firestore Rules tests, dependency audit, TypeScript, production build, server smoke, and 20 desktop/mobile Playwright tests passed.
+- The Vercel status remains a Free-plan `build-rate-limit` failure; production deployment is not verified. No live production claim is made.
+
 ## Branch hygiene
 - Merged continuation branches: `docs/ruqyah-checkpoint-pr111-20261107-refresh` (PR #116), `refactor/ruqyah-lock-audio-ui-20261107` (PR #117), `fix/ruqyah-reject-signed-locators-and-bound-ids-v2-20261107` (PR #120), `docs/ruqyah-checkpoint-after-pr117-20261107` (PR #121), `feat/ruqyah-library-search-accessibility-20261107` (PR #123), `fix/ruqyah-proxy-same-origin-cors-20261107` (PR #124), `test/ruqyah-library-ui-states-v2-20261107` (PR #127), and `docs/ruqyah-checkpoint-after-pr127-20261107` (PR #130), `docs/ruqyah-branch-hygiene-20261107` (PR #131), and `fix/ruqyah-clear-stale-progress-on-corrupt-scope-20261107` (PR #135).
 - Two superseded non-PR branches remain and must not be reused: `fix/ruqyah-reject-signed-locators-and-bound-ids-20261107` (superseded by the v2 branch after main advanced) and `test/ruqyah-library-ui-states-20261107` (superseded by the v2 branch after adding the supported guest-auth flow).
