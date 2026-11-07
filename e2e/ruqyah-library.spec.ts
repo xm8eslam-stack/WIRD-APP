@@ -3,6 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 const INDEX_ENDPOINT = '**/api/ruqyah**';
 
 async function openExtendedLibrary(page: Page) {
+  // Ruqyah is available to guest users, so establish the supported guest session first.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/ruqyah');
   await expect(page.getByRole('heading', { name: 'الرقية الشرعية الكاملة من القرآن والسنة' })).toBeVisible();
   await page.getByRole('button', { name: 'المكتبة الموسعة' }).click();
