@@ -190,3 +190,16 @@ The historical checkpoint above is not the current main state. Re-fetch GitHub b
 - Do not add Ruqyah counts to cloud sync until a deterministic concurrent-increment model exists. A full-snapshot last-write-wins policy can lose increments from independent devices.
 - Cloud sync is NOT approved for production activation. Manual conflict resolution, safe tombstone projection, all-collection sync tests, cross-tab browser tests, account lifecycle, production Firestore rules verification, and exact-SHA production deployment/live smoke remain open.
 - Vercel deployment remains unverified due the build-rate-limit quota failure. This is separate from GitHub Actions.
+
+## Authoritative live status — 2026-11-07 after PR #93
+
+The prior checkpoint paragraphs are historical. Current main at this update is f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3; Main Quality Gate run 42355600523 passed on this exact SHA.
+
+- PR #91 merged at a618036b995ff45749748e90e2a4d3ec1037c838. Ruqyah progress now uses the durable journal/revisioned Firestore path and version-5 backups. Exact-head Quality Gate 42355023151 passed.
+- PR #92 merged at bd6fc3a79267ee7136746fed17c58a6ceac8b58c. It fixes unversioned canonical archive overwrite protection, pending-migration direct writes, duplicate canonical portion validation, and stable legacy history IDs. Exact-head Quality Gate 42355486226 passed.
+- PR #93 merged at f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Exact-head Quality Gate 42355488786 passed 500 unit tests, 29 Firestore rules tests, dependency audit, TypeScript, production build, and server startup smoke.
+- PR #94 is open and adds Ruqyah to legacy first-sync detection plus a concurrent-offline conflict-preservation test. Its exact-head CI is pending/in progress; re-fetch the head and all checks before merge.
+- Ruqyah concurrent offline increments are not automatically additive-merged. The new test requires the stale write to be rejected and both snapshots/outbox/inbox/conflict archive preserved without cursor advancement. User-facing conflict resolution and deterministic additive merge remain release blockers.
+- Tombstone projection remains blocked. No user-facing keep-local/use-remote/merge workflow is complete.
+- Cross-tab browser concurrency, full multi-collection two-device coverage, account lifecycle isolation, production Firestore rules deployment, and exact-SHA production deployment/live smoke remain unverified.
+- Vercel build-rate-limit failures are provider quota failures, not successful deployments. Production environment values and remote-sync activation are not verified and must not be changed without explicit authorization.
