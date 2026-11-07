@@ -59,19 +59,20 @@ function isRateLimited(ip: string): boolean {
 }
 
 function validPayload(type: string, payload: unknown): boolean {
-  if (!isRecord(payload) || payload.status !== 'success' || !Array.isArray(payload.data)) return false;
-  const rows = payload.data;
-  if (rows.length > 500) return false;
+  if (!isRecord(payload) || payload.status !== 'success' || !('data' in payload)) return false;
+  const rawData = payload.data;
+  const isCategory = type === 'instant-category' || type === 'topic-category';
+  if (isCategory && !Array.isArray(rawData)) return false;
+  const rows = Array.isArray(rawData) ? rawData : [rawData];
+  if (rows.length === 0 || rows.length > 500 || rows.some(row => !isRecord(row))) return false;
 
   if (type === 'instant' && rows.some(row =>
-    !isRecord(row) ||
     !Number.isInteger(row.id) ||
     typeof row.title !== 'string' || !row.title.trim() ||
     typeof row.arabic !== 'string' || !row.arabic.trim()
   )) return false;
 
   if (type === 'topic' && rows.some(row =>
-    !isRecord(row) ||
     typeof row.title !== 'string' || !row.title.trim() ||
     !Array.isArray(row.content) ||
     row.content.length > 500 ||
@@ -80,10 +81,9 @@ function validPayload(type: string, payload: unknown): boolean {
       typeof part.content !== 'string')
   )) return false;
 
-  if ((type === 'instant-category' || type === 'topic-category') &&
-      rows.some(row => !isRecord(row) || typeof row.title !== 'string' || !Array.isArray(row.subcategories))) {
-    return false;
-  }
+  if (isCategory && rows.some(row =>
+    typeof row.title !== 'string' || !Array.isArray(row.subcategories)
+  )) return false;
 
   return true;
 }
