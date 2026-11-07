@@ -1,3 +1,49 @@
+# CURRENT DEVELOPMENT CHECKPOINT — 2026-11-07
+
+> This section supersedes the historical Phase 4 checkpoint below. Read this current section first.
+> Verified repository main at the start of this checkpoint: `228bc383c2e3e57eb8c344699361c0edc0e67974` (PR #158).
+
+## Current merged engineering state
+
+- PR #149 merged as `78ada24ecadbda3460178550e871632f6d81d770`: explicit, confirmed use-latest-remote conflict resolution for supported upsert snapshots, with fresh Firestore revalidation, durable local evidence, atomic journal finalization, and crash recovery.
+- PR #155 merged as `c620697538ef72eec3d1c2c78bb456c0403232ce`: explicit keep-local re-publication for supported single-collection upsert conflicts. It archives old mutation evidence and queues one consolidated replacement against the latest verified remote revision. It deliberately excludes grouped `syncMeta`, tombstones, and Ruqyah counters.
+- PR #157 merged as `22fdd996d7aabc0669fef504c50970d5ba015d73`: V2 Ruqyah progress with per-device monotonic PN-counter components and reset watermarks; compatible V2 snapshots merge additively and idempotently. Divergent V1 legacy baselines remain blocked.
+- PR #158 merged as `228bc383c2e3e57eb8c344699361c0edc0e67974`: release/checkpoint documentation for the Ruqyah V2 merge.
+- Exact-head Quality Gate runs passed:
+  - PR #149 head `c675a2d164b88994c08a5368bf1695712f2625f3`: run `42368745026`.
+  - PR #155 head `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf`: run `42370175733`.
+  - PR #157 head `b2752297842d6fd30d7b4ae86eb33d48585e9ce8`: run `42372550605`.
+  - PR #158 documentation head `c90af2e8838a52136e50f422981737966e104d29`: run `42372993374`.
+- The checks included automated tests, Firestore Rules Emulator, dependency audit, TypeScript, production build, server smoke, and desktop/mobile Playwright where configured. Do not infer live production verification from CI.
+
+## Current safety boundaries
+
+- Use-remote is available only for validated supported upsert state; tombstones remain rejected.
+- Keep-local is limited to supported single-collection upsert conflicts. Grouped `syncMeta`, Ruqyah counters, and tombstones are not handled by this path.
+- Ruqyah V2 automatic convergence applies only when both snapshots are valid V2 and legacy baselines are compatible. Divergent V1 baselines stay archived and blocked.
+- Both production sync feature flags must remain disabled until the complete global release gate passes:
+  - `VITE_WIRD_REVISIONED_SYNC_ENABLED`
+  - `VITE_WIRD_REMOTE_PROJECTION_ENABLED`
+- Firestore rules deployment, Vercel production deployment, deployed environment values, and real production two-device behavior are not verified from this GitHub session. Vercel has previously returned `build-rate-limit`; never claim a live deployment without a confirmed deployed SHA and smoke test.
+- Do not deploy rules, change secrets/environment variables, or activate production sync without explicit approval and all release gates.
+
+## Next engineering priorities
+
+1. Define and implement collection-specific tombstone semantics, including prevention of stale-device resurrection, durable archive/recovery, revision handling, and negative tests. Keep unsupported collection tombstones blocked.
+2. Add safe grouped `syncMeta` keep-local/merge handling or an explicit, well-tested alternative; never split an atomic grouped transaction into partial writes.
+3. Expand cross-tab, account-switch, offline replay, crash recovery, and populated multi-domain concurrent tests.
+4. Complete backup/restore/reset stress and full authenticated browser journeys.
+5. Once authorized and provider limits permit: verify Firestore rules deployment, Vercel production SHA, deployed flags, and live two-device sync/audio behavior.
+
+## Continuation rules
+
+- Fetch the current `main` ref and open PRs before every new change; do not rely on this checkpoint SHA after another merge.
+- Never merge a code PR unless its exact current head passes the complete Quality Gate and its diff has been reviewed.
+- Merge each independently passing, safe PR to `main`, then verify the merge commit and update this checkpoint.
+- Keep production sync disabled and preserve local-first behavior until the full release gate is independently verified.
+
+---
+
 # WIRD APP — Development Checkpoint
 
 > Last updated: 2026-11-05 — post-merge checkpoint

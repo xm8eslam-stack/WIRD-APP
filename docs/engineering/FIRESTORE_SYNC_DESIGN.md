@@ -1,3 +1,20 @@
+# CURRENT FIRESTORE SYNC STATUS — 2026-11-07 (main at PR #158)
+
+This current status supersedes the older implementation-status notes below; those entries remain historical.
+
+- PR #149 implements confirmed use-remote resolution for supported upsert conflicts with authoritative Firestore revalidation, durable evidence, atomic local journal finalization, and crash recovery.
+- PR #155 implements confirmed keep-local re-publication for supported single-collection upsert conflicts, preserving old mutation evidence and queueing one consolidated replacement at the latest remote revision.
+- PR #157 implements Ruqyah V2 per-device monotonic counter components and reset watermarks. Compatible V2 snapshots converge additively and idempotently; divergent V1 baselines remain blocked.
+- PR #158 updates the Ruqyah release checkpoint.
+
+Exact-head Quality Gate runs passed for #149 (`42368745026`), #155 (`42370175733`), #157 (`42372550605`), and #158 (`42372993374`).
+
+Still blocked: tombstone projection/resolution, grouped `syncMeta` keep-local/merge, divergent legacy V1 reconciliation, full cross-tab/account lifecycle stress, live production two-device verification, verified deployed Firestore rules, and verified Vercel production deployment. Production sync flags must remain disabled until all global release gates pass. Never infer production deployment or rules deployment from CI.
+
+Next: collection-specific tombstone semantics; atomic grouped transaction resolution; expanded offline/crash/cross-tab/account tests; then manual production release verification with explicit approval.
+
+---
+
 # Firestore Sync Design
 
 **Current status after PR #53 (2026-11-06):** The UID-scoped IndexedDB journal, atomic event+outbox persistence, monotonic sequencing, deterministic local projection replay, grouped local projection rollback, and journal-first mutation paths for profile/plans, page progress, manual portions, tests, weak-verse failure/resolution, revision ratings, session completion + matching smart-plan task, and backup import/reset are implemented. PR #54 adds a typed, validated domain-event envelope to append-only journal entries for sessions, revisions, tests, and weak-verse actions. The Firestore client, sync worker, remote acknowledgement, separate remote event collection, and cross-device data flow are not implemented. No live rules deployment has been verified. Vercel rate limiting is not a merge blocker by owner instruction, but production deployment remains unconfirmed.

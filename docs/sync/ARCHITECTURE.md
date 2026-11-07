@@ -1,3 +1,42 @@
+# CURRENT ARCHITECTURE STATUS — 2026-11-07 (main at PR #158)
+
+This section supersedes older status statements below; the detailed historical entries remain as implementation history.
+
+## Merged conflict and convergence capabilities
+
+- **PR #149 — use remote:** a confirmed, narrow executor reads the latest Firestore state, validates the revision/schema envelope, binds the decision to the exact archived local snapshot and mutation identities, re-reads the authoritative document immediately before commit, and atomically applies the chosen snapshot with conflict closure, Outbox supersession, revision metadata, inbox deletion, and cursor advancement. Crash recovery recognizes the exact already-applied snapshot. Tombstones remain unsupported.
+- **PR #155 — keep local:** a confirmed, narrow executor revalidates the latest remote revision and exact local projection, preserves the old local mutation evidence, then atomically queues one consolidated full-snapshot replacement based on the latest remote revision. It is intentionally limited to supported single-collection upsert conflicts; grouped `syncMeta`, tombstones, and Ruqyah counters remain excluded.
+- **PR #157 — Ruqyah V2 PN counters:** progress is represented by per-device monotonic increment components and reset watermarks. Component-wise merge is commutative, associative, and idempotent. Compatible V2 snapshots converge automatically; divergent V1 baselines are not guessed or summed and remain archived.
+- **PR #158** records the current Ruqyah V2 release boundary.
+
+## Exact-head CI evidence
+
+- PR #149: `c675a2d164b88994c08a5368bf1695712f2625f3`, Quality Gate run `42368745026` — success.
+- PR #155: `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf`, Quality Gate run `42370175733` — success.
+- PR #157: `b2752297842d6fd30d7b4ae86eb33d48585e9ce8`, Quality Gate run `42372550605` — success.
+- PR #158: `c90af2e8838a52136e50f422981737966e104d29`, Quality Gate run `42372993374` — success.
+
+These are repository CI/emulator/browser results, not proof of deployed Firestore rules, a live Vercel release, or real production-device convergence.
+
+## Remaining blockers and invariants
+
+1. Tombstones are accepted by the revisioned remote envelope but the projector still returns `blocked_tombstone`; storage projection rejects delete events. Define collection-specific semantics before changing this.
+2. Keep-local cannot yet safely resolve grouped `syncMeta` events. Preserve the grouped transaction as one atomic unit; never partially re-publish its child projections.
+3. Use-remote and keep-local are deliberately narrow and must not be generalized to unsupported collections or malformed snapshots.
+4. Ruqyah V2 auto-merge requires valid V2 snapshots and compatible legacy baselines. Divergent V1 snapshots remain blocked.
+5. Production sync activation remains gated by verified deployed Firestore rules, full account/cross-tab/offline/crash tests, and real two-device validation. The environment values are not observable here; do not assume either flag is enabled.
+6. Production deployment is not established by CI. Confirm the exact deployed SHA and live smoke independently; do not bypass Vercel rate limits.
+
+## Next implementation order
+
+- Collection-specific tombstone design and tests, starting with an explicit allowlist and rejecting all ambiguous/unsupported cases.
+- Atomic grouped `syncMeta` conflict resolution.
+- Cross-tab/account lifecycle and long-offline/crash stress.
+- Complete backup/restore/reset and authenticated browser journeys.
+- Only then reassess the global production release gate.
+
+---
+
 # WIRD Sync Architecture — verified implementation boundary
 
 **Reviewed:** 2026-11-07  
