@@ -34,6 +34,11 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   assert(decideRemoteProjection({ ...remoteEvent, baseRevision: 0, revision: 1 }, {
     cachedRevision: null, hasPendingLocalMutation: false, localProjectionEmpty: true
   }) === 'apply', 'A first remote snapshot applies to an empty local archive');
+  assert(decideRemoteProjection({ ...remoteEvent, baseRevision: 0, revision: 1 }, {
+    cachedRevision: null, hasPendingLocalMutation: false, localProjectionEmpty: false,
+    remoteCollectionInitialized: true
+  }) === 'apply', 'Later snapshot documents in an already imported collection preserve server order');
+
   assert(decideRemoteProjection(remoteEvent, {
     cachedRevision: 1, hasPendingLocalMutation: true, localProjectionEmpty: false
   }) === 'blocked_pending_local', 'Remote projection never overwrites a document with pending local mutations');
