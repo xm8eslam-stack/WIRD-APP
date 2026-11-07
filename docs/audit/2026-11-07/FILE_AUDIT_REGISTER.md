@@ -189,3 +189,26 @@ For each file, expand the row note to cover:
 7. **Evidence:** relevant line/function names and exact commit/PR if applicable.
 
 Never claim full review until every row is upgraded from PENDING or REVIEWED (initial) to a final audited status.
+
+## Post-baseline files and remediation notes
+
+The 147-row table above is the exact original main baseline. The following files were added or changed on separate audit/remediation branches after that snapshot:
+
+| File | Branch / PR | Current note |
+|---|---|---|
+| `docs/sync/REMOTE_REPLICATION_PLAN.md` | audit branch | New design-only replication protocol added because AGENTS.md referenced this missing path. It explicitly does not authorize remote writes or production deployment. |
+| `src/services/backupPersistence.ts` | PR #61 | Added shared importBackupFile(file) boundary; file reading delegates to importBackupJournaled. |
+| `src/components/progress/ProgressAnalyticsView.tsx` | PR #61 | Replaced direct synchronous StorageService.importBackup with importBackupFile; refreshes UI after success/recovery and disables input while importing. |
+| `src/components/settings/SettingsView.tsx` | PR #61 | Uses the same importBackupFile helper as Progress Analytics. |
+| `src/services/backupPersistence.test.ts` | PR #61 | Tests valid file import, durable journal event/cursor and rejection of empty/non-JSON files. |
+| `src/services/planLifecycle.ts` | PR #62 | Preserves completed revision-only and partial task history; reschedules only pending task components; recalculates all remaining verse gaps, including out-of-order completion. |
+| `src/services/planningEngine.test.ts` | PR #62 | Adds four lifecycle regressions for revision-only, partial, pending revision and out-of-order memorization gaps. |
+| `src/services/audioRepeatController.ts` | PR #63 | New helper binds audio ended callback to mutable refs and exact repeat target. |
+| `src/components/library/QuranLibraryView.tsx` | PR #63 | Uses repeat refs/controller, resumes paused audio, clears callbacks on stop/error/unmount. |
+| `src/services/audioPreferences.test.ts` | PR #63 | Adds exact repeat-count and live target-change tests plus component wiring guard. |
+| `api/tafsir.ts` | PR #64 | Parses upstream response text defensively; rejects HTML/malformed JSON and sets explicit JSON Content-Type. |
+| `src/services/tafsirService.ts` | PR #64 | Detects HTML SPA fallback and malformed JSON before exposing errors to the user. |
+| `src/services/tafsirService.test.ts` | PR #64 | Adds HTML route fallback and malformed JSON client regression tests. |
+| `src/tests/tafsirProxy.test.ts` | PR #64 | Adds upstream HTML-to-JSON-502 regression test. |
+
+All listed PRs are Draft and unmerged at this checkpoint. These are implementation notes, not a change to the original main-baseline file count.
