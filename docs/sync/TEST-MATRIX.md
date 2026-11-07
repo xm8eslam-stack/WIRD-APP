@@ -37,3 +37,10 @@
 - Ruqyah progress currently has local persistence, account-scope isolation, corrupt archive preservation, validation and reset tests. These are not cloud sync tests.
 - Required but not yet implemented for Ruqyah cloud sync: two-device concurrent increments, offline increment replay, duplicate increment delivery, event ordering, account switching with pending increments, crash during journal enqueue, remote projection, and reset propagation.
 - The observed experimental Ruqyah sync branch run 42354431882 failed 3 local progress tests due to a missing StorageService method; it is not mergeable evidence.
+
+## 2026-11-07 — Ruqyah concurrent offline conflict coverage
+
+- The sequential two-device Ruqyah round-trip verifies revision 1 then revision 2 projection.
+- PR #94 adds a separate concurrent-offline scenario: two devices increment from the same base revision; the first server mutation is accepted, the stale second mutation is rejected, and the second device retains its Outbox mutation, imported remote Inbox event, local snapshot, archived conflict evidence, and unchanged projection cursor.
+- This test proves conflict preservation, not automatic convergence or additive merge. The user-facing conflict-resolution workflow and a deterministic way to merge additive counter increments remain release blockers.
+- The revisioned sync coordinator legacy-state scan now explicitly includes ruqyahProgress so existing documents cannot be skipped by first-sync detection.
