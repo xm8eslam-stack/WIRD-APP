@@ -10,7 +10,7 @@
 | Document-scoped projection | PR #129 | Same-document pending write blocks; unrelated test-result document progresses | Grouped syncMeta remains collection-wide; no field merge |
 | Conflict evidence | PR #126 | Local snapshot plus pending Outbox mutations retained; 500 KB combined cap; repeated observations deduplicated | No user decision workflow yet |
 | Browser app shell | PR #122 | 6/6 Playwright desktop/mobile Chromium checks passed | Shell, reload, JS errors, overflow only; not auth/CRUD/sync |
-| Ruqyah locator library | PR #127 | 16 browser checks passed | Locator/library UI only; not full recitation or cloud sync |
+| Ruqyah locator library | PR #127 | 10 locator-library browser checks passed (5 desktop + 5 mobile) | Locator/library UI only; not full recitation or cloud sync |
 | TypeScript / production build / server smoke | PR #129 exact head | Passed | Exact-head CI only; not live Vercel deployment |
 | Dependency audit | PR #129 exact head | Passed | Snapshot at CI run time |
 | Tombstones | Projector guards | Blocked safely | Actual delete propagation, resurrection prevention, and retention not implemented |
@@ -87,7 +87,7 @@
 - PR #129 makes normal remote projection and the final IndexedDB cursor/revision transaction document-scoped. Same-document pending writes still block; unrelated test-result documents can progress independently. Grouped `syncMeta` transactions retain collection-wide guards.
 - PR #126 adds durable pending local mutation evidence to Conflict Archive, including mutation IDs, fingerprints, base revisions, sequence numbers, and payloads. Repeated observations append by mutation ID; a fingerprint mismatch or combined snapshot size above 500 KB aborts without deleting inbox/outbox entries or advancing the cursor. Settings displays at most ten archived mutation payloads while retaining the full archive.
 - This is not yet a user-directed conflict-resolution state machine: keep-local, use-remote, safe merge, and revision revalidation actions remain unimplemented. Tombstones, additive multi-device Ruqyah counters, full auth/sync browser journeys, real two-device verification, and production deployment remain release blockers.
-- PR #127 added 16 Ruqyah locator-library browser checks; PR #130 refreshed the Ruqyah checkpoint and release checklist after CORS hardening and locator-library E2E. These browser checks do not replace live Firebase/device tests.
+- PR #127 added 10 Ruqyah locator-library browser checks (five desktop and five mobile); combined with six app-shell checks, the full Playwright suite has 16 tests; PR #130 refreshed the Ruqyah checkpoint and release checklist after CORS hardening and locator-library E2E. These browser checks do not replace live Firebase/device tests.
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit` on reviewed main updates. No live deployed SHA, live two-device verification, Firebase production-rules deployment, secret/environment-variable change, or production sync activation is claimed.
 - PR #2 remains a draft, 115 commits ahead / 276 behind current main. Do not merge it wholesale.
 - Next: implement the conflict decision state machine with atomic archival/revalidation and crash recovery; then tombstones, additive Ruqyah counters, broader Playwright workflows, backup/restore stress, and account lifecycle tests.
@@ -97,7 +97,7 @@
 
 - PR #125 expands all eight collection fixtures with multiple populated records where the model is collection-array based. Device B changes only one record; the untouched record must remain byte-for-byte equivalent in both A → B and B → A projections. Exact-head Quality Gate: 521 automated assertions, 31 Firestore Rules Emulator tests, six Playwright app-shell checks; post-merge main run passed.
 - PR #122 adds six Playwright app-shell checks: desktop and mobile viewport projects, hard refresh, no uncaught page errors, and no viewport horizontal overflow. Mobile uses Chromium with iPhone 13 viewport/touch emulation because only Chromium is installed.
-- PR #127 adds 16 Ruqyah locator-library browser checks. These are UI/library tests, not full authentication, CRUD, or sync journeys.
+- PR #127 adds 10 Ruqyah locator-library browser checks (five desktop and five mobile); the combined Playwright suite has 16 tests. These are UI/library tests, not full authentication, CRUD, or sync journeys.
 - PR #126 verifies durable conflict evidence: pending local mutation payloads are archived, repeat observations append without replacing the original snapshot, and oversized evidence fails closed while inbox/outbox remain intact.
 - PR #129 verifies document-scoped projection at both projector and atomic finalization layers: same-document pending writes block; a different test-result document in the same collection does not. Grouped syncMeta remains collection-scoped.
 - Still not covered: concurrent edits to the same collection snapshot from multiple real devices, long-offline replay, out-of-order multi-event stress, cross-tab races, full browser auth/sync workflows, tombstone replay, and live Firebase verification.
