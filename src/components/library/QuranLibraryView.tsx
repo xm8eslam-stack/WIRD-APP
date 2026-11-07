@@ -28,6 +28,7 @@ import { loadSurahVerses } from '../../data/quranDataLoader';
 import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
+import { attachAyahRepeatHandler } from '../../services/audioRepeatController';
 import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
 import type { PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
@@ -72,6 +73,8 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   const [repeatTarget, setRepeatTarget] = useState<number>(1);
   const [currentRepeatCount, setCurrentRepeatCount] = useState<number>(1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentRepeatCountRef = useRef(1);
+  const repeatTargetRef = useRef(repeatTarget);
 
   // Filter surahs
   const filteredSurahs = useMemo(() => {
@@ -114,16 +117,31 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     return () => { cancelled = true; };
   }, [selectedSurah.number, loadRetry, showMushafReader, activeTab]);
 
-  // Audio Play Handler with Repeating Capability (vital for memorizers)
+  // Audio playback uses refs for event-driven repeat state; React state is UI-only.
   const handlePlayAyah = (ayahNumberInSurah: number) => {
-    if (playingAyah === ayahNumberInSurah && isPlaying) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
+    if (playingAyah === ayahNumberInSurah && audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+        setIsPlaying(false);
+      } else {
+        audioRef.current.play().then(() => setIsPlaying(true)).catch(error => {
+          console.warn('Audio resume failed', error);
+          setIsPlaying(false);
+        });
+      }
       return;
     }
 
     const audioUrl = formatAyahAudioUrl(selectedSurah.number, ayahNumberInSurah, activeReciter);
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+    }
+
+    currentRepeatCountRef.current = 1;
+    repeatTargetRef.current = repeatTarget;
+    setCurrentRepeatCount(1);
 
     const audio = new Audio(audioUrl);
     audio.playbackRate = getSavedPlaybackRate();
@@ -131,32 +149,49 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     setPlayingAyah(ayahNumberInSurah);
     setIsPlaying(true);
 
-    audio.onended = () => {
-      if (currentRepeatCount < repeatTarget) {
-        setCurrentRepeatCount(prev => prev + 1);
-        audio.currentTime = 0;
-        audio.play().catch(() => setIsPlaying(false));
-      } else {
-        setCurrentRepeatCount(1);
+    attachAyahRepeatHandler(
+      audio,
+      currentRepeatCountRef,
+      repeatTargetRef,
+      setCurrentRepeatCount,
+      () => {
         const nextAyah = ayahNumberInSurah + 1;
         const hasNext = currentAyahs.some(a => a.numberInSurah === nextAyah);
         if (hasNext) {
           handlePlayAyah(nextAyah);
         } else {
+          audioRef.current = null;
           setIsPlaying(false);
           setPlayingAyah(null);
         }
+      },
+      () => {
+        audio.onended = null;
+        audioRef.current = null;
+        currentRepeatCountRef.current = 1;
+        setCurrentRepeatCount(1);
+        setIsPlaying(false);
+        setPlayingAyah(null);
       }
-    };
+    );
 
     audio.onerror = () => {
+      audio.onended = null;
+      audioRef.current = null;
+      currentRepeatCountRef.current = 1;
+      setCurrentRepeatCount(1);
       setIsPlaying(false);
       setPlayingAyah(null);
     };
 
-    audio.play().catch(e => {
-      console.warn('Audio play prevented or unavailable', e);
+    audio.play().catch(error => {
+      console.warn('Audio play prevented or unavailable', error);
+      audio.onended = null;
+      audioRef.current = null;
+      currentRepeatCountRef.current = 1;
+      setCurrentRepeatCount(1);
       setIsPlaying(false);
+      setPlayingAyah(null);
     });
   };
 
@@ -188,16 +223,25 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
   const handleStopAudio = () => {
     if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
       audioRef.current.pause();
-      setIsPlaying(false);
-      setPlayingAyah(null);
-      setCurrentRepeatCount(1);
+      audioRef.current = null;
     }
+    currentRepeatCountRef.current = 1;
+    setIsPlaying(false);
+    setPlayingAyah(null);
+    setCurrentRepeatCount(1);
   };
 
   useEffect(() => {
     return () => {
-      audioRef.current?.pause();
+      if (audioRef.current) {
+        audioRef.current.onended = null;
+        audioRef.current.onerror = null;
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 
@@ -782,7 +826,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                 <select
                   aria-label="مرات تكرار الآية للحفظ"
                   value={repeatTarget}
-                  onChange={(e) => setRepeatTarget(Number(e.target.value))}
+                  onChange={(e) => {
+                    const nextTarget = Number(e.target.value);
+                    repeatTargetRef.current = nextTarget;
+                    setRepeatTarget(nextTarget);
+                  }}
                   className="bg-transparent text-xs font-semibold text-stone-800 dark:text-stone-200 cursor-pointer focus:outline-none"
                 >
                   <option value={1}>1x</option>
