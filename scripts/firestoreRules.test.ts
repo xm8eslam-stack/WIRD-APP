@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import { writeImmutableRemoteEvent } from '../src/services/immutableRemoteEvent';
+import { writeRevisionedRemoteMutation } from '../src/services/revisionedRemoteMutation';
 
 const projectId = 'demo-wird-rules';
 const rules = readFileSync(resolve(process.cwd(), 'firestore.rules'), 'utf8');
@@ -40,7 +41,9 @@ const validEnvelope = {
   payload: { displayName: 'WIRD test profile' },
   updatedAtMs: 1_799_000_000_000,
   deviceId: 'test-device-01',
-  mutationId: 'mutation-test-0001'
+  mutationId: 'mutation-test-0001',
+  baseRevision: 0,
+  revision: 1
 };
 
 try {
@@ -75,6 +78,29 @@ try {
       mutationId: 'mutation-plan-0001'
     }));
   });
+  await test('Verified owner can update a state document only with its exact base revision', async () => {
+    await assertSucceeds(setDoc(aliceProfile, {
+      ...validEnvelope,
+      payload: { displayName: 'WIRD revision 2' },
+      mutationId: 'mutation-test-0002',
+      baseRevision: 1,
+      revision: 2,
+      updatedAtMs: 1_799_000_000_001
+    }));
+  });
+
+  await test('Stale revision and legacy unversioned writes are denied', async () => {
+    await assertFails(setDoc(aliceProfile, {
+      ...validEnvelope,
+      payload: { displayName: 'stale overwrite' },
+      mutationId: 'stale-mutation',
+      baseRevision: 1,
+      revision: 2
+    }));
+    const { baseRevision: _baseRevision, revision: _revision, ...legacyEnvelope } = validEnvelope;
+    await assertFails(setDoc(doc(alice, 'users/alice/plans/legacy-write'), legacyEnvelope));
+  });
+
 
   await test('Unauthenticated users cannot read or write user documents', async () => {
     await assertFails(getDoc(doc(anonymous, 'users/alice/profile/main')));
@@ -162,6 +188,91 @@ try {
     await assertSucceeds(setDoc(eventRef, validEvent));
     await assertSucceeds(getDoc(eventRef));
   });
+
+  await test('Revisioned remote mutation creates once and retries idempotently', async () => {
+    const input = {
+      uid: 'alice',
+      collection: 'plans' as const,
+      documentId: 'cas-plan-1',
+      operation: 'upsert' as const,
+      schemaVersion: 1 as const,
+      mutationId: 'cas-mutation-1',
+      eventId: 'cas-mutation-1',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: 1_799_000_000_100,
+      baseRevision: 0,
+      payload: { records: [{ id: 'plan-1', title: 'First' }] }
+    };
+    const first = await writeRevisionedRemoteMutation(alice as unknown as Firestore, input);
+    const retry = await writeRevisionedRemoteMutation(alice as unknown as Firestore, input);
+    const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-1'));
+    if (first.status !== 'written' || first.revision !== 1 ||
+        retry.status !== 'already_applied' || retry.revision !== 1 ||
+        state.data()?.revision !== 1) {
+      throw new Error('CAS create/retry did not converge on revision 1');
+    }
+  });
+
+  await test('Stale base revision cannot overwrite a newer remote snapshot', async () => {
+    const first = {
+      uid: 'alice',
+      collection: 'plans' as const,
+      documentId: 'cas-plan-stale',
+      operation: 'upsert' as const,
+      schemaVersion: 1 as const,
+      mutationId: 'cas-stale-first',
+      eventId: 'cas-stale-first',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: 1_799_000_000_200,
+      baseRevision: 0,
+      payload: { records: [{ id: 'plan-1', title: 'Remote wins first' }] }
+    };
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, first);
+    let rejected = false;
+    try {
+      await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        ...first,
+        mutationId: 'cas-stale-second',
+        eventId: 'cas-stale-second',
+        payload: { records: [{ id: 'plan-1', title: 'Stale overwrite' }] }
+      });
+    } catch (error) {
+      rejected = error instanceof Error && error.message === 'REMOTE_REVISION_CONFLICT';
+    }
+    const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-stale'));
+    if (!rejected || state.data()?.payload?.records?.[0]?.title !== 'Remote wins first' ||
+        state.data()?.revision !== 1) {
+      throw new Error('Stale write changed a newer remote snapshot');
+    }
+  });
+
+  await test('Concurrent writers from the same base revision produce one winner', async () => {
+    const base = {
+      uid: 'alice',
+      collection: 'plans' as const,
+      documentId: 'cas-plan-race',
+      operation: 'upsert' as const,
+      schemaVersion: 1 as const,
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: 1_799_000_000_300,
+      baseRevision: 0
+    };
+    const results = await Promise.allSettled([
+      writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        ...base, mutationId: 'cas-race-a', eventId: 'cas-race-a', payload: { value: 'A' }
+      }),
+      writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+        ...base, mutationId: 'cas-race-b', eventId: 'cas-race-b', payload: { value: 'B' }
+      })
+    ]);
+    const state = await getDoc(doc(alice, 'users/alice/plans/cas-plan-race'));
+    if (results.filter(result => result.status === 'fulfilled').length !== 1 ||
+        results.filter(result => result.status === 'rejected').length !== 1 ||
+        state.data()?.revision !== 1) {
+      throw new Error('Concurrent stale writers did not produce exactly one winner');
+    }
+  });
+
   await test('Immutable event helper treats an identical retry as a successful no-op', async () => {
     const event = { ...validEvent, eventId: 'event-idempotent-001', mutationId: 'mutation-idempotent-001' };
     const first = await writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', event);
