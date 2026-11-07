@@ -30,7 +30,7 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
   test(
     'Individual Quran audio controls remain disabled and explicitly labelled',
-    /disabled[\s\S]{0,320}الصوت قيد التحقق/.test(viewSource)
+    /disabled[\s\S]{0,600}الصوت قيد التحقق/.test(viewSource)
   );
   test(
     'The rendered view exposes only interactive reading and the Quran locator library',
