@@ -136,6 +136,27 @@ export async function resolveProjectionConflictUsingRemote(
     assertActiveConflictScope(uid);
   }
 
+  // Re-read the authoritative document immediately before the local journal commit.
+  // A revision/payload change after the prepared intent was saved must leave the
+  // conflict open; never apply a stale snapshot simply because the earlier read succeeded.
+  const latestSnapshot = await getDoc(stateRef);
+  assertActiveConflictScope(uid);
+  if (!latestSnapshot.exists()) {
+    throw new Error('اختفى مستند الحالة السحابي قبل اعتماد القرار؛ بقيت أدلة التعارض محفوظة.');
+  }
+  const latestState = latestSnapshot.data();
+  if (latestState.schemaVersion !== 1 ||
+      latestState.revision !== state.revision ||
+      latestState.baseRevision !== state.baseRevision ||
+      latestState.mutationId !== state.mutationId ||
+      latestState.deviceId !== state.deviceId ||
+      latestState.updatedAtMs !== state.updatedAtMs ||
+      latestState.deletedAt != null ||
+      !isRecord(latestState.payload) ||
+      stableStringify(latestState.payload) !== stableStringify(normalizedRemotePayload)) {
+    throw new Error('تغيرت النسخة السحابية بعد تجهيز القرار؛ لم نطبق لقطة قديمة، وما زال التعارض وأرشيفه محفوظين.');
+  }
+
   const committed = await LocalSyncOutbox.commitUseRemoteConflictResolution(
     eventId,
     state.revision,
