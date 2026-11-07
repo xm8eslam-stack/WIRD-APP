@@ -714,6 +714,129 @@ try {
     }
   });
 
+  await test('Offline competing devices retain the losing local mutation and block stale remote projection', async () => {
+    const uid = 'offline-conflict-pair';
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
+    Object.defineProperty(globalThis, 'IDBKeyRange', {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: IDBKeyRange
+    });
+    const localStorageA = new IsolatedMemoryStorage();
+    const localStorageB = new IsolatedMemoryStorage();
+    const journalA = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(),
+      databaseName: 'wird-offline-conflict-a'
+    });
+    const journalB = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(),
+      databaseName: 'wird-offline-conflict-b'
+    });
+    try {
+      const firestoreA = testEnv.authenticatedContext(uid, {
+        email: 'offline-conflict@example.com',
+        email_verified: true,
+        device: 'offline-a'
+      }).firestore();
+      const firestoreB = testEnv.authenticatedContext(uid, {
+        email: 'offline-conflict@example.com',
+        email_verified: true,
+        device: 'offline-b'
+      }).firestore();
+
+      activateIsolatedDevice(localStorageA, uid);
+      const localProfileA = { ...StorageService.getProfile(), name: 'نسخة الجهاز A' };
+      const mutationA = await journalA.enqueue({
+        mutationId: 'offline-conflict-a-001',
+        collection: 'profile',
+        documentId: 'main',
+        payload: { profile: localProfileA },
+        nowMs: 1_799_000_100_001
+      });
+      if (mutationA.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
+        throw new Error('Device A could not persist its offline profile edit.');
+      }
+
+      activateIsolatedDevice(localStorageB, uid);
+      const localProfileB = { ...StorageService.getProfile(), name: 'نسخة الجهاز B' };
+      const mutationB = await journalB.enqueue({
+        mutationId: 'offline-conflict-b-001',
+        collection: 'profile',
+        documentId: 'main',
+        payload: { profile: localProfileB },
+        nowMs: 1_799_000_100_002
+      });
+      if (mutationB.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation))) {
+        throw new Error('Device B could not persist its competing offline profile edit.');
+      }
+
+      const accepted = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
+        uid,
+        collection: 'profile',
+        documentId: 'main',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: mutationA.mutation.mutationId,
+        eventId: mutationA.mutation.eventId,
+        deviceId: mutationA.mutation.deviceId,
+        clientUpdatedAtMs: mutationA.mutation.clientUpdatedAtMs,
+        baseRevision: mutationA.mutation.baseRevision,
+        payload: mutationA.mutation.payload
+      });
+      await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, accepted.revision, 1_799_000_100_003);
+      let conflictCode = '';
+      try {
+        await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
+          uid,
+          collection: 'profile',
+          documentId: 'main',
+          operation: 'upsert',
+          schemaVersion: 1,
+          mutationId: mutationB.mutation.mutationId,
+          eventId: mutationB.mutation.eventId,
+          deviceId: mutationB.mutation.deviceId,
+          clientUpdatedAtMs: mutationB.mutation.clientUpdatedAtMs,
+          baseRevision: mutationB.mutation.baseRevision,
+          payload: mutationB.mutation.payload
+        });
+      } catch (error) {
+        conflictCode = error instanceof Error ? error.message : String(error);
+      }
+      if (conflictCode !== 'REMOTE_REVISION_CONFLICT') {
+        throw new Error('The stale offline write was not rejected as an explicit revision conflict: ' + conflictCode);
+      }
+
+      const acceptedEvent = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
+      )));
+      await journalB.importRemotePage([acceptedEvent]);
+      activateIsolatedDevice(localStorageB, uid);
+      const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      const retainedOutbox = await journalB.listPending();
+      const retainedInbox = await journalB.listRemoteInboxAfter(0, 10);
+      const serverSnapshot = await getDoc(doc(firestoreA, 'users', uid, 'profile', 'main'));
+      if (blocked.reason !== 'blocked_pending_local' || blocked.blockedAtSequence !== 1 ||
+          await journalB.getRemoteProjectionCursor() !== 0 ||
+          retainedOutbox.length !== 1 || retainedOutbox[0].mutationId !== mutationB.mutation.mutationId ||
+          retainedInbox.length !== 1 || !serverSnapshot.exists() ||
+          serverSnapshot.data().payload.profile.name !== localProfileA.name ||
+          StorageService.getProfile().name !== localProfileB.name) {
+        throw new Error('The offline conflict did not preserve both local intent and remote event without advancing the cursor.');
+      }
+    } finally {
+      journalA.close();
+      journalB.close();
+      setTestLocalStorage(new IsolatedMemoryStorage());
+      StorageService.__resetStorageForTests();
+      if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+      else Reflect.deleteProperty(globalThis, 'localStorage');
+      if (originalIDBKeyRange) Object.defineProperty(globalThis, 'IDBKeyRange', originalIDBKeyRange);
+      else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
+    }
+  });
+
   await test('Domain events are immutable: update and delete are strictly denied', async () => {
     const eventRef = doc(alice, 'users/alice/events/event-alice-001');
     await assertFails(setDoc(eventRef, { ...validEvent, eventType: 'tampered' }));
