@@ -1268,36 +1268,83 @@ export class IndexedDbSyncJournal {
   }
 
   /** Atomically commit revision, collection baselines, inbox deletion and projection cursor. */
-  async finalizeRemoteProjection(intent: RemoteProjectionIntent): Promise<boolean> {
+  async finalizeRemoteProjection(
+    intent: RemoteProjectionIntent,
+    applyProjection: () => boolean
+  ): Promise<boolean> {
     const uid = activeUid();
+    if (!Number.isSafeInteger(intent.sequence) || intent.sequence < 1 ||
+        !validMutationId(intent.eventId) || !ALLOWED_COLLECTIONS.has(intent.collection) ||
+        !intent.documentId || intent.documentId.includes('/') ||
+        !Number.isSafeInteger(intent.revision) || intent.revision < 1 ||
+        !Array.isArray(intent.initializedCollections) ||
+        !intent.initializedCollections.every(item => ALLOWED_COLLECTIONS.has(item))) {
+      throw new Error('بيانات نية إسقاط الحدث البعيد غير صالحة.');
+    }
+    const affectedCollections = [...new Set([intent.collection, ...intent.initializedCollections])]
+      .filter(collection => collection !== 'syncMeta');
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction([STORE_METADATA, STORE_REMOTE_INBOX], 'readwrite');
+      const transaction = database.transaction(
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_OUTBOX],
+        'readwrite'
+      );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
       const metadataRequest = metadataStore.get(uid);
       const eventRequest = inbox.index('uidServerSequence').get([uid, intent.sequence]);
+      const pendingRequests = affectedCollections.map(collection =>
+        outbox.index('uidCollection').getAll(IDBKeyRange.only([uid, collection]))
+      );
       let metadata: DeviceMetadata | undefined;
       let event: RemoteInboxEvent | undefined;
+      let pendingByCollection: JournalOutboxEntry[][] = [];
       let finalized = false;
-      let readsRemaining = 2;
+      let readsRemaining = 2 + pendingRequests.length;
       let failure: Error | undefined;
       const finish = () => {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const currentIntent = metadata?.remoteProjectionIntent;
         const cursor = metadata?.remoteProjectionCursor ?? 0;
+        const sameInitializedCollections = !!currentIntent &&
+          currentIntent.initializedCollections.length === intent.initializedCollections.length &&
+          currentIntent.initializedCollections.every((collection, index) =>
+            collection === intent.initializedCollections[index]
+          );
         if (!metadata || !currentIntent ||
             currentIntent.sequence !== intent.sequence ||
             currentIntent.eventId !== intent.eventId ||
             currentIntent.collection !== intent.collection ||
             currentIntent.documentId !== intent.documentId ||
             currentIntent.revision !== intent.revision ||
+            !sameInitializedCollections ||
+            currentIntent.initializedCollections.some(collection => !ALLOWED_COLLECTIONS.has(collection)) ||
             cursor + 1 !== intent.sequence || !event ||
             event.eventId !== intent.eventId || event.revision !== intent.revision ||
             event.serverSequence !== intent.sequence || event.collection !== intent.collection ||
             event.documentId !== intent.documentId) {
           failure = new Error('تعذر اعتماد الإسقاط؛ ستظل نية الإسقاط والحدث محفوظين لإعادة المحاولة.');
+          transaction.abort();
+          return;
+        }
+        if (pendingByCollection.some(records => records.length > 0)) {
+          failure = new Error('توجد تغييرات محلية معلقة في مجموعة الحدث؛ أوقفنا الإسقاط لمنع استبدالها.');
+          transaction.abort();
+          return;
+        }
+        // Keep this callback synchronous and inside the IndexedDB transaction.
+        // Enqueue transactions use STORE_OUTBOX and STORE_METADATA too, so a
+        // local mutation cannot slip between the pending check and projection.
+        try {
+          if (!applyProjection()) {
+            failure = new Error('تعذر تطبيق الإسقاط المحلي؛ احتفظنا بالحدث ونية التعافي.');
+            transaction.abort();
+            return;
+          }
+        } catch (error) {
+          failure = normalizeError(error);
           transaction.abort();
           return;
         }
@@ -1335,6 +1382,12 @@ export class IndexedDbSyncJournal {
         event = eventRequest.result as RemoteInboxEvent | undefined;
         finish();
       };
+      pendingRequests.forEach(request => {
+        request.onsuccess = () => {
+          pendingByCollection.push(request.result as JournalOutboxEntry[]);
+          finish();
+        };
+      });
       transaction.oncomplete = () => resolve(finalized);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote projection finalization aborted.')));
     });
