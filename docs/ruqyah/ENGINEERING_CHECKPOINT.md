@@ -88,8 +88,9 @@ Phase 1 CI passed unit tests, Firestore rules, TypeScript, production build and 
 2. Rate-limit bucket cleanup now evicts expired/oldest entries to keep the per-instance map bounded.
 3. Upstream response size is checked against declared content length and enforced with a streaming 2 MiB byte cap, including chunked responses, before JSON parsing.
 4. Topic content block types are allowlisted to the documented text/Arabic/translation/header/transliteration types.
-5. Added regression tests for spoofed forwarded-for bypass attempts, oversized declared and chunked provider payloads, and unknown topic block types.
-6. Clarified IslamicAPI fair-use limits and the per-serverless-instance nature of the local limiter in the release checklist.
+5. Added regression tests for spoofed forwarded-for bypass attempts, oversized declared and chunked provider payloads, disabled-by-default educational topics, and unknown topic block types.
+6. Keep educational topic endpoints disabled by default behind server-side `RUQYAH_TOPICS_ENABLED`; enable only after references/content review.
+7. Clarified IslamicAPI fair-use limits and the per-serverless-instance nature of the local limiter in the release checklist.
 
 ## Phase 5 verification status
 
