@@ -1211,6 +1211,81 @@ try {
         const otherDb = testEnv.authenticatedContext(uid + '-other').firestore();
         await assertFails(getDoc(doc(otherDb, 'users', uid, item.collection, 'snapshot')));
       }
+
+      // Reverse direction: device B writes revision 2 for every collection and
+      // device A imports the full contiguous stream (including its own events).
+      activateIsolatedDevice(localStorageB, uid);
+      const reverseEvents: Array<{ sequence: number; event: RemoteInboxEventInput }> = [];
+      for (let index = 0; index < collections.length; index++) {
+        const item = collections[index];
+        const mutationId = 'matrix-reverse-' + item.collection + '-002';
+        const nowMs = 1_799_000_701_100 + index;
+        const reversePayload = item.kind === 'ruqyah'
+          ? { snapshot: { schemaVersion: 1, updatedAtMs: nowMs, counts: { 'q-fatiha': 4 } } }
+          : item.payload;
+        const queued = await journalB.enqueue({
+          mutationId,
+          collection: item.collection,
+          documentId: 'snapshot',
+          payload: reversePayload,
+          nowMs
+        });
+        if (queued.status !== 'queued' ||
+            !StorageService.applyJournalEvent(makeLocalJournalEvent(queued.mutation))) {
+          throw new Error('Device B failed to journal reverse mutation for ' + item.collection);
+        }
+        if (queued.mutation.baseRevision !== 1) {
+          throw new Error('Device B did not base its reverse mutation on projected revision 1 for ' + item.collection);
+        }
+        const accepted = await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
+          uid,
+          collection: item.collection,
+          documentId: 'snapshot',
+          operation: 'upsert',
+          schemaVersion: 1,
+          mutationId: queued.mutation.mutationId,
+          eventId: queued.mutation.eventId,
+          deviceId: queued.mutation.deviceId,
+          clientUpdatedAtMs: queued.mutation.clientUpdatedAtMs,
+          baseRevision: queued.mutation.baseRevision,
+          payload: queued.mutation.payload
+        });
+        await journalB.acknowledgeRemoteMutation(queued.mutation.mutationId, accepted.revision, nowMs + 1);
+        const event = readRemoteEvent(await getDoc(doc(
+          firestoreB, 'users', uid, 'events', queued.mutation.eventId
+        )));
+        reverseEvents.push({ sequence: accepted.serverSequence, event });
+      }
+
+      activateIsolatedDevice(localStorageA, uid);
+      const completeOrderedStream = [...remoteEvents, ...reverseEvents]
+        .sort((a, b) => a.sequence - b.sequence)
+        .map(item => item.event);
+      await journalA.importRemotePage(completeOrderedStream);
+      const reverseProjection = await projectRemoteInboxBatch(20, makeDeviceProjectorDependencies(journalA));
+      if (reverseProjection.projectedCount !== collections.length * 2 ||
+          reverseProjection.reason !== null ||
+          reverseProjection.blockedAtSequence !== null ||
+          await journalA.getRemoteProjectionCursor() !== collections.length * 2) {
+        throw new Error('Device A did not reconcile the complete bidirectional event stream: ' + JSON.stringify(reverseProjection));
+      }
+
+      for (const item of collections) {
+        const raw = StorageService.getLocalProjectionSnapshot(item.collection)[item.key];
+        if (raw === null || raw === undefined) {
+          throw new Error('Device A is missing the reverse-projected archive for ' + item.collection);
+        }
+        const parsed = JSON.parse(raw);
+        if (item.kind === 'ruqyah' && parsed.counts?.['q-fatiha'] !== 4) {
+          throw new Error('Device A did not receive the reverse Ruqyah progress update.');
+        }
+        const ownerState = await assertSucceeds(getDoc(doc(
+          firestoreA, 'users', uid, item.collection, 'snapshot'
+        )));
+        if (!ownerState.exists() || ownerState.data().revision !== 2) {
+          throw new Error('Device A did not observe revision 2 for ' + item.collection);
+        }
+      }
     } finally {
       journalA.close();
       journalB.close();
