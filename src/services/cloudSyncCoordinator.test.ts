@@ -88,6 +88,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     events: RemoteInboxEvent[],
     options: {
       pending?: string[];
+      pendingDocuments?: string[];
       initialized?: string[];
       empty?: string[];
       revisions?: Array<[string, number]>;
@@ -112,6 +113,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       pending: new Set(options.pending || [])
     };
     const pending = state.pending;
+    const pendingDocuments = new Set(options.pendingDocuments || []);
     const empty = new Set(options.empty || []);
     const keyOf = (collection: string, documentId: string) => collection + ':' + documentId;
     let projectionIntent: RemoteProjectionIntent | null = null;
@@ -128,6 +130,8 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       getRemoteRevision: async (collection, documentId) =>
         state.revisions.get(keyOf(collection, documentId)) || null,
       hasPendingForCollection: async collection => pending.has(collection),
+      hasPendingForDocument: async (collection, documentId) =>
+        pendingDocuments.has(keyOf(collection, documentId)) || pending.has(collection),
       isRemoteCollectionInitialized: async collection => state.initialized.has(collection),
       isLocalProjectionEmpty: collection => empty.has(collection),
       applyJournalEvent: () => {
@@ -211,6 +215,20 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       'A later document in a remotely initialized collection can be projected without treating imported data as local legacy data');
   } catch (err: any) {
     assert(false, `Initialized collection projection failed: ${err?.message}`);
+  }
+
+  try {
+    const event = makeRemoteEvent({ collection: 'tests', documentId: 'remote-test' });
+    const harness = makeProjectionHarness([event], {
+      pendingDocuments: ['tests:local-test'],
+      empty: ['tests']
+    });
+    const result = await projectRemoteInboxBatch(10, harness.dependencies);
+    assert(result.projectedCount === 1 && harness.state.cursor === 1 &&
+      harness.state.applied === 1 && harness.state.conflicts.length === 0,
+      'A pending test-result mutation for another test ID does not block an independent remote test document');
+  } catch (err: any) {
+    assert(false, `Independent document projection guard failed: ${err?.message}`);
   }
 
   try {
