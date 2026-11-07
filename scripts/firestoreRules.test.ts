@@ -172,6 +172,32 @@ try {
     await assertSucceeds(getDoc(aliceProfile));
   });
 
+  await test('Verified owner can write the isolated Ruqyah progress collection', async () => {
+    const snapshot = {
+      schemaVersion: 1,
+      updatedAtMs: 1_799_000_000_050,
+      counts: { 'q-fatiha': 7, 'dua-pain': 3 }
+    };
+    const result = await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'ruqyahProgress',
+      documentId: 'snapshot',
+      operation: 'upsert',
+      schemaVersion: 1,
+      mutationId: 'mutation-ruqyah-progress-0001',
+      eventId: 'mutation-ruqyah-progress-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: snapshot.updatedAtMs,
+      baseRevision: 0,
+      payload: { snapshot }
+    });
+    const stored = await getDoc(doc(alice, 'users/alice/ruqyahProgress/snapshot'));
+    if (result.status !== 'written' || result.revision !== 1 ||
+        JSON.stringify(stored.data()?.payload?.snapshot?.counts) !== JSON.stringify(snapshot.counts)) {
+      throw new Error('Ruqyah progress did not pass the same owner-scoped revisioned write contract.');
+    }
+  });
+
   await test('Verified owner can write allowlisted plan documents', async () => {
     await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
       uid: 'alice',
@@ -829,6 +855,127 @@ try {
           serverSnapshot.data().payload.profile.name !== localProfileA.name ||
           StorageService.getProfile().name !== localProfileB.name) {
         throw new Error('The offline conflict did not preserve both local intent and remote event without advancing the cursor.');
+      }
+    } finally {
+      journalA.close();
+      journalB.close();
+      setTestLocalStorage(new IsolatedMemoryStorage());
+      StorageService.__resetStorageForTests();
+      if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+      else Reflect.deleteProperty(globalThis, 'localStorage');
+      if (originalIDBKeyRange) Object.defineProperty(globalThis, 'IDBKeyRange', originalIDBKeyRange);
+      else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
+    }
+  });
+
+  await test('Two devices synchronize Ruqyah progress through the durable journal and remote projector', async () => {
+    const uid = 'ruqyah-progress-device-pair';
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
+    Object.defineProperty(globalThis, 'IDBKeyRange', {
+      configurable: true, enumerable: true, writable: true, value: IDBKeyRange
+    });
+    const localStorageA = new IsolatedMemoryStorage();
+    const localStorageB = new IsolatedMemoryStorage();
+    const journalA = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(), databaseName: 'wird-ruqyah-sync-device-a'
+    });
+    const journalB = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(), databaseName: 'wird-ruqyah-sync-device-b'
+    });
+    try {
+      const firestoreA = testEnv.authenticatedContext(uid, {
+        email: 'ruqyah-sync@example.com', email_verified: true, device: 'ruqyah-a'
+      }).firestore();
+      const firestoreB = testEnv.authenticatedContext(uid, {
+        email: 'ruqyah-sync@example.com', email_verified: true, device: 'ruqyah-b'
+      }).firestore();
+      activateIsolatedDevice(localStorageA, uid);
+      const progress = {
+        schemaVersion: 1 as const,
+        updatedAtMs: 1_799_000_200_001,
+        counts: { 'q-fatiha': 9, 'dua-pain': 7 }
+      };
+      const queued = await journalA.enqueue({
+        mutationId: 'ruqyah-device-a-001',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        payload: { snapshot: progress },
+        nowMs: progress.updatedAtMs
+      });
+      if (queued.status !== 'queued' ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(queued.mutation))) {
+        throw new Error('Device A could not enqueue and project Ruqyah progress.');
+      }
+      const accepted = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
+        uid,
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: queued.mutation.mutationId,
+        eventId: queued.mutation.eventId,
+        deviceId: queued.mutation.deviceId,
+        clientUpdatedAtMs: queued.mutation.clientUpdatedAtMs,
+        baseRevision: queued.mutation.baseRevision,
+        payload: queued.mutation.payload
+      });
+      await journalA.acknowledgeRemoteMutation(queued.mutation.mutationId, accepted.revision, progress.updatedAtMs + 1);
+      const remoteEvent = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', queued.mutation.eventId
+      )));
+      await journalB.importRemotePage([remoteEvent]);
+      activateIsolatedDevice(localStorageB, uid);
+      const projected = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      const received = StorageService.getRuqyahProgressSnapshot();
+      const revision = await journalB.getRemoteRevision('ruqyahProgress', 'snapshot');
+      if (projected.projectedCount !== 1 || projected.reason ||
+          JSON.stringify(received?.counts) !== JSON.stringify(progress.counts) ||
+          revision?.revision !== 1 || await journalB.getRemoteProjectionCursor() !== 1 ||
+          localStorageA === localStorageB) {
+        throw new Error('Device B did not converge on Device A Ruqyah progress through the cloud journal.');
+      }
+      // The second device now edits the same snapshot using the exact remote revision.
+      const nextProgress = {
+        schemaVersion: 1 as const,
+        updatedAtMs: progress.updatedAtMs + 10,
+        counts: { 'q-fatiha': 10, 'dua-pain': 7 }
+      };
+      const queuedB = await journalB.enqueue({
+        mutationId: 'ruqyah-device-b-001',
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        payload: { snapshot: nextProgress },
+        nowMs: nextProgress.updatedAtMs
+      });
+      if (queuedB.status !== 'queued' || queuedB.mutation.baseRevision !== 1 ||
+          !StorageService.applyJournalEvent(makeLocalJournalEvent(queuedB.mutation))) {
+        throw new Error('Device B did not base its Ruqyah progress update on the received revision.');
+      }
+      const acceptedB = await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
+        uid,
+        collection: 'ruqyahProgress',
+        documentId: 'snapshot',
+        operation: 'upsert',
+        schemaVersion: 1,
+        mutationId: queuedB.mutation.mutationId,
+        eventId: queuedB.mutation.eventId,
+        deviceId: queuedB.mutation.deviceId,
+        clientUpdatedAtMs: queuedB.mutation.clientUpdatedAtMs,
+        baseRevision: queuedB.mutation.baseRevision,
+        payload: queuedB.mutation.payload
+      });
+      if (acceptedB.revision !== 2) throw new Error('Device B did not advance the Ruqyah snapshot revision.');
+      await journalA.importRemotePage([readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', queuedB.mutation.eventId
+      )))]);
+      activateIsolatedDevice(localStorageA, uid);
+      const projectedA = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalA));
+      const finalA = StorageService.getRuqyahProgressSnapshot();
+      if (projectedA.projectedCount !== 1 || projectedA.reason ||
+          JSON.stringify(finalA?.counts) !== JSON.stringify(nextProgress.counts) ||
+          await journalA.getRemoteProjectionCursor() !== 2) {
+        throw new Error('Device A did not receive and project Device B Ruqyah progress.');
       }
     } finally {
       journalA.close();
