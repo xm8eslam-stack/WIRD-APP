@@ -852,6 +852,7 @@ export class IndexedDbSyncJournal {
         pendingCount = Math.max(0, pendingCount - legacyRuqyahPending.length);
         if (pendingCount >= MAX_PENDING_MUTATIONS) {
           failure = new Error('وصل صندوق المزامنة إلى سعته الآمنة؛ لم نحذف أي عملية معلقة.');
+          transaction.abort();
           return;
         }
 
