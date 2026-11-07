@@ -20,6 +20,7 @@ Last reviewed: 2026-11-07
 - Phase 14: PR #139 — restore keyboard focus after reset confirmation actions and support Escape cancellation from the reset trigger; verify on desktop/mobile.
 - Phase 15: PR #141 — assert no horizontal overflow at 320px, 360px, and 390px in both Ruqyah reading and Quran locator library modes on desktop/mobile Chromium.
 - Phase 16: PR #145 — announce counter updates through polite atomic live regions with Arabic labels for free-reading counts and source-defined remaining repetitions.
+- Phase 17: active branch `feat/ruqyah-audio-restoration-alqurancloud-20261107` — restore Quran ayah-level audio with a curated Al Quran Cloud reciter allowlist, fixed CDN URLs, continuous section playlists, accessible playback controls, and live CDN smoke checks. Awaiting exact-head CI; full-program recordings remain disabled.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
@@ -72,23 +73,29 @@ Use two real browsers/devices signed in to the same verified account:
 9. Test simultaneous edits and stale revisions; conflicts must preserve recoverable local and remote values. Do not accept last-write-wins overwrites.
 10. Verify that two offline increments from the same base are not presented as an automatically merged total. Current snapshot semantics block and archive the conflict; they do not compute the additive result. Do not enable production sync until the user-facing resolution flow can resolve this case without losing increments.
 
-### 4. Quran index API and disabled audio safety
+### 4. Quran index API and restored ayah-level audio
 
 - Verify IslamicAPI returns only validated Quran locators; provider-authored Arabic, translation, reference prose, introductions, and category data must never reach the browser.
 - Verify valid ASCII/Arabic/Persian numeral coordinates resolve to WIRD's canonical Quran text and surah metadata.
 - Verify missing-key, 429, upstream HTTP failure, HTML, malformed JSON, out-of-range coordinates, and ambiguous multi-coordinate titles fail safely.
-- Confirm the full-program audio mode selector and individual verse audio controls remain disabled and cannot be activated by mouse or keyboard. The legacy audio-stream mode and player handlers were removed in PR #117.
-- Confirm RuqyahView contains no browser Audio instantiation or playback handler, and no audio request starts when changing programs, retrying API requests, or remounting the view.
+- Audio source: Al Quran Cloud terms explicitly permit streaming/embedding for personal and educational use and describe recitations as licensed by reciters or estates. WIRD uses the source for educational ayah-level streaming only; it does not mirror or bundle audio. See docs/ruqyah/SUNNI_SOURCE_POLICY.md.
+- Verify the reciter catalogue proxy returns only the seven reviewed edition IDs and that client validation rejects unknown provider identities, malformed JSON, duplicate IDs, and unapproved editions.
+- Verify audio URL construction always uses https://cdn.islamic.network/quran/audio/128, a fixed approved edition ID, and a global ayah number from 1 to 6236. Never accept arbitrary hosts or user-supplied URLs.
+- CI must pass node scripts/check-ruqyah-audio-source.mjs, confirming representative Al-Husary and Alafasy audio samples return MPEG media with byte-range support.
+- Verify section playback builds its queue only from WIRD's canonical local Quran ayah map; provider audio never supplies the displayed Quran text.
+- Verify pause/resume/stop, seeking, volume, sequential ayah transitions, category changes, library navigation, unmount cleanup, network errors, and no silent source fallback.
+- Verify audio playback never increments or modifies reading counters automatically.
+- Full-program recordings that include supplications remain disabled until a complete reciter/content/rights audit is completed.
 - Confirm the API key never appears in client bundles, browser request URLs, logs, or error messages.
 
 ### 5. Accessibility and responsive review
 
-- Keyboard-only: mode selectors, category selectors, counter buttons, API details, and retry action. Disabled audio controls must not appear as active keyboard targets.
-- Screen reader: labels, disabled audio notice, pressed/expanded states, progress percentage, loading and error live regions.
+- Keyboard-only: mode selectors, category selectors, counter buttons, API details, retry action, reciter selector, and all enabled audio controls. The unverified full-program recording control must remain disabled.
+- Screen reader: labels, reciter selection, playback status, current ayah, pressed/expanded states, progress percentage, loading and error live regions.
 - Copy/select canonical Quran and reviewed Sunnah text without changing counters.
 - Mobile widths (320px, 360px, 390px), tablet and desktop.
 - Light/dark theme, Arabic RTL wrapping, long headings, long supplications, and reduced motion.
-- Confirm no audio starts or overlaps while the audio feature remains disabled.
+- Confirm only one managed audio instance can play at a time and audio stops on category changes, library navigation, and component unmount.
 
 ## Sunni content and audio gate
 
@@ -96,8 +103,10 @@ See `docs/ruqyah/SUNNI_SOURCE_POLICY.md` for the exact source hierarchy and chec
 
 - IslamicAPI is permitted only as a Quran locator. Its `from-sunnah` and category endpoints are rejected; the proxy strips all provider-authored fields and returns only validated numeric coordinates and an item ID. Canonical Quran text and surah metadata are rendered from WIRD's verified corpus.
 - Educational topic and category endpoints are hard-disabled in the proxy. Do not reintroduce them until each article is curated from a named, reviewed Sunni source and passes the source registry tests.
-- Full-program recordings and Al Furqan's dynamic reciter/audio provider are disabled. No unverified audio catalogue or recording URL is exposed.
-- Do not re-enable any disabled content/audio mode without a source record, exact verification, usage-rights review, and regression tests.
+- Al Quran Cloud is used only for ayah-level educational streaming under its published terms; the seven allowed edition IDs and fixed CDN host are enforced in code and tests.
+- CI checks representative audio assets for media type and byte-range support. This is technical availability evidence, not independent human listening verification of every recording.
+- Full-program recordings containing supplications and Al Furqan's dynamic reciter/audio provider remain disabled pending exact content, reciter, and rights review.
+- Do not add another source or reciter without a source record, rights review, allowlist update, and regression tests.
 
 ## External project and license review
 
