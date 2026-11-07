@@ -4,19 +4,19 @@
 
 | Area | Coverage / evidence | Result | Limitation |
 |---|---|---|---|
-| Unit/regression suites | GitHub Actions exact-head workflow | 450 passed, 0 failed | Assertion count is suite output, not a statement of full product coverage |
-| Firestore Rules | Emulator on PR #77 SHA `7d92b0efc5241b6ce2d7e2e0139b9c4183ebf2a7` | 26 passed, 0 failed | Emulator only; production rules deployment unverified |
-| Two-device bidirectional | PR #77 | Passed | Profile collection only; separate fake IndexedDB/localStorage, independent auth clients |
-| Offline same-document conflict | PR #78 SHA `9144a25c4454db4ccb0309a979eff69fc0039860` | Passed | Confirms stale rejection and preservation/blocking, not a conflict-resolution UI |
-| Crash recovery | PR #73 | Passed in CI | Does not replace browser crash testing on real devices |
-| TypeScript | PR #77 and #78 exact-head workflows | Passed | Exact-head CI only |
-| Production build | PR #77 and #78 exact-head workflows | Passed | Not a Vercel deployment |
-| Production startup smoke | PR #77 and #78 exact-head workflows | Passed | Not a live production URL smoke |
-| Dependency audit | PR #77 and #78 exact-head workflows | Passed | Snapshot at CI run time |
-| Tombstones | Projector guard tests | Blocked safely | Actual delete propagation is not implemented |
-| Browser E2E / mobile / tablet | Not verified in this work segment | Not run | Requires Playwright/browser workflow evidence |
-| Offline stress / load | Not verified | Not run | Hundreds/thousands of queued writes and long offline windows remain |
-| Production Vercel | Status returns `build-rate-limit` | Unverified | External deployment limit, not a successful deployment |
+| Unit/regression suites | PR #129 exact head `334a73a05bddc4d574cdf8c25a0299f329b22c49` | 525 passed, 0 failed | Assertion count is suite output, not full product coverage |
+| Firestore Rules | PR #129 exact-head Emulator run | 31 passed, 0 failed | Emulator only; production rules deployment unverified |
+| Populated collection round trip | PR #114 + PR #125 | All eight collections populated; sequential A → B → A; multiple records preserved in array collections | Emulator-backed isolated service contexts, not real devices or simultaneous conflict merge |
+| Document-scoped projection | PR #129 | Same-document pending write blocks; unrelated test-result document progresses | Grouped syncMeta remains collection-wide; no field merge |
+| Conflict evidence | PR #126 | Local snapshot plus pending Outbox mutations retained; 500 KB combined cap; repeated observations deduplicated | No user decision workflow yet |
+| Browser app shell | PR #122 | 6/6 Playwright desktop/mobile Chromium checks passed | Shell, reload, JS errors, overflow only; not auth/CRUD/sync |
+| Ruqyah locator library | PR #127 | 16 browser checks passed | Locator/library UI only; not full recitation or cloud sync |
+| TypeScript / production build / server smoke | PR #129 exact head | Passed | Exact-head CI only; not live Vercel deployment |
+| Dependency audit | PR #129 exact head | Passed | Snapshot at CI run time |
+| Tombstones | Projector guards | Blocked safely | Actual delete propagation, resurrection prevention, and retention not implemented |
+| Offline stress / load | Not yet verified | Not run | Hundreds/thousands of queued writes, long offline windows, crash/IDB quota stress remain |
+| Full browser auth/sync | Not yet verified | Not run | Independent auth sessions, cross-tab, full CRUD, two-device sync journeys remain |
+| Production Firebase / Vercel | Main status `build-rate-limit` | Unverified | No production rules deployment or deployed SHA/live smoke claim |
 
 ## Exact main verification
 
