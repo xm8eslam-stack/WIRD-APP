@@ -1816,7 +1816,9 @@ export class IndexedDbSyncJournal {
     }
     const nowMs = input.nowMs ?? Date.now();
     if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت قرار حل التعارض غير صالح.');
-    const payloadJson = JSON.stringify(input.payload);
+    let payloadJson: string;
+    try { payloadJson = JSON.stringify(input.payload); }
+    catch { throw new Error('تعذر تسلسل حمولة قرار حل التعارض؛ لم يتم حفظ القرار.'); }
     if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
       throw new Error('حمولة قرار حل التعارض تتجاوز الحد الآمن أو غير قابلة للتسلسل.');
     }
