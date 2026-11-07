@@ -118,3 +118,14 @@ No production data, rules, credentials, service accounts, environment variables,
 - Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
 - PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
 - PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.
+
+## 2026-11-07 — Current main checkpoint after PR #98
+
+- Current main SHA: 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. Main Quality Gate run 42356505550 passed on this exact SHA.
+- PR #97 merged at 217f7136244d4d7afd02a9c52be86f520c1baefa. It adds the server-side IslamicAPI proxy, strict topic block allowlisting, disabled-by-default educational topics, and bounded streaming response reads. Exact-head runs 42356248195 and 42356243586 passed.
+- PR #98 merged at 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. It adds a manual-only, main-only, typed-confirmation Firestore rules deployment workflow. It has NOT been dispatched and does NOT mean production rules are deployed.
+- PR #100 is open to add a Firestore Emulator preflight before credentials are written or the deploy command runs. Do not dispatch the current manual workflow until this preflight is merged and explicit deployment approval is given.
+- Current main Vercel status is failure with build-rate-limit on SHA 8089579d020a6a4831cdc9ba4f25f8672f30cc3d. A previous SHA f2c3f32f had Vercel success, but that does not establish that latest main is deployed. Production alias and live SHA are unverified.
+- PR #94 merged the Ruqyah legacy first-sync scan and a concurrent-offline conflict-preservation test. This proves safe blocking/archive retention, not additive counter merge.
+- Keep VITE_WIRD_REVISIONED_SYNC_ENABLED and VITE_WIRD_REMOTE_PROJECTION_ENABLED disabled until manual conflict resolution, deterministic Ruqyah additive merge, tombstone semantics, cross-tab concurrency, account isolation, and live two-device verification pass.
+- No production rules deployment, production secret update, Vercel setting change, or remote-sync activation occurred.
