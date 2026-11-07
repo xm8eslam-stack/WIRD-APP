@@ -55,7 +55,7 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     assert(byId.get('d-6')?.repeatTarget === 7, 'Pain supplication must retain its seven repetitions');
     assert(byId.get('d-4')?.repeatTarget === 3, 'Morning/evening protection remembrance must retain three repetitions');
     assert(byId.get('q-ikhlas')?.repeatTarget === 3 && byId.get('q-falaq')?.repeatTarget === 3 && byId.get('q-nas')?.repeatTarget === 3, 'The three protective surahs must retain their narrated morning/evening count');
-    assert(byId.get('d-7')?.type === 'guideline', 'Blessing guidance must not be presented as a fixed-count supplication');
+    assert(!byId.has('d-7'), 'Unreviewed optional blessing guidance must not be included in the core Ruqyah corpus');
   });
 
   test('Ruqyah categories filter accurately', () => {
@@ -73,17 +73,11 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     });
   });
 
-  test('Full Ruqyah program recordings use documented program audio, not unrelated Surah 1 streams', () => {
-    assert(RUQYAH_PROGRAM_AUDIO.length === 3, 'Brief, medium, and long program recordings must exist');
-    const expected = [
-      'https://islamicapi.com/audio/ruqyah/total_brief_ruqyah.mp3',
-      'https://islamicapi.com/audio/ruqyah/total_med_ruqyah.mp3',
-      'https://islamicapi.com/audio/ruqyah/total_long_ruqyah.mp3'
-    ];
-    RUQYAH_PROGRAM_AUDIO.forEach((program, index) => {
+  test('Full-program audio remains disabled until its reciter and complete contents are verified', () => {
+    assert(RUQYAH_PROGRAM_AUDIO.length === 3, 'The three future program slots may remain available');
+    RUQYAH_PROGRAM_AUDIO.forEach(program => {
       assert(Boolean(program.id) && Boolean(program.name), 'Program metadata must be present');
-      assert(program.audioUrl === expected[index], 'Program must use the documented full Ruqyah audio URL');
-      assert(!/\/001\.mp3$/.test(program.audioUrl), 'A Quran Surah 1 recording must not be mislabeled as full Ruqyah');
+      assert(program.audioUrl === '', 'No unverified third-party full-program recording may be playable');
     });
   });
 

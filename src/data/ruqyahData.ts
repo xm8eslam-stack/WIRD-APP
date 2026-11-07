@@ -30,27 +30,27 @@ export interface RuqyahProgramAudio {
 }
 
 /**
- * Complete program recordings documented by IslamicAPI. These are program
- * recordings, not recordings attributed to the individual Quran reciters.
+ * Reserved full-program audio slots. Third-party full-program recordings stay
+ * disabled until their reciter, complete contents, and source chain are verified.
  */
 export const RUQYAH_PROGRAM_AUDIO: RuqyahProgramAudio[] = [
   {
     id: 'brief-ruqya',
     name: 'الرقية المختصرة',
-    description: 'تسجيل متصل للبرنامج المختصر من القرآن والسنة.',
-    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_brief_ruqyah.mp3'
+    description: 'التسجيل الكامل موقوف لحين التحقق من القارئ والمحتوى والمصدر.',
+    audioUrl: ''
   },
   {
     id: 'a-medium-ruqya',
     name: 'الرقية المتوسطة',
-    description: 'تسجيل متصل للبرنامج المتوسط من القرآن والسنة.',
-    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_med_ruqyah.mp3'
+    description: 'التسجيل الكامل موقوف لحين التحقق من القارئ والمحتوى والمصدر.',
+    audioUrl: ''
   },
   {
     id: 'a-long-ruqya',
     name: 'الرقية المطولة',
-    description: 'تسجيل متصل للبرنامج المطول من القرآن والسنة.',
-    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_long_ruqyah.mp3'
+    description: 'التسجيل الكامل موقوف لحين التحقق من القارئ والمحتوى والمصدر.',
+    audioUrl: ''
   }
 ];
 
@@ -64,16 +64,6 @@ export const RUQYAH_GUIDELINES: RuqyahItem[] = [
     repeatTarget: null,
     source: 'القرآن الكريم، الشعراء 80',
     explanation: 'قال الله تعالى: ﴿وَإِذَا مَرِضْتُ فَهُوَ يَشْفِينِ﴾ [الشعراء: 80]'
-  },
-  {
-    id: 'g-2',
-    categories: ['guidelines'],
-    type: 'guideline',
-    title: 'الطهارة واستقبال القبلة: آداب لا شروط',
-    text: 'لا يُشترط لصحة الرقية أن يكون الراقي أو المسترقي على وضوء أو مستقبلًا القبلة؛ ويمكن فعل ذلك إن تيسر دون اعتقاد الوجوب.',
-    repeatTarget: 1,
-    source: 'تنبيه فقهي في آداب الرقية',
-    explanation: 'حضور القلب وتعظيم كلام الله من الآداب الحسنة، أما الطهارة واستقبال القبلة فليسا شرطًا لصحة الرقية.'
   },
   {
     id: 'g-3',
@@ -145,7 +135,7 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     verseRange: '255',
     text: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ',
     repeatTarget: null,
-    source: 'صحيح البخاري 2311',
+    source: 'صحيح البخاري 2311 (معلّق؛ وُصل عند النسائي وابن خزيمة)',
     explanation: 'ثبت فضل قراءتها عند النوم، ولا يثبت في هذا الحديث تكرارها ثلاث مرات.',
   },
   {
@@ -236,7 +226,7 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     verseRange: '1-4',
     text: 'قُلْ هُوَ اللَّهُ أَحَدٌ ۞ اللَّهُ الصَّمَدُ ۞ لَمْ يَلِدْ وَلَمْ يُولَدْ ۞ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ',
     repeatTarget: 3,
-    source: 'صحيح البخاري 5017؛ سنن أبي داود 5082',
+    source: 'صحيح البخاري 5017؛ سنن أبي داود 5082 (حسن، الألباني)',
     explanation: 'تقرأ مع سورتي الفلق والناس ثلاث مرات صباحًا ومساءً، وثبت قراءتها قبل النوم مع النفث والمسح.',
   },
   {
@@ -304,7 +294,7 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     title: 'ذكر الحفظ صباحًا ومساءً',
     text: 'بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ، وَهُوَ السَّمِيعُ الْعَلِيمُ.',
     repeatTarget: 3,
-    source: 'سنن أبي داود 5088؛ حصن المسلم 86',
+    source: 'سنن أبي داود 5088 (صحيح، الألباني)؛ حصن المسلم 86',
     explanation: 'هذا من أذكار الصباح والمساء، ويقال ثلاث مرات في كل منهما؛ وليس عددًا عامًا لكل رقية.'
   },
 
@@ -318,16 +308,6 @@ export const RUQYAH_ITEMS: RuqyahItem[] = [
     source: 'صحيح مسلم 2202',
     explanation: 'ضع يدك على موضع الألم، وقل «بسم الله» ثلاث مرات، ثم قل الدعاء المعروض سبع مرات.'
   },
-  {
-    id: 'd-7',
-    categories: ['full', 'eye_envy'],
-    type: 'guideline',
-    title: 'الدعاء بالبركة عند الإعجاب',
-    text: 'إذا رأى أحدكم من أخيه أو من نفسه أو من ماله ما يعجبه فليدع له بالبركة.',
-    repeatTarget: null,
-    source: 'سنن ابن ماجه 3509',
-    explanation: 'توجيه نبوي إلى الدعاء بالبركة عند الإعجاب، وليس صيغة رقية بعدد مخصوص.'
-  }
 ];
 
 export const getRuqyahItemsByCategory = (cat: RuqyahCategory): RuqyahItem[] => {

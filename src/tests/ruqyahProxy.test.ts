@@ -70,15 +70,20 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
     });
 
-    await test('Ruqyah proxy accepts a documented single-entry object response', async () => {
+    await test('Ruqyah proxy rejects third-party Sunnah text even when the provider returns a valid response', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
-      globalThis.fetch = (async () => new Response(JSON.stringify({
-        status: 'success',
-        data: { id: 3, title: 'Muslim : 2708', arabic: 'أعوذ بكلمات الله التامات', reference: 'Muslim : 2708' }
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      let called = false;
+      globalThis.fetch = (async () => {
+        called = true;
+        return new Response(JSON.stringify({
+          status: 'success',
+          data: { id: 3, title: 'Muslim : 2708', arabic: 'دعاء غير مراجع', reference: 'Muslim : 2708' }
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }) as typeof fetch;
       const res = new MockResponse();
       await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-sunnah', id: '3' }, headers: { 'x-real-ip': '198.51.100.56' } }, res);
-      assert(res.statusCode === 200 && res.body?.data?.id === 3, 'Single-entry object payload must be accepted');
+      assert(res.statusCode === 400 && res.body?.error === 'INVALID_RUQYAH_QUERY', 'Third-party Sunnah source must be rejected');
+      assert(!called, 'Unverified hadith/dua payload must never reach the browser');
     });
 
     await test('Ruqyah proxy rate limiting cannot be bypassed with a spoofed forwarded-for header', async () => {
