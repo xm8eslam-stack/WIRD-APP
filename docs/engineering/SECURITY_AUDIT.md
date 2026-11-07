@@ -142,3 +142,12 @@ Conflict archival validates the stored inbox event and fingerprint, checks exist
 - PR #100 is open to add the Firestore Emulator preflight before credential creation/deployment. Do not dispatch until merged and explicitly approved.
 - Main SHA 8089579d020a6a4831cdc9ba4f25f8672f30cc3d passed run 42356505550. Its Vercel status is build-rate-limit failure; no live production SHA or rules deployment is verified.
 - No production secrets, Vercel settings, Firebase rules, or sync flags were changed by this session.
+
+## 2026-11-07 — Current main security checkpoint
+
+- Main SHA `d71908b3e411bcd7d1db2b09318eb3c95564198e` passed Main Quality Gate run `42357565644`: 509 unit assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, and server startup smoke.
+- PR #105 keeps IslamicAPI server-side and Quran-locator-only; canonical Quran text is rendered from WIRD's verified corpus. Third-party Sunnah text and unverified audio catalogues/recordings are blocked; educational topic content remains disabled pending qualified review.
+- PR #104 exposes archived conflict evidence only within the exact authenticated UID storage scope. The view is read-only and does not resolve or discard records.
+- PR #106 adds reverse multi-collection projection tests; six array payloads are empty, so field-level domain-record coverage is incomplete.
+- Vercel status is still `build-rate-limit`; no current production SHA/live smoke is verified. Production Firestore rules workflow exists but has not been dispatched.
+- Do not enable remote-sync flags or change production secrets/rules. Conflict resolution, tombstones, additive counter merge, cross-tab concurrency, account lifecycle race tests, and live deployment verification remain release blockers.
