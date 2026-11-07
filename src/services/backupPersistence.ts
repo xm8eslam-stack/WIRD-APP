@@ -76,7 +76,8 @@ export async function migrateLegacyPortionsJournaled(
       operation: 'upsert',
       payload: {
         records: prepared.portions,
-        recoveryFromLegacy: prepared.allowRecoveryOverwrite
+        recoveryFromLegacy: prepared.allowRecoveryOverwrite,
+        migration: true
       }
     }], { ...options, expectedStorageScope }, 'legacy-portions-migration-' + createSecureId());
 
@@ -156,7 +157,7 @@ export function buildBackupImportOperations(
   if (canonicalPortions !== undefined) {
     operations.push({
       collection: 'portions', documentId: 'snapshot', operation: 'upsert',
-      payload: { records: canonicalPortions }
+      payload: { records: canonicalPortions, validatedImport: true }
     });
   }
 

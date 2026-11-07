@@ -572,6 +572,37 @@ function isValidRevisionHistoryEntry(value: unknown): value is RevisionLogEntry 
     (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
 }
 
+function isValidLegacyRevisionHistoryEntry(value: unknown): boolean {
+  return isPlainObject(value) &&
+    (value.id === undefined || value.id === '' ||
+      (typeof value.id === 'string' && value.id.length <= 160)) &&
+    isValidLocalDateString(value.date) &&
+    ['successful', 'difficult', 'failed'].includes(value.rating) &&
+    Number.isSafeInteger(value.intervalDaysBefore) && value.intervalDaysBefore >= 0 && value.intervalDaysBefore <= 100000 &&
+    Number.isSafeInteger(value.intervalDaysAfter) && value.intervalDaysAfter >= 0 && value.intervalDaysAfter <= 100000 &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 2000));
+}
+
+function normalizeLegacyHistoryEntries(history: unknown, canonicalPortionId: string): RevisionLogEntry[] {
+  if (history === undefined) return [];
+  if (!Array.isArray(history) || !history.every(isValidLegacyRevisionHistoryEntry)) {
+    throw new TypeError('Malformed legacy revision history; source archive must be preserved.');
+  }
+  return history.map((entry: Record<string, any>, index: number) => {
+    if (typeof entry.id === 'string' && entry.id.trim()) return { ...entry } as RevisionLogEntry;
+    const signature = JSON.stringify([
+      canonicalPortionId, index, entry.date, entry.rating,
+      entry.intervalDaysBefore, entry.intervalDaysAfter, entry.notes || ''
+    ]);
+    let hash = 2166136261;
+    for (let i = 0; i < signature.length; i++) {
+      hash = Math.imul(hash ^ signature.charCodeAt(i), 16777619);
+    }
+    const id = 'legacy_' + canonicalPortionId + '_' + index + '_' + (hash >>> 0).toString(36);
+    return { ...entry, id } as RevisionLogEntry;
+  });
+}
+
 function isValidIsoTimestamp(value: unknown): boolean {
   return typeof value === 'string' && value.length <= 64 &&
     /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
@@ -612,7 +643,7 @@ function assertValidLegacyPortionInput(value: unknown, index: number): asserts v
 
   const historyValid = value.history === undefined ||
     (Array.isArray(value.history) && value.history.length <= MAX_MIGRATED_HISTORY_ENTRIES &&
-      value.history.every(isValidRevisionHistoryEntry));
+      value.history.every(isValidLegacyRevisionHistoryEntry));
   const auditValid = value.conflictAudit === undefined ||
     (Array.isArray(value.conflictAudit) && value.conflictAudit.length <= MAX_CONFLICT_AUDIT_ENTRIES &&
       value.conflictAudit.every(isValidConflictAuditEntry));
@@ -868,6 +899,7 @@ export function migrateLegacyDataLosslessly(
     legacyPortions.forEach((p, idx) => {
       assertValidLegacyPortionInput(p, idx);
       const canonicalId = createCanonicalPortionId(p.surahNumber, p.startAyah, p.endAyah);
+      const normalizedHistory = normalizeLegacyHistoryEntries(p.history, canonicalId);
 
       const coordKey = `${p.surahNumber}:${p.startAyah}:${p.endAyah}`;
       sourceCoordinateKeys.add(coordKey);
@@ -879,7 +911,7 @@ export function migrateLegacyDataLosslessly(
       const existing = mergedMap.get(canonicalId);
       if (existing) {
         // Merge duplicate within legacyPortions deterministically
-        mergePortionRecords(existing, p, `legacyPortions[${idx}]`);
+        mergePortionRecords(existing, { ...p, history: normalizedHistory }, `legacyPortions[${idx}]`);
       } else {
         const surahMeta = ALL_SURAHS.find(s => s.number === p.surahNumber);
         const surahName = p.surahName || surahMeta?.name || `سورة ${p.surahNumber}`;
@@ -909,7 +941,7 @@ export function migrateLegacyDataLosslessly(
           strength: p.strength || (p.status === 'weak' ? 'weak' : p.status === 'stable' ? 'strong' : 'medium'),
           conflictAudit: Array.isArray(p.conflictAudit) ? [...p.conflictAudit] : []
         });
-        mergeHistoryEntries(mergedMap.get(canonicalId)!, p.history || [], `legacyPortions[${idx}]`);
+        mergeHistoryEntries(mergedMap.get(canonicalId)!, normalizedHistory, `legacyPortions[${idx}]`);
       }
     });
 
