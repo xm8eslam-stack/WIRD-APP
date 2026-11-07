@@ -205,10 +205,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               type="button"
               aria-pressed={viewMode === 'interactive'}
               onClick={() => setViewMode('interactive')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 viewMode === 'interactive'
                   ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
-                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
+                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60 '
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -266,10 +266,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   type="button"
                   aria-pressed={isActive}
                   onClick={() => setActiveCategory(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 ${
+                  className={`flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold whitespace-nowrap transition-all border shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                     isActive
                       ? 'bg-emerald-800 text-amber-200 border-emerald-700 shadow-sm'
-                      : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
+                      : 'bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200/80 dark:border-stone-800 hover:bg-stone-100 dark:hover:bg-stone-800'
                   }`}
                 >
                   <span>{tab.label}</span>
@@ -320,7 +320,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 <button
                   type="button"
                   onClick={handleResetCategoryCounts}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   title="إعادة ضبط عداد القسم"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
