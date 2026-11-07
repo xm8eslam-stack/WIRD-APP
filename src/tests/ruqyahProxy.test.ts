@@ -120,10 +120,11 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
             'Content-Length': String(3 * 1024 * 1024)
           }
         });
-        const originalText = response.text.bind(response);
-        response.text = async () => {
+        const body = response.body!;
+        const originalGetReader = body.getReader.bind(body);
+        (body as any).getReader = () => {
           bodyRead = true;
-          return originalText();
+          return originalGetReader();
         };
         return response;
       }) as typeof fetch;
@@ -132,6 +133,20 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
         'Oversized declared upstream response must be rejected');
       assert(!bodyRead, 'The proxy must reject an oversized declared response before reading its body');
+    });
+
+    await test('Ruqyah proxy streams chunked provider bodies with a hard byte cap', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array(2 * 1024 * 1024 + 1));
+          controller.close();
+        }
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant-category' }, headers: { 'x-real-ip': '198.51.100.210' } }, res);
+      assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+        'Chunked provider response above the byte limit must be rejected');
     });
 
     await test('Ruqyah proxy rejects unknown topic content block types', async () => {
