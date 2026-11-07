@@ -1,7 +1,7 @@
 import { 
   RUQYAH_ITEMS, 
   RUQYAH_GUIDELINES, 
-  RUQYAH_RECITERS, 
+  RUQYAH_PROGRAM_AUDIO, 
   getRuqyahItemsByCategory, 
   RuqyahCategory 
 } from '../data/ruqyahData';
@@ -62,14 +62,17 @@ export function runRuqyahIntegrityTests(): { passed: number; failed: number } {
     });
   });
 
-  test('Ruqyah audio reciter streaming configurations are valid', () => {
-    assert(RUQYAH_RECITERS.length >= 4, `Expected at least 4 reciters, got ${RUQYAH_RECITERS.length}`);
-
-    RUQYAH_RECITERS.forEach(reciter => {
-      assert(Boolean(reciter.id), 'Reciter must have id');
-      assert(Boolean(reciter.name), 'Reciter must have name');
-      assert(/^https?:\/\/.+\.mp3$/.test(reciter.audioUrl), `Reciter ${reciter.name} audioUrl must be valid MP3 URL`);
-      assert(Boolean(reciter.durationStr), `Reciter ${reciter.name} must have duration string`);
+  test('Full Ruqyah program recordings use documented program audio, not unrelated Surah 1 streams', () => {
+    assert(RUQYAH_PROGRAM_AUDIO.length === 3, 'Brief, medium, and long program recordings must exist');
+    const expected = [
+      'https://islamicapi.com/audio/ruqyah/total_brief_ruqyah.mp3',
+      'https://islamicapi.com/audio/ruqyah/total_med_ruqyah.mp3',
+      'https://islamicapi.com/audio/ruqyah/total_long_ruqyah.mp3'
+    ];
+    RUQYAH_PROGRAM_AUDIO.forEach((program, index) => {
+      assert(Boolean(program.id) && Boolean(program.name), 'Program metadata must be present');
+      assert(program.audioUrl === expected[index], 'Program must use the documented full Ruqyah audio URL');
+      assert(!/\/001\.mp3$/.test(program.audioUrl), 'A Quran Surah 1 recording must not be mislabeled as full Ruqyah');
     });
   });
 
