@@ -85,3 +85,21 @@
 - Ruqyah counters need a concurrency-safe merge model (per-device counters or immutable increment events) before adding them to sync. Do not use blind last-write-wins snapshots.
 - Highest sync priorities remain: manual conflict-resolution state machine with preserved outbox/local/remote snapshots; collection-specific tombstone semantics; expand two-device tests beyond profile; multi-tab/browser concurrency; account lifecycle isolation; negative Firestore rules tests; Playwright E2E.
 - Keep VITE_WIRD_REVISIONED_SYNC_ENABLED and VITE_WIRD_REMOTE_PROJECTION_ENABLED disabled for real users until every release gate passes. Do not deploy production rules or change production settings without explicit approval.
+
+## Live resume checkpoint — 2026-11-07 after PR #93
+
+- Current main SHA: f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Main Quality Gate run 42355600523 passed on this exact SHA.
+- PR #91 merged at a618036b995ff45749748e90e2a4d3ec1037c838; Ruqyah journal-first revisioned sync and version-5 backup integration are present. Exact-head run 42355023151 passed.
+- PR #92 merged at bd6fc3a79267ee7136746fed17c58a6ceac8b58c; canonical storage migration integrity fixes and regression tests are present. Exact-head run 42355486226 passed.
+- PR #93 merged at f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3; exact-head run 42355488786 passed 500 unit tests, 29 Firestore rules tests, dependency audit, TypeScript, production build and startup smoke.
+- Continue with PR #94: verify exact head/checks, review the Ruqyah legacy-state collection scan, and confirm the concurrent-offline test preserves local Outbox, remote Inbox, conflict evidence and cursor. Merge only after the exact-head gate passes.
+- Important: the Ruqyah counters remain full snapshots. A stale concurrent increment is blocked and archived; it is not automatically combined with the remote increment. Do not describe this as additive convergence.
+- Manual conflict-resolution UI/state machine, tombstone projection, cross-tab coordination, all-collection tests, account lifecycle isolation, production rules deployment, and production deploy/live smoke remain blockers.
+- Keep revisioned sync and remote projection flags disabled for real users until all release gates pass. Do not set Vercel variables or deploy Firebase rules from this session.
+
+### Subsequent checkpoint update — PR #95 merged
+
+- PR #95 merged at 52e62d6b21057cf0d796cc3b137f4087cbe2e983. Its exact-head Quality Gate passed on c2e9478f6053ddc95aaa5058d7a5ab074255d58b; the merge adds post-success Ruqyah progress notifications for direct backup import and full reset, with rollback-safe notification timing.
+- Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
+- PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
+- PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.

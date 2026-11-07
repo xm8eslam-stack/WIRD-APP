@@ -125,3 +125,11 @@ PR #81 adds a bounded UID-scoped IndexedDB archive for blocked remote projection
 ## PR #85 — conflict archive integrity
 
 Conflict archival validates the stored inbox event and fingerprint, checks existing conflict identity, caps local snapshots, and prevents orphan records. Conflict status is resolved only in the same transaction as a successful projection cursor commit/inbox deletion. Exact PR head passed 462 automated assertions and 27 Firestore Rules tests; post-merge main run `42352594819` passed on `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`. Manual conflict resolution/rebase and tombstone projection remain unimplemented; Vercel production deployment remains unverified.
+
+## 2026-11-07 — Live security/deployment checkpoint
+
+- PR #91 added Ruqyah progress to the owner-scoped revisioned mutation model and Firestore rules. Exact-head emulator coverage passed in run 42355023151.
+- PR #93 passed 29 Firestore Security Rules Emulator tests on exact head 7d2b44f7a4fe49686abe433fe8f535b97d2b1866. This is emulator evidence only; production rules deployment was not performed or verified.
+- Current main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3 passed Main Quality Gate run 42355600523. No production secrets, Vercel environment variables, Firebase project configuration, or remote-sync flags were changed.
+- Revisioned sync flags must remain disabled until manual conflict resolution, tombstone semantics, Ruqyah concurrent increment resolution, cross-tab concurrency, account lifecycle isolation, and production rules/deployment gates pass.
+- Vercel build-rate-limit is a provider quota issue; it is not evidence of a deployed artifact. Confirm deployed SHA and live smoke separately.

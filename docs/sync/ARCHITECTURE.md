@@ -62,3 +62,11 @@ Never enable upload or projection against production until the deployed Firestor
 - A separate experiment branch attempted to add ruqyahProgress to sync allowlists. Its observed exact-head CI failed because it called a nonexistent StorageService method, and its implementation did not yet provide the complete mutation enqueue/projection/revision/rules path.
 - More importantly, Ruqyah counts are mutable per-item aggregates. Before syncing them, define a merge model that cannot lose independent increments (e.g. per-device monotonic counters with deterministic totals or immutable increment events). Do not use a full-snapshot last-write-wins mutation.
 - All current sync safety invariants remain unchanged: conflict evidence is preserved; tombstones are blocked; no manual conflict resolution exists; projection/upload gates must remain disabled in production until release gates pass.
+
+## 2026-11-07 — Ruqyah revisioned sync integration and safety boundary
+
+- PR #91 added Ruqyah progress as a revisioned journal collection and version-5 backup field. It is UID-scoped locally and uses the same owner-scoped Firestore revision/event envelope as other synced data.
+- PR #94 adds the Ruqyah collection to the coordinator's legacy remote-state scan. Its concurrent-offline test must pass before this integration is considered complete.
+- The current Ruqyah payload is an aggregate counter snapshot. Sequential edits converge, but two independent offline increments from the same base revision cannot be automatically summed from the current snapshot alone. The safe current behavior is stale-revision rejection, preservation of the local Outbox mutation and remote Inbox event, conflict archival, and no cursor advancement.
+- Do not claim additive convergence. Do not enable production remote sync until a deterministic per-device/event-based counter model or a user-facing merge workflow with sufficient base/delta evidence exists.
+- User-facing conflict resolution remains unimplemented for all collections. Conflict archive state is evidence, not a user decision.

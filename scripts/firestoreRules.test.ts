@@ -995,6 +995,116 @@ try {
     }
   });
 
+
+  await test('Concurrent offline Ruqyah increments preserve both snapshots and block stale projection', async () => {
+    const uid = 'ruqyah-offline-increment-conflict';
+    const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const originalIDBKeyRange = Object.getOwnPropertyDescriptor(globalThis, 'IDBKeyRange');
+    Object.defineProperty(globalThis, 'IDBKeyRange', {
+      configurable: true, enumerable: true, writable: true, value: IDBKeyRange
+    });
+    const localStorageA = new IsolatedMemoryStorage();
+    const localStorageB = new IsolatedMemoryStorage();
+    const journalA = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(), databaseName: 'wird-ruqyah-offline-conflict-a'
+    });
+    const journalB = new IndexedDbSyncJournal({
+      indexedDBFactory: new IDBFactory(), databaseName: 'wird-ruqyah-offline-conflict-b'
+    });
+    try {
+      const firestoreA = testEnv.authenticatedContext(uid, {
+        email: 'ruqyah-offline@example.com', email_verified: true, device: 'ruqyah-offline-a'
+      }).firestore();
+      const firestoreB = testEnv.authenticatedContext(uid, {
+        email: 'ruqyah-offline@example.com', email_verified: true, device: 'ruqyah-offline-b'
+      }).firestore();
+      const baseProgress = {
+        schemaVersion: 1 as const,
+        updatedAtMs: 1_799_000_300_000,
+        counts: { 'q-fatiha': 5 }
+      };
+      activateIsolatedDevice(localStorageA, uid);
+      if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
+        throw new Error('Device A could not seed the shared offline baseline.');
+      }
+      const nextA = { ...baseProgress, updatedAtMs: baseProgress.updatedAtMs + 1, counts: { 'q-fatiha': 6 } };
+      const mutationA = await journalA.enqueue({
+        mutationId: 'ruqyah-offline-a-001', collection: 'ruqyahProgress', documentId: 'snapshot',
+        payload: { snapshot: nextA }, nowMs: nextA.updatedAtMs
+      });
+      if (mutationA.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationA.mutation))) {
+        throw new Error('Device A could not journal its offline increment.');
+      }
+
+      activateIsolatedDevice(localStorageB, uid);
+      if (!StorageService.saveRuqyahProgressSnapshot(baseProgress)) {
+        throw new Error('Device B could not seed the same offline baseline.');
+      }
+      const nextB = { ...baseProgress, updatedAtMs: baseProgress.updatedAtMs + 2, counts: { 'q-fatiha': 6 } };
+      const mutationB = await journalB.enqueue({
+        mutationId: 'ruqyah-offline-b-001', collection: 'ruqyahProgress', documentId: 'snapshot',
+        payload: { snapshot: nextB }, nowMs: nextB.updatedAtMs
+      });
+      if (mutationB.status !== 'queued' || !StorageService.applyJournalEvent(makeLocalJournalEvent(mutationB.mutation)) ||
+          mutationA.mutation.baseRevision !== 0 || mutationB.mutation.baseRevision !== 0) {
+        throw new Error('Both devices must persist independent increments from the same remote base revision.');
+      }
+
+      const acceptedA = await writeRevisionedRemoteMutation(firestoreA as unknown as Firestore, {
+        uid, collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert', schemaVersion: 1,
+        mutationId: mutationA.mutation.mutationId, eventId: mutationA.mutation.eventId,
+        deviceId: mutationA.mutation.deviceId, clientUpdatedAtMs: mutationA.mutation.clientUpdatedAtMs,
+        baseRevision: mutationA.mutation.baseRevision, payload: mutationA.mutation.payload
+      });
+      await journalA.acknowledgeRemoteMutation(mutationA.mutation.mutationId, acceptedA.revision, nextA.updatedAtMs + 1);
+
+      let conflictCode = '';
+      try {
+        await writeRevisionedRemoteMutation(firestoreB as unknown as Firestore, {
+          uid, collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert', schemaVersion: 1,
+          mutationId: mutationB.mutation.mutationId, eventId: mutationB.mutation.eventId,
+          deviceId: mutationB.mutation.deviceId, clientUpdatedAtMs: mutationB.mutation.clientUpdatedAtMs,
+          baseRevision: mutationB.mutation.baseRevision, payload: mutationB.mutation.payload
+        });
+      } catch (error) {
+        conflictCode = error instanceof Error ? error.message : String(error);
+      }
+      if (conflictCode !== 'REMOTE_REVISION_CONFLICT') {
+        throw new Error('The stale offline Ruqyah increment must be rejected as a revision conflict: ' + conflictCode);
+      }
+
+      const acceptedEvent = readRemoteEvent(await getDoc(doc(
+        firestoreA, 'users', uid, 'events', mutationA.mutation.eventId
+      )));
+      await journalB.importRemotePage([acceptedEvent]);
+      activateIsolatedDevice(localStorageB, uid);
+      const blocked = await projectRemoteInboxBatch(10, makeDeviceProjectorDependencies(journalB));
+      const retainedOutbox = await journalB.listReady(1_800_000_000_000, 10);
+      const retainedInbox = await journalB.listRemoteInboxAfter(0, 10);
+      const conflicts = await journalB.listProjectionConflicts(10);
+      const remote = await getDoc(doc(firestoreA, 'users', uid, 'ruqyahProgress', 'snapshot'));
+      const local = StorageService.getRuqyahProgressSnapshot();
+      if (blocked.reason !== 'blocked_pending_local' || blocked.blockedAtSequence !== 1 ||
+          await journalB.getRemoteProjectionCursor() !== 0 ||
+          retainedOutbox.length !== 1 || retainedOutbox[0].mutationId !== mutationB.mutation.mutationId ||
+          retainedInbox.length !== 1 || conflicts.length !== 1 ||
+          conflicts[0]?.localSnapshot[STORAGE_KEYS.RUQYAH_PROGRESS] === undefined ||
+          !remote.exists() || remote.data().payload.snapshot.counts['q-fatiha'] !== 6 ||
+          local?.counts['q-fatiha'] !== 6) {
+        throw new Error('Concurrent offline increments must preserve local outbox, remote event, both snapshots, and cursor without false convergence.');
+      }
+    } finally {
+      journalA.close();
+      journalB.close();
+      setTestLocalStorage(new IsolatedMemoryStorage());
+      StorageService.__resetStorageForTests();
+      if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+      else Reflect.deleteProperty(globalThis, 'localStorage');
+      if (originalIDBKeyRange) Object.defineProperty(globalThis, 'IDBKeyRange', originalIDBKeyRange);
+      else Reflect.deleteProperty(globalThis, 'IDBKeyRange');
+    }
+  });
+
   await test('Domain events are immutable: update and delete are strictly denied', async () => {
     const eventRef = doc(alice, 'users/alice/events/event-alice-001');
     await assertFails(setDoc(eventRef, { ...validEvent, eventType: 'tampered' }));

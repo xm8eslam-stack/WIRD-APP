@@ -99,3 +99,22 @@ No production data, rules, credentials, service accounts, environment variables,
 - Existing cloud-sync release blockers remain: no user-facing keep-local/use-remote/merge/rebase workflow; tombstone projection blocked; two-device coverage is profile-only plus one offline conflict; all-collection, cross-tab browser, account-lifecycle and production rules/deployment verification remain outstanding.
 - Vercel still reports a daily build-rate-limit status. No current-main production deployment or live URL smoke is claimed.
 - No production data, Firebase rules deployment, secrets, Vercel settings, or remote-sync flags were changed.
+
+## 2026-11-07 — Live checkpoint after Ruqyah sync and accessibility merges
+
+- Current main checkpoint: f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Main Quality Gate run 42355600523 passed on this exact SHA.
+- PR #91 merged at a618036b995ff45749748e90e2a4d3ec1037c838. It adds UID-scoped journal-first Ruqyah progress sync, revisioned Firestore writes, two-device sequential projection, and backup version 5 support. Its exact-head run 42355023151 passed.
+- PR #93 merged at f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its exact-head run 42355488786 passed 500 unit tests, 29 Firestore rules tests, dependency audit, TypeScript, production build, and server startup smoke.
+- PR #92 merged at bd6fc3a79267ee7136746fed17c58a6ceac8b58c. It protects unversioned canonical portion archives, prevents direct writes during pending legacy migration, validates duplicate portion IDs/coordinate ranges, generates stable IDs for legacy history rows without IDs, and preserves validated backup import/migration paths. Exact-head run 42355486226 passed.
+- PR #94 is under review on branch fix/ruqyah-first-sync-collection-scan-20261107. It adds Ruqyah to the coordinator legacy-state scan and a true concurrent-offline conflict test. Do not merge until exact-head tests, Firestore emulator, TypeScript, build, and startup smoke all pass.
+- Ruqyah progress is now part of the revisioned sync path, but its aggregate counters still do not have a deterministic additive merge policy. Concurrent offline increments are safely blocked and archived, not automatically merged. Manual conflict-resolution UI remains absent.
+- Current release blockers remain: user-facing conflict resolution (including merge/rebase), safe tombstone projection, cross-tab/browser concurrency, full collection coverage, account lifecycle isolation, production Firestore rules deployment, and exact-SHA production deployment/live smoke.
+- Vercel production deployment remains unverified because of build-rate-limit quota failures. GitHub Actions success is not deployment evidence.
+- No production secrets, environment variables, Firebase rules deployment, real user data, or remote-sync flags were changed.
+
+### Subsequent checkpoint update — PR #95 merged
+
+- PR #95 merged at 52e62d6b21057cf0d796cc3b137f4087cbe2e983. Its exact-head Quality Gate passed on c2e9478f6053ddc95aaa5058d7a5ab074255d58b; the merge adds post-success Ruqyah progress notifications for direct backup import and full reset, with rollback-safe notification timing.
+- Main Quality Gate run 42355938085 was in progress on 52e62d6b21057cf0d796cc3b137f4087cbe2e983 when this note was added; verify its final conclusion before the next release decision.
+- PR #94 was created against the previous main SHA f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3. Its changes are disjoint from PR #95, but re-check mergeability and exact-head CI after main advanced.
+- PR #96 documents the global stop condition: do not set remote-sync flags until manual conflict resolution, additive counter merge, tombstones, cross-tab coordination, account isolation, and live verification all pass.
