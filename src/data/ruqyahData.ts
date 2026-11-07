@@ -23,42 +23,35 @@ export interface RuqyahItem {
   audioVerseKey?: string; // e.g. "002255" for Al-Baqarah 255
 }
 
-export interface RuqyahReciter {
-  id: string;
+export interface RuqyahProgramAudio {
+  id: 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
   name: string;
   description: string;
   audioUrl: string;
-  durationStr: string;
 }
 
-export const RUQYAH_RECITERS: RuqyahReciter[] = [
+/**
+ * Complete program recordings documented by IslamicAPI. These are program
+ * recordings, not recordings attributed to the individual Quran reciters.
+ */
+export const RUQYAH_PROGRAM_AUDIO: RuqyahProgramAudio[] = [
   {
-    id: 'alafasy',
-    name: 'الشيخ مشاري راشد العفاسي',
-    description: 'الرقية الشرعية الكاملة الشاملة للعين والحسد والسحر والمس',
-    audioUrl: 'https://server8.mp3quran.net/afs/001.mp3', // Full recitation link
-    durationStr: '45 دقيقة'
+    id: 'brief-ruqya',
+    name: 'الرقية المختصرة',
+    description: 'تسجيل متصل للبرنامج المختصر من القرآن والسنة.',
+    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_brief_ruqyah.mp3'
   },
   {
-    id: 'ghamdi',
-    name: 'الشيخ سعد الغامدي',
-    description: 'الرقية الشرعية الصوتية الصافية من الكتاب والسنة',
-    audioUrl: 'https://server7.mp3quran.net/s_gmd/001.mp3',
-    durationStr: '38 دقيقة'
+    id: 'a-medium-ruqya',
+    name: 'الرقية المتوسطة',
+    description: 'تسجيل متصل للبرنامج المتوسط من القرآن والسنة.',
+    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_med_ruqyah.mp3'
   },
   {
-    id: 'ajmi',
-    name: 'الشيخ أحمد بن علي العجمي',
-    description: 'رقية التحصين والشفاء من الأمراض والأوجاع',
-    audioUrl: 'https://server10.mp3quran.net/ajm/001.mp3',
-    durationStr: '42 دقيقة'
-  },
-  {
-    id: 'muaiqly',
-    name: 'الشيخ ماهر المعيقلي',
-    description: 'رقية السكينة والشفاء المباركة',
-    audioUrl: 'https://server12.mp3quran.net/maher/001.mp3',
-    durationStr: '35 دقيقة'
+    id: 'a-long-ruqya',
+    name: 'الرقية المطولة',
+    description: 'تسجيل متصل للبرنامج المطول من القرآن والسنة.',
+    audioUrl: 'https://islamicapi.com/audio/ruqyah/total_long_ruqyah.mp3'
   }
 ];
 
