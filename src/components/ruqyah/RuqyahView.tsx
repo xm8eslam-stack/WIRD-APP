@@ -485,7 +485,14 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
             </div>
             <select
               value={selectedReciterId}
-              onChange={event => setSelectedReciterId(event.target.value)}
+              onChange={event => {
+                audioVerseRef.current?.pause();
+                setPlayingVerseId(null);
+                setVerseLoopCount(0);
+                verseQueueRef.current = [];
+                verseItemRef.current = null;
+                setSelectedReciterId(event.target.value);
+              }}
               className="min-w-52 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-sm text-stone-800 dark:text-stone-100"
               aria-label="اختيار قارئ القرآن"
             >
@@ -614,10 +621,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     {/* Audio Play Button for Verse */}
                     {item.type === 'quran' && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleVerseAudio(item);
-                        }}
+                        type="button"
+                        aria-label={isPlayingVerse ? 'إيقاف تلاوة ' + item.title : 'استماع إلى ' + item.title}
+                        aria-pressed={isPlayingVerse}
+                        onClick={() => handleToggleVerseAudio(item)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                           isPlayingVerse
                             ? 'bg-amber-400 text-emerald-950 animate-pulse'
@@ -659,7 +666,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                           </div>
                         ) : (
                           <span className="text-xs text-stone-500 font-medium">
-                            {item.repeatTarget === null ? 'لا يوجد عدد ثابت؛ اضغط لتسجيل قراءتك' : 'اضغط على البطاقة لزيادة العداد'}
+                            {item.repeatTarget === null ? 'لا يوجد عدد ثابت؛ سجّل كل قراءة على حدة' : 'سجّل القراءة بعد إتمامها'}
                           </span>
                         )}
                       </div>
@@ -674,7 +681,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-500 dark:disabled:bg-stone-800 text-white px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                       >
                         <CheckCircle2 className="w-4 h-4" />
-                        <span>{item.repeatTarget !== null && isCompleted ? 'اكتمل' : currentCount > 0 ? 'تسجيل قراءة أخرى' : 'سجلت القراءة'}</span>
+                        <span>{item.repeatTarget !== null && isCompleted ? 'اكتمل' : currentCount > 0 ? 'تسجيل قراءة أخرى' : 'سجل قراءة'}</span>
                       </button>
 
                       {/* Repetition Counter Badge */}
@@ -722,6 +729,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
               {/* Play / Pause Toggle Button */}
               <button
+                type="button"
                 onClick={() => handleToggleStream()}
                 className="w-14 h-14 rounded-full bg-emerald-800 hover:bg-emerald-700 text-amber-200 flex items-center justify-center shadow-lg transition-transform active:scale-95 shrink-0"
                 aria-label={isStreamPlaying ? 'إيقاف مؤقت' : 'تشغيل الرقية'}
@@ -736,8 +744,9 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 type="range"
                 aria-label="موضع التسجيل الصوتي"
                 min="0"
-                max={streamDuration || 100}
-                value={streamProgress}
+                max={streamDuration || 0}
+                value={Math.min(streamProgress, streamDuration || 0)}
+                disabled={!Number.isFinite(streamDuration) || streamDuration <= 0}
                 onChange={handleSeekStream}
                 className="w-full accent-emerald-700 dark:accent-emerald-400 h-2 bg-stone-100 dark:bg-stone-800 rounded-lg cursor-pointer"
               />
@@ -818,7 +827,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     }`}>
                       {isSelected && isStreamPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
