@@ -374,13 +374,6 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().getProjectionConflictCount();
   },
 
-  async markProjectionConflictResolved(
-    eventId: string,
-    resolution: 'keep-local' | 'use-remote'
-  ): Promise<boolean> {
-    await migrateLegacyOutboxToIndexedDb();
-    return getIndexedDbJournal().markProjectionConflictResolved(eventId, resolution);
-  },
 
   async isRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean> {
     await migrateLegacyOutboxToIndexedDb();
