@@ -212,3 +212,10 @@ The 147-row table above is the exact original main baseline. The following files
 | `src/tests/tafsirProxy.test.ts` | PR #64 | Adds upstream HTML-to-JSON-502 regression test. |
 
 All listed PRs are Draft and unmerged at this checkpoint. These are implementation notes, not a change to the original main-baseline file count.
+
+| `src/services/quranMath.ts` | PR #65 | Validates integer coordinates against canonical Surah verse counts; rejects invalid offsets, absolute indexes and fractional chunk sizes; invalid range counts return zero. |
+| `src/services/planningEngine.ts` | PR #65 | Rejects invalid start dates, invalid Quran ranges, fractional pace and schedules without active study days; fixes target-date pace variable shadowing. |
+| `src/services/domainEvents.ts` | PR #65 | Uses canonical QuranMath validation for weak-verse, revision-rating and session-completion events. |
+| `src/tests/quranMathValidation.test.ts` | PR #65 | New coordinate/range boundary tests. |
+| `src/tests/domainEventCoordinateValidation.test.ts` | PR #65 | New event payload boundary tests. |
+| `src/tests/runAllTests.ts` | PR #65 | Registers both new validation suites in aggregate CI. |
