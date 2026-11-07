@@ -61,12 +61,27 @@ export async function runRuqyahAudioServiceTests(): Promise<{ passed: number; fa
       );
       assert(
         buildQuranAyahAudioUrl('ar.sudais', 1) ===
-          'https://cdn.islamic.network/quran/audio/192/ar.sudais/1.mp3',
+          'https://cdn.islamic.network/quran/audio/192/ar.abdurrahmaansudais/1.mp3',
         'Al-Sudais must use the provider-documented 192 kbps edition path'
       );
       assert(buildQuranAyahAudioUrl('ar.alafasy', 6236).endsWith('/ar.alafasy/6236.mp3'),
         'Last canonical ayah should produce a bounded URL');
       assert(FALLBACK_QURAN_RECITERS.length === 7, 'Expected seven curated reciters');
+      assert(
+        buildQuranAyahAudioUrl('ar.abdulbasit', 1) ===
+          'https://cdn.islamic.network/quran/audio/192/ar.abdulbasitmurattal/1.mp3',
+        'Abdul Basit API edition must map to the real CDN directory'
+      );
+      assert(
+        buildQuranAyahAudioUrl('ar.shuraim', 1) ===
+          'https://cdn.islamic.network/quran/audio/64/ar.saoodshuraym/1.mp3',
+        'Al-Shuraim must use its real 64 kbps CDN directory'
+      );
+      assert(
+        buildQuranAyahAudioUrl('ar.ajamy', 1) ===
+          'https://cdn.islamic.network/quran/audio/64/ar.ahmedajamy/1.mp3',
+        'Al-Ajamy must use its real 64 kbps CDN directory'
+      );
     });
 
     await test('Audio URL builder rejects path injection and invalid Quran coordinates', () => {
