@@ -67,26 +67,52 @@ try {
   const alicePlan = doc(alice, 'users/alice/plans/plan-1');
 
   await test('Verified owner can create and read a valid profile envelope', async () => {
-    await assertSucceeds(setDoc(aliceProfile, validEnvelope));
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'profile',
+      documentId: 'main',
+      operation: 'upsert',
+      schemaVersion: 1,
+      mutationId: 'mutation-test-0001',
+      eventId: 'mutation-test-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: validEnvelope.updatedAtMs,
+      baseRevision: 0,
+      payload: validEnvelope.payload
+    });
     await assertSucceeds(getDoc(aliceProfile));
   });
 
   await test('Verified owner can write allowlisted plan documents', async () => {
-    await assertSucceeds(setDoc(alicePlan, {
-      ...validEnvelope,
-      payload: { title: 'Test plan', dailyTarget: 5 },
-      mutationId: 'mutation-plan-0001'
-    }));
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'plans',
+      documentId: 'plan-1',
+      operation: 'upsert',
+      schemaVersion: 1,
+      mutationId: 'mutation-plan-0001',
+      eventId: 'mutation-plan-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: validEnvelope.updatedAtMs,
+      baseRevision: 0,
+      payload: { title: 'Test plan', dailyTarget: 5 }
+    });
   });
+
   await test('Verified owner can update a state document only with its exact base revision', async () => {
-    await assertSucceeds(setDoc(aliceProfile, {
-      ...validEnvelope,
-      payload: { displayName: 'WIRD revision 2' },
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'profile',
+      documentId: 'main',
+      operation: 'upsert',
+      schemaVersion: 1,
       mutationId: 'mutation-test-0002',
+      eventId: 'mutation-test-0002',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: 1_799_000_000_001,
       baseRevision: 1,
-      revision: 2,
-      updatedAtMs: 1_799_000_000_001
-    }));
+      payload: { displayName: 'WIRD revision 2' }
+    });
   });
 
   await test('Stale revision and legacy unversioned writes are denied', async () => {
@@ -155,12 +181,19 @@ try {
   });
 
   await test('Valid tombstones are accepted but physical deletes are denied', async () => {
-    const tombstone = doc(alice, 'users/alice/plans/deleted-plan');
-    await assertSucceeds(setDoc(tombstone, {
-      ...validEnvelope,
+    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+      uid: 'alice',
+      collection: 'plans',
+      documentId: 'deleted-plan',
+      operation: 'tombstone',
+      schemaVersion: 1,
       mutationId: 'mutation-tombstone-0001',
-      deletedAt: new Date('2026-11-05T00:00:00.000Z')
-    }));
+      eventId: 'mutation-tombstone-0001',
+      deviceId: 'test-device-01',
+      clientUpdatedAtMs: validEnvelope.updatedAtMs,
+      baseRevision: 0,
+      payload: { deleted: true }
+    });
     await assertFails(deleteDoc(alicePlan));
   });
 
