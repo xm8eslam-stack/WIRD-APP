@@ -8,7 +8,7 @@ Last updated: 2026-11-07
 - Default branch: `main`
 - Latest reviewed phase merge: PR #105, merge commit `d71908b3e411bcd7d1db2b09318eb3c95564198e`.
 - Working checkpoint branch: `test/ruqyah-source-registry-hardening-20261107`.
-- All nine implementation phases below are merged to `main`.
+- All ten implementation phases below are merged to `main`.
 
 ## Merged implementation phases
 
@@ -19,6 +19,7 @@ Last updated: 2026-11-07
 | Accessible counters and audio UX | #93 | `f6ebdbd93bb5b8ec0f3d5888ec7b54040ce997d3` | 500 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Backup/reset refresh consistency + release checklist | #95 | `52e62d6b21057cf0d796cc3b137f4087cbe2e983` | 504 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | IslamicAPI proxy hardening + topic gate | #97 | `217f7136244d4d7afd02a9c52be86f520c1baefa` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
+| Sunni source allowlist and unverified audio lockdown | #105 | `d71908b3e411bcd7d1db2b09318eb3c95564198e` | 509 unit tests, 31 Firestore tests, TypeScript, build, server smoke passed |
 | Guarded manual Firestore rules deploy workflow | #98 | `8089579d020a6a4831cdc9ba4f25f8672f30cc3d` | 509 unit tests, 29 Firestore tests, TypeScript, build, server smoke passed |
 | Firestore Emulator preflight for manual rules deploy | #100 | `810e5ae3b9b63cf0b9d68c0d35466af7ae118a9d` | Exact-head Quality Gate passed; manual workflow now runs rules emulator tests before credentials/deploy |
 | Canonical storage migration integrity | #92 | `bd6fc3a79267ee7136746fed17c58a6ceac8b58c` | Exact-head Quality Gate passed; unversioned archive protection, duplicate IDs/ranges, stable legacy history IDs |
