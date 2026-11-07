@@ -32,7 +32,7 @@
 - سجل FILE_AUDIT_REGISTER يحتوي 147 صفًا مطابقًا للشجرة.
 - 147 ملفًا تمت مراجعتها مبدئيًا وتسجيل ملاحظة لكل منها.
 - ثلاثة ملفات PNG (public/apple-touch-icon.png وpublic/icon-192.png وpublic/icon-512.png) تمت معاينتها بصريًا؛ تظهر كمساحات بلون teal موحد دون علامة WIRD ظاهرة. سجّلها كعيب P2 ضمن الهوية البصرية/PWA.
-- تمت مقارنة جميع الفروع السبعين في baseline مع main، ثم أُضيفت خمسة فروع عمل جديدة؛ عدد الفروع الحي الآن 75:
+- تمت مقارنة جميع الفروع السبعين في baseline مع main، ثم أُضيفت ستة فروع عمل جديدة؛ عدد الفروع الحي الآن 76:
   - 65 فرعًا متباعدًا وله commits فريدة.
   - 4 فروع هي أسلاف لـ main ولا تحتوي commits فريدة، مرشحة للأرشفة/الحذف.
   - main مطابق لنفسه.
@@ -87,7 +87,7 @@ P2:
 ### أولاً: إغلاق المرحلة 0
 1. تحقق من رأس main ورأس فرع التدقيق الحاليين.
 2. أكد ملاحظة الأيقونات الثلاثة في التقرير؛ Phase 0 مكتملة بالفعل.
-3. تحقق من 147 صفًا في FILE_AUDIT_REGISTER و70 صفًا في baseline matrix، مع 75 فرعًا حيًا الآن.
+3. تحقق من 147 صفًا في FILE_AUDIT_REGISTER و70 صفًا في baseline matrix، مع 76 فرعًا حيًا الآن.
 4. تحقق من أن REMOTE_REPLICATION_PLAN.md موجود ومتوافق مع AGENTS.md.
 5. أضف إدخالًا مؤرخًا في docs/engineering/progress/WORK_LOG.md دون تعديل السجل التاريخي.
 6. حدّث CONTINUATION_PROMPT وREMEDIATION_PLAN بحالة PRs #61–#64.
@@ -171,21 +171,21 @@ Next engineering tasks after PR #65 CI is resolved:
 Never merge PR #61–#65 without explicit user approval, even if CI is green.
 
 
-## Live continuation correction — 2026-11-07 (verified after reconnect)
+## Live continuation correction — 2026-11-07 (latest verified checkpoint)
 
 This addendum supersedes contradictory status lines earlier in this file; fetch live refs again before acting.
 
-- main remains `6228150c2f7137678ba1079f5d9b2e8aba527523`.
-- Audit branch at start of this correction: `7c46b1d150071be6be8dbd7dfbd43053f87d4054`.
-- PR #61 exact head `dd5d5d620d03416e96975320a6443b6eab56fbcc`: Quality Gate run 42340818280 SUCCESS.
-- PR #62 current exact head `48fe031d67c358e3034dd5e64134d6b46513aab4`: Quality Gate run 42342109962 SUCCESS (406 tests in earlier exact-head run; current run also completed all steps including production smoke). This is newer than previously recorded green SHA `651f03e...`.
-- PR #63 exact head `6a7a2b8c3a6cb1b6bbca58ea6674834096a8de93`: runs 42341365536 and 42341457664 SUCCESS.
-- PR #64 exact head `aee5b433122a234d6f36edd38e383c964fca1e10`: runs 42341419175 and 42341470582 SUCCESS.
-- PR #65 is not yet created at the time of this addendum. Working branch `fix/quran-coordinate-validation-20261107` head `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`; compare main shows 13 commits ahead, 0 behind, seven changed files. Exact-head Quality Gate run 42342171626 is in progress; tests, Firestore Rules Emulator, TypeScript and production build have passed; production server smoke is still running.
-- PR #59 remains an important separate sync-status candidate. Its branch `fix/cloud-sync-retry-and-status` is 15 commits ahead and 4 behind main. It adds a truthful `partial` status and returns false because remote event import/projection is not implemented. Do not merge it wholesale; port/review only safe changes onto a fresh main-based branch if proceeding.
+- Main remains `6228150c2f7137678ba1079f5d9b2e8aba527523`; no remediation PR has been merged.
+- Audit branch head before this prompt update: `6f4c96661d1a8adfba6cac653d2345a09cb71ec1`. Latest exact compare showed it 53 commits ahead / 0 behind main; all changed paths are documentation-only.
+- Current live branch count is 76: the original 70-ref baseline plus the audit branch and five remediation branches.
+- PR #61 exact head `dd5d5d620d03416e96975320a6443b6eab56fbcc`: run 42340818280 SUCCESS, 404 passed / 0 failed; Vercel Preview Ready.
+- PR #62 exact head `48fe031d67c358e3034dd5e64134d6b46513aab4`: run 42342109962 SUCCESS, 407 passed / 0 failed; Vercel Preview blocked by daily build-rate limit.
+- PR #63 exact head `6a7a2b8c3a6cb1b6bbca58ea6674834096a8de93`: run 42341365536 SUCCESS, 404 passed / 0 failed; Vercel Preview blocked by daily build-rate limit.
+- PR #64 exact head `aee5b433122a234d6f36edd38e383c964fca1e10`: run 42341419175 SUCCESS, 405 passed / 0 failed; Vercel Preview blocked by daily build-rate limit.
+- PR #65 exact head `25d73e93e60bd6cc57102b7cfa643addbaa6ced2`: run 42342071131 SUCCESS, 417 passed / 0 failed; Vercel Preview Ready.
+- All five exact-head CI runs passed Firestore Rules Emulator 13/13, dependency audit, TypeScript, production build and server smoke. All PRs remain Draft/unmerged.
+- PR #59 remains an important separate sync-status candidate. Its branch `fix/cloud-sync-retry-and-status` was 15 commits ahead and 4 behind main at the original compare. It adds a truthful `partial` status and returns false because remote event import/projection is not implemented. Do not merge it wholesale; port/review only safe changes onto a fresh main-based branch if proceeding.
 - Critical finding confirmed directly in main `cloudSyncCoordinator.ts`: it uploads outbox documents, reads at most 20 remote events, does not persist or project them, then can report `synced` when pending outbox is empty. This is a false-completion defect. The #59 branch changes that to `partial` while remote reconciliation is incomplete.
-- `REMOTE_REPLICATION_PLAN.md` is design only. The existing main implementation has a local IndexedDB journal/outbox and projection replay, but no durable remote inbox/fetch cursor, no remote event import/projector, and no revision/CAS transaction. Firestore rules still accept generic snapshot envelopes and generic domain event payloads; no server-owned monotonic revision enforcement.
+- `docs/sync/REMOTE_REPLICATION_PLAN.md` is design only. Main has a local IndexedDB journal/outbox and projection replay, but no durable remote inbox/fetch cursor, no remote event import/projector, and no revision/CAS transaction. Firestore rules still accept generic snapshot envelopes and generic domain event payloads; no server-owned monotonic revision enforcement.
 - Never claim multi-device sync works or merge/deploy without the required independent-client evidence and explicit authorization.
 
-
-Last verified audit branch head before this refresh: 6a6bfb3622886ac464e5484b35abbd0d4784e448.
