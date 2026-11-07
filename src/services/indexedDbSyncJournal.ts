@@ -119,6 +119,7 @@ interface DeviceMetadata {
   remoteRevisions?: Record<string, { revision: number; localSequence: number }>;
   remoteCursor?: number;
   remoteProjectionCursor?: number;
+  remoteInitializedCollections?: SyncCollection[];
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -1174,6 +1175,8 @@ export class IndexedDbSyncJournal {
         const current = remoteRevisions[revisionKey];
         if (current && current.revision > revision) return;
         const nextSequence = metadata?.nextSequence ?? 1;
+        const initialized = new Set(metadata?.remoteInitializedCollections || []);
+        initialized.add(collection);
         remoteRevisions[revisionKey] = {
           revision,
           localSequence: Math.max(current?.localSequence ?? 0, nextSequence - 1)
@@ -1183,12 +1186,52 @@ export class IndexedDbSyncJournal {
             uid, deviceId: createSecureId(), schemaVersion: 1,
             nextSequence: 1, lastProjectedSequence: 0
           }),
-          remoteRevisions
+          remoteRevisions,
+          remoteInitializedCollections: [...initialized]
         } satisfies DeviceMetadata);
         updated = true;
       };
       transaction.oncomplete = () => resolve(updated);
       transaction.onabort = () => reject(failure || normalizeError(transaction.error || new Error('Remote revision cache transaction aborted.')));
+    });
+  }
+
+  async isRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection)) throw new Error('مجموعة المزامنة غير صالحة.');
+    const database = await this.openDatabase();
+    const transaction = database.transaction([STORE_METADATA], 'readonly');
+    const completed = transactionComplete(transaction);
+    const request = transaction.objectStore(STORE_METADATA).get(uid);
+    const metadata = await requestResult(request) as DeviceMetadata | undefined;
+    await completed;
+    return (metadata?.remoteInitializedCollections || []).includes(collection);
+  }
+
+  async markRemoteCollectionInitialized(collection: SyncCollection): Promise<boolean> {
+    const uid = activeUid();
+    if (!ALLOWED_COLLECTIONS.has(collection)) throw new Error('مجموعة المزامنة غير صالحة.');
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction([STORE_METADATA], 'readwrite');
+      const store = transaction.objectStore(STORE_METADATA);
+      const request = store.get(uid);
+      let updated = false;
+      request.onsuccess = () => {
+        const metadata = request.result as DeviceMetadata | undefined;
+        const initialized = new Set(metadata?.remoteInitializedCollections || []);
+        initialized.add(collection);
+        store.put({
+          ...(metadata || {
+            uid, deviceId: createSecureId(), schemaVersion: 1,
+            nextSequence: 1, lastProjectedSequence: 0
+          }),
+          remoteInitializedCollections: [...initialized]
+        } satisfies DeviceMetadata);
+        updated = true;
+      };
+      transaction.oncomplete = () => resolve(updated);
+      transaction.onabort = () => reject(normalizeError(transaction.error || new Error('Remote collection initialization transaction aborted.')));
     });
   }
 
