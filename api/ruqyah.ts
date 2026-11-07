@@ -92,7 +92,7 @@ function validPayload(type: string, payload: unknown): boolean {
     !Array.isArray(row.content) ||
     row.content.length > 500 ||
     row.content.some(part => !isRecord(part) ||
-      typeof part.type !== 'string' ||
+      typeof part.type !== 'string' || !ALLOWED_TOPIC_BLOCK_TYPES.has(part.type) ||
       typeof part.content !== 'string')
   )) return false;
 
