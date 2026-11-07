@@ -37,6 +37,11 @@ import { runAudioPreferencesTests } from '../services/audioPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
 import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.test';
 import { runRuqyahIntegrityTests } from './ruqyahIntegrity.test';
+import { runRuqyahContentServiceTests } from '../services/ruqyahContentService.test';
+import { runRuqyahProxyTests } from './ruqyahProxy.test';
+import { runRuqyahAudioServiceTests } from './ruqyahAudioService.test';
+import { runRuqyahProgressServiceTests } from '../services/ruqyahProgressService.test';
+import { runRuqyahApiServiceTests } from '../services/ruqyahApiService.test';
 
 export interface SuiteResult {
   passed: number;
@@ -120,6 +125,11 @@ async function main() {
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
     { name: 'Cloud Sync Coordinator & Remote Reconciliation', runner: runCloudSyncCoordinatorTests },
+    { name: 'Ruqyah API Client & Canonical External Quran Validation', runner: runRuqyahApiServiceTests },
+    { name: 'Ruqyah UID-Scoped Progress Persistence & Recovery', runner: runRuqyahProgressServiceTests },
+    { name: 'Ruqyah Quran Reciter Catalog & Verse Audio URLs', runner: runRuqyahAudioServiceTests },
+    { name: 'Ruqyah API Proxy Security, Validation & Key Isolation', runner: runRuqyahProxyTests },
+    { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
   ];
 
