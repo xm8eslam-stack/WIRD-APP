@@ -28,6 +28,13 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   assert(getCloudSyncCompletionStatus(-1, false) === 'error',
     'Invalid pending counts cannot produce a successful sync status');
 
+  // Every private revisioned collection must participate in legacy first-sync detection.
+  // Ruqyah progress was added after the original collection scan and must not be skipped.
+  assert(
+    (await import('./cloudSyncCoordinator')).LEGACY_REMOTE_STATE_COLLECTIONS.includes('ruqyahProgress'),
+    'Ruqyah progress participates in the legacy remote-state first-sync scan'
+  );
+
   const remoteEvent = { baseRevision: 1, revision: 2, operation: 'upsert' as const };
   assert(decideRemoteProjection(remoteEvent, {
     cachedRevision: 1, hasPendingLocalMutation: false, localProjectionEmpty: false
