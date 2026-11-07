@@ -48,9 +48,15 @@ export async function writeImmutableRemoteEvent(
   uid: string,
   event: ImmutableRemoteDomainEvent
 ): Promise<ImmutableEventWriteResult> {
-  if (!uid || event.uid !== uid || !event.eventId || event.schemaVersion !== 1 ||
-      !event.mutationId || !event.deviceId || !Number.isSafeInteger(event.occurredAtMs) ||
-      event.occurredAtMs < 0 || !event.eventType || !isRecord(event.payload)) {
+  const validPathId = (value: string): boolean =>
+    value.length > 0 && value.length <= 128 && !/[\\u0000-\\u001f/]/.test(value);
+  const payloadBytes = new TextEncoder().encode(stableStringify(event.payload)).byteLength;
+  if (!validPathId(uid) || event.uid !== uid || !validPathId(event.eventId) ||
+      !validPathId(event.mutationId) || event.schemaVersion !== 1 ||
+      !validPathId(event.deviceId) || !Number.isSafeInteger(event.occurredAtMs) ||
+      event.occurredAtMs < 0 || typeof event.eventType !== 'string' ||
+      event.eventType.length === 0 || event.eventType.length > 64 ||
+      !isRecord(event.payload) || payloadBytes > 128_000) {
     throw new Error('INVALID_REMOTE_EVENT');
   }
 
