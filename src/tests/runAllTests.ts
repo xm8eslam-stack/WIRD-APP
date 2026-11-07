@@ -132,7 +132,7 @@ async function main() {
     { name: 'Ruqyah API Proxy Security, Validation & Key Isolation', runner: runRuqyahProxyTests },
     { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
-    { name: 'Ruqyah UI Audio Lock & Disabled Controls', runner: runRuqyahViewAudioLockTests },
+    { name: 'Ruqyah Audio Playback Safety & Source Allowlist', runner: runRuqyahViewAudioLockTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
