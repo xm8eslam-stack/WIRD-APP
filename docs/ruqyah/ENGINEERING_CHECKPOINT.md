@@ -37,7 +37,7 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 4. Full-program recording URLs are empty and the playback UI is disabled pending full-content verification.
 5. IslamicAPI is used only as a Quran-reference index through a server-only proxy; only `from-quran` is accepted. The proxy returns only a validated item ID and normalized numeric coordinates; provider-authored text, translations, references, and category labels are stripped. Displayed Arabic and surah metadata come from WIRD's canonical corpus.
 6. Unsupported repetition counts and unsubstantiated disease/magic claims were removed.
-7. Educational topic endpoints remain disabled by default behind server-only `RUQYAH_TOPICS_ENABLED`; do not enable until each article and reference is reviewed.
+7. Educational topic and category endpoints are hard-disabled; no environment-variable override exists. Do not reintroduce them until each article is curated from a named, reviewed Sunni source.
 
 ### Progress and synchronization
 1. Progress schema v1: max 200 item IDs, each count 0–1000, validated IDs and timestamp.
@@ -61,7 +61,7 @@ Dependency audit passed in phases #93–#98. The previous main SHA `f2c3f32f6440
 2. In-memory rate-limit buckets are bounded; this is per-serverless-instance best effort, not a global quota.
 3. Upstream body declared length is checked before reading and streaming is capped at 2 MiB, including chunked responses.
 4. Topic content blocks are type-allowlisted.
-5. Topic and topic-category API endpoints require server-side `RUQYAH_TOPICS_ENABLED=true`; default is disabled.
+5. Topic and topic-category API endpoints are hard-disabled and always reject requests.
 6. Third-party Sunnah content is rejected before upstream access; backend accepts only `from-quran`.
 7. Provider-authored Quran titles, Arabic strings, references, introductions, translations, and category labels are never exposed to the browser; only numeric coordinates are returned after server validation.
 
@@ -109,7 +109,7 @@ Phase 8 requires exact-head CI before merge.
 
 - MuslimPack Ruqayyah: https://github.com/muslimpack/Ruqayyah — Flutter app under GPL-3.0. No code was copied. Reusing its source code requires a GPL-3.0 compatibility/source-distribution decision or separate permission. Its README attributes content to a published Ruqyah book; do not copy book text wholesale without rights review.
 - IslamicAPI: https://islamicapi.com/doc/ruqyah/ and https://islamicapi.com/terms/ — API is described as free but requires registration/API key and is subject to fair-use restrictions. Keep `ISLAMICAPI_API_KEY` server-side.
-- IslamicAPI dataset repository has no discoverable LICENSE file on its main branch. WIRD uses the documented API and does not vendor or redistribute the raw dataset. Keep topic articles disabled until content and references are reviewed.
+- IslamicAPI dataset repository has no discoverable LICENSE file on its main branch. WIRD uses only the documented Quran locator API and does not vendor or redistribute the raw dataset. Topic/article endpoints are hard-disabled.
 
 ## Production release blockers — NOT VERIFIED
 
@@ -123,7 +123,6 @@ Phase 8 requires exact-head CI before merge.
    - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
    - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` only after Firestore rules deployment.
    - `ISLAMICAPI_API_KEY` server-side secret only.
-   - Leave `RUQYAH_TOPICS_ENABLED` unset/false.
 4. Live two-device sync, production API, mobile RTL, and keyboard/screen-reader smoke tests have not been executed against the deployed site. Audio is intentionally disabled until its source is approved.
 
 ## Required live verification after deployment
@@ -143,6 +142,6 @@ Phase 8 requires exact-head CI before merge.
 2. Fetch current `main` SHA and all open PRs; never trust a copied SHA.
 3. Review any pending PR diff and exact-head CI runs before merging.
 4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
-5. Do not enable educational topic endpoints until a scholar/content reviewer has approved each article and its references.
+5. Do not expose educational topic endpoints; any future locally curated article must have named Sunni source review, rights review, and source-registry tests before implementation.
 6. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
 7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.
