@@ -1,5 +1,15 @@
 # WIRD Sync Failure Recovery
 
+## 2026-11-07 — refreshed recovery audit after PR #134–#140
+
+- Latest main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305`.
+- PR #134 preserves grouped transaction pending Outbox evidence; archive overflow/fingerprint mismatch must remain fail-closed. Inbox and Outbox are not deleted and cursor does not advance.
+- Projection intent recovers remote event projection only; it is not a durable user resolution decision.
+- User decision persistence, latest revision revalidation, resolution mutation acknowledgement and crash recovery across decision/commit remain unimplemented.
+- PR #135 preserves corrupt Ruqyah bytes, clears stale in-memory counts and blocks writes pending recovery. PR #137 adds confirmed safe reset; PR #139 restores keyboard focus/Escape behavior; PR #140 checkpoints the changes.
+- Vercel remains quota-limited; production deployment/live behavior is unverified.
+
+
 ## Projection crash recovery
 
 Before local projection, the journal records a durable `RemoteProjectionIntent`. The local projection and finalization are serialized through the IndexedDB journal transaction. Finalization commits the remote revision and projection cursor and removes the inbox event atomically. If projection/finalization fails, the intent and event remain for restart recovery.
@@ -46,3 +56,15 @@ After a future user decision is implemented, the next recovery requirement is to
 ## Current resolution status (PR #126/#129)
 
 The archive now preserves local pending mutation evidence and the projector/finalizer distinguish same-document conflicts from unrelated documents. User-directed keep-local/use-remote/merge decisions, latest remote revision revalidation, idempotent completion, and interrupted-resolution recovery remain unimplemented. Keep unresolved conflicts blocked.
+
+
+## 2026-11-07 — refreshed recovery audit after PR #134–#139
+
+- Latest main SHA: `28a1c4339d31bb66549402db36cfc40357caf65f`.
+- PR #134 ensures grouped transaction conflict archival captures pending Outbox mutations in every validated affected collection. Archive overflow/fingerprint mismatch remains fail-closed; Inbox and Outbox are not deleted and projection cursor does not advance.
+- The existing projection intent only recovers remote event projection. It is not a durable user resolution decision and must not be treated as one.
+- User decision persistence, latest-revision revalidation, resolution-mutation acknowledgement, and crash recovery across the decision/commit boundary remain unimplemented.
+- PR #135 adds fail-closed handling for corrupt Ruqyah progress: stale in-memory counts are cleared while original corrupt bytes are preserved and writes remain blocked until explicit recovery.
+- PR #137 requires explicit confirmation for category counter reset and disables reset while progress is not hydrated or corrupt. PR #139 restores keyboard focus and supports Escape cancellation.
+- Current main Vercel status is limited by the Free-plan daily deployment quota; production deployment/live behavior remains unverified.
+
