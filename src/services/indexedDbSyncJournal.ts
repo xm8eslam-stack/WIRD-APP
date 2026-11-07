@@ -571,6 +571,7 @@ export class IndexedDbSyncJournal {
           schemaVersion: 1,
           nextSequence,
           lastProjectedSequence: currentMetadata?.lastProjectedSequence ?? 0,
+          remoteRevisions: currentMetadata?.remoteRevisions ?? {},
           legacyOutboxMigrated: true,
           legacyOutboxFingerprint
         } satisfies DeviceMetadata);
@@ -920,7 +921,7 @@ export class IndexedDbSyncJournal {
     const uid = activeUid();
     if (!validMutationId(mutationId) || !Number.isSafeInteger(expectedBaseRevision) ||
         expectedBaseRevision < 0 || !Number.isSafeInteger(nextBaseRevision) ||
-        nextBaseRevision !== expectedBaseRevision + 1) {
+        nextBaseRevision <= expectedBaseRevision) {
       throw new Error('بيانات إعادة تأسيس إصدار العملية غير صالحة.');
     }
     const database = await this.openDatabase();
