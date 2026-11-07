@@ -2336,7 +2336,7 @@ export class IndexedDbSyncJournal {
    * freshly verified remote revision. The chosen local projection is never
    * overwritten; old mutation evidence remains in the conflict archive.
    *
-   * Grouped syncMeta events and tombstones are intentionally rejected until
+   * Grouped syncMeta events, additive Ruqyah counter snapshots, and tombstones are intentionally rejected until
    * their collection-wide replay semantics have a dedicated executor.
    */
   async commitKeepLocalConflictResolution(
@@ -2392,7 +2392,7 @@ export class IndexedDbSyncJournal {
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
             !event || event.eventId !== eventId || event.operation !== 'upsert' ||
-            event.collection === 'syncMeta' ||
+            event.collection === 'syncMeta' || event.collection === 'ruqyahProgress' ||
             !resolutionIntent || resolutionIntent.uid !== uid ||
             resolutionIntent.eventId !== eventId || resolutionIntent.status !== 'prepared' ||
             resolutionIntent.decision !== 'keep-local' ||
