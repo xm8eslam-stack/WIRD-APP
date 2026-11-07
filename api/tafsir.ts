@@ -151,9 +151,12 @@ export default async function handler(req: any, res: any) {
       }
 
       const payload = parseUpstreamJson(await upstream.text());
-      const tafsirRecord = isRecord(payload) && isRecord(payload.tafsir) ? payload.tafsir : null;
-      const rawText = tafsirRecord?.text;
-      if (!payload || typeof rawText !== 'string' || !rawText.trim()) {
+      if (!isRecord(payload) || !isRecord(payload.tafsir)) {
+        res.setHeader('Cache-Control', 'no-store');
+        return send(res, 502, { error: 'INVALID_TAFSIR_SOURCE_RESPONSE' });
+      }
+      const rawText = payload.tafsir.text;
+      if (typeof rawText !== 'string' || !rawText.trim()) {
         res.setHeader('Cache-Control', 'no-store');
         return send(res, 404, { error: 'TAFSIR_NOT_FOUND' });
       }
