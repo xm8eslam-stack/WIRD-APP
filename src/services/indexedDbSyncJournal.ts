@@ -3,7 +3,7 @@ import { StorageService } from './storageService';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
 
 const DATABASE_NAME = 'wird-sync-journal';
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 4;
 const STORE_EVENTS = 'events';
 const STORE_OUTBOX = 'outbox';
 const STORE_ACKNOWLEDGEMENTS = 'acknowledgements';
@@ -39,6 +39,7 @@ export interface JournalEvent {
   payload: Record<string, unknown>;
   fingerprint: string;
   sequence: number;
+  baseRevision?: number;
   projectionRequired?: boolean;
 }
 
@@ -59,6 +60,8 @@ export interface JournalOutboxEntry {
   nextAttemptAtMs: number;
   lastErrorCode?: string;
   fingerprint: string;
+  sequence: number;
+  baseRevision: number;
 }
 
 export interface JournalSnapshot {
@@ -84,6 +87,7 @@ interface DeviceMetadata {
   schemaVersion: 1;
   nextSequence: number;
   lastProjectedSequence: number;
+  remoteRevisions?: Record<string, { revision: number; localSequence: number }>;
   legacyOutboxMigrated?: boolean;
   legacyOutboxFingerprint?: string;
 }
@@ -101,6 +105,7 @@ export interface LegacyOutboxMutation {
   attemptCount: number;
   nextAttemptAtMs: number;
   lastErrorCode?: string;
+  baseRevision?: number;
 }
 
 export interface LegacyOutboxState {
@@ -312,6 +317,38 @@ export class IndexedDbSyncJournal {
                 events.put(event);
               }
             }
+          };
+        }
+
+        if (upgradeEvent.oldVersion >= 3 && upgradeEvent.oldVersion < 4) {
+          // Add delivery revision metadata without changing any existing event or payload.
+          const eventRequest = events.getAll();
+          const outboxStore = upgradeTransaction.objectStore(STORE_OUTBOX);
+          const outboxRequest = outboxStore.getAll();
+          let eventsReady = false;
+          let outboxReady = false;
+          let existingEvents: JournalEvent[] = [];
+          let existingOutbox: JournalOutboxEntry[] = [];
+          const migrateOutbox = () => {
+            if (!eventsReady || !outboxReady) return;
+            const sequenceByKey = new Map(existingEvents.map(event => [event.key, event.sequence]));
+            for (const mutation of existingOutbox) {
+              outboxStore.put({
+                ...mutation,
+                sequence: sequenceByKey.get(mutation.key) ?? 0,
+                baseRevision: 0
+              });
+            }
+          };
+          eventRequest.onsuccess = () => {
+            existingEvents = eventRequest.result as JournalEvent[];
+            eventsReady = true;
+            migrateOutbox();
+          };
+          outboxRequest.onsuccess = () => {
+            existingOutbox = outboxRequest.result as JournalOutboxEntry[];
+            outboxReady = true;
+            migrateOutbox();
           };
         }
       };
