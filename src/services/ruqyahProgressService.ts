@@ -1,5 +1,5 @@
 import { STORAGE_KEYS, StorageService } from './storageService';
-import { createEmptyRuqyahProgressSnapshot, isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import { isValidRuqyahProgressCounts, isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import { LocalSyncOutbox } from './localSyncOutbox';
 
