@@ -930,11 +930,10 @@ try {
         email: 'ruqyah-sync@example.com', email_verified: true, device: 'ruqyah-b'
       }).firestore();
       activateIsolatedDevice(localStorageA, uid);
-      const progress = {
-        schemaVersion: 1 as const,
-        updatedAtMs: 1_799_000_200_001,
-        counts: { 'q-fatiha': 9, 'dua-pain': 7 }
-      };
+      const deviceAId = (await journalA.getSnapshot()).deviceId;
+      let progress = createEmptyRuqyahProgressSnapshot(1_799_000_200_001);
+      progress = adjustRuqyahProgressCounter(progress, 'q-fatiha', deviceAId, 9, 1_799_000_200_002);
+      progress = adjustRuqyahProgressCounter(progress, 'dua-pain', deviceAId, 7, 1_799_000_200_003);
       const queued = await journalA.enqueue({
         mutationId: 'ruqyah-device-a-001',
         collection: 'ruqyahProgress',
@@ -981,11 +980,17 @@ try {
         throw new Error('Device B did not converge on Device A Ruqyah progress through the cloud journal.');
       }
       // The second device now edits the same snapshot using the exact remote revision.
-      const nextProgress = {
-        schemaVersion: 1 as const,
-        updatedAtMs: progress.updatedAtMs + 10,
-        counts: { 'q-fatiha': 10, 'dua-pain': 7 }
-      };
+      if (!received || received.schemaVersion !== 2) {
+        throw new Error('Device B must receive the V2 PN-counter snapshot before incrementing.');
+      }
+      const deviceBId = (await journalB.getSnapshot()).deviceId;
+      const nextProgress = adjustRuqyahProgressCounter(
+        received,
+        'q-fatiha',
+        deviceBId,
+        1,
+        progress.updatedAtMs + 10
+      );
       const queuedB = await journalB.enqueue({
         mutationId: 'ruqyah-device-b-001',
         collection: 'ruqyahProgress',
