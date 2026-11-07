@@ -18,6 +18,7 @@ import { writeRevisionedRemoteMutation } from '../src/services/revisionedRemoteM
 import { IndexedDbSyncJournal, type JournalEvent, type JournalOutboxEntry, type RemoteInboxEventInput } from '../src/services/indexedDbSyncJournal';
 import { CLEAN_INITIAL_PROFILE, StorageService, STORAGE_KEYS } from '../src/services/storageService';
 import { projectRemoteInboxBatch, type RemoteProjectionDependencies } from '../src/services/remoteInboxProjector';
+import { PlanningEngine } from '../src/services/planningEngine';
 
 class IsolatedMemoryStorage implements Storage {
   private readonly values = new Map<string, string>();
@@ -97,6 +98,19 @@ function makeLocalJournalEvent(mutation: JournalOutboxEntry): JournalEvent {
 function readRemoteEvent(snapshot: Awaited<ReturnType<typeof getDoc>>): RemoteInboxEventInput {
   if (!snapshot.exists()) throw new Error('The accepted server event is missing.');
   return snapshot.data() as unknown as RemoteInboxEventInput;
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return '[' + value.map(item => item === undefined ? 'null' : stableStringify(item)).join(',') + ']';
+  }
+  if (value !== null && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    return '{' + Object.keys(record).filter(key => record[key] !== undefined).sort().map(key =>
+      JSON.stringify(key) + ':' + stableStringify(record[key])
+    ).join(',') + '}';
+  }
+  return JSON.stringify(value) ?? 'null';
 }
 
 const projectId = 'demo-wird-rules';
@@ -1128,20 +1142,65 @@ try {
       const firestoreB = testEnv.authenticatedContext(uid, {
         email: 'multi-collection@example.com', email_verified: true, device: 'matrix-device-b'
       }).firestore();
+      const profileA = { ...CLEAN_INITIAL_PROFILE, name: 'Device A populated profile', memorizationGoal: 'حفظ ومراجعة يومية', streakDays: 8 };
+      const profileB = { ...profileA, name: 'Device B updated profile', memorizationGoal: 'تثبيت المحفوظ بالمراجعة', streakDays: 12 };
+      const planA = {
+        id: 'matrix-plan-1', title: 'خطة الفاتحة', description: 'سجل خطة فعلي للمزامنة',
+        type: 'custom' as const, targetSurahs: [1], totalUnits: 7, completedUnits: 2,
+        unitType: 'ayah' as const, dailyTarget: 2, memorizationDaysPerWeek: 5,
+        revisionDaysPerWeek: 2, startDate: '2026-11-07', targetEndDate: '2026-12-07', isActive: true
+      };
+      const planB = { ...planA, completedUnits: 4, isActive: false, description: 'تعديل الجهاز B للخطة' };
+      const enginePlanA = JSON.parse(JSON.stringify(PlanningEngine.generatePlan({
+        title: 'خطة المحرك للاختبار', startSurah: 1, startAyah: 1, endSurah: 1, endAyah: 3,
+        startDate: '2026-11-07', level: 'beginner', dailyAvailableMinutes: 45,
+        dailyRevisionMinutes: 15, paceType: 'verses_per_day', paceQuantity: 1,
+        activeDays: [0, 1, 2, 3, 4, 5, 6], restDays: [], schedulePreference: 'single_session'
+      })));
+      const enginePlanB = {
+        ...enginePlanA,
+        title: 'خطة المحرك بعد تعديل B',
+        actualVsPlanned: { ...enginePlanA.actualVsPlanned, plannedVersesToDate: 2, actualVersesMemorized: 2, varianceVerses: 0 }
+      };
+      const portionA = {
+        id: 's1_a1_a7', type: 'passage' as const, surahNumber: 1, surahName: 'الفاتحة',
+        startAyah: 1, endAyah: 7, status: 'stable' as const, nextDueDate: '2026-11-08',
+        intervalDays: 1, easeFactor: 2.5, repetitionCount: 1, revisionType: 'minor' as const,
+        strength: 'strong' as const
+      };
+      const portionB = { ...portionA, status: 'needs_revision' as const, intervalDays: 3, repetitionCount: 2, strength: 'medium' as const };
+      const weakVerseA = {
+        id: 'matrix-weak-verse-1', surahNumber: 1, surahName: 'الفاتحة', ayahNumber: 2,
+        text: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ', mistakeCount: 2,
+        lastFailedDate: '2026-11-06', notes: 'موضع يحتاج إلى تثبيت'
+      };
+      const weakVerseB = { ...weakVerseA, mistakeCount: 4, notes: 'تكرر الخطأ ثم تمت مراجعته على الجهاز B' };
+      const testA = {
+        id: 'matrix-test-1', date: '2026-11-07', type: 'complete_verse' as const,
+        surahName: 'الفاتحة', score: 3, totalQuestions: 5, weakVerses: ['1:2', '1:5']
+      };
+      const testB = { ...testA, score: 4, weakVerses: ['1:5'] };
+      const activityA = {
+        date: '2026-11-07', memorizedAyahsCount: 3, reviewedPagesCount: 1,
+        minutesSpent: 18, completedTasks: ['حفظ الفاتحة', 'مراجعة البقرة']
+      };
+      const activityB = { ...activityA, memorizedAyahsCount: 5, minutesSpent: 27, completedTasks: [...activityA.completedTasks, 'اختبار الحفظ'] };
+      const ruqyahA = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_700_000, counts: { 'q-fatiha': 3, 'dua-pain': 2 } };
+      const ruqyahB = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_701_100, counts: { 'q-fatiha': 4, 'dua-pain': 5 } };
+
       const collections = [
-        { collection: 'profile', payload: { profile: CLEAN_INITIAL_PROFILE }, key: STORAGE_KEYS.PROFILE, kind: 'object' },
-        { collection: 'plans', payload: { records: [] }, key: STORAGE_KEYS.PLANS, kind: 'array' },
-        { collection: 'enginePlans', payload: { records: [] }, key: STORAGE_KEYS.ENGINE_PLANS, kind: 'array' },
-        { collection: 'portions', payload: { records: [] }, key: STORAGE_KEYS.UNIFIED_PORTIONS, kind: 'array' },
-        { collection: 'weakVerses', payload: { records: [] }, key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
-        { collection: 'tests', payload: { records: [] }, key: STORAGE_KEYS.TESTS, kind: 'array' },
-        { collection: 'activityEvents', payload: { records: [] }, key: STORAGE_KEYS.LOGS, kind: 'array' },
-        { collection: 'ruqyahProgress', payload: {
-          snapshot: { schemaVersion: 1, updatedAtMs: 1_799_000_700_000, counts: { 'q-fatiha': 3 } }
-        }, key: STORAGE_KEYS.RUQYAH_PROGRESS, kind: 'ruqyah' }
+        { collection: 'profile', payload: { profile: profileA }, reversePayload: { profile: profileB }, expected: profileA, reverseExpected: profileB, key: STORAGE_KEYS.PROFILE, kind: 'object' },
+        { collection: 'plans', payload: { records: [planA] }, reversePayload: { records: [planB] }, expected: [planA], reverseExpected: [planB], key: STORAGE_KEYS.PLANS, kind: 'array' },
+        { collection: 'enginePlans', payload: { records: [enginePlanA] }, reversePayload: { records: [enginePlanB] }, expected: [enginePlanA], reverseExpected: [enginePlanB], key: STORAGE_KEYS.ENGINE_PLANS, kind: 'array' },
+        { collection: 'portions', payload: { records: [portionA], recoveryFromLegacy: true }, reversePayload: { records: [portionB], recoveryFromLegacy: true }, expected: [portionA], reverseExpected: [portionB], key: STORAGE_KEYS.UNIFIED_PORTIONS, kind: 'array' },
+        { collection: 'weakVerses', payload: { records: [weakVerseA] }, reversePayload: { records: [weakVerseB] }, expected: [weakVerseA], reverseExpected: [weakVerseB], key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
+        { collection: 'tests', payload: { records: [testA] }, reversePayload: { records: [testB] }, expected: [testA], reverseExpected: [testB], key: STORAGE_KEYS.TESTS, kind: 'array' },
+        { collection: 'activityEvents', payload: { records: [activityA] }, reversePayload: { records: [activityB] }, expected: [activityA], reverseExpected: [activityB], key: STORAGE_KEYS.LOGS, kind: 'array' },
+        { collection: 'ruqyahProgress', payload: { snapshot: ruqyahA }, reversePayload: { snapshot: ruqyahB }, expected: ruqyahA, reverseExpected: ruqyahB, key: STORAGE_KEYS.RUQYAH_PROGRESS, kind: 'ruqyah' }
       ] as const;
 
       activateIsolatedDevice(localStorageA, uid);
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
       const remoteEvents: Array<{ sequence: number; event: RemoteInboxEventInput }> = [];
       for (let index = 0; index < collections.length; index++) {
         const item = collections[index];
@@ -1179,6 +1238,7 @@ try {
       }
 
       activateIsolatedDevice(localStorageB, uid);
+      StorageService.setRawItem(STORAGE_KEYS.SCHEMA_VERSION, '2');
       await journalB.importRemotePage(remoteEvents.sort((a, b) => a.sequence - b.sequence).map(item => item.event));
       const projection = await projectRemoteInboxBatch(20, makeDeviceProjectorDependencies(journalB));
       if (projection.projectedCount !== collections.length || projection.reason !== null ||
@@ -1193,19 +1253,16 @@ try {
           throw new Error('Device B is missing the projected local archive for ' + item.collection);
         }
         const parsed = JSON.parse(raw);
-        if (item.kind === 'array' && (!Array.isArray(parsed) || parsed.length !== 0)) {
-          throw new Error('Device B projected an invalid array archive for ' + item.collection);
-        }
-        if (item.kind === 'object' && (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))) {
-          throw new Error('Device B projected an invalid profile object.');
-        }
-        if (item.kind === 'ruqyah' && parsed.counts?.['q-fatiha'] !== 3) {
-          throw new Error('Device B did not project the Ruqyah progress snapshot.');
+        const actual = item.kind === 'ruqyah' ? parsed : parsed;
+        if (stableStringify(actual) !== stableStringify(item.expected)) {
+          throw new Error('Device B field-level projection mismatch for ' + item.collection +
+            ': expected ' + JSON.stringify(item.expected) + ', received ' + JSON.stringify(actual));
         }
         const ownerState = await assertSucceeds(getDoc(doc(
           firestoreB, 'users', uid, item.collection, 'snapshot'
         )));
-        if (!ownerState.exists() || ownerState.data().revision !== 1) {
+        if (!ownerState.exists() || ownerState.data().revision !== 1 ||
+            stableStringify(ownerState.data().payload) !== stableStringify(item.payload)) {
           throw new Error('Owner cannot read revisioned state for ' + item.collection);
         }
         const otherDb = testEnv.authenticatedContext(uid + '-other').firestore();
@@ -1220,9 +1277,7 @@ try {
         const item = collections[index];
         const mutationId = 'matrix-reverse-' + item.collection + '-002';
         const nowMs = 1_799_000_701_100 + index;
-        const reversePayload = item.kind === 'ruqyah'
-          ? { snapshot: { schemaVersion: 1, updatedAtMs: nowMs, counts: { 'q-fatiha': 4 } } }
-          : item.payload;
+        const reversePayload = item.reversePayload;
         const queued = await journalB.enqueue({
           mutationId,
           collection: item.collection,
@@ -1276,13 +1331,15 @@ try {
           throw new Error('Device A is missing the reverse-projected archive for ' + item.collection);
         }
         const parsed = JSON.parse(raw);
-        if (item.kind === 'ruqyah' && parsed.counts?.['q-fatiha'] !== 4) {
-          throw new Error('Device A did not receive the reverse Ruqyah progress update.');
+        if (stableStringify(parsed) !== stableStringify(item.reverseExpected)) {
+          throw new Error('Device A reverse field-level projection mismatch for ' + item.collection +
+            ': expected ' + JSON.stringify(item.reverseExpected) + ', received ' + JSON.stringify(parsed));
         }
         const ownerState = await assertSucceeds(getDoc(doc(
           firestoreA, 'users', uid, item.collection, 'snapshot'
         )));
-        if (!ownerState.exists() || ownerState.data().revision !== 2) {
+        if (!ownerState.exists() || ownerState.data().revision !== 2 ||
+            stableStringify(ownerState.data().payload) !== stableStringify(item.reversePayload)) {
           throw new Error('Device A did not observe revision 2 for ' + item.collection);
         }
       }
