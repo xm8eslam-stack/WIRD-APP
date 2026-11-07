@@ -382,6 +382,41 @@ try {
     }
   });
 
+  await test('Firestore rules reject a routed event without its atomic state and sequence writes', async () => {
+    const eventRef = doc(alice, 'users/alice/events/forged-routed-event');
+    await assertFails(setDoc(eventRef, {
+      schemaVersion: 2,
+      eventId: 'forged-routed-event',
+      mutationId: 'forged-routed-event',
+      uid: 'alice',
+      deviceId: 'test-device-01',
+      occurredAtMs: 1_799_000_000_400,
+      eventType: 'domain-mutation',
+      payload: { records: [] },
+      collection: 'plans',
+      documentId: 'forged-plan',
+      operation: 'upsert',
+      baseRevision: 0,
+      revision: 1,
+      serverSequence: 999
+    }));
+  });
+
+  await test('Firestore rules reject a server sequence gap without a matching immutable event', async () => {
+    const sequenceRef = doc(alice, 'users/alice/syncSystem/remoteReplication');
+    const current = await getDoc(sequenceRef);
+    const baseSequence = current.exists() ? current.data().sequence : 0;
+    await assertFails(setDoc(sequenceRef, {
+      schemaVersion: 1,
+      sequence: baseSequence + 1,
+      baseSequence,
+      lastEventId: 'missing-sequence-event',
+      updatedAtMs: 1_799_000_000_401,
+      deviceId: 'test-device-01',
+      mutationId: 'missing-sequence-event'
+    }));
+  });
+
   await test('Immutable event helper treats an identical retry as a successful no-op', async () => {
     const event = { ...validEvent, eventId: 'event-idempotent-001', mutationId: 'mutation-idempotent-001' };
     const first = await writeImmutableRemoteEvent(alice as unknown as Firestore, 'alice', event);
