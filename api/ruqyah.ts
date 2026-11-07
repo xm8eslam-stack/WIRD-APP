@@ -1,6 +1,10 @@
 const API_BASE = 'https://islamicapi.com/api/v1/ruqyah/';
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 30;
+const MAX_RATE_LIMIT_BUCKETS = 1000;
+const MAX_UPSTREAM_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_UPSTREAM_RESPONSE_CHARS = 1_000_000;
+const ALLOWED_TOPIC_BLOCK_TYPES = new Set(['text', 'arabic', 'translation', 'header', 'transliteration']);
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 const ALLOWED_TYPES = new Set(['instant-category', 'instant', 'topic-category', 'topic']);
@@ -37,16 +41,25 @@ function readQueryValue(value: unknown): string {
 }
 
 function getClientIp(req: any): string {
-  const forwarded = req.headers?.['x-forwarded-for'];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  return String(raw || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+  // On Vercel, x-real-ip is set by the trusted edge. Do not trust the
+  // client-controlled leftmost x-forwarded-for value for rate-limit identity.
+  const realIp = req.headers?.['x-real-ip'];
+  const candidate = Array.isArray(realIp) ? realIp[0] : realIp;
+  if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+  const remoteAddress = req.socket?.remoteAddress;
+  return typeof remoteAddress === 'string' && remoteAddress.trim() ? remoteAddress.trim() : 'unknown';
 }
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
-  if (rateLimits.size > 1000) {
+  if (rateLimits.size > MAX_RATE_LIMIT_BUCKETS) {
     for (const [key, record] of rateLimits.entries()) {
       if (now >= record.resetAt) rateLimits.delete(key);
+    }
+    while (rateLimits.size > MAX_RATE_LIMIT_BUCKETS) {
+      const oldestKey = rateLimits.keys().next().value;
+      if (typeof oldestKey !== 'string') break;
+      rateLimits.delete(oldestKey);
     }
   }
   const current = rateLimits.get(ip);
@@ -176,7 +189,17 @@ export default async function handler(req: any, res: any) {
       signal: AbortSignal.timeout(12_000)
     });
     const contentType = upstream.headers.get('content-type') || '';
+    const declaredLengthHeader = upstream.headers.get('content-length');
+    const declaredLength = declaredLengthHeader === null ? null : Number(declaredLengthHeader);
+    if (declaredLength !== null && Number.isFinite(declaredLength) && declaredLength > MAX_UPSTREAM_RESPONSE_BYTES) {
+      res.setHeader('Cache-Control', 'no-store');
+      return send(res, 502, { error: 'INVALID_RUQYAH_SOURCE_RESPONSE' });
+    }
     const raw = await upstream.text();
+    if (raw.length > MAX_UPSTREAM_RESPONSE_CHARS) {
+      res.setHeader('Cache-Control', 'no-store');
+      return send(res, 502, { error: 'INVALID_RUQYAH_SOURCE_RESPONSE' });
+    }
     const payload = /application\/(?:[a-z0-9.+-]*\+)?json/i.test(contentType)
       ? parseUpstreamJson(raw)
       : null;
