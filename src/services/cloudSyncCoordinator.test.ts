@@ -241,8 +241,8 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       createEmptyRuqyahProgressSnapshot(5000), itemId, 'remote-device', 3, 5002
     );
     const event = makeRemoteEvent({
-      eventId: 'ruqyah-pn-counter-event',
-      mutationId: 'ruqyah-pn-counter-event',
+      eventId: 'ruqyah-per-device resettable counter-event',
+      mutationId: 'ruqyah-per-device resettable counter-event',
       collection: 'ruqyahProgress',
       documentId: 'snapshot',
       payload: { snapshot: remoteSnapshot },
@@ -283,7 +283,7 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       harness.state.conflicts[0]?.status === 'resolved',
       'Concurrent V2 Ruqyah counters are merged additively and atomically replace stale local pending state');
   } catch (err: any) {
-    assert(false, `Ruqyah PN-counter projection merge failed: ${err?.message}`);
+    assert(false, `Ruqyah per-device resettable counter projection merge failed: ${err?.message}`);
   }
 
   try {
