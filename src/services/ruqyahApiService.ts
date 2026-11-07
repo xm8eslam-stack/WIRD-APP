@@ -64,7 +64,7 @@ export async function fetchRuqyahApiData<T = unknown>(
     const payload = (() => { try { return JSON.parse(raw) as unknown; } catch { return null; } })();
     const code = isRecord(payload) && typeof payload.error === 'string' ? payload.error : '';
     if (response.status === 503 && code === 'RUQYAH_API_KEY_NOT_CONFIGURED') {
-      throw new Error('مصدر الرقية الخارجي يحتاج إلى ضبط مفتاحه المجاني في إعدادات الخادم.');
+      throw new Error('مصدر الرقية الخارجي يحتاج إلى ضبط مفتاح API في إعدادات الخادم.');
     }
     if (response.status === 429) throw new Error('تم تجاوز حد طلبات مصدر الرقية مؤقتًا. حاول بعد قليل.');
     throw new Error('تعذر جلب محتوى الرقية من المصدر الخارجي (HTTP ' + response.status + ').');
