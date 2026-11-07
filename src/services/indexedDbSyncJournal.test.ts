@@ -377,6 +377,344 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Prepared conflict decisions can be canceled without deleting evidence or pending writes', async () => {
+      const uid = 'cancel-resolution-intent-owner';
+      const { journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'cancel-resolution-intent-event',
+        mutationId: 'cancel-resolution-intent-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'cancel-plan',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9450,
+        payload: { records: [] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'cancel-resolution-local-pending',
+        collection: 'plans',
+        documentId: event.documentId,
+        payload: { records: [] },
+        nowMs: 9451
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const snapshot = StorageService.getLocalProjectionSnapshot('plans');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', snapshot, 9452);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'cancel-resolution-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(snapshot),
+        decision: 'use-remote',
+        baseRevision: 1,
+        payload: { records: [] },
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9453
+      });
+      let wrongDecisionRejected = false;
+      try { await journal.cancelPreparedConflictResolutionIntent(event.eventId, 'wrong-decision-id'); }
+      catch { wrongDecisionRejected = true; }
+      assert(wrongDecisionRejected, 'A different decision ID cannot cancel the saved user intent');
+      assert(await journal.cancelPreparedConflictResolutionIntent(event.eventId, 'cancel-resolution-decision'),
+        'The exact prepared decision can be canceled explicitly');
+      assert(await journal.getConflictResolutionIntent(event.eventId) === null &&
+        await journal.getProjectionConflictCount() === 1 &&
+        (await journal.listReady(9500, 10)).some(item => item.mutationId === 'cancel-resolution-local-pending') &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1 &&
+        await journal.getRemoteProjectionCursor() === 0,
+        'Cancellation must remove only the uncommitted intent and preserve the conflict archive, inbox, local write, and cursors');
+      journal.close();
+    });
+
+    await test('Use-remote resolution atomically applies the latest snapshot and supersedes only archived local mutations', async () => {
+      const uid = 'use-remote-resolution-owner';
+      const { journal } = createJournal(uid);
+      const localProfile = { ...StorageService.getProfile(), name: 'local-choice' };
+      assert(StorageService.saveProfile(localProfile), 'The local profile fixture must be valid');
+      const latestRemoteProfile = { ...localProfile, name: 'remote-latest' };
+      const event = {
+        uid,
+        eventId: 'use-remote-resolution-event',
+        mutationId: 'use-remote-resolution-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'profile' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9500,
+        payload: { profile: { ...localProfile, name: 'remote-old' } },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'use-remote-local-pending',
+        collection: 'profile',
+        documentId: event.documentId,
+        payload: { profile: localProfile },
+        nowMs: 9501
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('profile');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9502);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const archived = (conflict.localMutations || []).map(item => ({
+        mutationId: item.mutationId,
+        fingerprint: item.fingerprint
+      }));
+      const latestRemotePayload = { profile: latestRemoteProfile };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'use-remote-decision-1',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'use-remote',
+        baseRevision: 2,
+        payload: latestRemotePayload,
+        localMutationFingerprints: archived,
+        nowMs: 9503
+      });
+      let staleRemotePayloadRejected = false;
+      try {
+        await journal.commitUseRemoteConflictResolution(
+          event.eventId, 2, { profile: { ...localProfile, name: 'stale-remote-choice' } }, 9504
+        );
+      } catch { staleRemotePayloadRejected = true; }
+      assert(staleRemotePayloadRejected && await journal.getRemoteProjectionCursor() === 0 &&
+        await journal.getProjectionConflictCount() === 1,
+        'A remote snapshot that differs from the immutable prepared choice must not be applied');
+      assert(await journal.commitUseRemoteConflictResolution(
+        event.eventId, 2, latestRemotePayload, 9505
+      ), 'The explicit remote choice must commit against the latest confirmed server revision');
+      assert(StorageService.getProfile().name === 'remote-latest',
+        'The latest remote snapshot must replace the local projection');
+      assert((await journal.listReady(9600, 10)).length === 0 &&
+        await journal.getRemoteProjectionCursor() === 1 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 0 &&
+        await journal.getProjectionConflictCount() === 0 &&
+        await journal.getConflictResolutionIntent(event.eventId) === null,
+        'The same transaction must remove only superseded Outbox writes, close the conflict, clear the intent, and advance the cursor');
+      const revision = await journal.getRemoteRevision('profile', event.documentId);
+      assert(revision?.revision === 2,
+        'The latest authoritative server revision must become the local revision baseline');
+      journal.close();
+    });
+
+    await test('Use-remote resolution recovers if local projection was applied before the journal commit completed', async () => {
+      const uid = 'use-remote-crash-recovery-owner';
+      const { journal } = createJournal(uid);
+      const localProfile = { ...StorageService.getProfile(), name: 'before-resolution' };
+      assert(StorageService.saveProfile(localProfile), 'The local profile fixture must be valid');
+      const remoteProfile = { ...localProfile, name: 'chosen-remote-after-crash' };
+      const event = {
+        uid,
+        eventId: 'use-remote-crash-event',
+        mutationId: 'use-remote-crash-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'profile' as const,
+        documentId: 'crash-profile',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9550,
+        payload: { profile: { ...localProfile, name: 'remote-event-payload' } },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'use-remote-crash-local',
+        collection: 'profile',
+        documentId: event.documentId,
+        payload: { profile: localProfile },
+        nowMs: 9551
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('profile');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9552);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const chosenPayload = { profile: remoteProfile };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'use-remote-crash-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'use-remote',
+        baseRevision: 2,
+        payload: chosenPayload,
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9553
+      });
+      assert(StorageService.applyJournalProjection('profile', chosenPayload),
+        'Simulate the durable local projection succeeding immediately before an IndexedDB interruption');
+      assert(await journal.commitUseRemoteConflictResolution(event.eventId, 2, chosenPayload, 9554),
+        'Recovery must recognize the exact chosen snapshot and finish the journal commit idempotently');
+      assert(StorageService.getProfile().name === 'chosen-remote-after-crash' &&
+        await journal.getRemoteProjectionCursor() === 1 &&
+        await journal.getProjectionConflictCount() === 0 &&
+        await journal.getConflictResolutionIntent(event.eventId) === null &&
+        (await journal.listReady(9600, 10)).length === 0,
+        'Crash recovery must finish without restoring stale local data or resending superseded mutations');
+      journal.close();
+    });
+
+    await test('Grouped use-remote resolution applies all transaction collections atomically', async () => {
+      const uid = 'use-remote-grouped-owner';
+      const { journal } = createJournal(uid);
+      StorageService.savePlans([]);
+      StorageService.saveTests([]);
+      const event = {
+        uid,
+        eventId: 'use-remote-grouped-event',
+        mutationId: 'use-remote-grouped-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'syncMeta' as const,
+        documentId: 'remote-transaction',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9600,
+        payload: {
+          transaction: {
+            version: 1,
+            operations: [
+              { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+              { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
+            ]
+          }
+        },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'use-remote-grouped-plan-pending',
+        collection: 'plans',
+        documentId: 'local-plan',
+        payload: { records: [{ id: 'local-plan' }] },
+        nowMs: 9601
+      });
+      await journal.enqueue({
+        mutationId: 'use-remote-grouped-test-pending',
+        collection: 'tests',
+        documentId: 'local-test',
+        payload: { records: [{ id: 'local-test' }] },
+        nowMs: 9602
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9603);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'use-remote-grouped-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'use-remote',
+        baseRevision: 1,
+        payload: event.payload,
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9604
+      });
+      assert(await journal.commitUseRemoteConflictResolution(event.eventId, 1, event.payload, 9605),
+        'A grouped remote transaction must resolve as one atomic projection');
+      assert(StorageService.getPlans().length === 0 && StorageService.getTests().length === 0 &&
+        (await journal.listReady(9700, 10)).length === 0 &&
+        await journal.getProjectionConflictCount() === 0 &&
+        await journal.getRemoteProjectionCursor() === 1,
+        'All grouped projections and affected local Outbox mutations must commit together');
+      assert(await journal.isRemoteCollectionInitialized('plans') &&
+        await journal.isRemoteCollectionInitialized('tests') &&
+        await journal.isRemoteCollectionInitialized('syncMeta'),
+        'The grouped resolution must mark every affected collection as initialized');
+      journal.close();
+    });
+
+    await test('Use-remote commit rejects a new local mutation created after the decision was prepared', async () => {
+      const uid = 'use-remote-stale-owner';
+      const { journal } = createJournal(uid);
+      StorageService.savePlans([]);
+      const event = {
+        uid,
+        eventId: 'use-remote-stale-event',
+        mutationId: 'use-remote-stale-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'stale-plan',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9700,
+        payload: { records: [] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'use-remote-stale-first',
+        collection: 'plans',
+        documentId: event.documentId,
+        payload: { records: [{ id: 'first' }] },
+        nowMs: 9701
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('plans');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9702);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'use-remote-stale-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'use-remote',
+        baseRevision: 1,
+        payload: { records: [] },
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9703
+      });
+      await journal.enqueue({
+        mutationId: 'use-remote-stale-new-write',
+        collection: 'plans',
+        documentId: event.documentId,
+        payload: { records: [{ id: 'newer-local' }] },
+        nowMs: 9704
+      });
+      let rejected = false;
+      try { await journal.commitUseRemoteConflictResolution(event.eventId, 1, { records: [] }, 9705); }
+      catch { rejected = true; }
+      assert(rejected && (await journal.listReady(9800, 10)).length === 2 &&
+        await journal.getRemoteProjectionCursor() === 0 &&
+        await journal.getProjectionConflictCount() === 1 &&
+        !!await journal.getConflictResolutionIntent(event.eventId),
+        'A stale prepared decision must not erase a local write created after the user confirmed it');
+      journal.close();
+    });
+
     await test('Projection conflicts preserve the first local snapshot and resolve with the cursor commit', async () => {
       const { journal } = createJournal('remote-conflict-owner');
       const event = {

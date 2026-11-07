@@ -384,10 +384,29 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().prepareConflictResolutionIntent(input);
   },
 
+  /** Cancel a prepared decision without touching its conflict archive or pending writes. */
+  async cancelPreparedConflictResolutionIntent(eventId: string, decisionId: string): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().cancelPreparedConflictResolutionIntent(eventId, decisionId);
+  },
+
   /** Recover the exact prepared decision after reload or account-tab restart. */
   async getConflictResolutionIntent(eventId: string): Promise<ConflictResolutionIntent | null> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().getConflictResolutionIntent(eventId);
+  },
+
+  /** Atomically apply the latest remote snapshot and close the exact archived conflict. */
+  async commitUseRemoteConflictResolution(
+    eventId: string,
+    expectedRevision: number,
+    expectedPayload: Record<string, unknown>,
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().commitUseRemoteConflictResolution(
+      eventId, expectedRevision, expectedPayload, nowMs
+    );
   },
 
   async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {

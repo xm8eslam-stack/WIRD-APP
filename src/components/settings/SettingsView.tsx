@@ -33,7 +33,8 @@ import { RetentionService } from '../../services/retentionService';
 import { useAuth } from '../../context/AuthContext';
 import { useCloudSync } from '../../hooks/useCloudSync';
 import { LocalSyncOutbox } from '../../services/localSyncOutbox';
-import type { RemoteProjectionConflict } from '../../services/indexedDbSyncJournal';
+import type { ConflictResolutionIntent, RemoteProjectionConflict } from '../../services/indexedDbSyncJournal';
+import { cancelPreparedProjectionConflictResolution, resolveProjectionConflictUsingRemote } from '../../services/syncConflictResolutionService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupFile } from '../../services/backupPersistence';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
@@ -154,6 +155,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     lastSyncAtMs, isOnline, errorMessage: syncErrorMessage, triggerSync
   } = useCloudSync();
   const [conflictDetails, setConflictDetails] = useState<RemoteProjectionConflict[]>([]);
+  const [conflictIntents, setConflictIntents] = useState<Record<string, ConflictResolutionIntent | null>>({});
+  const [confirmRemoteConflictId, setConfirmRemoteConflictId] = useState<string | null>(null);
+  const [resolvingConflictId, setResolvingConflictId] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     if (!user?.uid || isGuest || StorageService.getStorageScope() !== 'user:' + user.uid) {
@@ -161,10 +165,69 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return () => { active = false; };
     }
     void LocalSyncOutbox.listProjectionConflicts(20)
-      .then(records => { if (active) setConflictDetails(records); })
-      .catch(() => { if (active) setConflictDetails([]); });
+      .then(async records => {
+        const intentEntries = await Promise.all(records.map(async conflict => [
+          conflict.event.eventId,
+          await LocalSyncOutbox.getConflictResolutionIntent(conflict.event.eventId)
+        ] as const));
+        if (active) {
+          setConflictDetails(records);
+          setConflictIntents(Object.fromEntries(intentEntries));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setConflictDetails([]);
+          setConflictIntents({});
+        }
+      });
     return () => { active = false; };
   }, [user?.uid, isGuest, projectionConflictCount, latestProjectionConflict?.eventId]);
+
+  const handleUseRemoteConflict = async (eventId: string) => {
+    if (resolvingConflictId) return;
+    setResolvingConflictId(eventId);
+    try {
+      const result = await resolveProjectionConflictUsingRemote(eventId);
+      setConflictDetails(previous => previous.filter(item => item.event.eventId !== eventId));
+      setConflictIntents(previous => ({ ...previous, [eventId]: null }));
+      setConfirmRemoteConflictId(null);
+      onUpdateProfile(StorageService.getProfile());
+      onBackupImported?.();
+      onToast?.(
+        `تم تطبيق أحدث نسخة سحابية للتعارض ${eventId}. حُفظت أدلة التعديلات المحلية في الأرشيف قبل استبعادها من صندوق الرفع (${result.archivedMutationCount} عملية مؤرشفة).`,
+        'success'
+      );
+      void triggerSync();
+    } catch (error) {
+      const intent = await LocalSyncOutbox.getConflictResolutionIntent(eventId).catch(() => null);
+      setConflictIntents(previous => ({ ...previous, [eventId]: intent }));
+      onToast?.(
+        error instanceof Error ? error.message : 'تعذر اعتماد النسخة السحابية؛ بقيت الأدلة محفوظة.',
+        'error'
+      );
+    } finally {
+      setResolvingConflictId(null);
+    }
+  };
+
+  const handleCancelPreparedConflict = async (eventId: string) => {
+    const intent = conflictIntents[eventId];
+    if (!intent || resolvingConflictId) return;
+    setResolvingConflictId(eventId);
+    try {
+      const cancelled = await cancelPreparedProjectionConflictResolution(eventId, intent.decisionId);
+      if (cancelled) {
+        setConflictIntents(previous => ({ ...previous, [eventId]: null }));
+        onToast?.('تم إلغاء القرار غير المنفذ فقط؛ لم تُحذف أدلة التعارض أو العمليات المحلية.', 'info');
+        void triggerSync();
+      }
+    } catch (error) {
+      onToast?.(error instanceof Error ? error.message : 'تعذر إلغاء القرار المحفوظ.', 'error');
+    } finally {
+      setResolvingConflictId(null);
+    }
+  };
 
   const projectionBlockMessages: Record<string, string> = {
     projection_disabled: 'استقبال الأحداث غير مفعّل بعد؛ نحتفظ بها دون تطبيقها.',
@@ -471,6 +534,73 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         <p className="mt-2 text-[10px] text-stone-500 dark:text-stone-400">
                           سبب الإيقاف: {conflict.reason} · معرّف الحدث: <span dir="ltr">{conflict.event.eventId}</span>
                         </p>
+                        <div className="mt-3 pt-3 border-t border-stone-200 dark:border-stone-700 space-y-2">
+                          {conflictIntents[conflict.event.eventId] ? (
+                            <div className="space-y-2" role="status">
+                              <p className="text-[11px] text-amber-800 dark:text-amber-300">
+                                يوجد قرار محفوظ لم يُعتمد بعد ({conflictIntents[conflict.event.eventId]?.decision}). لن يتجاوزه الإسقاط التلقائي.
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void handleUseRemoteConflict(conflict.event.eventId)}
+                                  disabled={resolvingConflictId !== null || !isOnline || syncStatus === 'syncing'}
+                                  className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                >
+                                  إعادة محاولة تنفيذ القرار المحفوظ
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleCancelPreparedConflict(conflict.event.eventId)}
+                                  disabled={resolvingConflictId !== null}
+                                  className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
+                                >
+                                  إلغاء القرار غير المنفذ مع الاحتفاظ بالأدلة
+                                </button>
+                              </div>
+                            </div>
+                          ) : conflict.event.operation === 'tombstone' ? (
+                            <p className="text-[11px] text-amber-700 dark:text-amber-300" role="status">
+                              لا يمكن اختيار النسخة البعيدة لحدث حذف قبل اكتمال سياسة Tombstones؛ لم نفعّل هذا المسار.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRemoteConflictId(conflict.event.eventId)}
+                                disabled={!user || isGuest || !isEmailVerified || !isOnline || syncStatus === 'syncing' || resolvingConflictId !== null}
+                                className="px-3 py-2 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                استخدام أحدث نسخة سحابية
+                              </button>
+                              {confirmRemoteConflictId === conflict.event.eventId && (
+                                <div className="rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/20 p-3 space-y-2" role="group" aria-label="تأكيد استخدام النسخة السحابية">
+                                  <p className="text-[11px] leading-5 text-amber-900 dark:text-amber-200">
+                                    سيُعاد تحميل أحدث مستند من Firestore وتطبيقه محلياً. التعديلات المحلية المعلقة ذات الصلة ستُستبعد من صندوق الرفع بعد حفظ أدلتها في أرشيف التعارض. يشمل القرار كل عمليات المعاملة إذا كان التعارض من syncMeta.
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => void handleUseRemoteConflict(conflict.event.eventId)}
+                                      disabled={resolvingConflictId !== null}
+                                      className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                    >
+                                      {resolvingConflictId === conflict.event.eventId ? 'جارٍ التحقق والتطبيق…' : 'تأكيد استخدام النسخة السحابية'}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmRemoteConflictId(null)}
+                                      disabled={resolvingConflictId !== null}
+                                      className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
+                                    >
+                                      تراجع
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </details>
                     ))}
                   </div>
