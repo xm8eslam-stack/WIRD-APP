@@ -238,7 +238,9 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       typeof initialState.pendingCount === 'number' &&
       typeof initialState.remoteInboxPendingCount === 'number' &&
       typeof initialState.remoteCursor === 'number' &&
-      typeof initialState.remoteProjectionCursor === 'number',
+      typeof initialState.remoteProjectionCursor === 'number' &&
+      initialState.remoteProjectionBlockReason === null &&
+      initialState.remoteProjectionBlockedAtSequence === null,
       'Initial cloud sync state has valid structure'
     );
   } catch (err: any) {
