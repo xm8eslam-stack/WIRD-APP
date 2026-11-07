@@ -188,6 +188,165 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Conflict resolution decision intent is UID-bound, immutable, restart-safe, and non-destructive', async () => {
+      const uid = 'resolution-intent-owner';
+      const { factory, databaseName, journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'resolution-intent-event',
+        mutationId: 'resolution-intent-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'plans' as const,
+        documentId: 'resolution-intent-plan',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9250,
+        payload: { records: [{ id: 'remote-plan' }] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'resolution-intent-local-mutation',
+        collection: 'plans',
+        documentId: event.documentId,
+        payload: { records: [{ id: 'local-plan' }] },
+        nowMs: 9251
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', {
+        wird_plans: '[{"id":"local-plan"}]'
+      }, 9252), 'The source conflict must be archived before a decision can be prepared');
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const archived = (conflict.localMutations || []).map(item => ({
+        mutationId: item.mutationId,
+        fingerprint: item.fingerprint
+      }));
+      const input = {
+        decisionId: 'resolution-decision-1',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        decision: 'keep-local' as const,
+        baseRevision: 1,
+        payload: { records: [{ id: 'chosen-local' }] },
+        localMutationFingerprints: archived,
+        nowMs: 9253
+      };
+      assert(await journal.prepareConflictResolutionIntent(input),
+        'A decision must persist only when bound to the open event, latest supplied base revision, and archived local evidence');
+      assert(await journal.prepareConflictResolutionIntent(input),
+        'Retrying the exact same decision intent must be idempotent');
+      const saved = await journal.getConflictResolutionIntent(event.eventId);
+      assert(!!saved && saved.uid === uid && saved.decisionId === input.decisionId &&
+        saved.decision === 'keep-local' && saved.baseRevision === 1 &&
+        saved.eventFingerprint === storedEvent.fingerprint &&
+        saved.localMutationFingerprints.length === 1 &&
+        saved.localMutationFingerprints[0].mutationId === 'resolution-intent-local-mutation' &&
+        saved.status === 'prepared',
+        'The persisted decision must retain exact UID, event, revision, decision, and mutation evidence');
+      let changedDecisionRejected = false;
+      try {
+        await journal.prepareConflictResolutionIntent({
+          ...input,
+          payload: { records: [{ id: 'different-choice' }] }
+        });
+      } catch { changedDecisionRejected = true; }
+      assert(changedDecisionRejected,
+        'A second different decision cannot overwrite an already prepared immutable decision');
+      let staleRevisionRejected = false;
+      try {
+        await journal.prepareConflictResolutionIntent({
+          ...input,
+          decisionId: 'resolution-decision-stale',
+          baseRevision: 0
+        });
+      } catch { staleRevisionRejected = true; }
+      assert(staleRevisionRejected, 'A decision cannot be prepared against a revision older than the conflicting event');
+      assert(await journal.getRemoteProjectionCursor() === 0 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1 &&
+        (await journal.listReady(9300, 10)).some(item => item.mutationId === 'resolution-intent-local-mutation') &&
+        (await journal.listProjectionConflicts(10)).length === 1,
+        'Preparing a decision must not delete local writes, alter the inbox, resolve the conflict, or advance either cursor');
+
+      journal.close();
+      const restarted = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
+      const recovered = await restarted.getConflictResolutionIntent(event.eventId);
+      assert(!!recovered && recovered.fingerprint === saved?.fingerprint &&
+        recovered.decisionId === input.decisionId,
+        'A prepared decision must survive closing and reopening the IndexedDB database');
+      StorageService.setStorageScope('user:another-account');
+      assert(await restarted.getConflictResolutionIntent(event.eventId) === null,
+        'A different UID cannot read another account\'s prepared decision');
+      StorageService.setStorageScope('user:' + uid);
+      assert((await restarted.getConflictResolutionIntent(event.eventId))?.uid === uid,
+        'Restoring the owning UID recovers only its own prepared decision');
+      restarted.close();
+    });
+
+    await test('Conflict decision intent rejects newly queued local writes absent from the archived evidence', async () => {
+      const uid = 'resolution-intent-stale-local';
+      const { journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'resolution-intent-stale-event',
+        mutationId: 'resolution-intent-stale-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'tests' as const,
+        documentId: 'resolution-intent-test',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9350,
+        payload: { id: 'resolution-intent-test', score: 1 },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'resolution-intent-archived-local',
+        collection: 'tests',
+        documentId: event.documentId,
+        payload: { id: event.documentId, score: 2 },
+        nowMs: 9351
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', { tests: 'local' }, 9352);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const archived = (conflict.localMutations || []).map(item => ({
+        mutationId: item.mutationId,
+        fingerprint: item.fingerprint
+      }));
+      await journal.enqueue({
+        mutationId: 'resolution-intent-new-local',
+        collection: 'tests',
+        documentId: event.documentId,
+        payload: { id: event.documentId, score: 3 },
+        nowMs: 9353
+      });
+      let rejected = false;
+      try {
+        await journal.prepareConflictResolutionIntent({
+          decisionId: 'resolution-decision-stale-local',
+          eventId: event.eventId,
+          eventFingerprint: storedEvent.fingerprint,
+          decision: 'merge',
+          baseRevision: 1,
+          payload: { id: event.documentId, score: 4 },
+          localMutationFingerprints: archived,
+          nowMs: 9354
+        });
+      } catch { rejected = true; }
+      assert(rejected && await journal.getConflictResolutionIntent(event.eventId) === null,
+        'A new pending write that was not shown in the archived conflict must block stale decision preparation');
+      assert((await journal.listReady(9400, 10)).length === 2 &&
+        await journal.getRemoteProjectionCursor() === 0,
+        'Rejecting a stale decision must preserve every local mutation and the blocked projection cursor');
+      journal.close();
+    });
+
     await test('Projection conflicts preserve the first local snapshot and resolve with the cursor commit', async () => {
       const { journal } = createJournal('remote-conflict-owner');
       const event = {
