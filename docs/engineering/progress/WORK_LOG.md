@@ -509,3 +509,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit` on reviewed main updates. No live deployed SHA, live two-device verification, Firebase production-rules deployment, secret/environment-variable change, or production sync activation is claimed.
 - PR #2 remains a draft, 115 commits ahead / 276 behind current main. Do not merge it wholesale.
 - Next: implement the conflict decision state machine with atomic archival/revalidation and crash recovery; then tombstones, additive Ruqyah counters, broader Playwright workflows, backup/restore stress, and account lifecycle tests.
+
+
+### Follow-up verification after the checkpoint
+
+- Documentation merge PR #132 produced main SHA `3eeb1eb2da419536a1e2fc9db6911961d3bfafcc`.
+- Post-merge main Quality Gate run `42361756445` completed successfully.
+- The full Playwright suite in that run executed 16 tests total: 6 app-shell checks (3 desktop + 3 mobile) and 10 Ruqyah locator-library checks (5 desktop + 5 mobile). The earlier phrase “16 Ruqyah locator-library checks” was inaccurate and has been corrected.
