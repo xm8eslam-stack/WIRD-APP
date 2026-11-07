@@ -1,6 +1,6 @@
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
 import { getRuqyahDisplayText } from './ruqyahContentService';
-import { fetchRuqyahApiData, resolveApiQuranEntry, resolveApiQuranEntryText } from './ruqyahApiService';
+import { fetchRuqyahApiData, matchesApiQuranEntry, resolveApiQuranEntry, resolveApiQuranEntryText } from './ruqyahApiService';
 
 export async function runRuqyahApiServiceTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -49,6 +49,19 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
         try { resolveApiQuranEntryText({ id, title: '2:255' }); } catch { rejected = true; }
         assert(rejected, 'Invalid external Quran item ID must be rejected: ' + String(id));
       }
+    });
+
+
+    await test('Canonical Quran locator search uses only verified surah metadata and supports Arabic numerals', () => {
+      const entry = { id: 2, title: '2:1-5' };
+      assert(matchesApiQuranEntry(entry, 'البقرة'), 'Canonical Arabic surah name should match');
+      assert(matchesApiQuranEntry(entry, 'البقرة ٢:١-٥'), 'Full Arabic surah name and verse phrase should match');
+      assert(matchesApiQuranEntry(entry, '2:1-5'), 'ASCII surah/ayah range should match');
+      assert(matchesApiQuranEntry(entry, '٢:١-٥'), 'Arabic-Indic surah/ayah range should match');
+      assert(matchesApiQuranEntry(entry, '5'), 'A verse number should match the canonical range');
+      assert(!matchesApiQuranEntry(entry, 'الفاتحة'), 'A different canonical surah name must not match');
+      assert(!matchesApiQuranEntry({ id: 2, title: '115:1' }, 'البقرة'), 'Invalid locators must never appear in search results');
+      assert(matchesApiQuranEntry(entry, ''), 'An empty search must retain every valid entry');
     });
 
     await test('API client rejects HTML SPA fallbacks and malformed success envelopes', async () => {

@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
 import {
   fetchRuqyahApiData,
-  resolveApiQuranEntry
+  resolveApiQuranEntry,
+  matchesApiQuranEntry
 } from '../../services/ruqyahApiService';
 import type { RuqyahApiEntry } from '../../services/ruqyahApiService';
 
@@ -20,6 +21,7 @@ export const RuqyahApiLibrary: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,6 +56,7 @@ export const RuqyahApiLibrary: React.FC = () => {
     return () => controller.abort();
   }, [program, retryNonce]);
 
+  const filteredEntries = entries.filter(entry => matchesApiQuranEntry(entry, searchQuery));
   const isMissingApiKey = Boolean(error?.includes('مفتاح API'));
   const retry = () => {
     setError(null);
@@ -77,8 +80,8 @@ export const RuqyahApiLibrary: React.FC = () => {
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">تقسيم الفهرس</span>
-            <select value={program} onChange={event => setProgram(event.target.value as ProgramId)}
-              className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100">
+            <select value={program} onChange={event => { setProgram(event.target.value as ProgramId); setSearchQuery(''); }}
+              className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
               {PROGRAMS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </label>
@@ -86,6 +89,22 @@ export const RuqyahApiLibrary: React.FC = () => {
             <div className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 px-3 py-2.5 text-xs text-stone-500 dark:text-stone-400">
               فهرس مواضع فقط · نص الآيات من مصحف وِرد
             </div>
+          </div>
+        </div>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-3 items-end">
+          <label className="block min-w-0">
+            <span className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">البحث باسم السورة أو رقمها أو الآية</span>
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+              placeholder="مثال: البقرة أو ٢:٢٥٥"
+              aria-label="البحث في فهرس مواضع الآيات"
+              className="w-full min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            />
+          </label>
+          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 px-3 py-2.5 text-xs text-stone-500 dark:text-stone-400" role="status" aria-live="polite">
+            {loading ? 'جارٍ تحديث الفهرس' : filteredEntries.length + ' من ' + entries.length + ' موضع'}
           </div>
         </div>
       </div>
@@ -102,7 +121,7 @@ export const RuqyahApiLibrary: React.FC = () => {
                   يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub.
                 </p>
               )}
-              <button type="button" onClick={retry} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+              <button type="button" onClick={retry} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
                 <RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة
               </button>
             </div>
@@ -118,9 +137,13 @@ export const RuqyahApiLibrary: React.FC = () => {
         <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center text-sm text-stone-500">
           لا توجد مواضع قرآنية في هذا القسم من الفهرس.
         </div>
-      ) : (
+      ) : !error && filteredEntries.length === 0 ? (
+        <div role="status" className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center text-sm text-stone-500">
+          {searchQuery.trim() ? 'لا توجد مواضع مطابقة لعبارة البحث.' : 'لا توجد مواضع قرآنية في هذا القسم من الفهرس.'}
+        </div>
+      ) : !error ? (
         <div className="space-y-3">
-          {entries.map((entry, index) => {
+          {filteredEntries.map((entry, index) => {
             let resolved: ReturnType<typeof resolveApiQuranEntry> | null = null;
             let validationError: string | null = null;
             try { resolved = resolveApiQuranEntry(entry); }
@@ -157,7 +180,7 @@ export const RuqyahApiLibrary: React.FC = () => {
             );
           })}
         </div>
-      )}
+      ) : null}
     </section>
   );
 };
