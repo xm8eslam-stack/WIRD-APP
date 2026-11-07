@@ -1,6 +1,6 @@
 # WIRD Conflict Resolution Policy
 
-## 2026-11-07 — refreshed audit after PR #134–#140
+## 2026 11 07 — refreshed audit after PR #134–#140
 
 - Latest main merge commit: `d9ad6b51ad8133e32057ff170e9ff0a136b78305`.
 - PR #134 preserves grouped transaction Outbox evidence; PR #135/#137/#139 harden Ruqyah corruption/reset/accessibility; PR #140 records the state through PR #139 in engineering docs.
