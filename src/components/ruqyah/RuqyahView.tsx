@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import type { QuranReciter } from '../../services/ruqyahAudioService';
-import { loadRuqyahProgress, resetRuqyahProgress } from '../../services/ruqyahProgressService';
+import { loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { persistRuqyahProgressSnapshot } from '../../services/journaledSnapshotService';
 import { StorageService } from '../../services/storageService';
 import { RuqyahApiLibrary } from './RuqyahApiLibrary';
@@ -44,6 +44,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   // Counter states per item (itemId -> current count)
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [progressHydrated, setProgressHydrated] = useState(false);
+  const [progressDirty, setProgressDirty] = useState(false);
   const [progressScope, setProgressScope] = useState(currentStorageScope);
   const [progressCorrupt, setProgressCorrupt] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState<boolean>(true);
@@ -90,6 +91,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   useEffect(() => {
     setProgressHydrated(false);
     setProgressCorrupt(false);
+    setProgressDirty(false);
     const saved = loadRuqyahProgress();
     if (saved.status === 'corrupt') {
       setProgressCorrupt(true);
@@ -102,7 +104,23 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   }, [currentStorageScope]);
 
   useEffect(() => {
-    if (!progressHydrated || progressCorrupt || progressScope !== currentStorageScope) return;
+    if (typeof window === 'undefined') return;
+    const refreshProgress = () => {
+      if (StorageService.getStorageScope() !== currentStorageScope) return;
+      const saved = loadRuqyahProgress();
+      if (saved.status === 'corrupt') {
+        setProgressCorrupt(true);
+        return;
+      }
+      setCounts(saved.counts);
+      setProgressDirty(false);
+    };
+    window.addEventListener('wird:ruqyah-progress-updated', refreshProgress);
+    return () => window.removeEventListener('wird:ruqyah-progress-updated', refreshProgress);
+  }, [currentStorageScope]);
+
+  useEffect(() => {
+    if (!progressHydrated || !progressDirty || progressCorrupt || progressScope !== currentStorageScope) return;
     let active = true;
     const snapshot = { schemaVersion: 1 as const, updatedAtMs: Date.now(), counts: { ...counts } };
     void persistRuqyahProgressSnapshot(snapshot, { expectedStorageScope: currentStorageScope })
@@ -115,13 +133,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         if (active && onToast) onToast('تعذر حفظ تقدم الرقية ومزامنته.', 'error');
       });
     return () => { active = false; };
-  }, [counts, progressHydrated, progressCorrupt, progressScope, currentStorageScope, onToast]);
+  }, [counts, progressHydrated, progressDirty, progressCorrupt, progressScope, currentStorageScope, onToast]);
 
   const handleRecoverProgress = () => {
     try {
-      resetRuqyahProgress();
       setCounts({});
       setProgressCorrupt(false);
+      setProgressDirty(true);
       setProgressHydrated(true);
       if (onToast) onToast('تمت إعادة ضبط بيانات تقدم الرقية فقط.', 'success');
     } catch {
@@ -181,6 +199,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
     const next = current + 1;
     setCounts(prev => ({ ...prev, [item.id]: next }));
+    setProgressDirty(true);
 
     // Haptic feedback if available
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -211,6 +230,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       delete updated[item.id];
     });
     setCounts(updated);
+    setProgressDirty(true);
     if (onToast) onToast('تم إعادة ضبط العدادات لهذه القائمة.', 'info');
   };
 
@@ -230,6 +250,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       const completedItem = verseItemRef.current;
       if (completedItem) {
         setCounts(previous => ({ ...previous, [completedItem.id]: completedItem.repeatTarget ?? Math.max(1, previous[completedItem.id] || 0) }));
+        setProgressDirty(true);
       }
       setPlayingVerseId(null);
       setVerseLoopCount(0);
