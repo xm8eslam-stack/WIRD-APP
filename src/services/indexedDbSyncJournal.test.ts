@@ -42,6 +42,26 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Unsupported local tombstones are rejected before creating an unreplayable journal event', async () => {
+      const { journal } = createJournal('unsupported-tombstone');
+      let rejected = false;
+      try {
+        await journal.enqueue({
+          mutationId: 'unsupported-local-delete',
+          collection: 'plans',
+          documentId: 'snapshot',
+          operation: 'tombstone',
+          payload: {},
+          nowMs: 1500
+        });
+      } catch { rejected = true; }
+      const snapshot = await journal.getSnapshot();
+      assert(rejected, 'A tombstone without collection-specific local delete semantics must fail closed');
+      assert(snapshot.eventCount === 0 && snapshot.pendingCount === 0 && snapshot.projectionCursor === 0,
+        'Rejecting an unsupported tombstone must not leave a permanently blocking event');
+      journal.close();
+    });
+
     await test('Two tabs serialize duplicate enqueue and preserve exactly one event/outbox pair', async () => {
       const { factory, databaseName, journal } = createJournal();
       const secondTab = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
