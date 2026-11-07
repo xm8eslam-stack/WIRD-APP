@@ -1151,6 +1151,7 @@ try {
         revisionDaysPerWeek: 2, startDate: '2026-11-07', targetEndDate: '2026-12-07', isActive: true
       };
       const planB = { ...planA, completedUnits: 4, isActive: false, description: 'تعديل الجهاز B للخطة' };
+      const planA2 = { ...planA, id: 'matrix-plan-2', title: 'خطة ثانية', targetSurahs: [2], totalUnits: 5, completedUnits: 1 };
       const enginePlanA = JSON.parse(JSON.stringify(PlanningEngine.generatePlan({
         title: 'خطة المحرك للاختبار', startSurah: 1, startAyah: 1, endSurah: 1, endAyah: 3,
         startDate: '2026-11-07', level: 'beginner', dailyAvailableMinutes: 45,
@@ -1162,6 +1163,12 @@ try {
         title: 'خطة المحرك بعد تعديل B',
         actualVsPlanned: { ...enginePlanA.actualVsPlanned, plannedVersesToDate: 2, actualVersesMemorized: 2, varianceVerses: 0 }
       };
+      const enginePlanA2 = JSON.parse(JSON.stringify(PlanningEngine.generatePlan({
+        title: 'خطة محرك ثانية', startSurah: 2, startAyah: 1, endSurah: 2, endAyah: 2,
+        startDate: '2026-11-07', level: 'beginner', dailyAvailableMinutes: 30,
+        dailyRevisionMinutes: 10, paceType: 'verses_per_day', paceQuantity: 1,
+        activeDays: [0, 1, 2, 3, 4, 5, 6], restDays: [], schedulePreference: 'single_session'
+      })));
       const portionA = {
         id: 's1_a1_a7', type: 'passage' as const, surahNumber: 1, surahName: 'الفاتحة',
         startAyah: 1, endAyah: 7, status: 'stable' as const, nextDueDate: '2026-11-08',
@@ -1169,33 +1176,51 @@ try {
         strength: 'strong' as const
       };
       const portionB = { ...portionA, status: 'needs_revision' as const, intervalDays: 3, repetitionCount: 2, strength: 'medium' as const };
+      const portionA2 = {
+        id: 's2_a1_a5', type: 'passage' as const, surahNumber: 2, surahName: 'البقرة',
+        startAyah: 1, endAyah: 5, status: 'needs_revision' as const, nextDueDate: '2026-11-09',
+        intervalDays: 2, easeFactor: 2.3, repetitionCount: 2, revisionType: 'major' as const,
+        strength: 'medium' as const
+      };
       const weakVerseA = {
         id: 'matrix-weak-verse-1', surahNumber: 1, surahName: 'الفاتحة', ayahNumber: 2,
         text: 'الْحَمْدُ لِلَّهِ رَبِّ الْعَالَمِينَ', mistakeCount: 2,
         lastFailedDate: '2026-11-06', notes: 'موضع يحتاج إلى تثبيت'
       };
       const weakVerseB = { ...weakVerseA, mistakeCount: 4, notes: 'تكرر الخطأ ثم تمت مراجعته على الجهاز B' };
+      const weakVerseA2 = {
+        id: 'matrix-weak-verse-2', surahNumber: 2, surahName: 'البقرة', ayahNumber: 3,
+        text: 'الم', mistakeCount: 1, lastFailedDate: '2026-11-05', notes: 'سجل مستقل لا يجب استبداله'
+      };
       const testA = {
         id: 'matrix-test-1', date: '2026-11-07', type: 'complete_verse' as const,
         surahName: 'الفاتحة', score: 3, totalQuestions: 5, weakVerses: ['1:2', '1:5']
       };
       const testB = { ...testA, score: 4, weakVerses: ['1:5'] };
+      const testA2 = {
+        id: 'matrix-test-2', date: '2026-11-06', type: 'complete_verse' as const,
+        surahName: 'البقرة', score: 2, totalQuestions: 3, weakVerses: ['2:3']
+      };
       const activityA = {
         date: '2026-11-07', memorizedAyahsCount: 3, reviewedPagesCount: 1,
         minutesSpent: 18, completedTasks: ['حفظ الفاتحة', 'مراجعة البقرة']
       };
       const activityB = { ...activityA, memorizedAyahsCount: 5, minutesSpent: 27, completedTasks: [...activityA.completedTasks, 'اختبار الحفظ'] };
+      const activityA2 = {
+        date: '2026-11-06', memorizedAyahsCount: 1, reviewedPagesCount: 2,
+        minutesSpent: 9, completedTasks: ['مراجعة سورة البقرة']
+      };
       const ruqyahA = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_700_000, counts: { 'q-fatiha': 3, 'dua-pain': 2 } };
       const ruqyahB = { schemaVersion: 1 as const, updatedAtMs: 1_799_000_701_100, counts: { 'q-fatiha': 4, 'dua-pain': 5 } };
 
       const collections = [
         { collection: 'profile', payload: { profile: profileA }, reversePayload: { profile: profileB }, expected: profileA, reverseExpected: profileB, key: STORAGE_KEYS.PROFILE, kind: 'object' },
-        { collection: 'plans', payload: { records: [planA] }, reversePayload: { records: [planB] }, expected: [planA], reverseExpected: [planB], key: STORAGE_KEYS.PLANS, kind: 'array' },
-        { collection: 'enginePlans', payload: { records: [enginePlanA] }, reversePayload: { records: [enginePlanB] }, expected: [enginePlanA], reverseExpected: [enginePlanB], key: STORAGE_KEYS.ENGINE_PLANS, kind: 'array' },
-        { collection: 'portions', payload: { records: [portionA], recoveryFromLegacy: true }, reversePayload: { records: [portionB], recoveryFromLegacy: true }, expected: [portionA], reverseExpected: [portionB], key: STORAGE_KEYS.UNIFIED_PORTIONS, kind: 'array' },
-        { collection: 'weakVerses', payload: { records: [weakVerseA] }, reversePayload: { records: [weakVerseB] }, expected: [weakVerseA], reverseExpected: [weakVerseB], key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
-        { collection: 'tests', payload: { records: [testA] }, reversePayload: { records: [testB] }, expected: [testA], reverseExpected: [testB], key: STORAGE_KEYS.TESTS, kind: 'array' },
-        { collection: 'activityEvents', payload: { records: [activityA] }, reversePayload: { records: [activityB] }, expected: [activityA], reverseExpected: [activityB], key: STORAGE_KEYS.LOGS, kind: 'array' },
+        { collection: 'plans', payload: { records: [planA, planA2] }, reversePayload: { records: [planB, planA2] }, expected: [planA, planA2], reverseExpected: [planB, planA2], key: STORAGE_KEYS.PLANS, kind: 'array' },
+        { collection: 'enginePlans', payload: { records: [enginePlanA, enginePlanA2] }, reversePayload: { records: [enginePlanB, enginePlanA2] }, expected: [enginePlanA, enginePlanA2], reverseExpected: [enginePlanB, enginePlanA2], key: STORAGE_KEYS.ENGINE_PLANS, kind: 'array' },
+        { collection: 'portions', payload: { records: [portionA, portionA2], recoveryFromLegacy: true }, reversePayload: { records: [portionB, portionA2], recoveryFromLegacy: true }, expected: [portionA, portionA2], reverseExpected: [portionB, portionA2], key: STORAGE_KEYS.UNIFIED_PORTIONS, kind: 'array' },
+        { collection: 'weakVerses', payload: { records: [weakVerseA, weakVerseA2] }, reversePayload: { records: [weakVerseB, weakVerseA2] }, expected: [weakVerseA, weakVerseA2], reverseExpected: [weakVerseB, weakVerseA2], key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
+        { collection: 'tests', payload: { records: [testA, testA2] }, reversePayload: { records: [testB, testA2] }, expected: [testA, testA2], reverseExpected: [testB, testA2], key: STORAGE_KEYS.TESTS, kind: 'array' },
+        { collection: 'activityEvents', payload: { records: [activityA, activityA2] }, reversePayload: { records: [activityB, activityA2] }, expected: [activityA, activityA2], reverseExpected: [activityB, activityA2], key: STORAGE_KEYS.LOGS, kind: 'array' },
         { collection: 'ruqyahProgress', payload: { snapshot: ruqyahA }, reversePayload: { snapshot: ruqyahB }, expected: ruqyahA, reverseExpected: ruqyahB, key: STORAGE_KEYS.RUQYAH_PROGRESS, kind: 'ruqyah' }
       ] as const;
 
