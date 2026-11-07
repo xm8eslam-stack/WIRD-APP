@@ -1,0 +1,36 @@
+# WIRD Sync Architecture — verified implementation boundary
+
+**Reviewed:** 2026-11-07  
+**Repository:** `xm8eslam-stack/WIRD-APP`  
+**Current main at review:** `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`
+
+## Components
+
+- `IndexedDbSyncJournal`: UID-scoped durable local event journal, outbox, acknowledgements, inbox, revision metadata, and projection cursor.
+- `LocalSyncOutbox`: application facade for enqueue, upload-ready batches, acknowledgements, remote import, revision metadata, and retry scheduling.
+- `revisionedRemoteMutation.ts`: Firestore transaction that checks per-document base revision, writes the state envelope and immutable event, and advances the per-user server sequence atomically.
+- `remoteInboxProjector.ts`: validates the next remote event against local revision/pending mutations and projects only safe upserts.
+- `cloudSyncCoordinator.ts`: network/auth-aware orchestration. Upload and remote projection are separately feature-gated.
+- `firestore.rules`: verified-user/UID ownership, collection allowlist, schema checks, immutable events, and server-sequence consistency.
+
+## Local/remote boundaries
+
+A local mutation is journaled before projection. Upload acknowledgement is not equivalent to remote projection. The device tracks an imported remote cursor separately from the locally projected cursor. A remote event is retained until its local projection and cursor finalization complete.
+
+## Two-device evidence
+
+PR #77 added an Emulator integration using separate authenticated Firestore clients, independent fake IndexedDB factories, and independent localStorage adapters. It proves a profile upsert from A is projected by B and a subsequent B upsert is projected by A, with both devices converging at revision 2 / cursor 2 and no pending outbox items.
+
+PR #78 adds an offline same-document conflict regression: the first device's base-revision write wins; the stale write is rejected; the losing device retains its pending mutation and remote inbox event; projection is blocked and its cursor remains unchanged. This proves preservation and conflict detection, **not** a user-facing conflict-resolution workflow.
+
+## Explicitly not certified
+
+- The two-device tests currently exercise the profile collection and do not prove all collection mappings or browser/device E2E.
+- Tombstone delivery is intentionally blocked by the projector and local storage adapter. No safe collection-specific delete projection or tombstone garbage collection is implemented.
+- Conflict records/merge UI are not yet implemented. A stale local mutation remains pending and blocks projection; this is safe but requires a resolution workflow.
+- Production Firebase rules deployment and Vercel deployment of current main have not been verified.
+- Runtime activation depends on explicit build flags: `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. Their production values have not been inspected and must not be assumed enabled.
+
+## Safety invariant
+
+Never enable upload or projection against production until the deployed Firestore rules match the transaction contract, every active mutation path is journaled, tombstones/conflicts have safe semantics, and release gates pass.

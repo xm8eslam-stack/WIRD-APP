@@ -361,3 +361,15 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - AuthGate now replays older committed events first, then commits legacy portions/revision migration through one journaled transaction before mounting the app. Guest migration remains local-only and rollback-safe.
 - Validated recovery from corrupt schema-v2 data is represented by an explicit journal projection flag; corrupt canonical bytes are not replaced until the validated legacy snapshot is journal-committed.
 - PR #58 adds account-scope guards to journaled persistence and AuthGate migration to prevent a stale startup task from projecting one account's migration into another account after an auth/scope change.
+
+
+## 2026-11-07 — Remote projection recovery and initial multi-device verification
+
+- PR #73 merged: `cc887a6bfa07aec880f495221e64dd36edb14ca8`; durable projection intent and recovery finalization.
+- Post-merge main CI run `42350476806` passed.
+- PR #77 merged: `716cf301bff9a8c7777ee3931dba6366a01afe3b`; independent Firestore Emulator clients + separate IndexedDB/localStorage prove bidirectional profile projection. Exact-head CI: 450/450 automated assertions, 26/26 rules, TypeScript, production build, startup smoke, dependency audit passed.
+- PR #78 merged: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`; two offline devices mutate same profile from base revision 0; accepted write wins, stale write returns `REMOTE_REVISION_CONFLICT`, losing local mutation and remote inbox are preserved, projection returns `blocked_pending_local` and cursor stays at 0. Exact-head CI: 450/450 automated assertions, 27/27 rules, TypeScript, production build, startup smoke, dependency audit passed.
+- An initial PR #78 test attempt failed because the test called a nonexistent `listPending` API; corrected to use `listReady` and re-ran the full exact-head CI successfully. The earlier failed SHA was not merged.
+- Current main at checkpoint: `6ea15e4cb13f34ec1744a8b358feab4f7e38f2e9`; post-merge main workflow was queued; recheck it before considering main verification complete.
+- Known blockers: tombstones remain intentionally blocked; no durable conflict record/user resolution UX; profile-only two-device coverage; no Playwright browser contexts/long-offline stress; production rules deployment and Vercel deployment not verified (`build-rate-limit`).
+- No production data, secrets, Firebase rules deployment, environment variables, or Vercel settings changed.
