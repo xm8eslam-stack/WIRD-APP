@@ -12,6 +12,7 @@ Last reviewed: 2026-11-07
 - Phase 6: PR #111 — strict Quran-coordinate sanitization, hard-disabled topic/category endpoints, and canonical WIRD Quran text rendering.
 - Phase 7: PR #117 — removed dormant legacy audio playback code and all hidden browser audio handlers while retaining disabled safety notices.
 - Phase 8: PR #120 — rejects signed/negative Quran coordinates, mixed/ambiguous/out-of-range locators, and invalid or oversized provider IDs.
+- Phase 9: PR #123 — canonical surah/ayah search, Arabic numeral normalization, no-results state, and keyboard focus indicators.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
