@@ -17,6 +17,7 @@ Last reviewed: 2026-11-07
 - Phase 11: PR #127 — Playwright coverage for loading, canonical text, empty, retry/error, invalid locator, and search states on desktop/mobile.
 - Phase 12: PR #135 — clear stale in-memory progress when corrupt Ruqyah storage is detected; preserve corrupt bytes and verify the recovery warning/count reset on desktop/mobile.
 - Phase 13: PR #137 — add explicit category-reset confirmation/cancel, scope explanation, and disabled reset controls while progress is unhydrated or corrupt; verify on desktop/mobile.
+- Phase 14: PR #139 — restore keyboard focus after reset confirmation actions and support Escape cancellation from the reset trigger; verify on desktop/mobile.
 
 The code quality gate passed on each phase. This document records the remaining release work that cannot be truthfully claimed from emulator/build checks alone.
 
