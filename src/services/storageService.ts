@@ -13,6 +13,8 @@ import { EngineGeneratedPlan, PlanningEngine } from './planningEngine';
 import { migrateLegacyDataLosslessly, MigrationReport, getLocalDateString, createCanonicalPortionId } from './unifiedPortionService';
 import type { JournalEvent } from './indexedDbSyncJournal';
 import type { SyncCollection } from './localSyncOutbox';
+import { isValidRuqyahProgressSnapshot } from './ruqyahProgressSchema';
+import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 
 export interface PreparedDataMigration {
   report: MigrationReport;
@@ -836,13 +838,14 @@ export interface BackupPayload {
   portions?: PortionStatusRecord[];
   unifiedPortions?: WirdPortion[];
   weakVerses?: WeakVerseItem[];
+  ruqyahProgress?: RuqyahProgressSnapshot;
 }
 
 export function validateBackupPayload(payload: any): { valid: boolean; error?: string } {
   if (!isPlainRecord(payload)) {
     return { valid: false, error: 'الملف لا يحتوي على كائن JSON صالح' };
   }
-  if (!isIntegerBetween(payload.version, 1, 4)) {
+  if (!isIntegerBetween(payload.version, 1, 5)) {
     return { valid: false, error: 'إصدار النسخة الاحتياطية (' + payload.version + ') غير مدعوم' };
   }
   if (payload.format !== undefined && payload.format !== 'wird_backup') {
@@ -857,6 +860,10 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
   if (payload.unencryptedWarning !== undefined &&
       (typeof payload.unencryptedWarning !== 'string' || payload.unencryptedWarning.length > 1000)) {
     return { valid: false, error: 'بيان تحذير النسخة الاحتياطية غير صالح' };
+  }
+
+  if (payload.ruqyahProgress !== undefined && !isValidRuqyahProgressSnapshot(payload.ruqyahProgress)) {
+    return { valid: false, error: 'سجل تقدم الرقية غير صالح أو يتجاوز الحدود المسموحة' };
   }
 
   if (payload.profile !== undefined && !isValidUserProfile(payload.profile)) {
@@ -913,7 +920,7 @@ export function validateBackupPayload(payload: any): { valid: boolean; error?: s
     }
   }
 
-  if (payload.version === 4 && Array.isArray(payload.unifiedPortions)) {
+  if (payload.version >= 4 && Array.isArray(payload.unifiedPortions)) {
     if (payload.portions !== undefined &&
         JSON.stringify(payload.portions) !== JSON.stringify(payload.unifiedPortions)) {
       return { valid: false, error: 'نسخة المقاطع القديمة لا تطابق المقاطع الموحدة؛ يلزم إصلاح التعارض قبل الاستيراد.' };
@@ -961,6 +968,23 @@ export const StorageService = {
 
   getRawItem(key: string): string | null {
     return getItem(key);
+  },
+
+  getRuqyahProgressSnapshot(): RuqyahProgressSnapshot | null {
+    const raw = getItem(STORAGE_KEYS.RUQYAH_PROGRESS);
+    if (raw === null) return null;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isValidRuqyahProgressSnapshot(parsed)) throw new Error('invalid');
+      return parsed;
+    } catch {
+      throw new Error('سجل تقدم الرقية تالف؛ أوقفنا تصدير النسخة الاحتياطية لحماية بياناتك.');
+    }
+  },
+
+  saveRuqyahProgressSnapshot(snapshot: unknown): boolean {
+    if (!isValidRuqyahProgressSnapshot(snapshot)) return false;
+    return setItem(STORAGE_KEYS.RUQYAH_PROGRESS, JSON.stringify(snapshot));
   },
 
   setRawItem(key: string, value: string): boolean {
@@ -1350,10 +1374,11 @@ export const StorageService = {
       weakVerses: [STORAGE_KEYS.WEAK_VERSES],
       tests: [STORAGE_KEYS.TESTS],
       activityEvents: [STORAGE_KEYS.LOGS],
+      ruqyahProgress: [STORAGE_KEYS.RUQYAH_PROGRESS],
       syncMeta: [
         STORAGE_KEYS.PROFILE, STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS,
         STORAGE_KEYS.UNIFIED_PORTIONS, STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION,
-        STORAGE_KEYS.WEAK_VERSES, STORAGE_KEYS.TESTS, STORAGE_KEYS.LOGS
+        STORAGE_KEYS.WEAK_VERSES, STORAGE_KEYS.TESTS, STORAGE_KEYS.LOGS, STORAGE_KEYS.RUQYAH_PROGRESS
       ]
     };
     const snapshot: Record<string, string | null> = {};
@@ -1392,11 +1417,20 @@ export const StorageService = {
         return emptyArrayArchive(STORAGE_KEYS.TESTS);
       case 'activityEvents':
         return emptyArrayArchive(STORAGE_KEYS.LOGS);
+      case 'ruqyahProgress': {
+        const raw = getItem(STORAGE_KEYS.RUQYAH_PROGRESS);
+        if (raw === null) return true;
+        try {
+          const parsed: unknown = JSON.parse(raw);
+          return isValidRuqyahProgressSnapshot(parsed) && Object.keys(parsed.counts).length === 0;
+        } catch { return false; }
+      }
       case 'syncMeta':
         return getItem(STORAGE_KEYS.PROFILE) === null &&
           [STORAGE_KEYS.PLANS, STORAGE_KEYS.ENGINE_PLANS, STORAGE_KEYS.UNIFIED_PORTIONS,
             STORAGE_KEYS.PORTIONS, STORAGE_KEYS.REVISION, STORAGE_KEYS.WEAK_VERSES,
-            STORAGE_KEYS.TESTS, STORAGE_KEYS.LOGS].every(emptyArrayArchive);
+            STORAGE_KEYS.TESTS, STORAGE_KEYS.LOGS].every(emptyArrayArchive) &&
+          this.isLocalProjectionEmpty('ruqyahProgress');
       default:
         return false;
     }
@@ -1427,6 +1461,8 @@ export const StorageService = {
         return Array.isArray(payload.records) && this.saveTests(payload.records as TestResult[]);
       case 'activityEvents':
         return Array.isArray(payload.records) && this.saveLogs(payload.records as DailyLog[]);
+      case 'ruqyahProgress':
+        return isValidRuqyahProgressSnapshot(payload.snapshot) && this.saveRuqyahProgressSnapshot(payload.snapshot);
       default:
         return false;
     }
@@ -1471,7 +1507,8 @@ export const StorageService = {
       ],
       weakVerses: [STORAGE_KEYS.WEAK_VERSES],
       tests: [STORAGE_KEYS.TESTS],
-      activityEvents: [STORAGE_KEYS.LOGS]
+      activityEvents: [STORAGE_KEYS.LOGS],
+      ruqyahProgress: [STORAGE_KEYS.RUQYAH_PROGRESS]
     };
     const seenCollections = new Set<string>();
     const snapshotKeys = new Set<string>();
