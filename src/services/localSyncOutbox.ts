@@ -390,6 +390,19 @@ export const LocalSyncOutbox = {
     return getIndexedDbJournal().getConflictResolutionIntent(eventId);
   },
 
+  /** Atomically apply the latest remote snapshot and close the exact archived conflict. */
+  async commitUseRemoteConflictResolution(
+    eventId: string,
+    expectedRevision: number,
+    expectedPayload: Record<string, unknown>,
+    nowMs: number = Date.now()
+  ): Promise<boolean> {
+    await migrateLegacyOutboxToIndexedDb();
+    return getIndexedDbJournal().commitUseRemoteConflictResolution(
+      eventId, expectedRevision, expectedPayload, nowMs
+    );
+  },
+
   async listProjectionConflicts(limit: number = 20): Promise<RemoteProjectionConflict[]> {
     await migrateLegacyOutboxToIndexedDb();
     return getIndexedDbJournal().listProjectionConflicts(limit);
