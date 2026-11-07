@@ -1,6 +1,6 @@
 import { LocalSyncOutbox, type SyncCollection } from './localSyncOutbox';
 import { StorageService } from './storageService';
-import { isValidRuqyahProgressSnapshotV2 } from './ruqyahProgressSchema';
+import { areRuqyahLegacyBaselinesCompatible, isValidRuqyahProgressSnapshotV2 } from './ruqyahProgressSchema';
 import type { RuqyahProgressSnapshot } from './ruqyahProgressSchema';
 import type {
   JournalEvent,
@@ -236,7 +236,8 @@ export async function projectRemoteInboxBatch(
       (cached?.revision ?? 0) < remoteEvent.revision &&
       !!dependencies.finalizeRuqyahProgressMerge &&
       isValidRuqyahProgressSnapshotV2(localRuqyahSnapshot) &&
-      isValidRuqyahProgressSnapshotV2(remoteEvent.payload.snapshot);
+      isValidRuqyahProgressSnapshotV2(remoteEvent.payload.snapshot) &&
+      areRuqyahLegacyBaselinesCompatible(localRuqyahSnapshot, remoteEvent.payload.snapshot);
 
     if (canMergeRuqyahCounters) {
       const preProjectionSnapshot = captureLocalProjectionSnapshot(remoteEvent, [], dependencies);
