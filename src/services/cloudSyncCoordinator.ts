@@ -6,7 +6,7 @@ import { StorageService } from './storageService';
 import { writeRevisionedRemoteMutation } from './revisionedRemoteMutation';
 import { projectRemoteInboxBatch } from './remoteInboxProjector';
 
-export function isSyncScopeChanged(error: unknown): boolean {
+function isSyncScopeChanged(error: unknown): boolean {
   return error instanceof Error && error.message === 'SYNC_SCOPE_CHANGED';
 }
 
@@ -18,7 +18,7 @@ function assertActiveSyncScope(uid: string): void {
   }
 }
 
-const LEGACY_REMOTE_STATE_COLLECTIONS = [
+export const LEGACY_REMOTE_STATE_COLLECTIONS = [
   'profile', 'plans', 'enginePlans', 'portions',
   'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress', 'syncMeta'
 ] as const;
