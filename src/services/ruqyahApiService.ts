@@ -2,7 +2,7 @@ import { getRuqyahDisplayText } from './ruqyahContentService';
 import type { RuqyahItem } from '../data/ruqyahData';
 
 export type RuqyahApiProgram = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya';
-export type RuqyahApiSource = 'from-quran' | 'from-sunnah';
+export type RuqyahApiSource = 'from-quran';
 
 export interface RuqyahApiEntry {
   id: number | string;
