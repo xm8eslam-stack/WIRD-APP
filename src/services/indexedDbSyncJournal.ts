@@ -111,6 +111,8 @@ export interface RemoteProjectionConflict {
   event: RemoteInboxEvent;
   reason: string;
   localSnapshot: Record<string, string | null>;
+  /** Immutable snapshots of pending local writes for this exact document. */
+  localMutations?: JournalOutboxEntry[];
   createdAtMs: number;
   updatedAtMs: number;
   status: 'open' | 'resolved';
@@ -1550,22 +1552,26 @@ export class IndexedDbSyncJournal {
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(
-        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS],
+        [STORE_METADATA, STORE_REMOTE_INBOX, STORE_PROJECTION_CONFLICTS, STORE_OUTBOX],
         'readwrite'
       );
       const metadataStore = transaction.objectStore(STORE_METADATA);
       const inbox = transaction.objectStore(STORE_REMOTE_INBOX);
       const store = transaction.objectStore(STORE_PROJECTION_CONFLICTS);
+      const outbox = transaction.objectStore(STORE_OUTBOX);
       const key = uid + ':' + event.eventId;
       const metadataRequest = metadataStore.get(uid);
       const inboxRequest = inbox.index('uidServerSequence').get([uid, event.serverSequence]);
       const existingRequest = store.get(key);
       const recordsRequest = store.index('uid').getAll(IDBKeyRange.only(uid));
+      const localMutationsRequest = outbox.index('uidCollectionDocument')
+        .getAll(IDBKeyRange.only([uid, event.collection, event.documentId]));
       let metadata: DeviceMetadata | undefined;
       let inboxEvent: RemoteInboxEvent | undefined;
       let existing: RemoteProjectionConflict | undefined;
       let records: RemoteProjectionConflict[] = [];
-      let readsRemaining = 4;
+      let localMutations: JournalOutboxEntry[] = [];
+      let readsRemaining = 5;
       let saved = false;
       let failure: Error | undefined;
       const finishRead = () => {
@@ -1617,6 +1623,39 @@ export class IndexedDbSyncJournal {
           saved = true;
           return;
         }
+
+        // Preserve the exact local outbox intents alongside the raw local snapshot.
+        // This makes later user-directed resolution recoverable after a reload.
+        const archivedById = new Map<string, JournalOutboxEntry>();
+        for (const mutation of [...(existing?.localMutations || []), ...localMutations]) {
+          const previous = archivedById.get(mutation.mutationId);
+          if (previous && previous.fingerprint !== mutation.fingerprint) {
+            failure = new Error('تغيرت هوية عملية محلية محفوظة؛ رفضنا استبدال دليل التعافي.');
+            transaction.abort();
+            return;
+          }
+          if (!previous) archivedById.set(mutation.mutationId, mutation);
+        }
+        const archivedLocalMutations = [...archivedById.values()]
+          .sort((a, b) => a.sequence - b.sequence || a.mutationId.localeCompare(b.mutationId));
+        const archivedLocalSnapshot = existing?.localSnapshot ?? localSnapshot;
+        let combinedSnapshotBytes = 0;
+        try {
+          combinedSnapshotBytes = byteLength(JSON.stringify({
+            localSnapshot: archivedLocalSnapshot,
+            localMutations: archivedLocalMutations
+          }));
+        } catch {
+          failure = new Error('تعذر تجهيز سجل عمليات التعارض المحلية.');
+          transaction.abort();
+          return;
+        }
+        if (combinedSnapshotBytes > MAX_CONFLICT_SNAPSHOT_BYTES) {
+          failure = new Error('تجاوزت أدلة التعارض المحلية الحد الآمن؛ بقيت العمليات وصندوق الاستقبال دون حذف.');
+          transaction.abort();
+          return;
+        }
+
         if (!existing) {
           const resolved = records
             .filter(record => record.status === 'resolved')
@@ -1638,12 +1677,14 @@ export class IndexedDbSyncJournal {
           event,
           reason,
           localSnapshot,
+          localMutations: archivedLocalMutations,
           createdAtMs: nowMs,
           updatedAtMs: nowMs,
           status: 'open'
         };
         if (existing) {
           record.reason = reason;
+          record.localMutations = archivedLocalMutations;
           record.updatedAtMs = nowMs;
         }
         store.put(record);
@@ -1663,6 +1704,10 @@ export class IndexedDbSyncJournal {
       };
       recordsRequest.onsuccess = () => {
         records = recordsRequest.result as RemoteProjectionConflict[];
+        finishRead();
+      };
+      localMutationsRequest.onsuccess = () => {
+        localMutations = localMutationsRequest.result as JournalOutboxEntry[];
         finishRead();
       };
       transaction.oncomplete = () => resolve(saved);
