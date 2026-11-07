@@ -57,7 +57,12 @@ export async function runRuqyahAudioServiceTests(): Promise<{ passed: number; fa
       assert(
         buildQuranAyahAudioUrl('ar.husary', 1) ===
           'https://cdn.islamic.network/quran/audio/128/ar.husary/1.mp3',
-        'Known ayah URL must use the documented provider path'
+        'Al-Husary must use the documented 128 kbps edition path'
+      );
+      assert(
+        buildQuranAyahAudioUrl('ar.sudais', 1) ===
+          'https://cdn.islamic.network/quran/audio/192/ar.sudais/1.mp3',
+        'Al-Sudais must use the provider-documented 192 kbps edition path'
       );
       assert(buildQuranAyahAudioUrl('ar.alafasy', 6236).endsWith('/ar.alafasy/6236.mp3'),
         'Last canonical ayah should produce a bounded URL');
