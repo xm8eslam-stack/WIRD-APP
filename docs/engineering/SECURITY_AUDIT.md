@@ -120,3 +120,8 @@ The Vercel status check for the audited commit is successful. No Firebase produc
 ## 2026-11-07 — conflict archive verification
 
 PR #81 adds a bounded UID-scoped IndexedDB archive for blocked remote projection conflicts. It preserves the remote event and local snapshot, surfaces diagnostics in Settings, and never prunes open records. Exact-head CI passed (459 automated assertions, 27 Firestore Rules tests, TypeScript, build, dependency audit, startup smoke); post-merge main run `42351965332` passed on `059e902194811be71ab4dea9da8609a96967214e`. This does not implement conflict resolution or tombstone propagation. Vercel still reports `build-rate-limit`; live production deployment/rules remain unverified.
+
+
+## PR #85 — conflict archive integrity
+
+Conflict archival validates the stored inbox event and fingerprint, checks existing conflict identity, caps local snapshots, and prevents orphan records. Conflict status is resolved only in the same transaction as a successful projection cursor commit/inbox deletion. Exact PR head passed 462 automated assertions and 27 Firestore Rules tests; post-merge main run `42352594819` passed on `db4ec36f14490cd50eb61ccd2b9e73972dbe8b17`. Manual conflict resolution/rebase and tombstone projection remain unimplemented; Vercel production deployment remains unverified.
