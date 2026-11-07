@@ -103,6 +103,19 @@ export function runRuqyahProgressServiceTests(): { passed: number; failed: numbe
     assert(merged.counts[itemId] === 7, 'The same legacy baseline must not be added twice during migration');
   });
 
+  test('Divergent V1 migration baselines are rejected instead of guessed or silently undercounted', () => {
+    const itemId = RUQYAH_ITEMS[0].id;
+    const local = migrateRuqyahProgressSnapshot({
+      schemaVersion: 1 as const, updatedAtMs: 225000, counts: { [itemId]: 4 }
+    });
+    const remote = migrateRuqyahProgressSnapshot({
+      schemaVersion: 1 as const, updatedAtMs: 225001, counts: { [itemId]: 6 }
+    });
+    let rejected = false;
+    try { mergeRuqyahProgressSnapshots(local, remote, 225002); } catch { rejected = true; }
+    assert(rejected, 'Different legacy totals may contain overlapping offline increments and must not be merged by max or sum');
+  });
+
   test('V2 validation rejects a derived total that disagrees with PN components', () => {
     const itemId = RUQYAH_ITEMS[0].id;
     const valid = adjustRuqyahProgressCounter(createEmptyRuqyahProgressSnapshot(230000), itemId, 'device-A', 1, 230001);
