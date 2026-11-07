@@ -16,7 +16,7 @@ Policy: no bulk deletion, force-push, or branch rewrite during audit. A branch i
 
 ## All 70 refs
 
-The rows below record the exact observed ref heads. Except for the five PR branches above, their full compare status and PR association remain **PENDING**. Branch names are not sufficient evidence for deletion.
+The rows below record the exact observed ref heads. The full compare status for every ref is now recorded in `BRANCH_COMPARE_MATRIX.md`; branch names are not sufficient evidence for deletion.
 
 | Branch | Observed head SHA | Initial grouping | Disposition |
 |---|---|---|---|
@@ -98,3 +98,13 @@ The rows below record the exact observed ref heads. Except for the five PR branc
 3. Check open PRs, CI evidence and whether commits were merged under another PR.
 4. Mark branches as `KEEP_ACTIVE`, `KEEP_REFERENCE`, `PORT_UNIQUE_COMMITS`, `CLOSE_PR_THEN_ARCHIVE`, or `DELETE_CANDIDATE`.
 5. Delete only branches with proven no unique required work and no open PR, after preserving the audit record. Do not delete main, active branches, or branches tied to open PRs.
+
+## Final comparison result (2026-11-07)
+
+All 70 branches were compared to the exact main baseline:
+- 65 diverged branches with unique branch commits — preserve and review.
+- 4 branches are ancestors of main with zero unique branch commits — archive/deletion candidates, no open PR association.
+- main is identical to itself.
+- All five open PRs (#2, #8, #48, #59, #60) are diverged and preserved.
+
+See `BRANCH_COMPARE_MATRIX.md` for exact ahead/behind counts for every ref. No refs were deleted because the connected GitHub tool set does not expose a safe branch-delete operation. This is a tooling limitation, not a claim that the branches were deleted.
