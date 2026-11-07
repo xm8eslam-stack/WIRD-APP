@@ -212,6 +212,15 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       const malformed = new MockResponse();
       await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.55' } }, malformed);
       assert(malformed.statusCode === 502 && malformed.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE', 'Malformed item data must be rejected');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: [{ id: 2, title: '2:255, 3:33', arabic: 'نص خارجي لا يعرض' }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const ambiguous = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.57' } }, ambiguous);
+      assert(ambiguous.statusCode === 502 && ambiguous.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+        'A title containing multiple Quran coordinates must be rejected as ambiguous');
     });
   } finally {
     globalThis.fetch = originalFetch;
