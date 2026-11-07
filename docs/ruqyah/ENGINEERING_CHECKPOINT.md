@@ -1,19 +1,19 @@
-# Current verified continuation — after PR #155; ayah-level audio restored and conflict choices partially implemented
+# WIRD Engineering Checkpoint — current state after PR #157
 
 Last verified: 2026-11-07.
 
-## Latest verified continuation — PR #155 merged
+## Latest verified continuation — PR #157 merged
 
-- Current main merge SHA: `c620697538ef72eec3d1c2c78bb456c0403232ce` (PR #155, squash merge).
-- Exact tested PR head: `1d4ea9d5acb5be0179af6935f79c4a100fab1ecf`; WIRD Quality Gate run `42370175733` (#2909) completed successfully.
-- Passed on that exact head: dependency audit, automated test suites, approved Quran audio CDN/range checks, Firestore Rules Emulator, TypeScript, production build, server startup smoke, and desktop/mobile Playwright.
-- PR #155 adds an explicit keep-local decision for supported single-collection upsert conflicts. It revalidates the latest Firestore revision, verifies the exact current local projection against the last archived local mutation, atomically archives/supersedes the old pending mutations, and queues one consolidated replacement mutation based on the latest remote revision.
-- The local snapshot is not overwritten. The new mutation remains queued until the normal revisioned sync coordinator successfully uploads and acknowledges it; the UI does not claim that Firestore accepted it merely because it was queued.
-- Keep-local is deliberately blocked for `syncMeta` grouped transactions, `ruqyahProgress` counters (until deterministic additive merge exists), and tombstones. User-authored merge, tombstone resolution, cross-tab coordination, comprehensive account lifecycle isolation, and live two-device production verification remain open.
-- PR #149 use-latest-remote and PR #155 keep-local are narrow user-confirmed choices, not a general merge engine. Both production sync flags remain disabled.
-- Vercel production deployment/live audio playback remain unverified because of the Free-plan `build-rate-limit` quota. CI success is not a production deployment.
-- Next: design deterministic additive Ruqyah counter reconciliation, then tombstone/delete semantics and grouped `syncMeta` resolution; continue cross-tab/account lifecycle and live two-device tests before any production activation.
-
+- Current main merge SHA: `22fdd996d7aabc0669fef504c50970d5ba015d73` (PR #157, squash merge).
+- Exact tested PR head: `b2752297842d6fd30d7b4ae86eb33d48585e9ce8`; WIRD Quality Gate run `42372550605` (#2977) completed successfully on that exact head.
+- Passed gates: 551 automated assertions; Firestore Rules Emulator 31/31; approved Quran audio CDN/range probes 8/8; TypeScript; production build; production server startup smoke; desktop/mobile Playwright 30/30.
+- PR #157 replaces scalar last-write-wins Ruqyah progress snapshots with V2 per-device monotonic increment components and reset watermarks. Component-wise max merge is deterministic, idempotent, and order-independent. Independent offline increments are preserved; concurrent resets of the same observed baseline do not double-subtract; increments unseen by a reset survive.
+- The remote projector auto-merges only when both local and remote snapshots are valid V2 and their migrated legacy baselines are compatible. V1 snapshots are migrated through a shared `legacy` baseline. Different non-zero legacy baselines are ambiguous because pre-V2 per-device increments cannot be reconstructed; these conflicts remain archived and blocked rather than guessed.
+- Valid pending V1 Ruqyah Outbox writes are superseded atomically by a validated V2 full-snapshot mutation during migration; immutable journal events remain preserved. Malformed or unsupported pending entries fail closed.
+- Firestore Rules now require the complete V2 Ruqyah snapshot envelope for new writes, preventing an old V1 client from overwriting V2 device components. This is a repository rule change only; production Firestore rules deployment has not been verified.
+- PR #149 (use latest remote), PR #155 (keep local for supported single-collection upserts), and PR #157 (automatic V2 Ruqyah counter merge) are merged. User-authored merge, tombstone/delete resolution, grouped `syncMeta` conflict resolution, cross-tab coordination, and comprehensive account lifecycle isolation remain open.
+- Both production sync feature flags remain disabled. Vercel still reports `build-rate-limit`; no production deployment, live audio playback, deployed Firestore Rules, or real-device production sync is claimed.
+- Next: implement/test tombstone and offline deletion semantics, grouped `syncMeta` conflict handling, cross-tab/account lifecycle isolation, then verify deployed rules and live two-device sync after deployment quota recovery.
 
 ## Historical sync continuation — PR #149 merged (superseded by PR #155)
 
@@ -175,7 +175,7 @@ Last verified: 2026-11-07.
 ## Remaining release blockers
 1. Vercel production deployment is blocked by the free-plan quota. No live production SHA/alias is verified.
 2. Firestore rules deployment and production environment-variable values are not verified.
-3. Live two-device sync, additive offline Ruqyah counter merge, user-facing conflict resolution, tombstones, cross-tab concurrency, and account lifecycle release gates remain open as documented in `docs/sync/RELEASE-GATES.md`.
+3. Live production two-device sync, divergent legacy Ruqyah conflict resolution, grouped/user-authored conflict resolution, tombstones, cross-tab concurrency, and account lifecycle release gates remain open as documented in `docs/sync/RELEASE-GATES.md`. Compatible V2 Ruqyah counter merge is implemented and Emulator-tested by PR #157.
 4. Production API behavior and real-device RTL, keyboard-only, and screen-reader checks remain unverified. The Playwright browser tests are local/CI browser checks, not a deployed production session.
 5. Ayah-level audio passed exact-head CI and is merged in PR #150; production playback remains unverified until Vercel deployment quota recovers. Full-program recordings remain disabled pending separate content and rights verification.
 
@@ -331,7 +331,7 @@ Phase 8 requires exact-head CI before merge.
 1. Read this checkpoint and `docs/ruqyah/RELEASE_CHECKLIST.md`.
 2. Fetch current `main` SHA and all open PRs; never trust a copied SHA.
 3. Review any pending PR diff and exact-head CI runs before merging.
-4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: manual conflict resolution, deterministic additive Ruqyah merge, tombstones, cross-tab concurrency, account isolation, and live two-device verification.
+4. Do not enable remote projection until all global release gates pass and live Firestore rules are confirmed deployed: safe resolution for divergent legacy and grouped conflicts, tombstones, cross-tab concurrency, account isolation, and live production two-device verification. Compatible V2 Ruqyah counter merge is implemented but does not waive these remaining gates.
 5. Do not expose educational topic endpoints; any future locally curated article must have named Sunni source review, rights review, and source-registry tests before implementation.
 6. PR #150 is merged. The next audio task is production smoke verification once Vercel deployment quota permits; do not re-open source implementation unless production tests reveal a defect. Full-program recordings remain disabled pending separate content and rights verification.
 7. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
