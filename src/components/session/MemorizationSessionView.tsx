@@ -252,12 +252,22 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // Word Masking Logic
   const [displayWords, setDisplayWords] = useState<string[]>([]);
+  const [displayTextError, setDisplayTextError] = useState(false);
   useEffect(() => {
     let active = true;
-    if (!currentAyah) { setDisplayWords([]); return () => { active = false; }; }
+    if (!currentAyah) { setDisplayWords([]); setDisplayTextError(false); return () => { active = false; }; }
+    setDisplayWords([]);
+    setDisplayTextError(false);
     loadSimpleAyahText(currentAyah.surahNumber, currentAyah.numberInSurah)
-      .then(text => { if (active) setDisplayWords(getAyahWords(text ?? currentAyah.text)); })
-      .catch(() => { if (active) setDisplayWords(getAyahWords(currentAyah.text)); });
+      .then(text => {
+        if (!active) return;
+        if (text) setDisplayWords(getAyahWords(text));
+        else setDisplayTextError(true);
+      })
+      .catch(error => {
+        console.error('[WIRD Memorization] Could not load local Tanzil Simple text:', error);
+        if (active) setDisplayTextError(true);
+      });
     return () => { active = false; };
   }, [currentAyah?.surahNumber, currentAyah?.numberInSurah, currentAyah?.text]);
   const words = displayWords;
@@ -501,7 +511,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         {/* Quranic Text with Interactive Word Masking */}
         <div className="min-h-[140px] flex items-center justify-center py-4">
           <p className="quran-text font-quran text-2xl md:text-3xl lg:text-4xl leading-loose text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
-            {words.map((word, idx) => {
+            {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
               return (
