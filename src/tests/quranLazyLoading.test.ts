@@ -84,7 +84,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
 
   test('Revision center loads a single ayah on demand instead of importing the full Quran', () => {
     const revision = read('src/components/revision/RevisionCenterView.tsx');
-    assert(revision.includes('loadAyahByCoordinate') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use the lazy coordinate loader');
+    assert(revision.includes('loadAyahByCoordinate') && revision.includes('loadSimpleAyahText') && revision.includes('weakSimpleTexts') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use coordinate-based Simple text for weak-ayah display and search');
   });
 
   test('Quran source attribution metadata is independent from the full text payload', () => {

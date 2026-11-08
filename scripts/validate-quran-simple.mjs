@@ -121,6 +121,9 @@ if (total !== 6236) issues.push({ reason: 'TOTAL_AYAH_COUNT', expected: 6236, ac
 if (seen.size !== 6236) issues.push({ reason: 'UNIQUE_COORDINATE_COUNT', expected: 6236, actual: seen.size });
 if (separateBismillahCount !== 112) issues.push({ reason: 'SEPARATE_BISMILLAH_COUNT', expected: 112, actual: separateBismillahCount });
 
+const simple41_7Expected = 'الَّذِينَ لَا يُؤْتُونَ الزَّكَاةَ وَهُم بِالْآخِرَةِ هُمْ كَافِرُونَ';
+if (simpleBySurah[41]?.[6] !== simple41_7Expected) issues.push({ surah: 41, ayah: 7, reason: 'SIMPLE_41_7_REGRESSION_MISMATCH', expected: simple41_7Expected, actual: simpleBySurah[41]?.[6] ?? null });
+
 const report = {
   source: 'Tanzil Project — Quran Text (Simple), Version 1.1',
   sourceUrl: 'https://tanzil.net',
