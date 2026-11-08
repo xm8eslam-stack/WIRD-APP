@@ -72,7 +72,7 @@ async function getToken(fetcher: typeof fetch): Promise<string> {
 
 function safeUrn(value: unknown): number | null {
   if (Number.isSafeInteger(value) && Number(value) > 0) return Number(value);
-  if (typeof value === 'string' && /^\\d+$/.test(value.trim())) {
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
     const parsed = Number(value);
     return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
   }
