@@ -21,11 +21,12 @@
     "smoke:server": "node scripts/smoke-server.mjs",
     "smoke:api-imports": "node scripts/smoke-api-imports.mjs",
     "test:firestore-rules": "npx --yes firebase-tools@15.0.0 emulators:exec --only firestore --project demo-wird \"tsx scripts/firestoreRules.test.ts\"",
-    "quran:split": "node scripts/split-quran-data.mjs",
-    "predev": "node scripts/split-quran-data.mjs",
-    "prebuild": "node scripts/split-quran-data.mjs",
-    "pretest": "node scripts/split-quran-data.mjs",
-    "prelint": "node scripts/split-quran-data.mjs"
+    "quran:split": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
+    "predev": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
+    "prebuild": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
+    "pretest": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
+    "prelint": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
+    "quran:validate-simple": "node scripts/validate-quran-simple.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

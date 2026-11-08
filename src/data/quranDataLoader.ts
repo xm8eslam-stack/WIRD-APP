@@ -34,3 +34,34 @@ export async function loadAyahByCoordinate(surahNumber: number, ayahNumber: numb
 export function getAyahWords(text: string): string[] {
   return text.split(/\s+/).filter(word => word.trim().length > 0 && !['ۚ', 'ۖ', 'ۗ', 'ۛ'].includes(word));
 }
+ 
+// Tanzil Simple is stored separately from the canonical Uthmani corpus and loaded per surah.
+const simpleSurahModules = import.meta.glob<string[]>('./quran-simple-surahs/*.json');
+const simpleSurahCache = new Map<number, Promise<string[]>>();
+
+async function loadSimpleSurahTexts(surahNumber: number): Promise<string[]> {
+  if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114) return [];
+  const cached = simpleSurahCache.get(surahNumber);
+  if (cached) return cached;
+  const modulePath = './quran-simple-surahs/' + surahNumber + '.json';
+  const loader = simpleSurahModules[modulePath];
+  if (!loader) throw new Error('Missing local Tanzil Simple chunk for Surah ' + surahNumber + '. Run the Quran data generator.');
+  const pending = loader()
+    .then(module => Array.isArray(module.default) ? module.default : [])
+    .catch(error => { simpleSurahCache.delete(surahNumber); throw error; });
+  simpleSurahCache.set(surahNumber, pending);
+  return pending;
+}
+
+export async function loadSimpleAyahText(surahNumber: number, ayahNumber: number): Promise<string | undefined> {
+  if (!Number.isInteger(ayahNumber) || ayahNumber < 1) return undefined;
+  const verses = await loadSimpleSurahTexts(surahNumber);
+  return verses[ayahNumber - 1];
+}
+
+export async function loadSimpleAyahRange(surahNumber: number, startAyah: number, endAyah = startAyah): Promise<string[]> {
+  if (!Number.isInteger(startAyah) || !Number.isInteger(endAyah) || startAyah < 1 || endAyah < startAyah) return [];
+  const verses = await loadSimpleSurahTexts(surahNumber);
+  if (endAyah > verses.length) return [];
+  return verses.slice(startAyah - 1, endAyah);
+}
