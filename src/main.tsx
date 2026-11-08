@@ -3,6 +3,7 @@ import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { AuthGate } from './components/auth/AuthGate.tsx';
 import './index.css';
+import './wird-identity.css';
 
 createRoot(document.getElementById('root')!).render(
   <AuthProvider>

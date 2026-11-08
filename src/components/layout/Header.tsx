@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Play, Moon, Sun, Menu, BookOpen, ChevronLeft, Download, Cloud, CloudCheck, CloudOff, CloudAlert, RefreshCw } from 'lucide-react';
+import { Flame, Play, Moon, Sun, BookOpen, ChevronLeft, Download, Cloud, CloudCheck, CloudOff, CloudAlert, RefreshCw } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
 import { useCloudSync } from '../../hooks/useCloudSync';
 
@@ -8,7 +8,6 @@ interface HeaderProps {
   tabTitle: string;
   profile: UserProfile;
   onToggleTheme: () => void;
-  onOpenMobileMenu: () => void;
   onStartDailySession: () => void;
   pwaInstallPrompt?: any;
   isStandalone?: boolean;
@@ -19,7 +18,6 @@ export const Header: React.FC<HeaderProps> = ({
   tabTitle,
   profile,
   onToggleTheme,
-  onOpenMobileMenu,
   onStartDailySession,
   pwaInstallPrompt,
   isStandalone,
@@ -27,25 +25,13 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { status, pendingCount, triggerSync } = useCloudSync();
   return (
-    <header className="sticky top-0 z-30 h-16 bg-[#faf8f5]/90 dark:bg-stone-900/90 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
-      {/* Zone 1: Mobile Menu & Semantic RTL Breadcrumb */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onOpenMobileMenu}
-          className="md:hidden p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-200/50 dark:hover:bg-stone-800 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-emerald-700"
-          aria-label="فتح القائمة الرئيسية"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        <nav aria-label="مسار التنقل" className="flex items-center gap-2 text-xs">
-          <span className="font-bold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200/60 dark:border-emerald-800/50 px-2.5 py-1 rounded-md tracking-wide">
-            وِرد
-          </span>
-          <ChevronLeft className="w-3.5 h-3.5 text-stone-400 dark:text-stone-600 shrink-0" aria-hidden="true" />
-          <h1 className="text-sm md:text-base font-bold text-stone-800 dark:text-stone-100 whitespace-nowrap">
-            {tabTitle}
-          </h1>
+    <header className="sticky top-0 z-30 h-[68px] bg-[var(--wird-surface)]/90 dark:bg-stone-900/90 backdrop-blur-xl border-b border-stone-200/70 dark:border-stone-800 px-4 md:px-7 flex items-center justify-between gap-3 transition-colors">
+      {/* Page context */}
+      <div className="flex items-center gap-2 min-w-0">
+        <nav aria-label="مسار التنقل" className="flex items-center gap-2 text-xs min-w-0">
+          <span className="hidden sm:inline-flex font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/50 px-2.5 py-1 rounded-lg">وِرد</span>
+          <ChevronLeft className="hidden sm:block w-3.5 h-3.5 text-stone-400 dark:text-stone-600 shrink-0" aria-hidden="true" />
+          <h1 className="text-sm md:text-base font-bold text-stone-800 dark:text-stone-100 truncate max-w-[42vw] sm:max-w-none">{tabTitle}</h1>
         </nav>
       </div>
 
@@ -137,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onToggleTheme}
-          className="p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-lg transition-colors focus-visible:ring-2 focus-visible:ring-emerald-700"
+          className="p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-emerald-700"
           title={profile.theme === 'dark' ? "التبديل إلى الوضع النهاري" : "التبديل إلى الوضع الليلي"}
           aria-label="تبديل المظهر النهاري والليلي"
         >
