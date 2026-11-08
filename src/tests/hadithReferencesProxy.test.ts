@@ -15,7 +15,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
     await test('hadith proxy stays fail-closed when server credentials are absent', async () => { delete process.env.QF_CLIENT_ID; delete process.env.QF_CLIENT_SECRET; const res = mockResponse(); await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7' }, headers: { 'x-forwarded-for': '198.51.100.202' } }, res, { fetch: async () => new Response('{}') }); assert(res.statusCode === 503 && res.body.error === 'HADITH_REFERENCES_NOT_CONFIGURED', 'missing secrets should not expose a fallback source'); });
     await test('hadith rate limiting ignores spoofed forwarded-for headers', async () => { for (let index = 0; index < 21; index++) { const res = mockResponse(); await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7' }, headers: { 'x-forwarded-for': `198.51.100.${index}` }, socket: { remoteAddress: '192.0.2.254' } }, res, { fetch: async () => new Response('{}') }); if (index < 20) assert(res.statusCode === 503, 'first twenty requests should reach fail-closed configuration check'); else assert(res.statusCode === 429, 'spoofed values must not evade throttling'); } });
     await test('diagnostics compare references, range counts and hadith records without exposing text', async () => {
-      process.env.QF_CLIENT_ID = 'test-client'; process.env.QF_CLIENT_SECRET = 'test-secret'; process.env.QF_CONTENT_SCOPE = 'content.hadith.read'; process.env.QF_ENV = 'prelive'; __testing.clearTokenCache();
+      process.env.QF_CLIENT_ID = 'test-client'; process.env.QF_CLIENT_SECRET = 'test-secret'; process.env.QF_CONTENT_SCOPE = 'content.hadith.read'; process.env.QF_ENV = 'prelive'; process.env.VERCEL_ENV = 'preview'; __testing.clearTokenCache();
       const requested: string[] = [];
       const fetcher: typeof fetch = async (input, init) => {
         const url = String(input);
@@ -39,6 +39,13 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       assert(requested.length === 3, 'all three upstream endpoints should be called');
       assert(!serialized.includes('نص سري') && !serialized.includes('English text') && !serialized.includes('diagnostic-token'), 'diagnostics must never return hadith text or tokens');
       assert(res.headers['cache-control'] === 'no-store', 'diagnostics must not be cached');
+    });
+    await test('diagnostics are unavailable outside Vercel Preview', async () => {
+      process.env.QF_CLIENT_ID = 'test-client'; process.env.QF_CLIENT_SECRET = 'test-secret'; process.env.VERCEL_ENV = 'production'; __testing.clearTokenCache();
+      let called = false; const res = mockResponse();
+      await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7', diagnostics: '1' }, headers: { 'x-forwarded-for': '198.51.100.205' } }, res, { fetch: async () => { called = true; return new Response('{}'); } });
+      assert(res.statusCode === 404 && !called, 'production diagnostics must be hidden before token or upstream access');
+      process.env.VERCEL_ENV = 'preview';
     });
     await test('hadith extraction rejects malformed envelopes and excludes non-Sahih judgments', async () => {
       assert(__testing.extractSahihHadiths({ hadiths: [], has_more: false })?.length === 0, 'an empty valid page should remain an empty page');
