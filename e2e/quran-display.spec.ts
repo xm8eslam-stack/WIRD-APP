@@ -6,6 +6,7 @@ test('connected reading displays official Tanzil Simple text by coordinate and f
   await page.goto('/#/library');
   await page.getByRole('button', { name: /تلاوة ودراسة: سورة/ }).click();
 
+  await expect(page.getByRole('link', { name: 'Tanzil Project' })).toHaveAttribute('href', 'https://tanzil.net');
   await expect(page.getByRole('button', { name: 'قراءة متصلة' })).toBeVisible();
   await page.getByRole('button', { name: 'قراءة متصلة' }).click();
   await expect(page.getByLabel('قراءة متصلة لسورة الفاتحة')).toBeVisible();

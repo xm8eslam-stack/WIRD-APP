@@ -64,6 +64,13 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     }
   });
 
+  test('Memorization test generation loads only Surahs in the memorized portions', () => {
+    const generator = read('src/services/testQuestionGenerator.ts');
+    const view = read('src/components/tests/MemorizationTestsView.tsx');
+    assert(generator.includes('loadSurahVerses') && generator.includes('loadAyahByCoordinate') && !generator.includes('VERIFIED_AYAHS'), 'Test generator must load only memorized Surahs on demand');
+    assert(!view.includes('VERIFIED_AYAHS'), 'Memorization test view must not import the full Quran corpus');
+  });
+
   test('Revision center loads a single ayah on demand instead of importing the full Quran', () => {
     const revision = read('src/components/revision/RevisionCenterView.tsx');
     assert(revision.includes('loadAyahByCoordinate') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use the lazy coordinate loader');
@@ -72,6 +79,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
   test('Quran source attribution metadata is independent from the full text payload', () => {
     const info = read('src/data/quranDataInfo.ts');
     assert(info.includes('Tanzil Project') && info.includes('CC BY 3.0'), 'Source and license attribution must remain available');
+    assert(info.includes('displayEdition') && info.includes('Simple') && info.includes('https://tanzil.net'), 'The default Imla’ei display edition and official source URL must be declared');
     assert(!info.includes('completeQuranData.json'), 'Metadata module must remain lightweight');
   });
 

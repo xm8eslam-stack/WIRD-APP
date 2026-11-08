@@ -47,8 +47,13 @@ Current implementation includes the non-mutating shared text primitive, RTL/spac
 
 ## Tanzil Simple display layer (2026-11-08)
 
-- A separate verbatim source is checked in at `src/data/sources/tanzil/quran-simple-1.1.xml`: Tanzil Quran Text (Simple), Version 1.1, Copyright (C) 2007-2026 Tanzil Project, CC BY 3.0. The original copyright/license block is retained in the source file.
+- A separate verbatim source is checked in at `src/data/sources/tanzil/quran-simple-1.1.xml`: Tanzil Quran Text (Simple), Version 1.1, Copyright (C) 2007-2026 Tanzil Project, CC BY 3.0. The original copyright/license block is retained in the source file, and every generated JSON chunk repeats the Tanzil copyright, version, license, and source URL metadata.
 - The importer validates 114 ordered surahs, 6,236 ayahs, unique surah/ayah coordinates, contiguous local ayah indexes, exact coordinate coverage against the existing canonical corpus, non-empty strings, and required source attribution. It also verifies the imported source's SHA-256 against the uploaded file, and reports diacritic/waqf marker counts.
 - Build/test preparation generates 114 independent JSON files under `src/data/quran-simple-surahs/`. These are local build artifacts generated from the checked-in XML and loaded by a per-surah Vite glob; no Quran text API is called at runtime.
-- The Uthmani source `completeQuranData.json` remains untouched. Display components request Simple text by surah/ayah coordinate; audio, tafsir, progress, bookmarks, and memorization identities continue to use the original coordinates.
+- The Uthmani source `completeQuranData.json` remains untouched. Memorization-test generation also uses the lazy coordinate loader, so opening that page does not import the entire Quran corpus. Display components request Simple text by surah/ayah coordinate; audio, tafsir, progress, bookmarks, and memorization identities continue to use the original coordinates.
 - The generated report is `src/data/quranSimpleValidationReport.json`. Any source checksum, coordinate, count, or integrity failure blocks the prebuild/pretest/prelint pipeline.
+
+
+## Verification snapshot
+
+The GitHub Actions run for the validated implementation reported 588 automated assertions passed, 31 Firestore Rules Emulator tests passed, and 46 desktop/mobile Playwright tests passed. TypeScript, dependency audit, native API smoke, approved Quran audio CDN checks, production build, and server startup smoke also passed. The Tanzil validator reported 114 surahs, 6,236 ayahs, and 6,236 unique coordinate matches with no reported discrepancies. The same gates must be rerun on the final commit before merge.
