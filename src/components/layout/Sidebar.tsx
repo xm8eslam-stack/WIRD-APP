@@ -107,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-stone-500 dark:text-stone-400">
-              رفيق الحفظ والتثبيت الذكي
+              رفيق القرآن والورد اليومي
             </p>
           </div>
         </div>
