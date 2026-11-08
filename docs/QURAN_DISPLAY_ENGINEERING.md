@@ -43,3 +43,12 @@ Tanzil text is to remain verbatim and attributed under its published CC BY 3.0 t
 ## Current phase scope and known limits
 
 Current implementation includes the non-mutating shared text primitive, RTL/spacing rules, connected selectable reading with saved-position restoration, an interactive typography lab with local corpus samples, and unit/browser regression coverage for 41:7. The lab only enables Amiri and system serif fallback; Amiri Quran, Uthmanic Hafs, and QCF V2 stay visibly unavailable because their assets/text mapping are not installed. The page-style reader now discloses that line distribution can differ from print. It still does not render true QCF page glyphs, exact line layout, or page-accurate word hit regions. QUL resource licenses and the official asset package must be resolved before that stage. CI's responsive Chromium smoke is not a replacement for visual typography review in Safari/iOS/Android or real devices. Existing cloud sync, production secrets, Firebase settings, and deployment configuration remain untouched.
+
+
+## Tanzil Simple display layer (2026-11-08)
+
+- A separate verbatim source is checked in at `src/data/sources/tanzil/quran-simple-1.1.xml`: Tanzil Quran Text (Simple), Version 1.1, Copyright (C) 2007-2026 Tanzil Project, CC BY 3.0. The original copyright/license block is retained in the source file.
+- The importer validates 114 ordered surahs, 6,236 ayahs, unique surah/ayah coordinates, contiguous local ayah indexes, exact coordinate coverage against the existing canonical corpus, non-empty strings, and required source attribution. It also verifies the imported source's SHA-256 against the uploaded file, and reports diacritic/waqf marker counts.
+- Build/test preparation generates 114 independent JSON files under `src/data/quran-simple-surahs/`. These are local build artifacts generated from the checked-in XML and loaded by a per-surah Vite glob; no Quran text API is called at runtime.
+- The Uthmani source `completeQuranData.json` remains untouched. Display components request Simple text by surah/ayah coordinate; audio, tafsir, progress, bookmarks, and memorization identities continue to use the original coordinates.
+- The generated report is `src/data/quranSimpleValidationReport.json`. Any source checksum, coordinate, count, or integrity failure blocks the prebuild/pretest/prelint pipeline.
