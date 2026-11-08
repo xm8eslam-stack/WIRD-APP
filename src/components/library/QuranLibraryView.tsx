@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { ALL_SURAHS, JUZ_NAMES } from '../../data/quranMeta';
 import { QURAN_DATA_SOURCE_INFO } from '../../data/quranDataInfo';
-import { loadSurahVerses, loadSimpleAyahText } from '../../data/quranDataLoader';
+import { loadSurahVerses, getAyahDisplayText } from '../../data/quranDataLoader';
 import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
@@ -310,7 +310,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   };
 
   const handleCopyAyah = async (ayah: Ayah) => {
-    const displayText = await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah) ?? ayah.text;
+    const displayText = await getAyahDisplayText(ayah);
     const text = `﴿ ${displayText} ﴾ [سورة ${selectedSurah.name}: ${ayah.numberInSurah}]`;
     try {
       if (navigator.clipboard) {

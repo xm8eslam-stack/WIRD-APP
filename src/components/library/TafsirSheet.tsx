@@ -19,7 +19,7 @@ import { getTafsir, TAFSIR_EDITIONS, TafsirBookOption } from '../../services/taf
 import { parseTafsirToSegments, sanitizeTafsirToPlainText } from '../../utils/tafsirSanitizer';
 import { RelatedHadithPanel } from '../shared/RelatedHadithPanel';
 import { QuranText } from '../shared/QuranText';
-import { loadSimpleAyahText } from '../../data/quranDataLoader';
+import { getAyahDisplayText } from '../../data/quranDataLoader';
 
 interface TafsirSheetProps {
   ayah: Ayah | null;
@@ -124,7 +124,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
     if (!ayah || !rawText) return;
     const plainTafsir = sanitizeTafsirToPlainText(rawText);
     const surahName = surah?.name || ayah.surahNumber;
-    const displayText = await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah) ?? ayah.text;
+    const displayText = await getAyahDisplayText(ayah);
     const shareText = `﴿ ${displayText} ﴾ [سورة ${surahName}، آية ${ayah.numberInSurah}]\n\n📖 ${currentBookName}:\n${plainTafsir}\n\n— عبر تطبيق وِرد القرآني (WIRD)`;
 
     try {
