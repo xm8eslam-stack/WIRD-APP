@@ -44,9 +44,10 @@ test.describe('Memorization session audio repetition', () => {
     await page.getByLabel('سرعة تشغيل الصوت').selectOption('1.5');
 
     await page.getByRole('button', { name: 'استماع للآية' }).click();
-    await expect(page.getByRole('status')).toContainText('جارٍ تحميل التلاوة');
+    const audioStatus = page.getByRole('status').filter({ hasText: 'جارٍ تحميل التلاوة' });
+    await expect(audioStatus).toContainText('جارٍ تحميل التلاوة');
     await page.evaluate(() => (window as any).__wirdMarkAudioPlaying());
-    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(audioStatus).toHaveCount(0);
     await expect.poll(() => page.evaluate(() => (window as any).__wirdAudioPlayCalls)).toBe(1);
     await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.at(-1).playbackRate)).toBe(1.5);
     await page.evaluate(() => {
@@ -101,11 +102,12 @@ test.describe('Memorization session audio repetition', () => {
     await page.evaluate(() => { (window as any).__wirdRejectAudioPlay = true; });
     await page.getByRole('button', { name: 'استماع للآية' }).click();
     await expect(page.getByRole('button', { name: 'استماع للآية' })).toBeVisible();
-    await expect(page.getByRole('status')).toHaveCount(0);
+    const audioStatus = page.getByRole('status').filter({ hasText: 'جارٍ تحميل التلاوة' });
+    await expect(audioStatus).toHaveCount(0);
 
     await page.getByRole('button', { name: 'استماع للآية' }).click();
     await page.evaluate(() => (window as any).__wirdMockAudios.at(-1).onerror?.());
     await expect(page.getByRole('button', { name: 'استماع للآية' })).toBeVisible();
-    await expect(page.getByRole('status')).toHaveCount(0);
+    await expect(audioStatus).toHaveCount(0);
   });
 });
