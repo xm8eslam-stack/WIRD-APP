@@ -70,6 +70,18 @@ async function getToken(fetcher: typeof fetch): Promise<string> {
   return pendingToken;
 }
 
+function normalizeHadithBody(value: string): string {
+  const withoutUnsafeBlocks = value.replace(/<(script|style|iframe|object|svg|math)\\b[^>]*>[\\s\\S]*?<\\/\\1\\s*>/gi, ' ');
+  const withLineBreaks = withoutUnsafeBlocks.replace(/<\\s*br\\s*\\/?\\s*>|<\\s*\\/(?:p|div|li|blockquote|h[1-6])\\s*>/gi, '\\n');
+  const decoded = withLineBreaks.replace(/&(#x[0-9a-f]+|#\\d+|amp|lt|gt|quot|apos|nbsp|laquo|raquo|hellip|ndash|mdash);/gi, (entity, code) => {
+    const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', laquo: '«', raquo: '»', hellip: '…', ndash: '–', mdash: '—' };
+    if (code[0] !== '#') return named[code.toLowerCase()] ?? ' ';
+    const number = code[1].toLowerCase() === 'x' ? Number.parseInt(code.slice(2), 16) : Number.parseInt(code.slice(1), 10);
+    return Number.isFinite(number) && number > 0 && number <= 0x10ffff && !(number >= 0xd800 && number <= 0xdfff) ? String.fromCodePoint(number) : ' ';
+  });
+  return decoded.replace(/<[^>]*>/g, ' ').replace(/[\\t\\f\\v ]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+}
+
 function safeUrn(value: unknown): number | null {
   if (Number.isSafeInteger(value) && Number(value) > 0) return Number(value);
   if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
@@ -118,7 +130,9 @@ function extractSahihHadiths(payload: unknown, gradingPayload?: unknown, referen
   for (const item of payload.hadiths) {
     if (!record(item) || typeof item.name !== 'string' || !item.name.trim() || typeof item.collection !== 'string' || !item.collection.trim() || typeof item.hadithNumber !== 'string' || !item.hadithNumber.trim() || !Array.isArray(item.hadith)) return null;
     const arabic = item.hadith.find((part: any) => record(part) && part.lang === 'ar');
-    if (!arabic || typeof arabic.body !== 'string' || arabic.body.trim().length === 0 || arabic.body.length > 25_000) continue;
+    if (!arabic || typeof arabic.body !== 'string' || arabic.body.length > 50_000) continue;
+    const cleanBody = normalizeHadithBody(arabic.body);
+    if (!cleanBody || cleanBody.length > 25_000) continue;
 
     const arabicGrades = readGrades(arabic);
     const englishTextUrn = safeUrn(arabic.urn);
@@ -139,7 +153,7 @@ function extractSahihHadiths(payload: unknown, gradingPayload?: unknown, referen
       name: item.name.trim().slice(0, 120),
       collection: item.collection.trim().slice(0, 80),
       hadithNumber: item.hadithNumber.trim().slice(0, 50),
-      body: arabic.body,
+      body: cleanBody,
       grades: hasExplicitSahihGrade ? grades : [],
       authenticityBasis: hasExplicitSahihGrade ? 'explicit_grade' : 'sahih_collection',
       ...(typeof item.bookNumber === 'string' && item.bookNumber.trim() ? { bookNumber: item.bookNumber.trim().slice(0, 40) } : {}),
@@ -205,4 +219,4 @@ export default async function handler(req: any, res: any, deps: { fetch?: typeof
   }
 }
 
-export const __testing = { extractSahihHadiths, parseLimitedJson, clearTokenCache: () => { cachedToken = null; pendingToken = null; } };
+export const __testing = { extractSahihHadiths, normalizeHadithBody, parseLimitedJson, clearTokenCache: () => { cachedToken = null; pendingToken = null; } };
