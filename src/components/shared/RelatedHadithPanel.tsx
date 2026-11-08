@@ -7,6 +7,17 @@ const getHadithIdentity = (item: RelatedHadith) => item.referenceUrn
   ? `${item.collection}:reference:${item.referenceUrn}`
   : `${item.collection}:${item.bookNumber ?? ''}:${item.chapterId ?? ''}:${item.hadithNumber}:${item.urn ?? ''}`;
 
+const mergeUniqueHadiths = (current: RelatedHadith[], incoming: RelatedHadith[]) => {
+  const seen = new Set(current.map(getHadithIdentity));
+  const additions = incoming.filter(item => {
+    const identity = getHadithIdentity(item);
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    return true;
+  });
+  return [...current, ...additions];
+};
+
 export const RelatedHadithPanel: React.FC<{ ayah: Ayah }> = ({ ayah }) => {
   const [expanded, setExpanded] = useState(false);
   const [items, setItems] = useState<RelatedHadith[]>([]);
@@ -28,9 +39,8 @@ export const RelatedHadithPanel: React.FC<{ ayah: Ayah }> = ({ ayah }) => {
     setLoading(true); setError('');
     getRelatedSahihHadiths(ayah.surahNumber, ayah.numberInSurah, requestPage, controller.signal)
       .then(result => { if (!controller.signal.aborted) { setItems(current => {
-        if (requestPage === 1) return result.hadiths;
-        const existing = new Set(current.map(getHadithIdentity));
-        return [...current, ...result.hadiths.filter(item => !existing.has(getHadithIdentity(item)))];
+        if (requestPage === 1) return mergeUniqueHadiths([], result.hadiths);
+        return mergeUniqueHadiths(current, result.hadiths);
       }); setHasMore(result.hasMore); } })
       .catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'تعذر تحميل الأحاديث.'); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
