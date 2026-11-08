@@ -113,6 +113,7 @@ export default async function handler(req: any, res: any, deps: { fetch?: typeof
       return response;
     };
     if (String(Array.isArray(query.diagnostics) ? query.diagnostics[0] : query.diagnostics) === '1') {
+      if (process.env.VERCEL_ENV !== 'preview') return send(res, 404, { error: 'NOT_FOUND' });
       res.setHeader('Cache-Control', 'no-store');
       const key = `${surahNumber}:${ayahNumber}`;
       const [referencesResponse, countsResponse, hadithsResponse] = await Promise.all([
