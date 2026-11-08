@@ -63,7 +63,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       assert(acceptedCollection?.length === 1 && acceptedCollection[0].authenticityBasis === 'sahih_collection' && acceptedCollection[0].grades.length === 0, 'Bukhari collection authenticity must be labelled without fabricating an individual grade');
       const englishGrade = { hadiths: [{ urn: 7, hadith: [{ lang: 'en', body: 'English', grades: [{ graded_by: 'Scholar', grade: 'Sahih' }] }] }], has_more: false };
       const matchedEnglishGrade = __testing.extractSahihHadiths(nonSahih, englishGrade);
-      assert(matchedEnglishGrade?.length === 0, 'a Hasan Arabic judgment must not be overwritten by an unrelated or weaker-language match');
+      assert(matchedEnglishGrade?.length === 1 && matchedEnglishGrade[0].grades.length === 2 && matchedEnglishGrade[0].authenticityBasis === 'explicit_grade', 'all source judgments must be preserved and any explicit Sahih judgment may establish inclusion');
     });
     await test('only explicit sahih grades are returned and credentials remain on the server', async () => {
       process.env.QF_CLIENT_ID = 'test-client'; process.env.QF_CLIENT_SECRET = 'test-secret'; process.env.QF_CONTENT_SCOPE = 'content.hadith.read'; process.env.QF_ENV = 'prelive'; __testing.clearTokenCache();
