@@ -871,7 +871,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                     {/* Canonical Ayah Text */}
                     <div className="py-2 text-right">
                       <p className="font-quran text-2xl md:text-3xl leading-[2.6] text-stone-950 dark:text-stone-100 selection:bg-amber-200">
-                        <QuranText>{ayah.text}</QuranText>{' '}
+                        <QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>{' '}
                         <span className="ayah-number" title={`الآية ${ayah.numberInSurah}`}>
                           {ayah.numberInSurah}
                         </span>

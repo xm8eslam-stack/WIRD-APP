@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourcePath = path.join(root, 'src/data/sources/tanzil/quran-simple-1.1.xml');
@@ -12,6 +13,12 @@ if (!fs.existsSync(sourcePath)) fail('Official source file is missing: ' + sourc
 if (!fs.existsSync(uthmaniPath)) fail('Canonical Uthmani corpus is missing: ' + uthmaniPath);
 
 const xml = fs.readFileSync(sourcePath, 'utf8');
+const sourceSha256 = createHash('sha256').update(xml, 'utf8').digest('hex');
+if (sourceSha256 !== 'c86caf99a53658ae389d8e6684cfe011a98f899bdf70b52e58a5e24d46342080') {
+  fail('The imported XML differs byte-for-byte from the user-provided Tanzil Simple 1.1 file (SHA-256 mismatch).');
+}
+const tashkeelCodePoints = [...xml.matchAll(/[\\u064B-\\u065F\\u0670]/g)].length;
+const pauseMarkerCount = [...xml.matchAll(/[\\u06D6-\\u06ED]/g)].length;
 if (!xml.includes('Tanzil Quran Text (Simple, Version 1.1)') ||
     !xml.includes('Copyright (C) 2007-2026 Tanzil Project') ||
     !xml.includes('Creative Commons Attribution 3.0') ||
@@ -31,6 +38,8 @@ let exactCoordinateMatches = 0, metadataMismatchCount = 0;
 const expectedSurahIndexes = Array.from({ length: 114 }, (_, i) => i + 1);
 const actualSurahIndexes = surahMatches.map(m => Number(m[1]));
 if (surahMatches.length !== 114) issues.push({ reason: 'SURAH_COUNT', expected: 114, actual: surahMatches.length });
+if (!tashkeelCodePoints) issues.push({ reason: 'TASHKEEL_MISSING' });
+if (!pauseMarkerCount) issues.push({ reason: 'WAQF_MARKERS_MISSING' });
 if (actualSurahIndexes.some((n, i) => n !== expectedSurahIndexes[i])) issues.push({ reason: 'SURAH_ORDER_OR_INDEX' });
 
 for (const match of surahMatches) {
@@ -106,6 +115,7 @@ if (seen.size !== 6236) issues.push({ reason: 'UNIQUE_COORDINATE_COUNT', expecte
 const report = {
   source: 'Tanzil Project — Quran Text (Simple), Version 1.1',
   sourceUrl: 'https://tanzil.net',
+  sourceSha256,
   license: 'Creative Commons Attribution 3.0 (CC BY 3.0)',
   verification: {
     status: issues.length === 0 ? 'VERIFIED' : 'FAILED',
@@ -118,6 +128,8 @@ const report = {
     emptyTexts,
     metadataMismatchCount,
     unexplainedDifferences: issues.length,
+    tashkeelCodePoints,
+    pauseMarkerCount,
     issueSamples: issues.slice(0, 100),
     examples: {
       '41:7': simpleBySurah[41]?.[6] ?? null,
