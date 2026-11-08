@@ -1,5 +1,5 @@
 import { AuthService } from '../services/authService';
-import { validateFirebaseConfigMap } from '../lib/firebase';
+import { validateFirebaseConfigMap, isExpectedWirdFirebaseProject, resolveFirebaseConfig, WIRD_FIREBASE_PROJECT_ID, WIRD_FIRESTORE_DATABASE_ID } from '../lib/firebase';
 import { StorageService } from '../services/storageService';
 import { PRESET_PLANS } from '../data/presetPlans';
 import { 
@@ -339,16 +339,34 @@ export async function runFirebaseAuthTests(): Promise<{ passed: number; failed: 
   });
 
   // 7. Configuration Validation
-  await test('Firebase Config: validates valid map', () => {
+  await test('Firebase Config: validates complete web config independently of project selection', () => {
     const valid = {
       VITE_FIREBASE_API_KEY: 'AIzaSyValidKey',
-      VITE_FIREBASE_AUTH_DOMAIN: 'app.firebaseapp.com',
-      VITE_FIREBASE_PROJECT_ID: 'app',
-      VITE_FIREBASE_STORAGE_BUCKET: 'app.appspot.com',
-      VITE_FIREBASE_MESSAGING_SENDER_ID: '123456',
-      VITE_FIREBASE_APP_ID: '1:123456:web:abc'
+      VITE_FIREBASE_AUTH_DOMAIN: 'wird-quran-app.firebaseapp.com',
+      VITE_FIREBASE_PROJECT_ID: WIRD_FIREBASE_PROJECT_ID,
+      VITE_FIREBASE_STORAGE_BUCKET: 'wird-quran-app.firebasestorage.app',
+      VITE_FIREBASE_MESSAGING_SENDER_ID: '741238306826',
+      VITE_FIREBASE_APP_ID: '1:741238306826:web:abc'
     };
     assert(validateFirebaseConfigMap(valid) === true, 'Valid config should pass');
+    assert(isExpectedWirdFirebaseProject(valid) === true, 'Canonical WIRD project should pass');
+    assert(isExpectedWirdFirebaseProject({ ...valid, VITE_FIREBASE_PROJECT_ID: 'elliptical-rampart-bxq1s' }) === false, 'Legacy AI Studio project must be rejected');
+  });
+
+  await test('Firebase Config: always resolves WIRD to the default Firestore database', () => {
+    const resolved = resolveFirebaseConfig(
+      {
+        VITE_FIREBASE_PROJECT_ID: WIRD_FIREBASE_PROJECT_ID,
+        VITE_FIREBASE_AUTH_DOMAIN: 'wird-quran-app.firebaseapp.com'
+      },
+      {
+        projectId: 'elliptical-rampart-bxq1s',
+        firestoreDatabaseId: 'ai-studio-wird-legacy-database'
+      }
+    );
+    assert(resolved.projectId === WIRD_FIREBASE_PROJECT_ID, 'Environment must select the canonical project');
+    assert(resolved.firestoreDatabaseId === '', 'Legacy named database ID must never be carried forward');
+    assert(WIRD_FIRESTORE_DATABASE_ID === '(default)', 'Canonical Firestore database must be default');
   });
 
   return { passed, failed };

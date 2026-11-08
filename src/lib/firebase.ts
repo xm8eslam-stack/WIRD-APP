@@ -3,6 +3,14 @@ import { getAuth, Auth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, Firestore, doc, getDocFromServer } from 'firebase/firestore';
 import appletConfig from '../../firebase-applet-config.json';
 
+/**
+ * WIRD has one canonical Firebase project and uses its default Firestore database.
+ * Keep this invariant explicit so stale AI Studio applet config cannot silently
+ * redirect users to a different Firebase project or named database.
+ */
+export const WIRD_FIREBASE_PROJECT_ID = 'wird-quran-app';
+export const WIRD_FIRESTORE_DATABASE_ID = '(default)';
+
 function getEnvVar(key: string): string {
   if (typeof import.meta !== 'undefined' && import.meta && import.meta.env && import.meta.env[key]) {
     return import.meta.env[key];
@@ -41,25 +49,56 @@ export function validateFirebaseConfigMap(envMap: Record<string, string>): boole
   return true;
 }
 
-export function getResolvedFirebaseConfig(): Record<string, string> {
-  const cfg = (appletConfig && typeof appletConfig === 'object') ? appletConfig as Record<string, string> : {};
+export function isExpectedWirdFirebaseProject(configMap: Record<string, string>): boolean {
+  const projectId = configMap.projectId || configMap.VITE_FIREBASE_PROJECT_ID || '';
+  return projectId === WIRD_FIREBASE_PROJECT_ID;
+}
+
+/**
+ * Resolve public Firebase web configuration. The Firestore database ID is
+ * intentionally not configurable: WIRD always uses getFirestore(app), which
+ * selects the (default) database in wird-quran-app.
+ */
+export function resolveFirebaseConfig(
+  envMap: Record<string, string>,
+  fileConfig: Record<string, string>
+): Record<string, string> {
+  const pick = (key: string, envKey: string) =>
+    envMap[envKey] || envMap[key] || fileConfig[key] || '';
+
   return {
-    apiKey: getEnvVar('VITE_FIREBASE_API_KEY') || cfg.apiKey || '',
-    authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN') || cfg.authDomain || '',
-    projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID') || cfg.projectId || '',
-    storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET') || cfg.storageBucket || '',
-    messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID') || cfg.messagingSenderId || '',
-    appId: getEnvVar('VITE_FIREBASE_APP_ID') || cfg.appId || '',
-    firestoreDatabaseId: getEnvVar('VITE_FIREBASE_FIRESTORE_DATABASE_ID') || cfg.firestoreDatabaseId || ''
+    apiKey: pick('apiKey', 'VITE_FIREBASE_API_KEY'),
+    authDomain: pick('authDomain', 'VITE_FIREBASE_AUTH_DOMAIN'),
+    projectId: pick('projectId', 'VITE_FIREBASE_PROJECT_ID'),
+    storageBucket: pick('storageBucket', 'VITE_FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: pick('messagingSenderId', 'VITE_FIREBASE_MESSAGING_SENDER_ID'),
+    appId: pick('appId', 'VITE_FIREBASE_APP_ID'),
+    firestoreDatabaseId: ''
   };
+}
+
+export function getResolvedFirebaseConfig(): Record<string, string> {
+  const cfg = (appletConfig && typeof appletConfig === 'object')
+    ? appletConfig as Record<string, string>
+    : {};
+  const envMap: Record<string, string> = {
+    VITE_FIREBASE_API_KEY: getEnvVar('VITE_FIREBASE_API_KEY'),
+    VITE_FIREBASE_AUTH_DOMAIN: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
+    VITE_FIREBASE_PROJECT_ID: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
+    VITE_FIREBASE_STORAGE_BUCKET: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
+    VITE_FIREBASE_MESSAGING_SENDER_ID: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+    VITE_FIREBASE_APP_ID: getEnvVar('VITE_FIREBASE_APP_ID')
+  };
+
+  return resolveFirebaseConfig(envMap, cfg);
 }
 
 export function isFirebaseConfigured(): boolean {
   const resolved = getResolvedFirebaseConfig();
-  return validateFirebaseConfigMap(resolved);
+  return validateFirebaseConfigMap(resolved) && isExpectedWirdFirebaseProject(resolved);
 }
 
-// Truly optional Firebase initialization - null when unconfigured
+// Truly optional Firebase initialization - null when unconfigured or pointed at a non-canonical project.
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
 let db: Firestore | null = null;
@@ -80,19 +119,24 @@ if (isFirebaseConfigured()) {
     app = initializeApp(firebaseConfig);
   } else {
     app = getApp();
+    if (app.options.projectId !== WIRD_FIREBASE_PROJECT_ID) {
+      throw new Error('[WIRD Firebase] Existing Firebase app is connected to a non-canonical project.');
+    }
   }
 
   auth = getAuth(app);
-  if (config.firestoreDatabaseId && config.firestoreDatabaseId.trim() !== '') {
-    db = getFirestore(app, config.firestoreDatabaseId.trim());
-  } else {
-    db = getFirestore(app);
-  }
+  // No database ID argument: this is deliberately the (default) Firestore database.
+  db = getFirestore(app);
 
   googleAuthProvider = new GoogleAuthProvider();
   googleAuthProvider.setCustomParameters({
     prompt: 'select_account'
   });
+} else {
+  const resolved = getResolvedFirebaseConfig();
+  if (validateFirebaseConfigMap(resolved) && !isExpectedWirdFirebaseProject(resolved)) {
+    console.error('[WIRD Firebase] Initialization blocked: configure the canonical project wird-quran-app.');
+  }
 }
 
 export async function testFirestoreConnection(): Promise<boolean> {
@@ -112,4 +156,3 @@ export async function testFirestoreConnection(): Promise<boolean> {
 }
 
 export { app, auth, db, googleAuthProvider };
-
