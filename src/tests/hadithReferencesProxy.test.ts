@@ -23,10 +23,16 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
         requested.push(url);
         if (url.includes('/count_within_range')) return new Response(JSON.stringify({ '41:7': 2 }), { status: 200 });
         if (url.endsWith('/hadiths?language=ar&page=1&limit=5')) return new Response(JSON.stringify({ hadiths: [
-          { name: 'مصدر', collection: 'sample', hadithNumber: '1', hadith: [
-            { lang: 'ar', body: 'نص سري لا يجب إظهاره', grades: [{ graded_by: 'ناقد', grade: 'صحيح' }] },
-            { lang: 'en', body: 'English text', grades: [] }
+          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', urn: 222, hadith: [
+            { lang: 'ar', body: 'نص سري لا يجب إظهاره', urn: 111, grades: [] }
+          ] },
+          { name: 'مصدر آخر', collection: 'other', hadithNumber: '2', urn: 333, hadith: [
+            { lang: 'ar', body: 'متن آخر', urn: 112, grades: [] }
           ] }
+        ], has_more: false }), { status: 200 });
+        if (url.endsWith('/hadiths?language=en&page=1&limit=5')) return new Response(JSON.stringify({ hadiths: [
+          { urn: 222, hadith: [{ lang: 'en', body: 'English text', grades: [] }] },
+          { urn: 333, hadith: [{ lang: 'en', body: 'Other text', grades: [{ graded_by: 'Verified scholar', grade: 'Sahih' }] }] }
         ], has_more: false }), { status: 200 });
         return new Response(JSON.stringify({ hadith_references: [{ id: 1 }, { id: 2 }] }), { status: 200 });
       };
@@ -80,7 +86,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       assert(res.statusCode === 200 && res.body.verseKey === '41:7' && res.body.page === 1 && res.body.hasMore === false, 'success response must preserve verse coordinates and pagination');
       assert(res.body.hadiths.length === 1 && res.body.hadiths[0].body === 'متن صحيح', 'only explicit Sahih grades must be returned');
       assert(res.body.hadiths[0].bookNumber === '1' && res.body.hadiths[0].chapterTitle === 'بدء الوحي' && res.body.hadiths[0].chapterNumber === '1' && res.body.hadiths[0].referenceUrn === 222 && res.body.hadiths[0].urn === 111, 'top-level reference URN and Arabic hadith URN must remain distinct');
-      assert(authHeader.startsWith('Basic ') && apiCalls === 1, 'backend must use client credentials and make one content request');
+      assert(authHeader.startsWith('Basic ') && apiCalls === 2, 'backend must use client credentials and fetch Arabic text plus English grading metadata');
       assert(!JSON.stringify(res.body).includes('test-secret') && !JSON.stringify(res.body).includes('test-token'), 'secrets and tokens must never reach the client');
     });
   } finally {
