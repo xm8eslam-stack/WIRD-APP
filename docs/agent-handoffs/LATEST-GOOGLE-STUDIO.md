@@ -1,16 +1,19 @@
 ### GOOGLE AI STUDIO HANDOFF
 - Date: 2026-11-07
-- Task: حل مشكلة تعذر قراءة أرشيف الخطط والنشاط وإصلاح تحذيرات التخزين وصلاحية البناء
+- Task: معالجة مشاكل توليد الخطط الذكية: معاينة تفاعلية، حذف الخطة، تبديل سريع، وموازنة تاريخ الختم
 - Modified files:
-  - `src/services/storageService.ts` (تحسين `readJsonArrayArchive` لفلترة السجلات الصالحة فقط وتسجيل تحذيرات الاستعادة بدلاً من رمي كائنات أخطاء حادة تسجل في مصفوفة أخطاء المتصفح، مع الحفاظ الكامل 100% على البايتات الأصلية للبيانات المحفوظة)
-  - `tsconfig.json` (إضافة `e2e` و `playwright.config.ts` لمصفوفة الاستثناء لضمان نجاح فحص `lint_applet` و `tsc --noEmit`)
+  - `src/services/planningEngine.ts` (إضافة دالة `estimateRecommendedEndDate` لاقتراح تاريخ الختم الواقعي المتناسب مع مستوى الحافظ وأيام دراسته)
+  - `src/services/planningEngine.test.ts` (إضافة اختبار حساب تاريخ الختم الموصى به)
+  - `src/components/plans/PlanningEngineWizard.tsx`:
+    - إضافة زر "اقتراح موعد ملائم لطاقتك" عند اختيار وتيرة الختم بالتاريخ لضبط تاريخ الختم تلقائياً.
+    - تحويل إنشاء الخطة إلى خطوتين مع شاشة معاينة تفاعلية لكشف الأيام الأولى وتوزيع الأوراد قبل الاعتماد النهائي.
+    - إضافة شريط تبويب سريع وأزرار أفقية للتنقل اللحظي بين الخطط الذكية المتعددة.
+    - إضافة زر حذف الخطة مع نافذة تأكيد داخلية تحافظ بالكامل على ما تم حفظه مسبقاً في المصحف والتكرار.
   - `docs/agent-handoffs/LATEST-GOOGLE-STUDIO.md`
 - Changes:
-  - معالجة خطأ `[WIRD Storage] Engine plans archive needs recovery; preserving original bytes: Error: Archive contains malformed records.` عن طريق فلترة وتصفية البيانات الصالحة واستعادتها بسلاسة من المحفوظات المحلية بدلاً من مسحها أو إظهار خطأ في الواجهة.
-  - الحفاظ التام على البايتات المحفوظة أصلياً وإبقاء الفحص الصارم عند تصدير النسخ الاحتياطية لمنع تصدير بيانات تالفة.
-  - تحديث إعدادات TypeScript لتجاهل اختبارات e2e أثناء فحص الكود المصدري للتطبيق.
-- Tests: 552/552 passing (`npm test` - 0 failures, `compile_applet` PASSED, `lint_applet` PASSED)
+  - معالجة جميع الملاحظات في توليد الخطط مع الحفاظ الكامل على سلامة المعاملات ومزامنة التخزين.
+- Tests: 557/557 passing (`npm test` - 0 failures, `compile_applet` PASSED, `lint_applet` PASSED)
 - Commit SHA: Local main branch working state (Verified)
 - Status: Completed
-- Next step: الحفظ والتسليم.
-- Warnings: لا توجد تحذيرات. تم الحفاظ بالكامل على بيانات المستخدم وجميع آليات المزامنة والسلامة.
+- Next step: المتابعة والاستخدام.
+- Warnings: لا توجد تحذيرات. التغييرات متوافقة بالكامل مع قواعد الذاكرة والتخزين الدائم.

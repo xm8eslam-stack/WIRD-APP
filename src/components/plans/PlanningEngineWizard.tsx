@@ -15,7 +15,9 @@ import {
   Layers, 
   Check, 
   X,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
+  Eye
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { PlanningEngine, PlanGenerationInput, EngineGeneratedPlan, ScheduledDayPlan } from '../../services/planningEngine';
@@ -51,6 +53,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const [editingTask, setEditingTask] = useState<ScheduledDayPlan | null>(null);
   const [showRecalculateConfirm, setShowRecalculateConfirm] = useState(false);
   const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [previewPlan, setPreviewPlan] = useState<EngineGeneratedPlan | null>(null);
+  const [planToDelete, setPlanToDelete] = useState<string | null>(null);
 
   // Active selected plan
   const activePlan = enginePlans.find(p => p.id === selectedPlanId) || enginePlans[0];
@@ -108,55 +112,83 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
     }
   };
 
-  // Submit and generate plan
-  const handleGeneratePlan = async (e: React.FormEvent) => {
+  // Build generation input
+  const buildPlanInput = (): PlanGenerationInput => {
+    const existingPortions = selectedExistingSurahs.map(sNum => {
+      const s = ALL_SURAHS.find(item => item.number === sNum);
+      return {
+        surahNumber: sNum,
+        startAyah: 1,
+        endAyah: s ? s.versesCount : 10
+      };
+    });
+
+    return {
+      title: planTitle.trim() || `خطة حفظ سورة ${startSurahMeta?.name || ''}`,
+      startSurah,
+      startAyah,
+      endSurah,
+      endAyah,
+      startDate,
+      targetEndDate: paceType === 'by_target_date' ? targetEndDate : undefined,
+      level,
+      dailyAvailableMinutes,
+      dailyRevisionMinutes,
+      paceType,
+      paceQuantity,
+      activeDays,
+      restDays,
+      schedulePreference: schedulePref,
+      existingMemorized: existingPortions
+    };
+  };
+
+  // Preview plan before final save
+  const handlePreviewPlan = (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const input = buildPlanInput();
+      const generated = PlanningEngine.generatePlan(input);
+      setPreviewPlan(generated);
+      onToast?.('تم إعداد المعاينة للجدول الزمني. يمكنك مراجعتها قبل التأكيد.', 'info');
+    } catch (error) {
+      onToast?.(
+        error instanceof Error ? error.message : 'تعذر إعداد المعاينة. راجع المدخلات وحاول مجدداً.',
+        'error'
+      );
+    }
+  };
+
+  // Submit and save plan permanently
+  const handleSaveConfirmedPlan = async (planToSave: EngineGeneratedPlan) => {
     if (isGeneratingPlan) return;
     setIsGeneratingPlan(true);
 
     try {
-      const existingPortions = selectedExistingSurahs.map(sNum => {
-        const s = ALL_SURAHS.find(item => item.number === sNum);
-        return {
-          surahNumber: sNum,
-          startAyah: 1,
-          endAyah: s ? s.versesCount : 10
-        };
-      });
-
-      const input: PlanGenerationInput = {
-        title: planTitle.trim() || `خطة حفظ سورة ${startSurahMeta?.name || ''}`,
-        startSurah,
-        startAyah,
-        endSurah,
-        endAyah,
-        startDate,
-        targetEndDate: paceType === 'by_target_date' ? targetEndDate : undefined,
-        level,
-        dailyAvailableMinutes,
-        dailyRevisionMinutes,
-        paceType,
-        paceQuantity,
-        activeDays,
-        restDays,
-        schedulePreference: schedulePref,
-        existingMemorized: existingPortions
-      };
-
-      const newPlan = PlanningEngine.generatePlan(input);
-      const updated = [newPlan, ...enginePlans.filter(plan => plan.id !== newPlan.id)];
+      const updated = [planToSave, ...enginePlans.filter(plan => plan.id !== planToSave.id)];
       if (!await onUpdateEnginePlans(updated)) return;
-      setSelectedPlanId(newPlan.id);
+      setSelectedPlanId(planToSave.id);
       setIsCreatingNew(false);
-      onToast?.('تم إنشاء الخطة وحفظها بنجاح.', 'success');
+      setPreviewPlan(null);
+      onToast?.('تم حفظ الخطة الذكية وتفعيلها بنجاح.', 'success');
     } catch (error) {
       onToast?.(
-        error instanceof Error ? error.message : 'تعذر إنشاء الخطة. راجع بيانات النطاق والتواريخ وحاول مجدداً.',
+        error instanceof Error ? error.message : 'تعذر حفظ الخطة. حاول مجدداً.',
         'error'
       );
     } finally {
       setIsGeneratingPlan(false);
     }
+  };
+
+  // Delete engine plan
+  const handleConfirmDeletePlan = async () => {
+    if (!planToDelete) return;
+    const remaining = enginePlans.filter(p => p.id !== planToDelete);
+    if (!await onUpdateEnginePlans(remaining)) return;
+    setSelectedPlanId(remaining[0]?.id || '');
+    setPlanToDelete(null);
+    onToast?.('تم حذف الخطة من قائمتك بنجاح.', 'info');
   };
 
   // Plan Pause / Resume toggle
@@ -201,22 +233,36 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
           </h2>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Multiple simultaneous goals selector */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Multiple simultaneous goals selector pills */}
           {enginePlans.length > 0 && !isCreatingNew && (
-            <select
-              value={selectedPlanId}
-              onChange={(e) => setSelectedPlanId(e.target.value)}
-              className="px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-xs font-semibold text-stone-800 dark:text-stone-200"
-            >
-              {enginePlans.map(p => (
-                <option key={p.id} value={p.id}>{p.title} {p.isPaused ? '(متوقفة مؤقتاً)' : ''}</option>
-              ))}
-            </select>
+            <div className="flex flex-wrap items-center gap-1.5 p-1 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl">
+              {enginePlans.map(p => {
+                const isSelected = p.id === (activePlan?.id || selectedPlanId);
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPlanId(p.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-emerald-800 text-white shadow-xs'
+                        : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800'
+                    }`}
+                  >
+                    <span>{p.title}</span>
+                    {p.isPaused && <span className="text-[10px] opacity-75">(موقفة)</span>}
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           <button
-            onClick={() => setIsCreatingNew(!isCreatingNew)}
+            onClick={() => {
+              setIsCreatingNew(!isCreatingNew);
+              setPreviewPlan(null);
+            }}
             className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors whitespace-nowrap"
           >
             {isCreatingNew ? 'إلغاء والعودة للخطة' : '+ إنشاء خطة ذكية جديدة'}
@@ -226,7 +272,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
       {/* 2. Plan Generation Wizard Form */}
       {isCreatingNew && (
-        <form onSubmit={handleGeneratePlan} className="bg-white dark:bg-stone-800/90 rounded-3xl p-6 md:p-8 border border-emerald-500/40 shadow-sm space-y-6 text-xs">
+        <form onSubmit={handlePreviewPlan} className="bg-white dark:bg-stone-800/90 rounded-3xl p-6 md:p-8 border border-emerald-500/40 shadow-sm space-y-6 text-xs">
           <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
             <div>
               <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
@@ -464,9 +510,28 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
               {paceType === 'by_target_date' && (
                 <div>
-                  <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    تاريخ الختم المستهدف:
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-stone-700 dark:text-stone-300">
+                      تاريخ الختم المستهدف:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const rec = PlanningEngine.estimateRecommendedEndDate(
+                          startDate,
+                          liveTotalVerses,
+                          level,
+                          activeDays,
+                          restDays
+                        );
+                        setTargetEndDate(rec);
+                        onToast?.('تم ضبط تاريخ الختم الموصى به تلقائياً بما يضمن استقرار الحفظ.', 'info');
+                      }}
+                      className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold hover:underline"
+                    >
+                      اقتراح موعد ملائم لطاقتك
+                    </button>
+                  </div>
                   <input
                     type="date"
                     required
@@ -569,19 +634,86 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100 dark:border-stone-700">
             <button
               type="button"
-              onClick={() => setIsCreatingNew(false)}
+              onClick={() => {
+                setIsCreatingNew(false);
+                setPreviewPlan(null);
+              }}
               className="px-4 py-2.5 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-300 rounded-xl font-semibold"
             >
               إلغاء
             </button>
             <button
               type="submit"
-              disabled={isGeneratingPlan || liveTotalVerses <= 0}
-              className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xs transition-colors"
+              disabled={liveTotalVerses <= 0}
+              className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xs transition-colors"
             >
-              {isGeneratingPlan ? 'جارٍ إنشاء الخطة وحفظها...' : 'توليد وحفظ الخطة فوراً'}
+              <Eye className="w-4 h-4" />
+              <span>معاينة الجدول الزمني المقترح</span>
             </button>
           </div>
+
+          {/* Interactive Live Preview Card */}
+          {previewPlan && (
+            <div className="mt-6 pt-6 border-t-2 border-dashed border-emerald-500/40 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-emerald-50 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-300 dark:border-emerald-800">
+                <div>
+                  <h4 className="font-bold text-sm text-emerald-950 dark:text-emerald-200">
+                    معاينة الخطة المقترحة: {previewPlan.title}
+                  </h4>
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
+                    إجمالي {previewPlan.meta.totalVerses} آية · {previewPlan.meta.activeStudyDaysCount} يوماً نشطاً · {previewPlan.meta.restDaysCount} يوم استراحة · الختم المتوقع: {previewPlan.meta.projectedEndDate}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSaveConfirmedPlan(previewPlan)}
+                  disabled={isGeneratingPlan}
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md transition-all whitespace-nowrap self-stretch sm:self-auto"
+                >
+                  {isGeneratingPlan ? 'جارٍ الحفظ والتفعيل...' : '✓ اعتماد وحفظ الخطة نهائياً'}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <span className="font-bold text-stone-800 dark:text-stone-200 block text-xs">
+                  توزيع الأيام الأولى في الجدول:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                  {previewPlan.schedule.slice(0, 6).map((day) => (
+                    <div
+                      key={day.id}
+                      className={`p-3 rounded-xl border text-xs ${
+                        day.isRestDay
+                          ? 'bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-800 text-stone-400'
+                          : 'bg-white dark:bg-stone-800 border-emerald-200 dark:border-emerald-800/60 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold mb-1">
+                        <span>{day.dayNameAr} ({day.date})</span>
+                        {day.isRestDay ? (
+                          <span className="text-[10px] text-stone-400">استراحة</span>
+                        ) : (
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                            {day.memorizationTask?.versesCount} آيات
+                          </span>
+                        )}
+                      </div>
+                      {day.memorizationTask && (
+                        <p className="text-[11px] text-stone-700 dark:text-stone-300">
+                          {day.memorizationTask.surahName} ({day.memorizationTask.startAyah}-{day.memorizationTask.endAyah})
+                        </p>
+                      )}
+                      {day.minorRevisionTask && (
+                        <p className="text-[10px] text-stone-500 mt-1">
+                          {day.minorRevisionTask.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </form>
       )}
 
@@ -632,6 +764,14 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>إعادة ضبط المتبقي</span>
+                </button>
+
+                <button
+                  onClick={() => setPlanToDelete(activePlan.id)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl text-xs font-semibold transition-colors"
+                  title="حذف هذه الخطة الذكية"
+                >
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -857,6 +997,47 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 className="px-5 py-2 text-xs font-bold text-white bg-emerald-800 hover:bg-emerald-900 rounded-xl shadow-xs transition-colors"
               >
                 تأكيد إعادة الجدولة
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* In-app Plan Delete Confirmation Modal */}
+      {planToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                  حذف الخطة الذكية
+                </h3>
+                <p className="text-xs text-stone-500">
+                  تأكيد إزالة الخطة من قائمة الأهداف
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed bg-[#faf8f5] dark:bg-stone-900/60 p-3.5 rounded-xl border border-stone-200/70 dark:border-stone-700/60">
+              هل أنت متأكد من حذف هذه الخطة؟ <strong>لن يؤثر الحذف إطلاقاً على الآيات والمقاطع التي أتممت حفظها في المصحف وسجل التكرار والمراجعة</strong>؛ سيتم فقط حذف جدول الخطة المستقبلي.
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPlanToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+              >
+                إلغاء
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeletePlan}
+                className="px-5 py-2 text-xs font-bold text-white bg-red-700 hover:bg-red-800 rounded-xl shadow-xs transition-colors"
+              >
+                تأكيد حذف الخطة
               </button>
             </div>
           </div>

@@ -147,6 +147,39 @@ export const PlanningEngine = {
   },
 
   /**
+   * Estimate recommended target end date based on user level and total verses
+   */
+  estimateRecommendedEndDate(
+    startDateStr: string,
+    totalVerses: number,
+    level: PlanGenerationInput['level'],
+    activeDays: number[],
+    restDays: number[]
+  ): string {
+    const recommendedPace = {
+      beginner: 4,
+      intermediate: 8,
+      advanced: 15,
+      hafiz: 25
+    }[level] || 8;
+
+    const neededActiveDays = Math.max(1, Math.ceil(totalVerses / recommendedPace));
+    const cur = this.parseDate(startDateStr);
+    let activeFound = 0;
+
+    while (activeFound < neededActiveDays) {
+      const dayOfWeek = cur.getDay();
+      if (activeDays.includes(dayOfWeek) && !restDays.includes(dayOfWeek)) {
+        activeFound++;
+      }
+      if (activeFound < neededActiveDays) {
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return this.formatDate(cur);
+  },
+
+  /**
    * Assess feasibility and cognitive workload limits
    */
   assessFeasibility(

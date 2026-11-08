@@ -211,6 +211,22 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     }
   });
 
+  runTest('PlanningEngine: estimateRecommendedEndDate calculates realistic dates based on active study days', () => {
+    // 30 verses for beginner (4 verses/day pace = 8 active days needed)
+    // Starting Sunday 2026-11-08 with Friday rest (active: Sun, Mon, Tue, Wed, Thu, Sat)
+    const recDate = PlanningEngine.estimateRecommendedEndDate(
+      '2026-11-08',
+      30,
+      'beginner',
+      [0, 1, 2, 3, 4, 6],
+      [5]
+    );
+    assert(typeof recDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(recDate), 'Recommended date must be YYYY-MM-DD');
+    assert(recDate > '2026-11-08', 'Recommended date must be after start date');
+    const activeCount = PlanningEngine.countActiveDaysBetween('2026-11-08', recDate, [0, 1, 2, 3, 4, 6], [5]);
+    assert(activeCount >= 8, `Expected at least 8 active days, got ${activeCount}`);
+  });
+
   // 4. Workload Limits & Feasibility
   runTest('PlanningEngine: Detects impossible workload for beginners', () => {
     // 50 verses per day with only 15 minutes available for a beginner
