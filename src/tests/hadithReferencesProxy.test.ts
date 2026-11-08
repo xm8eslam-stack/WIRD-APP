@@ -16,7 +16,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
     await test('hadith rate limiting ignores spoofed forwarded-for headers', async () => { for (let index = 0; index < 21; index++) { const res = mockResponse(); await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7' }, headers: { 'x-forwarded-for': `198.51.100.${index}` }, socket: { remoteAddress: '192.0.2.254' } }, res, { fetch: async () => new Response('{}') }); if (index < 20) assert(res.statusCode === 503, 'first twenty requests should reach fail-closed configuration check'); else assert(res.statusCode === 429, 'spoofed values must not evade throttling'); } });
     await test('hadith HTML is converted to clean safe Arabic text', async () => {
       const clean = __testing.normalizeHadithBody('<p>قال النبي <strong>ﷺ</strong></p><p>خيرٌ &amp; بركة &#x627;</p><script>alert(1)</script><a href="javascript:alert(2)">نص</a>');
-      assert(clean === 'قال النبي ﷺ\\nخيرٌ & بركة ا\\nنص', 'HTML structure, entities and unsafe blocks must be normalized without losing Arabic text');
+      assert(clean === 'قال النبي ﷺ\nخيرٌ & بركة ا\nنص', 'HTML structure, entities and unsafe blocks must be normalized without losing Arabic text');
       assert(!clean.includes('<') && !clean.includes('alert') && !clean.includes('javascript:'), 'HTML tags and executable content must never reach the UI');
     });
     await test('hadith extraction rejects malformed envelopes and excludes non-Sahih judgments', async () => {
@@ -56,7 +56,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       };
       const res = mockResponse(); await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7' }, headers: { 'x-forwarded-for': '198.51.100.203' } }, res, { fetch: fetcher });
       assert(res.statusCode === 200 && res.body.verseKey === '41:7' && res.body.page === 1 && res.body.hasMore === false, 'success response must preserve verse coordinates and pagination');
-      assert(res.body.hadiths.length === 2 && res.body.hadiths[0].body === 'متن صحيح\\nﷺ' && res.body.hadiths[1].body === 'متن آخر', 'Arabic hadith text must be joined with its matching English grading record using the official URN pair');
+      assert(res.body.hadiths.length === 2 && res.body.hadiths[0].body === 'متن صحيح\nﷺ' && res.body.hadiths[1].body === 'متن آخر', 'Arabic hadith text must be joined with its matching English grading record using the official URN pair');
       assert(res.body.hadiths[0].authenticityBasis === 'sahih_collection' && res.body.hadiths[1].authenticityBasis === 'explicit_grade', 'canonical collections and explicit Sahih judgments must retain distinct authenticity bases');
       assert(res.body.hadiths[0].bookNumber === '1' && res.body.hadiths[0].chapterTitle === 'بدء الوحي' && res.body.hadiths[0].chapterNumber === '1' && res.body.hadiths[0].referenceUrn === 222 && res.body.hadiths[0].urn === 111, 'top-level reference URN and Arabic hadith URN must remain distinct');
       assert(authHeader.startsWith('Basic ') && apiCalls === 3, 'backend must use client credentials and fetch references, Arabic text and English grading metadata');
