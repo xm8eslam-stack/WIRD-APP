@@ -1,5 +1,5 @@
 export type RepeatCounterRef = { current: number };
-export type RepeatTargetRef = { current: number };
+export type RepeatTargetRef = { current: number | null };
 
 /**
  * Bind repeat completion to mutable refs rather than React state captured by
@@ -14,11 +14,13 @@ export function attachAyahRepeatHandler(
   onPlaybackError?: () => void
 ): void {
   audio.onended = () => {
-    const target = Number.isInteger(repeatTargetRef.current) && repeatTargetRef.current > 0
-      ? repeatTargetRef.current
-      : 1;
+    const target = repeatTargetRef.current === null
+      ? null
+      : Number.isInteger(repeatTargetRef.current) && repeatTargetRef.current > 0
+        ? repeatTargetRef.current
+        : 1;
 
-    if (currentRepeatRef.current < target) {
+    if (target === null || currentRepeatRef.current < target) {
       currentRepeatRef.current += 1;
       onRepeatCountChange(currentRepeatRef.current);
       audio.currentTime = 0;
@@ -31,3 +33,4 @@ export function attachAyahRepeatHandler(
     onComplete();
   };
 }
+

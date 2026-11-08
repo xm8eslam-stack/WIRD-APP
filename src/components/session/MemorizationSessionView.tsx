@@ -17,9 +17,10 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadSurahVerses, getAyahWords } from '../../data/quranDataLoader';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
-import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
-import type { PlaybackRate } from '../../services/audioPreferences';
+import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
+import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
+import { attachAyahRepeatHandler } from '../../services/audioRepeatController';
 
 interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
@@ -88,14 +89,24 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(() => getSavedPlaybackRate());
+  const [audioRepeatCount, setAudioRepeatCount] = useState<AudioRepeatCount>(() => getSavedAudioRepeatCount());
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playbackIterationRef = useRef(1);
+  const repeatTargetRef = useRef<number | null>(audioRepeatCount === -1 ? null : audioRepeatCount);
   const completionInProgressRef = useRef(false);
 
   const handlePlaybackRateChange = (rate: PlaybackRate) => {
     const savedRate = savePlaybackRate(rate);
     setPlaybackRate(savedRate);
     if (audioRef.current) audioRef.current.playbackRate = savedRate;
+  };
+
+  const handleAudioRepeatCountChange = (count: AudioRepeatCount) => {
+    const savedCount = saveAudioRepeatCount(count);
+    repeatTargetRef.current = savedCount === -1 ? null : savedCount;
+    setAudioRepeatCount(savedCount);
   };
 
   // 2. Progressive word masking: 0 = none, 1 = 30%, 2 = 60%, 3 = 100% (hidden)
@@ -146,34 +157,96 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current = null;
+      playbackIterationRef.current = 1;
       setIsPlaying(false);
+      setIsAudioLoading(false);
       return;
     }
 
     const url = formatAyahAudioUrl(surahNumber, currentAyah.numberInSurah, profile.preferredReciter);
-    if (audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.pause();
+    }
 
     const audio = new Audio(url);
     audio.playbackRate = getSavedPlaybackRate();
+    audio.preload = 'auto';
     audioRef.current = audio;
+    playbackIterationRef.current = 1;
     setIsPlaying(true);
+    setIsAudioLoading(true);
+
+    audio.onplaying = () => {
+      if (audioRef.current === audio) setIsAudioLoading(false);
+    };
+    audio.onerror = () => {
+      if (audioRef.current !== audio) return;
+      console.warn('Audio playback failed to load', audio.error);
+      audio.onended = null;
+      audioRef.current = null;
+      playbackIterationRef.current = 1;
+      setIsPlaying(false);
+      setIsAudioLoading(false);
+    };
 
     audio.play().catch(e => {
+      if (audioRef.current !== audio) return;
       console.warn("Audio playback error", e);
+      audio.onended = null;
+      audioRef.current = null;
+      playbackIterationRef.current = 1;
       setIsPlaying(false);
+      setIsAudioLoading(false);
     });
 
-    audio.onended = () => {
-      setIsPlaying(false);
-      setRepeatCount(r => r + 1);
-    };
+    attachAyahRepeatHandler(
+      audio,
+      playbackIterationRef,
+      repeatTargetRef,
+      () => setRepeatCount(count => count + 1),
+      () => {
+        if (audioRef.current !== audio) return;
+        audio.onended = null;
+        audioRef.current = null;
+        setIsPlaying(false);
+        setIsAudioLoading(false);
+      },
+      () => {
+        if (audioRef.current !== audio) return;
+        audio.onended = null;
+        audioRef.current = null;
+        playbackIterationRef.current = 1;
+        setIsPlaying(false);
+        setIsAudioLoading(false);
+      }
+    );
   };
 
   const handleStopAudio = () => {
     if (audioRef.current) {
+      audioRef.current.onended = null;
       audioRef.current.pause();
+      audioRef.current = null;
       setIsPlaying(false);
+      setIsAudioLoading(false);
     }
+    playbackIterationRef.current = 1;
+  };
+
+  useEffect(() => () => {
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  }, []);
+
+  const handleExit = () => {
+    handleStopAudio();
+    onExit();
   };
 
   // Word Masking Logic
@@ -200,8 +273,10 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // Next / Previous Ayah (Semantic RTL: Next is on Left, Prev is on Right)
   const handleNextAyah = async () => {
     if (currentAyahIndex < sessionAyahs.length - 1) {
+      handleStopAudio();
       setCurrentAyahIndex(prev => prev + 1);
     } else {
+      handleStopAudio();
       if (completionInProgressRef.current) return;
       completionInProgressRef.current = true;
       const minutesSpent = Math.max(1, Math.round(secondsElapsed / 60));
@@ -214,6 +289,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           mode
         );
         if (!saved) { completionInProgressRef.current = false; return; }
+        handleStopAudio();
         setIsCompleted(true);
       } catch (error) {
         completionInProgressRef.current = false;
@@ -224,6 +300,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   const handlePrevAyah = () => {
     if (currentAyahIndex > 0) {
+      handleStopAudio();
       setCurrentAyahIndex(prev => prev - 1);
     }
   };
@@ -271,6 +348,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           </button>
           <button
             onClick={() => {
+              handleStopAudio();
               setSurahNumber(67);
               setCurrentAyahIndex(0);
             }}
@@ -280,6 +358,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           </button>
           <button
             onClick={() => {
+              handleStopAudio();
               setSurahNumber(1);
               setCurrentAyahIndex(0);
             }}
@@ -348,7 +427,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           </button>
 
           <button
-            onClick={onExit}
+            onClick={handleExit}
             className="px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
           >
             العودة للرئيسية
@@ -363,7 +442,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       {/* 1. Session Navigation & Progress Bar */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
         <button
-          onClick={onExit}
+          onClick={handleExit}
           className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
         >
           <ArrowRight className="w-4 h-4" />
@@ -488,10 +567,28 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                 : 'bg-emerald-800 hover:bg-emerald-900 text-white'
             }`}
             title={isPlaying ? "إيقاف مؤقت" : "استماع للآية"}
+            aria-label={isPlaying ? "إيقاف مؤقت" : "استماع للآية"}
           >
             {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 fill-white mr-0.5" />}
           </button>
           <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
+          <label className="inline-flex min-h-11 items-center gap-2 text-xs text-stone-600 dark:text-stone-300">
+            <span className="whitespace-nowrap">تكرار التلاوة</span>
+            <select
+              aria-label="عدد مرات تكرار الصوت"
+              value={audioRepeatCount}
+              onChange={event => handleAudioRepeatCountChange(Number(event.target.value) as AudioRepeatCount)}
+              className="min-h-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
+            >
+              <option value={1}>مرة واحدة</option>
+              <option value={2}>مرتان</option>
+              <option value={3}>3 مرات</option>
+              <option value={5}>5 مرات</option>
+              <option value={10}>10 مرات</option>
+              <option value={-1}>حتى الإيقاف</option>
+            </select>
+          </label>
+          {isAudioLoading && <span role="status" className="text-xs text-stone-500">جارٍ تحميل التلاوة…</span>}
         </div>
 
         {/* Repetition Counter (Traditional Method - طريقة التكرار والتثبيت) */}
@@ -552,3 +649,4 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     </div>
   );
 };
+
