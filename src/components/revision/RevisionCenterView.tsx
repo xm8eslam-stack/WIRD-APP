@@ -925,7 +925,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                   {/* Ayah Text in Uthmani Quranic Font */}
                   <div className="p-3 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-sm font-quran leading-loose text-stone-900 dark:text-stone-100">
-                    «<QuranText>{item.text}</QuranText>»
+                    «<QuranText surahNumber={item.surahNumber} ayahNumber={item.ayahNumber}>{item.text}</QuranText>»
                   </div>
 
                   {item.notes && (
