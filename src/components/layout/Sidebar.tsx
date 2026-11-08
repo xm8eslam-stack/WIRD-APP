@@ -10,7 +10,8 @@ import {
   Compass, 
   Settings, 
   X,
-  ShieldCheck
+  ShieldCheck,
+  MoreHorizontal
 } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
 
@@ -31,6 +32,7 @@ interface SidebarProps {
   onSelectTab: (tab: NavTabId) => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
+  onOpenMobileMenu: () => void;
   profile: UserProfile;
   dueRevisionCount: number;
 }
@@ -47,20 +49,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   isOpenMobile,
   onCloseMobile,
+  onOpenMobileMenu,
   profile,
   dueRevisionCount
 }) => {
-  const navItems: NavItem[] = [
-    { id: 'dashboard', label: 'الرئيسية', icon: Home },
-    { id: 'library', label: 'المصحف والمكتبة', icon: BookOpen },
-    { id: 'plans', label: 'خطط الحفظ', icon: Calendar },
-    { id: 'session', label: 'جلسة الحفظ اليومية', icon: Sparkles },
-    { id: 'revision', label: 'مركز المراجعة والربط', icon: Repeat, badge: dueRevisionCount > 0 ? dueRevisionCount : undefined },
-    { id: 'tests', label: 'اختبارات الحفظ', icon: CheckCircle },
-    { id: 'progress', label: 'التقارير والمصحف', icon: BarChart3 },
-    { id: 'advisor', label: 'المستشار القرآني', icon: Compass },
-    { id: 'ruqyah', label: 'الرقية الشرعية', icon: ShieldCheck },
-    { id: 'settings', label: 'الإعدادات والملف', icon: Settings },
+  const navGroups: { label: string; items: NavItem[] }[] = [
+    {
+      label: 'ابدأ',
+      items: [
+        { id: 'dashboard', label: 'الرئيسية', icon: Home },
+        { id: 'library', label: 'القرآن والمصحف', icon: BookOpen },
+      ]
+    },
+    {
+      label: 'الحفظ والتثبيت',
+      items: [
+        { id: 'session', label: 'جلسة الحفظ', icon: Sparkles },
+        { id: 'plans', label: 'خطط الحفظ', icon: Calendar },
+        { id: 'revision', label: 'المراجعة', icon: Repeat, badge: dueRevisionCount > 0 ? dueRevisionCount : undefined },
+        { id: 'tests', label: 'اختبارات الحفظ', icon: CheckCircle },
+      ]
+    },
+    {
+      label: 'المتابعة والمساندة',
+      items: [
+        { id: 'progress', label: 'التقدم والإنجاز', icon: BarChart3 },
+        { id: 'advisor', label: 'المستشار القرآني', icon: Compass },
+        { id: 'ruqyah', label: 'الرقية الشرعية', icon: ShieldCheck },
+      ]
+    },
+    {
+      label: 'التطبيق',
+      items: [{ id: 'settings', label: 'الإعدادات', icon: Settings }]
+    }
   ];
 
   const handleSelect = (id: NavTabId) => {
@@ -86,7 +107,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-stone-500 dark:text-stone-400">
-              رفيق الحفظ والتثبيت الذكي
+              رفيق القرآن والورد اليومي
             </p>
           </div>
         </div>
@@ -102,39 +123,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Navigation Links */}
-      <nav aria-label="القائمة الجانبية" className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentTab === item.id;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleSelect(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all ${
-                isActive
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'text-stone-700 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 hover:text-emerald-900 dark:hover:text-emerald-300'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : 'text-stone-500 dark:text-stone-400'}`} />
-                <span className="truncate">{item.label}</span>
-              </div>
-
-              {item.badge !== undefined && (
-                <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold tabular-nums font-mono ${
-                  isActive 
-                    ? 'bg-amber-400 text-emerald-950' 
-                    : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                }`}>
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* Grouped navigation */}
+      <nav aria-label="القائمة الرئيسية" className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
+        {navGroups.map(group => (
+          <div key={group.label} className="space-y-1.5">
+            <p className="px-3.5 text-[10px] font-bold tracking-wide text-stone-400 dark:text-stone-500">{group.label}</p>
+            {group.items.map(item => {
+              const Icon = item.icon;
+              const isActive = currentTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleSelect(item.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`w-full min-h-11 flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
+                    isActive
+                      ? 'bg-emerald-800 text-white shadow-sm dark:bg-emerald-700'
+                      : 'text-stone-700 dark:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-800 hover:text-emerald-900 dark:hover:text-emerald-300'
+                  }`}
+                >
+                  <span className="flex items-center gap-3 min-w-0">
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-300' : 'text-stone-500 dark:text-stone-400'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                  {item.badge !== undefined && (
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
+                      isActive ? 'bg-amber-400 text-emerald-950' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                    }`}>{item.badge}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* User Mini Profile Card */}
@@ -174,6 +195,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {sidebarContent}
           </div>
         </div>
+      )}
+
+      {/* Keep the memorization workspace distraction-free and controls unobstructed. */}
+      {currentTab !== 'session' && (
+      <nav className="wird-mobile-nav md:hidden" aria-label="التنقل السريع">
+        {[
+          { id: 'dashboard' as NavTabId, label: 'الرئيسية', icon: Home },
+          { id: 'library' as NavTabId, label: 'القرآن', icon: BookOpen },
+          { id: 'session' as NavTabId, label: 'الحفظ', icon: Sparkles },
+          { id: 'revision' as NavTabId, label: 'المراجعة', icon: Repeat },
+        ].map(item => {
+          const Icon = item.icon;
+          const active = currentTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => handleSelect(item.id)}
+              aria-current={active ? 'page' : undefined}
+              className={active ? 'wird-mobile-nav__item is-active' : 'wird-mobile-nav__item'}
+            >
+              <Icon className="h-5 w-5" />
+              <span>{item.label}</span>
+              {item.id === 'revision' && dueRevisionCount > 0 && <span className="wird-mobile-nav__badge">{dueRevisionCount}</span>}
+            </button>
+          );
+        })}
+        <button type="button" onClick={onOpenMobileMenu} className="wird-mobile-nav__item" aria-label="المزيد من الأقسام">
+          <MoreHorizontal className="h-5 w-5" />
+          <span>المزيد</span>
+        </button>
+      </nav>
       )}
     </>
   );

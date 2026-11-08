@@ -1,0 +1,118 @@
+/* WIRD visual identity: warm paper, muted sage, and restrained brass accents. */
+:root {
+  color-scheme: light;
+  --wird-bg: #f5f5ef;
+  --wird-surface: #fffefa;
+  --wird-surface-muted: #efefe7;
+  --wird-text: #28332c;
+  --wird-muted: #737c72;
+  --wird-primary: #52735e;
+  --wird-primary-strong: #355b45;
+  --wird-border: rgba(92, 108, 91, 0.16);
+  --wird-accent: #b59a63;
+  --wird-shadow: 0 10px 32px rgba(45, 60, 48, 0.055);
+}
+
+.dark {
+  color-scheme: dark;
+  --wird-bg: #171c18;
+  --wird-surface: #202720;
+  --wird-surface-muted: #252d26;
+  --wird-text: #e8ece5;
+  --wird-muted: #a0aa9f;
+  --wird-primary: #91b39a;
+  --wird-primary-strong: #6f9b7c;
+  --wird-border: rgba(191, 207, 188, 0.13);
+  --wird-accent: #c8ad73;
+  --wird-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--wird-bg);
+}
+
+.wird-app-shell {
+  background: var(--wird-bg);
+  color: var(--wird-text);
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.wird-mobile-nav {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+  padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--wird-border);
+  background: color-mix(in srgb, var(--wird-surface) 94%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.wird-mobile-nav__item {
+  position: relative;
+  min-width: 0;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 13px;
+  color: var(--wird-muted);
+  font-size: 10px;
+  font-weight: 700;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+
+.wird-mobile-nav__item.is-active {
+  color: var(--wird-primary-strong);
+  background: color-mix(in srgb, var(--wird-primary) 12%, transparent);
+}
+
+.dark .wird-mobile-nav__item.is-active {
+  color: #c5dfca;
+  background: rgba(111, 155, 124, 0.16);
+}
+
+.wird-mobile-nav__item:focus-visible {
+  outline: 2px solid var(--wird-primary);
+  outline-offset: -2px;
+}
+
+.wird-mobile-nav__badge {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: calc(50% + 5px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #d8b56b;
+  color: #28332c;
+  font-size: 9px;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wird-app-shell,
+  .wird-mobile-nav__item {
+    transition: none;
+  }
+}
+
+
+/* The identity layer loads after Tailwind; explicitly preserve the desktop hidden state. */
+@media (min-width: 768px) {
+  .wird-mobile-nav {
+    display: none;
+  }
+}

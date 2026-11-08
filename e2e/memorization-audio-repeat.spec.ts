@@ -79,7 +79,7 @@ test.describe('Memorization session audio repetition', () => {
     await expect.poll(() => page.evaluate(() => (window as any).__wirdAudioPlayCalls)).toBe(2);
     await page.getByRole('button', { name: 'خروج من الجلسة' }).click();
     await page.getByRole('button', { name: 'مغادرة الجلسة' }).click();
-    await expect(page.getByRole('heading', { name: 'لوحة المتابعة اليومية' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'الرئيسية' })).toBeVisible();
     await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.at(-1).onended)).toBeNull();
   });
 
