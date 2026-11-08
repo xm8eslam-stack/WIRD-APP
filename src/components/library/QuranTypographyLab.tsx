@@ -97,7 +97,7 @@ export function QuranTypographyLab({ onClose }: { onClose: () => void }) {
             <article key={`${ayah.surahNumber}:${ayah.numberInSurah}`} className="rounded-2xl border border-stone-200 bg-[#fffefb] p-4 dark:border-stone-700 dark:bg-stone-950">
               <div className="mb-2 font-mono text-xs text-stone-500">{ayah.surahNumber}:{ayah.numberInSurah}</div>
               <p lang="ar" dir="rtl" className="quran-text text-right leading-[2.7] text-stone-950 dark:text-stone-100" style={{ fontFamily: currentCandidate.family, fontSize: `${fontSize}px` }}>
-                <QuranText>{ayah.text}</QuranText>
+                <QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>
               </p>
             </article>
           ))}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { loadSimpleAyahRange } from '../../data/quranDataLoader';
 
 /** Displays the official Tanzil Simple text for the supplied coordinate.
- * The original Uthmani string remains the fallback and is never rewritten.
+ * The original Uthmani string remains unchanged in the canonical corpus; a missing Simple chunk never falls back to Uthmani.
  */
 export function QuranText({
   children,
