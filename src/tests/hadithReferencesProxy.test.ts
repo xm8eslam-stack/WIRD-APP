@@ -56,7 +56,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       assert(res.body.hadiths[0].bookNumber === '1' && res.body.hadiths[0].chapterTitle === 'بدء الوحي' && res.body.hadiths[0].chapterNumber === '1' && res.body.hadiths[0].referenceUrn === 222 && res.body.hadiths[0].urn === 111, 'top-level reference URN and Arabic hadith URN must remain distinct');
       assert(authHeader.startsWith('Basic ') && apiCalls === 3, 'backend must use client credentials and fetch references, Arabic text and English grading metadata');
       assert(!JSON.stringify(res.body).includes('test-secret') && !JSON.stringify(res.body).includes('test-token'), 'secrets and tokens must never reach the client');
-    });;
+    });
   } finally {
     __testing.clearTokenCache();
     if (beforeId === undefined) delete process.env.QF_CLIENT_ID; else process.env.QF_CLIENT_ID = beforeId;
