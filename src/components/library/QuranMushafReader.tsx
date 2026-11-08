@@ -551,7 +551,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                         : 'hover:bg-amber-100/70 dark:hover:bg-amber-950/40'
                     }`}
                   >
-                    <QuranText>{ayah.text}</QuranText>
+                    <QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>
                     <span
                       className="ayah-number"
                       title={`الآية ${ayah.numberInSurah}`}

@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { ALL_SURAHS, JUZ_NAMES } from '../../data/quranMeta';
 import { QURAN_DATA_SOURCE_INFO } from '../../data/quranDataInfo';
-import { loadSurahVerses } from '../../data/quranDataLoader';
+import { loadSurahVerses, loadSimpleAyahText } from '../../data/quranDataLoader';
 import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
 import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
@@ -310,7 +310,8 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   };
 
   const handleCopyAyah = async (ayah: Ayah) => {
-    const text = `﴿ ${ayah.text} ﴾ [سورة ${selectedSurah.name}: ${ayah.numberInSurah}]`;
+    const displayText = await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah) ?? ayah.text;
+    const text = `﴿ ${displayText} ﴾ [سورة ${selectedSurah.name}: ${ayah.numberInSurah}]`;
     try {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(text);
@@ -767,7 +768,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                             aria-label={`تفسير سورة ${selectedSurah.name}، الآية ${ayah.numberInSurah}`}
                             className={`inline rounded-lg px-1 text-right align-baseline transition-colors ${isThisPlaying ? 'bg-amber-200/80 dark:bg-amber-950/80' : 'hover:bg-amber-100/70 dark:hover:bg-amber-950/40'}`}
                           >
-                            <QuranText>{ayah.text}</QuranText>
+                            <QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>
                             <span className="ayah-number" aria-label={`الآية ${ayah.numberInSurah}`}>{ayah.numberInSurah}</span>
                           </button>{' '}
                           <button
