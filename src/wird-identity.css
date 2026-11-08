@@ -108,3 +108,11 @@ body {
     transition: none;
   }
 }
+
+
+/* The identity layer loads after Tailwind; explicitly preserve the desktop hidden state. */
+@media (min-width: 768px) {
+  .wird-mobile-nav {
+    display: none;
+  }
+}
