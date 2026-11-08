@@ -71,15 +71,15 @@ async function getToken(fetcher: typeof fetch): Promise<string> {
 }
 
 function normalizeHadithBody(value: string): string {
-  const withoutUnsafeBlocks = value.replace(/<(script|style|iframe|object|svg|math)\\b[^>]*>[\\s\\S]*?<\\/\\1\\s*>/gi, ' ');
-  const withLineBreaks = withoutUnsafeBlocks.replace(/<\\s*br\\s*\\/?\\s*>|<\\s*\\/(?:p|div|li|blockquote|h[1-6])\\s*>/gi, '\\n');
-  const decoded = withLineBreaks.replace(/&(#x[0-9a-f]+|#\\d+|amp|lt|gt|quot|apos|nbsp|laquo|raquo|hellip|ndash|mdash);/gi, (entity, code) => {
+  const withoutUnsafeBlocks = value.replace(/<(script|style|iframe|object|svg|math)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ');
+  const withLineBreaks = withoutUnsafeBlocks.replace(/<\s*br\s*\/?\s*>|<\s*\/(?:p|div|li|blockquote|h[1-6])\s*>/gi, '\n');
+  const decoded = withLineBreaks.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos|nbsp|laquo|raquo|hellip|ndash|mdash);/gi, (entity, code) => {
     const named: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', laquo: '«', raquo: '»', hellip: '…', ndash: '–', mdash: '—' };
     if (code[0] !== '#') return named[code.toLowerCase()] ?? ' ';
     const number = code[1].toLowerCase() === 'x' ? Number.parseInt(code.slice(2), 16) : Number.parseInt(code.slice(1), 10);
     return Number.isFinite(number) && number > 0 && number <= 0x10ffff && !(number >= 0xd800 && number <= 0xdfff) ? String.fromCodePoint(number) : ' ';
   });
-  return decoded.replace(/<[^>]*>/g, ' ').replace(/[\\t\\f\\v ]+/g, ' ').replace(/ *\\n */g, '\\n').replace(/\\n{3,}/g, '\\n\\n').trim();
+  return decoded.replace(/<[^>]*>/g, ' ').replace(/[\t\f\v ]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function safeUrn(value: unknown): number | null {
