@@ -18,7 +18,8 @@ import { TestResult, WirdPortion } from '../../types/quran';
 import { RetentionService } from '../../services/retentionService';
 import { createSecureId } from '../../services/secureId';
 import { loadSimpleAyahText } from '../../data/quranDataLoader';
-import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
+import { generateDynamicTestQuestions } from '../../services/testQuestionGenerator';
+import type { QuestionGenerationResult } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
   onSaveTestResult: (result: TestResult) => boolean | Promise<boolean>;
@@ -49,10 +50,37 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const saveInProgressRef = useRef(false);
   const [sessionKey, setSessionKey] = useState(0);
 
-  // Load user portions and dynamically generate verified test questions
-  const portions = RetentionService.getPortions();
-  const generationResult = React.useMemo(() => {
-    return generateDynamicTestQuestions(selectedTestType, portions as WirdPortion[]);
+  // Generate questions asynchronously from only the Surahs present in the user's memorized portions.
+  const [generationResult, setGenerationResult] = useState<QuestionGenerationResult>({
+    questions: [],
+    hasSufficientData: false,
+    memorizedPortionsCount: 0,
+    messageAr: 'جارٍ تجهيز أسئلة الاختبار من محفوظك الفعلي...'
+  });
+  const [isGenerating, setIsGenerating] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setIsGenerating(true);
+    setCurrentQuestionIndex(0);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setScore(0);
+    setIsFinished(false);
+    const portions = RetentionService.getPortions();
+    generateDynamicTestQuestions(selectedTestType, portions as WirdPortion[])
+      .then(result => { if (active) setGenerationResult(result); })
+      .catch(error => {
+        console.error('[WIRD MemorizationTests] Question generation failed:', error);
+        if (active) setGenerationResult({
+          questions: [],
+          hasSufficientData: false,
+          memorizedPortionsCount: 0,
+          messageAr: 'تعذر تجهيز الاختبار من بيانات الحفظ الحالية. حاول مرة أخرى.'
+        });
+      })
+      .finally(() => { if (active) setIsGenerating(false); });
+    return () => { active = false; };
   }, [selectedTestType, sessionKey]);
 
   const currentQuestions = generationResult.questions;
@@ -324,6 +352,10 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               <span>إعادة الاختبار</span>
             </button>
           </div>
+        </div>
+      ) : isGenerating ? (
+        <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-8 border border-stone-200/80 dark:border-stone-700/80 text-center text-sm text-stone-500">
+          جارٍ تجهيز أسئلة الاختبار من السور المحفوظة فقط...
         </div>
       ) : currentQuestions.length === 0 ? (
         /* 3. Empty State Card when user has no memorized portions for test mode */

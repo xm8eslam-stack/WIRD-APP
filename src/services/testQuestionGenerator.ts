@@ -1,6 +1,6 @@
 import { WirdPortion } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { VERIFIED_AYAHS, getAyahByCoordinate } from '../data/verifiedAyahs';
+import { loadAyahByCoordinate, loadSurahVerses } from '../data/quranDataLoader';
 import { MUTASHABIHAT_DATA } from '../data/mutashabihatData';
 
 export type TestMode = 'complete_verse' | 'bidirectional_recall' | 'random_recall' | 'mutashabihat';
@@ -50,11 +50,11 @@ function shuffleArray<T>(array: T[]): { shuffled: T[]; originalIndexMap: number[
  * 4. Empty memorized state returns zero questions with guidance to record memorization.
  * 5. Curated Mutashabihat is kept distinct and clearly designated.
  */
-export function generateDynamicTestQuestions(
+export async function generateDynamicTestQuestions(
   testType: TestMode,
   portions: WirdPortion[] = [],
   targetCount: number = 5
-): QuestionGenerationResult {
+): Promise<QuestionGenerationResult> {
   const safePortions = Array.isArray(portions) ? portions : [];
   
   // Filter active memorized portions
@@ -124,7 +124,7 @@ export function generateDynamicTestQuestions(
 
       for (const p of eligiblePortions) {
         if (questions.length >= targetCount) break;
-        const surahVerses = VERIFIED_AYAHS[p.surahNumber];
+        const surahVerses = await loadSurahVerses(p.surahNumber);
         if (!surahVerses || surahVerses.length < 2) continue;
 
         // Candidate Ayahs where next Ayah exists within the memorized portion
@@ -142,8 +142,8 @@ export function generateDynamicTestQuestions(
         for (const targetN of eligibleTargetNs) {
           if (questions.length >= targetCount) break;
 
-          const currentAyah = getAyahByCoordinate(p.surahNumber, targetN);
-          const nextAyah = getAyahByCoordinate(p.surahNumber, targetN + 1);
+          const currentAyah = await loadAyahByCoordinate(p.surahNumber, targetN);
+          const nextAyah = await loadAyahByCoordinate(p.surahNumber, targetN + 1);
           if (!currentAyah || !nextAyah) continue;
 
           // Avoid duplicate question prompts
@@ -158,7 +158,7 @@ export function generateDynamicTestQuestions(
 
           // If not enough in same Surah, pull from adjacent verified Surah
           if (distractorAyahs.length < 3) {
-            const otherSurah = VERIFIED_AYAHS[p.surahNumber === 114 ? 113 : p.surahNumber + 1] || [];
+            const otherSurah = await loadSurahVerses(p.surahNumber === 114 ? 113 : p.surahNumber + 1);
             for (const o of otherSurah) {
               if (distractorAyahs.length >= 3) break;
               if (!distractorAyahs.some(ayah => ayah.text === o.text) && o.text !== nextAyah.text) {
@@ -210,7 +210,7 @@ export function generateDynamicTestQuestions(
 
       for (const p of eligiblePortions) {
         if (questions.length >= targetCount) break;
-        const surahVerses = VERIFIED_AYAHS[p.surahNumber];
+        const surahVerses = await loadSurahVerses(p.surahNumber);
         if (!surahVerses || surahVerses.length < 2) continue;
 
         // Try bidirectional combinations within portion
@@ -225,8 +225,8 @@ export function generateDynamicTestQuestions(
           const expectedAyahNum = isPrevious ? targetN - 1 : targetN + 1;
           const promptDirection = isPrevious ? `⟵ ما هي الآية السابقة لها مباشرة؟` : `⟶ ما هي الآية التالية لها مباشرة؟`;
 
-          const centerAyah = getAyahByCoordinate(p.surahNumber, targetN);
-          const answerAyah = getAyahByCoordinate(p.surahNumber, expectedAyahNum);
+          const centerAyah = await loadAyahByCoordinate(p.surahNumber, targetN);
+          const answerAyah = await loadAyahByCoordinate(p.surahNumber, expectedAyahNum);
           if (!centerAyah || !answerAyah) continue;
 
           if (questions.some(q => q.surahNumber === p.surahNumber && q.targetAyahNumber === expectedAyahNum)) {
@@ -238,7 +238,7 @@ export function generateDynamicTestQuestions(
           const distractorAyahs = shuffledCandidates.slice(0, 3);
 
           if (distractorAyahs.length < 3) {
-            const otherSurah = VERIFIED_AYAHS[p.surahNumber === 114 ? 113 : p.surahNumber + 1] || [];
+            const otherSurah = await loadSurahVerses(p.surahNumber === 114 ? 113 : p.surahNumber + 1);
             for (const o of otherSurah) {
               if (distractorAyahs.length >= 3) break;
               if (!distractorAyahs.some(ayah => ayah.text === o.text) && o.text !== answerAyah.text) {
@@ -295,7 +295,7 @@ export function generateDynamicTestQuestions(
         for (let targetN = p.startAyah; targetN <= p.endAyah; targetN++) {
           if (questions.length >= targetCount) break;
 
-          const ayah = getAyahByCoordinate(p.surahNumber, targetN);
+          const ayah = await loadAyahByCoordinate(p.surahNumber, targetN);
           if (!ayah) continue;
 
           if (questions.some(q => q.surahNumber === p.surahNumber && q.targetAyahNumber === ayah.numberInSurah)) {
