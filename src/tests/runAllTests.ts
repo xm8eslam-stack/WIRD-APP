@@ -40,6 +40,7 @@ import { runReadingKhatmaServiceTests } from '../services/readingKhatmaService.t
 import { runSessionStudyUiTests } from './sessionStudyUi.test';
 import { runHadithReferencesProxyTests } from './hadithReferencesProxy.test';
 import { runHadithReferencesServiceTests } from '../services/hadithReferencesService.test';
+import { runHadithSanitizerTests } from '../utils/hadithSanitizer.test';
 import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.test';
 import { runRuqyahIntegrityTests } from './ruqyahIntegrity.test';
 import { runRuqyahContentServiceTests } from '../services/ruqyahContentService.test';
@@ -135,6 +136,7 @@ async function main() {
     { name: 'Session Study UI Integration', runner: runSessionStudyUiTests },
     { name: 'Quran Foundation Verse Hadith References Proxy', runner: runHadithReferencesProxyTests },
     { name: 'Hadith References Client Validation and Metadata', runner: runHadithReferencesServiceTests },
+    { name: 'Safe Arabic Hadith Matn Sanitization', runner: runHadithSanitizerTests },
     { name: 'Cloud Sync Coordinator & Remote Reconciliation', runner: runCloudSyncCoordinatorTests },
     { name: 'Ruqyah API Client & Canonical External Quran Validation', runner: runRuqyahApiServiceTests },
     { name: 'Ruqyah UID-Scoped Progress Persistence & Recovery', runner: runRuqyahProgressServiceTests },
