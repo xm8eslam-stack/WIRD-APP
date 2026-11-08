@@ -38,6 +38,7 @@ import { clearReadingKhatma, markReadingPage, readReadingKhatma, startReadingKha
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { ReadingKhatmaPanel } from './ReadingKhatmaPanel';
 import { QuranText } from '../shared/QuranText';
+import { QuranTypographyLab } from './QuranTypographyLab';
 
 interface QuranLibraryViewProps {
   onStartSession: (surahNumber: number, startAyah?: number, endAyah?: number) => void;
@@ -45,8 +46,22 @@ interface QuranLibraryViewProps {
 }
 
 type MainTab = 'surahs' | 'juz' | 'study';
+type StudyLayout = 'ayah-cards' | 'continuous';
+type QuranReadingPosition = { surahNumber: number; ayahNumber: number };
 
 const JUZ_INDEX = QURAN_JUZ_STARTS as unknown as Record<string, { surahNumber: number; ayahNumber: number; page: number }>;
+const LAST_READING_POSITION_KEY = 'wird.quran.lastReadingPosition.v1';
+
+function readLastReadingPosition(): QuranReadingPosition | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(LAST_READING_POSITION_KEY) || 'null') as QuranReadingPosition | null;
+    if (!value || !Number.isInteger(value.surahNumber) || !Number.isInteger(value.ayahNumber)) return null;
+    const surah = ALL_SURAHS[value.surahNumber - 1];
+    return surah && value.ayahNumber >= 1 && value.ayahNumber <= surah.versesCount ? value : null;
+  } catch {
+    return null;
+  }
+}
 
 export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   onStartSession,
@@ -66,6 +81,10 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   // Font size adjustment for Quran text in Study mode
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'huge'>('large');
   const [showMushafReader, setShowMushafReader] = useState(false);
+  const [studyLayout, setStudyLayout] = useState<StudyLayout>('ayah-cards');
+  const [showTypographyLab, setShowTypographyLab] = useState(false);
+  const [lastReadingPosition, setLastReadingPosition] = useState<QuranReadingPosition | null>(readLastReadingPosition);
+  const [resumeTarget, setResumeTarget] = useState<QuranReadingPosition | null>(null);
   const [mushafInitialPage, setMushafInitialPage] = useState<number | undefined>(undefined);
   const [copiedAyahNumber, setCopiedAyahNumber] = useState<number | null>(null);
   const [readingKhatma, setReadingKhatma] = useState<ReadingKhatma | null>(() => readReadingKhatma());
@@ -123,8 +142,34 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     return () => { cancelled = true; };
   }, [selectedSurah.number, loadRetry, showMushafReader, activeTab]);
 
+  useEffect(() => {
+    if (!resumeTarget || activeTab !== 'study' || showMushafReader || selectedSurah.number !== resumeTarget.surahNumber || !currentAyahs.some(ayah => ayah.numberInSurah === resumeTarget.ayahNumber)) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`continuous-ayah-${resumeTarget.ayahNumber}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setResumeTarget(null);
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [resumeTarget, activeTab, showMushafReader, selectedSurah.number, currentAyahs]);
+
+  const rememberReadingPosition = (ayahNumber: number) => {
+    const position = { surahNumber: selectedSurah.number, ayahNumber };
+    setLastReadingPosition(position);
+    try { localStorage.setItem(LAST_READING_POSITION_KEY, JSON.stringify(position)); } catch { /* Keep the current read usable when storage is unavailable. */ }
+  };
+
+  const handleResumeReading = () => {
+    if (!lastReadingPosition) return;
+    const surah = ALL_SURAHS[lastReadingPosition.surahNumber - 1];
+    if (!surah) return;
+    setResumeTarget(lastReadingPosition);
+    setStudyLayout('continuous');
+    setSelectedSurah(surah);
+    setActiveTab('study');
+  };
+
   // Audio playback uses refs for event-driven repeat state; React state is UI-only.
   const handlePlayAyah = (ayahNumberInSurah: number) => {
+    rememberReadingPosition(ayahNumberInSurah);
     if (playingAyah === ayahNumberInSurah && audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
@@ -294,6 +339,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-24">
+      {lastReadingPosition && (
+        <button type="button" onClick={handleResumeReading} className="min-h-11 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-900 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100">
+          متابعة آخر موضع قراءة · سورة {ALL_SURAHS[lastReadingPosition.surahNumber - 1]?.name} · الآية {lastReadingPosition.ayahNumber}
+        </button>
+      )}
       <ReadingKhatmaPanel
         khatma={readingKhatma}
         error={readingKhatmaError}
@@ -309,7 +359,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
           <div className="space-y-3 max-w-2xl text-right">
             <div className="inline-flex items-center gap-2 text-xs font-semibold text-amber-300 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-full">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>مصحف المدينة المنورة · برواية حفص عن عاصم</span>
+              <span>قراءة القرآن الكريم · برواية حفص عن عاصم</span>
             </div>
             <h1 className="text-3xl md:text-5xl font-black font-quran text-amber-50 tracking-wide leading-tight">
               القرآن الكريم
@@ -684,6 +734,58 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
           {!isLoadingSurah && !surahLoadError && currentAyahs.length > 0 && (
             <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900">
+                <p className="text-sm font-bold text-stone-800 dark:text-stone-100">طريقة عرض الآيات</p>
+                <div className="flex flex-wrap items-center gap-2">
+                <div role="group" aria-label="طريقة عرض آيات السورة" className="inline-flex rounded-xl bg-stone-100 p-1 dark:bg-stone-800">
+                  <button type="button" aria-pressed={studyLayout === 'ayah-cards'} onClick={() => setStudyLayout('ayah-cards')} className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${studyLayout === 'ayah-cards' ? 'bg-white text-emerald-900 shadow-xs dark:bg-stone-700 dark:text-emerald-100' : 'text-stone-600 dark:text-stone-300'}`}>
+                    آية آية
+                  </button>
+                  <button type="button" aria-pressed={studyLayout === 'continuous'} onClick={() => setStudyLayout('continuous')} className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${studyLayout === 'continuous' ? 'bg-white text-emerald-900 shadow-xs dark:bg-stone-700 dark:text-emerald-100' : 'text-stone-600 dark:text-stone-300'}`}>
+                    قراءة متصلة
+                  </button>
+                </div>
+                <button type="button" aria-expanded={showTypographyLab} onClick={() => setShowTypographyLab(value => !value)} className="min-h-11 rounded-xl border border-emerald-700 px-3 text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                  {showTypographyLab ? 'إخفاء مختبر الخطوط' : 'مختبر الخطوط'}
+                </button>
+                </div>
+              </div>
+
+              {showTypographyLab && <QuranTypographyLab onClose={() => setShowTypographyLab(false)} />}
+
+              {studyLayout === 'continuous' ? (
+                <div aria-label={`قراءة متصلة لسورة ${selectedSurah.name}`} className="rounded-3xl border border-stone-200 bg-[#fffefb] p-5 text-right shadow-xs dark:border-stone-800 dark:bg-stone-900 md:p-8">
+                  <p className="quran-text font-quran text-2xl leading-[2.7] text-stone-950 dark:text-stone-100 md:text-3xl">
+                    {currentAyahs.map(ayah => {
+                      const isThisPlaying = playingAyah === ayah.numberInSurah && isPlaying;
+                      return (
+                        <React.Fragment key={ayah.number}>
+                          <button
+                            id={`continuous-ayah-${ayah.numberInSurah}`}
+                            type="button"
+                            onClick={() => { rememberReadingPosition(ayah.numberInSurah); setTafsirAyah(ayah); }}
+                            aria-label={`تفسير سورة ${selectedSurah.name}، الآية ${ayah.numberInSurah}`}
+                            className={`inline rounded-lg px-1 text-right align-baseline transition-colors ${isThisPlaying ? 'bg-amber-200/80 dark:bg-amber-950/80' : 'hover:bg-amber-100/70 dark:hover:bg-amber-950/40'}`}
+                          >
+                            <QuranText>{ayah.text}</QuranText>
+                            <span className="ayah-number" aria-label={`الآية ${ayah.numberInSurah}`}>{ayah.numberInSurah}</span>
+                          </button>{' '}
+                          <button
+                            type="button"
+                            onClick={() => handlePlayAyah(ayah.numberInSurah)}
+                            aria-label={`${isThisPlaying ? 'إيقاف' : 'استماع'} الآية ${ayah.numberInSurah} من سورة ${selectedSurah.name}`}
+                            className={`mx-1 inline-flex min-h-11 min-w-11 translate-y-1 items-center justify-center rounded-full align-baseline ${isThisPlaying ? 'bg-amber-600 text-white' : 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200'}`}
+                          >
+                            {isThisPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                          </button>{' '}
+                        </React.Fragment>
+                      );
+                    })}
+                  </p>
+                  <p className="mt-4 text-xs text-stone-500 dark:text-stone-400">اضغط نص الآية لفتح تفسيرها، أو زر الاستماع لبدء التلاوة منها.</p>
+                </div>
+              ) : (
+            <div className="space-y-4">
               {currentAyahs.map((ayah) => {
                 const isThisPlaying = playingAyah === ayah.numberInSurah && isPlaying;
                 const isCopied = copiedAyahNumber === ayah.numberInSurah;
@@ -734,7 +836,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => setTafsirAyah(ayah)}
+                          onClick={() => { rememberReadingPosition(ayah.numberInSurah); setTafsirAyah(ayah); }}
                           title="عرض التفسير المعتمد (Quran.com v4)"
                           aria-label={`تفسير الآية ${ayah.numberInSurah}`}
                           className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors font-bold text-xs"
@@ -765,7 +867,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Ayah Text in Large Authentic Amiri Font */}
+                    {/* Canonical Ayah Text */}
                     <div className="py-2 text-right">
                       <p className="font-quran text-2xl md:text-3xl leading-[2.6] text-stone-950 dark:text-stone-100 selection:bg-amber-200">
                         <QuranText>{ayah.text}</QuranText>{' '}
@@ -777,6 +879,8 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                   </article>
                 );
               })}
+            </div>
+              )}
             </div>
           )}
         </div>
@@ -895,7 +999,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
         <div className="text-right text-[11px] space-y-0.5 shrink-0">
           <div className="text-stone-700 dark:text-stone-300">
-            المصدر: <span className="font-semibold text-emerald-800 dark:text-emerald-400">{QURAN_DATA_SOURCE_INFO.provider} · مجمع الملك فهد</span>
+              المصدر: <span className="font-semibold text-emerald-800 dark:text-emerald-400">{QURAN_DATA_SOURCE_INFO.provider}</span>
           </div>
           <div className="text-stone-400">
             التفسير معتمد عبر بوابة مطوري Quran.com API v4

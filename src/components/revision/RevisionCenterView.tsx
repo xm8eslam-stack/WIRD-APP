@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { QuranText } from '../shared/QuranText';
 import { 
   Repeat, 
   CheckCircle2, 
@@ -924,7 +925,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                   {/* Ayah Text in Uthmani Quranic Font */}
                   <div className="p-3 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-sm font-quran leading-loose text-stone-900 dark:text-stone-100">
-                    «{item.text}»
+                    «<QuranText>{item.text}</QuranText>»
                   </div>
 
                   {item.notes && (

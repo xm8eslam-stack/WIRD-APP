@@ -455,7 +455,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         </div>
       </header>
 
-      {/* Royal Mushaf Page: Authentic Double Frame with Warm Parchment Paper */}
+      {/* Responsive page-style reading surface; current data does not encode printed line positions. */}
       <main key={page} onTouchStart={event => { touchStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={event => {
         const startX = touchStartX.current; touchStartX.current = null;
         if (startX === null || event.changedTouches.length === 0) return;
@@ -474,6 +474,10 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             الجزء {currentJuz}
           </span>
         </div>
+
+        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400">
+          توزيع الآيات هنا مرن بحسب الصفحة، وقد يختلف عن أسطر النسخة المطبوعة.
+        </p>
 
         {readingKhatma && !readingKhatma.completedAt && <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs dark:bg-emerald-950/40">
           <span className="text-stone-700 dark:text-stone-200">ختمة القراءة · {readingKhatma.completedPages.length} / 604 صفحة</span>

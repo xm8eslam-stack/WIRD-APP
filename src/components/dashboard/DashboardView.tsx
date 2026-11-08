@@ -27,6 +27,7 @@ import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { getDailySessionSelection } from '../../services/dailySessionSelection';
 import { getPagesForAyahRange } from '../../services/pageProgressService';
+import { QuranText } from '../shared/QuranText';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -211,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="text-xs text-stone-700 dark:text-stone-300 font-quran text-base leading-loose bg-white dark:bg-stone-800 p-3.5 rounded-lg border border-stone-200/60 dark:border-stone-700/50 text-right">
-                {dailyPreviewText}
+                <QuranText>{dailyPreviewText}</QuranText>
               </div>
             </div>
 

@@ -46,5 +46,15 @@ export function runQuranTypographyTests(): { passed: number; failed: number } {
     assert(!textRules.includes('bidi-override') && !fontRules.includes('bidi-override'), 'Renderer must not force bidi override');
   });
 
+  test('Connected reading and typography lab use canonical coordinates and disclose missing font assets', () => {
+    const library = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranLibraryView.tsx'), 'utf8');
+    const lab = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranTypographyLab.tsx'), 'utf8');
+    assert(library.includes("'continuous'") && library.includes('aria-pressed={studyLayout ==='), 'Reading layout toggle must expose its selected state accessibly');
+    assert(library.includes('continuous-ayah-${ayah.numberInSurah}') && library.includes('setTafsirAyah(ayah)'), 'Continuous ayah action must retain its canonical ayah coordinate');
+    assert(library.includes('handlePlayAyah(ayah.numberInSurah)'), 'Continuous audio action must use the same ayah coordinate as the text');
+    assert(lab.includes('loadAyahByCoordinate') && lab.includes('{ surah: 41, ayah: 7 }'), 'Typography samples must come from local canonical ayah records');
+    assert(lab.includes('available: false') && lab.includes('غير متاح'), 'Missing Quran font assets must be disclosed and not presented as loaded');
+  });
+
   return { passed, failed };
 }
