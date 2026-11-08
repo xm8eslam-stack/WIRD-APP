@@ -1,4 +1,4 @@
-import { ALL_SURAHS } from '../src/data/quranMeta';
+import { ALL_SURAHS } from '../src/data/quranMeta.ts';
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 20;

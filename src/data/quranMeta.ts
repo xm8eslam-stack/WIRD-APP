@@ -1,4 +1,4 @@
-import { SurahMeta } from '../types/quran';
+import type { SurahMeta } from '../types/quran.ts';
 
 export const ALL_SURAHS: SurahMeta[] = [
   { number: 1, name: "الفاتحة", englishName: "Al-Fatihah", versesCount: 7, revelationType: "مكية", pageStart: 1, pageEnd: 1, juzStart: 1, juzEnd: 1 },

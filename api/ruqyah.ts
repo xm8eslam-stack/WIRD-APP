@@ -1,4 +1,4 @@
-import { ALL_SURAHS } from '../src/data/quranMeta';
+import { ALL_SURAHS } from '../src/data/quranMeta.ts';
 
 const API_BASE = 'https://islamicapi.com/api/v1/ruqyah/';
 const RATE_LIMIT_WINDOW_MS = 60_000;

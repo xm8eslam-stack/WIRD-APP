@@ -40,6 +40,8 @@ jobs:
         run: npm audit --audit-level=high
       - name: Run automated test suites
         run: npm test
+      - name: Verify native TypeScript API module imports
+        run: npm run smoke:api-imports
       - name: Verify approved Quran audio CDN availability and byte-range streaming
         run: node scripts/check-ruqyah-audio-source.mjs
       - name: Set up Java 21 for Firestore Emulator
