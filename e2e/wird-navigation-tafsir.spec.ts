@@ -50,18 +50,26 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
       body: JSON.stringify({
         verseKey: '1:1',
         source: 'Quran Foundation Hadith References',
-        hadiths: [{
-          name: 'صحيح البخاري',
-          collection: 'bukhari',
-          hadithNumber: '1',
-          body: 'مَتْنُ حَدِيثٍ عَرَبِيٍّ بِالتَّشْكِيلِ',
-          grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
-          bookNumber: '1',
-          chapterNumber: '1',
-          chapterTitle: 'بدء الوحي',
-          referenceUrn: 222,
-          urn: 111,
-        }],
+        hadiths: [
+          {
+            name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
+            body: 'مَتْنُ حَدِيثٍ عَرَبِيٍّ بِالتَّشْكِيلِ',
+            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
+            bookNumber: '1', chapterNumber: '1', chapterTitle: 'بدء الوحي', referenceUrn: 222, urn: 111,
+          },
+          {
+            name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
+            body: 'نسخة مكررة من الإحالة نفسها',
+            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
+            bookNumber: '1', chapterNumber: '1', chapterTitle: 'بدء الوحي', referenceUrn: 222, urn: 111,
+          },
+          {
+            name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
+            body: 'رواية أخرى لها معرّف مصدر مستقل',
+            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
+            bookNumber: '1', chapterNumber: '1', chapterTitle: 'بدء الوحي', referenceUrn: 223, urn: 112,
+          },
+        ],
         page: 1,
         hasMore: false,
       }),
@@ -78,7 +86,9 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(hadithToggle).toBeVisible();
     await hadithToggle.click();
 
-    const card = page.locator('article').filter({ hasText: 'صحيح البخاري' });
+    const cards = page.locator('article').filter({ hasText: 'صحيح البخاري' });
+    await expect(cards).toHaveCount(2);
+    const card = cards.first();
     await expect(card).toContainText('رقم الحديث 1');
     await expect(card).toContainText('بدء الوحي');
     await expect(card).toContainText('أحكام المحدثين في المصدر');
@@ -86,6 +96,7 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(card).toContainText('معرّف إحالة المصدر: 222');
     await expect(card).toContainText('معرّف نص الحديث: 111');
     await expect(card.locator('p[dir="rtl"][lang="ar"]')).toContainText('مَتْنُ حَدِيثٍ عَرَبِيٍّ بِالتَّشْكِيلِ');
+    await expect(cards.nth(1).locator('p[dir="rtl"][lang="ar"]')).toContainText('رواية أخرى لها معرّف مصدر مستقل');
   });
 
 });
