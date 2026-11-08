@@ -14,7 +14,7 @@ import {
   Award
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { loadSurahVerses, getAyahWords } from '../../data/quranDataLoader';
+import { loadSurahVerses, getAyahWords, loadSimpleAyahText } from '../../data/quranDataLoader';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
 import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
@@ -251,7 +251,16 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   };
 
   // Word Masking Logic
-  const words = currentAyah ? getAyahWords(currentAyah.text) : [];
+  const [displayWords, setDisplayWords] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    if (!currentAyah) { setDisplayWords([]); return () => { active = false; }; }
+    loadSimpleAyahText(currentAyah.surahNumber, currentAyah.numberInSurah)
+      .then(text => { if (active) setDisplayWords(getAyahWords(text ?? currentAyah.text)); })
+      .catch(() => { if (active) setDisplayWords(getAyahWords(currentAyah.text)); });
+    return () => { active = false; };
+  }, [currentAyah?.surahNumber, currentAyah?.numberInSurah, currentAyah?.text]);
+  const words = displayWords;
   
   const isWordMasked = (index: number) => {
     if (maskLevel === 0) return false;
