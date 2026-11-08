@@ -92,7 +92,9 @@ function extractSahihHadiths(payload: unknown, gradingPayload?: unknown): Hadith
       .filter((grade: any) => record(grade) && typeof grade.graded_by === 'string' && grade.graded_by.trim() && typeof grade.grade === 'string' && grade.grade.trim())
       .map((grade: any) => ({ graded_by: grade.graded_by.trim().slice(0, 160), grade: grade.grade.trim().slice(0, 80) })) : [];
     const englishGrades = Number.isSafeInteger(item.urn) ? (gradesByUrn.get(item.urn) || []) : [];
-    const grades = arabicGrades.length ? arabicGrades : englishGrades;
+    const gradeMap = new Map<string, { graded_by: string; grade: string }>();
+    for (const grade of [...arabicGrades, ...englishGrades]) gradeMap.set(`${grade.graded_by.toLocaleLowerCase()}|${grade.grade.toLocaleLowerCase()}`, grade);
+    const grades = [...gradeMap.values()];
     const hasExplicitSahihGrade = grades.some(grade => /^(sahih|صحيح)$/i.test(grade.grade.trim()));
     const isSahihCollection = item.collection === 'bukhari' || item.collection === 'muslim';
     if (!hasExplicitSahihGrade && !isSahihCollection) continue;
