@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('connected reading keeps canonical verse text selectable and fits the viewport', async ({ page }) => {
+test('connected reading displays official Tanzil Simple text by coordinate and fits the viewport', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/library');
@@ -24,7 +24,7 @@ test('connected reading keeps canonical verse text selectable and fits the viewp
 
   const problematicAyah = page.getByRole('button', { name: 'تفسير سورة فصلت، الآية 7' });
   await expect(problematicAyah).toBeVisible();
-  await expect(problematicAyah.locator('.quran-text')).toHaveText('ٱلَّذِينَ لَا يُؤْتُونَ ٱلزَّكَوٰةَ وَهُم بِٱلْءَاخِرَةِ هُمْ كَٰفِرُونَ');
+  await expect(problematicAyah.locator('.quran-text')).toHaveText('الَّذِينَ لَا يُؤْتُونَ الزَّكَاةَ وَهُم بِالْآخِرَةِ هُمْ كَافِرُونَ');
   await expect(problematicAyah.locator('.quran-text')).toHaveAttribute('dir', 'rtl');
   await problematicAyah.click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('wird.quran.lastReadingPosition.v1') || 'null'))).toEqual({ surahNumber: 41, ayahNumber: 7 });
