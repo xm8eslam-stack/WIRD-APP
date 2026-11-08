@@ -59,6 +59,7 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
           bookNumber: '1',
           chapterNumber: '1',
           chapterTitle: 'بدء الوحي',
+          referenceUrn: 222,
           urn: 111,
         }],
         page: 1,
@@ -82,7 +83,8 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(card).toContainText('بدء الوحي');
     await expect(card).toContainText('أحكام المحدثين في المصدر');
     await expect(card).toContainText('ناقد موثق للاختبار');
-    await expect(card).toContainText('معرّف المصدر: 111');
+    await expect(card).toContainText('معرّف إحالة المصدر: 222');
+    await expect(card).toContainText('معرّف نص الحديث: 111');
     await expect(card.locator('p[dir="rtl"][lang="ar"]')).toContainText('مَتْنُ حَدِيثٍ عَرَبِيٍّ بِالتَّشْكِيلِ');
   });
 
