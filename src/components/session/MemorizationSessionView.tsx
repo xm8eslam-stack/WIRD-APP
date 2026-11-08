@@ -649,4 +649,3 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     </div>
   );
 };
-

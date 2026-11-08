@@ -53,4 +53,3 @@ export function savePlaybackRate(value: unknown): PlaybackRate {
   }
   return rate;
 }
-

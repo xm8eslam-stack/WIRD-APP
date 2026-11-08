@@ -121,4 +121,3 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
   });
   return { passed, failed };
 }
-

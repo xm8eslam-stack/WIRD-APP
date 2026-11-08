@@ -109,4 +109,3 @@ test.describe('Memorization session audio repetition', () => {
     await expect(page.getByRole('status')).toHaveCount(0);
   });
 });
-
