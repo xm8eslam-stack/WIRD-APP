@@ -64,6 +64,12 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     }
   });
 
+  test('Simple chunk generator preserves source attribution and verifies exact text after serialization', () => {
+    const generator = read('scripts/split-quran-simple-data.mjs');
+    assert(generator.includes("source: 'Tanzil Project'") && generator.includes('copyright:') && generator.includes('license:') && generator.includes("sourceUrl: 'https://tanzil.net'"), 'Every generated surah chunk must retain Tanzil attribution and license');
+    assert(generator.includes('actual.text !== expected.text') && generator.includes('actual.ayahNumber !== index + 1'), 'Generated chunk must be verified character-for-character and coordinate-by-coordinate');
+  });
+
   test('Memorization test generation loads only Surahs in the memorized portions', () => {
     const generator = read('src/services/testQuestionGenerator.ts');
     const view = read('src/components/tests/MemorizationTestsView.tsx');

@@ -33,6 +33,16 @@ for (let i = 0; i < surahs.length; i++) {
   };
   const serialized = JSON.stringify(chunk);
   if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== serialized) fs.writeFileSync(target, serialized, 'utf8');
+  const generated = JSON.parse(fs.readFileSync(target, 'utf8'));
+  if (generated.source !== 'Tanzil Project' || generated.version !== 'Quran Text (Simple), Version 1.1' || generated.license !== 'Creative Commons Attribution 3.0 (CC BY 3.0)' || generated.sourceUrl !== 'https://tanzil.net' || generated.surahNumber !== surahNumber || !Array.isArray(generated.ayahs) || generated.ayahs.length !== verses.length) {
+    throw new Error('[WIRD Tanzil Simple] Generated chunk attribution or coordinate structure failed for Surah ' + surahNumber);
+  }
+  for (let index = 0; index < verses.length; index++) {
+    const expected = verses[index], actual = generated.ayahs[index];
+    if (actual.surahNumber !== surahNumber || actual.ayahNumber !== index + 1 || actual.text !== expected.text) {
+      throw new Error('[WIRD Tanzil Simple] Generated text changed or coordinate mismatch at ' + surahNumber + ':' + (index + 1));
+    }
+  }
   total += verses.length;
 }
 if (total !== 6236) throw new Error('[WIRD Tanzil Simple] Expected 6,236 ayahs, generated ' + total);
