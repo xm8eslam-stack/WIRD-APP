@@ -35,8 +35,8 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       const serialized = JSON.stringify(res.body);
       assert(res.statusCode === 200, 'diagnostics should return a structured result');
       assert(res.body.endpoints.references.count === 2 && res.body.endpoints.rangeCount.value === 2, 'reference and count endpoints should be reported separately');
-      assert(res.body.endpoints.hadithPage.recordCount === 1 && res.body.endpoints.hadithPage.languageStats.arabic === 1 && res.body.endpoints.hadithPage.languageStats.explicitSahih === 1, 'Arabic text and Sahih grade counts should be reported');
-      assert(requested.length === 3, 'all three upstream endpoints should be called');
+      assert(res.body.endpoints.hadithPage.recordCount === 2 && res.body.endpoints.hadithPage.languageStats.arabic === 2 && res.body.endpoints.hadithPage.languageStats.englishExplicitSahih === 1 && res.body.endpoints.hadithPage.languageStats.crossLanguageUrnMatches === 2 && res.body.endpoints.hadithPage.languageStats.sahihCollectionRecords === 1, 'Arabic text, English grading and canonical Sahih collection metadata should be reported');
+      assert(requested.length === 4, 'all four upstream endpoints should be called');
       assert(!serialized.includes('نص سري') && !serialized.includes('English text') && !serialized.includes('diagnostic-token'), 'diagnostics must never return hadith text or tokens');
       assert(res.headers['cache-control'] === 'no-store', 'diagnostics must not be cached');
     });
@@ -50,8 +50,14 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
     await test('hadith extraction rejects malformed envelopes and excludes non-Sahih judgments', async () => {
       assert(__testing.extractSahihHadiths({ hadiths: [], has_more: false })?.length === 0, 'an empty valid page should remain an empty page');
       assert(__testing.extractSahihHadiths({ hadiths: [], has_more: 'false' }) === null, 'invalid pagination metadata must reject the envelope');
-      const nonSahih = { hadiths: [{ name: 'مصدر', collection: 'sample', hadithNumber: '7', hadith: [{ lang: 'ar', body: 'متن', grades: [{ graded_by: 'ناقد', grade: 'حسن' }] }] }], has_more: false };
+      const nonSahih = { hadiths: [{ name: 'مصدر', collection: 'sample', hadithNumber: '7', urn: 7, hadith: [{ lang: 'ar', body: 'متن', grades: [{ graded_by: 'ناقد', grade: 'حسن' }] }] }], has_more: false };
       assert(__testing.extractSahihHadiths(nonSahih)?.length === 0, 'a Hasan-only record must not be presented as Sahih');
+      const bukhariWithoutIndividualGrade = { hadiths: [{ name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '8', urn: 8, hadith: [{ lang: 'ar', body: 'متن صحيح', grades: [] }] }], has_more: false };
+      const acceptedCollection = __testing.extractSahihHadiths(bukhariWithoutIndividualGrade);
+      assert(acceptedCollection?.length === 1 && acceptedCollection[0].authenticityBasis === 'sahih_collection' && acceptedCollection[0].grades.length === 0, 'Bukhari collection authenticity must be labelled without fabricating an individual grade');
+      const englishGrade = { hadiths: [{ urn: 7, hadith: [{ lang: 'en', body: 'English', grades: [{ graded_by: 'Scholar', grade: 'Sahih' }] }] }], has_more: false };
+      const matchedEnglishGrade = __testing.extractSahihHadiths(nonSahih, englishGrade);
+      assert(matchedEnglishGrade?.length === 0, 'a Hasan Arabic judgment must not be overwritten by an unrelated or weaker-language match');
     });
     await test('only explicit sahih grades are returned and credentials remain on the server', async () => {
       process.env.QF_CLIENT_ID = 'test-client'; process.env.QF_CLIENT_SECRET = 'test-secret'; process.env.QF_CONTENT_SCOPE = 'content.hadith.read'; process.env.QF_ENV = 'prelive'; __testing.clearTokenCache();
@@ -61,9 +67,13 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
         if (url.endsWith('/oauth2/token')) { authHeader = new Headers(init?.headers).get('authorization') || ''; return new Response(JSON.stringify({ access_token: 'test-token', expires_in: 3600 }), { status: 200 }); }
         apiCalls++;
         const hadiths = [
-          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', urn: 222, bookNumber: '1', hadith: [{ lang: 'ar', chapterNumber: '1', chapterTitle: 'بدء الوحي', urn: 111, body: 'متن صحيح', grades: [{ graded_by: 'ناقد', grade: 'صحيح' }] }] },
-          { name: 'كتاب آخر', collection: 'other', hadithNumber: '2', hadith: [{ lang: 'ar', body: 'متن غير مصنف صحيحًا', grades: [{ graded_by: 'ناقد', grade: 'حسن' }] }] }
+          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', urn: 222, bookNumber: '1', hadith: [{ lang: 'ar', chapterNumber: '1', chapterTitle: 'بدء الوحي', urn: 111, body: 'متن صحيح', grades: [] }] },
+          { name: 'كتاب آخر', collection: 'other', hadithNumber: '2', urn: 333, hadith: [{ lang: 'ar', body: 'متن غير مصنف صحيحًا', grades: [] }] }
         ];
+        if (url.includes('language=en')) return new Response(JSON.stringify({ hadiths: [
+          { urn: 222, hadith: [{ lang: 'en', body: 'English text', grades: [{ graded_by: 'Verified scholar', grade: 'Sahih' }] }] },
+          { urn: 333, hadith: [{ lang: 'en', body: 'Other text', grades: [{ graded_by: 'Verified scholar', grade: 'Hasan' }] }] }
+        ], has_more: false }), { status: 200 });
         return new Response(JSON.stringify({ hadiths, has_more: false }), { status: 200 });
       };
       const res = mockResponse(); await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7' }, headers: { 'x-forwarded-for': '198.51.100.203' } }, res, { fetch: fetcher });
