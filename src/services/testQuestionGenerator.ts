@@ -168,7 +168,7 @@ export async function generateDynamicTestQuestions(
           // If not enough in same Surah, pull from adjacent verified Surah
           if (distractorAyahs.length < 3) {
             const otherSurah = await loadSurahVerses(p.surahNumber === 114 ? 113 : p.surahNumber + 1);
-            for (const o of otherSurah) {
+            for (const o of (Array.isArray(otherSurah) ? otherSurah : [])) {
               if (distractorAyahs.length >= 3) break;
               if (!distractorAyahs.some(ayah => ayah.text === o.text) && o.text !== nextAyah.text) {
                 distractorAyahs.push(o);
