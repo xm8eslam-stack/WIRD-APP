@@ -37,7 +37,7 @@ export function getAyahWords(text: string): string[] {
  
 // Tanzil Simple is stored separately from the canonical Uthmani corpus and loaded per surah.
 interface SimpleAyahRecord { surahNumber: number; ayahNumber: number; text: string; }
-const simpleSurahModules = import.meta.glob<SimpleAyahRecord[]>('./quran-simple-surahs/*.json');
+const simpleSurahModules = import.meta.glob<{ default: SimpleAyahRecord[] }>('./quran-simple-surahs/*.json');
 const simpleSurahCache = new Map<number, Promise<SimpleAyahRecord[]>>();
 
 async function loadSimpleSurahTexts(surahNumber: number): Promise<SimpleAyahRecord[]> {
