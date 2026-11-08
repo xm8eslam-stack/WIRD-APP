@@ -1,4 +1,9 @@
-import { WirdPortion } from '../types/quran';
+import { Ayah, WirdPortion } from '../types/quran';
+
+export interface QuranDataAccess {
+  loadAyahByCoordinate: (surahNumber: number, ayahNumber: number) => Promise<Ayah | undefined>;
+  loadSurahVerses: (surahNumber: number) => Promise<Ayah[]>;
+}
 import { ALL_SURAHS } from '../data/quranMeta';
 import { MUTASHABIHAT_DATA } from '../data/mutashabihatData';
 
@@ -52,7 +57,8 @@ function shuffleArray<T>(array: T[]): { shuffled: T[]; originalIndexMap: number[
 export async function generateDynamicTestQuestions(
   testType: TestMode,
   portions: WirdPortion[] = [],
-  targetCount: number = 5
+  targetCount: number = 5,
+  dataAccess?: QuranDataAccess
 ): Promise<QuestionGenerationResult> {
   const safePortions = Array.isArray(portions) ? portions : [];
   
@@ -118,7 +124,7 @@ export async function generateDynamicTestQuestions(
 
   // Vite's per-Surah loader is imported only when a memorization-backed mode actually needs Quran data.
   // This keeps module evaluation safe in Node-based integrity tests and avoids loading Quran chunks early.
-  const { loadAyahByCoordinate, loadSurahVerses } = await import('../data/quranDataLoader');
+  const { loadAyahByCoordinate, loadSurahVerses } = dataAccess ?? await import('../data/quranDataLoader');
 
   switch (testType) {
     case 'complete_verse': {
