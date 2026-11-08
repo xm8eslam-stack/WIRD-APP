@@ -29,6 +29,10 @@
     font-kerning: normal;
     font-variant-ligatures: normal;
     font-feature-settings: normal;
+    letter-spacing: normal;
+    word-spacing: normal;
+    word-break: normal;
+    overflow-wrap: normal;
     text-rendering: optimizeLegibility;
   }
 
