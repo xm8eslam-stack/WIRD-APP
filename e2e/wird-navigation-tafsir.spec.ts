@@ -54,19 +54,19 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
           {
             name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
             body: 'مَتْنُ حَدِيثٍ عَرَبِيٍّ بِالتَّشْكِيلِ',
-            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
+            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }], authenticityBasis: 'explicit_grade',
             bookNumber: '1', chapterNumber: '1', chapterTitle: 'بدء الوحي', referenceUrn: 222, urn: 111,
           },
           {
             name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
             body: 'نسخة مكررة من الإحالة نفسها',
-            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
+            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }], authenticityBasis: 'explicit_grade',
             bookNumber: '1', chapterNumber: '1', chapterTitle: 'بدء الوحي', referenceUrn: 222, urn: 111,
           },
           {
             name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
             body: 'رواية أخرى لها معرّف مصدر مستقل',
-            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }],
+            grades: [{ graded_by: 'ناقد موثق للاختبار', grade: 'صحيح' }], authenticityBasis: 'explicit_grade',
             bookNumber: '1', chapterNumber: '1', chapterTitle: 'بدء الوحي', referenceUrn: 223, urn: 112,
           },
         ],
@@ -82,7 +82,7 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(firstAyah).toBeVisible();
     await firstAyah.click();
 
-    const hadithToggle = page.getByRole('button', { name: 'مراجع أحاديث لها حكم بالصحة مرتبطة بالآية' });
+    const hadithToggle = page.getByRole('button', { name: 'أحاديث موثقة مرتبطة بالآية' });
     await expect(hadithToggle).toBeVisible();
     await hadithToggle.click();
 
