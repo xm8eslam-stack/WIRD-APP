@@ -21,6 +21,7 @@ import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, s
 import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { attachAyahRepeatHandler } from '../../services/audioRepeatController';
+import { SessionTafsirPanel } from './SessionTafsirPanel';
 
 interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
@@ -542,6 +543,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           </div>
         </div>
       </div>
+
+      <SessionTafsirPanel ayah={currentAyah} />
 
       {/* 3. Audio & Repetition Counter Deck */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

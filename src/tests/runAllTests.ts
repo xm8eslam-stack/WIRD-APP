@@ -35,6 +35,9 @@ import { runDailySessionSelectionTests } from '../services/dailySessionSelection
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runAudioPreferencesTests } from '../services/audioPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
+import { runReadingKhatmaServiceTests } from '../services/readingKhatmaService.test';
+import { runSessionStudyUiTests } from './sessionStudyUi.test';
+import { runHadithReferencesProxyTests } from './hadithReferencesProxy.test';
 import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.test';
 import { runRuqyahIntegrityTests } from './ruqyahIntegrity.test';
 import { runRuqyahContentServiceTests } from '../services/ruqyahContentService.test';
@@ -125,6 +128,9 @@ async function main() {
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
+    { name: 'Reading Khatma Progress', runner: runReadingKhatmaServiceTests },
+    { name: 'Session Study UI Integration', runner: runSessionStudyUiTests },
+    { name: 'Quran Foundation Verse Hadith References Proxy', runner: runHadithReferencesProxyTests },
     { name: 'Cloud Sync Coordinator & Remote Reconciliation', runner: runCloudSyncCoordinatorTests },
     { name: 'Ruqyah API Client & Canonical External Quran Validation', runner: runRuqyahApiServiceTests },
     { name: 'Ruqyah UID-Scoped Progress Persistence & Recovery', runner: runRuqyahProgressServiceTests },
