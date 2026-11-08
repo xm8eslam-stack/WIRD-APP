@@ -50,6 +50,24 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
       assert(rejected, 'non-Sahih data must fail closed');
     });
 
+    await test('hadith client accepts canonical Sahih collections without inventing an individual grade', async () => {
+      globalThis.fetch = async () => new Response(JSON.stringify({
+        verseKey: '12:12',
+        hadiths: [{
+          name: 'Sahih Muslim',
+          collection: 'muslim',
+          hadithNumber: '3',
+          body: 'النص العربي كما ورد في المصدر',
+          grades: [],
+          authenticityBasis: 'sahih_collection',
+        }],
+        hasMore: false,
+      }), { status: 200 });
+      const result = await getRelatedSahihHadiths(12, 12);
+      assert(result.hadiths.length === 1 && result.hadiths[0].authenticityBasis === 'sahih_collection', 'canonical Sahih collection classification should be preserved');
+      assert(result.hadiths[0].grades.length === 0, 'no individual narrator grade may be fabricated');
+    });
+
     await test('hadith client rejects malformed source records', async () => {
       globalThis.fetch = async () => new Response(JSON.stringify({
         verseKey: '2:255',
