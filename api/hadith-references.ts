@@ -88,6 +88,9 @@ function extractSahihHadiths(payload: unknown): HadithItem[] | null {
 export default async function handler(req: any, res: any, deps: { fetch?: typeof fetch } = {}) {
   if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'METHOD_NOT_ALLOWED' }); }
   const query = req.query || {};
+  const diagnosticsRequested = String(Array.isArray(query.diagnostics) ? query.diagnostics[0] : query.diagnostics) === '1';
+  // Reject diagnostic traffic before rate-limit state, credentials, OAuth, or upstream access in production.
+  if (diagnosticsRequested && process.env.VERCEL_ENV !== 'preview') return send(res, 404, { error: 'NOT_FOUND' });
   const surahNumber = Number(Array.isArray(query.surah) ? query.surah[0] : query.surah);
   const ayahNumber = Number(Array.isArray(query.ayah) ? query.ayah[0] : query.ayah);
   const requestedPage = Number(Array.isArray(query.page) ? query.page[0] : (query.page ?? 1));
@@ -112,8 +115,7 @@ export default async function handler(req: any, res: any, deps: { fetch?: typeof
       }
       return response;
     };
-    if (String(Array.isArray(query.diagnostics) ? query.diagnostics[0] : query.diagnostics) === '1') {
-      if (process.env.VERCEL_ENV !== 'preview') return send(res, 404, { error: 'NOT_FOUND' });
+    if (diagnosticsRequested) {
       res.setHeader('Cache-Control', 'no-store');
       const key = `${surahNumber}:${ayahNumber}`;
       const [referencesResponse, countsResponse, hadithsResponse] = await Promise.all([
