@@ -1,4 +1,4 @@
-import { ALL_SURAHS } from '../src/data/quranMeta';
+import { ALL_SURAHS } from '../src/data/quranMeta.ts';
 
 export interface SupportedTafsirBook {
   id: number;

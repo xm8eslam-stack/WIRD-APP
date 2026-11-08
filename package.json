@@ -19,6 +19,7 @@
     "lint": "tsc --noEmit",
     "test": "tsx src/tests/runAllTests.ts",
     "smoke:server": "node scripts/smoke-server.mjs",
+    "smoke:api-imports": "node scripts/smoke-api-imports.mjs",
     "test:firestore-rules": "npx --yes firebase-tools@15.0.0 emulators:exec --only firestore --project demo-wird \"tsx scripts/firestoreRules.test.ts\"",
     "quran:split": "node scripts/split-quran-data.mjs",
     "predev": "node scripts/split-quran-data.mjs",
