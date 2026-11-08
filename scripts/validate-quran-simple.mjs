@@ -17,8 +17,8 @@ const sourceSha256 = createHash('sha256').update(xml, 'utf8').digest('hex');
 if (sourceSha256 !== 'c86caf99a53658ae389d8e6684cfe011a98f899bdf70b52e58a5e24d46342080') {
   fail('The imported XML differs byte-for-byte from the user-provided Tanzil Simple 1.1 file (SHA-256 mismatch).');
 }
-const tashkeelCodePoints = [...xml.matchAll(/[\\u064B-\\u065F\\u0670]/g)].length;
-const pauseMarkerCount = [...xml.matchAll(/[\\u06D6-\\u06ED]/g)].length;
+const tashkeelCodePoints = [...xml.matchAll(/[\u064B-\u065F\u0670]/g)].length;
+const pauseMarkerCount = [...xml.matchAll(/[\u06D6-\u06ED]/g)].length;
 if (!xml.includes('Tanzil Quran Text (Simple, Version 1.1)') ||
     !xml.includes('Copyright (C) 2007-2026 Tanzil Project') ||
     !xml.includes('Creative Commons Attribution 3.0') ||
