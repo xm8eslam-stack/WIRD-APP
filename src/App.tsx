@@ -461,13 +461,14 @@ export default function App() {
   const dueRevisionCount = RetentionService.getDailyRevisionQueueDetails(todayStr).totalDueCount;
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
+    <div className="wird-app-shell min-h-screen text-stone-900 dark:text-stone-100 flex flex-row selection:bg-emerald-800 selection:text-emerald-50">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}
         onSelectTab={handleNavigate}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
+        onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         profile={profile}
         dueRevisionCount={dueRevisionCount}
       />
@@ -480,7 +481,6 @@ export default function App() {
           tabTitle={tabTitles[currentTab]}
           profile={profile}
           onToggleTheme={handleToggleTheme}
-          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onStartDailySession={handleStartDailySession}
           pwaInstallPrompt={pwaInstallPrompt}
           isStandalone={isStandalone}
@@ -521,7 +521,7 @@ export default function App() {
         )}
 
         {/* Content Viewport with Code Splitting Suspense */}
-        <main className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 min-w-0 w-full p-4 sm:p-5 md:p-6 xl:p-8 pb-28 md:pb-8 max-w-[1440px] mx-auto">
           <React.Suspense fallback={
             <div className="flex flex-col items-center justify-center py-28 space-y-3 text-stone-400">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-700 dark:text-emerald-400" />
