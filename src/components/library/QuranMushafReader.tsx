@@ -582,7 +582,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Bottom Margins of the Sacred Page */}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t-2 border-[#d4af37]/40 dark:border-[#785310]/60 pt-4 text-[11px] text-stone-500 dark:text-stone-400">
-          <span>{QURAN_DATA_SOURCE_INFO.edition} · {QURAN_DATA_SOURCE_INFO.narration}</span>
+          <span className="max-w-[72%]">{QURAN_DATA_SOURCE_INFO.displayEdition} {QURAN_DATA_SOURCE_INFO.displayVersion} · {QURAN_DATA_SOURCE_INFO.displayScript} · CC BY 3.0</span>
+          <a href={QURAN_DATA_SOURCE_INFO.displaySourceUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-800 dark:text-emerald-300 underline underline-offset-2">Tanzil Project</a>
           <span className="font-quran text-sm text-stone-600 dark:text-stone-300 font-bold">
             — {page} —
           </span>

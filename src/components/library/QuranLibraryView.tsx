@@ -993,14 +993,15 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
-              النص القرآني معتمد ومطابق لمصحف المدينة النبوية برواية حفص عن عاصم بالرسم العثماني وعلامات الوقف الموثقة.
+              النص المرجعي العثماني محفوظ دون تغيير، والعرض الافتراضي يستخدم نص Tanzil الرسمي بالرسم الإملائي Simple 1.1 كامل التشكيل.
             </p>
           </div>
         </div>
 
         <div className="text-right text-[11px] space-y-0.5 shrink-0">
           <div className="text-stone-700 dark:text-stone-300">
-              المصدر: <span className="font-semibold text-emerald-800 dark:text-emerald-400">{QURAN_DATA_SOURCE_INFO.provider}</span>
+              المصدر: <a href={QURAN_DATA_SOURCE_INFO.displaySourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-800 dark:text-emerald-400 underline underline-offset-2">{QURAN_DATA_SOURCE_INFO.provider}</a>
+          <div className="text-stone-400">{QURAN_DATA_SOURCE_INFO.displayVersion} · {QURAN_DATA_SOURCE_INFO.displayLicense}</div>
           </div>
           <div className="text-stone-400">
             التفسير معتمد عبر بوابة مطوري Quran.com API v4
