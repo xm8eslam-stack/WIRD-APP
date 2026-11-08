@@ -27,6 +27,7 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
           chapterId: '2',
           chapterNumber: '3',
           chapterTitle: 'باب فضل العلم',
+          referenceUrn: 654,
           urn: 321,
         }],
         hasMore: false,
@@ -34,7 +35,7 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
       const result = await getRelatedSahihHadiths(2, 255);
       assert(result.hadiths.length === 1, 'one verified hadith should be returned');
       assert(result.hadiths[0].body === 'نص الحديث بالتشكيلِ كما وردَ', 'Arabic matn must remain byte-for-byte unchanged');
-      assert(result.hadiths[0].chapterTitle === 'باب فضل العلم' && result.hadiths[0].bookNumber === '1' && result.hadiths[0].urn === 321, 'source metadata must be preserved');
+      assert(result.hadiths[0].chapterTitle === 'باب فضل العلم' && result.hadiths[0].bookNumber === '1' && result.hadiths[0].referenceUrn === 654 && result.hadiths[0].urn === 321, 'both source identifiers and chapter metadata must be preserved');
     });
 
     await test('hadith client rejects a non-Sahih grade instead of silently displaying it', async () => {
