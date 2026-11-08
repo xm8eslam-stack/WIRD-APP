@@ -27,6 +27,7 @@ import type { Ayah, ReciterId } from '../../types/quran';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { TafsirSheet } from './TafsirSheet';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
+import { QuranText } from '../shared/QuranText';
 
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
@@ -546,7 +547,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                         : 'hover:bg-amber-100/70 dark:hover:bg-amber-950/40'
                     }`}
                   >
-                    <span>{ayah.text}</span>
+                    <QuranText>{ayah.text}</QuranText>
                     <span
                       className="ayah-number"
                       title={`الآية ${ayah.numberInSurah}`}

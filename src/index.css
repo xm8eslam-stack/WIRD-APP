@@ -9,6 +9,18 @@
 
   .font-quran {
     font-family: 'Amiri', 'Amiri Quran', serif;
+    letter-spacing: normal;
+    word-spacing: normal;
+    font-kerning: normal;
+    font-variant-ligatures: normal;
+    word-break: normal;
+    overflow-wrap: normal;
+  }
+
+  /* Keep Quranic marks and Arabic shaping under the browser's normal shaping engine. */
+  .quran-text {
+    direction: rtl;
+    unicode-bidi: isolate;
   }
 
   .font-sans-ui {

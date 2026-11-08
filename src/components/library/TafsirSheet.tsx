@@ -18,6 +18,7 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { getTafsir, TAFSIR_EDITIONS, TafsirBookOption } from '../../services/tafsirService';
 import { parseTafsirToSegments, sanitizeTafsirToPlainText } from '../../utils/tafsirSanitizer';
 import { RelatedHadithPanel } from '../shared/RelatedHadithPanel';
+import { QuranText } from '../shared/QuranText';
 
 interface TafsirSheetProps {
   ayah: Ayah | null;
@@ -279,7 +280,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
             </div>
 
             <p className="font-quran text-2xl md:text-3xl leading-[2.3] text-right text-stone-950 dark:text-stone-100">
-              {ayah.text}{' '}
+              <QuranText>{ayah.text}</QuranText>{' '}
               <span className="inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-amber-600 text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950 font-sans text-xs align-middle font-bold mx-1">
                 {ayah.numberInSurah}
               </span>

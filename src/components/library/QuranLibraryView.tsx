@@ -37,6 +37,7 @@ import { QURAN_JUZ_STARTS } from '../../data/quranNavigationIndex.generated';
 import { clearReadingKhatma, markReadingPage, readReadingKhatma, startReadingKhatma } from '../../services/readingKhatmaService';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { ReadingKhatmaPanel } from './ReadingKhatmaPanel';
+import { QuranText } from '../shared/QuranText';
 
 interface QuranLibraryViewProps {
   onStartSession: (surahNumber: number, startAyah?: number, endAyah?: number) => void;
@@ -766,8 +767,8 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
                     {/* Ayah Text in Large Authentic Amiri Font */}
                     <div className="py-2 text-right">
-                      <p className="font-quran text-2xl md:text-3xl leading-[2.6] text-stone-950 dark:text-stone-100 tracking-wide selection:bg-amber-200">
-                        {ayah.text}{' '}
+                      <p className="font-quran text-2xl md:text-3xl leading-[2.6] text-stone-950 dark:text-stone-100 selection:bg-amber-200">
+                        <QuranText>{ayah.text}</QuranText>{' '}
                         <span className="ayah-number" title={`الآية ${ayah.numberInSurah}`}>
                           {ayah.numberInSurah}
                         </span>

@@ -491,7 +491,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         {/* Quranic Text with Interactive Word Masking */}
         <div className="min-h-[140px] flex items-center justify-center py-4">
-          <p className="font-quran text-2xl md:text-3xl lg:text-4xl leading-loose text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
+          <p className="quran-text font-quran text-2xl md:text-3xl lg:text-4xl leading-loose text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
             {words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
