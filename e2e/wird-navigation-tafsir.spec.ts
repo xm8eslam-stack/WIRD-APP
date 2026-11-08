@@ -66,7 +66,8 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
       }),
     }));
 
-    await page.getByRole('button', { name: 'القرآن', exact: true }).first().click();
+    const libraryNavigationLabel = (page.viewportSize()?.width ?? 1280) < 768 ? 'القرآن' : 'القرآن والمصحف';
+    await page.getByRole('button', { name: libraryNavigationLabel, exact: true }).click();
     await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
     const firstAyah = page.locator('#wird-ayah-1-1');
     await expect(firstAyah).toBeVisible();
