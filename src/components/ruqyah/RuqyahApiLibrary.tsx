@@ -172,7 +172,7 @@ export const RuqyahApiLibrary: React.FC = () => {
                 {validationError ? (
                   <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3">{validationError}</p>
                 ) : resolved && (
-                  <p className="font-quran text-lg md:text-xl leading-[2.2] text-center text-stone-900 dark:text-stone-100"><QuranText>{resolved.text}</QuranText></p>
+                  <p className="font-quran text-lg md:text-xl leading-[2.2] text-center text-stone-900 dark:text-stone-100"><QuranText surahNumber={resolved.surahNumber} ayahNumber={resolved.startAyah} endAyahNumber={resolved.endAyah}>{resolved.text}</QuranText></p>
                 )}
                 <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
                   <span className="text-[11px] text-stone-400">النص من مصحف وِرد المعتمد؛ الفهرس الخارجي لا يضيف تفسيرًا أو حكمًا شرعيًا.</span>
