@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BookMarked, ChevronDown, Loader2, RotateCw } from 'lucide-react';
 import type { Ayah } from '../../types/quran';
 import { getRelatedSahihHadiths, RelatedHadith } from '../../services/hadithReferencesService';
+import { sanitizeHadithHtmlToPlainText } from '../../utils/hadithSanitizer';
 
 const getHadithIdentity = (item: RelatedHadith) => item.referenceUrn
   ? `${item.collection}:reference:${item.referenceUrn}`
@@ -59,7 +60,7 @@ export const RelatedHadithPanel: React.FC<{ ayah: Ayah }> = ({ ayah }) => {
       {!loading && items.map(item => <article key={getHadithIdentity(item)} className="rounded-xl border border-stone-200 bg-white p-3 dark:border-stone-700 dark:bg-stone-900">
         <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100">{item.name} · رقم الحديث {item.hadithNumber}</h3>
         {(item.chapterTitle || item.bookNumber || item.chapterNumber) && <p className="mt-1 text-[11px] leading-6 text-stone-500 dark:text-stone-400">{item.chapterTitle ? `الباب: ${item.chapterTitle}` : ''}{item.chapterNumber ? ` · رقم الباب: ${item.chapterNumber}` : ''}{item.bookNumber ? ` · رقم الكتاب: ${item.bookNumber}` : ''}</p>}
-        <p dir="rtl" lang="ar" className="my-3 whitespace-pre-wrap break-words text-justify font-sans-ui text-[15px] leading-[2.4] text-stone-800 dark:text-stone-200">{item.body}</p>
+        <p dir="rtl" lang="ar" className="my-3 whitespace-pre-wrap break-words text-justify font-sans-ui text-[15px] leading-[2.4] text-stone-800 dark:text-stone-200">{sanitizeHadithHtmlToPlainText(item.body)}</p>
         <div className="rounded-lg bg-emerald-50/80 px-3 py-2 text-[11px] leading-6 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
           {item.authenticityBasis === 'explicit_grade'
             ? <><span className="font-bold">أحكام المحدثين في المصدر: </span>{item.grades.map(grade => `${grade.grade} — ${grade.graded_by}`).join('؛ ')}</>
