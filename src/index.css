@@ -29,6 +29,10 @@
     font-kerning: normal;
     font-variant-ligatures: normal;
     font-feature-settings: normal;
+    letter-spacing: normal;
+    word-spacing: normal;
+    word-break: normal;
+    overflow-wrap: normal;
     text-rendering: optimizeLegibility;
   }
 
@@ -136,3 +140,10 @@
   background: rgba(245, 158, 11, 0.18);
   box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2);
 }
+
+
+  /* Keep Quranic marks and Arabic shaping under the browser's normal shaping engine. */
+  .quran-text {
+    direction: rtl;
+    unicode-bidi: isolate;
+  }

@@ -23,10 +23,11 @@ import { TOTAL_QURAN_VERSES, TOTAL_QURAN_PAGES, ALL_SURAHS } from '../../data/qu
 import { NavTabId } from '../layout/Sidebar';
 import { RetentionService } from '../../services/retentionService';
 import { StorageService } from '../../services/storageService';
-import { loadAyahByCoordinate } from '../../data/quranDataLoader';
+import { loadAyahByCoordinate, getAyahDisplayText } from '../../data/quranDataLoader';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { getDailySessionSelection } from '../../services/dailySessionSelection';
 import { getPagesForAyahRange } from '../../services/pageProgressService';
+import { QuranText } from '../shared/QuranText';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -111,7 +112,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     loadAyahByCoordinate(dailyTask.surahNumber, dailyTask.startAyah)
       .then(ayah => {
         if (cancelled) return;
-        setDailyPreviewText(ayah?.text ? '«' + ayah.text + '»' : 'تعذر تحميل معاينة الآية حالياً.');
+        if (!ayah?.text) { setDailyPreviewText('تعذر تحميل معاينة الآية حالياً.'); return; }
+        getAyahDisplayText(ayah)
+          .then(simpleText => { if (!cancelled) setDailyPreviewText('«' + simpleText + '»'); })
+          .catch(() => { if (!cancelled) setDailyPreviewText('تعذر تحميل النص الإملائي المعتمد حالياً.'); });
       })
       .catch(error => {
         if (!cancelled) {
@@ -211,7 +215,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
 
               <div className="text-xs text-stone-700 dark:text-stone-300 font-quran text-base leading-loose bg-white dark:bg-stone-800 p-3.5 rounded-lg border border-stone-200/60 dark:border-stone-700/50 text-right">
-                {dailyPreviewText}
+                <QuranText>{dailyPreviewText}</QuranText>
               </div>
             </div>
 

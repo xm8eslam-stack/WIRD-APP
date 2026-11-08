@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { QuranText } from '../shared/QuranText';
 import { 
   Repeat, 
   CheckCircle2, 
@@ -33,7 +34,7 @@ import { StorageService, STORAGE_KEYS } from '../../services/storageService';
 import { persistJournaledSnapshot, persistJournaledTransaction, persistPortionsSnapshot } from '../../services/journaledSnapshotService';
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { loadAyahByCoordinate } from '../../data/quranDataLoader';
+import { loadAyahByCoordinate, loadSimpleAyahText } from '../../data/quranDataLoader';
 import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot } from '../../services/weakVerseRecording';
 import { createSecureId } from '../../services/secureId';
 import type { RevisionRatedEvent, WeakVerseFailedEvent, WeakVerseResolvedEvent } from '../../services/domainEvents';
@@ -102,6 +103,19 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Search in weak verses
   const [weakSearchQuery, setWeakSearchQuery] = useState('');
+  const [weakSimpleTexts, setWeakSimpleTexts] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    Promise.all(weakVerses.map(async verse => {
+      const key = `${verse.surahNumber}:${verse.ayahNumber}`;
+      const text = await loadSimpleAyahText(verse.surahNumber, verse.ayahNumber);
+      return [key, text] as const;
+    })).then(entries => {
+      if (active) setWeakSimpleTexts(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => Boolean(entry[1]))));
+    }).catch(error => console.warn('[WIRD Revision] Could not load Simple text for weak-verse search:', error));
+    return () => { active = false; };
+  }, [weakVerses]);
 
   const refreshAll = () => {
     setPortions(RetentionService.getPortions());
@@ -525,6 +539,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const filteredWeakVerses = weakVerses.filter(v => 
     v.surahName.includes(weakSearchQuery) ||
     v.text.includes(weakSearchQuery) ||
+    (weakSimpleTexts[`${v.surahNumber}:${v.ayahNumber}`] || '').includes(weakSearchQuery) ||
     (v.notes && v.notes.includes(weakSearchQuery))
   );
 
@@ -924,7 +939,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                   {/* Ayah Text in Uthmani Quranic Font */}
                   <div className="p-3 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-sm font-quran leading-loose text-stone-900 dark:text-stone-100">
-                    «{item.text}»
+                    «<QuranText surahNumber={item.surahNumber} ayahNumber={item.ayahNumber}>{item.text}</QuranText>»
                   </div>
 
                   {item.notes && (

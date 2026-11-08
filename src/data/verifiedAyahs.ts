@@ -86,3 +86,8 @@ export function getAyahsByJuz(juzNumber: number): Ayah[] {
 export function getAyahWords(text: string): string[] {
   return text.split(/\s+/).filter(w => w.trim().length > 0 && w !== 'ۚ' && w !== 'ۖ' && w !== 'ۗ' && w !== 'ۛ');
 }
+
+/** Returns the original, unmodified Tanzil Uthmani text stored in Ayah.text. */
+export function getAyahUthmaniText(ayah: Ayah): string {
+  return ayah.text;
+}

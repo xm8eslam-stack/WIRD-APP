@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   CheckCircle, 
   RotateCcw, 
@@ -17,8 +17,9 @@ import { MUTASHABIHAT_DATA } from '../../data/mutashabihatData';
 import { TestResult, WirdPortion } from '../../types/quran';
 import { RetentionService } from '../../services/retentionService';
 import { createSecureId } from '../../services/secureId';
-import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
-import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
+import { loadSimpleAyahText } from '../../data/quranDataLoader';
+import { generateDynamicTestQuestions } from '../../services/testQuestionGenerator';
+import type { QuestionGenerationResult } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
   onSaveTestResult: (result: TestResult) => boolean | Promise<boolean>;
@@ -49,14 +50,69 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
   const saveInProgressRef = useRef(false);
   const [sessionKey, setSessionKey] = useState(0);
 
-  // Load user portions and dynamically generate verified test questions
-  const portions = RetentionService.getPortions();
-  const generationResult = React.useMemo(() => {
-    return generateDynamicTestQuestions(selectedTestType, portions as WirdPortion[]);
+  // Generate questions asynchronously from only the Surahs present in the user's memorized portions.
+  const [generationResult, setGenerationResult] = useState<QuestionGenerationResult>({
+    questions: [],
+    hasSufficientData: false,
+    memorizedPortionsCount: 0,
+    messageAr: 'جارٍ تجهيز أسئلة الاختبار من محفوظك الفعلي...'
+  });
+  const [isGenerating, setIsGenerating] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setIsGenerating(true);
+    setCurrentQuestionIndex(0);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setScore(0);
+    setIsFinished(false);
+    const portions = RetentionService.getPortions();
+    generateDynamicTestQuestions(selectedTestType, portions as WirdPortion[])
+      .then(result => { if (active) setGenerationResult(result); })
+      .catch(error => {
+        console.error('[WIRD MemorizationTests] Question generation failed:', error);
+        if (active) setGenerationResult({
+          questions: [],
+          hasSufficientData: false,
+          memorizedPortionsCount: 0,
+          messageAr: 'تعذر تجهيز الاختبار من بيانات الحفظ الحالية. حاول مرة أخرى.'
+        });
+      })
+      .finally(() => { if (active) setIsGenerating(false); });
+    return () => { active = false; };
   }, [selectedTestType, sessionKey]);
 
   const currentQuestions = generationResult.questions;
   const currentQ = currentQuestions[currentQuestionIndex] || currentQuestions[0];
+  const [displayPrompt, setDisplayPrompt] = useState('');
+  const [displayOptions, setDisplayOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!currentQ) { setDisplayPrompt(''); setDisplayOptions([]); return () => { active = false; }; }
+    const resolveDisplayText = async () => {
+      let prompt = currentQ.prompt;
+      if (currentQ.promptAyahNumber && currentQ.promptCanonicalText) {
+        const simpleText = await loadSimpleAyahText(currentQ.surahNumber, currentQ.promptAyahNumber);
+        if (!simpleText) throw new Error('Missing Simple prompt text');
+        prompt = prompt.replace(currentQ.promptCanonicalText, simpleText);
+      }
+      let options = [...currentQ.options];
+      if (currentQ.optionAyahCoordinates?.length) {
+        if (currentQ.optionAyahCoordinates.length !== options.length) throw new Error('Option coordinates do not match option count');
+        const simpleOptions = await Promise.all(currentQ.optionAyahCoordinates.map(coordinate => loadSimpleAyahText(coordinate.surahNumber, coordinate.ayahNumber)));
+        if (simpleOptions.some(option => !option)) throw new Error('Missing Simple option text');
+        options = simpleOptions as string[];
+      }
+      if (active) { setDisplayPrompt(prompt); setDisplayOptions(options); }
+    };
+    resolveDisplayText().catch(error => {
+      console.error('[WIRD MemorizationTests] Could not resolve official Simple text:', error);
+      if (active) { setDisplayPrompt('تعذر تحميل النص الإملائي المعتمد للاختبار.'); setDisplayOptions([]); }
+    });
+    return () => { active = false; };
+  }, [currentQ]);
 
   const handleSelectOption = (index: number) => {
     if (isAnswered) return;
@@ -297,6 +353,10 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
             </button>
           </div>
         </div>
+      ) : isGenerating ? (
+        <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-8 border border-stone-200/80 dark:border-stone-700/80 text-center text-sm text-stone-500">
+          جارٍ تجهيز أسئلة الاختبار من السور المحفوظة فقط...
+        </div>
       ) : currentQuestions.length === 0 ? (
         /* 3. Empty State Card when user has no memorized portions for test mode */
         <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-8 border border-stone-200/80 dark:border-stone-700/80 text-center space-y-5 shadow-xs">
@@ -335,13 +395,13 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
           {/* Prompt */}
           <div className="space-y-3">
             <h3 className="font-quran text-xl md:text-2xl text-stone-900 dark:text-stone-100 leading-relaxed text-right bg-[#fdfbf7] dark:bg-stone-900/60 p-5 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
-              {currentQ.prompt}
+              {displayPrompt || 'جارٍ تحميل النص الإملائي المعتمد...'}
             </h3>
           </div>
 
           {/* Options with Arabic letter marks (أ، ب، ج، د) */}
           <div className="space-y-3">
-            {currentQ.options.map((opt, idx) => {
+            {displayOptions.map((opt, idx) => {
               const isSelected = selectedOption === idx;
               const isCorrect = idx === currentQ.correctIndex;
               const letterMark = ARABIC_OPTION_LETTERS[idx] || 'أ';

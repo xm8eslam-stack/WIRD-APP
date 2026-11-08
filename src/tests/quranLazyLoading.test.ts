@@ -40,6 +40,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     const loader = read('src/data/quranDataLoader.ts');
     assert(loader.includes("import.meta.glob<{ default: Ayah[] }>") , 'Vite must discover generated Surah chunks');
     assert(loader.includes('surahCache'), 'Repeated requests must reuse the same loaded Surah');
+    assert(loader.includes("import.meta.glob<{ default: SimpleSurahChunk }>('./quran-simple-surahs/*.json')") && loader.includes('loadSimpleAyahText') && loader.includes('ayah.surahNumber === surahNumber') && loader.includes('ayah.ayahNumber === ayahNumber') && loader.includes('module.default?.ayahs') && loader.includes('module.default.surahNumber === surahNumber'), 'Tanzil Simple text must be loaded from cached per-Surah chunks');
     assert(!loader.includes("from './completeQuranData.json'") && !loader.includes("import('./completeQuranData.json')"), 'Lazy loader must not import the full Quran JSON');
   });
 
@@ -55,20 +56,41 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
 
   test('Development and production builds generate chunks before Vite starts', () => {
     const pkg = JSON.parse(read('package.json'));
-    assert(pkg.scripts.predev === 'node scripts/split-quran-data.mjs', 'Dev startup must generate Surah chunks');
-    assert(pkg.scripts.prebuild === 'node scripts/split-quran-data.mjs', 'Production build must generate Surah chunks');
-    assert(pkg.scripts.pretest === 'node scripts/split-quran-data.mjs', 'Tests must generate page-index data before importing it');
-    assert(pkg.scripts.prelint === 'node scripts/split-quran-data.mjs', 'TypeScript validation must generate page-index data');
+    for (const scriptName of ['predev', 'prebuild', 'pretest', 'prelint']) {
+      const command = pkg.scripts[scriptName] || '';
+      assert(command.includes('node scripts/validate-quran-simple.mjs'), scriptName + ' must validate the official Simple source');
+      assert(command.includes('node scripts/split-quran-data.mjs'), scriptName + ' must generate canonical Surah chunks and page indexes');
+      assert(command.includes('node scripts/split-quran-simple-data.mjs'), scriptName + ' must generate the local Simple Surah chunks');
+    }
+  });
+
+  test('Simple chunk generator preserves source attribution and verifies exact text after serialization', () => {
+    const generator = read('scripts/split-quran-simple-data.mjs');
+    assert(generator.includes("source: 'Tanzil Project'") && generator.includes('copyright:') && generator.includes('license:') && generator.includes("sourceUrl: 'https://tanzil.net'"), 'Every generated surah chunk must retain Tanzil attribution and license');
+    assert(generator.includes('actual.text !== expected.text') && generator.includes('actual.ayahNumber !== index + 1') && generator.includes('actual.bismillah !== expected.bismillah'), 'Generated chunk must be verified character-for-character and coordinate-by-coordinate, including the separate basmala');
+    assert(generator.includes('bismillahText: verses[0]?.bismillah ?? null'), 'Official separate basmala must be preserved in the per-Surah chunk');
+    const validator = read('scripts/validate-quran-simple.mjs');
+    assert(validator.includes('separateBismillahCount !== 112') && validator.includes('UNEXPECTED_SEPARATE_BISMILLAH') && validator.includes('MISSING_SEPARATE_BISMILLAH'), 'Validator must verify separate basmala presence and its absence in Al-Fatihah and At-Tawbah');
+    const basmala = read('src/components/shared/QuranBasmala.tsx');
+    assert(basmala.includes('loadSimpleBasmala') && basmala.includes('dir="rtl"'), 'Displayed basmala must come from the local official Simple source');
+  });
+
+  test('Memorization test generation loads only Surahs in the memorized portions', () => {
+    const generator = read('src/services/testQuestionGenerator.ts');
+    const view = read('src/components/tests/MemorizationTestsView.tsx');
+    assert(generator.includes('loadSurahVerses') && generator.includes('loadAyahByCoordinate') && generator.includes("await import('../data/quranDataLoader')") && !generator.includes('VERIFIED_AYAHS'), 'Test generator must dynamically load only memorized Surahs on demand');
+    assert(!view.includes('VERIFIED_AYAHS'), 'Memorization test view must not import the full Quran corpus');
   });
 
   test('Revision center loads a single ayah on demand instead of importing the full Quran', () => {
     const revision = read('src/components/revision/RevisionCenterView.tsx');
-    assert(revision.includes('loadAyahByCoordinate') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use the lazy coordinate loader');
+    assert(revision.includes('loadAyahByCoordinate') && revision.includes('loadSimpleAyahText') && revision.includes('weakSimpleTexts') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use coordinate-based Simple text for weak-ayah display and search');
   });
 
   test('Quran source attribution metadata is independent from the full text payload', () => {
     const info = read('src/data/quranDataInfo.ts');
     assert(info.includes('Tanzil Project') && info.includes('CC BY 3.0'), 'Source and license attribution must remain available');
+    assert(info.includes('displayEdition') && info.includes('Simple') && info.includes('https://tanzil.net'), 'The default Imla’ei display edition and official source URL must be declared');
     assert(!info.includes('completeQuranData.json'), 'Metadata module must remain lightweight');
   });
 

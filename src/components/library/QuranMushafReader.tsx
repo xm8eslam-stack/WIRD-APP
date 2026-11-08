@@ -27,6 +27,8 @@ import type { Ayah, ReciterId } from '../../types/quran';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { TafsirSheet } from './TafsirSheet';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
+import { QuranText } from '../shared/QuranText';
+import { QuranBasmala } from '../shared/QuranBasmala';
 
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
@@ -454,7 +456,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         </div>
       </header>
 
-      {/* Royal Mushaf Page: Authentic Double Frame with Warm Parchment Paper */}
+      {/* Responsive page-style reading surface; current data does not encode printed line positions. */}
       <main key={page} onTouchStart={event => { touchStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={event => {
         const startX = touchStartX.current; touchStartX.current = null;
         if (startX === null || event.changedTouches.length === 0) return;
@@ -473,6 +475,10 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             الجزء {currentJuz}
           </span>
         </div>
+
+        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400">
+          توزيع الآيات هنا مرن بحسب الصفحة، وقد يختلف عن أسطر النسخة المطبوعة.
+        </p>
 
         {readingKhatma && !readingKhatma.completedAt && <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs dark:bg-emerald-950/40">
           <span className="text-stone-700 dark:text-stone-200">ختمة القراءة · {readingKhatma.completedPages.length} / 604 صفحة</span>
@@ -528,7 +534,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                       {/* Sacred Basmalah Presentation */}
                       {ayah.surahNumber !== 1 && ayah.surahNumber !== 9 && (
                         <p className="font-quran text-2xl md:text-3xl text-emerald-950 dark:text-emerald-100 py-3 text-center tracking-wide">
-                          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                          <QuranBasmala surahNumber={ayah.surahNumber} />
                         </p>
                       )}
                     </div>
@@ -546,7 +552,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                         : 'hover:bg-amber-100/70 dark:hover:bg-amber-950/40'
                     }`}
                   >
-                    <span>{ayah.text}</span>
+                    <QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>
                     <span
                       className="ayah-number"
                       title={`الآية ${ayah.numberInSurah}`}
@@ -577,7 +583,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Bottom Margins of the Sacred Page */}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t-2 border-[#d4af37]/40 dark:border-[#785310]/60 pt-4 text-[11px] text-stone-500 dark:text-stone-400">
-          <span>{QURAN_DATA_SOURCE_INFO.edition} · {QURAN_DATA_SOURCE_INFO.narration}</span>
+          <span className="max-w-[72%]">{QURAN_DATA_SOURCE_INFO.displayEdition} {QURAN_DATA_SOURCE_INFO.displayVersion} · {QURAN_DATA_SOURCE_INFO.displayScript} · CC BY 3.0</span>
+          <a href={QURAN_DATA_SOURCE_INFO.displaySourceUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-800 dark:text-emerald-300 underline underline-offset-2">Tanzil Project</a>
           <span className="font-quran text-sm text-stone-600 dark:text-stone-300 font-bold">
             — {page} —
           </span>

@@ -14,7 +14,8 @@ import {
   Award
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { loadSurahVerses, getAyahWords } from '../../data/quranDataLoader';
+import { loadSurahVerses, getAyahWords, loadSimpleAyahText } from '../../data/quranDataLoader';
+import { QuranBasmala } from '../shared/QuranBasmala';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
 import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
@@ -251,7 +252,26 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   };
 
   // Word Masking Logic
-  const words = currentAyah ? getAyahWords(currentAyah.text) : [];
+  const [displayWords, setDisplayWords] = useState<string[]>([]);
+  const [displayTextError, setDisplayTextError] = useState(false);
+  useEffect(() => {
+    let active = true;
+    if (!currentAyah) { setDisplayWords([]); setDisplayTextError(false); return () => { active = false; }; }
+    setDisplayWords([]);
+    setDisplayTextError(false);
+    loadSimpleAyahText(currentAyah.surahNumber, currentAyah.numberInSurah)
+      .then(text => {
+        if (!active) return;
+        if (text) setDisplayWords(getAyahWords(text));
+        else setDisplayTextError(true);
+      })
+      .catch(error => {
+        console.error('[WIRD Memorization] Could not load local Tanzil Simple text:', error);
+        if (active) setDisplayTextError(true);
+      });
+    return () => { active = false; };
+  }, [currentAyah?.surahNumber, currentAyah?.numberInSurah, currentAyah?.text]);
+  const words = displayWords;
   
   const isWordMasked = (index: number) => {
     if (maskLevel === 0) return false;
@@ -483,16 +503,16 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       {/* 2. Main Ayah Display & Word Masking Studio */}
       <div className="bg-[#fdfbf7] dark:bg-stone-800/90 rounded-3xl p-6 md:p-10 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-6 text-center relative">
         {/* Basmala on first ayah if not At-Tawbah */}
-        {currentAyah.numberInSurah === 1 && surahNumber !== 9 && (
+        {currentAyah.numberInSurah === 1 && surahNumber !== 1 && surahNumber !== 9 && (
           <div className="font-quran text-lg text-stone-500 dark:text-stone-400 pb-2 border-b border-stone-200/50 dark:border-stone-700">
-            بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+            <QuranBasmala surahNumber={surahNumber} />
           </div>
         )}
 
         {/* Quranic Text with Interactive Word Masking */}
         <div className="min-h-[140px] flex items-center justify-center py-4">
-          <p className="font-quran text-2xl md:text-3xl lg:text-4xl leading-loose text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
-            {words.map((word, idx) => {
+          <p className="quran-text font-quran text-2xl md:text-3xl lg:text-4xl leading-loose text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
+            {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
               return (

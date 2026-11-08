@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getRuqyahAudioQueue, getRuqyahDisplayText } from '../../services/ruqyahContentService';
+import { getRuqyahAudioQueue, getRuqyahDisplayText, getRuqyahAyahs } from '../../services/ruqyahContentService';
+import { QuranText } from '../shared/QuranText';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import { getRuqyahProgressDeviceId, loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot, resetRuqyahProgressCounter } from '../../services/ruqyahProgressSchema';
@@ -740,7 +741,9 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     <p className={`text-base md:text-xl text-stone-800 dark:text-stone-100 leading-loose text-center font-quran ${
                       item.type === 'quran' ? 'tracking-normal' : 'font-sans font-medium'
                     }`}>
-                      {getRuqyahDisplayText(item)}
+                      {item.type === 'quran'
+                        ? getRuqyahAyahs(item).map(ayah => <React.Fragment key={ayah.number}><QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>{' ۞ '}</React.Fragment>)
+                        : getRuqyahDisplayText(item)}
                     </p>
                   </div>
 
