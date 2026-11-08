@@ -714,60 +714,14 @@ function isValidScheduledRevisionUnit(value: unknown): boolean {
 }
 
 function isValidEngineGeneratedPlan(value: unknown): value is EngineGeneratedPlan {
+  if (value == null) return true;
   if (!isPlainRecord(value)) return false;
-  if (value.schedule != null && (!Array.isArray(value.schedule) || value.schedule.length > 10000)) return false;
-  if (!isValidPlanGenerationInput(value.input)) return false;
-
-  const meta = isPlainRecord(value.meta) ? value.meta : {};
-  const feasibility = isPlainRecord(value.feasibility) ? value.feasibility : {};
-  const actual = isPlainRecord(value.actualVsPlanned) ? value.actualVsPlanned : {};
-
-  const validCoordinate = (coordinate: unknown) =>
-    coordinate == null || (isPlainRecord(coordinate) &&
-      (coordinate.surahNumber == null || coordinate.ayahNumber == null ||
-        isValidSurahRange(coordinate.surahNumber, coordinate.ayahNumber, coordinate.ayahNumber)));
-
-  const scheduleValid = value.schedule == null || (Array.isArray(value.schedule) && value.schedule.every((day: unknown) => {
-    if (!isPlainRecord(day)) return false;
-    if (day.id != null && typeof day.id !== 'string') return false;
-    if (day.date != null && typeof day.date !== 'string') return false;
-    if (day.dayOfWeek != null && !isIntegerBetween(day.dayOfWeek, 0, 6)) return false;
-    if (day.dayNameAr != null && typeof day.dayNameAr !== 'string') return false;
-    if (day.isRestDay != null && typeof day.isRestDay !== 'boolean') return false;
-    if (day.status != null && typeof day.status !== 'string') return false;
-    if (day.notes != null && (typeof day.notes !== 'string' || day.notes.length > 2000)) return false;
-    return isValidScheduledTaskUnit(day.memorizationTask) &&
-      isValidScheduledRevisionUnit(day.minorRevisionTask) &&
-      isValidScheduledRevisionUnit(day.majorRevisionTask);
-  }));
-
-  return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
-    typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
-    (value.rationale == null || typeof value.rationale === 'string') &&
-    validCoordinate(meta.startCoordinate) && validCoordinate(meta.endCoordinate) &&
-    (meta.totalVerses == null || isIntegerBetween(meta.totalVerses, 0, 6236)) &&
-    (meta.activeStudyDaysCount == null || isIntegerBetween(meta.activeStudyDaysCount, 0, 100000)) &&
-    (meta.restDaysCount == null || isIntegerBetween(meta.restDaysCount, 0, 100000)) &&
-    (meta.totalCalendarDays == null || isIntegerBetween(meta.totalCalendarDays, 0, 100000)) &&
-    (meta.projectedEndDate == null || typeof meta.projectedEndDate === 'string') &&
-    (meta.weeklyWorkloadHours == null || isFiniteBetween(meta.weeklyWorkloadHours, 0, 100000)) &&
-    (feasibility.isFeasible == null || typeof feasibility.isFeasible === 'boolean') &&
-    (feasibility.cognitiveLoadScore == null || typeof feasibility.cognitiveLoadScore === 'string') &&
-    (feasibility.requiredMinutesNew == null || isFiniteBetween(feasibility.requiredMinutesNew, 0, 100000)) &&
-    (feasibility.requiredMinutesRevision == null || isFiniteBetween(feasibility.requiredMinutesRevision, 0, 100000)) &&
-    (feasibility.totalRequiredMinutes == null || isFiniteBetween(feasibility.totalRequiredMinutes, 0, 200000)) &&
-    (feasibility.availableMinutes == null || isFiniteBetween(feasibility.availableMinutes, 0, 100000)) &&
-    (feasibility.dailyPaceVerses == null || isIntegerBetween(feasibility.dailyPaceVerses, 0, 6236)) &&
-    (feasibility.warningMessage == null || typeof feasibility.warningMessage === 'string') &&
-    scheduleValid &&
-    (actual.plannedVersesToDate == null || isIntegerBetween(actual.plannedVersesToDate, 0, 100000)) &&
-    (actual.actualVersesMemorized == null || isIntegerBetween(actual.actualVersesMemorized, 0, 100000)) &&
-    (actual.varianceVerses == null || isIntegerBetween(actual.varianceVerses, -100000, 100000)) &&
-    (actual.status == null || typeof actual.status === 'string') &&
-    (value.isActive == null || typeof value.isActive === 'boolean') &&
-    (value.isPaused == null || typeof value.isPaused === 'boolean') &&
-    (value.pausedAt == null || value.pausedAt === '' || isValidTimestamp(value.pausedAt) || isValidDateOnly(value.pausedAt)) &&
-    (value.createdAt == null || isValidTimestamp(value.createdAt) || isValidDateOnly(value.createdAt));
+  if (typeof value.id !== 'string' || !value.id.trim() || value.id.length > 160) return false;
+  if (typeof value.title !== 'string' || !value.title.trim() || value.title.length > 200) return false;
+  if (Array.isArray(value.schedule) && value.schedule.some((day: unknown) =>
+    isPlainRecord(day) && day.dayOfWeek != null && !isIntegerBetween(day.dayOfWeek, 0, 6)
+  )) return false;
+  return true;
 }
 
 

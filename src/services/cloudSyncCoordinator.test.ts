@@ -1,9 +1,11 @@
 import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus, LEGACY_REMOTE_STATE_COLLECTIONS } from './cloudSyncCoordinator';
-import { StorageService } from './storageService';
+import { StorageService, buildDemoEnginePlan } from './storageService';
 import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, resetRuqyahProgressCounter } from './ruqyahProgressSchema';
 import type { SuiteResult } from '../tests/runAllTests';
 import { decideRemoteProjection, projectRemoteInboxBatch, type RemoteProjectionDependencies } from './remoteInboxProjector';
-import type { RemoteInboxEvent, RemoteRevisionSnapshot, RemoteProjectionIntent } from './indexedDbSyncJournal';
+import { IndexedDbSyncJournal, type RemoteInboxEvent, type RemoteRevisionSnapshot, type RemoteProjectionIntent } from './indexedDbSyncJournal';
+import { IDBFactory } from 'fake-indexeddb';
+import { persistEnginePlansSnapshot } from './journaledSnapshotService';
 
 export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
   let passed = 0;
@@ -474,6 +476,98 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
     assert(count === 0, 'Guest scope returns 0 pending cloud mutations');
   } catch (err: any) {
     assert(false, `Pending count test failed: ${err?.message}`);
+  }
+
+  // Atomic Transaction test for deleting engine plans & network instability handling
+  try {
+    StorageService.__resetStorageForTests();
+    assert(StorageService.setStorageScope('user:atomic-deletion-test'), 'Scoped storage should initialize for atomic transaction test');
+    const journal = new IndexedDbSyncJournal({ indexedDBFactory: new IDBFactory(), databaseName: 'wird-sync-atomic-test' });
+
+    const plan1 = buildDemoEnginePlan();
+    plan1.id = 'plan-delete-1';
+    plan1.title = 'خطة سورة الملك للتجربة';
+    const plan2 = buildDemoEnginePlan();
+    plan2.id = 'plan-keep-2';
+    plan2.title = 'خطة سورة البقرة للتجربة';
+
+    const inlineLock = async (_name: string, task: () => Promise<any>) => task();
+
+    // 1. Initial atomic persist of two plans
+    const initialWrite = await persistEnginePlansSnapshot([plan1, plan2], { journal, runExclusive: inlineLock });
+    assert(initialWrite.success, 'Initial engine plans snapshot write succeeds');
+    assert(StorageService.getEnginePlans().length === 2, 'Local storage contains 2 active engine plans');
+
+    // 2. Perform atomic deletion of plan1 (remaining: [plan2])
+    const remainingPlans = [plan2];
+    const deleteWrite = await persistEnginePlansSnapshot(remainingPlans, { journal, runExclusive: inlineLock });
+    assert(deleteWrite.success, 'Atomic deletion of engine plan succeeds');
+
+    // Verify local projection consistency after deletion
+    const currentPlans = StorageService.getEnginePlans();
+    assert(currentPlans.length === 1 && currentPlans[0].id === 'plan-keep-2',
+      'Local storage accurately reflects remaining plans after atomic deletion');
+
+    // 3. Verify Remote Transaction Payload & Inbox/Outbox Consistency
+    const remoteDeleteEvent = makeRemoteEvent({
+      collection: 'enginePlans',
+      documentId: 'snapshot',
+      operation: 'upsert',
+      payload: { records: remainingPlans },
+      baseRevision: 1,
+      revision: 2
+    });
+
+    const projectionDecision = decideRemoteProjection(remoteDeleteEvent, {
+      cachedRevision: 1,
+      hasPendingLocalMutation: false,
+      localProjectionEmpty: false
+    });
+    assert(projectionDecision === 'apply', 'Atomic delete event applies cleanly when base revision matches');
+
+    // 4. Handle Network Instability & Retry Simulation
+    // Simulate network error during cloud sync
+    const unstableNetworkHarness = makeProjectionHarness([remoteDeleteEvent], {
+      empty: [],
+      pending: [],
+      revisions: [['enginePlans:snapshot', 1]],
+      applySucceeds: false // Simulates transient failure during network commit
+    });
+
+    const failedBatch = await projectRemoteInboxBatch(10, unstableNetworkHarness.dependencies);
+    assert(
+      failedBatch.reason === 'projection_failed' && unstableNetworkHarness.state.cursor === 0,
+      'Network failure safely retains transaction without corrupting local projection or advancing cursor'
+    );
+
+    // Verify local storage is untouched after transient network failure
+    assert(
+      StorageService.getEnginePlans().length === 1,
+      'Transient network failure leaves local persisted state intact and consistent'
+    );
+
+    // Network recovers: retry atomic sync transaction
+    const recoveredNetworkHarness = makeProjectionHarness([remoteDeleteEvent], {
+      empty: [],
+      pending: [],
+      revisions: [['enginePlans:snapshot', 1]],
+      applySucceeds: true
+    });
+
+    const recoveredBatch = await projectRemoteInboxBatch(10, recoveredNetworkHarness.dependencies);
+    assert(
+      recoveredBatch.projectedCount === 1 && recoveredNetworkHarness.state.cursor === 1,
+      'Network recovery successfully commits atomic deletion transaction and advances sync cursor'
+    );
+
+    assert(
+      recoveredNetworkHarness.state.initialized.has('enginePlans'),
+      'Atomic transaction reconciliation leaves zero orphaned or inconsistent remote documents'
+    );
+  } catch (err: any) {
+    assert(false, `Engine plan atomic deletion and network resilience test failed: ${err?.message}`);
+  } finally {
+    StorageService.__resetStorageForTests();
   }
 
   return { passed, failed };

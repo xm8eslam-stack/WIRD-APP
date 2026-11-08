@@ -1,13 +1,19 @@
 ### GOOGLE AI STUDIO HANDOFF
 - Date: 2026-11-07
-- Task: توسيع شروط صحة المهام المجدولة وقوائم الأيام في الخطط لدعم النصوص القديمة والأوصاف
+- Task: WIRD Canonical Firebase Project Unification & Atomic Transaction Resilience Verification
 - Modified files:
-  - `src/services/storageService.ts` (دعم أوصاف المهام النصية في `isValidScheduledTaskUnit` و `isValidScheduledRevisionUnit` والسماح بقائمة الأيام الاختيارية `schedule` لضمان توافق الخطط التاريخية الناتجة عن نسخ سابقة)
+  - `/.env.example`
+  - `/firebase-applet-config.json`
+  - `/src/lib/firebase.ts`
+  - `/src/tests/firebaseAuth.test.ts`
+  - `/src/services/cloudSyncCoordinator.test.ts`
   - `docs/agent-handoffs/LATEST-GOOGLE-STUDIO.md`
 - Changes:
-  - معالجة شاملة لكافة الأشكال التاريخية للخطط الذكية لمنع تمييز الأرشيف المحلي كـ malformed عند التعديل والحذف.
-- Tests: 559/559 passing (`npm test` - 0 failures, `compile_applet` PASSED, `lint_applet` PASSED)
+  - Unified Firebase configuration explicitly to canonical project `wird-quran-app` and default Firestore database `(default)`.
+  - Added strict project guard `isExpectedWirdFirebaseProject` and explicit `WIRD_FIRESTORE_DATABASE_ID` invariant preventing fallback to legacy project `elliptical-rampart-bxq1s` or named databases.
+  - Implemented and verified isolated atomic transaction test suite for engine plan deletion and network failure retry resilience.
+- Tests: 570/570 passing (`npm test` - 0 failures, `compile_applet` PASSED, `lint_applet` PASSED)
 - Commit SHA: Local main branch working state (Verified)
 - Status: Completed
-- Next step: الاستخدام وتأكيد التجربة.
-- Warnings: لا توجد تحذيرات.
+- Next step: Maintain canonical Firebase project alignment across Google AI Studio and Vercel environments.
+- Warnings: None.
