@@ -50,7 +50,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
           { urn: 933, name: 'Other source', collection: 'other', hadithNumber: '2', hadith: [{ lang: 'en', urn: 212, body: 'English text', grades: [{ graded_by: 'Verified scholar', grade: 'Sahih' }] }] }
         ], has_more: false }), { status: 200 });
         return new Response(JSON.stringify({ hadiths: [
-          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', urn: 222, bookNumber: '1', hadith: [{ lang: 'ar', chapterNumber: '1', chapterTitle: 'بدء الوحي', urn: 111, body: 'متن صحيح', grades: [] }] },
+          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', urn: 222, bookNumber: '1', hadith: [{ lang: 'ar', chapterNumber: '1', chapterTitle: 'بدء الوحي', urn: 111, body: '<p>متن <strong>صحيح</strong></p><p>ﷺ</p>', grades: [] }] },
           { name: 'مصدر آخر', collection: 'other', hadithNumber: '2', urn: 333, hadith: [{ lang: 'ar', body: 'متن آخر', urn: 112, grades: [] }] }
         ], has_more: false }), { status: 200 });
       };
