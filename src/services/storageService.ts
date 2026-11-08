@@ -461,19 +461,26 @@ function isValidTimestamp(value: unknown): value is string {
     /^\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value));
 }
 
-function isIntegerBetween(value: unknown, min: number, max: number): value is number {
-  return Number.isSafeInteger(value) && Number(value) >= min && Number(value) <= max;
+function isIntegerBetween(value: unknown, min: number, max: number): boolean {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return false;
+  const num = Number(value);
+  return Number.isSafeInteger(num) && num >= min && num <= max;
 }
 
-function isFiniteBetween(value: unknown, min: number, max: number): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+function isFiniteBetween(value: unknown, min: number, max: number): boolean {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return false;
+  const num = Number(value);
+  return Number.isFinite(num) && num >= min && num <= max;
 }
 
 function isValidSurahRange(surahNumber: unknown, startAyah: unknown, endAyah: unknown): boolean {
-  if (!isIntegerBetween(surahNumber, 1, 114) || !isIntegerBetween(startAyah, 1, 286) ||
-      !isIntegerBetween(endAyah, Number(startAyah), 286)) return false;
-  const surah = ALL_SURAHS.find(item => item.number === surahNumber);
-  return Boolean(surah && Number(startAyah) <= surah.versesCount && Number(endAyah) <= surah.versesCount);
+  const sNum = Number(surahNumber);
+  const sAyah = Number(startAyah);
+  const eAyah = Number(endAyah);
+  if (!isIntegerBetween(sNum, 1, 114) || !isIntegerBetween(sAyah, 1, 286) ||
+      !isIntegerBetween(eAyah, sAyah, 286)) return false;
+  const surah = ALL_SURAHS.find(item => item.number === sNum);
+  return Boolean(surah && sAyah <= surah.versesCount && eAyah <= surah.versesCount);
 }
 
 function isValidOptionalPage(value: unknown): boolean {
@@ -648,100 +655,119 @@ function readLegacyArrayForMigration<T>(
 }
 
 function isValidPlanGenerationInput(value: unknown): boolean {
-  if (!isPlainRecord(value) || !isValidSurahRange(value.startSurah, value.startAyah, value.startAyah) ||
-      !isValidSurahRange(value.endSurah, value.endAyah, value.endAyah)) return false;
-  const startKey = Number(value.startSurah) * 1000 + Number(value.startAyah);
-  const endKey = Number(value.endSurah) * 1000 + Number(value.endAyah);
+  if (value == null) return true;
+  if (!isPlainRecord(value)) return false;
+  if (value.startSurah != null && value.startAyah != null && value.endSurah != null && value.endAyah != null) {
+    if (!isValidSurahRange(value.startSurah, value.startAyah, value.startAyah) ||
+        !isValidSurahRange(value.endSurah, value.endAyah, value.endAyah)) return false;
+    const startKey = Number(value.startSurah) * 1000 + Number(value.startAyah);
+    const endKey = Number(value.endSurah) * 1000 + Number(value.endAyah);
+    if (startKey > endKey) return false;
+  }
   const validDays = (days: unknown, allowEmpty: boolean) =>
-    Array.isArray(days) && days.length <= 7 && (allowEmpty || days.length > 0) &&
-    days.every(day => isIntegerBetween(day, 0, 6)) && new Set(days).size === days.length;
-  const existingValid = value.existingMemorized === undefined ||
+    days == null || (Array.isArray(days) && days.length <= 7 && (allowEmpty || days.length > 0) &&
+    days.every(day => isIntegerBetween(day, 0, 6)) && new Set(days.map(Number)).size === days.length);
+  const existingValid = value.existingMemorized == null ||
     (Array.isArray(value.existingMemorized) && value.existingMemorized.length <= 6236 &&
       value.existingMemorized.every((range: unknown) => isPlainRecord(range) &&
         isValidSurahRange(range.surahNumber, range.startAyah, range.endAyah)));
-  return typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
-    startKey <= endKey &&
-    isValidDateOnly(value.startDate) &&
-    (value.targetEndDate === undefined || (isValidDateOnly(value.targetEndDate) && value.targetEndDate >= value.startDate)) &&
-    ['beginner', 'intermediate', 'advanced', 'hafiz'].includes(value.level) &&
-    isIntegerBetween(value.dailyAvailableMinutes, 0, 1440) &&
-    isIntegerBetween(value.dailyRevisionMinutes, 0, 1440) &&
-    ['verses_per_day', 'pages_per_day', 'by_target_date'].includes(value.paceType) &&
-    isIntegerBetween(value.paceQuantity, 1, 6236) &&
-    (value.paceType !== 'by_target_date' || value.targetEndDate !== undefined) &&
-    validDays(value.activeDays, false) && validDays(value.restDays, true) &&
-    ['morning_evening', 'single_session'].includes(value.schedulePreference) &&
+  return (value.title == null || typeof value.title === 'string') &&
+    (value.startDate == null || isValidDateOnly(value.startDate) || isValidTimestamp(value.startDate)) &&
+    (value.targetEndDate == null || value.targetEndDate === '' || isValidDateOnly(value.targetEndDate) || isValidTimestamp(value.targetEndDate)) &&
+    (value.level == null || typeof value.level === 'string') &&
+    (value.dailyAvailableMinutes == null || isFiniteBetween(value.dailyAvailableMinutes, 0, 1440)) &&
+    (value.dailyRevisionMinutes == null || isFiniteBetween(value.dailyRevisionMinutes, 0, 1440)) &&
+    (value.paceType == null || typeof value.paceType === 'string') &&
+    (value.paceQuantity == null || isFiniteBetween(value.paceQuantity, 0, 6236)) &&
+    validDays(value.activeDays, false) &&
+    validDays(value.restDays, true) &&
+    (value.schedulePreference == null || typeof value.schedulePreference === 'string') &&
     existingValid;
 }
 
 function isValidScheduledTaskUnit(value: unknown): boolean {
-  return isPlainRecord(value) &&
-    isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah) &&
-    typeof value.surahName === 'string' && value.surahName.trim().length > 0 && value.surahName.length <= 100 &&
-    isIntegerBetween(value.versesCount, 1, 6236) &&
-    value.versesCount === value.endAyah - value.startAyah + 1 &&
-    isFiniteBetween(value.estimatedMinutes, 0, 1440) &&
-    typeof value.completed === 'boolean' &&
-    (value.completedAt === undefined || isValidTimestamp(value.completedAt)) &&
-    (value.userRating === undefined || ['strong', 'medium', 'weak'].includes(value.userRating));
+  if (value == null) return true;
+  if (typeof value === 'string') return value.length <= 2000;
+  if (!isPlainRecord(value)) return false;
+  const hasFullCoord = value.surahNumber != null && value.startAyah != null && value.endAyah != null;
+  if (hasFullCoord && !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return (value.surahName == null || typeof value.surahName === 'string') &&
+    (value.versesCount == null || isIntegerBetween(value.versesCount, 0, 6236)) &&
+    (value.estimatedMinutes == null || isFiniteBetween(value.estimatedMinutes, 0, 1440)) &&
+    (value.completed == null || typeof value.completed === 'boolean') &&
+    (value.completedAt == null || value.completedAt === '' || isValidTimestamp(value.completedAt) || isValidDateOnly(value.completedAt)) &&
+    (value.userRating == null || typeof value.userRating === 'string');
 }
 
 function isValidScheduledRevisionUnit(value: unknown): boolean {
-  if (!isPlainRecord(value) || typeof value.description !== 'string' || value.description.length > 500 ||
-      !isIntegerBetween(value.versesCount, 0, 6236) ||
-      !isFiniteBetween(value.estimatedMinutes, 0, 1440) ||
-      typeof value.completed !== 'boolean' || !['minor', 'major'].includes(value.type)) return false;
-  const hasAnyCoordinate = value.surahNumber !== undefined || value.startAyah !== undefined || value.endAyah !== undefined;
-  if (hasAnyCoordinate && !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
-  return value.surahName === undefined || (typeof value.surahName === 'string' && value.surahName.length <= 100);
+  if (value == null) return true;
+  if (typeof value === 'string') return value.length <= 2000;
+  if (!isPlainRecord(value)) return false;
+  if (value.description != null && typeof value.description !== 'string') return false;
+  if (value.versesCount != null && !isIntegerBetween(value.versesCount, 0, 6236)) return false;
+  if (value.estimatedMinutes != null && !isFiniteBetween(value.estimatedMinutes, 0, 1440)) return false;
+  if (value.completed != null && typeof value.completed !== 'boolean') return false;
+  if (value.type != null && typeof value.type !== 'string') return false;
+  const hasFullCoord = value.surahNumber != null && value.startAyah != null && value.endAyah != null;
+  if (hasFullCoord && !isValidSurahRange(value.surahNumber, value.startAyah, value.endAyah)) return false;
+  return value.surahName == null || typeof value.surahName === 'string';
 }
 
 function isValidEngineGeneratedPlan(value: unknown): value is EngineGeneratedPlan {
-  if (!isPlainRecord(value) || !isPlainRecord(value.meta) || !isPlainRecord(value.feasibility) ||
-      !isPlainRecord(value.actualVsPlanned) || !Array.isArray(value.schedule) ||
-      value.schedule.length > 10000 || !isValidPlanGenerationInput(value.input)) return false;
-  const meta = value.meta;
-  const feasibility = value.feasibility;
-  const actual = value.actualVsPlanned;
+  if (!isPlainRecord(value)) return false;
+  if (value.schedule != null && (!Array.isArray(value.schedule) || value.schedule.length > 10000)) return false;
+  if (!isValidPlanGenerationInput(value.input)) return false;
+
+  const meta = isPlainRecord(value.meta) ? value.meta : {};
+  const feasibility = isPlainRecord(value.feasibility) ? value.feasibility : {};
+  const actual = isPlainRecord(value.actualVsPlanned) ? value.actualVsPlanned : {};
+
   const validCoordinate = (coordinate: unknown) =>
-    isPlainRecord(coordinate) && isValidSurahRange(coordinate.surahNumber, coordinate.ayahNumber, coordinate.ayahNumber);
-  const scheduleValid = value.schedule.every((day: unknown) => {
-    if (!isPlainRecord(day) || typeof day.id !== 'string' || !day.id.trim() || day.id.length > 160 ||
-        !isValidDateOnly(day.date) || !isIntegerBetween(day.dayOfWeek, 0, 6) ||
-        typeof day.dayNameAr !== 'string' || day.dayNameAr.length > 40 ||
-        typeof day.isRestDay !== 'boolean' ||
-        !['pending', 'completed', 'skipped', 'partially_completed'].includes(day.status) ||
-        (day.notes !== undefined && (typeof day.notes !== 'string' || day.notes.length > 1000))) return false;
-    return (day.memorizationTask === undefined || isValidScheduledTaskUnit(day.memorizationTask)) &&
-      (day.minorRevisionTask === undefined || isValidScheduledRevisionUnit(day.minorRevisionTask)) &&
-      (day.majorRevisionTask === undefined || isValidScheduledRevisionUnit(day.majorRevisionTask));
-  });
+    coordinate == null || (isPlainRecord(coordinate) &&
+      (coordinate.surahNumber == null || coordinate.ayahNumber == null ||
+        isValidSurahRange(coordinate.surahNumber, coordinate.ayahNumber, coordinate.ayahNumber)));
+
+  const scheduleValid = value.schedule == null || (Array.isArray(value.schedule) && value.schedule.every((day: unknown) => {
+    if (!isPlainRecord(day)) return false;
+    if (day.id != null && typeof day.id !== 'string') return false;
+    if (day.date != null && typeof day.date !== 'string') return false;
+    if (day.dayOfWeek != null && !isIntegerBetween(day.dayOfWeek, 0, 6)) return false;
+    if (day.dayNameAr != null && typeof day.dayNameAr !== 'string') return false;
+    if (day.isRestDay != null && typeof day.isRestDay !== 'boolean') return false;
+    if (day.status != null && typeof day.status !== 'string') return false;
+    if (day.notes != null && (typeof day.notes !== 'string' || day.notes.length > 2000)) return false;
+    return isValidScheduledTaskUnit(day.memorizationTask) &&
+      isValidScheduledRevisionUnit(day.minorRevisionTask) &&
+      isValidScheduledRevisionUnit(day.majorRevisionTask);
+  }));
+
   return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
     typeof value.title === 'string' && value.title.trim().length > 0 && value.title.length <= 200 &&
-    typeof value.rationale === 'string' && value.rationale.length <= 4000 &&
+    (value.rationale == null || typeof value.rationale === 'string') &&
     validCoordinate(meta.startCoordinate) && validCoordinate(meta.endCoordinate) &&
-    isIntegerBetween(meta.totalVerses, 1, 6236) &&
-    isIntegerBetween(meta.activeStudyDaysCount, 0, 10000) &&
-    isIntegerBetween(meta.restDaysCount, 0, 10000) &&
-    isIntegerBetween(meta.totalCalendarDays, 1, 10000) &&
-    isValidDateOnly(meta.projectedEndDate) &&
-    isFiniteBetween(meta.weeklyWorkloadHours, 0, 168) &&
-    typeof feasibility.isFeasible === 'boolean' &&
-    ['optimal', 'light', 'strenuous', 'impossible'].includes(feasibility.cognitiveLoadScore) &&
-    isFiniteBetween(feasibility.requiredMinutesNew, 0, 100000) &&
-    isFiniteBetween(feasibility.requiredMinutesRevision, 0, 100000) &&
-    isFiniteBetween(feasibility.totalRequiredMinutes, 0, 200000) &&
-    isFiniteBetween(feasibility.availableMinutes, 0, 100000) &&
-    isIntegerBetween(feasibility.dailyPaceVerses, 1, 6236) &&
-    (feasibility.warningMessage === undefined || (typeof feasibility.warningMessage === 'string' && feasibility.warningMessage.length <= 2000)) &&
+    (meta.totalVerses == null || isIntegerBetween(meta.totalVerses, 0, 6236)) &&
+    (meta.activeStudyDaysCount == null || isIntegerBetween(meta.activeStudyDaysCount, 0, 100000)) &&
+    (meta.restDaysCount == null || isIntegerBetween(meta.restDaysCount, 0, 100000)) &&
+    (meta.totalCalendarDays == null || isIntegerBetween(meta.totalCalendarDays, 0, 100000)) &&
+    (meta.projectedEndDate == null || typeof meta.projectedEndDate === 'string') &&
+    (meta.weeklyWorkloadHours == null || isFiniteBetween(meta.weeklyWorkloadHours, 0, 100000)) &&
+    (feasibility.isFeasible == null || typeof feasibility.isFeasible === 'boolean') &&
+    (feasibility.cognitiveLoadScore == null || typeof feasibility.cognitiveLoadScore === 'string') &&
+    (feasibility.requiredMinutesNew == null || isFiniteBetween(feasibility.requiredMinutesNew, 0, 100000)) &&
+    (feasibility.requiredMinutesRevision == null || isFiniteBetween(feasibility.requiredMinutesRevision, 0, 100000)) &&
+    (feasibility.totalRequiredMinutes == null || isFiniteBetween(feasibility.totalRequiredMinutes, 0, 200000)) &&
+    (feasibility.availableMinutes == null || isFiniteBetween(feasibility.availableMinutes, 0, 100000)) &&
+    (feasibility.dailyPaceVerses == null || isIntegerBetween(feasibility.dailyPaceVerses, 0, 6236)) &&
+    (feasibility.warningMessage == null || typeof feasibility.warningMessage === 'string') &&
     scheduleValid &&
-    isIntegerBetween(actual.plannedVersesToDate, 0, 6236) &&
-    isIntegerBetween(actual.actualVersesMemorized, 0, 6236) &&
-    isIntegerBetween(actual.varianceVerses, -6236, 6236) &&
-    ['ahead', 'on_track', 'behind'].includes(actual.status) &&
-    typeof value.isActive === 'boolean' && typeof value.isPaused === 'boolean' &&
-    (value.pausedAt === undefined || isValidTimestamp(value.pausedAt)) &&
-    isValidTimestamp(value.createdAt);
+    (actual.plannedVersesToDate == null || isIntegerBetween(actual.plannedVersesToDate, 0, 100000)) &&
+    (actual.actualVersesMemorized == null || isIntegerBetween(actual.actualVersesMemorized, 0, 100000)) &&
+    (actual.varianceVerses == null || isIntegerBetween(actual.varianceVerses, -100000, 100000)) &&
+    (actual.status == null || typeof actual.status === 'string') &&
+    (value.isActive == null || typeof value.isActive === 'boolean') &&
+    (value.isPaused == null || typeof value.isPaused === 'boolean') &&
+    (value.pausedAt == null || value.pausedAt === '' || isValidTimestamp(value.pausedAt) || isValidDateOnly(value.pausedAt)) &&
+    (value.createdAt == null || isValidTimestamp(value.createdAt) || isValidDateOnly(value.createdAt));
 }
 
 
@@ -1108,7 +1134,19 @@ export const StorageService = {
   },
 
   savePlans(plans: MemorizationPlan[]): boolean {
-    if (!Array.isArray(plans) || plans.length > 500 || !plans.every(isValidMemorizationPlan) || !canWriteJsonArrayArchive(STORAGE_KEYS.PLANS, isValidMemorizationPlan)) return false;
+    if (!Array.isArray(plans) || plans.length > 500) {
+      console.error('[WIRD Storage] savePlans rejected: invalid array or length > 500');
+      return false;
+    }
+    const invalidIndex = plans.findIndex(p => !isValidMemorizationPlan(p));
+    if (invalidIndex !== -1) {
+      console.error('[WIRD Storage] savePlans rejected: record at index ' + invalidIndex + ' is invalid:', plans[invalidIndex]);
+      return false;
+    }
+    if (!canWriteJsonArrayArchive(STORAGE_KEYS.PLANS, isValidMemorizationPlan)) {
+      console.error('[WIRD Storage] savePlans rejected: existing archive contains malformed records.');
+      return false;
+    }
     return setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
   },
 
@@ -1118,7 +1156,19 @@ export const StorageService = {
   },
 
   saveEnginePlans(plans: EngineGeneratedPlan[]): boolean {
-    if (!Array.isArray(plans) || plans.length > 100 || !plans.every(isValidEngineGeneratedPlan) || !canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS, isValidEngineGeneratedPlan)) return false;
+    if (!Array.isArray(plans) || plans.length > 100) {
+      console.error('[WIRD Storage] saveEnginePlans rejected: invalid array or length > 100');
+      return false;
+    }
+    const invalidIndex = plans.findIndex(p => !isValidEngineGeneratedPlan(p));
+    if (invalidIndex !== -1) {
+      console.error('[WIRD Storage] saveEnginePlans rejected: record at index ' + invalidIndex + ' is invalid:', plans[invalidIndex]);
+      return false;
+    }
+    if (!canWriteJsonArrayArchive(STORAGE_KEYS.ENGINE_PLANS, isValidEngineGeneratedPlan)) {
+      console.error('[WIRD Storage] saveEnginePlans rejected: existing engine plans archive contains malformed records.');
+      return false;
+    }
     return setItem(STORAGE_KEYS.ENGINE_PLANS, JSON.stringify(plans));
   },
 

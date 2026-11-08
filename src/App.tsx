@@ -315,7 +315,7 @@ export default function App() {
         ? 'الخطة محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
         : result.recoveryBlocked
           ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تعديل الخطة الجديد.'
-          : 'تعذر حفظ الخطة في التخزين المحلي.', 'error');
+          : result.error || 'تعذر حفظ الخطة في التخزين المحلي.', 'error');
       return false;
     }
     setPlans(newPlans);
@@ -333,7 +333,7 @@ export default function App() {
         ? 'الخطة الذكية محفوظة في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
         : result.recoveryBlocked
           ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف تعديل الخطة الذكية الجديد.'
-          : 'تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
+          : result.error || 'تعذر حفظ الخطة الذكية في التخزين المحلي.', 'error');
       return false;
     }
     setEnginePlans(updatedEnginePlans);

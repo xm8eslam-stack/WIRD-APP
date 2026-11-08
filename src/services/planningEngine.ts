@@ -237,8 +237,19 @@ export const PlanningEngine = {
     if (!Number.isFinite(parsedStartDate.getTime()) || this.formatDate(parsedStartDate) !== input.startDate) {
       throw new Error('تاريخ بداية الخطة غير صالح.');
     }
-    if (input.paceType !== 'by_target_date' && (!Number.isSafeInteger(input.paceQuantity) || input.paceQuantity <= 0)) {
-      throw new Error('المقدار اليومي يجب أن يكون عدداً صحيحاً موجباً.');
+    if (input.paceType === 'verses_per_day' && (!Number.isSafeInteger(input.paceQuantity) || input.paceQuantity <= 0)) {
+      throw new Error('المقدار اليومي للآيات يجب أن يكون عدداً صحيحاً موجباً.');
+    }
+    if (input.paceType === 'pages_per_day' && (!Number.isFinite(input.paceQuantity) || input.paceQuantity <= 0)) {
+      throw new Error('مقدار الصفحات اليومي يجب أن يكون رقماً موجباً.');
+    }
+    if (input.paceType === 'by_target_date') {
+      if (!input.targetEndDate || !/^\d{4}-\d{2}-\d{2}$/.test(input.targetEndDate)) {
+        throw new Error('يرجى تحديد تاريخ الختم المستهدف بصيغة صالحة.');
+      }
+      if (input.targetEndDate <= input.startDate) {
+        throw new Error('تاريخ الختم المستهدف يجب أن يكون بعد تاريخ البداية.');
+      }
     }
     const activeDays = Array.isArray(input.activeDays) ? input.activeDays : [];
     const restDays = Array.isArray(input.restDays) ? input.restDays : [];
@@ -383,7 +394,8 @@ export const PlanningEngine = {
     const lastTask = schedule.filter(s => !s.isRestDay).pop();
     const projectedEndDate = lastTask ? lastTask.date : input.startDate;
     const totalCalendarDays = schedule.length;
-    const weeklyWorkloadHours = Number(((feasibility.totalRequiredMinutes * (activeDaysCount / (totalCalendarDays / 7 || 1))) / 60).toFixed(1));
+    const rawWeeklyHours = (feasibility.totalRequiredMinutes * (activeDaysCount / (totalCalendarDays / 7 || 1))) / 60;
+    const weeklyWorkloadHours = Number(Math.min(168, Math.max(0, rawWeeklyHours)).toFixed(1));
 
     // Generate Pedagogical Explanation in Arabic
     const startSurahName = QuranMath.getSurah(input.startSurah)?.name;

@@ -123,19 +123,23 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
       };
     });
 
+    const safeTargetEndDate = (paceType === 'by_target_date' && targetEndDate && targetEndDate.trim())
+      ? targetEndDate.trim()
+      : undefined;
+
     return {
-      title: planTitle.trim() || `خطة حفظ سورة ${startSurahMeta?.name || ''}`,
+      title: planTitle.trim() || `خطة حفظ سورة ${startSurahMeta?.name || 'القرآن'}`,
       startSurah,
       startAyah,
       endSurah,
       endAyah,
       startDate,
-      targetEndDate: paceType === 'by_target_date' ? targetEndDate : undefined,
+      targetEndDate: safeTargetEndDate,
       level,
       dailyAvailableMinutes,
       dailyRevisionMinutes,
       paceType,
-      paceQuantity,
+      paceQuantity: paceType === 'by_target_date' ? (paceQuantity || 1) : paceQuantity,
       activeDays,
       restDays,
       schedulePreference: schedulePref,
@@ -147,6 +151,16 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const handlePreviewPlan = (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      if (paceType === 'by_target_date') {
+        if (!targetEndDate || !targetEndDate.trim()) {
+          onToast?.('يرجى تحديد تاريخ الختم المستهدف أولاً.', 'error');
+          return;
+        }
+        if (targetEndDate.trim() <= startDate) {
+          onToast?.('تاريخ الختم المستهدف يجب أن يكون بعد تاريخ البداية.', 'error');
+          return;
+        }
+      }
       const input = buildPlanInput();
       const generated = PlanningEngine.generatePlan(input);
       setPreviewPlan(generated);

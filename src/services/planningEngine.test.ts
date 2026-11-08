@@ -639,6 +639,54 @@ export function runAllPlanningEngineTests(): { passed: number; failed: number; r
     assert(failResult.updatedItem.strength === 'weak', 'Failed retention must set strength to weak');
   });
 
+  runTest('PlanningEngine: generates and saves plan with fractional pages (0.5 pages/day)', () => {
+    const plan = PlanningEngine.generatePlan({
+      title: 'خطة نصف صفحة',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-10',
+      level: 'intermediate',
+      dailyAvailableMinutes: 30,
+      dailyRevisionMinutes: 15,
+      paceType: 'pages_per_day',
+      paceQuantity: 0.5,
+      activeDays: [0, 1, 2, 3, 4],
+      restDays: [5, 6],
+      schedulePreference: 'single_session'
+    });
+
+    assert(plan.input.paceQuantity === 0.5, 'Fractional pace quantity must be preserved');
+    assert(plan.schedule.length > 0, 'Schedule must be generated');
+    assert(StorageService.saveEnginePlans([plan]), 'Engine plan with fractional page pace must save cleanly');
+    const loaded = StorageService.getEnginePlans();
+    assert(loaded.some(p => p.id === plan.id), 'Saved plan must be retrievable from local storage');
+  });
+
+  runTest('PlanningEngine: generates and saves plan by target date', () => {
+    const plan = PlanningEngine.generatePlan({
+      title: 'خطة حسب تاريخ الهدف',
+      startSurah: 67,
+      startAyah: 1,
+      endSurah: 67,
+      endAyah: 30,
+      startDate: '2026-11-10',
+      targetEndDate: '2026-11-20',
+      level: 'advanced',
+      dailyAvailableMinutes: 45,
+      dailyRevisionMinutes: 20,
+      paceType: 'by_target_date',
+      paceQuantity: 1,
+      activeDays: [0, 1, 2, 3, 4],
+      restDays: [5, 6],
+      schedulePreference: 'morning_evening'
+    });
+
+    assert(plan.input.targetEndDate === '2026-11-20', 'Target date must be preserved in plan input');
+    assert(StorageService.saveEnginePlans([plan]), 'Plan by target date must save cleanly in local storage');
+  });
+
   return { passed, failed, results };
 }
 

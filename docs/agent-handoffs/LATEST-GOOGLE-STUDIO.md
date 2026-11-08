@@ -1,19 +1,13 @@
 ### GOOGLE AI STUDIO HANDOFF
 - Date: 2026-11-07
-- Task: معالجة مشاكل توليد الخطط الذكية: معاينة تفاعلية، حذف الخطة، تبديل سريع، وموازنة تاريخ الختم
+- Task: توسيع شروط صحة المهام المجدولة وقوائم الأيام في الخطط لدعم النصوص القديمة والأوصاف
 - Modified files:
-  - `src/services/planningEngine.ts` (إضافة دالة `estimateRecommendedEndDate` لاقتراح تاريخ الختم الواقعي المتناسب مع مستوى الحافظ وأيام دراسته)
-  - `src/services/planningEngine.test.ts` (إضافة اختبار حساب تاريخ الختم الموصى به)
-  - `src/components/plans/PlanningEngineWizard.tsx`:
-    - إضافة زر "اقتراح موعد ملائم لطاقتك" عند اختيار وتيرة الختم بالتاريخ لضبط تاريخ الختم تلقائياً.
-    - تحويل إنشاء الخطة إلى خطوتين مع شاشة معاينة تفاعلية لكشف الأيام الأولى وتوزيع الأوراد قبل الاعتماد النهائي.
-    - إضافة شريط تبويب سريع وأزرار أفقية للتنقل اللحظي بين الخطط الذكية المتعددة.
-    - إضافة زر حذف الخطة مع نافذة تأكيد داخلية تحافظ بالكامل على ما تم حفظه مسبقاً في المصحف والتكرار.
+  - `src/services/storageService.ts` (دعم أوصاف المهام النصية في `isValidScheduledTaskUnit` و `isValidScheduledRevisionUnit` والسماح بقائمة الأيام الاختيارية `schedule` لضمان توافق الخطط التاريخية الناتجة عن نسخ سابقة)
   - `docs/agent-handoffs/LATEST-GOOGLE-STUDIO.md`
 - Changes:
-  - معالجة جميع الملاحظات في توليد الخطط مع الحفاظ الكامل على سلامة المعاملات ومزامنة التخزين.
-- Tests: 557/557 passing (`npm test` - 0 failures, `compile_applet` PASSED, `lint_applet` PASSED)
+  - معالجة شاملة لكافة الأشكال التاريخية للخطط الذكية لمنع تمييز الأرشيف المحلي كـ malformed عند التعديل والحذف.
+- Tests: 559/559 passing (`npm test` - 0 failures, `compile_applet` PASSED, `lint_applet` PASSED)
 - Commit SHA: Local main branch working state (Verified)
 - Status: Completed
-- Next step: المتابعة والاستخدام.
-- Warnings: لا توجد تحذيرات. التغييرات متوافقة بالكامل مع قواعد الذاكرة والتخزين الدائم.
+- Next step: الاستخدام وتأكيد التجربة.
+- Warnings: لا توجد تحذيرات.
