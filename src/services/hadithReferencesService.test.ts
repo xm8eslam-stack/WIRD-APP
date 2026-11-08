@@ -23,6 +23,7 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
           hadithNumber: '1',
           body: 'نص الحديث بالتشكيلِ كما وردَ',
           grades: [{ graded_by: 'ناقد موثق', grade: 'صحيح' }],
+          authenticityBasis: 'explicit_grade',
           bookNumber: '1',
           chapterId: '2',
           chapterNumber: '3',
@@ -41,7 +42,7 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
     await test('hadith client rejects a non-Sahih grade instead of silently displaying it', async () => {
       globalThis.fetch = async () => new Response(JSON.stringify({
         verseKey: '2:255',
-        hadiths: [{ name: 'مصدر', collection: 'sample', hadithNumber: '7', body: 'متن', grades: [{ graded_by: 'ناقد', grade: 'حسن' }] }],
+        hadiths: [{ name: 'مصدر', collection: 'sample', hadithNumber: '7', body: 'متن', grades: [{ graded_by: 'ناقد', grade: 'حسن' }], authenticityBasis: 'explicit_grade' }],
         hasMore: false,
       }), { status: 200 });
       let rejected = false;
@@ -52,7 +53,7 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
     await test('hadith client rejects malformed source records', async () => {
       globalThis.fetch = async () => new Response(JSON.stringify({
         verseKey: '2:255',
-        hadiths: [{ name: 'مصدر', collection: 'sample', hadithNumber: '7', body: ' ', grades: [{ graded_by: 'ناقد', grade: 'صحيح' }] }],
+        hadiths: [{ name: 'مصدر', collection: 'sample', hadithNumber: '7', body: ' ', grades: [{ graded_by: 'ناقد', grade: 'صحيح' }], authenticityBasis: 'explicit_grade' }],
         hasMore: false,
       }), { status: 200 });
       let rejected = false;
