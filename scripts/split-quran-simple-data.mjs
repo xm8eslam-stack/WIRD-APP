@@ -17,8 +17,9 @@ for (let i = 0; i < surahs.length; i++) {
   const surahNumber = Number(surahs[i][1]);
   if (surahNumber !== i + 1) throw new Error('[WIRD Tanzil Simple] Invalid surah order at ' + (i + 1));
   const verses = [...surahs[i][3].matchAll(ayahPattern)].map((m, index) => {
-    if (Number(m[1]) !== index + 1 || !m[2].trim()) throw new Error('[WIRD Tanzil Simple] Invalid ayah at ' + surahNumber + ':' + (index + 1));
-    return m[2];
+    const ayahNumber = Number(m[1]);
+    if (ayahNumber !== index + 1 || !m[2].trim()) throw new Error('[WIRD Tanzil Simple] Invalid ayah at ' + surahNumber + ':' + (index + 1));
+    return { surahNumber, ayahNumber, text: m[2] };
   });
   const target = path.join(outputDir, surahNumber + '.json');
   const serialized = JSON.stringify(verses);

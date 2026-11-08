@@ -36,10 +36,11 @@ export function getAyahWords(text: string): string[] {
 }
  
 // Tanzil Simple is stored separately from the canonical Uthmani corpus and loaded per surah.
-const simpleSurahModules = import.meta.glob<string[]>('./quran-simple-surahs/*.json');
-const simpleSurahCache = new Map<number, Promise<string[]>>();
+interface SimpleAyahRecord { surahNumber: number; ayahNumber: number; text: string; }
+const simpleSurahModules = import.meta.glob<SimpleAyahRecord[]>('./quran-simple-surahs/*.json');
+const simpleSurahCache = new Map<number, Promise<SimpleAyahRecord[]>>();
 
-async function loadSimpleSurahTexts(surahNumber: number): Promise<string[]> {
+async function loadSimpleSurahTexts(surahNumber: number): Promise<SimpleAyahRecord[]> {
   if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114) return [];
   const cached = simpleSurahCache.get(surahNumber);
   if (cached) return cached;
@@ -56,12 +57,18 @@ async function loadSimpleSurahTexts(surahNumber: number): Promise<string[]> {
 export async function loadSimpleAyahText(surahNumber: number, ayahNumber: number): Promise<string | undefined> {
   if (!Number.isInteger(ayahNumber) || ayahNumber < 1) return undefined;
   const verses = await loadSimpleSurahTexts(surahNumber);
-  return verses[ayahNumber - 1];
+  return verses.find(ayah => ayah.surahNumber === surahNumber && ayah.ayahNumber === ayahNumber)?.text;
 }
 
 export async function loadSimpleAyahRange(surahNumber: number, startAyah: number, endAyah = startAyah): Promise<string[]> {
   if (!Number.isInteger(startAyah) || !Number.isInteger(endAyah) || startAyah < 1 || endAyah < startAyah) return [];
   const verses = await loadSimpleSurahTexts(surahNumber);
-  if (endAyah > verses.length) return [];
-  return verses.slice(startAyah - 1, endAyah);
+  const selected = verses.filter(ayah => ayah.surahNumber === surahNumber && ayah.ayahNumber >= startAyah && ayah.ayahNumber <= endAyah);
+  if (selected.length !== endAyah - startAyah + 1) return [];
+  return selected.sort((a, b) => a.ayahNumber - b.ayahNumber).map(ayah => ayah.text);
+}
+
+/** Resolve the display spelling asynchronously while preserving the canonical Uthmani Ayah.text field. */
+export async function getAyahDisplayText(ayah: Ayah): Promise<string> {
+  return await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah) ?? ayah.text;
 }
