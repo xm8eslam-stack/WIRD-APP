@@ -33,6 +33,8 @@ const quran = JSON.parse(fs.readFileSync(uthmaniPath, 'utf8'));
 const issues = [];
 const seen = new Set();
 const simpleBySurah = {};
+const bismillahBySurah = {};
+let separateBismillahCount = 0;
 let total = 0, duplicateCoordinates = 0, missingCoordinates = 0, invalidCoordinates = 0, emptyTexts = 0;
 let exactCoordinateMatches = 0, metadataMismatchCount = 0;
 const expectedSurahIndexes = Array.from({ length: 114 }, (_, i) => i + 1);
@@ -57,7 +59,13 @@ for (const match of surahMatches) {
     continue;
   }
   const sourceAyahs = [...body.matchAll(ayahPattern)];
-  const parsed = sourceAyahs.map(m => ({ ayahNumber: Number(m[1]), text: m[2] }));
+  const parsed = sourceAyahs.map(m => ({ ayahNumber: Number(m[1]), text: m[2], bismillah: m[3] ?? null }));
+  const separateBismillah = parsed[0]?.bismillah ?? null;
+  bismillahBySurah[surahNumber] = separateBismillah;
+  if (separateBismillah) separateBismillahCount++;
+  if ([1, 9].includes(surahNumber) && separateBismillah) issues.push({ surah: surahNumber, reason: 'UNEXPECTED_SEPARATE_BISMILLAH' });
+  if (![1, 9].includes(surahNumber) && !separateBismillah) issues.push({ surah: surahNumber, reason: 'MISSING_SEPARATE_BISMILLAH' });
+  if (parsed.slice(1).some(a => a.bismillah)) issues.push({ surah: surahNumber, reason: 'BISMILLAH_ON_NONINITIAL_AYAH' });
   if (parsed.some((a, i) => !Number.isInteger(a.ayahNumber) || a.ayahNumber !== i + 1)) {
     invalidCoordinates++;
     issues.push({ surah: surahNumber, reason: 'AYAH_INDEX_SEQUENCE' });
@@ -111,6 +119,7 @@ for (let s = 1; s <= 114; s++) {
 total = Object.values(simpleBySurah).reduce((sum, list) => sum + list.length, 0);
 if (total !== 6236) issues.push({ reason: 'TOTAL_AYAH_COUNT', expected: 6236, actual: total });
 if (seen.size !== 6236) issues.push({ reason: 'UNIQUE_COORDINATE_COUNT', expected: 6236, actual: seen.size });
+if (separateBismillahCount !== 112) issues.push({ reason: 'SEPARATE_BISMILLAH_COUNT', expected: 112, actual: separateBismillahCount });
 
 const report = {
   source: 'Tanzil Project — Quran Text (Simple), Version 1.1',
@@ -130,6 +139,8 @@ const report = {
     unexplainedDifferences: issues.length,
     tashkeelCodePoints,
     pauseMarkerCount,
+    separateBismillahCount,
+    bismillahExamples: { '2': bismillahBySurah[2] ?? null, '9': bismillahBySurah[9] ?? null, '114': bismillahBySurah[114] ?? null },
     issueSamples: issues.slice(0, 100),
     examples: {
       '41:7': simpleBySurah[41]?.[6] ?? null,

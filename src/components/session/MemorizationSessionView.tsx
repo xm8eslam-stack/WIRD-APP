@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadSurahVerses, getAyahWords, loadSimpleAyahText } from '../../data/quranDataLoader';
+import { QuranBasmala } from '../shared/QuranBasmala';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
 import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
@@ -502,9 +503,9 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       {/* 2. Main Ayah Display & Word Masking Studio */}
       <div className="bg-[#fdfbf7] dark:bg-stone-800/90 rounded-3xl p-6 md:p-10 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-6 text-center relative">
         {/* Basmala on first ayah if not At-Tawbah */}
-        {currentAyah.numberInSurah === 1 && surahNumber !== 9 && (
+        {currentAyah.numberInSurah === 1 && surahNumber !== 1 && surahNumber !== 9 && (
           <div className="font-quran text-lg text-stone-500 dark:text-stone-400 pb-2 border-b border-stone-200/50 dark:border-stone-700">
-            بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+            <QuranBasmala surahNumber={surahNumber} />
           </div>
         )}
 

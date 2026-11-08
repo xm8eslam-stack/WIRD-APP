@@ -28,6 +28,7 @@ import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { TafsirSheet } from './TafsirSheet';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { QuranText } from '../shared/QuranText';
+import { QuranBasmala } from '../shared/QuranBasmala';
 
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
@@ -533,7 +534,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                       {/* Sacred Basmalah Presentation */}
                       {ayah.surahNumber !== 1 && ayah.surahNumber !== 9 && (
                         <p className="font-quran text-2xl md:text-3xl text-emerald-950 dark:text-emerald-100 py-3 text-center tracking-wide">
-                          بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                          <QuranBasmala surahNumber={ayah.surahNumber} />
                         </p>
                       )}
                     </div>

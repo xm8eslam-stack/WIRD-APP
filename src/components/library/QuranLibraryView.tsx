@@ -38,6 +38,7 @@ import { clearReadingKhatma, markReadingPage, readReadingKhatma, startReadingKha
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { ReadingKhatmaPanel } from './ReadingKhatmaPanel';
 import { QuranText } from '../shared/QuranText';
+import { QuranBasmala } from '../shared/QuranBasmala';
 import { QuranTypographyLab } from './QuranTypographyLab';
 
 interface QuranLibraryViewProps {
@@ -677,7 +678,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             {/* Sacred Basmalah */}
             {selectedSurah.number !== 1 && selectedSurah.number !== 9 && (
               <p className="font-quran text-2xl md:text-3xl text-emerald-900 dark:text-emerald-200 py-4 mt-2">
-                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+                <QuranBasmala surahNumber={selectedSurah.number} />
               </p>
             )}
 

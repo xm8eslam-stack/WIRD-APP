@@ -37,7 +37,7 @@ export function getAyahWords(text: string): string[] {
  
 // Tanzil Simple is stored separately from the canonical Uthmani corpus and loaded per surah.
 interface SimpleAyahRecord { surahNumber: number; ayahNumber: number; text: string; }
-interface SimpleSurahChunk { source: string; version: string; copyright: string; license: string; sourceUrl: string; surahNumber: number; ayahs: SimpleAyahRecord[]; }
+interface SimpleSurahChunk { source: string; version: string; copyright: string; license: string; sourceUrl: string; surahNumber: number; bismillahText: string | null; ayahs: SimpleAyahRecord[]; }
 const simpleSurahModules = import.meta.glob<{ default: SimpleSurahChunk }>('./quran-simple-surahs/*.json');
 const simpleSurahCache = new Map<number, Promise<SimpleAyahRecord[]>>();
 
@@ -74,4 +74,15 @@ export async function getAyahDisplayText(ayah: Ayah): Promise<string> {
   const simpleText = await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah);
   if (!simpleText) throw new Error('Missing verified Tanzil Simple text for ' + ayah.surahNumber + ':' + ayah.numberInSurah);
   return simpleText;
+}
+
+/** Official separate basmala text from Tanzil Simple; absent for Al-Fatihah and At-Tawbah. */
+export async function loadSimpleBasmala(surahNumber: number): Promise<string | undefined> {
+  if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 || surahNumber === 1 || surahNumber === 9) return undefined;
+  const modulePath = './quran-simple-surahs/' + surahNumber + '.json';
+  const loader = simpleSurahModules[modulePath];
+  if (!loader) throw new Error('Missing local Tanzil Simple basmala for Surah ' + surahNumber);
+  const module = await loader();
+  if (module.default.surahNumber !== surahNumber || !module.default.bismillahText) throw new Error('Invalid Tanzil Simple basmala for Surah ' + surahNumber);
+  return module.default.bismillahText;
 }

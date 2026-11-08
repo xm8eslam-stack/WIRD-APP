@@ -19,7 +19,7 @@ for (let i = 0; i < surahs.length; i++) {
   const verses = [...surahs[i][3].matchAll(ayahPattern)].map((m, index) => {
     const ayahNumber = Number(m[1]);
     if (ayahNumber !== index + 1 || !m[2].trim()) throw new Error('[WIRD Tanzil Simple] Invalid ayah at ' + surahNumber + ':' + (index + 1));
-    return { surahNumber, ayahNumber, text: m[2] };
+    return { surahNumber, ayahNumber, text: m[2], bismillah: m[3] ?? null };
   });
   const target = path.join(outputDir, surahNumber + '.json');
   const chunk = {
@@ -29,17 +29,18 @@ for (let i = 0; i < surahs.length; i++) {
     license: 'Creative Commons Attribution 3.0 (CC BY 3.0)',
     sourceUrl: 'https://tanzil.net',
     surahNumber,
+    bismillahText: verses[0]?.bismillah ?? null,
     ayahs: verses
   };
   const serialized = JSON.stringify(chunk);
   if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== serialized) fs.writeFileSync(target, serialized, 'utf8');
   const generated = JSON.parse(fs.readFileSync(target, 'utf8'));
-  if (generated.source !== 'Tanzil Project' || generated.version !== 'Quran Text (Simple), Version 1.1' || generated.license !== 'Creative Commons Attribution 3.0 (CC BY 3.0)' || generated.sourceUrl !== 'https://tanzil.net' || generated.surahNumber !== surahNumber || !Array.isArray(generated.ayahs) || generated.ayahs.length !== verses.length) {
+  if (generated.source !== 'Tanzil Project' || generated.version !== 'Quran Text (Simple), Version 1.1' || generated.license !== 'Creative Commons Attribution 3.0 (CC BY 3.0)' || generated.sourceUrl !== 'https://tanzil.net' || generated.surahNumber !== surahNumber || generated.bismillahText !== (verses[0]?.bismillah ?? null) || !Array.isArray(generated.ayahs) || generated.ayahs.length !== verses.length) {
     throw new Error('[WIRD Tanzil Simple] Generated chunk attribution or coordinate structure failed for Surah ' + surahNumber);
   }
   for (let index = 0; index < verses.length; index++) {
     const expected = verses[index], actual = generated.ayahs[index];
-    if (actual.surahNumber !== surahNumber || actual.ayahNumber !== index + 1 || actual.text !== expected.text) {
+    if (actual.surahNumber !== surahNumber || actual.ayahNumber !== index + 1 || actual.text !== expected.text || actual.bismillah !== expected.bismillah) {
       throw new Error('[WIRD Tanzil Simple] Generated text changed or coordinate mismatch at ' + surahNumber + ':' + (index + 1));
     }
   }
