@@ -5,7 +5,7 @@ const RATE_LIMIT_MAX = 20;
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 let cachedToken: { value: string; expiresAt: number } | null = null;
 let pendingToken: Promise<string> | null = null;
-type HadithItem = { name: string; collection: string; hadithNumber: string; body: string; grades: Array<{ graded_by: string; grade: string }>; bookNumber?: string; chapterId?: string; chapterNumber?: string; chapterTitle?: string; urn?: number };
+type HadithItem = { name: string; collection: string; hadithNumber: string; body: string; grades: Array<{ graded_by: string; grade: string }>; bookNumber?: string; chapterId?: string; chapterNumber?: string; chapterTitle?: string; referenceUrn?: number; urn?: number };
 
 function send(res: any, status: number, body: unknown) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -80,7 +80,7 @@ function extractSahihHadiths(payload: unknown): HadithItem[] | null {
     const grades: HadithItem['grades'] = arabic.grades.filter((grade: any) => record(grade) && typeof grade.graded_by === 'string' && grade.graded_by.trim() && typeof grade.grade === 'string' && grade.grade.trim())
       .map((grade: any) => ({ graded_by: grade.graded_by.trim().slice(0, 160), grade: grade.grade.trim().slice(0, 80) }));
     const hasExplicitSahihGrade = grades.some(grade => /^(sahih|صحيح)$/i.test(grade.grade.trim()));
-    if (hasExplicitSahihGrade) out.push({ name: item.name.trim().slice(0, 120), collection: item.collection.trim().slice(0, 80), hadithNumber: item.hadithNumber.trim().slice(0, 50), body: arabic.body, grades, ...(typeof item.bookNumber === 'string' && item.bookNumber.trim() ? { bookNumber: item.bookNumber.trim().slice(0, 40) } : {}), ...(typeof item.chapterId === 'string' && item.chapterId.trim() ? { chapterId: item.chapterId.trim().slice(0, 40) } : {}), ...(typeof arabic.chapterNumber === 'string' && arabic.chapterNumber.trim() ? { chapterNumber: arabic.chapterNumber.trim().slice(0, 40) } : {}), ...(typeof arabic.chapterTitle === 'string' && arabic.chapterTitle.trim() ? { chapterTitle: arabic.chapterTitle.trim().slice(0, 240) } : {}), ...(Number.isSafeInteger(arabic.urn) && arabic.urn > 0 ? { urn: arabic.urn } : {}) });
+    if (hasExplicitSahihGrade) out.push({ name: item.name.trim().slice(0, 120), collection: item.collection.trim().slice(0, 80), hadithNumber: item.hadithNumber.trim().slice(0, 50), body: arabic.body, grades, ...(typeof item.bookNumber === 'string' && item.bookNumber.trim() ? { bookNumber: item.bookNumber.trim().slice(0, 40) } : {}), ...(typeof item.chapterId === 'string' && item.chapterId.trim() ? { chapterId: item.chapterId.trim().slice(0, 40) } : {}), ...(typeof arabic.chapterNumber === 'string' && arabic.chapterNumber.trim() ? { chapterNumber: arabic.chapterNumber.trim().slice(0, 40) } : {}), ...(typeof arabic.chapterTitle === 'string' && arabic.chapterTitle.trim() ? { chapterTitle: arabic.chapterTitle.trim().slice(0, 240) } : {}), ...(Number.isSafeInteger(item.urn) && item.urn > 0 ? { referenceUrn: item.urn } : {}), ...(Number.isSafeInteger(arabic.urn) && arabic.urn > 0 ? { urn: arabic.urn } : {}) });
   }
   return out;
 }

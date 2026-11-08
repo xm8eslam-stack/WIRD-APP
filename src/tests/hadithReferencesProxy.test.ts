@@ -28,7 +28,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
         if (url.endsWith('/oauth2/token')) { authHeader = new Headers(init?.headers).get('authorization') || ''; return new Response(JSON.stringify({ access_token: 'test-token', expires_in: 3600 }), { status: 200 }); }
         apiCalls++;
         const hadiths = [
-          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', bookNumber: '1', hadith: [{ lang: 'ar', chapterNumber: '1', chapterTitle: 'بدء الوحي', urn: 111, body: 'متن صحيح', grades: [{ graded_by: 'ناقد', grade: 'صحيح' }] }] },
+          { name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1', urn: 222, bookNumber: '1', hadith: [{ lang: 'ar', chapterNumber: '1', chapterTitle: 'بدء الوحي', urn: 111, body: 'متن صحيح', grades: [{ graded_by: 'ناقد', grade: 'صحيح' }] }] },
           { name: 'كتاب آخر', collection: 'other', hadithNumber: '2', hadith: [{ lang: 'ar', body: 'متن غير مصنف صحيحًا', grades: [{ graded_by: 'ناقد', grade: 'حسن' }] }] }
         ];
         return new Response(JSON.stringify({ hadiths, has_more: false }), { status: 200 });
@@ -36,7 +36,7 @@ export async function runHadithReferencesProxyTests(): Promise<{ passed: number;
       const res = mockResponse(); await hadithReferencesHandler({ method: 'GET', query: { surah: '41', ayah: '7' }, headers: { 'x-forwarded-for': '198.51.100.203' } }, res, { fetch: fetcher });
       assert(res.statusCode === 200 && res.body.verseKey === '41:7' && res.body.page === 1 && res.body.hasMore === false, 'success response must preserve verse coordinates and pagination');
       assert(res.body.hadiths.length === 1 && res.body.hadiths[0].body === 'متن صحيح', 'only explicit Sahih grades must be returned');
-      assert(res.body.hadiths[0].bookNumber === '1' && res.body.hadiths[0].chapterTitle === 'بدء الوحي' && res.body.hadiths[0].chapterNumber === '1' && res.body.hadiths[0].urn === 111, 'source book, chapter, and urn metadata must be preserved');
+      assert(res.body.hadiths[0].bookNumber === '1' && res.body.hadiths[0].chapterTitle === 'بدء الوحي' && res.body.hadiths[0].chapterNumber === '1' && res.body.hadiths[0].referenceUrn === 222 && res.body.hadiths[0].urn === 111, 'top-level reference URN and Arabic hadith URN must remain distinct');
       assert(authHeader.startsWith('Basic ') && apiCalls === 1, 'backend must use client credentials and make one content request');
       assert(!JSON.stringify(res.body).includes('test-secret') && !JSON.stringify(res.body).includes('test-token'), 'secrets and tokens must never reach the client');
     });

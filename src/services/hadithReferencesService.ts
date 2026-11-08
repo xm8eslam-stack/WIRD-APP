@@ -8,6 +8,7 @@ export interface RelatedHadith {
   chapterId?: string;
   chapterNumber?: string;
   chapterTitle?: string;
+  referenceUrn?: number;
   urn?: number;
 }
 
@@ -41,6 +42,7 @@ export async function getRelatedSahihHadiths(surahNumber: number, ayahNumber: nu
       ...(typeof item.chapterId === 'string' ? { chapterId: item.chapterId } : {}),
       ...(typeof item.chapterNumber === 'string' ? { chapterNumber: item.chapterNumber } : {}),
       ...(typeof item.chapterTitle === 'string' ? { chapterTitle: item.chapterTitle } : {}),
+      ...(Number.isSafeInteger(item.referenceUrn) && item.referenceUrn > 0 ? { referenceUrn: item.referenceUrn } : {}),
       ...(Number.isSafeInteger(item.urn) && item.urn > 0 ? { urn: item.urn } : {}),
     });
   }
