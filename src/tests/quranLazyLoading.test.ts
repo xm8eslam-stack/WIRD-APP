@@ -67,7 +67,12 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
   test('Simple chunk generator preserves source attribution and verifies exact text after serialization', () => {
     const generator = read('scripts/split-quran-simple-data.mjs');
     assert(generator.includes("source: 'Tanzil Project'") && generator.includes('copyright:') && generator.includes('license:') && generator.includes("sourceUrl: 'https://tanzil.net'"), 'Every generated surah chunk must retain Tanzil attribution and license');
-    assert(generator.includes('actual.text !== expected.text') && generator.includes('actual.ayahNumber !== index + 1'), 'Generated chunk must be verified character-for-character and coordinate-by-coordinate');
+    assert(generator.includes('actual.text !== expected.text') && generator.includes('actual.ayahNumber !== index + 1') && generator.includes('actual.bismillah !== expected.bismillah'), 'Generated chunk must be verified character-for-character and coordinate-by-coordinate, including the separate basmala');
+    assert(generator.includes('bismillahText: verses[0]?.bismillah ?? null'), 'Official separate basmala must be preserved in the per-Surah chunk');
+    const validator = read('scripts/validate-quran-simple.mjs');
+    assert(validator.includes('separateBismillahCount !== 112') && validator.includes('UNEXPECTED_SEPARATE_BISMILLAH') && validator.includes('MISSING_SEPARATE_BISMILLAH'), 'Validator must verify separate basmala presence and its absence in Al-Fatihah and At-Tawbah');
+    const basmala = read('src/components/shared/QuranBasmala.tsx');
+    assert(basmala.includes('loadSimpleBasmala') && basmala.includes('dir="rtl"'), 'Displayed basmala must come from the local official Simple source');
   });
 
   test('Memorization test generation loads only Surahs in the memorized portions', () => {

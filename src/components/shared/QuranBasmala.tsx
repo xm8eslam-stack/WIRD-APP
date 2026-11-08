@@ -4,6 +4,7 @@ import { loadSimpleBasmala } from '../../data/quranDataLoader';
 export function QuranBasmala({ surahNumber }: { surahNumber: number }) {
   const [text, setText] = useState('');
   const [failed, setFailed] = useState(false);
+  if (surahNumber === 1 || surahNumber === 9 || !Number.isInteger(surahNumber)) return null;
   useEffect(() => {
     let active = true;
     setText('');
