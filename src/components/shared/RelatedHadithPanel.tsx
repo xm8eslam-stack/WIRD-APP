@@ -50,7 +50,7 @@ export const RelatedHadithPanel: React.FC<{ ayah: Ayah }> = ({ ayah }) => {
           <span className="font-bold">أحكام المحدثين في المصدر: </span>
           {item.grades.map(grade => `${grade.grade} — ${grade.graded_by}`).join('؛ ')}
         </div>
-        <p className="mt-2 text-[10px] leading-5 text-stone-500 dark:text-stone-400">المصدر: Quran Foundation · مرجع الآية: {ayah.surahNumber}:{ayah.numberInSurah}. ظهور حكم بالصحة يعني أن المصدر أورد حكمًا صريحًا بذلك، ولا يعني إجماع جميع المحدثين. اسم الراوي لا يُفصل عن المتن لأن واجهة المصدر لا توفره كحقل مستقل.</p>
+        <p className="mt-2 text-[10px] leading-5 text-stone-500 dark:text-stone-400">المصدر: Quran Foundation{item.urn ? ` · معرّف المصدر: ${item.urn}` : ''} · مرجع الآية: {ayah.surahNumber}:{ayah.numberInSurah}. ظهور حكم بالصحة يعني أن المصدر أورد حكمًا صريحًا بذلك، ولا يعني إجماع جميع المحدثين. اسم الراوي لا يُفصل عن المتن لأن واجهة المصدر لا توفره كحقل مستقل.</p>
       </article>)}
       {hasMore && !loading && !error && <button type="button" disabled={page >= 100} onClick={() => setPage(value => Math.min(100, value + 1))} className="min-h-11 w-full rounded-lg border border-emerald-700 px-3 text-xs font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-200 dark:hover:bg-emerald-950/40">{page >= 100 ? 'اكتمل حد الصفحات' : 'تحميل مراجع إضافية'}</button>}
     </div>}
