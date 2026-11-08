@@ -1,6 +1,5 @@
 import { WirdPortion } from '../types/quran';
 import { ALL_SURAHS } from '../data/quranMeta';
-import { loadAyahByCoordinate, loadSurahVerses } from '../data/quranDataLoader';
 import { MUTASHABIHAT_DATA } from '../data/mutashabihatData';
 
 export type TestMode = 'complete_verse' | 'bidirectional_recall' | 'random_recall' | 'mutashabihat';
@@ -116,6 +115,10 @@ export async function generateDynamicTestQuestions(
       messageAr: 'لم تسجل أي مقاطع محفوظة بعد. يرجى إتمام وِرد حفظ أو تسجيل مقاطع محفوظة أولاً للبدء في الاختبارات المبنية على محفوظك.'
     };
   }
+
+  // Vite's per-Surah loader is imported only when a memorization-backed mode actually needs Quran data.
+  // This keeps module evaluation safe in Node-based integrity tests and avoids loading Quran chunks early.
+  const { loadAyahByCoordinate, loadSurahVerses } = await import('../data/quranDataLoader');
 
   switch (testType) {
     case 'complete_verse': {

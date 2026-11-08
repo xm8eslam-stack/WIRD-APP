@@ -73,7 +73,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
   test('Memorization test generation loads only Surahs in the memorized portions', () => {
     const generator = read('src/services/testQuestionGenerator.ts');
     const view = read('src/components/tests/MemorizationTestsView.tsx');
-    assert(generator.includes('loadSurahVerses') && generator.includes('loadAyahByCoordinate') && !generator.includes('VERIFIED_AYAHS'), 'Test generator must load only memorized Surahs on demand');
+    assert(generator.includes('loadSurahVerses') && generator.includes('loadAyahByCoordinate') && generator.includes("await import('../data/quranDataLoader')") && !generator.includes('VERIFIED_AYAHS'), 'Test generator must dynamically load only memorized Surahs on demand');
     assert(!view.includes('VERIFIED_AYAHS'), 'Memorization test view must not import the full Quran corpus');
   });
 
