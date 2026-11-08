@@ -88,6 +88,9 @@ function extractSahihHadiths(payload: unknown): HadithItem[] | null {
 export default async function handler(req: any, res: any, deps: { fetch?: typeof fetch } = {}) {
   if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return send(res, 405, { error: 'METHOD_NOT_ALLOWED' }); }
   const query = req.query || {};
+  const diagnosticsRequested = String(Array.isArray(query.diagnostics) ? query.diagnostics[0] : query.diagnostics) === '1';
+  // Reject diagnostic traffic before rate-limit state, credentials, OAuth, or upstream access in production.
+  if (diagnosticsRequested && process.env.VERCEL_ENV !== 'preview') return send(res, 404, { error: 'NOT_FOUND' });
   const surahNumber = Number(Array.isArray(query.surah) ? query.surah[0] : query.surah);
   const ayahNumber = Number(Array.isArray(query.ayah) ? query.ayah[0] : query.ayah);
   const requestedPage = Number(Array.isArray(query.page) ? query.page[0] : (query.page ?? 1));
@@ -99,6 +102,61 @@ export default async function handler(req: any, res: any, deps: { fetch?: typeof
     const clientId = process.env.QF_CLIENT_ID;
     if (!clientId || !process.env.QF_CLIENT_SECRET) return send(res, 503, { error: 'HADITH_REFERENCES_NOT_CONFIGURED' });
     let token = await getToken(fetcher);
+    const upstreamGet = async (path: string) => {
+      const makeRequest = () => fetcher(`${apiBase()}${path}`, {
+        headers: { Accept: 'application/json', 'x-auth-token': token, 'x-client-id': clientId },
+        signal: AbortSignal.timeout(10_000)
+      });
+      let response = await makeRequest();
+      if (response.status === 401) {
+        cachedToken = null;
+        token = await getToken(fetcher);
+        response = await makeRequest();
+      }
+      return response;
+    };
+    if (diagnosticsRequested) {
+      res.setHeader('Cache-Control', 'no-store');
+      const key = `${surahNumber}:${ayahNumber}`;
+      const [referencesResponse, countsResponse, hadithsResponse] = await Promise.all([
+        upstreamGet(`/content/api/v4/hadith_references/by_ayah/${key}?language=ar`),
+        upstreamGet(`/content/api/v4/hadith_references/count_within_range?from=${key}&to=${key}`),
+        upstreamGet(`/content/api/v4/hadith_references/by_ayah/${key}/hadiths?language=ar&page=1&limit=5`)
+      ]);
+      const [referencesPayload, countsPayload, hadithsPayload] = await Promise.all([
+        referencesResponse.ok ? parseLimitedJson(referencesResponse) : Promise.resolve(null),
+        countsResponse.ok ? parseLimitedJson(countsResponse) : Promise.resolve(null),
+        hadithsResponse.ok ? parseLimitedJson(hadithsResponse) : Promise.resolve(null)
+      ]);
+      const refs = record(referencesPayload) && Array.isArray(referencesPayload.hadith_references) ? referencesPayload.hadith_references : null;
+      const rawHadiths = record(hadithsPayload) && Array.isArray(hadithsPayload.hadiths) ? hadithsPayload.hadiths : null;
+      const languageStats = { arabic: 0, other: 0, missing: 0, arabicBodyPresent: 0, arabicGradesPresent: 0, explicitSahih: 0 };
+      if (rawHadiths) for (const item of rawHadiths.slice(0, 5)) {
+        if (!record(item) || !Array.isArray(item.hadith)) { languageStats.missing++; continue; }
+        for (const part of item.hadith) {
+          if (!record(part)) { languageStats.missing++; continue; }
+          if (part.lang === 'ar') {
+            languageStats.arabic++;
+            if (typeof part.body === 'string' && part.body.trim()) languageStats.arabicBodyPresent++;
+            if (Array.isArray(part.grades)) {
+              languageStats.arabicGradesPresent++;
+              if (part.grades.some((grade: any) => record(grade) && typeof grade.grade === 'string' && /^(sahih|صحيح)$/i.test(grade.grade.trim()))) languageStats.explicitSahih++;
+            }
+          } else if (typeof part.lang === 'string') languageStats.other++;
+          else languageStats.missing++;
+        }
+      }
+      const countForAyah = record(countsPayload) ? countsPayload[key] : undefined;
+      return send(res, 200, {
+        verseKey: key,
+        source: 'Quran Foundation Hadith References',
+        endpoints: {
+          references: { status: referencesResponse.status, validShape: refs !== null, count: refs?.length ?? null },
+          rangeCount: { status: countsResponse.status, value: Number.isSafeInteger(countForAyah) ? countForAyah : null },
+          hadithPage: { status: hadithsResponse.status, validShape: rawHadiths !== null, recordCount: rawHadiths?.length ?? null, hasMore: record(hadithsPayload) && typeof hadithsPayload.has_more === 'boolean' ? hadithsPayload.has_more : null, languageStats }
+        }
+      });
+    }
     const request = () => fetcher(`${apiBase()}/content/api/v4/hadith_references/by_ayah/${surahNumber}:${ayahNumber}/hadiths?language=ar&page=${requestedPage}&limit=5`, {
       headers: { Accept: 'application/json', 'x-auth-token': token, 'x-client-id': clientId }, signal: AbortSignal.timeout(10_000)
     });
