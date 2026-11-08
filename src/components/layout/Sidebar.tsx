@@ -197,7 +197,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       )}
 
-      {/* Primary mobile destinations; secondary pages remain in the More drawer. */}
+      {/* Keep the memorization workspace distraction-free and controls unobstructed. */}
+      {currentTab !== 'session' && (
       <nav className="wird-mobile-nav md:hidden" aria-label="التنقل السريع">
         {[
           { id: 'dashboard' as NavTabId, label: 'الرئيسية', icon: Home },
@@ -226,6 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span>المزيد</span>
         </button>
       </nav>
+      )}
     </>
   );
 };
