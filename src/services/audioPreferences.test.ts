@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { PLAYBACK_RATES, normalizePlaybackRate } from './audioPreferences';
+import { AUDIO_REPEAT_COUNTS, normalizeAudioRepeatCount, PLAYBACK_RATES, normalizePlaybackRate } from './audioPreferences';
 import { attachAyahRepeatHandler } from './audioRepeatController';
 
 export function runAudioPreferencesTests(): { passed: number; failed: number } {
@@ -15,6 +15,12 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
   });
   test('Playback rate normalization rejects unsupported values', () => {
     if (normalizePlaybackRate(1.5) !== 1.5 || normalizePlaybackRate(3) !== 1 || normalizePlaybackRate('invalid') !== 1) throw new Error('Invalid playback-rate normalization');
+  });
+  test('Audio repeat choices include bounded counts and continuous playback', () => {
+    if (AUDIO_REPEAT_COUNTS.join(',') !== '1,2,3,5,10,-1') throw new Error('Unexpected audio repeat choices');
+    if (normalizeAudioRepeatCount(5) !== 5 || normalizeAudioRepeatCount(-1) !== -1 || normalizeAudioRepeatCount(0) !== 1 || normalizeAudioRepeatCount('invalid') !== 1) {
+      throw new Error('Invalid audio repeat preference normalization');
+    }
   });
   test('Ayah repeat controller plays the exact target count', () => {
     let playCalls = 0;
@@ -77,6 +83,23 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
     }
   });
 
+  test('Ayah repeat controller supports continuous playback until detached', () => {
+    let playCalls = 0;
+    const audio = {
+      currentTime: 2,
+      play: () => { playCalls++; return Promise.resolve(); },
+      onended: null
+    } as unknown as HTMLAudioElement;
+    const current = { current: 1 };
+    const target = { current: null as number | null };
+    attachAyahRepeatHandler(audio, current, target, () => {}, () => { throw new Error('Continuous playback ended'); });
+    audio.onended?.(new Event('ended'));
+    audio.onended?.(new Event('ended'));
+    if (playCalls !== 2 || current.current !== 3) throw new Error('Continuous playback should replay each completed ayah');
+    audio.onended = null;
+    if (audio.onended !== null) throw new Error('Stopped playback must detach its ended callback');
+  });
+
   test('Every existing audio view applies the shared speed and renders the common control', () => {
     const library = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranLibraryView.tsx'), 'utf8');
     if (!library.includes('attachAyahRepeatHandler') || !library.includes('currentRepeatCountRef') || !library.includes('repeatTargetRef')) {
@@ -91,6 +114,9 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
       if (!source.includes('getSavedPlaybackRate') || !source.includes('audio.playbackRate') || !source.includes('AudioPlaybackRateControl')) {
         throw new Error(name + ' is missing the shared playback-speed integration');
       }
+    }
+    if (!session.includes('عدد مرات تكرار الصوت') || !session.includes('attachAyahRepeatHandler') || !session.includes('handleExit')) {
+      throw new Error('Memorization session is missing repeat selection, safe playback wiring, or exit cleanup');
     }
   });
   return { passed, failed };
