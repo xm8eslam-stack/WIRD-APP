@@ -529,7 +529,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
 
   console.log('\n--- 8. Honest Dynamic Test Question Generation ---');
   {
-    const emptyGen = generateDynamicTestQuestions('complete_verse', [], 5);
+    const emptyGen = await generateDynamicTestQuestions('complete_verse', [], 5);
     assert(emptyGen.questions.length === 0, 'Zero fallback questions generated from unmemorized content when profile is clean');
     assert(emptyGen.hasSufficientData === false, 'hasSufficientData is false when profile is clean');
     assert(typeof emptyGen.messageAr === 'string', 'Honest Arabic explanatory message returned for clean profile');
@@ -547,7 +547,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       easeFactor: 2.5,
       repetitionCount: 1
     };
-    const partialGen = generateDynamicTestQuestions('complete_verse', [singleVersePortion], 5);
+    const partialGen = await generateDynamicTestQuestions('complete_verse', [singleVersePortion], 5);
     assert(partialGen.questions.length === 0, 'Does not fabricate questions if memorized portion is too short');
     assert(partialGen.hasSufficientData === false, 'hasSufficientData is strictly false when target question count cannot be met');
 
@@ -564,7 +564,7 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
       easeFactor: 2.5,
       repetitionCount: 4
     };
-    const validGen = generateDynamicTestQuestions('complete_verse', [mulkPortion], 5);
+    const validGen = await generateDynamicTestQuestions('complete_verse', [mulkPortion], 5);
     assert(validGen.questions.length === 5, 'Generates full question set when sufficient memorized content exists');
     assert(validGen.hasSufficientData === true, 'hasSufficientData is true when full question set generated');
     assert(validGen.questions.every(q => q.isFromMemorizedPortion), 'Every generated question originates exclusively from user memorized portions');
