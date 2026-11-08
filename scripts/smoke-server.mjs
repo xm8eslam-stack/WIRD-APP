@@ -4,15 +4,19 @@ import { setTimeout as delay } from 'node:timers/promises';
 async function runServerSmoke(mode, port) {
   const baseUrl = `http://127.0.0.1:${port}`;
   const command = mode === 'development' ? 'dev' : 'start';
-  const server = spawn('npm', ['run', command], {
-    env: {
-      ...process.env,
-      NODE_ENV: mode === 'development' ? 'development' : 'production',
-      PORT: String(port),
-      GEMINI_API_KEY: ''
-    },
-    stdio: 'inherit'
-  });
+  const server = spawn(
+    process.platform === 'win32' ? 'cmd.exe' : 'npm',
+    process.platform === 'win32' ? ['/d', '/s', '/c', `npm.cmd run ${command}`] : ['run', command],
+    {
+      env: {
+        ...process.env,
+        NODE_ENV: mode === 'development' ? 'development' : 'production',
+        PORT: String(port),
+        GEMINI_API_KEY: ''
+      },
+      stdio: 'inherit'
+    }
+  );
 
   let exited = false;
   let exitCode = null;

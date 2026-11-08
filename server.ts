@@ -6,6 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 import tafsirHandler from './api/tafsir';
 import ruqyahHandler from './api/ruqyah';
 import quranAudioHandler from './api/quran-audio';
+import hadithReferencesHandler from './api/hadith-references';
 
 dotenv.config();
 
@@ -21,6 +22,11 @@ app.use(express.json({ limit: '1mb' }));
 // development and in the production Express server. Register before Vite's SPA fallback.
 app.all('/api/tafsir', (req: Request, res: Response) => {
   void tafsirHandler(req, res);
+});
+
+// Quran Foundation verse-to-hadith references. Credentials remain server-side.
+app.all('/api/hadith-references', (req: Request, res: Response) => {
+  void hadithReferencesHandler(req, res);
 });
 
 // Secure Arabic Ruqyah data proxy; the upstream API key remains server-side.

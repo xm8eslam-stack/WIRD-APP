@@ -26,11 +26,15 @@ import type { PlaybackRate } from '../../services/audioPreferences';
 import type { Ayah, ReciterId } from '../../types/quran';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { TafsirSheet } from './TafsirSheet';
+import type { ReadingKhatma } from '../../services/readingKhatmaService';
 
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
   onBack: () => void;
   initialPage?: number;
+  readingKhatma?: ReadingKhatma | null;
+  onMarkPageRead?: (page: number) => void;
+  readingKhatmaError?: string;
 }
 
 interface PageSegment {
@@ -70,7 +74,7 @@ function readBookmarks(): number[] {
   }
 }
 
-export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack, initialPage }) => {
+export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack, initialPage, readingKhatma, onMarkPageRead, readingKhatmaError }) => {
   const [page, setPage] = useState(() => Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage());
   const [pageInput, setPageInput] = useState(String(Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage()));
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
@@ -83,9 +87,11 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [tafsirAyah, setTafsirAyah] = useState<Ayah | null>(null);
+  const [pageTurnDirection, setPageTurnDirection] = useState<'next' | 'previous'>('next');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const autoPlayNextPageRef = useRef(false);
   const pendingTargetRef = useRef<{ surahNumber: number; ayahNumber: number } | null>(null);
+  const touchStartX = useRef<number | null>(null);
 
   const pageSegments = useMemo(() => PAGE_INDEX[String(page)] || [], [page]);
 
@@ -202,6 +208,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const changePage = (nextPage: number) => {
     if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > 604) return;
+    setPageTurnDirection(nextPage > page ? 'next' : 'previous');
     pendingTargetRef.current = null;
     autoPlayNextPageRef.current = false;
     stopAudio();
@@ -448,7 +455,12 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
       </header>
 
       {/* Royal Mushaf Page: Authentic Double Frame with Warm Parchment Paper */}
-      <main className="mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#fffefb] dark:bg-stone-900 px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors">
+      <main key={page} onTouchStart={event => { touchStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={event => {
+        const startX = touchStartX.current; touchStartX.current = null;
+        if (startX === null || event.changedTouches.length === 0) return;
+        const delta = event.changedTouches[0].clientX - startX;
+        if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
+      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#fffefb] dark:bg-stone-900 px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
         <div className="mb-8 flex items-center justify-between border-b-2 border-[#d4af37]/40 dark:border-[#785310]/60 pb-3 text-xs font-bold text-stone-600 dark:text-stone-400">
           <span className="font-quran text-base text-emerald-900 dark:text-emerald-300">
@@ -461,6 +473,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             الجزء {currentJuz}
           </span>
         </div>
+
+        {readingKhatma && !readingKhatma.completedAt && <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs dark:bg-emerald-950/40">
+          <span className="text-stone-700 dark:text-stone-200">ختمة القراءة · {readingKhatma.completedPages.length} / 604 صفحة</span>
+          <button type="button" onClick={() => onMarkPageRead?.(page)} disabled={readingKhatma.completedPages.includes(page)} className="min-h-11 rounded-lg bg-emerald-800 px-3 py-2 font-bold text-white disabled:bg-emerald-100 disabled:text-emerald-900 dark:disabled:bg-emerald-900 dark:disabled:text-emerald-100">
+            {readingKhatma.completedPages.includes(page) ? 'تم تسجيل الصفحة كمقروءة' : 'تسجيل الصفحة كمقروءة'}
+          </button>
+        </div>}
+        {readingKhatmaError && <p role="alert" className="mb-4 rounded-lg bg-rose-50 p-3 text-xs text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{readingKhatmaError}</p>}
 
         {/* Loading State */}
         {isLoading && (

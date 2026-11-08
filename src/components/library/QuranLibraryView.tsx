@@ -34,6 +34,9 @@ import type { PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { QuranMushafReader } from './QuranMushafReader';
 import { QURAN_JUZ_STARTS } from '../../data/quranNavigationIndex.generated';
+import { clearReadingKhatma, markReadingPage, readReadingKhatma, startReadingKhatma } from '../../services/readingKhatmaService';
+import type { ReadingKhatma } from '../../services/readingKhatmaService';
+import { ReadingKhatmaPanel } from './ReadingKhatmaPanel';
 
 interface QuranLibraryViewProps {
   onStartSession: (surahNumber: number, startAyah?: number, endAyah?: number) => void;
@@ -64,6 +67,8 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
   const [showMushafReader, setShowMushafReader] = useState(false);
   const [mushafInitialPage, setMushafInitialPage] = useState<number | undefined>(undefined);
   const [copiedAyahNumber, setCopiedAyahNumber] = useState<number | null>(null);
+  const [readingKhatma, setReadingKhatma] = useState<ReadingKhatma | null>(() => readReadingKhatma());
+  const [readingKhatmaError, setReadingKhatmaError] = useState('');
 
   // Audio state
   const [activeReciter, setActiveReciter] = useState<ReciterId>(initialReciter || 'alafasy');
@@ -277,6 +282,9 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
         preferredReciter={activeReciter}
         initialPage={mushafInitialPage}
         onBack={() => setShowMushafReader(false)}
+        readingKhatma={readingKhatma}
+        readingKhatmaError={readingKhatmaError}
+        onMarkPageRead={page => { try { setReadingKhatma(markReadingPage(page)); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر تسجيل الصفحة.'); } }}
       />
     );
   }
@@ -285,6 +293,13 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-24">
+      <ReadingKhatmaPanel
+        khatma={readingKhatma}
+        error={readingKhatmaError}
+        onStart={() => { try { setReadingKhatma(startReadingKhatma()); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر بدء الختمة.'); } }}
+        onReset={() => { try { clearReadingKhatma(); setReadingKhatma(null); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر إعادة ضبط الختمة.'); } }}
+        onContinue={page => handleOpenMushafPage(page)}
+      />
       {/* 1. Hero Quran.com Header Banner */}
       <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#047857] text-white p-7 md:p-10 shadow-lg border border-emerald-700/60">
         <div className="absolute top-0 left-0 w-80 h-80 bg-radial from-amber-400/20 via-transparent to-transparent rounded-full -translate-x-20 -translate-y-20 pointer-events-none" />

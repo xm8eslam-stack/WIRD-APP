@@ -17,6 +17,7 @@ import { Ayah } from '../../types/quran';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { getTafsir, TAFSIR_EDITIONS, TafsirBookOption } from '../../services/tafsirService';
 import { parseTafsirToSegments, sanitizeTafsirToPlainText } from '../../utils/tafsirSanitizer';
+import { RelatedHadithPanel } from '../shared/RelatedHadithPanel';
 
 interface TafsirSheetProps {
   ayah: Ayah | null;
@@ -342,6 +343,8 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
               لا يتوفر نص تفسير متاح لهذه الآية في الطبعة المحددة حالياً.
             </div>
           )}
+
+          <RelatedHadithPanel ayah={ayah} />
 
           {/* Footer Metadata & Status */}
           <div className="pt-4 border-t border-stone-200 dark:border-stone-800 flex flex-wrap items-center justify-between gap-3 text-[11px] text-stone-500 dark:text-stone-400">
