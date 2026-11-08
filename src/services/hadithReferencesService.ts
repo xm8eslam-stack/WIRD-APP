@@ -4,6 +4,7 @@ export interface RelatedHadith {
   hadithNumber: string;
   body: string;
   grades: Array<{ graded_by: string; grade: string }>;
+  authenticityBasis: 'explicit_grade' | 'sahih_collection';
   bookNumber?: string;
   chapterId?: string;
   chapterNumber?: string;
@@ -25,19 +26,22 @@ export async function getRelatedSahihHadiths(surahNumber: number, ayahNumber: nu
   if (!payload || typeof payload !== 'object' || !('verseKey' in payload) || payload.verseKey !== `${surahNumber}:${ayahNumber}` || !('hadiths' in payload) || !Array.isArray(payload.hadiths) || payload.hadiths.length > 5 || !('hasMore' in payload) || typeof payload.hasMore !== 'boolean') throw new Error('استجابة مصدر الأحاديث غير صالحة.');
   const hadiths: RelatedHadith[] = [];
   for (const item of payload.hadiths) {
-    if (!item || typeof item !== 'object' || typeof item.name !== 'string' || !item.name.trim() || typeof item.collection !== 'string' || !item.collection.trim() || typeof item.hadithNumber !== 'string' || !item.hadithNumber.trim() || typeof item.body !== 'string' || !item.body.trim() || item.body.length > 25_000 || !Array.isArray(item.grades)) {
+    if (!item || typeof item !== 'object' || typeof item.name !== 'string' || !item.name.trim() || typeof item.collection !== 'string' || !item.collection.trim() || typeof item.hadithNumber !== 'string' || !item.hadithNumber.trim() || typeof item.body !== 'string' || !item.body.trim() || item.body.length > 25_000 || !Array.isArray(item.grades) || (item.authenticityBasis !== 'explicit_grade' && item.authenticityBasis !== 'sahih_collection')) {
       throw new Error('استجابة مصدر الأحاديث غير صالحة.');
     }
     const grades = item.grades.filter((grade: any) => grade && typeof grade.graded_by === 'string' && grade.graded_by.trim() && typeof grade.grade === 'string' && grade.grade.trim());
-    if (!grades.some((grade: any) => /^(sahih|صحيح)$/i.test(grade.grade.trim()))) {
-      throw new Error('استجابة مصدر الأحاديث لا تتضمن حكمًا صريحًا بالصحة.');
-    }
+    const hasExplicitSahih = grades.some((grade: any) => /^(sahih|صحيح)$/i.test(grade.grade.trim()));
+    const isCanonicalSahihCollection = item.collection === 'bukhari' || item.collection === 'muslim';
+    if (item.authenticityBasis === 'explicit_grade' && !hasExplicitSahih) throw new Error('استجابة مصدر الأحاديث لا تتضمن حكمًا صريحًا بالصحة.');
+    if (item.authenticityBasis === 'sahih_collection' && (!isCanonicalSahihCollection || grades.length > 0)) throw new Error('أساس التصحيح غير متوافق مع مجموعة الحديث.');
+    if (!hasExplicitSahih && !isCanonicalSahihCollection) throw new Error('مصدر الحديث لا يثبت صحته.');
     hadiths.push({
       name: item.name,
       collection: item.collection,
       hadithNumber: item.hadithNumber,
       body: item.body,
       grades,
+      authenticityBasis: item.authenticityBasis,
       ...(typeof item.bookNumber === 'string' ? { bookNumber: item.bookNumber } : {}),
       ...(typeof item.chapterId === 'string' ? { chapterId: item.chapterId } : {}),
       ...(typeof item.chapterNumber === 'string' ? { chapterNumber: item.chapterNumber } : {}),
