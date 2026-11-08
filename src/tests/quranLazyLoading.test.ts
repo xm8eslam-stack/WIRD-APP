@@ -40,6 +40,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     const loader = read('src/data/quranDataLoader.ts');
     assert(loader.includes("import.meta.glob<{ default: Ayah[] }>") , 'Vite must discover generated Surah chunks');
     assert(loader.includes('surahCache'), 'Repeated requests must reuse the same loaded Surah');
+    assert(loader.includes("import.meta.glob<string[]>('./quran-simple-surahs/*.json')") && loader.includes('loadSimpleAyahText'), 'Tanzil Simple text must be loaded from cached per-Surah chunks');
     assert(!loader.includes("from './completeQuranData.json'") && !loader.includes("import('./completeQuranData.json')"), 'Lazy loader must not import the full Quran JSON');
   });
 
@@ -55,10 +56,12 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
 
   test('Development and production builds generate chunks before Vite starts', () => {
     const pkg = JSON.parse(read('package.json'));
-    assert(pkg.scripts.predev === 'node scripts/split-quran-data.mjs', 'Dev startup must generate Surah chunks');
-    assert(pkg.scripts.prebuild === 'node scripts/split-quran-data.mjs', 'Production build must generate Surah chunks');
-    assert(pkg.scripts.pretest === 'node scripts/split-quran-data.mjs', 'Tests must generate page-index data before importing it');
-    assert(pkg.scripts.prelint === 'node scripts/split-quran-data.mjs', 'TypeScript validation must generate page-index data');
+    for (const scriptName of ['predev', 'prebuild', 'pretest', 'prelint']) {
+      const command = pkg.scripts[scriptName] || '';
+      assert(command.includes('node scripts/validate-quran-simple.mjs'), scriptName + ' must validate the official Simple source');
+      assert(command.includes('node scripts/split-quran-data.mjs'), scriptName + ' must generate canonical Surah chunks and page indexes');
+      assert(command.includes('node scripts/split-quran-simple-data.mjs'), scriptName + ' must generate the local Simple Surah chunks');
+    }
   });
 
   test('Revision center loads a single ayah on demand instead of importing the full Quran', () => {

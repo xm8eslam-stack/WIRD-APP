@@ -32,7 +32,7 @@ export function runQuranTypographyTests(): { passed: number; failed: number } {
   test('Shared Quran renderer preserves supplied string and isolates RTL without normalization', () => {
     const component = fs.readFileSync(path.resolve(process.cwd(), 'src/components/shared/QuranText.tsx'), 'utf8');
     assert(component.includes('lang="ar"') && component.includes('dir="rtl"'), 'Renderer must declare Arabic RTL semantics');
-    assert(component.includes('{children}'), 'Renderer must render the original string directly');
+    assert(component.includes('{displayText}') && component.includes('setDisplayText(children)'), 'Renderer must preserve the supplied string as the fallback while loading the coordinate-matched Simple text');
     assert(!/normalize\s*\(|replace\s*\(|toLocale|toLowerCase/.test(component), 'Renderer must not mutate Quran text');
   });
 
