@@ -134,16 +134,16 @@ export default function App() {
 
   // Tab Title mapping
   const tabTitles: Record<NavTabId, string> = {
-    dashboard: 'لوحة المتابعة اليومية',
-    library: 'المصحف والمكتبة القرآنية',
-    plans: 'محرك وخطط حفظ القرآن الكريم',
-    session: 'جلسة الحفظ اليومية التفاعلية',
-    revision: 'مركز المراجعة والتثبيت (التكرار المتباعد)',
-    tests: 'اختبارات الحفظ والتقييم',
-    progress: 'المصحف التفاعلي والتقارير',
-    advisor: 'المستشار القرآني ومنهجيات الحفظ',
-    ruqyah: 'الرقية الشرعية الكاملة (آيات وأدعية الشفاء)',
-    settings: 'الإعدادات والملف الشخصي'
+    dashboard: 'الرئيسية',
+    library: 'القرآن الكريم',
+    plans: 'خطط الحفظ',
+    session: 'جلسة الحفظ',
+    revision: 'المراجعة والتثبيت',
+    tests: 'اختبارات الحفظ',
+    progress: 'التقدم والإنجاز',
+    advisor: 'المستشار القرآني',
+    ruqyah: 'الرقية الشرعية',
+    settings: 'الإعدادات'
   };
 
   const refreshJournaledSnapshots = () => {
