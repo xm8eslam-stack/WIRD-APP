@@ -16,7 +16,7 @@ export async function loadSurahVerses(surahNumber: number): Promise<Ayah[]> {
   if (!loader) throw new Error('Missing local Quran chunk for Surah ' + surahNumber + '. Run the Quran chunk generator.');
 
   const pending = loader()
-    .then(module => Array.isArray(module.default?.ayahs) && module.default.surahNumber === surahNumber ? module.default.ayahs : [])
+    .then(module => Array.isArray(module.default) ? module.default : [])
     .catch(error => {
       surahCache.delete(surahNumber);
       throw error;
@@ -49,7 +49,7 @@ async function loadSimpleSurahTexts(surahNumber: number): Promise<SimpleAyahReco
   const loader = simpleSurahModules[modulePath];
   if (!loader) throw new Error('Missing local Tanzil Simple chunk for Surah ' + surahNumber + '. Run the Quran data generator.');
   const pending = loader()
-    .then(module => Array.isArray(module.default) ? module.default : [])
+    .then(module => Array.isArray(module.default?.ayahs) && module.default.surahNumber === surahNumber ? module.default.ayahs : [])
     .catch(error => { simpleSurahCache.delete(surahNumber); throw error; });
   simpleSurahCache.set(surahNumber, pending);
   return pending;
