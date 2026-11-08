@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   CheckCircle, 
   RotateCcw, 
@@ -17,7 +17,7 @@ import { MUTASHABIHAT_DATA } from '../../data/mutashabihatData';
 import { TestResult, WirdPortion } from '../../types/quran';
 import { RetentionService } from '../../services/retentionService';
 import { createSecureId } from '../../services/secureId';
-import { VERIFIED_AYAHS } from '../../data/verifiedAyahs';
+import { loadSimpleAyahText } from '../../data/quranDataLoader';
 import { generateDynamicTestQuestions, GeneratedQuestion } from '../../services/testQuestionGenerator';
 
 interface MemorizationTestsViewProps {
@@ -57,6 +57,34 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
   const currentQuestions = generationResult.questions;
   const currentQ = currentQuestions[currentQuestionIndex] || currentQuestions[0];
+  const [displayPrompt, setDisplayPrompt] = useState('');
+  const [displayOptions, setDisplayOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!currentQ) { setDisplayPrompt(''); setDisplayOptions([]); return () => { active = false; }; }
+    const resolveDisplayText = async () => {
+      let prompt = currentQ.prompt;
+      if (currentQ.promptAyahNumber && currentQ.promptCanonicalText) {
+        const simpleText = await loadSimpleAyahText(currentQ.surahNumber, currentQ.promptAyahNumber);
+        if (!simpleText) throw new Error('Missing Simple prompt text');
+        prompt = prompt.replace(currentQ.promptCanonicalText, simpleText);
+      }
+      let options = [...currentQ.options];
+      if (currentQ.optionAyahCoordinates?.length) {
+        if (currentQ.optionAyahCoordinates.length !== options.length) throw new Error('Option coordinates do not match option count');
+        const simpleOptions = await Promise.all(currentQ.optionAyahCoordinates.map(coordinate => loadSimpleAyahText(coordinate.surahNumber, coordinate.ayahNumber)));
+        if (simpleOptions.some(option => !option)) throw new Error('Missing Simple option text');
+        options = simpleOptions as string[];
+      }
+      if (active) { setDisplayPrompt(prompt); setDisplayOptions(options); }
+    };
+    resolveDisplayText().catch(error => {
+      console.error('[WIRD MemorizationTests] Could not resolve official Simple text:', error);
+      if (active) { setDisplayPrompt('تعذر تحميل النص الإملائي المعتمد للاختبار.'); setDisplayOptions([]); }
+    });
+    return () => { active = false; };
+  }, [currentQ]);
 
   const handleSelectOption = (index: number) => {
     if (isAnswered) return;
@@ -335,13 +363,13 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
           {/* Prompt */}
           <div className="space-y-3">
             <h3 className="font-quran text-xl md:text-2xl text-stone-900 dark:text-stone-100 leading-relaxed text-right bg-[#fdfbf7] dark:bg-stone-900/60 p-5 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
-              {currentQ.prompt}
+              {displayPrompt || 'جارٍ تحميل النص الإملائي المعتمد...'}
             </h3>
           </div>
 
           {/* Options with Arabic letter marks (أ، ب، ج، د) */}
           <div className="space-y-3">
-            {currentQ.options.map((opt, idx) => {
+            {displayOptions.map((opt, idx) => {
               const isSelected = selectedOption === idx;
               const isCorrect = idx === currentQ.correctIndex;
               const letterMark = ARABIC_OPTION_LETTERS[idx] || 'أ';
