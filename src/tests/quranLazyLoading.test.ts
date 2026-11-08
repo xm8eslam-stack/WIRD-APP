@@ -40,7 +40,7 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     const loader = read('src/data/quranDataLoader.ts');
     assert(loader.includes("import.meta.glob<{ default: Ayah[] }>") , 'Vite must discover generated Surah chunks');
     assert(loader.includes('surahCache'), 'Repeated requests must reuse the same loaded Surah');
-    assert(loader.includes("import.meta.glob<{ default: SimpleAyahRecord[] }>('./quran-simple-surahs/*.json')") && loader.includes('loadSimpleAyahText') && loader.includes('ayah.surahNumber === surahNumber') && loader.includes('ayah.ayahNumber === ayahNumber'), 'Tanzil Simple text must be loaded from cached per-Surah chunks');
+    assert(loader.includes("import.meta.glob<{ default: SimpleSurahChunk }>('./quran-simple-surahs/*.json')") && loader.includes('loadSimpleAyahText') && loader.includes('ayah.surahNumber === surahNumber') && loader.includes('ayah.ayahNumber === ayahNumber') && loader.includes('module.default?.ayahs') && loader.includes('module.default.surahNumber === surahNumber'), 'Tanzil Simple text must be loaded from cached per-Surah chunks');
     assert(!loader.includes("from './completeQuranData.json'") && !loader.includes("import('./completeQuranData.json')"), 'Lazy loader must not import the full Quran JSON');
   });
 

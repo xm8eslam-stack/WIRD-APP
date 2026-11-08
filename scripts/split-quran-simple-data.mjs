@@ -22,7 +22,16 @@ for (let i = 0; i < surahs.length; i++) {
     return { surahNumber, ayahNumber, text: m[2] };
   });
   const target = path.join(outputDir, surahNumber + '.json');
-  const serialized = JSON.stringify(verses);
+  const chunk = {
+    source: 'Tanzil Project',
+    version: 'Quran Text (Simple), Version 1.1',
+    copyright: 'Copyright (C) 2007-2026 Tanzil Project',
+    license: 'Creative Commons Attribution 3.0 (CC BY 3.0)',
+    sourceUrl: 'https://tanzil.net',
+    surahNumber,
+    ayahs: verses
+  };
+  const serialized = JSON.stringify(chunk);
   if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') !== serialized) fs.writeFileSync(target, serialized, 'utf8');
   total += verses.length;
 }

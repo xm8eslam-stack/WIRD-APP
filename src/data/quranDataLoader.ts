@@ -16,7 +16,7 @@ export async function loadSurahVerses(surahNumber: number): Promise<Ayah[]> {
   if (!loader) throw new Error('Missing local Quran chunk for Surah ' + surahNumber + '. Run the Quran chunk generator.');
 
   const pending = loader()
-    .then(module => Array.isArray(module.default) ? module.default : [])
+    .then(module => Array.isArray(module.default?.ayahs) && module.default.surahNumber === surahNumber ? module.default.ayahs : [])
     .catch(error => {
       surahCache.delete(surahNumber);
       throw error;
@@ -37,7 +37,8 @@ export function getAyahWords(text: string): string[] {
  
 // Tanzil Simple is stored separately from the canonical Uthmani corpus and loaded per surah.
 interface SimpleAyahRecord { surahNumber: number; ayahNumber: number; text: string; }
-const simpleSurahModules = import.meta.glob<{ default: SimpleAyahRecord[] }>('./quran-simple-surahs/*.json');
+interface SimpleSurahChunk { source: string; version: string; copyright: string; license: string; sourceUrl: string; surahNumber: number; ayahs: SimpleAyahRecord[]; }
+const simpleSurahModules = import.meta.glob<{ default: SimpleSurahChunk }>('./quran-simple-surahs/*.json');
 const simpleSurahCache = new Map<number, Promise<SimpleAyahRecord[]>>();
 
 async function loadSimpleSurahTexts(surahNumber: number): Promise<SimpleAyahRecord[]> {
@@ -70,5 +71,7 @@ export async function loadSimpleAyahRange(surahNumber: number, startAyah: number
 
 /** Resolve the display spelling asynchronously while preserving the canonical Uthmani Ayah.text field. */
 export async function getAyahDisplayText(ayah: Ayah): Promise<string> {
-  return await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah) ?? ayah.text;
+  const simpleText = await loadSimpleAyahText(ayah.surahNumber, ayah.numberInSurah);
+  if (!simpleText) throw new Error('Missing verified Tanzil Simple text for ' + ayah.surahNumber + ':' + ayah.numberInSurah);
+  return simpleText;
 }
