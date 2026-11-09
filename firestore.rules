@@ -57,8 +57,7 @@ service cloud.firestore {
           'deviceId',
           'mutationId',
           'baseRevision',
-          'revision',
-          'deletedAt'
+          'revision'
         ])
         && data.schemaVersion is int
         && data.schemaVersion == 1
@@ -75,12 +74,7 @@ service cloud.firestore {
         && data.baseRevision >= 0
         && data.revision is int
         && data.revision > 0
-        && data.revision == data.baseRevision + 1
-        && (
-          !('deletedAt' in data)
-          || data.deletedAt == null
-          || data.deletedAt is timestamp
-        );
+        && data.revision == data.baseRevision + 1;
     }
 
     function hasMatchingSequenceAfter(uid, eventId) {
@@ -168,7 +162,7 @@ service cloud.firestore {
           && data.documentId.size() > 0
           && data.documentId.size() <= 1500
           && !data.documentId.matches('.*[/].*')
-          && data.operation in ['upsert', 'tombstone']
+          && data.operation == 'upsert'
           && data.baseRevision is int
           && data.baseRevision >= 0
           && data.revision is int
@@ -238,7 +232,8 @@ service cloud.firestore {
         && request.resource.data.baseRevision == resource.data.revision
         && request.resource.data.revision == resource.data.revision + 1
         && hasMatchingEventAfter(uid);
-      // Deletions are represented by tombstones to prevent offline resurrection.
+      // Tombstone writes and physical deletes stay disabled until every collection
+      // has explicit, tested local projection and anti-resurrection semantics.
       allow delete: if false;
     }
 
