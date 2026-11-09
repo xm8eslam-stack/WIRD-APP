@@ -85,7 +85,7 @@ jobs:
         with:
           project_id: ${{ vars.FIREBASE_PROJECT_ID }}
 
-      - name: Verify deployed Firestore rules exactly match the reviewed repository source
+      - name: Verify deployed Firestore rules match the reviewed source or known deny-all bootstrap baseline
         shell: bash
         env:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
@@ -98,7 +98,7 @@ jobs:
             "$release_url")"
           ruleset_name="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["rulesetName"])' <<< "$release_json")"
           if [[ -z "$ruleset_name" ]]; then
-            echo "::error::No deployed default-database Firestore ruleset was returned; refusing an unreviewed bootstrap deployment."
+            echo "::error::No deployed default-database Firestore ruleset was returned; refusing deployment."
             exit 1
           fi
           ruleset_json="$(curl --fail --silent --show-error \
@@ -108,6 +108,7 @@ jobs:
           import hashlib
           import json
           import pathlib
+          import re
           import sys
 
           ruleset = json.loads(sys.argv[1])
@@ -121,15 +122,37 @@ jobs:
           if deployed is None:
               print("::error::The active production ruleset does not contain firestore.rules; refusing deployment.")
               raise SystemExit(1)
+
           local_hash = hashlib.sha256(local_source.encode()).hexdigest()
           deployed_hash = hashlib.sha256(deployed.encode()).hexdigest()
-          if local_source != deployed:
-              print("::error::Production Firestore rules differ from the reviewed repository file.")
-              print(f"Repository SHA-256: {local_hash}")
-              print(f"Production SHA-256: {deployed_hash}")
-              print("Review the production rules and reconcile them explicitly before deploying.")
-              raise SystemExit(1)
-          print(f"Production Firestore rules match firestore.rules (SHA-256 {local_hash}).")
+          if local_source == deployed:
+              print(f"Production Firestore rules match firestore.rules (SHA-256 {local_hash}).")
+              raise SystemExit(0)
+
+          # A one-time bootstrap is safe only from this exact deny-all policy.
+          # Ignore whitespace and a UTF-8 BOM, but do not ignore comments or alter tokens.
+          def compact(source):
+              return re.sub(r"\s+", "", source.lstrip("\ufeff"))
+
+          known_deny_all = (
+              "rules_version='2';"
+              "servicecloud.firestore{"
+              "match/databases/{database}/documents{"
+              "match/{document=**}{allowread,write:iffalse;}"
+              "}"
+              "}"
+          )
+          if compact(deployed) == known_deny_all:
+              print("Recognized the exact deny-all bootstrap policy; reviewed repository rules may now replace it.")
+              print(f"Production deny-all SHA-256: {deployed_hash}")
+              print(f"Reviewed repository SHA-256: {local_hash}")
+              raise SystemExit(0)
+
+          print("::error::Production Firestore rules differ from the reviewed source and are not the exact known deny-all baseline.")
+          print(f"Repository SHA-256: {local_hash}")
+          print(f"Production SHA-256: {deployed_hash}")
+          print("Refusing deployment; review and reconcile the active production rules explicitly.")
+          raise SystemExit(1)
           PY
 
       - name: Deploy Firestore Security Rules only
