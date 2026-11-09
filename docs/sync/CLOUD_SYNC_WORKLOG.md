@@ -142,3 +142,13 @@ On the same runtime source checkout SHA `4479dea4a177073e43c334dea5a34aa21251b23
 - `npm run smoke:server`: production and development server smoke passed.
 
 The GitHub Actions run `42671987530` for PR #181 completed with failure but exposed zero jobs and zero check runs via the public GitHub Actions API, so it provides no actionable failing step/log. The exact CI commands above were run independently in the sandbox instead. The browser smoke suite (`npx playwright test`) remains unverified in this follow-up because the sandbox stopped after the command window and a replacement sandbox could not be provisioned. No code, lockfile, production settings, or user data changes were pushed as part of these command checks.
+
+
+## 2026-11-09 — GitHub Actions full Quality Gate completed
+
+- GitHub Actions run **42675737240** (WIRD Quality Gate, run 3274) completed with conclusion **success** on PR #181 head SHA `0e4352e450a1492c7af0d4817e291744ba8e3ae8`.
+- All job steps completed successfully: dependency install, Playwright runner install, npm audit, automated suite, native API imports, approved Quran audio CDN byte-range checks, Firestore Rules Emulator, TypeScript, production build, server startup smoke, Chromium install, desktop/mobile Playwright smoke tests, diagnostics upload, and job cleanup.
+- The Playwright desktop/mobile browser suite is now CI-verified; this supersedes the earlier note that it had not yet been run in the independent sandbox pass.
+- PR #181 remains documentation-only (2 files). Runtime source baseline is still `4479dea4a177073e43c334dea5a34aa21251b23a`; no runtime code, production Firebase rules, Vercel sync flags, secrets, or user data were changed.
+- Vercel preview deployment for the latest PR head is `READY`; Vercel status check is success.
+- Release blockers remain unchanged: manually prove deployed Firebase rules parity; finish and test collection-safe tombstones/anti-resurrection, grouped `syncMeta` keep-local conflict semantics, and divergent Ruqyah V1 recovery; then complete a real authenticated production A↔B device test. Do not enable sync flags before those gates.
