@@ -1,4 +1,23 @@
 ### GOOGLE AI STUDIO HANDOFF
+
+## 2026-11-10 — Current verified state and continuation
+
+- Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
+- PR #191 merged opt-in offline app preparation. It caches same-origin JS/CSS, including lazy Quran chunks, after an explicit user action. Its exact PR head passed 614 assertions, 31 Firestore Rules tests, and 54 desktop/mobile Playwright tests. It does not cache audio, tafsir, API responses, Firebase/auth, or remote data.
+- Vercel Production deployment `dpl_7MrJV9KtkTT2PYEwnij2kXCRnXwW` is `READY` on the exact main SHA, but its build logs still emit `TS2688` for `vite/client`.
+- PR #192 is open on `bbd7966e1589a5392410e8b4e68a31f60cf1634d`; exact-head CI run `42721449912` passed and its preview is Ready. Preview logs no longer contain TS2688. It is not merged.
+- Firestore rules deployment workflow run `42691610063` succeeded against canonical project `wird-quran-app`; the deployed source commit `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` has the same `firestore.rules` blob SHA as current main (`6c9cbf1e7a1ebe4325240d751d40aec9efabc760`).
+- Vercel Production currently has both sync build flags set to `true`, although the repository release gate still does not approve full activation. This was observed only; no production setting was changed. Owner confirmation is required.
+- Vercel currently has `ISLAMICAPI_API_KEY` only for Preview; Production has `ISLAMICAPI_API_KEY1`, which `api/ruqyah.ts` does not read. This likely causes the explicit missing-key 503 in Production; it does not alone explain a reported 500. Secret values were not decrypted.
+- Vercel Authentication protection is enabled for all non-custom domains; only `wird-app.vercel.app` is listed. External public smoke and public-user access may be blocked. Do not change this without owner approval.
+- Ruqyah status: the UI uses seven curated Al Quran Cloud reciters for verse-by-verse playback. Complete Brief/Medium/Long recordings are not integrated; provider MP3 links remain unverified. The IslamicAPI proxy currently exposes only validated Quran coordinates, never provider-authored religious text.
+- Detailed current evidence and blockers: `docs/sync/RELEASE-GATES.md`; integration truth: `docs/ruqyah/INTEGRATION_SETUP.md`.
+- Release status: **HOLD**. No production smoke, full cloud-sync certification, or Google AI Studio synchronization is claimed.
+
+Next: owner decision on Production sync flags and public Vercel access; add the exact `ISLAMICAPI_API_KEY` Production variable and redeploy via approved settings; review/merge PR #192 only after exact-SHA checks and branch protections; continue tombstone/grouped-conflict and offline replay tests. Do not decrypt or copy secrets, alter production settings, or enable additional remote features without explicit approval.
+
+---
+
 - Date: 2026-11-07
 - Task: WIRD Canonical Firebase Project Unification & Atomic Transaction Resilience Verification
 - Modified files:
