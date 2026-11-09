@@ -172,3 +172,15 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Fresh sandbox verification on branch `fix/sync-legacy-tombstone-migration` from main SHA `1d97b918c4c1b0564ceb52405ab3e47abb528f80`: **602 application assertions passed, 0 failed**; TypeScript passed; production build passed (existing non-fatal large-chunk warning). Firestore Rules Emulator separately remains **31 passed, 0 failed** on the same main rules.
 - This intentionally fails closed for an account whose legacy outbox contains a tombstone: its local source is preserved and cloud migration pauses until a collection-specific recovery is performed. Do not delete that source or manually change its operation to upsert.
 - No production data, Firebase rules, Vercel flags, or secrets were changed by this patch. It is pending PR review/CI.
+
+
+## 2026-11-09 — Post-merge deployment and Firestore deployment preflight
+
+- PR #182 merged to `main` as commit `34aef1f06b8d476815d0823b752ea14347b826b1`. Its exact PR-head Quality Gate completed successfully: 602 application assertions, 31 Firestore Rules Emulator tests, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- Vercel Production deployment `dpl_HR7FyyiH3TRV7RVtpa7DiynExKQG` is `READY` on the exact merge commit `34aef1f06b8d476815d0823b752ea14347b826b1`.
+- Rechecked Vercel environment-variable names without decrypting values. Neither `VITE_WIRD_REVISIONED_SYNC_ENABLED` nor `VITE_WIRD_REMOTE_PROJECTION_ENABLED` is present. Cloud sync remains inactive; do not add or enable either flag yet.
+- Found that the existing manual Firebase Rules workflow deployed the checked-in file without first reading the active production release. Firebase documents that CLI deployment replaces rules currently published in the Firebase Console. This could overwrite a console-only production change.
+- Opened PR #183 (`safety/firestore-rules-deploy-preflight`) to authenticate with the Firebase Rules service account, read the active default-database release and ruleset through the Firebase Rules REST API, and compare the deployed `firestore.rules` byte-for-byte with the reviewed repository source before deployment. Missing release, missing file, inaccessible ruleset, or any mismatch fails closed and prints hashes only. The workflow remains manual and still requires exact project confirmation.
+- PR #183 CI is pending at this checkpoint; do not merge until its exact-head Quality Gate succeeds.
+- Attempted to provision a Vercel sandbox for a fresh post-merge checkout, but the Vercel Sandbox API returned 403 Forbidden. No CLI fallback is available in the current execution environment. No sandbox was created and no production state was changed.
+- Firebase production rules have still not been inspected or deployed. The manual setup of `FIREBASE_PROJECT_ID=wird-quran-app` and `FIREBASE_SERVICE_ACCOUNT_JSON` remains deferred until the workflow preflight is merged and reviewed.
