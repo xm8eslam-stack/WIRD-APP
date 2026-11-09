@@ -134,42 +134,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Personalized Welcome & Daily Ayah Banner */}
-      <section className="bg-gradient-to-l from-emerald-950 via-emerald-900 to-emerald-800 text-white rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden border border-emerald-800/60">
+      <section aria-labelledby="dashboard-welcome-title" className="wird-page-intro rounded-3xl p-5 md:p-7 relative overflow-hidden">
         {/* Subtle decorative radial atmosphere */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-radial from-amber-400/15 via-emerald-700/5 to-transparent rounded-full -translate-x-32 -translate-y-32 pointer-events-none" />
+        <div aria-hidden="true" className="wird-page-intro__glow absolute -top-28 -left-28 h-80 w-80 rounded-full pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl text-right">
-            <div className="flex items-center gap-2 text-amber-300 text-xs font-semibold">
-              <Sparkles className="w-4 h-4 text-amber-300" />
+            <div className="flex items-center gap-2 text-[var(--wird-primary-strong)] text-xs font-semibold">
+              <Sparkles className="w-4 h-4 text-[var(--wird-accent)]" />
               <span>وِردك القرآني اليومي رِفعةٌ لدرجاتك في الجنة</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran text-amber-50 leading-tight">
+            <h2 id="dashboard-welcome-title" className="wird-page-intro__heading text-2xl md:text-3xl font-extrabold tracking-tight font-quran leading-tight">
               السلام عليكم ورحمة الله، {profile.name}
             </h2>
-            <p className="text-emerald-100/90 text-sm md:text-base leading-relaxed font-quran pt-1">
+            <p className="wird-page-intro__copy text-sm md:text-base leading-relaxed font-quran pt-1">
               «وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ» — استعن بالله وابدأ وِردك ليظل كتاب الله غضاً طرياً في صدرك.
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button
-              disabled={dailyTask.source === 'blocked'}
-              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Play className="w-4 h-4 fill-emerald-950" />
-              <span>{dailyTask.source === 'blocked' ? 'افتح تفاصيل الخطة' : dailyTask.mode === 'review' ? `ابدأ مراجعة اليوم (سورة ${dailyTask.surahName})` : `ابدأ ورد اليوم (سورة ${dailyTask.surahName})`}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('revision')}
-              className="flex items-center gap-2 px-4 py-3 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 font-semibold text-xs md:text-sm rounded-xl border border-emerald-600/40 transition-colors"
-            >
-              <Repeat className="w-4 h-4" />
-              <span>المراجعة والتثبيت ({totalDueCount})</span>
-            </button>
-          </div>
+remove duplicated dashboard hero actions
         </div>
       </section>
 
