@@ -165,7 +165,7 @@ The desktop/mobile Playwright app-shell baseline is now merged and passing (PR #
 
 - PR #189 merged to `main` with merge commit `4780586b21cdb126578d4cd37f691d5cd4af8745`. Its tested PR head was `2534de4653a51fac60307af4e13b8dc3532447f4`.
 - Exact PR-head Quality Gate passed: automated test suites, Firestore Rules Emulator, TypeScript validation, production build, production server startup smoke, and desktop/mobile Chromium browser tests.
-- Vercel preview for the tested PR head reached `READY`. This is preview evidence, not yet proof that the production alias is serving the merge commit.
+- Vercel preview for the tested PR head reached `READY`. After merge, Vercel production deployment `dpl_4tTuhDnHE1PuczNPrkpy9AtahRCh` also reached `READY`, with `wird-app.vercel.app` as its alias and Git commit `4780586b21cdb126578d4cd37f691d5cd4af8745`.
 - Vite emits `wird-precache-manifest.json` from the production entry chunk and its static JS/CSS dependency graph. It does not traverse dynamic imports, so lazy routes and large Quran datasets are not indiscriminately downloaded at install time.
 - Service worker cache version is `wird-app-v3`. Installation caches the HTML shell, validates the generated manifest, and atomically adds same-origin JS/CSS assets before activation. A failed required asset prevents activation with a partial shell. The bounded opt-in EveryAyah session-audio cache remains separate and survives shell upgrades.
 - The worker continues to bypass application API paths. Firebase/authenticated responses, tafsir responses, private data, and secrets are not added to the precache manifest.
@@ -175,10 +175,10 @@ The desktop/mobile Playwright app-shell baseline is now merged and passing (PR #
 
 ### Remaining acceptance gates — not claimed as passed
 
-- Verify that the production Vercel alias serves the merge commit `4780586b21cdb126578d4cd37f691d5cd4af8745` and that the generated precache manifest is present in that deployment.
+- Vercel production build logs also contain repeated `TS2688: Cannot find type definition file for 'vite/client'` diagnostics during its serverless TypeScript transpilation phase, plus existing large-chunk warnings. The deployment still completed `READY`, and the exact-head GitHub TypeScript validation and production build passed. Track the Vercel-specific diagnostic separately; do not treat the successful deployment as proof that the diagnostic is resolved.
 - Test the installed production PWA on a real browser/device: load online once, go offline, reopen, confirm locally saved progress remains visible, reconnect, foreground/reopen, and confirm the pending count drains. Use a test-owned account/data only; do not risk live user data.
 - Verify a full authenticated offline mutation → browser termination/reopen → online replay journey in a controlled browser environment. The existing fake-IndexedDB close/reopen tests are storage-layer evidence, not a substitute for this real-browser journey.
 - Confirm behavior of routes that were not visited before going offline and remote-only content (tafsir, auth operations, external audio, hosted Quran font) individually. Only the static app shell and previously cached/runtime-fetched assets are covered by this change.
 - Production Firestore Rules deployment and the two production sync flags remain separate release gates. Do not enable either flag as part of this PWA change.
 
-**Release decision:** the offline app-shell implementation is merged and its CI browser test passes. Production deployment verification and real-device authenticated offline/reconnect acceptance remain outstanding. No Firebase rules, production secrets, environment variables, production sync flags, or remote-sync activation settings were changed.
+**Release decision:** the offline app-shell implementation is merged, its CI browser test passes, and the production deployment is `READY` on the production alias. Real-device authenticated offline/reconnect acceptance remains outstanding. No Firebase rules, production secrets, environment variables, production sync flags, or remote-sync activation settings were changed.
