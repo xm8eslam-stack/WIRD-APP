@@ -132,7 +132,7 @@ jobs:
           # A one-time bootstrap is safe only from this exact deny-all policy.
           # Ignore whitespace and a UTF-8 BOM, but do not ignore comments or alter tokens.
           def compact(source):
-              return re.sub(r"\\s+", "", source.lstrip("\\ufeff"))
+              return re.sub(r"\s+", "", source.lstrip("\ufeff"))
 
           known_deny_all = (
               "rules_version='2';"
