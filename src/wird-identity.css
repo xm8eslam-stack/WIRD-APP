@@ -116,3 +116,30 @@ body {
     display: none;
   }
 }
+
+
+/* Shared page introductions keep the product calm without flattening feature-specific surfaces. */
+.wird-page-intro {
+  background: var(--wird-surface);
+  color: var(--wird-text);
+  border: 1px solid var(--wird-border);
+  box-shadow: var(--wird-shadow);
+}
+
+.wird-page-intro__glow {
+  background: radial-gradient(circle, color-mix(in srgb, var(--wird-accent) 13%, transparent), transparent 68%);
+}
+
+.wird-page-intro__eyebrow {
+  color: var(--wird-primary-strong);
+  background: var(--wird-surface-muted);
+  border-color: var(--wird-border);
+}
+
+.wird-page-intro__heading {
+  color: var(--wird-text);
+}
+
+.wird-page-intro__copy {
+  color: var(--wird-muted);
+}
