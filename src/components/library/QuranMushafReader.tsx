@@ -288,9 +288,12 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               <ArrowRight className="h-4 w-4" /> العودة للفهرس
             </button>
             <div className="h-5 w-[1px] bg-stone-200 dark:bg-stone-700 mx-1 hidden sm:block" />
-            <span className="font-bold text-emerald-800 dark:text-emerald-400 text-sm hidden sm:inline">
-              مصحف المدينة المنورة
-            </span>
+            <div className="min-w-0">
+              <h2 className="font-bold text-stone-900 dark:text-stone-100 text-sm">مصحف المدينة المنورة</h2>
+              <p role="status" aria-label="موقع القراءة الحالي" aria-live="polite" aria-atomic="true" className="mt-0.5 text-[11px] text-stone-500 dark:text-stone-400">
+                سورة {primarySurah?.name || 'المصحف الشريف'} · الصفحة {page} من 604
+              </p>
+            </div>
           </div>
 
           {/* Quick Page Jump & Bookmarks */}
