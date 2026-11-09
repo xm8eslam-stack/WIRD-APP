@@ -95,7 +95,7 @@ function checkIsOnline(): boolean {
   return true;
 }
 
-class CloudSyncCoordinator {
+export class CloudSyncCoordinator {
   private listeners = new Set<SyncListener>();
   private syncInProgress = false;
   private syncRequestedWhileRunning = false;
