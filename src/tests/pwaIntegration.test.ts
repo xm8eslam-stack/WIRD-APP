@@ -89,6 +89,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(viteConfig.includes('allAssets'), 'Build must emit all lazy JS/CSS assets for explicit offline setup');
     assert(viteConfig.includes('item.type === \'chunk\''), 'Offline manifest must include lazy chunks');
     assert(worker.includes('wird-app-content-v1'), 'Full offline package must use a separate persistent cache');
+    assert(worker.includes('name !== CONTENT_CACHE_NAME'), 'Downloaded offline package must survive service-worker upgrades');
     assert(worker.includes('WIRD_PREPARE_OFFLINE_PACKAGE'), 'Worker must support explicit offline preparation');
     assert(worker.includes('cache.match(request)'), 'Retry must skip assets already cached');
     assert(worker.includes('MAX_OFFLINE_PACKAGE_ASSETS = 2000'), 'Offline manifest must have a defensive asset-count limit');
