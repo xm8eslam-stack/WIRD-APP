@@ -162,3 +162,13 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Clarified grouped `syncMeta` conflict semantics after inspecting implementation/tests: the **use-remote** decision path already applies the grouped transaction through one local journal transaction and archives/supersedes pending mutations for every affected collection; a targeted journal test covers it. The **keep-local** decision path remains deliberately blocked for grouped `syncMeta` and Ruqyah V2 until an atomic grouped rebase/queue implementation is designed and tested.
 - The tested engine-plan deletion path is an atomic full-snapshot upsert, not a per-document Firestore tombstone. Do not generalize this to all collections without reviewing their domain delete semantics.
 - No Firebase production rules were deployed and no Vercel flags or user data were changed. The Firestore rules patch is only in the PR branch pending CI and the later manual production deployment workflow.
+
+
+## 2026-11-09 — Legacy tombstone outbox migration containment
+
+- Found an additional compatibility edge: legacy localStorage outbox validation still accepted `operation: 'tombstone'`, and the importer would migrate it into IndexedDB even though current Firestore Rules now reject tombstone writes. That could leave an old account's upload queue permanently retrying a denied operation.
+- Updated `IndexedDbSyncJournal.importLegacyState` to reject any legacy tombstone before opening/committing the IndexedDB migration transaction. The error is explicit and the wrapper does not remove or rewrite the original localStorage source, so the full legacy outbox remains available for recovery; no partial upsert migration is committed.
+- Added an integration regression test through `LocalSyncOutbox.migrateLegacyToIndexedDb`: it verifies rejection, exact original localStorage bytes preserved, and zero new IndexedDB pending entries/events.
+- Fresh sandbox verification on branch `fix/sync-legacy-tombstone-migration` from main SHA `1d97b918c4c1b0564ceb52405ab3e47abb528f80`: **602 application assertions passed, 0 failed**; TypeScript passed; production build passed (existing non-fatal large-chunk warning). Firestore Rules Emulator separately remains **31 passed, 0 failed** on the same main rules.
+- This intentionally fails closed for an account whose legacy outbox contains a tombstone: its local source is preserved and cloud migration pauses until a collection-specific recovery is performed. Do not delete that source or manually change its operation to upsert.
+- No production data, Firebase rules, Vercel flags, or secrets were changed by this patch. It is pending PR review/CI.
