@@ -466,3 +466,10 @@ A second independent verification pass executed the workflow's npm commands on t
 - `npm run smoke:server`: production and development server smoke passed.
 
 PR #181's Actions run `42671987530` ended in failure while the GitHub API returned zero jobs and zero check runs, so no failing workflow step was available to diagnose. The same CI commands were independently run in the sandbox. Playwright desktop/mobile browser smoke remains unverified in this pass because the sandbox session expired before browser installation and replacement sandbox provisioning was rejected. These results are not evidence of Firebase production rules parity or a live authenticated two-device sync test.
+
+
+## 2026-11-09 — Final GitHub Actions Quality Gate evidence
+
+GitHub Actions run **42675737240** (WIRD Quality Gate, run 3274) completed with **success** on PR #181 head SHA `0e4352e450a1492c7af0d4817e291744ba8e3ae8`. Every step passed, including npm dependency audit, all 601 automated assertions, native API import smoke, 8/8 Quran audio CDN byte-range samples, 31 Firestore Rules Emulator tests, TypeScript, production build, production/development server smoke, Chromium installation, and desktop/mobile Playwright browser smoke tests. This supersedes the earlier failed zero-job Actions attempt and the interim note that Playwright remained unverified.
+
+The PR remains documentation-only; the runtime code tested by the earlier independent sandbox pass is unchanged at base SHA `4479dea4a177073e43c334dea5a34aa21251b23a`. Vercel preview is READY and its status is success. This CI result does not prove deployed Firebase rules parity, production sync activation, or an authenticated physical two-device round trip. No production rules, flags, secrets, or user data were changed. Remaining blockers are collection-safe tombstone/anti-resurrection behavior, grouped `syncMeta` keep-local conflict handling, divergent legacy Ruqyah V1 recovery, and the manual Firebase release gate followed by a real-device A↔B test.
