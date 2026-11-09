@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       project_id:
-        description: "Firebase project ID. Must exactly match the FIREBASE_PROJECT_ID repository variable."
+        description: "Must be exactly wird-quran-app, the canonical WIRD Firebase project."
         required: true
         type: string
       confirmation:
@@ -56,6 +56,7 @@ jobs:
         shell: bash
         env:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          CANONICAL_FIREBASE_PROJECT_ID: wird-quran-app
           CONFIRM_PROJECT_ID: ${{ inputs.project_id }}
           CONFIRMATION: ${{ inputs.confirmation }}
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
@@ -65,8 +66,16 @@ jobs:
             echo "::error::Type DEPLOY_FIRESTORE_RULES exactly to authorize deployment."
             exit 1
           fi
-          if [[ -z "$FIREBASE_PROJECT_ID" || "$CONFIRM_PROJECT_ID" != "$FIREBASE_PROJECT_ID" ]]; then
-            echo "::error::Input project ID must exactly match the FIREBASE_PROJECT_ID repository variable."
+          if [[ "$CANONICAL_FIREBASE_PROJECT_ID" != "wird-quran-app" ]]; then
+            echo "::error::Internal canonical Firebase project guard is misconfigured."
+            exit 1
+          fi
+          if [[ "$FIREBASE_PROJECT_ID" != "$CANONICAL_FIREBASE_PROJECT_ID" ]]; then
+            echo "::error::FIREBASE_PROJECT_ID must be exactly wird-quran-app. The legacy project is not an allowed deployment target."
+            exit 1
+          fi
+          if [[ "$CONFIRM_PROJECT_ID" != "$CANONICAL_FIREBASE_PROJECT_ID" ]]; then
+            echo "::error::The workflow input project_id must be exactly wird-quran-app."
             exit 1
           fi
           if [[ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]]; then
@@ -89,8 +98,13 @@ jobs:
         shell: bash
         env:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          CANONICAL_FIREBASE_PROJECT_ID: wird-quran-app
         run: |
           set -euo pipefail
+          if [[ "$FIREBASE_PROJECT_ID" != "$CANONICAL_FIREBASE_PROJECT_ID" ]]; then
+            echo "::error::Refusing to inspect rules for a non-canonical Firebase project."
+            exit 1
+          fi
           access_token="$(gcloud auth print-access-token)"
           release_url="https://firebaserules.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/releases/cloud.firestore"
           release_json="$(curl --fail --silent --show-error \
@@ -159,8 +173,13 @@ jobs:
         shell: bash
         env:
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          CANONICAL_FIREBASE_PROJECT_ID: wird-quran-app
         run: |
           set -euo pipefail
+          if [[ "$FIREBASE_PROJECT_ID" != "$CANONICAL_FIREBASE_PROJECT_ID" ]]; then
+            echo "::error::Refusing deployment: only wird-quran-app is an allowed target."
+            exit 1
+          fi
           npx --yes firebase-tools@15.0.0 deploy \
             --only firestore:rules \
             --project "$FIREBASE_PROJECT_ID" \
