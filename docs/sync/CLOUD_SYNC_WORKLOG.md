@@ -152,3 +152,13 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - PR #181 remains documentation-only (2 files). Runtime source baseline is still `4479dea4a177073e43c334dea5a34aa21251b23a`; no runtime code, production Firebase rules, Vercel sync flags, secrets, or user data were changed.
 - Vercel preview deployment for the latest PR head is `READY`; Vercel status check is success.
 - Release blockers remain unchanged: manually prove deployed Firebase rules parity; finish and test collection-safe tombstones/anti-resurrection, grouped `syncMeta` keep-local conflict semantics, and divergent Ruqyah V1 recovery; then complete a real authenticated production A↔B device test. Do not enable sync flags before those gates.
+
+
+## 2026-11-09 — Tombstone write-path containment and conflict-path clarification
+
+- Hardened checked-in Firestore Rules: revisioned state documents no longer accept a `deletedAt` field, and routed revisioned events now accept `operation == 'upsert'` only. Physical Firestore deletes remain denied. This prevents new unsupported tombstone events from being committed by a compliant client.
+- Updated the Rules Emulator test: a revisioned tombstone write and a physical delete are both expected to fail. Fresh local emulator result on the code branch plus this patch: **31 passed, 0 failed**. The same checkout also passed **601 application assertions**, TypeScript, production build, API import smoke, and server smoke.
+- Existing client protections remain: local journal enqueue rejects tombstones; remote inbox projector still blocks any already-existing/externally-created tombstone without advancing the cursor. The manual Firebase step must still verify deployed-rule parity and that no pre-existing tombstone event is pending before activation.
+- Clarified grouped `syncMeta` conflict semantics after inspecting implementation/tests: the **use-remote** decision path already applies the grouped transaction through one local journal transaction and archives/supersedes pending mutations for every affected collection; a targeted journal test covers it. The **keep-local** decision path remains deliberately blocked for grouped `syncMeta` and Ruqyah V2 until an atomic grouped rebase/queue implementation is designed and tested.
+- The tested engine-plan deletion path is an atomic full-snapshot upsert, not a per-document Firestore tombstone. Do not generalize this to all collections without reviewing their domain delete semantics.
+- No Firebase production rules were deployed and no Vercel flags or user data were changed. The Firestore rules patch is only in the PR branch pending CI and the later manual production deployment workflow.
