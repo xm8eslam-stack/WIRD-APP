@@ -431,3 +431,54 @@ This addendum supersedes only the time-sensitive source/deployment observations 
 - No Firebase/Firestore administration connector was available in the connected tools, and the attempted isolated Vercel sandbox provisioning was rejected by the API. The local execution container could not resolve GitHub for a checkout. Consequently, this session did not modify runtime code or independently rerun tests; it relied on the exact-SHA GitHub Quality Gate evidence above.
 - Production Firestore Rules deployment status remains unverified. Do not deploy rules or enable either gate until exact rules parity and safe data migration/conflict behavior are proven.
 - Open release blockers remain: tombstone semantics/resurrection prevention; atomic grouped `syncMeta` conflict decisions; divergent Ruqyah V1 preservation/reconciliation; broader cross-tab/account lifecycle/offline/crash/IndexedDB quota stress; and authenticated production A↔B verification.
+
+
+## 2026-11-09 — Post-approval independent verification addendum
+
+The audit's source-level conclusions were rechecked in a fresh Vercel Sandbox cloned from branch `fix/cloud-sync-production-readiness`, starting at exact SHA `4479dea4a177073e43c334dea5a34aa21251b23a`.
+
+Fresh results on that exact checkout:
+- Automated application suite: **601 passed, 0 failed**.
+- Firestore Rules Emulator: **31 passed, 0 failed** against the checked-in rules and demo project only.
+- TypeScript: passed.
+- Production build: passed (existing non-fatal large-chunk warning).
+- Native API import smoke: passed.
+- Production and development server smoke: passed.
+
+This raises confidence in the checked-in code and rules contract, but does not establish that the canonical Firebase project's deployed rules equal the checked-in file. No Firebase production read/write or rules deployment was performed because Firebase administrative actions were not exposed in the connected tool session. Vercel Production is Ready on the same SHA, but the two build-time sync flags remain absent; no upload/projection activation or physical-device round trip is claimed.
+
+The tombstone and grouped `syncMeta` limitations are intentional fail-closed behavior, not defects to bypass: tombstone enqueue is rejected locally and remote tombstone projection is blocked without cursor movement; grouped transaction application has local snapshot/rollback safeguards, while grouped conflict resolution is still unsupported. Divergent legacy Ruqyah V1 baselines remain preserved and blocked. These require explicit data-contract and recovery design plus targeted tests before activation.
+
+No runtime code, production rules, production flags, secrets, or user data were modified during this verification. See the worklog for the exact test commands and remaining release gates.
+
+
+## 2026-11-09 — npm/CI command parity addendum
+
+A second independent verification pass executed the workflow's npm commands on the same runtime source SHA `4479dea4a177073e43c334dea5a34aa21251b23a`:
+
+- `npm test`: 601 passed, 0 failed.
+- `npm audit --audit-level=high`: zero vulnerabilities in the npm-resolved dependency tree for this check.
+- `npm run smoke:api-imports`: passed.
+- Approved Quran audio CDN check: 8/8 byte-range samples passed (HTTP 206, audio/mpeg).
+- `npm run test:firestore-rules`: 31 passed, 0 failed in the demo Firestore emulator.
+- `npm run lint`: passed.
+- `npm run build`: passed, with the known non-fatal large-chunk warning.
+- `npm run smoke:server`: production and development server smoke passed.
+
+PR #181's Actions run `42671987530` ended in failure while the GitHub API returned zero jobs and zero check runs, so no failing workflow step was available to diagnose. The same CI commands were independently run in the sandbox. Playwright desktop/mobile browser smoke remains unverified in this pass because the sandbox session expired before browser installation and replacement sandbox provisioning was rejected. These results are not evidence of Firebase production rules parity or a live authenticated two-device sync test.
+
+
+## 2026-11-09 — Final GitHub Actions Quality Gate evidence
+
+GitHub Actions run **42675737240** (WIRD Quality Gate, run 3274) completed with **success** on PR #181 head SHA `0e4352e450a1492c7af0d4817e291744ba8e3ae8`. Every step passed, including npm dependency audit, all 601 automated assertions, native API import smoke, 8/8 Quran audio CDN byte-range samples, 31 Firestore Rules Emulator tests, TypeScript, production build, production/development server smoke, Chromium installation, and desktop/mobile Playwright browser smoke tests. This supersedes the earlier failed zero-job Actions attempt and the interim note that Playwright remained unverified.
+
+The PR remains documentation-only; the runtime code tested by the earlier independent sandbox pass is unchanged at base SHA `4479dea4a177073e43c334dea5a34aa21251b23a`. Vercel preview is READY and its status is success. This CI result does not prove deployed Firebase rules parity, production sync activation, or an authenticated physical two-device round trip. No production rules, flags, secrets, or user data were changed. Remaining blockers are collection-safe tombstone/anti-resurrection behavior, grouped `syncMeta` keep-local conflict handling, divergent legacy Ruqyah V1 recovery, and the manual Firebase release gate followed by a real-device A↔B test.
+
+
+## 2026-11-09 — Tombstone hardening and grouped conflict-path clarification
+
+A narrow fail-closed mitigation was added to the PR branch: Firestore Rules now accept only revisioned `upsert` events and state envelopes without `deletedAt`; physical deletes remain denied. This closes the remote write path for tombstones until collection-specific local projection and anti-resurrection semantics exist. The Rules Emulator test now asserts both tombstone transactions and physical deletes are denied. Local journal enqueue already rejects tombstones, while the projector remains fail-closed for any pre-existing or externally-created tombstone without moving its cursor. Production rules parity and absence of pre-existing tombstone events must still be manually verified before activation.
+
+The grouped `syncMeta` paths were also distinguished precisely: the use-remote conflict decision is implemented and covered by a journal test that atomically applies all child projections and handles affected pending mutations; the keep-local grouped conflict decision remains unsupported and must not be simulated by splitting the group. The engine-plan delete test exercises an atomic full-snapshot upsert, not generic tombstone semantics.
+
+Fresh local verification after the Rules patch: 31 Firestore Rules Emulator tests passed; 601 application assertions passed; TypeScript, production build, API import smoke, and production/development server smoke passed. This does not prove deployed production rules parity or a real authenticated two-device round trip. No production rules, flags, secrets, or user data were changed.

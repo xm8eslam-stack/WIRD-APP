@@ -110,3 +110,55 @@ Every continuation must:
 - Current blocker ordering: (1) prove production rules parity; (2) close/contain tombstone behavior and resurrection; (3) design atomic grouped `syncMeta` conflict handling; (4) preserve and safely handle divergent Ruqyah V1; (5) expand lifecycle/offline/crash tests; (6) complete authenticated production two-device verification.
 - Next session must begin by checking this exact checkpoint and continue with a test-capable checkout. No claims of sync activation until a real two-device round trip is observed.
 - Audit addendum commit: `4243dc7be4ec8b578d9854874249501d5f804144`.
+
+
+## 2026-11-09 — Independent sandbox verification after approval
+
+- User approved the bounded work scope: isolated GitHub branch, code/rules/tests review, Firebase production verification when administrative access is available, Vercel flag configuration only after release gates, and no destructive production data operations.
+- Created branch `fix/cloud-sync-production-readiness` from main SHA `4479dea4a177073e43c334dea5a34aa21251b23a`.
+- Created a Vercel Sandbox, cloned the branch, and confirmed the checkout HEAD exactly matched `4479dea4a177073e43c334dea5a34aa21251b23a`.
+- Fresh local verification on that exact checkout: **601 automated assertions passed, 0 failed** (`bun run test`). The sync-specific suite included 40 passing assertions, including blocked tombstones, durable conflict archives, grouped transaction initialization, and Ruqyah V2 merge/recovery cases.
+- Fresh Firestore Rules Emulator verification: **31 passed, 0 failed** (`bun run test:firestore-rules`). This ran against the checked-in `firestore.rules` only, using demo project `demo-wird`; it is not production rules deployment evidence.
+- Fresh TypeScript check passed (`bun run lint`). Fresh Vite production build passed (`bun run build`); the existing large-chunk warning remains non-fatal.
+- API import smoke passed (`bun run smoke:api-imports`). Production and development server smoke both passed (`bun run smoke:server`).
+- Dependency setup note: `bun install --frozen-lockfile` correctly refused because the existing `bun.lock` does not reflect the current `package.json` overrides. A non-frozen install resolved the manifest; the lockfile was restored afterward. No dependency or generated Quran data changes are intended for this branch.
+- Confirmed source-level safety behavior: local journal enqueue rejects tombstones before creating an event; projector blocks remote tombstones without advancing the cursor; grouped `syncMeta` projection uses one logical local transaction with snapshot/rollback verification, but grouped conflict decision executors remain unsupported. Divergent legacy Ruqyah V1 baselines remain blocked.
+- Vercel project inventory rechecked without decrypting values: both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` remain absent. Latest Production deployment is `READY` on `4479dea4a177073e43c334dea5a34aa21251b23a`; this is deploy evidence only, not sync activation evidence.
+- GitHub combined status for the same SHA reports Vercel success. The connector's commit-workflow-runs helper returned no PR-triggered runs for this main commit; the fresh sandbox commands above are the direct test evidence for this checkpoint.
+- No runtime code, Firestore production rules, Vercel environment variables, secrets, or production data were changed. The branch is intentionally left as a verified checkpoint pending the remaining production gates below.
+- Remaining hard gates: obtain Firebase administrative project access to verify deployed rules parity; design/test safe collection-specific tombstones and anti-resurrection; implement atomic grouped `syncMeta` conflict decisions (never split into child writes); preserve/resolve divergent Ruqyah V1 only with evidence; then perform authenticated production A↔B real-device verification. Do not activate either production flag before these gates.
+
+
+## 2026-11-09 — Exact CI command parity follow-up
+
+On the same runtime source checkout SHA `4479dea4a177073e43c334dea5a34aa21251b23a`, repeated the repository's GitHub Actions commands using npm (not only Bun):
+- `npm test`: **601 passed, 0 failed**.
+- `npm audit --audit-level=high`: **0 vulnerabilities** in the npm-resolved dependency tree used for this check.
+- `npm run smoke:api-imports`: passed.
+- `node scripts/check-ruqyah-audio-source.mjs`: **8/8** approved CDN samples returned HTTP 206 audio/mpeg with byte-range support.
+- `npm run test:firestore-rules`: **31 passed, 0 failed** in demo project `demo-wird` emulator.
+- `npm run lint`: passed.
+- `npm run build`: passed; existing non-fatal large-chunk warning remains.
+- `npm run smoke:server`: production and development server smoke passed.
+
+The GitHub Actions run `42671987530` for PR #181 completed with failure but exposed zero jobs and zero check runs via the public GitHub Actions API, so it provides no actionable failing step/log. The exact CI commands above were run independently in the sandbox instead. The browser smoke suite (`npx playwright test`) remains unverified in this follow-up because the sandbox stopped after the command window and a replacement sandbox could not be provisioned. No code, lockfile, production settings, or user data changes were pushed as part of these command checks.
+
+
+## 2026-11-09 — GitHub Actions full Quality Gate completed
+
+- GitHub Actions run **42675737240** (WIRD Quality Gate, run 3274) completed with conclusion **success** on PR #181 head SHA `0e4352e450a1492c7af0d4817e291744ba8e3ae8`.
+- All job steps completed successfully: dependency install, Playwright runner install, npm audit, automated suite, native API imports, approved Quran audio CDN byte-range checks, Firestore Rules Emulator, TypeScript, production build, server startup smoke, Chromium install, desktop/mobile Playwright smoke tests, diagnostics upload, and job cleanup.
+- The Playwright desktop/mobile browser suite is now CI-verified; this supersedes the earlier note that it had not yet been run in the independent sandbox pass.
+- PR #181 remains documentation-only (2 files). Runtime source baseline is still `4479dea4a177073e43c334dea5a34aa21251b23a`; no runtime code, production Firebase rules, Vercel sync flags, secrets, or user data were changed.
+- Vercel preview deployment for the latest PR head is `READY`; Vercel status check is success.
+- Release blockers remain unchanged: manually prove deployed Firebase rules parity; finish and test collection-safe tombstones/anti-resurrection, grouped `syncMeta` keep-local conflict semantics, and divergent Ruqyah V1 recovery; then complete a real authenticated production A↔B device test. Do not enable sync flags before those gates.
+
+
+## 2026-11-09 — Tombstone write-path containment and conflict-path clarification
+
+- Hardened checked-in Firestore Rules: revisioned state documents no longer accept a `deletedAt` field, and routed revisioned events now accept `operation == 'upsert'` only. Physical Firestore deletes remain denied. This prevents new unsupported tombstone events from being committed by a compliant client.
+- Updated the Rules Emulator test: a revisioned tombstone write and a physical delete are both expected to fail. Fresh local emulator result on the code branch plus this patch: **31 passed, 0 failed**. The same checkout also passed **601 application assertions**, TypeScript, production build, API import smoke, and server smoke.
+- Existing client protections remain: local journal enqueue rejects tombstones; remote inbox projector still blocks any already-existing/externally-created tombstone without advancing the cursor. The manual Firebase step must still verify deployed-rule parity and that no pre-existing tombstone event is pending before activation.
+- Clarified grouped `syncMeta` conflict semantics after inspecting implementation/tests: the **use-remote** decision path already applies the grouped transaction through one local journal transaction and archives/supersedes pending mutations for every affected collection; a targeted journal test covers it. The **keep-local** decision path remains deliberately blocked for grouped `syncMeta` and Ruqyah V2 until an atomic grouped rebase/queue implementation is designed and tested.
+- The tested engine-plan deletion path is an atomic full-snapshot upsert, not a per-document Firestore tombstone. Do not generalize this to all collections without reviewing their domain delete semantics.
+- No Firebase production rules were deployed and no Vercel flags or user data were changed. The Firestore rules patch is only in the PR branch pending CI and the later manual production deployment workflow.
