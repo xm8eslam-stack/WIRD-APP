@@ -556,10 +556,13 @@ export class IndexedDbSyncJournal {
 
     const pendingIds = new Set<string>();
     for (const item of state.pending) {
+      if (item?.operation === 'tombstone') {
+        throw new Error('صندوق المزامنة القديم يحتوي على عملية حذف غير مدعومة؛ احتفظنا بالمصدر الأصلي ولم نرحّل أي عملية حتى لا تُرسل عملية لا تقبلها قواعد Firestore.');
+      }
       if (!item || !validMutationId(item.mutationId) || pendingIds.has(item.mutationId) ||
           !ALLOWED_COLLECTIONS.has(item.collection) || typeof item.documentId !== 'string' ||
           !item.documentId || item.documentId.includes('/') || byteLength(item.documentId) > 1500 ||
-          (item.operation !== 'upsert' && item.operation !== 'tombstone') || item.schemaVersion !== 1 ||
+          item.operation !== 'upsert' || item.schemaVersion !== 1 ||
           item.deviceId !== state.deviceId || !isRecord(item.payload) ||
           byteLength(JSON.stringify(item.payload)) > MAX_MUTATION_PAYLOAD_BYTES ||
           !Number.isSafeInteger(item.clientUpdatedAtMs) || item.clientUpdatedAtMs < 0 ||

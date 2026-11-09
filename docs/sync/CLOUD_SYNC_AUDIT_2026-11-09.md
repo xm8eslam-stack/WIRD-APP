@@ -482,3 +482,10 @@ A narrow fail-closed mitigation was added to the PR branch: Firestore Rules now 
 The grouped `syncMeta` paths were also distinguished precisely: the use-remote conflict decision is implemented and covered by a journal test that atomically applies all child projections and handles affected pending mutations; the keep-local grouped conflict decision remains unsupported and must not be simulated by splitting the group. The engine-plan delete test exercises an atomic full-snapshot upsert, not generic tombstone semantics.
 
 Fresh local verification after the Rules patch: 31 Firestore Rules Emulator tests passed; 601 application assertions passed; TypeScript, production build, API import smoke, and production/development server smoke passed. This does not prove deployed production rules parity or a real authenticated two-device round trip. No production rules, flags, secrets, or user data were changed.
+
+
+## 2026-11-09 — Legacy tombstone migration safety addendum
+
+The previous Rules hardening exposed a local compatibility path: `importLegacyState` still accepted tombstone entries from the v1 localStorage outbox and could import them into IndexedDB, where the new upsert-only Firestore Rules would reject their uploads indefinitely. The importer now rejects legacy tombstones before opening the IndexedDB write transaction. The calling migration wrapper retains the exact original localStorage bytes on rejection, preventing partial migration or data loss. A new integration test verifies the source remains unchanged and no partial IndexedDB event/outbox entries are committed.
+
+Fresh sandbox verification from main SHA `1d97b918c4c1b0564ceb52405ab3e47abb528f80` plus this patch: **602 application assertions passed, 0 failed**, TypeScript passed, and production build passed. Firestore Rules Emulator remains **31 passed, 0 failed**. This is a fail-closed recovery boundary: an account with a legacy tombstone will need manual, collection-specific recovery before cloud sync can proceed; do not rewrite or discard the preserved source. No production configuration or user data was changed.
