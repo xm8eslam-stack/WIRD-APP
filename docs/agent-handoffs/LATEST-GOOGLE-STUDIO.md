@@ -2,7 +2,7 @@
 
 ## 2026-11-10 — Current verified state and continuation
 
-- Current `main` SHA: `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
+- Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
 - PR #191 merged opt-in offline app preparation. It caches same-origin JS/CSS, including lazy Quran chunks, after an explicit user action. Its exact PR head passed 614 assertions, 31 Firestore Rules tests, and 54 desktop/mobile Playwright tests. It does not cache audio, tafsir, API responses, Firebase/auth, or remote data.
 - Vercel Production deployment `dpl_7MrJV9KtkTT2PYEwnij2kXCRnXwW` is `READY` on the exact main SHA, but its build logs still emit `TS2688` for `vite/client`.
 - PR #192 is open on `bbd7966e1589a5392410e8b4e68a31f60cf1634d`; exact-head CI run `42721449912` passed and its preview is Ready. Preview logs no longer contain TS2688. It is not merged.
