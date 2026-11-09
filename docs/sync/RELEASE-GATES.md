@@ -159,23 +159,26 @@ The desktop/mobile Playwright app-shell baseline is now merged and passing (PR #
 **At this historical checkpoint, release remained blocked.** PRs #149/#155 later implemented narrow use-remote and supported keep-local decisions. User-authored merge, tombstones, additive Ruqyah increments, full auth/CRUD/two-device browser journeys and real Firebase live verification remain outstanding; production rules are not claimed deployed; Vercel deployment remains rate-limited. Do not enable production sync flags.
 
 
-## Offline/PWA implementation checkpoint — PR #189 (2026-11-09)
+## Offline/PWA implementation checkpoint — PR #189 merged (2026-11-09)
 
-### Implemented in the current PR branch; pending exact-head CI and review
+### Implemented and merged to main
 
-- Vite now emits `wird-precache-manifest.json` from the production build output. It walks the entry chunk's static import graph and includes its imported CSS files. It deliberately does not traverse dynamic imports, so lazy routes and large Quran datasets are not indiscriminately downloaded at install time.
-- The service worker cache is versioned as `wird-app-v3`. During installation it first caches the HTML shell, then fetches and validates the generated manifest, and atomically adds the listed same-origin JavaScript/CSS assets. If a required asset is unavailable, installation fails rather than activating a worker with a partial critical shell. The existing bounded, explicitly requested EveryAyah audio cache remains separate and survives shell-cache upgrades.
-- API paths remain bypassed. Firebase/authenticated responses, tafsir responses, private data, and secrets are not added to the precache manifest.
-- A new Playwright Chromium test primes the app, waits for service-worker control, verifies that JS and CSS are in the v3 cache, switches the browser context offline, reloads, and asserts that the app root still renders. This is a browser test in CI, not yet a live-device acceptance test.
-- Existing IndexedDB journal tests already verify that a committed event and pending outbox mutation survive closing and reopening the IndexedDB connection. That is deterministic storage-layer evidence, but it is not the same as terminating and relaunching a real browser with an authenticated session.
-- The coordinator already retries on the browser `online` event, focus, pageshow, visible-tab changes, startup, mutation enqueue, and a 60-second foreground interval. The PR does not claim that the browser will upload while fully closed; recovery is expected when the app is reopened or foregrounded with connectivity.
+- PR #189 merged to `main` with merge commit `4780586b21cdb126578d4cd37f691d5cd4af8745`. Its tested PR head was `2534de4653a51fac60307af4e13b8dc3532447f4`.
+- Exact PR-head Quality Gate passed: automated test suites, Firestore Rules Emulator, TypeScript validation, production build, production server startup smoke, and desktop/mobile Chromium browser tests.
+- Vercel preview for the tested PR head reached `READY`. After merge, Vercel production deployment `dpl_4tTuhDnHE1PuczNPrkpy9AtahRCh` also reached `READY`, with `wird-app.vercel.app` as its alias and Git commit `4780586b21cdb126578d4cd37f691d5cd4af8745`.
+- Vite emits `wird-precache-manifest.json` from the production entry chunk and its static JS/CSS dependency graph. It does not traverse dynamic imports, so lazy routes and large Quran datasets are not indiscriminately downloaded at install time.
+- Service worker cache version is `wird-app-v3`. Installation caches the HTML shell, validates the generated manifest, and atomically adds same-origin JS/CSS assets before activation. A failed required asset prevents activation with a partial shell. The bounded opt-in EveryAyah session-audio cache remains separate and survives shell upgrades.
+- The worker continues to bypass application API paths. Firebase/authenticated responses, tafsir responses, private data, and secrets are not added to the precache manifest.
+- Playwright now verifies that the worker controls the page, JS/CSS exist in the v3 cache, and the app shell reloads while the browser context is offline. The test passed on both configured Chromium desktop and mobile projects.
+- A coordinator lifecycle test verifies that offline/online, focus, pageshow, and visible-tab events update state and request automatic retry attempts. Existing IndexedDB journal tests verify that a committed event and pending outbox mutation survive closing and reopening the database connection.
+- The coordinator retries queued work on reconnect, focus, pageshow, visible-tab changes, startup, mutation enqueue, and its foreground periodic interval. It does not promise background upload while the browser is fully closed.
 
-### Remaining acceptance gates
+### Remaining acceptance gates — not claimed as passed
 
-- Exact-head GitHub tests, TypeScript validation, production build, and desktop/mobile Playwright suites must all pass after the final PR commit.
-- Confirm the offline reload E2E on both configured Chromium projects and inspect any browser traces/failures.
-- Add/retain deterministic coverage for offline queue persistence and reconnect retry without using a real user account; verify all authenticated mutation paths continue to use the journal-first persistence layer.
-- After merge, verify the production deployment and test the installed PWA on a real browser/device: load online once, go offline, reopen, confirm locally saved progress remains visible, reconnect, foreground/reopen, and confirm the pending count drains. Do not treat a successful static-shell reload as proof of remote sync.
-- Production Firestore Rules deployment and the two production sync flags remain separate release gates. Do not enable either flag as part of this PR.
+- Vercel production build logs also contain repeated `TS2688: Cannot find type definition file for 'vite/client'` diagnostics during its serverless TypeScript transpilation phase, plus existing large-chunk warnings. The deployment still completed `READY`, and the exact-head GitHub TypeScript validation and production build passed. Track the Vercel-specific diagnostic separately; do not treat the successful deployment as proof that the diagnostic is resolved.
+- Test the installed production PWA on a real browser/device: load online once, go offline, reopen, confirm locally saved progress remains visible, reconnect, foreground/reopen, and confirm the pending count drains. Use a test-owned account/data only; do not risk live user data.
+- Verify a full authenticated offline mutation → browser termination/reopen → online replay journey in a controlled browser environment. The existing fake-IndexedDB close/reopen tests are storage-layer evidence, not a substitute for this real-browser journey.
+- Confirm behavior of routes that were not visited before going offline and remote-only content (tafsir, auth operations, external audio, hosted Quran font) individually. Only the static app shell and previously cached/runtime-fetched assets are covered by this change.
+- Production Firestore Rules deployment and the two production sync flags remain separate release gates. Do not enable either flag as part of this PWA change.
 
-**Release decision:** offline shell implementation is in review; offline acceptance is not yet passed. No Firebase rules, production secrets, environment variables, production sync flags, or remote-sync activation settings were changed.
+**Release decision:** the offline app-shell implementation is merged, its CI browser test passes, and the production deployment is `READY` on the production alias. Real-device authenticated offline/reconnect acceptance remains outstanding. No Firebase rules, production secrets, environment variables, production sync flags, or remote-sync activation settings were changed.
