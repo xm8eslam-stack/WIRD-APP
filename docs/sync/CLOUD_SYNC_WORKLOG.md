@@ -98,3 +98,15 @@ Every continuation must:
 - Worklog creation commit: `693252f74918c5767caa8d51ef696281890ad32b`.
 - Audit report commit: `bb3db8ec9c8ad3aa7bfece828b1afb9b2331c4a9`.
 - The current version of this file is the latest continuation checkpoint on `main`.
+
+
+## 2026-11-09 — Same-day activation readiness follow-up
+
+- Re-read the audit and worklog, then re-verified latest main: `b240f4018e0b77d5487bd58ffd0a9f8c75592e69`.
+- Exact-SHA Quality Gate run `42668329017` succeeded. Its steps include automated tests, Firestore Rules Emulator, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- Latest Vercel Production deployment `dpl_37KEV3k9vHmpcw3JgX8EhE91uvE4` is `READY` on the same SHA. Deployment lag is no longer the immediate blocker.
+- Re-inspected Vercel environment variable inventory without decrypting values. The two sync gates remain absent: `VITE_WIRD_REVISIONED_SYNC_ENABLED`, `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. Do not add/enable them yet.
+- No Firebase admin connector was available; sandbox provisioning was rejected; local container could not clone GitHub. No runtime code, secrets, production flags, rules, or data were changed in this session.
+- Current blocker ordering: (1) prove production rules parity; (2) close/contain tombstone behavior and resurrection; (3) design atomic grouped `syncMeta` conflict handling; (4) preserve and safely handle divergent Ruqyah V1; (5) expand lifecycle/offline/crash tests; (6) complete authenticated production two-device verification.
+- Next session must begin by checking this exact checkpoint and continue with a test-capable checkout. No claims of sync activation until a real two-device round trip is observed.
+- Audit addendum commit: `4243dc7be4ec8b578d9854874249501d5f804144`.
