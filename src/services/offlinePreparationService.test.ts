@@ -111,7 +111,7 @@ export async function runOfflinePreparationServiceTests(): Promise<{ passed: num
   });
 
   await test('rejects unsupported browsers and pages not yet controlled by the worker', async () => {
-    const restoreUnsupported = installNavigator({});
+    const restoreUnsupported = installNavigator();
     try {
       await expectError(prepareWirdForOffline(undefined, 1000), 'لا يدعم تجهيز وِرد');
     } finally {
