@@ -37,7 +37,9 @@
 
 ---
 
-## Latest verified update — PR #187 merged and production deployment READY (2026-11-09)
+## Historical checkpoint — PR #187 merged (2026-11-09; superseded by the 2026-11-10 update above)
+
+> The following records the state at the PR #187 checkpoint before the later Firestore Rules deployment and before the 2026-11-10 Vercel environment inventory. Use the latest update at the top for current operational state.
 
 - PR #187, **Automatic cloud-sync lifecycle**, merged into `main`. Exact PR head: `fddb169f3ca4192fe8d8136a5e6ba4cd880416da`; merge commit: `898058d492ef8b319972918fc1664151e001bcb2`.
 - Exact-head Quality Gate completed successfully: automated test suites, native TypeScript API import checks, approved Quran audio CDN/range checks, Firestore Rules Emulator tests, TypeScript validation, production build, server startup smoke, Chromium installation, and desktop/mobile Playwright smoke tests. No PR review threads remained.
@@ -67,20 +69,20 @@ A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Required before enabling production sync
 
-- [ ] All active user mutation paths are journaled and audited.
-- [ ] Firestore rules are deployed to the intended production Firebase project and verified to match the transaction contract.
-- [ ] Emulator-backed two-device contexts cover all eight populated collection routes and Ruqyah progress in both directions; real-device browser/device E2E is still required.
-- [ ] Offline retry, idempotent replay, timeout-after-acceptance, and restart tests pass.
+- [ ] All active user mutation paths are journaled and audited end-to-end, including recovery after failed local writes.
+- [x] Reviewed Firestore Rules were deployed to canonical project `wird-quran-app` by workflow run `42691610063`; the deployed source commit and current main have identical `firestore.rules` blob SHA `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. The deployment log confirms release to `cloud.firestore`; a separate post-deploy Rules API readback has not yet been run.
+- [x] Emulator-backed two-device service contexts cover all eight populated collection routes and Ruqyah progress in both directions in the previously recorded CI suite. Real-device authenticated browser/device E2E remains required.
+- [ ] Offline retry, idempotent replay, timeout-after-acceptance, and restart tests pass in real browser/device contexts. Existing service tests do not replace this end-to-end gate.
 - [ ] Same-document stale revision conflicts preserve both versions and have tested resolution paths. Use-latest-remote is implemented by PR #149; narrow keep-local re-publication for supported single-collection upserts by PR #155; compatible V2 Ruqyah counter merge by PR #157. Divergent legacy baselines, grouped syncMeta decisions, and user-authored merge remain open.
 - [ ] Tombstone projection, offline deletion, stale update rejection, and safe retention/compaction are implemented and tested.
 - [ ] Cross-tab sync serialization is tested in independent real browser contexts.
-- [ ] Account switch/logout/reinstall/schema migration tests pass.
-- [ ] Playwright desktop/mobile app-shell smoke and Ruqyah locator-library checks pass; full auth/CRUD/sync/two-device browser E2E remains outstanding.
+- [ ] Account switch/logout/reinstall/schema migration tests pass across authenticated browser contexts.
+- [x] PR #191 adds opt-in offline preparation for same-origin JS/CSS and passed 54 desktop/mobile Playwright tests, including offline Mushaf opening on desktop and mobile Settings reachability. Audio, tafsir, API, Firebase/auth, and remote data are excluded; real-device offline mutation/replay remains unverified.
 - [ ] Load/stress tests cover expected queue sizes and bounded retry behavior.
-- [ ] Remote projection and upload feature flags are reviewed and explicitly configured.
-- [ ] Production deployment is tied to the exact candidate SHA and a live URL smoke test passes.
+- [ ] Production upload/projection flags have explicit owner approval and are aligned with the completed release gates. The latest Vercel inventory currently shows both as `true`; this is configuration drift, not evidence that the full gate is passed.
+- [ ] Production deployment is tied to the exact candidate SHA and a live URL smoke test passes. The current Production deployment is Ready on main, but external smoke is blocked by Vercel Authentication protection on the only listed `wird-app.vercel.app` domain.
 
-## Current release decision
+## Historical release decision at the PR #187 checkpoint (superseded by the 2026-11-10 update)
 
 **Not approved for full production cloud-sync activation yet.** Since the PR #157 checkpoint, PR #187 has made sync retries respond to app startup/activity and coalesced in-flight triggers; its exact-head Quality Gate passed, and its merge SHA `898058d492ef8b319972918fc1664151e001bcb2` is deployed to Vercel production with state `READY`. The user has also manually verified bidirectional changes between computer and iPad. These are meaningful improvements, but they do not prove offline-first app operation or automatic offline recovery.
 
