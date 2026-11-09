@@ -2,10 +2,56 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
+import type {OutputChunk, Plugin} from 'vite';
+
+function offlineShellManifestPlugin(): Plugin {
+  return {
+    name: 'wird-offline-shell-manifest',
+    apply: 'build',
+    generateBundle(_options, bundle) {
+      const entry = Object.values(bundle).find(
+        (item): item is OutputChunk => item.type === 'chunk' && item.isEntry && item.name === 'index'
+      );
+      if (!entry) {
+        this.error('WIRD offline shell: Vite entry chunk "index" was not found.');
+      }
+
+      const assets = new Set<string>();
+      const visited = new Set<string>();
+      const visitStaticChunk = (fileName: string) => {
+        if (visited.has(fileName)) return;
+        visited.add(fileName);
+        const item = bundle[fileName];
+        if (!item || item.type !== 'chunk') return;
+
+        assets.add('/' + item.fileName);
+        const metadata = (item as OutputChunk & {
+          viteMetadata?: { importedCss?: Set<string> };
+        }).viteMetadata;
+        for (const cssFile of metadata?.importedCss || []) {
+          assets.add('/' + cssFile);
+        }
+        for (const importedFile of item.imports) {
+          visitStaticChunk(importedFile);
+        }
+      };
+
+      visitStaticChunk(entry.fileName);
+      this.emitFile({
+        type: 'asset',
+        fileName: 'wird-precache-manifest.json',
+        source: JSON.stringify({
+          schemaVersion: 1,
+          assets: [...assets].sort()
+        })
+      });
+    }
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), offlineShellManifestPlugin()],
     resolve: {
       alias: {
         '@': import.meta.dirname ?? path.resolve('.'),
