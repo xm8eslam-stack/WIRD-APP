@@ -93,9 +93,14 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(worker.includes('WIRD_PREPARE_OFFLINE_PACKAGE'), 'Worker must support explicit offline preparation');
     assert(worker.includes('cache.match(request)'), 'Retry must skip assets already cached');
     assert(worker.includes('MAX_OFFLINE_PACKAGE_ASSETS = 2000'), 'Offline manifest must have a defensive asset-count limit');
+    assert(worker.includes('OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000'), 'Each offline asset request must have a bounded timeout');
+    assert(worker.includes('validContentType'), 'Only valid JavaScript/CSS responses may enter the offline package cache');
+    assert(worker.includes('offlinePackagePreparationInProgress'), 'Concurrent full-package downloads must be rejected safely');
     assert(worker.includes("url.pathname.startsWith('/api/')"), 'API routes must remain excluded from static offline caching');
     assert(client.includes('prepareWirdForOffline'), 'Client must expose an explicit offline preparation action');
     assert(client.includes('onProgress'), 'Client must report download progress');
+    assert(client.includes('DEFAULT_OFFLINE_PREPARATION_TIMEOUT_MS'), 'The UI must not remain stuck indefinitely if the worker stops responding');
+    assert(client.includes('onmessageerror'), 'MessageChannel transport errors must be surfaced to the UI');
   });
 
   // 3. HTML integration

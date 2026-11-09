@@ -423,7 +423,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           نزّل ملفات الشاشات والبيانات البرمجية المؤجلة إلى هذا الجهاز لتعمل الأقسام التي لم تفتحها من قبل دون اتصال. التنزيل اختياري ويُحفظ تدريجيًا؛ إذا انقطع الاتصال يمكنك إعادة المحاولة لاستكمال الملفات المتبقية.
         </p>
         <p className="text-stone-500 dark:text-stone-400 leading-6">
-          هذا التجهيز لا ينزّل التلاوات الصوتية أو التفاسير والبيانات التي يوفرها خادم خارجي، ولا يضمن وحده أن كل ميزة أصبحت متاحة دون إنترنت.
+          هذا التجهيز لا ينزّل التلاوات الصوتية أو التفاسير والبيانات التي يوفرها خادم خارجي، ولا يضمن وحده أن كل ميزة أصبحت متاحة دون إنترنت. قد يستهلك مساحة من الجهاز، وقد يحذف المتصفح الملفات المخزنة عند ضغط المساحة؛ لذلك لا يُعد نسخة احتياطية.
         </p>
         {offlineProgress && (
           <div className="space-y-2" aria-live="polite">
@@ -431,7 +431,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <span>تم تنزيل {offlineProgress.completed} من {offlineProgress.total}</span>
               <span className="font-mono tabular-nums">{Math.round(offlineProgress.completed / Math.max(offlineProgress.total, 1) * 100)}%</span>
             </div>
-            <div className="h-2 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden">
+            <div
+              role="progressbar"
+              aria-label="تقدم تجهيز وِرد للعمل دون إنترنت"
+              aria-valuemin={0}
+              aria-valuemax={offlineProgress.total}
+              aria-valuenow={offlineProgress.completed}
+              className="h-2 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden"
+            >
               <div className="h-full bg-emerald-700 transition-all" style={{ width: `${offlineProgress.completed / Math.max(offlineProgress.total, 1) * 100}%` }} />
             </div>
           </div>
