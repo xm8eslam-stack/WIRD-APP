@@ -1,7 +1,8 @@
-const CACHE_NAME = 'wird-app-v2';
+const CACHE_NAME = 'wird-app-v3';
 const AUDIO_CACHE_NAME = 'wird-app-audio-v1';
 const MAX_SESSION_AUDIO_PRELOAD = 20;
 const MAX_AUDIO_CACHE_ENTRIES = 40;
+const PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json';
 
 async function trimAudioCache(cache) {
   const keys = await cache.keys();
@@ -29,6 +30,7 @@ async function cacheSessionAudio(rawUrls) {
     }
   }
 }
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -38,96 +40,97 @@ const STATIC_ASSETS = [
   '/apple-touch-icon.png'
 ];
 
-// Service Worker Install: Pre-cache core shell
+async function precacheApplicationShell(cache) {
+  await cache.addAll(STATIC_ASSETS);
+
+  const response = await fetch(PRECACHE_MANIFEST_URL, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('WIRD offline shell manifest is unavailable: ' + response.status);
+  }
+  const manifestForCache = response.clone();
+  const manifest = await response.json();
+  if (!manifest || manifest.schemaVersion !== 1 || !Array.isArray(manifest.assets) ||
+      manifest.assets.length === 0 || manifest.assets.length > 100) {
+    throw new Error('WIRD offline shell manifest has an invalid shape.');
+  }
+
+  const safeAssets = manifest.assets.filter((asset) => {
+    if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
+    const url = new URL(asset, self.location.origin);
+    return url.origin === self.location.origin &&
+      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+  });
+  if (safeAssets.length !== manifest.assets.length) {
+    throw new Error('WIRD offline shell manifest contains an unsupported asset URL.');
+  }
+
+  // addAll is atomic: the new worker is not activated with a partially cached app shell.
+  await cache.addAll(safeAssets);
+  await cache.put(PRECACHE_MANIFEST_URL, manifestForCache);
+  console.log('[WIRD SW] Cached application shell assets:', safeAssets.length);
+}
+
+// Service Worker Install: cache the HTML shell and its generated static JS/CSS dependency graph.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[WIRD SW] Pre-caching core application shell');
-      return cache.addAll(STATIC_ASSETS);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME)
+      .then((cache) => precacheApplicationShell(cache))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Service Worker Activate: Clean up old caches safely
+// Service Worker Activate: clean old shell versions while preserving session audio.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME)
-          .map((name) => {
-            console.log('[WIRD SW] Removing stale cache:', name);
-            return caches.delete(name);
-          })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((cacheNames) => Promise.all(
+      cacheNames
+        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME)
+        .map((name) => caches.delete(name))
+    )).then(() => self.clients.claim())
   );
 });
 
-// Service Worker Fetch: Network-First for SPA navigation, Cache-First for versioned assets
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
+  if (req.method !== 'GET' || !url.protocol.startsWith('http')) return;
+  if (url.pathname.startsWith('/api/')) return;
 
-  // Skip non-GET requests or requests to non-http(s) schemas
-  if (req.method !== 'GET' || !url.protocol.startsWith('http')) {
-    return;
-  }
-
-  // Do NOT cache Gemini or advisor API requests
-  if (url.pathname.startsWith('/api/')) {
-    return;
-  }
-
-  // Strategy 1: SPA Navigation Requests (Network-First with cached /index.html fallback)
+  // SPA navigations remain network-first, with a complete cached HTML fallback.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const copy1 = networkResponse.clone();
-            const copy2 = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put('/', copy1);
-              cache.put('/index.html', copy2);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(async () => {
-          console.log('[WIRD SW] Navigation offline fallback served');
-          const cache = await caches.open(CACHE_NAME);
-          const cachedIndex = await cache.match('/index.html') || await cache.match('/');
-          return cachedIndex || Response.error();
-        })
+      fetch(req).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const copy1 = networkResponse.clone();
+          const copy2 = networkResponse.clone();
+          void caches.open(CACHE_NAME).then((cache) => {
+            cache.put('/', copy1);
+            cache.put('/index.html', copy2);
+          });
+        }
+        return networkResponse;
+      }).catch(async () => {
+        const cache = await caches.open(CACHE_NAME);
+        return (await cache.match('/index.html')) || (await cache.match('/')) || Response.error();
+      })
     );
     return;
   }
 
-  // Strategy 2: Same-origin bundled assets & static files (Cache-First, fall back to network)
+  // Same-origin assets are cache-first; first-visit JS/CSS is already precached at install.
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
+        if (cachedResponse) return cachedResponse;
         return fetch(req).then((networkResponse) => {
-          // Validate before caching: must be valid 200 response
-          if (
-            networkResponse && 
-            networkResponse.status === 200 && 
-            networkResponse.type === 'basic' &&
-            !req.url.includes('/api/')
-          ) {
+          if (networkResponse && networkResponse.status === 200 &&
+              networkResponse.type === 'basic' && !url.pathname.startsWith('/api/')) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(req, responseToCache);
-            });
+            void caches.open(CACHE_NAME).then((cache) => cache.put(req, responseToCache));
           }
           return networkResponse;
-        }).catch((err) => {
-          console.warn('[WIRD SW] Asset fetch failed offline:', req.url, err);
+        }).catch((error) => {
+          console.warn('[WIRD SW] Asset fetch failed offline:', req.url, error);
           return Response.error();
         });
       })
@@ -135,8 +138,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 3: Session audio cache (EveryAyah). Only URLs explicitly pre-cached
-  // by the active memorization session are stored; other audio remains stream-only.
+  // Session audio cache: only explicitly selected EveryAyah recitations are stored.
   if (url.hostname === 'everyayah.com' && url.pathname.startsWith('/data/') && url.pathname.endsWith('.mp3')) {
     event.respondWith((async () => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
@@ -151,7 +153,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Strategy 4: Third-party static assets (Google Fonts)
+  // Cache public Google Fonts only; never cache authenticated or application API responses.
   if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
@@ -159,17 +161,15 @@ self.addEventListener('fetch', (event) => {
         return fetch(req).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const copy = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+            void caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
           }
           return networkResponse;
         }).catch(() => Response.error());
       })
     );
-    return;
   }
 });
 
-// Handle update messages from application client
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

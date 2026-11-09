@@ -48,7 +48,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(fs.existsSync(swPath), 'sw.js must exist in /public');
 
     const swContent = fs.readFileSync(swPath, 'utf8');
-    assert(swContent.includes("CACHE_NAME = 'wird-app-v2'"), 'SW must declare the upgraded shell cache version');
+    assert(swContent.includes("CACHE_NAME = 'wird-app-v3'"), 'SW must declare the upgraded shell cache version');
     assert(swContent.includes("AUDIO_CACHE_NAME = 'wird-app-audio-v1'"), 'Session audio must use a separate persistent cache');
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
@@ -60,6 +60,10 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes("caches.delete"), 'SW must clean up old versioned caches on activate');
     assert(swContent.includes("req.mode === 'navigate'"), 'SW must implement SPA navigation fallback');
     assert(swContent.includes("cache.match('/index.html')"), 'SW must fall back to /index.html offline');
+    assert(swContent.includes("PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json'"), 'SW must load the build-generated app-shell manifest');
+    assert(swContent.includes('precacheApplicationShell'), 'SW must precache the generated static dependency graph');
+    assert(swContent.includes('cache.addAll(safeAssets)'), 'SW must cache entry JS/CSS atomically before activation');
+    assert(swContent.includes('const manifestForCache = response.clone()'), 'SW must preserve the manifest response before consuming its JSON body');
     assert(!swContent.includes("tanzilReferenceData.json"), 'SW must NOT cache 2.9MB reference test dataset');
   });
 
@@ -67,6 +71,15 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     const sessionContent = fs.readFileSync(path.resolve('./src/components/session/MemorizationSessionView.tsx'), 'utf8');
     assert(sessionContent.includes("type: 'WIRD_CACHE_SESSION_AUDIO'"), 'Session must request its audio cache');
     assert(sessionContent.includes('sessionAyahs.slice(currentAyahIndex, currentAyahIndex + 20)'), 'Session must bound the number of audio URLs sent');
+  });
+
+  test('Vite emits a bounded dependency manifest for the first-visit app shell', () => {
+    const viteConfig = fs.readFileSync(path.resolve('./vite.config.ts'), 'utf8');
+    assert(viteConfig.includes('offlineShellManifestPlugin'), 'Vite must install the offline shell manifest plugin');
+    assert(viteConfig.includes('wird-precache-manifest.json'), 'Vite must emit a generated precache manifest');
+    assert(viteConfig.includes('item.imports'), 'Static chunk dependencies must be traversed recursively');
+    assert(viteConfig.includes('importedCss'), 'Imported CSS dependencies must be included');
+    assert(!viteConfig.includes('dynamicImports'), 'Lazy routes and large Quran datasets must not be force-preloaded');
   });
 
   // 3. HTML integration

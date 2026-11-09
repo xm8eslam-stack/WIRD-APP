@@ -1,4 +1,4 @@
-import { cloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus, LEGACY_REMOTE_STATE_COLLECTIONS } from './cloudSyncCoordinator';
+import { cloudSyncCoordinator, CloudSyncCoordinator, CloudSyncState, getCloudSyncCompletionStatus, LEGACY_REMOTE_STATE_COLLECTIONS } from './cloudSyncCoordinator';
 import { StorageService, buildDemoEnginePlan } from './storageService';
 import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, mergeRuqyahProgressSnapshots, resetRuqyahProgressCounter } from './ruqyahProgressSchema';
 import type { SuiteResult } from '../tests/runAllTests';
@@ -19,6 +19,59 @@ export async function runCloudSyncCoordinatorTests(): Promise<SuiteResult> {
       console.error(`  ❌ ${message}`);
       failed++;
     }
+  }
+
+
+  // The real browser lifecycle listeners must automatically retry queued work on reconnect/foreground.
+  const originalWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  const fakeWindow = new EventTarget();
+  const fakeDocument = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
+  const fakeNavigator = { onLine: false };
+  try {
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: fakeWindow });
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: fakeDocument });
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: fakeNavigator });
+    const lifecycleCoordinator = new CloudSyncCoordinator();
+    let automaticAttempts = 0;
+    lifecycleCoordinator.triggerSync = async () => { automaticAttempts++; return true; };
+
+    fakeWindow.dispatchEvent(new Event('offline'));
+    assert(lifecycleCoordinator.getState().status === 'offline' &&
+      lifecycleCoordinator.getState().isOnline === false,
+      'Offline browser event updates coordinator state without discarding the durable outbox');
+
+    fakeNavigator.onLine = true;
+    fakeWindow.dispatchEvent(new Event('online'));
+    assert(automaticAttempts === 1 && lifecycleCoordinator.getState().isOnline,
+      'Browser reconnect automatically triggers a sync attempt without a manual action');
+
+    fakeWindow.dispatchEvent(new Event('focus'));
+    fakeWindow.dispatchEvent(new Event('pageshow'));
+    assert(automaticAttempts === 3,
+      'Returning to an open app or restoring its page automatically retries pending sync');
+
+    fakeDocument.visibilityState = 'hidden';
+    fakeDocument.dispatchEvent(new Event('visibilitychange'));
+    assert(automaticAttempts === 3,
+      'Hidden tabs do not start unnecessary foreground sync attempts');
+
+    fakeDocument.visibilityState = 'visible';
+    fakeDocument.dispatchEvent(new Event('visibilitychange'));
+    assert(automaticAttempts === 4,
+      'Making the app visible again automatically retries pending sync');
+
+    lifecycleCoordinator.stopPeriodicSync();
+  } catch (error: any) {
+    assert(false, `Automatic network lifecycle retry test failed: ${error?.message || error}`);
+  } finally {
+    if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
+    else Reflect.deleteProperty(globalThis, 'document');
+    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator);
+    else Reflect.deleteProperty(globalThis, 'navigator');
   }
 
   // A remote read is not a completed remote import/projection.
