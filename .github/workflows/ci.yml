@@ -24,8 +24,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           package-manager-cache: false
+      - name: Verify Node.js runtime matches Vercel
+        run: node -e "if (process.versions.node.split('.')[0] !== '26') process.exit(1)"
       - name: Setup Bun for lockfile verification
         uses: oven-sh/setup-bun@v2
       - name: Refresh Bun lockfile for the new rules-test dependency
