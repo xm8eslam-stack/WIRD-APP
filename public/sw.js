@@ -116,7 +116,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => Promise.all(
       cacheNames
-        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME)
+        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME)
         .map((name) => caches.delete(name))
     )).then(() => self.clients.claim())
   );
