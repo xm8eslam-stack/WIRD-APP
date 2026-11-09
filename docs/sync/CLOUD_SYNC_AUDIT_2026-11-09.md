@@ -417,3 +417,17 @@ The safe next step is not to turn on the flags immediately. It is to close the r
 - Sync state machine: https://github.com/xm8eslam-stack/WIRD-APP/blob/main/docs/sync/STATE-MACHINE.md
 - Sync test matrix: https://github.com/xm8eslam-stack/WIRD-APP/blob/main/docs/sync/TEST-MATRIX.md
 - Persistent worklog: [CLOUD_SYNC_WORKLOG.md](./CLOUD_SYNC_WORKLOG.md)
+
+
+## Follow-up verification — 2026-11-09 (latest main checkpoint)
+
+This addendum supersedes only the time-sensitive source/deployment observations above; the architectural risks and historical test limitations remain applicable.
+
+- Current `main` HEAD re-verified from the branch endpoint: `b240f4018e0b77d5487bd58ffd0a9f8c75592e69` (documentation checkpoint).
+- GitHub Quality Gate run `42668329017` on this exact SHA completed with conclusion `success`. The job's listed steps all completed successfully: automated tests, native API import smoke, approved Quran audio CDN checks, Firestore Rules Emulator, TypeScript, production build, server startup smoke, and desktop/mobile browser smoke. This is CI/emulator evidence, not production Firestore rule deployment or two-real-device evidence.
+- Latest Vercel Production deployment: `dpl_37KEV3k9vHmpcw3JgX8EhE91uvE4`, state `READY`, built from the same `b240f401...` SHA. This resolves the previously recorded deployment-lag observation for this checkpoint.
+- Latest inspected Vercel project environment inventory (names/targets only; `decrypt=false`) still does not include `VITE_WIRD_REVISIONED_SYNC_ENABLED` or `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. Firebase web config keys are present for Production and Preview; values were not read. Therefore the production sync gates remain off by default.
+- The Vercel deployment is current, but neither feature gate is enabled and no production sync transaction has been proven. Do not infer cloud sync availability from deployment READY.
+- No Firebase/Firestore administration connector was available in the connected tools, and the attempted isolated Vercel sandbox provisioning was rejected by the API. The local execution container could not resolve GitHub for a checkout. Consequently, this session did not modify runtime code or independently rerun tests; it relied on the exact-SHA GitHub Quality Gate evidence above.
+- Production Firestore Rules deployment status remains unverified. Do not deploy rules or enable either gate until exact rules parity and safe data migration/conflict behavior are proven.
+- Open release blockers remain: tombstone semantics/resurrection prevention; atomic grouped `syncMeta` conflict decisions; divergent Ruqyah V1 preservation/reconciliation; broader cross-tab/account lifecycle/offline/crash/IndexedDB quota stress; and authenticated production A↔B verification.
