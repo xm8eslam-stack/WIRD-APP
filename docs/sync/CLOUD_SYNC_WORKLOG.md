@@ -127,3 +127,18 @@ Every continuation must:
 - GitHub combined status for the same SHA reports Vercel success. The connector's commit-workflow-runs helper returned no PR-triggered runs for this main commit; the fresh sandbox commands above are the direct test evidence for this checkpoint.
 - No runtime code, Firestore production rules, Vercel environment variables, secrets, or production data were changed. The branch is intentionally left as a verified checkpoint pending the remaining production gates below.
 - Remaining hard gates: obtain Firebase administrative project access to verify deployed rules parity; design/test safe collection-specific tombstones and anti-resurrection; implement atomic grouped `syncMeta` conflict decisions (never split into child writes); preserve/resolve divergent Ruqyah V1 only with evidence; then perform authenticated production A↔B real-device verification. Do not activate either production flag before these gates.
+
+
+## 2026-11-09 — Exact CI command parity follow-up
+
+On the same runtime source checkout SHA `4479dea4a177073e43c334dea5a34aa21251b23a`, repeated the repository's GitHub Actions commands using npm (not only Bun):
+- `npm test`: **601 passed, 0 failed**.
+- `npm audit --audit-level=high`: **0 vulnerabilities** in the npm-resolved dependency tree used for this check.
+- `npm run smoke:api-imports`: passed.
+- `node scripts/check-ruqyah-audio-source.mjs`: **8/8** approved CDN samples returned HTTP 206 audio/mpeg with byte-range support.
+- `npm run test:firestore-rules`: **31 passed, 0 failed** in demo project `demo-wird` emulator.
+- `npm run lint`: passed.
+- `npm run build`: passed; existing non-fatal large-chunk warning remains.
+- `npm run smoke:server`: production and development server smoke passed.
+
+The GitHub Actions run `42671987530` for PR #181 completed with failure but exposed zero jobs and zero check runs via the public GitHub Actions API, so it provides no actionable failing step/log. The exact CI commands above were run independently in the sandbox instead. The browser smoke suite (`npx playwright test`) remains unverified in this follow-up because the sandbox stopped after the command window and a replacement sandbox could not be provisioned. No code, lockfile, production settings, or user data changes were pushed as part of these command checks.
