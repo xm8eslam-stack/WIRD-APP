@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig} from 'vite';
-import type {OutputChunk, Plugin} from 'vite';
+import type {Plugin} from 'vite';
 
 function offlineShellManifestPlugin(): Plugin {
   return {
@@ -10,7 +10,7 @@ function offlineShellManifestPlugin(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       const entry = Object.values(bundle).find(
-        (item): item is OutputChunk => item.type === 'chunk' && item.isEntry && item.name === 'index'
+        item => item.type === 'chunk' && item.isEntry && item.name === 'index'
       );
       if (!entry) {
         this.error('WIRD offline shell: Vite entry chunk "index" was not found.');
@@ -25,7 +25,7 @@ function offlineShellManifestPlugin(): Plugin {
         if (!item || item.type !== 'chunk') return;
 
         assets.add('/' + item.fileName);
-        const metadata = (item as OutputChunk & {
+        const metadata = (item as typeof item & {
           viteMetadata?: { importedCss?: Set<string> };
         }).viteMetadata;
         for (const cssFile of metadata?.importedCss || []) {
