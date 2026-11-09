@@ -2,7 +2,8 @@ name: WIRD Quality Gate
 
 on:
   push:
-    branches: ['**']
+    branches: [main] # Feature-branch commits are validated by their PR run; avoid duplicate full suites.
+  workflow_dispatch:
   pull_request:
     branches: [main]
 
