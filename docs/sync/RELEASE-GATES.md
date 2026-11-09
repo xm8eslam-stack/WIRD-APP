@@ -1,6 +1,19 @@
 # WIRD Sync Release Gates
 
-## Latest verified update — PR #157 merged (2026-11-07)
+## Latest verified update — PR #187 merged and production deployment READY (2026-11-09)
+
+- PR #187, **Automatic cloud-sync lifecycle**, merged into `main`. Exact PR head: `fddb169f3ca4192fe8d8136a5e6ba4cd880416da`; merge commit: `898058d492ef8b319972918fc1664151e001bcb2`.
+- Exact-head Quality Gate completed successfully: automated test suites, native TypeScript API import checks, approved Quran audio CDN/range checks, Firestore Rules Emulator tests, TypeScript validation, production build, server startup smoke, Chromium installation, and desktop/mobile Playwright smoke tests. No PR review threads remained.
+- PR #187 updates `src/services/cloudSyncCoordinator.ts`: an immediate sync attempt follows coordinator startup/pending-count refresh; focus, pageshow, and visible-tab events trigger a retry while online; and triggers received during an active sync are coalesced into a follow-up cycle. Existing mutation-triggered sync, reconnect handling, and periodic retry remain in place.
+- Vercel production deployment for merge SHA `898058d492ef8b319972918fc1664151e001bcb2` reached `READY` and received the production alias `https://wird-app.vercel.app`. The build event stream also emitted TypeScript diagnostic `TS2688: Cannot find type definition file for 'vite/client'`, while Vercel nevertheless completed deployment. CI TypeScript validation and production build passed; investigate this Vercel-only diagnostic separately rather than treating READY as proof that the warning is harmless.
+- User-reported manual two-device test: a change made on the computer appeared on the iPad after manual sync, and a change made on the iPad appeared on the computer. This verifies the tested bidirectional manual path, not automatic offline recovery.
+- **Offline app-shell behavior is not verified.** The user observed that disconnecting the internet causes the browser app to stop working. Therefore, do not ask the user to leave the browser app open offline as a sync test. First inspect PWA manifest/installability, service-worker registration and caching strategy, app-shell/static asset caching, and the offline behavior of required data/API reads. Confirm that local mutations are persisted to IndexedDB/outbox while offline and replay automatically after connectivity returns and the app is reopened or becomes active.
+- Automatic reconnect behavior has not yet been proven on a real device. Test separately after offline app-shell capability and offline mutation persistence are confirmed. Distinguish browser/app availability offline from background sync/retry behavior.
+- Production Firestore Rules deployment is still not verified. Do not claim it was deployed based on Emulator tests or Vercel deployment.
+- Keep `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` disabled until all release gates below are met and the production configuration is explicitly approved. Do not change production flags, secrets, or Firebase rules without the required explicit approval.
+
+
+## Historical checkpoint — PR #157 merged (2026-11-07)
 
 - Current main merge SHA: `22fdd996d7aabc0669fef504c50970d5ba015d73`.
 - PR #149 merged as `78ada24ecadbda3460178550e871632f6d81d770`; exact head `c675a2d164b88994c08a5368bf1695712f2625f3` passed Quality Gate run `42368745026` (#2871), implementing use-latest-remote.
@@ -32,7 +45,11 @@ A release gate is passed only with evidence on the exact candidate SHA.
 
 ## Current release decision
 
-**Not approved for full production cloud-sync activation.** The current verified work includes populated multi-record service round trips across all eight collection routes, document-scoped projection guards, a bounded local-mutation conflict evidence archive, use-latest-remote (PR #149), supported single-collection keep-local (PR #155), and compatible V2 Ruqyah counter convergence (PR #157). PR #157 passed 551 automated assertions, 31/31 Firestore Rules Emulator tests, 8/8 Quran audio CDN probes, TypeScript, production build, server smoke, and 30 desktop/mobile Playwright tests on its exact head. These are meaningful automated gates, not live-device or production proof. Divergent V1 legacy baselines remain archived and blocked; user-authored/grouped merge, tombstones, long-offline/cross-tab stress, full auth/sync browser journeys, production Firestore Rules deployment, and exact-SHA live deployment remain open. Keep production sync flags disabled.
+**Not approved for full production cloud-sync activation yet.** Since the PR #157 checkpoint, PR #187 has made sync retries respond to app startup/activity and coalesced in-flight triggers; its exact-head Quality Gate passed, and its merge SHA `898058d492ef8b319972918fc1664151e001bcb2` is deployed to Vercel production with state `READY`. The user has also manually verified bidirectional changes between computer and iPad. These are meaningful improvements, but they do not prove offline-first app operation or automatic offline recovery.
+
+The immediate next engineering task is an offline-capability audit and implementation as needed: inspect PWA/service-worker/app-shell caching; verify that the app can reopen and essential screens/data remain usable without network; verify that offline mutations persist durably to the local journal/outbox; then verify automatic replay after reconnect, app restart, and foregrounding. Do not conflate a browser tab failing to load offline with a sync retry failure. The user's current observation is that the browser app stops working when internet is disconnected, so offline operation is an open issue, not a passed gate.
+
+Other release blockers remain: production Firestore Rules deployment/verification; complete conflict-resolution semantics (including user-authored/grouped decisions and legacy ambiguity handling); tombstone/delete projection and retention; independent-tab concurrency; account-switch/logout/reinstall/schema-migration coverage; long-offline, retry/stress, and full authenticated browser journeys; and real-device automatic/offline sync verification. Keep both production sync flags disabled until the entire gate set is satisfied and production activation is explicitly approved.
 
 
 ## New evidence since the initial checkpoint
