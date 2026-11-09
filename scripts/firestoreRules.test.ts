@@ -351,8 +351,8 @@ try {
     }));
   });
 
-  await test('Valid tombstones are accepted but physical deletes are denied', async () => {
-    await writeRevisionedRemoteMutation(alice as unknown as Firestore, {
+  await test('Tombstone writes and physical deletes are denied until safe collection semantics exist', async () => {
+    await assertFails(writeRevisionedRemoteMutation(alice as unknown as Firestore, {
       uid: 'alice',
       collection: 'plans',
       documentId: 'deleted-plan',
@@ -364,7 +364,7 @@ try {
       clientUpdatedAtMs: validEnvelope.updatedAtMs,
       baseRevision: 0,
       payload: { deleted: true }
-    });
+    }));
     await assertFails(deleteDoc(alicePlan));
   });
 
