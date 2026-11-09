@@ -1944,6 +1944,43 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Legacy tombstone outbox is rejected before migration and its source is preserved', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:legacy-tombstone-migration');
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'legacy-tombstone-device',
+        pending: [{
+          mutationId: 'legacy-delete-1',
+          collection: 'plans',
+          documentId: 'legacy-plan',
+          operation: 'tombstone',
+          schemaVersion: 1,
+          clientUpdatedAtMs: 9700,
+          deviceId: 'legacy-tombstone-device',
+          payload: { deleted: true },
+          queuedAtMs: 9701,
+          attemptCount: 0,
+          nextAttemptAtMs: 0
+        }],
+        acknowledgedIds: [],
+        acknowledgedFingerprints: []
+      };
+      const raw = JSON.stringify(legacy);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw), 'Legacy tombstone source must be stored');
+      let rejected = false;
+      try { await LocalSyncOutbox.migrateLegacyToIndexedDb(); } catch { rejected = true; }
+      assert(rejected, 'A legacy tombstone must not be imported into an upsert-only remote protocol');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw),
+        'The original legacy outbox bytes must remain available for recovery');
+      const journal = new IndexedDbSyncJournal();
+      const snapshot = await journal.getSnapshot();
+      const events = await journal.listEvents();
+      assert(snapshot.pendingCount === 0 && snapshot.eventCount === 0 && events.length === 0,
+        'Rejecting the legacy tombstone must commit no partial IndexedDB events or pending writes');
+      journal.close();
+    });
+
     await test('Conflicting legacy migration preserves the localStorage source and commits no partial records', async () => {
       StorageService.__resetStorageForTests();
       StorageService.setStorageScope('user:legacy-migration-conflict');
