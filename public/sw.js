@@ -47,6 +47,7 @@ async function precacheApplicationShell(cache) {
   if (!response.ok) {
     throw new Error('WIRD offline shell manifest is unavailable: ' + response.status);
   }
+  const manifestForCache = response.clone();
   const manifest = await response.json();
   if (!manifest || manifest.schemaVersion !== 1 || !Array.isArray(manifest.assets) ||
       manifest.assets.length === 0 || manifest.assets.length > 100) {
@@ -65,7 +66,7 @@ async function precacheApplicationShell(cache) {
 
   // addAll is atomic: the new worker is not activated with a partially cached app shell.
   await cache.addAll(safeAssets);
-  await cache.put(PRECACHE_MANIFEST_URL, response.clone());
+  await cache.put(PRECACHE_MANIFEST_URL, manifestForCache);
   console.log('[WIRD SW] Cached application shell assets:', safeAssets.length);
 }
 
