@@ -1,5 +1,42 @@
 # WIRD Sync Release Gates
 
+## Latest verified update — 2026-11-10 (automation run 2)
+
+### Source, CI, and Vercel
+
+- Current `main`: `182aae6a757668eb4c54782601682ba91c3d1251` (PR #191 merge).
+- Main Quality Gate run `42716625092` completed successfully on that exact SHA.
+- PR #191 (`feat/offline-content-preparation`) merged as `182aae6a757668eb4c54782601682ba91c3d1251`. Exact tested head `1be4df2843326b94b30918b0279161a11dd10838`; PR gate passed 614 assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 54 desktop/mobile Playwright tests. The offline package caches same-origin JS/CSS (including lazy Quran chunks) only after explicit user action; audio, tafsir, APIs, Firebase/auth, and remote data remain outside the package.
+- Vercel Production deployment `dpl_7MrJV9KtkTT2PYEwnij2kXCRnXwW` is `READY` on the exact main SHA and has alias `https://wird-app.vercel.app`. Its build event stream still emits `TS2688: Cannot find type definition file for 'vite/client'` despite completing deployment.
+- PR #192 (`fix/vercel-node26-vite-client-types`) remains open. Exact head `bbd7966e1589a5392410e8b4e68a31f60cf1634d`, Quality Gate run `42721449912` succeeded, and preview deployment `dpl_8rDrfF15qnwqGLXjhsttgK2HgGzH` is `READY`. The preview build stream did not contain TS2688. It has not been merged; do not claim the production diagnostic is fixed until the PR is merged and a new production build is checked.
+
+### Firestore rules deployment evidence
+
+- Manual workflow run `42691610063` completed successfully on source SHA `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`.
+- The workflow authenticated to the canonical Firebase project `wird-quran-app`, recognized the exact deny-all bootstrap baseline, compiled the reviewed rules, and logged `released rules firestore.rules to cloud.firestore` / `Deploy complete!`.
+- The `firestore.rules` blob at that deployment SHA and current `main` is identical: `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. This is deployment evidence for the current rules source, not proof of a complete live two-device sync journey.
+
+### Production configuration drift — owner attention required
+
+- Environment-variable names/targets were inspected without decrypting any secret values.
+- Both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are currently `true` for Production. This conflicts with the release policy below: tombstones, grouped `syncMeta` resolution, cross-tab/account lifecycle stress, full offline replay, and complete authenticated production verification are still open. No production setting was changed in this run. Confirm the intended state with the owner before any further activation/deactivation.
+- The Ruqyah backend reads only `process.env.ISLAMICAPI_API_KEY`. Vercel currently lists that exact variable for Preview only, while Production has `ISLAMICAPI_API_KEY1`; the suffixed variable is not read by the code. Production Ruqyah index requests may therefore return the explicit missing-key response (HTTP 503). This does not by itself explain the previously reported HTTP 500; no matching `/api/ruqyah` runtime error log was found in the inspected 50-minute window. Add the exact key name to Production and redeploy only through the owner-approved settings workflow; never expose its value.
+- Vercel project protection is enabled with `all_except_custom_domains`; the only listed project domain is `wird-app.vercel.app`. No public custom domain is listed. This prevents an unauthenticated external smoke test and may prevent public users from reaching the app. No access-protection setting was changed. See [Vercel Authentication](https://vercel.com/docs/deployment-protection/methods-to-protect-deployments/vercel-authentication) and [Deployment Protection](https://vercel.com/docs/deployment-protection).
+
+### Release decision
+
+**HOLD.** The main deployment is Ready, but the production build still emits TS2688, the exact API key target mismatch remains, public access/live smoke is blocked by Vercel protection, and production sync flags are enabled despite incomplete release gates. The offline package improves app-shell availability but does not prove offline sync or audio/API availability. Keep user data local and preserve all existing data; do not alter production secrets, flags, rules, or protection without explicit owner approval.
+
+### Next actions
+
+1. Resolve the exact `ISLAMICAPI_API_KEY` Production target and verify the server proxy response without exposing the key.
+2. Obtain the owner's decision on production sync flags and public Vercel access; do not change either setting without authorization.
+3. Revalidate PR #192 and its exact-head checks at the next release gate; only merge after review/protection requirements are satisfied.
+4. Continue tombstone and grouped `syncMeta` conflict design, cross-tab/account lifecycle tests, and real-device offline replay tests.
+5. Keep full-program Ruqyah recordings out of production until content and licensing review is complete.
+
+---
+
 ## Latest verified update — PR #187 merged and production deployment READY (2026-11-09)
 
 - PR #187, **Automatic cloud-sync lifecycle**, merged into `main`. Exact PR head: `fddb169f3ca4192fe8d8136a5e6ba4cd880416da`; merge commit: `898058d492ef8b319972918fc1664151e001bcb2`.
