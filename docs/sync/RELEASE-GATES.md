@@ -4,7 +4,7 @@
 
 ### Source, CI, and Vercel
 
-- Current `main`: `182aae6a757668eb4c54782601682ba91c3d1251` (PR #191 merge).
+- Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251` (PR #191 merge).
 - Main Quality Gate run `42716625092` completed successfully on that exact SHA.
 - PR #191 (`feat/offline-content-preparation`) merged as `182aae6a757668eb4c54782601682ba91c3d1251`. Exact tested head `1be4df2843326b94b30918b0279161a11dd10838`; PR gate passed 614 assertions, 31 Firestore Rules Emulator tests, dependency audit, TypeScript, production build, server smoke, and 54 desktop/mobile Playwright tests. The offline package caches same-origin JS/CSS (including lazy Quran chunks) only after explicit user action; audio, tafsir, APIs, Firebase/auth, and remote data remain outside the package.
 - Vercel Production deployment `dpl_7MrJV9KtkTT2PYEwnij2kXCRnXwW` is `READY` on the exact main SHA and has alias `https://wird-app.vercel.app`. Its build event stream still emits `TS2688: Cannot find type definition file for 'vite/client'` despite completing deployment.
@@ -14,7 +14,7 @@
 
 - Manual workflow run `42691610063` completed successfully on source SHA `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`.
 - The workflow authenticated to the canonical Firebase project `wird-quran-app`, recognized the exact deny-all bootstrap baseline, compiled the reviewed rules, and logged `released rules firestore.rules to cloud.firestore` / `Deploy complete!`.
-- The `firestore.rules` blob at that deployment SHA and current `main` is identical: `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. This is deployment evidence for the current rules source, not proof of a complete live two-device sync journey.
+- The `firestore.rules` blob at that deployment SHA and the application-code `main` SHA at this checkpoint is identical: `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. This is deployment evidence for the current rules source, not proof of a complete live two-device sync journey.
 
 ### Production configuration drift — owner attention required
 
