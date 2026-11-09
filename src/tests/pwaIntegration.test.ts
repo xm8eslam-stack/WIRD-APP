@@ -63,6 +63,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes("PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json'"), 'SW must load the build-generated app-shell manifest');
     assert(swContent.includes('precacheApplicationShell'), 'SW must precache the generated static dependency graph');
     assert(swContent.includes('cache.addAll(safeAssets)'), 'SW must cache entry JS/CSS atomically before activation');
+    assert(swContent.includes('const manifestForCache = response.clone()'), 'SW must preserve the manifest response before consuming its JSON body');
     assert(!swContent.includes("tanzilReferenceData.json"), 'SW must NOT cache 2.9MB reference test dataset');
   });
 
