@@ -61,8 +61,22 @@ jobs:
       - name: Production server startup smoke test
         run: npm run smoke:server
 
+      # Playwright's browser downloader is kept on Node 24 for compatibility;
+      # the app build, server smoke, and actual browser tests remain on Node 26.
+      - name: Set up Node.js 24 for Playwright browser download
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
       - name: Install Chromium for browser tests
         run: npx playwright install --with-deps chromium
+      - name: Restore Node.js 26 for browser tests
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Verify Node.js runtime before browser tests
+        run: node -e "if (process.versions.node.split('.')[0] !== '26') process.exit(1)"
       - name: Desktop and mobile browser smoke tests
         run: npx playwright test
       - name: Upload Playwright diagnostics
