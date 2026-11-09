@@ -8,7 +8,7 @@
 ## 1. Current checkpoint
 
 - Latest application-code main SHA inspected during audit: `b79a9451f81fc72792d9417bef9f19ea44e83841`.
-- Latest main SHA after adding this audit documentation: `88f55642a7ab5ce25a70662a8d6168ccc6797e18` (documentation-only commits; no runtime code changed).
+- Audit report and persistent worklog were committed to `main` after the source review. These commits are documentation-only and do not change runtime code; inspect the current `main` ref for its latest documentation checkpoint.
 - Latest verified Production deployment observed: `dpl_Di9gFtjLFgWVDHxgk4qFh2mfbVFn`, Ready, alias `https://wird-app.vercel.app`, deployed from main SHA `a5b88a4c01d3c15cbf6fa2085e17cae01c8d897d`.
 - Production is behind the currently observed main SHA. The combined status on current main reports Vercel failure with `build-rate-limit`; do not claim the latest main is deployed.
 - Canonical Firebase project in code: `wird-quran-app`; Firestore database: `(default)`. The code explicitly rejects the legacy project `elliptical-rampart-bxq1s`.
@@ -97,4 +97,4 @@ Every continuation must:
 - Detailed findings: [CLOUD_SYNC_AUDIT_2026-11-09.md](./CLOUD_SYNC_AUDIT_2026-11-09.md).
 - Worklog creation commit: `693252f74918c5767caa8d51ef696281890ad32b`.
 - Audit report commit: `bb3db8ec9c8ad3aa7bfece828b1afb9b2331c4a9`.
-- Final worklog refresh commit: `88f55642a7ab5ce25a70662a8d6168ccc6797e18`.
+- The current version of this file is the latest continuation checkpoint on `main`.
