@@ -43,6 +43,57 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect.poll(() => page.evaluate(() => localStorage.getItem('wird_session_tafsir_expanded_v1'))).toBe('0');
     await expect(page.getByText(/الآية 1 من 3/)).toBeVisible();
   });
+
+  test('full offline preparation caches lazy Quran assets and opens the mushaf offline', async ({ page, context }) => {
+    test.skip((page.viewportSize()?.width ?? 1280) < 768, 'The full asset download is exercised once on desktop; mobile settings reachability is covered separately.');
+    test.setTimeout(180_000);
+
+    await page.evaluate(async () => {
+      await navigator.serviceWorker.ready;
+    });
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+
+    await page.getByRole('button', { name: 'الإعدادات', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'التجهيز للعمل دون إنترنت' })).toBeVisible();
+    await page.getByRole('button', { name: 'تجهيز وِرد لهذا الجهاز' }).click();
+    await expect(page.getByRole('status')).toContainText(/اكتمل تنزيل ملفات تشغيل وِرد/, { timeout: 150_000 });
+
+    const cacheState = await page.evaluate(async () => {
+      const manifestResponse = await fetch('/wird-precache-manifest.json');
+      const manifest = await manifestResponse.json();
+      const cache = await caches.open('wird-app-content-v1');
+      const cachedRequests = await cache.keys();
+      const cachedPaths = new Set(cachedRequests.map(request => new URL(request.url).pathname));
+      return {
+        total: manifest.allAssets.length,
+        missing: manifest.allAssets.filter((asset: string) =>
+          !cachedPaths.has(new URL(asset, location.origin).pathname)
+        )
+      };
+    });
+    expect(cacheState.total).toBeGreaterThan(0);
+    expect(cacheState.missing).toEqual([]);
+
+    try {
+      await context.setOffline(true);
+      await page.getByRole('button', { name: 'القرآن والمصحف', exact: true }).click();
+      await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+      await expect(page.locator('#wird-ayah-1-1')).toBeVisible({ timeout: 15_000 });
+    } finally {
+      await context.setOffline(false);
+    }
+  });
+
+  test('mobile settings exposes the optional offline preparation control', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 1280) >= 768, 'This reachability check targets the mobile More drawer.');
+    await page.getByRole('button', { name: 'المزيد من الأقسام' }).click();
+    const drawerNav = page.getByRole('navigation', { name: 'القائمة الرئيسية' });
+    await drawerNav.getByRole('button', { name: 'الإعدادات', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'التجهيز للعمل دون إنترنت' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'تجهيز وِرد لهذا الجهاز' })).toBeVisible();
+  });
+
   test('related hadith card renders the source matn, book metadata, and explicit grading in RTL', async ({ page }) => {
     await page.route('**/api/hadith-references?**', route => route.fulfill({
       status: 200,

@@ -82,6 +82,27 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(!viteConfig.includes('dynamicImports'), 'Lazy routes and large Quran datasets must not be force-preloaded');
   });
 
+  test('offline package is opt-in, resumable, and isolated from account/API data', () => {
+    const viteConfig = fs.readFileSync(path.resolve('./vite.config.ts'), 'utf8');
+    const worker = fs.readFileSync(path.resolve('./public/sw.js'), 'utf8');
+    const client = fs.readFileSync(path.resolve('./src/services/offlinePreparationService.ts'), 'utf8');
+    assert(viteConfig.includes('allAssets'), 'Build must emit all lazy JS/CSS assets for explicit offline setup');
+    assert(viteConfig.includes('item.type === \'chunk\''), 'Offline manifest must include lazy chunks');
+    assert(worker.includes('wird-app-content-v1'), 'Full offline package must use a separate persistent cache');
+    assert(worker.includes('name !== CONTENT_CACHE_NAME'), 'Downloaded offline package must survive service-worker upgrades');
+    assert(worker.includes('WIRD_PREPARE_OFFLINE_PACKAGE'), 'Worker must support explicit offline preparation');
+    assert(worker.includes('cache.match(request)'), 'Retry must skip assets already cached');
+    assert(worker.includes('MAX_OFFLINE_PACKAGE_ASSETS = 2000'), 'Offline manifest must have a defensive asset-count limit');
+    assert(worker.includes('OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000'), 'Each offline asset request must have a bounded timeout');
+    assert(worker.includes('validContentType'), 'Only valid JavaScript/CSS responses may enter the offline package cache');
+    assert(worker.includes('offlinePackagePreparationInProgress'), 'Concurrent full-package downloads must be rejected safely');
+    assert(worker.includes("url.pathname.startsWith('/api/')"), 'API routes must remain excluded from static offline caching');
+    assert(client.includes('prepareWirdForOffline'), 'Client must expose an explicit offline preparation action');
+    assert(client.includes('onProgress'), 'Client must report download progress');
+    assert(client.includes('DEFAULT_OFFLINE_PREPARATION_TIMEOUT_MS'), 'The UI must not remain stuck indefinitely if the worker stops responding');
+    assert(client.includes('onmessageerror'), 'MessageChannel transport errors must be surfaced to the UI');
+  });
+
   // 3. HTML integration
   test('index.html links manifest.json and specifies theme-color and mobile web app tags', () => {
     const htmlPath = path.resolve('./index.html');

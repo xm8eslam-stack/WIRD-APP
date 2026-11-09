@@ -42,7 +42,12 @@ function offlineShellManifestPlugin(): Plugin {
         fileName: 'wird-precache-manifest.json',
         source: JSON.stringify({
           schemaVersion: 1,
-          assets: [...assets].sort()
+          assets: [...assets].sort(),
+          allAssets: Object.values(bundle)
+            .filter(item => item.type === 'chunk' || (item.type === 'asset' && /\.css$/i.test(item.fileName)))
+            .map(item => '/' + item.fileName)
+            .filter((asset, index, list) => list.indexOf(asset) === index)
+            .sort()
         })
       });
     }

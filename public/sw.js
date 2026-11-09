@@ -1,5 +1,10 @@
 const CACHE_NAME = 'wird-app-v3';
 const AUDIO_CACHE_NAME = 'wird-app-audio-v1';
+const CONTENT_CACHE_NAME = 'wird-app-content-v1';
+const MAX_OFFLINE_PACKAGE_ASSETS = 2000;
+const OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS = 15000;
+const OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000;
+let offlinePackagePreparationInProgress = false;
 const MAX_SESSION_AUDIO_PRELOAD = 20;
 const MAX_AUDIO_CACHE_ENTRIES = 40;
 const PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json';
@@ -8,6 +13,59 @@ async function trimAudioCache(cache) {
   const keys = await cache.keys();
   const overflow = keys.length - MAX_AUDIO_CACHE_ENTRIES;
   for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
+}
+
+async function fetchWithTimeout(input, init, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function prepareFullOfflinePackage(port) {
+  const manifestResponse = await fetchWithTimeout(
+    PRECACHE_MANIFEST_URL,
+    { cache: 'no-store' },
+    OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS
+  );
+  if (!manifestResponse.ok) throw new Error('تعذر تحميل فهرس ملفات وِرد.');
+  const manifest = await manifestResponse.json();
+  const assets = manifest && Array.isArray(manifest.allAssets) ? manifest.allAssets : null;
+  if (!assets || assets.length === 0 || assets.length > MAX_OFFLINE_PACKAGE_ASSETS) {
+    throw new Error('فهرس التجهيز المحلي غير صالح أو يتجاوز الحد الآمن.');
+  }
+  const safeAssets = assets.filter((asset) => {
+    if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
+    const url = new URL(asset, self.location.origin);
+    return url.origin === self.location.origin &&
+      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+  });
+  if (safeAssets.length !== assets.length) throw new Error('الفهرس يحتوي على ملفات غير مسموح بها.');
+  const cache = await caches.open(CONTENT_CACHE_NAME);
+  let completed = 0;
+  for (const asset of safeAssets) {
+    const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
+    if (!(await cache.match(request))) {
+      const response = await fetchWithTimeout(request, {}, OFFLINE_ASSET_REQUEST_TIMEOUT_MS);
+      const contentType = (response.headers.get('content-type') || '')
+        .split(';')[0]
+        .trim()
+        .toLowerCase();
+      const validContentType = asset.endsWith('.js')
+        ? ['application/javascript', 'text/javascript', 'application/ecmascript', 'text/ecmascript'].includes(contentType)
+        : contentType === 'text/css';
+      if (response.status !== 200 || response.type !== 'basic' || !validContentType) {
+        throw new Error('تعذر التحقق من نوع أحد ملفات التطبيق قبل حفظه: ' + asset);
+      }
+      await cache.put(request, response.clone());
+    }
+    completed++;
+    if (port) port.postMessage({ type: 'progress', completed, total: safeAssets.length, asset });
+  }
+  if (port) port.postMessage({ type: 'complete', completed, total: safeAssets.length });
 }
 
 async function cacheSessionAudio(rawUrls) {
@@ -84,7 +142,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => Promise.all(
       cacheNames
-        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME)
+        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME)
         .map((name) => caches.delete(name))
     )).then(() => self.clients.claim())
   );
@@ -114,6 +172,20 @@ self.addEventListener('fetch', (event) => {
         return (await cache.match('/index.html')) || (await cache.match('/')) || Response.error();
       })
     );
+    return;
+  }
+
+  // Explicitly downloaded full offline package takes precedence over shell cache.
+  if (url.origin === self.location.origin &&
+      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) {
+    event.respondWith((async () => {
+      const fullCache = await caches.open(CONTENT_CACHE_NAME);
+      const cached = await fullCache.match(req);
+      if (cached) return cached;
+      const shellCached = await caches.match(req);
+      if (shellCached) return shellCached;
+      try { return await fetch(req); } catch { return Response.error(); }
+    })());
     return;
   }
 
@@ -177,5 +249,27 @@ self.addEventListener('message', (event) => {
   }
   if (event.data && event.data.type === 'WIRD_CACHE_SESSION_AUDIO') {
     event.waitUntil(cacheSessionAudio(event.data.urls));
+    return;
+  }
+  if (event.data && event.data.type === 'WIRD_PREPARE_OFFLINE_PACKAGE') {
+    const port = event.ports && event.ports[0];
+    if (!port) return;
+    if (offlinePackagePreparationInProgress) {
+      port.postMessage({ type: 'error', message: 'يوجد تجهيز محلي جارٍ بالفعل؛ انتظر انتهاء العملية ثم أعد التحقق.' });
+      return;
+    }
+    offlinePackagePreparationInProgress = true;
+    event.waitUntil(
+      prepareFullOfflinePackage(port)
+        .catch((error) => {
+          port.postMessage({
+            type: 'error',
+            message: error instanceof Error ? error.message : 'تعذر إكمال التجهيز المحلي.'
+          });
+        })
+        .finally(() => {
+          offlinePackagePreparationInProgress = false;
+        })
+    );
   }
 });

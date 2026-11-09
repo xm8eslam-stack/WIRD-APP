@@ -38,6 +38,7 @@ import { cancelPreparedProjectionConflictResolution, resolveProjectionConflictUs
 import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupFile } from '../../services/backupPersistence';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
+import { prepareWirdForOffline, type OfflinePreparationProgress } from '../../services/offlinePreparationService';
 
 function formatConflictSnapshotValue(value: string | null): string {
   if (value === null) return 'null';
@@ -273,6 +274,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     ? projectionBlockMessages[remoteProjectionBlockReason] || 'تطبيق الأحداث السحابية متوقف بأمان.'
     : null;
   const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [isPreparingOffline, setIsPreparingOffline] = useState(false);
+  const [offlineProgress, setOfflineProgress] = useState<OfflinePreparationProgress | null>(null);
+
+  const handlePrepareOffline = async () => {
+    if (isPreparingOffline) return;
+    setIsPreparingOffline(true);
+    setOfflineProgress(null);
+    try {
+      const result = await prepareWirdForOffline(setOfflineProgress);
+      onToast?.(`اكتمل تنزيل ملفات تشغيل وِرد (${result.completed} ملفًا). المحتوى الخارجي والصوت يحتاج تنزيلًا منفصلًا.`, 'success');
+    } catch (error) {
+      onToast?.(error instanceof Error ? error.message : 'تعذر إكمال التجهيز المحلي؛ يمكنك إعادة المحاولة وسيُستكمل ما تم تنزيله.', 'error');
+    } finally {
+      setIsPreparingOffline(false);
+    }
+  };
 
   const handleManualSync = async () => {
     setIsManualSyncing(true);
@@ -395,6 +412,47 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Offline readiness: explicit opt-in download of lazy app assets */}
+      <section className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">
+        <div className="flex items-center gap-2 border-b border-stone-100 dark:border-stone-700 pb-3">
+          <Download className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+          <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">التجهيز للعمل دون إنترنت</h3>
+        </div>
+        <p className="text-stone-600 dark:text-stone-300 leading-7">
+          نزّل ملفات الشاشات والبيانات البرمجية المؤجلة إلى هذا الجهاز لتعمل الأقسام التي لم تفتحها من قبل دون اتصال. التنزيل اختياري ويُحفظ تدريجيًا؛ إذا انقطع الاتصال يمكنك إعادة المحاولة لاستكمال الملفات المتبقية.
+        </p>
+        <p className="text-stone-500 dark:text-stone-400 leading-6">
+          هذا التجهيز لا ينزّل التلاوات الصوتية أو التفاسير والبيانات التي يوفرها خادم خارجي، ولا يضمن وحده أن كل ميزة أصبحت متاحة دون إنترنت. قد يستهلك مساحة من الجهاز، وقد يحذف المتصفح الملفات المخزنة عند ضغط المساحة؛ لذلك لا يُعد نسخة احتياطية.
+        </p>
+        {offlineProgress && (
+          <div className="space-y-2" aria-live="polite">
+            <div className="flex justify-between text-stone-600 dark:text-stone-300">
+              <span>تم تنزيل {offlineProgress.completed} من {offlineProgress.total}</span>
+              <span className="font-mono tabular-nums">{Math.round(offlineProgress.completed / Math.max(offlineProgress.total, 1) * 100)}%</span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="تقدم تجهيز وِرد للعمل دون إنترنت"
+              aria-valuemin={0}
+              aria-valuemax={offlineProgress.total}
+              aria-valuenow={offlineProgress.completed}
+              className="h-2 rounded-full bg-stone-100 dark:bg-stone-700 overflow-hidden"
+            >
+              <div className="h-full bg-emerald-700 transition-all" style={{ width: `${offlineProgress.completed / Math.max(offlineProgress.total, 1) * 100}%` }} />
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handlePrepareOffline}
+          disabled={isPreparingOffline || !isOnline}
+          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold inline-flex items-center justify-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          {isPreparingOffline ? 'جارٍ تنزيل ملفات التطبيق...' : offlineProgress ? 'استكمال / التحقق من التجهيز' : 'تجهيز وِرد لهذا الجهاز'}
+        </button>
+      </section>
 
       {/* 1.6 Cloud Sync & Data Protection Card */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">

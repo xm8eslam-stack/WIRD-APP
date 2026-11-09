@@ -11,6 +11,7 @@ import { runQuranMathValidationTests } from './quranMathValidation.test';
 import { runDomainEventCoordinateTests } from './domainEventCoordinateValidation.test';
 import { runIndependentTanzilComparison, runNegativeComparisonTests } from './independentTanzilComparison';
 import { runPwaIntegrationTests } from './pwaIntegration.test';
+import { runOfflinePreparationServiceTests } from '../services/offlinePreparationService.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
 import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
@@ -107,6 +108,7 @@ async function main() {
     { name: 'Independent Tanzil Character-by-Character Verification', runner: () => runIndependentTanzilComparison() },
     { name: 'Tanzil Comparison Detector Sensitivity (Negative Tests)', runner: () => runNegativeComparisonTests() },
     { name: 'PWA Compliance & Service Worker Infrastructure', runner: runPwaIntegrationTests },
+    { name: 'Offline Preparation Service Messaging, Progress, and Timeout', runner: runOfflinePreparationServiceTests },
     { name: 'Firebase Authentication Foundation & Data Preservation', runner: runFirebaseAuthTests },
     { name: 'Phase 3 Core Remediation (Unified Portions, SM-2, Tests & Router)', runner: runPhase3CoreRemediationTests },
     { name: 'Quran Lazy Loading & Chunk Integrity', runner: runQuranLazyLoadingTests },
