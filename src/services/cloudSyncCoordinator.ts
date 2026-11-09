@@ -98,6 +98,7 @@ function checkIsOnline(): boolean {
 class CloudSyncCoordinator {
   private listeners = new Set<SyncListener>();
   private syncInProgress = false;
+  private syncRequestedWhileRunning = false;
   private legacyCheckUid: string | null = null;
   private legacyDataDetected: boolean | null = null;
   private autoSyncInterval: ReturnType<typeof setInterval> | null = null;
@@ -132,6 +133,14 @@ class CloudSyncCoordinator {
     window.addEventListener('offline', () => {
       this.updateState({ isOnline: false, status: 'offline' });
     });
+
+    const syncWhenActive = () => {
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      if (checkIsOnline()) void this.triggerSync();
+    };
+    window.addEventListener('focus', syncWhenActive);
+    window.addEventListener('pageshow', syncWhenActive);
+    document.addEventListener('visibilitychange', syncWhenActive);
   }
 
   private setupStorageScopeListener(): void {
@@ -214,7 +223,11 @@ class CloudSyncCoordinator {
    * 4. Reconcile remote updates only when they can be durably imported and projected.
    */
   public async triggerSync(): Promise<boolean> {
-    if (this.syncInProgress) return false;
+    if (this.syncInProgress) {
+      // Do not lose a reconnect/focus/mutation trigger that arrives during a cycle.
+      this.syncRequestedWhileRunning = true;
+      return false;
+    }
 
     if (!checkIsOnline()) {
       this.updateState({ status: 'offline', errorMessage: 'الجهاز غير متصل بالإنترنت حالياً.' });
@@ -367,6 +380,11 @@ class CloudSyncCoordinator {
     } finally {
       this.syncInProgress = false;
       await this.refreshPendingCount();
+      if (this.syncRequestedWhileRunning) {
+        this.syncRequestedWhileRunning = false;
+        // Run one coalesced follow-up cycle after the current cycle fully settles.
+        void Promise.resolve().then(() => this.triggerSync());
+      }
     }
   }
 
@@ -493,6 +511,9 @@ class CloudSyncCoordinator {
 
   public startPeriodicSync(intervalMs: number = 60_000): void {
     if (this.autoSyncInterval) return;
+    // Reconcile immediately when the authenticated app becomes ready, rather than
+    // waiting for the first periodic tick. Pending offline work is drained here too.
+    void this.refreshPendingCount().then(() => this.triggerSync());
     this.autoSyncInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         void this.triggerSync();
