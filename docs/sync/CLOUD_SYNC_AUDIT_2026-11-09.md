@@ -431,3 +431,22 @@ This addendum supersedes only the time-sensitive source/deployment observations 
 - No Firebase/Firestore administration connector was available in the connected tools, and the attempted isolated Vercel sandbox provisioning was rejected by the API. The local execution container could not resolve GitHub for a checkout. Consequently, this session did not modify runtime code or independently rerun tests; it relied on the exact-SHA GitHub Quality Gate evidence above.
 - Production Firestore Rules deployment status remains unverified. Do not deploy rules or enable either gate until exact rules parity and safe data migration/conflict behavior are proven.
 - Open release blockers remain: tombstone semantics/resurrection prevention; atomic grouped `syncMeta` conflict decisions; divergent Ruqyah V1 preservation/reconciliation; broader cross-tab/account lifecycle/offline/crash/IndexedDB quota stress; and authenticated production A↔B verification.
+
+
+## 2026-11-09 — Post-approval independent verification addendum
+
+The audit's source-level conclusions were rechecked in a fresh Vercel Sandbox cloned from branch `fix/cloud-sync-production-readiness`, starting at exact SHA `4479dea4a177073e43c334dea5a34aa21251b23a`.
+
+Fresh results on that exact checkout:
+- Automated application suite: **601 passed, 0 failed**.
+- Firestore Rules Emulator: **31 passed, 0 failed** against the checked-in rules and demo project only.
+- TypeScript: passed.
+- Production build: passed (existing non-fatal large-chunk warning).
+- Native API import smoke: passed.
+- Production and development server smoke: passed.
+
+This raises confidence in the checked-in code and rules contract, but does not establish that the canonical Firebase project's deployed rules equal the checked-in file. No Firebase production read/write or rules deployment was performed because Firebase administrative actions were not exposed in the connected tool session. Vercel Production is Ready on the same SHA, but the two build-time sync flags remain absent; no upload/projection activation or physical-device round trip is claimed.
+
+The tombstone and grouped `syncMeta` limitations are intentional fail-closed behavior, not defects to bypass: tombstone enqueue is rejected locally and remote tombstone projection is blocked without cursor movement; grouped transaction application has local snapshot/rollback safeguards, while grouped conflict resolution is still unsupported. Divergent legacy Ruqyah V1 baselines remain preserved and blocked. These require explicit data-contract and recovery design plus targeted tests before activation.
+
+No runtime code, production rules, production flags, secrets, or user data were modified during this verification. See the worklog for the exact test commands and remaining release gates.
