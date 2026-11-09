@@ -450,3 +450,19 @@ This raises confidence in the checked-in code and rules contract, but does not e
 The tombstone and grouped `syncMeta` limitations are intentional fail-closed behavior, not defects to bypass: tombstone enqueue is rejected locally and remote tombstone projection is blocked without cursor movement; grouped transaction application has local snapshot/rollback safeguards, while grouped conflict resolution is still unsupported. Divergent legacy Ruqyah V1 baselines remain preserved and blocked. These require explicit data-contract and recovery design plus targeted tests before activation.
 
 No runtime code, production rules, production flags, secrets, or user data were modified during this verification. See the worklog for the exact test commands and remaining release gates.
+
+
+## 2026-11-09 — npm/CI command parity addendum
+
+A second independent verification pass executed the workflow's npm commands on the same runtime source SHA `4479dea4a177073e43c334dea5a34aa21251b23a`:
+
+- `npm test`: 601 passed, 0 failed.
+- `npm audit --audit-level=high`: zero vulnerabilities in the npm-resolved dependency tree for this check.
+- `npm run smoke:api-imports`: passed.
+- Approved Quran audio CDN check: 8/8 byte-range samples passed (HTTP 206, audio/mpeg).
+- `npm run test:firestore-rules`: 31 passed, 0 failed in the demo Firestore emulator.
+- `npm run lint`: passed.
+- `npm run build`: passed, with the known non-fatal large-chunk warning.
+- `npm run smoke:server`: production and development server smoke passed.
+
+PR #181's Actions run `42671987530` ended in failure while the GitHub API returned zero jobs and zero check runs, so no failing workflow step was available to diagnose. The same CI commands were independently run in the sandbox. Playwright desktop/mobile browser smoke remains unverified in this pass because the sandbox session expired before browser installation and replacement sandbox provisioning was rejected. These results are not evidence of Firebase production rules parity or a live authenticated two-device sync test.
