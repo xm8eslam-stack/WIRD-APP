@@ -1,5 +1,17 @@
 ### GOOGLE AI STUDIO HANDOFF
 
+
+## 2026-11-11 — Latest verified state after PR #328 merge
+
+- Repository: `xm8eslam-stack/WIRD-APP`; current `main` SHA is `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
+- PR #325 (stale full-snapshot compare-and-set guard) merged as `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`.
+- PR #326 (continuous Quran audio queue, Mushaf display controls, and 10-second opportunistic offline pre-cache timeout) merged as `3667a8c003b79984546d48a9defc20c6f2bcd367`. Exact-head Quality Gate run `42919276966` passed: 674 automated assertions, 604-page coordinate-map validation, 31 Firestore Rules Emulator tests, 8/8 approved audio probes, 150 desktop/mobile Playwright tests, TypeScript, production build, and server smoke.
+- Memorization display sizing/navigation is already present: PR #202/#206 merged; PR #206 merge `391be261e32f4d3634b0bf0010972c0297077d67` is an ancestor of Production. Session controls: UI scale 80–110%, ayah font 20–44px, compact/comfortable spacing, focused/all-session ayah view, and sticky navigation. Preferences are device-local and excluded from cloud sync/backups.
+- PR #328 merged as `50bb25eeba2f1ed4ceae228b347c67b40f60c697`; exact PR head `0c41126b1e018892119ced669936335326f8b1e7` passed Quality Gate run `42921569974` (152 Playwright passed, 2 skipped; dependency audit, Firestore Rules Emulator, TypeScript, production build, and server smoke succeeded).
+- Latest documented Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144` (`READY`, alias `wird-app.vercel.app`); it predates PR #325/#326/#328. The post-merge GitHub Vercel status for `50bb25e` now reports `success`, but the Vercel deployment detail endpoint returned team-scope 403. Its exact source SHA/Production state and live smoke remain unverified. No manual deployment or settings change was made.
+- No Firestore rules/schema, secrets, environment variables, or remote-sync flags changed. Google AI Studio synchronization has not been independently verified; do not claim it is synced until the owner verifies the connected `main` source.
+- Sync limitations remain: whole-snapshot `keep-local/use-remote` decisions for `weakVerses` and `activityEvents` stay blocked by `syncConflictSafety`; tombstone/delete semantics and a real two-device post-merge test remain outstanding. PR #325 adds a stale-snapshot safety guard, not proof that bidirectional sync is fully released.
+
 ## 2026-11-10 — Current verified state and continuation
 
 - Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
@@ -63,3 +75,17 @@ Next: owner decision on Production sync flags and public Vercel access; add the 
 - Production's latest verified deployment remains `dpl_5w3rMw5GphfGTUyoCj45kMmqo4nN` on SHA `f620d9ed5241245147baa66753a3e7f7e421ed7e`. The merged commit changes only E2E tests and handoff documentation, so it does not alter runtime behavior; no production deployment for `faf1ead` was present at verification time, and no new production release is claimed.
 - Owner review needed: Vercel reports SSO protection enabled for all non-custom domains, while the only listed domain is `wird-app.vercel.app`. This may prevent public users without team SSO from opening the app. Do not change this production access setting without explicit owner approval; confirm whether public access is intended and configure a custom domain/protection policy accordingly.
 - Next: confirm main push run #3205 completes; obtain a safe stack trace for the Node `DEP0169` deprecation warning if possible; verify Ruqyah and related-hadith API paths with an authenticated, non-secret-leaking smoke test; review the Vercel SSO/public-access setting with the owner; keep production Firebase sync flags and all production secrets/settings unchanged.
+
+
+## 2026-11-11 — Post-merge memorization navigation and sync design checkpoint
+
+- Current main: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
+- PR #328 merged successfully. It adds direct selection of any ayah in the active memorization/revision range in the sticky navigation and stops active playback before the selected ayah changes.
+- Existing session sizing controls remain available: interface scale 80–110%, ayah font 20–44px, comfortable/compact density, and focused/all-session ayah display. These preferences remain device-local and outside cloud sync/backups.
+- Exact PR Quality Gate run [42921569974](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42921569974) passed: 152 Playwright checks passed, 2 skipped, dependency audit reported 0 vulnerabilities, Firestore Rules Emulator, TypeScript, production build, and server smoke succeeded.
+- Sync discovery and a staged, non-destructive activity-event ledger design are documented in `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No sync runtime code, Firestore Rules/schema, secrets, production flags, or user data changed.
+- Sync remains uncertified: full-snapshot conflict choices for `weakVerses`/`activityEvents` remain blocked; tombstones/deletes remain unsupported; a fresh real-device A↔B round trip after PR #325 is not verified.
+- Last documented READY Production deployment remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`; the post-merge Vercel status for `50bb25e` was pending at the last GitHub check. No exact-SHA Production deployment or live smoke is claimed.
+- Google AI Studio synchronization remains unverified.
+
+Next: implement the pure activity-event reducer and its migration/replay tests only after the baseline cutover contract is accepted; keep production sync flags, Firestore Rules, and tombstone behavior unchanged.

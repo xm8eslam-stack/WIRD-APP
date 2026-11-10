@@ -1,3 +1,18 @@
+## Current follow-up — 2026-11-11 after PR #328
+
+- Current `main`: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`; PR #328 merged successfully with direct ayah selection in the sticky memorization/revision navigation.
+- Exact PR Quality Gate run `42921569974` passed: 152 Playwright checks passed, 2 skipped; dependency audit 0 vulnerabilities; Firestore Rules Emulator, TypeScript, production build, and server smoke succeeded.
+- Source review: `DailyLog` remains a date-keyed aggregate (ayah count, reviewed pages, minutes, completed task labels). `StorageService.buildSessionCompletionSnapshot` updates that aggregate and returns a base snapshot fingerprint; the `activityEvents` projector still expects a complete `records` array. Existing `session.completed` domain events carry metrics and UTC `occurredAt`, but no explicit local activity date/time-zone offset.
+- PR #325's compare-and-set guard prevents stale full-snapshot overwrites; it does not provide a merge for independent devices. Keep whole-snapshot keep-local/use-remote blocked for `weakVerses` and `activityEvents`.
+- A staged, non-destructive ledger design is in `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. It preserves the legacy DailyLog baseline, deduplicates immutable per-session events by stable identity, captures the local activity date, and blocks unresolved legacy/offline-device conflicts rather than silently merging or discarding them.
+- No sync runtime code, Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
+- Last documented READY Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`; the post-merge GitHub Vercel status for `50bb25e` now reports `success`, but the Vercel deployment detail endpoint returned team-scope 403. Exact Production SHA/state and live smoke remain unverified.
+- Real-device A↔B round trip, long-offline replay, cross-tab/account lifecycle stress, tombstone/delete semantics, and activity-event migration remain unverified. Production sync release remains HOLD.
+
+Next safe sync step: implement a pure event reducer with deterministic local-date aggregation and idempotent deduplication, then test baseline preservation, out-of-order delivery, duplicate replay, collision rejection, timezone/DST boundaries, and crash recovery before wiring it into IndexedDB or Firestore.
+
+---
+
 ## Current operational checkpoint — 2026-11-10 (scheduled engineering review)
 
 This checkpoint supersedes earlier operational status statements where they conflict with the evidence below. Review performed against the live `main` branch and current GitHub/Vercel metadata. No application code, Firestore Rules, production data, secrets, Vercel settings, feature-flag values, or Firebase configuration were changed. Only this worklog is being updated.
@@ -403,3 +418,28 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Current-main Vercel status is rate-limited. Do not confuse this with the READY Production deployment or a code failure.
 - Exact application-code SHA `2405067...` has completed Quality Gate run `42865304625` successfully. Newer docs-only main run `42876158628` was still in progress at last poll; no failed step had appeared.
 - This supersedes the prior interim note that Production was exactly on `9a508d...`; the latest READY deployment is now `dac125...`.
+
+## 2026-11-11 — Post-merge checkpoint: PR #325 and PR #326
+
+- Current main: `3667a8c003b79984546d48a9defc20c6f2bcd367`.
+- PR #325 merged at `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`. Its exact-head Quality Gate run `42917981860` passed 667 assertions, 31 Firestore Rules Emulator tests, 8/8 approved Quran audio probes, 140 Playwright tests, TypeScript, production build, and server smoke.
+- PR #326 merged at `3667a8c003b79984546d48a9defc20c6f2bcd367`. Its exact-head Quality Gate run `42919276966` passed 674 assertions, 604 Mushaf coordinate-map checks, 31 Firestore Rules Emulator tests, 8/8 approved Quran audio probes, 150 Playwright tests, TypeScript, production build, and server smoke.
+- PR #325 protects `weakVerses` and `activityEvents` full-snapshot writes with a deterministic non-cryptographic base fingerprint. New mutation builders carry the base identity; stale snapshots are rejected; grouped transactions roll back. Legacy events may bootstrap empty archives or replay identical data only. The fingerprint is a compare-and-set identity, not authentication.
+- Existing higher-level `syncConflictSafety` still blocks whole-snapshot `keep-local/use-remote` decisions for `weakVerses` and `activityEvents`. No automatic counter summation, timestamp winner, array-union, tombstone, or delete semantics were introduced. PR #325 is a data-loss guard, not complete conflict resolution or proof of full bidirectional sync.
+- PR #326 adds continuous ayah audio playback across a selected range and across Mushaf pages, pause/resume, speed/repeat controls, Mushaf text/spacing/width controls, and a 10-second timeout for opportunistic audio pre-cache. The current flexible text flow remains distinct from a verified printed-line facsimile.
+- No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
+- Latest Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144` (`READY`), which predates PR #325/#326. Vercel status for current main is `build-rate-limit`; the new main SHA is not claimed as deployed and no live smoke test for it has been completed.
+- Follow-up: when Vercel quota recovers, deploy through the normal GitHub→Vercel path, verify exact SHA `3667a8c`, and run live smoke. Then run a controlled two-device sync test and design tombstone/delete semantics separately before any broader conflict-resolution changes.
+
+
+## 2026-11-11 — Follow-up verification after PR #325/#326
+
+- Current main SHA is 3667a8c003b79984546d48a9defc20c6f2bcd367; main Quality Gate run [42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) completed successfully on the exact SHA.
+- PR #325 merged as 966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6; exact-head run 42917981860 passed 667 assertions, 31 Rules Emulator tests, 8/8 audio probes, 140 Playwright tests, TypeScript, production build, and server smoke. It adds base-snapshot compare-and-set protection for weakVerses and activityEvents, not conflict convergence.
+- PR #326 merged as 3667a8c003b79984546d48a9defc20c6f2bcd367; exact-head run 42919276966 passed 674 assertions, 604 coordinate-map checks, 31 Rules Emulator tests, 8/8 audio probes, 150 Playwright tests, TypeScript, production build, and server smoke.
+- Current safety policy remains: syncConflictSafety blocks whole-snapshot keep-local/use-remote for weakVerses and activityEvents; generic tombstones are rejected and the remote projection cursor must not pass a blocked tombstone. PR #325 does not change those constraints.
+- Still unverified: post-PR #325 real-device A↔B round trip, account lifecycle/cross-tab stress, long-offline replay, crash/quota failure injection, collection-specific delete/anti-resurrection, and event-derived daily activity projection.
+- Latest Production remains dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5 on dac125dd8770cc4881e2c6cea6fe94623ad52144 (READY). Current main is newer and Vercel reports build-rate-limit; no live production verification for 3667a8c is claimed.
+- No Firestore Rules/schema, production data, secrets, environment values, or sync feature flags were changed.
+
+Next safe sync work: design an immutable, idempotent session-activity event projection that preserves legacy DailyLog baselines, and separately specify collection-specific tombstone/replay/restore semantics. Do not wire a migration or unblock conflict choices until populated-record, replay, concurrency, crash, and rollback tests pass.
