@@ -43,7 +43,10 @@ export const RuqyahApiLibrary: React.FC = () => {
       source: 'from-quran'
     }, controller.signal)
       .then(data => {
-        const normalized = Array.isArray(data) ? data : data ? [data as unknown as RuqyahApiEntry] : [];
+        if (!Array.isArray(data) && (!data || typeof data !== 'object')) {
+          throw new Error('استجابة فهرس الآيات غير صالحة؛ لم يتم عرض أي محتوى منه.');
+        }
+        const normalized = Array.isArray(data) ? data : [data as unknown as RuqyahApiEntry];
         if (normalized.length > 300 || normalized.some(entry =>
           !entry ||
           (typeof entry.id !== 'number' && typeof entry.id !== 'string') ||
