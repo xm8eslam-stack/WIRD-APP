@@ -158,7 +158,19 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {plans.length === 0 ? (
+            <div role="status" className="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-6 py-10 text-center dark:border-stone-700 dark:bg-stone-800/60">
+              <Layers className="mx-auto h-10 w-10 text-emerald-700 dark:text-emerald-400" />
+              <h4 className="mt-3 text-sm font-bold text-stone-900 dark:text-stone-100">لم تحفظ أي خطة بعد</h4>
+              <p className="mx-auto mt-2 max-w-md text-xs leading-6 text-stone-500 dark:text-stone-400">
+                يمكنك إنشاء خطة تناسب وقتك ومقدار الحفظ اليومي من محرك التخطيط، وستظهر هنا لمتابعة تقدمك.
+              </p>
+              <button type="button" onClick={() => setActiveTab('engine')} className="mt-4 min-h-11 rounded-xl bg-emerald-800 px-5 py-2 text-xs font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                إنشاء خطة حفظ
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {plans.map((plan) => {
               const percent = plan.totalUnits > 0
                 ? Math.min(100, Math.max(0, Math.round((plan.completedUnits / plan.totalUnits) * 100)))
@@ -265,7 +277,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                 </div>
               );
             })}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
