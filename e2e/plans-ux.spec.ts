@@ -45,4 +45,18 @@ test.describe('WIRD memorization plans UX', () => {
 
     await expect(page.getByRole('button', { name: /معاينة الجدول الزمني المقترح/ })).toHaveCSS('min-height', '44px');
   });
+
+  test('empty preset state explains the next step and returns to the planning engine', async ({ page }) => {
+    const selector = page.getByRole('group', { name: 'طرق إدارة خطط الحفظ' });
+    const presets = selector.getByRole('button', { name: /النماذج والخطط المعتمدة/ });
+    await presets.click();
+
+    const emptyState = page.getByRole('region', { name: 'حالة الخطط الجاهزة' });
+    await expect(emptyState.getByText('لا توجد خطط جاهزة محفوظة حالياً')).toBeVisible();
+    const openEngine = emptyState.getByRole('button', { name: 'فتح محرك التخطيط الذكي' });
+    await expect(openEngine).toHaveCSS('min-height', '44px');
+    await openEngine.click();
+    await expect(selector.getByRole('button', { name: /محرك التخطيط الذكي/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
 });
