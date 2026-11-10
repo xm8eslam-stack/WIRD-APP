@@ -158,7 +158,7 @@ test('reading khatma supports a daily plan, actual page progress, pause, resume,
   await expect(page.getByText(/قسّم وردك إلى 3 جلسات يومية/)).toBeVisible();
 
   await page.getByRole('button', { name: 'متابعة من صفحة 1' }).click();
-  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'صفحة المصحف 1' })).toBeVisible();
   await page.getByRole('button', { name: 'تسجيل الصفحة كمقروءة' }).click();
   await expect(page.getByRole('button', { name: 'تم تسجيل الصفحة كمقروءة' })).toBeVisible();
   await page.getByRole('button', { name: 'العودة للفهرس' }).click();
