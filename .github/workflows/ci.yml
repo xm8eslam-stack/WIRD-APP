@@ -4,6 +4,12 @@ on:
   push:
     branches: [main] # Feature-branch commits are validated by their PR run; avoid duplicate full suites.
   workflow_dispatch:
+    inputs:
+      validate_mushaf:
+        description: Validate all 604 official printed Mushaf page coordinate maps
+        required: false
+        type: boolean
+        default: false
   pull_request:
     branches: [main]
 
@@ -43,6 +49,9 @@ jobs:
         run: npm audit --audit-level=high
       - name: Run automated test suites
         run: npm test
+      - name: Verify all 604 printed Mushaf coordinate maps against WIRD local Quran data
+        if: ${{ inputs.validate_mushaf || contains(github.event.pull_request.title, 'Mushaf') || contains(github.head_ref, 'mushaf') }}
+        run: npm run mushaf:validate-coverage
       - name: Verify native TypeScript API module imports
         run: npm run smoke:api-imports
       - name: Verify approved Quran audio CDN availability and byte-range streaming
