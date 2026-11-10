@@ -1,6 +1,6 @@
 import { RetentionService } from './retentionService';
 import { StorageService, STORAGE_KEYS } from './storageService';
-import { recordWeakVerseFailure } from './weakVerseRecording';
+import { buildWeakVerseFailureTransaction, recordWeakVerseFailure } from './weakVerseRecording';
 import { getLocalDateString } from './unifiedPortionService';
 
 export function runWeakVerseRecordingTests(): { passed: number; failed: number } {
@@ -117,6 +117,25 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     const repeatedResolve = RetentionService.resolveWeakVerse(added[0].id);
     assert(resolved.length === 0 && repeatedResolve.length === 0,
       'Repeated resolution must remain idempotent');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('New weak-verse records use a stable identity derived from the Quran coordinate, not the device mutation ID', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-coordinate-identity');
+    const first = buildWeakVerseFailureTransaction({
+      surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص موحد'
+    }, 'device-a-mutation');
+    const second = buildWeakVerseFailureTransaction({
+      surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص موحد'
+    }, 'device-b-mutation');
+    assert(first.success && second.success, 'Both independent device preparations should validate');
+    if (!first.success || !second.success) return;
+    const firstRecords = first.operations.find(operation => operation.collection === 'weakVerses')?.payload.records as any[];
+    const secondRecords = second.operations.find(operation => operation.collection === 'weakVerses')?.payload.records as any[];
+    assert(firstRecords[0]?.id === 'weak-67-8', 'The new record ID must be the canonical Surah/Ayah coordinate');
+    assert(firstRecords[0]?.id === secondRecords[0]?.id,
+      'Two devices creating the same weak verse must derive the same record identity');
     StorageService.__resetStorageForTests();
   });
 
