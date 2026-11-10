@@ -63,7 +63,7 @@ test.describe('Ruqyah Quran locator library', () => {
 
     await openExtendedLibrary(page);
     await expect(page.getByRole('heading', { name: 'سورة الفاتحة' })).toBeVisible();
-    await expect(page.getByText(/نسخة محفوظة/)).toBeVisible();
+    await expect(page.getByText(/^نسخة محفوظة/)).toBeVisible();
     await expect(page.getByRole('alert')).toContainText('تعذر تحديث الفهرس الآن');
     await expect(page.getByText(/بِسْمِ/)).toBeVisible();
   });
