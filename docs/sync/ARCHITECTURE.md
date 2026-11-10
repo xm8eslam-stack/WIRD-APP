@@ -199,3 +199,5 @@ This addendum supersedes older release-state statements above where they conflic
 - Backward compatibility: a legacy event without a base fingerprint may initialize an empty archive or replay an identical projection; it may not replace a non-empty divergent archive.
 - A failed precondition rejects the projection. The remote inbox cursor must remain blocked and the local snapshot must be preserved; the conflict archive captures local evidence. An explicit, verified `use-remote` conflict decision is the only path that bypasses the guard after the decision intent and evidence have been committed.
 - No automatic weak-verse counter summation, note merge, daily minutes addition, or tombstone behavior is introduced. Firestore schema/rules are unchanged.
+
+- Backup import, ordered reset, and explicit demo-fixture transactions also capture the current weak-verse/activity base fingerprint before enqueueing, so intentional local replacements are allowed only against the state they were prepared from; a later concurrent change still blocks them.
