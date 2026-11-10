@@ -33,7 +33,7 @@ export function runMushafFacsimileServiceTests(): { passed: number; failed: numb
 
   test('Page assets are pinned to the verified Hafs/KFQC release and reject invalid pages', () => {
     const urls = getMushafFacsimilePageUrls(1);
-    assert(urls.svgUrl === 'https://cdn.quran.ws/svg/pages/v1.1.1/hafs-kfqc/001.svg', 'Unexpected pinned SVG source URL');
+    assert(urls.svgUrl === 'https://raw.githubusercontent.com/quran-ws/quran-svg/v1.1.1/mushafs/hafs/kfqc/svg/001.svg', 'Unexpected pinned SVG source URL');
     expectThrow(() => getMushafFacsimilePageUrls(0), 'Page zero must be rejected');
     expectThrow(() => getMushafFacsimilePageUrls(605), 'Page 605 must be rejected');
     expectThrow(() => getMushafFacsimilePageUrls(1.5), 'Fractional page must be rejected');
