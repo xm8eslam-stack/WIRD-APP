@@ -13,6 +13,7 @@ export interface SessionActivityEventV2 {
   baselineId: string;
   occurredAtMs: number;
   localDate: string;
+  /** Minutes east of UTC; for example, UTC−03:00 is -180. */
   timezoneOffsetMinutes: number;
   mode: 'memorize' | 'review';
   memorizedAyahs: number;
@@ -97,6 +98,12 @@ const EVENT_KEYS = new Set([
   'minutes', 'taskName', 'surahNumber', 'startAyah', 'endAyah'
 ]);
 
+function isConsistentCapturedLocalDate(occurredAtMs: number, timezoneOffsetMinutes: number, localDate: string): boolean {
+  const localInstant = new Date(occurredAtMs + timezoneOffsetMinutes * 60_000);
+  return Number.isFinite(localInstant.getTime()) &&
+    localInstant.toISOString().slice(0, 10) === localDate;
+}
+
 function isValidSessionActivityEvent(value: unknown): value is SessionActivityEventV2 {
   if (!isRecord(value) || Object.keys(value).some(key => !EVENT_KEYS.has(key)) ||
       value.schemaVersion !== 2 ||
@@ -106,6 +113,7 @@ function isValidSessionActivityEvent(value: unknown): value is SessionActivityEv
       !isDateOnly(value.localDate) ||
       !Number.isSafeInteger(value.timezoneOffsetMinutes) ||
       Number(value.timezoneOffsetMinutes) < -840 || Number(value.timezoneOffsetMinutes) > 840 ||
+      !isConsistentCapturedLocalDate(Number(value.occurredAtMs), Number(value.timezoneOffsetMinutes), String(value.localDate)) ||
       (value.mode !== 'memorize' && value.mode !== 'review') ||
       !Number.isSafeInteger(value.memorizedAyahs) ||
       Number(value.memorizedAyahs) < 0 || Number(value.memorizedAyahs) > 6_236 ||
