@@ -53,6 +53,28 @@ interface NavigationPoint {
 
 const LAST_PAGE_KEY = 'wird.quran.lastPage.v1';
 const BOOKMARKS_KEY = 'wird.quran.pageBookmarks.v1';
+const MUSHAF_TEXT_SCALE_KEY = 'wird.quran.mushafTextScale.v1';
+const MUSHAF_PAGE_WIDTH_KEY = 'wird.quran.mushafPageWidth.v1';
+
+type MushafTextScale = 'comfortable' | 'large' | 'extraLarge';
+
+const MUSHAF_TEXT_SCALE_CLASSES: Record<MushafTextScale, string> = {
+  comfortable: 'text-[1.35rem] md:text-[1.6rem] leading-[2.35] md:leading-[2.5]',
+  large: 'text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75]',
+  extraLarge: 'text-[1.8rem] md:text-[2.1rem] leading-[2.7] md:leading-[2.9]',
+};
+
+function readMushafTextScale(): MushafTextScale {
+  try {
+    const value = localStorage.getItem(MUSHAF_TEXT_SCALE_KEY);
+    return value === 'comfortable' || value === 'large' || value === 'extraLarge' ? value : 'large';
+  } catch { return 'large'; }
+}
+
+function readMushafPageWidth(): boolean {
+  try { return localStorage.getItem(MUSHAF_PAGE_WIDTH_KEY) === 'wide'; }
+  catch { return false; }
+}
 const PAGE_INDEX = QURAN_PAGE_INDEX as unknown as Record<string, PageSegment[]>;
 const JUZ_INDEX = QURAN_JUZ_STARTS as unknown as Record<string, NavigationPoint>;
 const HIZB_INDEX = QURAN_HIZB_QUARTER_STARTS as unknown as Record<string, NavigationPoint>;
@@ -80,6 +102,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [page, setPage] = useState(() => Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage());
   const [pageInput, setPageInput] = useState(String(Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage()));
   const [pageJumpError, setPageJumpError] = useState('');
+  const [textScale, setTextScale] = useState<MushafTextScale>(readMushafTextScale);
+  const [isWidePage, setIsWidePage] = useState(readMushafPageWidth);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
@@ -138,6 +162,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setPageInput(String(page));
     try { localStorage.setItem(LAST_PAGE_KEY, String(page)); } catch { /* Reading remains available without persistence. */ }
   }, [page]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_TEXT_SCALE_KEY, textScale); } catch { /* Reading controls remain usable without storage. */ }
+  }, [textScale]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_PAGE_WIDTH_KEY, isWidePage ? 'wide' : 'comfortable'); } catch { /* Reading controls remain usable without storage. */ }
+  }, [isWidePage]);
 
   useEffect(() => () => {
     audioRef.current?.pause();
@@ -476,7 +508,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
         <div className="mb-8 flex items-center justify-between border-b-2 border-[#b99b62]/40 dark:border-[#c8ad73]/40 pb-3 text-xs font-bold text-stone-700 dark:text-stone-300">
           <span className="font-quran text-base text-[#102d29] dark:text-[#dfcaa2]">
@@ -490,8 +522,33 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
           </span>
         </div>
 
-        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400">
-          توزيع الآيات هنا مرن بحسب الصفحة، وقد يختلف عن أسطر النسخة المطبوعة.
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#b99b62]/25 bg-white/70 px-3 py-3 dark:border-[#c8ad73]/20 dark:bg-stone-900/50" role="group" aria-label="إعدادات عرض المصحف">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-stone-600 dark:text-stone-300">حجم النص</span>
+            {([{ value: 'comfortable', label: 'مريح' }, { value: 'large', label: 'كبير' }, { value: 'extraLarge', label: 'أكبر' }] as const).map(option => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={textScale === option.value}
+                onClick={() => setTextScale(option.value)}
+                className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${textScale === option.value ? "border-emerald-800 bg-emerald-800 text-white dark:border-emerald-600 dark:bg-emerald-700" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-pressed={isWidePage}
+            onClick={() => setIsWidePage(value => !value)}
+            className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+          >
+            {isWidePage ? 'تقليل عرض الصفحة' : 'توسيع مساحة القراءة'}
+          </button>
+        </div>
+
+        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400" role="note">
+          عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع. ستظل مطابقة الأسطر غير متاحة حتى تتوفر بيانات تخطيط موثّقة.
         </p>
 
         {readingKhatma && !readingKhatma.completedAt && <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs dark:bg-emerald-950/40">
@@ -526,7 +583,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Verses Flow with Authentic Typography */}
         {!isLoading && !loadError && ayahs.length > 0 && (
-          <div className="text-right font-quran text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75] text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950">
+          <div className={`text-right font-quran ${MUSHAF_TEXT_SCALE_CLASSES[textScale]} text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950`}>
             {ayahs.map((ayah, index) => {
               const surah = ALL_SURAHS.find(item => item.number === ayah.surahNumber);
               const isCurrent = playingIndex === index && isPlaying;
