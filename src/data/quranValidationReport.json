@@ -1,5 +1,5 @@
 {
-  "verificationTimestamp": "2026-11-08T12:46:02.935Z",
+  "verificationTimestamp": "2026-11-10T13:17:33.107Z",
   "status": "VERIFIED_100_PERCENT",
   "referenceSource": {
     "provider": "Tanzil Project (http://tanzil.net via AlQuran Cloud API)",
@@ -7,8 +7,8 @@
     "narration": "حفص عن عاصم الكوفي",
     "license": "Creative Commons Attribution 3.0 Unported (CC BY 3.0)",
     "referenceFilePath": "./src/data/tanzilReferenceData.json",
-    "referenceFileChecksumSha256": "60162378b4d958aa6e11be375375caf35c559ca621ddd3d4fda305c262eeef56",
-    "referenceFileSizeBytes": 2972851,
+    "referenceFileChecksumSha256": "7d224a7fa5fb630915e75b92222f9263922d756028e0d572cf2249fc141d3e3a",
+    "referenceFileSizeBytes": 2903158,
     "encodingNote": "BOM byte \\uFEFF stripped narrowly from Ayah 1:1 text during comparison"
   },
   "referenceValidation": {

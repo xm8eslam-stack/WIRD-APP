@@ -39,6 +39,8 @@ import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupFile } from '../../services/backupPersistence';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
 import { prepareWirdForOffline, type OfflinePreparationProgress } from '../../services/offlinePreparationService';
+import { WirdAvatar } from '../brand/WirdAvatar';
+import { WirdIslamicPattern } from '../brand/WirdPattern';
 
 function formatConflictSnapshotValue(value: string | null): string {
   if (value === null) return 'null';
@@ -362,23 +364,26 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
 
         {user && !isGuest ? (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#faf8f5] dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
-            <div className="space-y-1">
-              <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-mono">
-                <span>{user.email || user.displayName || 'مستخدم مسجل'}</span>
-                {isEmailVerified ? (
-                  <span title="البريد الإلكتروني مفعل">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  </span>
-                ) : (
-                  <span title="البريد الإلكتروني غير مؤكد بعد" className="text-amber-600 font-sans text-[11px] font-bold bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-md border border-amber-200">
-                    غير مؤكد
-                  </span>
-                )}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#f6f3ea]/60 dark:bg-[#122723] p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <div className="flex items-center gap-3">
+              <WirdAvatar size="md" shape="squircle" variant="primary" />
+              <div className="space-y-1">
+                <div className="font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2 font-mono">
+                  <span>{user.email || user.displayName || 'مستخدم مسجل'}</span>
+                  {isEmailVerified ? (
+                    <span title="البريد الإلكتروني مفعل">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    </span>
+                  ) : (
+                    <span title="البريد الإلكتروني غير مؤكد بعد" className="text-amber-600 font-sans text-[11px] font-bold bg-amber-50 dark:bg-amber-950 px-2 py-0.5 rounded-md border border-amber-200">
+                      غير مؤكد
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  طريقة التسجيل: {user.providerData.some(p => p.providerId === 'google.com') ? 'Google OAuth' : 'البريد الإلكتروني وكلمة المرور'}
+                </p>
               </div>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                طريقة التسجيل: {user.providerData.some(p => p.providerId === 'google.com') ? 'Google OAuth' : 'البريد الإلكتروني وكلمة المرور'}
-              </p>
             </div>
 
             <button
@@ -391,22 +396,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#faf8f5] dark:bg-stone-900/60 p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
-            <div className="space-y-1">
-              <div className="font-bold text-stone-900 dark:text-stone-100">
-                أنت تستخدم المنصة حالياً بنمط الزائر
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#f6f3ea]/60 dark:bg-[#122723] p-4 rounded-xl border border-stone-200/80 dark:border-stone-700">
+            <div className="flex items-center gap-3">
+              <WirdAvatar size="md" shape="squircle" variant="monochrome" />
+              <div className="space-y-1">
+                <div className="font-bold text-stone-900 dark:text-stone-100">
+                  أنت تستخدم المنصة حالياً بنمط الزائر
+                </div>
+                <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                  جميع بيانات الحفظ والمراجعة المحفوظة محلية وتعمل بكفاءة تامة. يمكنك إنشاء حساب مستقبلاً لتفعيل المزامنة في المكونات القادمة.
+                </p>
               </div>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                جميع بيانات الحفظ والمراجعة المحفوظة محلية وتعمل بكفاءة تامة. يمكنك إنشاء حساب مستقبلاً لتفعيل المزامنة في المكونات القادمة.
-              </p>
             </div>
 
             <button
               type="button"
               onClick={() => logout()}
-              className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 shrink-0"
+              className="px-4 py-2 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 shrink-0 border border-[#B99B62]/40"
             >
-              <KeyRound className="w-3.5 h-3.5" />
+              <KeyRound className="w-3.5 h-3.5 text-[#DFCAA2]" />
               <span>تسجيل الدخول / حساب جديد</span>
             </button>
           </div>

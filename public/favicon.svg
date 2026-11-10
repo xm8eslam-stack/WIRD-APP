@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <clipPath id="circleClip">
+      <circle cx="50" cy="50" r="48" />
+    </clipPath>
+  </defs>
+  <circle cx="50" cy="50" r="49" fill="#0B132B" stroke="#C59B27" stroke-width="2" />
+  <image href="/assets/aistudio/IMG_0140_900ee5d2.jpeg" x="2" y="2" width="96" height="96" preserveAspectRatio="xMidYMid slice" clip-path="url(#circleClip)" />
+</svg>

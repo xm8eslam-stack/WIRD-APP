@@ -2,6 +2,7 @@ import React from 'react';
 import { Flame, Play, Moon, Sun, BookOpen, ChevronLeft, Download, Cloud, CloudCheck, CloudOff, CloudAlert, RefreshCw } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
 import { useCloudSync } from '../../hooks/useCloudSync';
+import { WirdSymbol } from '../brand/WirdLogo';
 
 interface HeaderProps {
   currentTab: string;
@@ -25,22 +26,25 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { status, pendingCount, triggerSync } = useCloudSync();
   return (
-    <header className="sticky top-0 z-30 h-[68px] bg-[var(--wird-surface)]/90 dark:bg-stone-900/90 backdrop-blur-xl border-b border-stone-200/70 dark:border-stone-800 px-4 md:px-7 flex items-center justify-between gap-3 transition-colors">
-      {/* Page context */}
+    <header className="sticky top-0 z-30 h-[68px] bg-[#F9F6EE]/90 dark:bg-[#0B132B]/90 backdrop-blur-xl border-b border-[#1C4E46]/10 dark:border-[#E0A96D]/15 px-4 md:px-7 flex items-center justify-between gap-3 transition-colors">
+      {/* Page context with official WIRD Symbol badge */}
       <div className="flex items-center gap-2 min-w-0">
         <nav aria-label="مسار التنقل" className="flex items-center gap-2 text-xs min-w-0">
-          <span className="hidden sm:inline-flex font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200/60 dark:border-emerald-800/50 px-2.5 py-1 rounded-lg">وِرد</span>
-          <ChevronLeft className="hidden sm:block w-3.5 h-3.5 text-stone-400 dark:text-stone-600 shrink-0" aria-hidden="true" />
-          <h1 className="text-sm md:text-base font-bold text-stone-800 dark:text-stone-100 truncate max-w-[42vw] sm:max-w-none">{tabTitle}</h1>
+          <span className="hidden sm:inline-flex items-center gap-1.5 font-bold text-[#1C4E46] dark:text-[#F5F1E8] bg-[#F2EDE2] dark:bg-[#111F36] border border-[#C59B27]/30 px-2.5 py-1 rounded-xl shadow-2xs font-quran">
+            <WirdSymbol size={20} variant="primary" />
+            <span>وِرد</span>
+          </span>
+          <ChevronLeft className="hidden sm:block w-3.5 h-3.5 text-stone-400 dark:text-stone-500 shrink-0" aria-hidden="true" />
+          <h1 className="text-sm md:text-base font-bold text-[#142421] dark:text-[#F5F1E8] truncate max-w-[42vw] sm:max-w-none">{tabTitle}</h1>
         </nav>
       </div>
 
       {/* Zone 2: Informational items (Streak & Daily reminder) */}
       <div className="hidden lg:flex items-center gap-4 text-xs font-medium text-stone-600 dark:text-stone-400">
-        <div className="flex items-center gap-1.5 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/60 px-3 py-1.5 rounded-lg text-amber-900 dark:text-amber-200">
-          <Flame className="w-4 h-4 text-amber-600 dark:text-amber-400 fill-amber-500/30" />
+        <div className="flex items-center gap-1.5 bg-[#F2EDE2]/70 dark:bg-[#111F36] border border-[#C59B27]/30 px-3 py-1.5 rounded-xl text-[#142421] dark:text-[#F5F1E8]">
+          <Flame className="w-4 h-4 text-[#C59B27] dark:text-[#E0A96D] fill-[#C59B27]/30" />
           <span>سلسلة الالتزام:</span>
-          <span className="font-bold tabular-nums font-mono text-amber-800 dark:text-amber-300">
+          <span className="font-bold tabular-nums font-mono text-[#C59B27] dark:text-[#E0A96D]">
             {profile.streakDays} يوماً
           </span>
         </div>
@@ -123,20 +127,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onToggleTheme}
-          className="p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-stone-800 rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-emerald-700"
+          className="p-2 text-stone-600 dark:text-stone-300 hover:bg-[#F2EDE2] dark:hover:bg-[#111F36] rounded-xl transition-colors focus-visible:ring-2 focus-visible:ring-[#C59B27]"
           title={profile.theme === 'dark' ? "التبديل إلى الوضع النهاري" : "التبديل إلى الوضع الليلي"}
           aria-label="تبديل المظهر النهاري والليلي"
         >
           {profile.theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-400" />
+            <Sun className="w-4 h-4 text-[#E0A96D]" />
           ) : (
-            <Moon className="w-4 h-4 text-stone-600" />
+            <Moon className="w-4 h-4 text-[#1C4E46]" />
           )}
         </button>
 
         <button
           onClick={onStartDailySession}
-          className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-emerald-800 hover:bg-emerald-900 dark:bg-emerald-700 dark:hover:bg-emerald-600 rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-emerald-600"
+          className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-[#1C4E46] hover:bg-[#28665B] dark:bg-[#1E4A47] dark:hover:bg-[#235D59] rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-[#C59B27] ring-1 ring-[#C59B27]/40 dark:ring-[#E0A96D]/30"
         >
           <Play className="w-3.5 h-3.5 fill-white" />
           <span>جلسة اليوم</span>

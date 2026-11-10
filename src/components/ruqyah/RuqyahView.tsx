@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { getRuqyahItemsByCategory } from '../../data/ruqyahData';
 import type { RuqyahCategory, RuqyahItem } from '../../data/ruqyahData';
+import { WirdIslamicPattern } from '../brand/WirdPattern';
 
 interface RuqyahViewProps {
   onToast?: (message: string, type?: 'success' | 'info' | 'warn' | 'error') => void;
@@ -462,35 +463,36 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
         </div>
       )}
       {/* Top Banner / Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900 via-emerald-800 to-stone-900 text-white rounded-3xl p-6 md:p-8 shadow-xl border border-emerald-700/50">
-        <div className="absolute top-0 left-0 translate-x-[-20%] translate-y-[-20%] w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#102D29] via-[#1D4940] to-[#102D29] text-white rounded-3xl p-6 md:p-8 shadow-xl border border-[#B99B62]/30">
+        <WirdIslamicPattern opacity={0.06} className="text-white" />
+        <div className="absolute top-0 left-0 translate-x-[-20%] translate-y-[-20%] w-96 h-96 bg-[#B99B62]/15 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 text-amber-200 border border-amber-300/30 rounded-full text-xs font-bold">
-              <ShieldCheck className="w-4 h-4 text-amber-300" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#102D29]/60 text-[#DFCAA2] border border-[#B99B62]/40 rounded-full text-xs font-bold">
+              <ShieldCheck className="w-4 h-4 text-[#B99B62]" />
               <span>الرقية من القرآن والسنة</span>
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran leading-relaxed">
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran leading-relaxed text-[#F6F3EA]">
               الرقية الشرعية الكاملة من القرآن والسنة
             </h1>
 
-            <p className="text-xs md:text-sm text-stone-200/90 leading-relaxed font-sans">
+            <p className="text-xs md:text-sm text-[#E8DFC9]/90 leading-relaxed font-sans">
               آيات من القرآن وأدعية ثابتة من السنة. التقسيمات المختصرة والمتوسطة والمطولة تنظيمية للتيسير، وليست ترتيبًا نبويًا أو عددًا لازمًا.
             </p>
           </div>
 
           {/* Mode Switch Controls */}
-          <div role="group" aria-label="طرق استخدام الرقية" className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 bg-emerald-950/80 rounded-2xl border border-emerald-700/60 shadow-inner w-full md:w-auto md:min-w-[320px]">
+          <div role="group" aria-label="طرق استخدام الرقية" className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1.5 bg-[#0A1F1C]/80 rounded-2xl border border-[#B99B62]/30 shadow-inner w-full md:w-auto md:min-w-[320px]">
             <button
               type="button"
               aria-pressed={viewMode === 'interactive'}
               onClick={() => { setShowResetConfirmation(false); setViewMode('interactive'); }}
-              className={`flex items-center justify-center gap-2 px-4 py-3 min-h-12 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`flex items-center justify-center gap-2 px-4 py-3 min-h-12 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B99B62] ${
                 viewMode === 'interactive'
-                  ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
-                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60 '
+                  ? 'bg-gradient-to-r from-[#DFCAA2] to-[#B99B62] text-[#102D29] shadow-md scale-[1.02]'
+                  : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <Sparkles className="w-4 h-4" />
@@ -501,10 +503,10 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
               type="button"
               aria-pressed={viewMode === 'api_library'}
               onClick={() => { stopRuqyahAudio(); setShowResetConfirmation(false); setViewMode('api_library'); }}
-              className={`flex items-center justify-center gap-2 px-4 py-3 min-h-12 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+              className={`flex items-center justify-center gap-2 px-4 py-3 min-h-12 rounded-xl text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B99B62] ${
                 viewMode === 'api_library'
-                  ? 'bg-amber-400 text-emerald-950 shadow-md scale-[1.02]'
-                  : 'text-stone-300 hover:text-white hover:bg-emerald-900/60'
+                  ? 'bg-gradient-to-r from-[#DFCAA2] to-[#B99B62] text-[#102D29] shadow-md scale-[1.02]'
+                  : 'text-stone-300 hover:text-white hover:bg-white/10'
               }`}
             >
               <BookOpen className="w-4 h-4" />

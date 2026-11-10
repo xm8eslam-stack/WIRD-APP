@@ -1,0 +1,32 @@
+{
+  "source": "Tanzil Project — Quran Text (Simple), Version 1.1",
+  "sourceUrl": "https://tanzil.net",
+  "sourceSha256": "c86caf99a53658ae389d8e6684cfe011a98f899bdf70b52e58a5e24d46342080",
+  "license": "Creative Commons Attribution 3.0 (CC BY 3.0)",
+  "verification": {
+    "status": "VERIFIED",
+    "surahs": 114,
+    "ayahs": 6236,
+    "exactCoordinateMatches": 6236,
+    "missingCoordinates": 0,
+    "duplicateCoordinates": 0,
+    "invalidCoordinates": 0,
+    "emptyTexts": 0,
+    "metadataMismatchCount": 0,
+    "unexplainedDifferences": 0,
+    "tashkeelCodePoints": 278460,
+    "pauseMarkerCount": 4578,
+    "separateBismillahCount": 112,
+    "bismillahExamples": {
+      "2": "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ",
+      "9": null,
+      "114": "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ"
+    },
+    "issueSamples": [],
+    "examples": {
+      "41:7": "الَّذِينَ لَا يُؤْتُونَ الزَّكَاةَ وَهُم بِالْآخِرَةِ هُمْ كَافِرُونَ",
+      "1:1": "بِسْمِ اللَّهِ الرَّحْمَـٰنِ الرَّحِيمِ",
+      "9:1": "بَرَاءَةٌ مِّنَ اللَّهِ وَرَسُولِهِ إِلَى الَّذِينَ عَاهَدتُّم مِّنَ الْمُشْرِكِينَ"
+    }
+  }
+}

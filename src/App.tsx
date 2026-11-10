@@ -27,6 +27,7 @@ const ProgressAnalyticsView = React.lazy(() => import('./components/progress/Pro
 const QuranAdvisorView = React.lazy(() => import('./components/assistant/QuranAdvisorView').then(m => ({ default: m.QuranAdvisorView })));
 const RuqyahView = React.lazy(() => import('./components/ruqyah/RuqyahView').then(m => ({ default: m.RuqyahView })));
 const SettingsView = React.lazy(() => import('./components/settings/SettingsView').then(m => ({ default: m.SettingsView })));
+const BrandDesignShowcase = React.lazy(() => import('./components/brand/BrandDesignShowcase').then(m => ({ default: m.BrandDesignShowcase })));
 
 export default function App() {
   const initialRoute = parseRoute();
@@ -143,7 +144,8 @@ export default function App() {
     progress: 'التقدم والإنجاز',
     advisor: 'المستشار القرآني',
     ruqyah: 'الرقية الشرعية',
-    settings: 'الإعدادات'
+    settings: 'الإعدادات',
+    showcase: 'معرض الهوية والتصميم (Showcase)'
   };
 
   const refreshJournaledSnapshots = () => {
@@ -622,6 +624,10 @@ export default function App() {
                 onBackupImported={refreshJournaledSnapshots}
                 onToast={showToast}
               />
+            )}
+
+            {currentTab === 'showcase' && (
+              <BrandDesignShowcase onClose={() => handleNavigate('dashboard')} />
             )}
           </React.Suspense>
         </main>

@@ -40,6 +40,7 @@ import { ReadingKhatmaPanel } from './ReadingKhatmaPanel';
 import { QuranText } from '../shared/QuranText';
 import { QuranBasmala } from '../shared/QuranBasmala';
 import { QuranTypographyLab } from './QuranTypographyLab';
+import { WirdIslamicPattern } from '../brand/WirdPattern';
 
 interface QuranLibraryViewProps {
   onStartSession: (surahNumber: number, startAyah?: number, endAyah?: number) => void;
@@ -354,19 +355,20 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
         onContinue={page => handleOpenMushafPage(page)}
       />
       {/* 1. Hero Quran.com Header Banner */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#047857] text-white p-7 md:p-10 shadow-lg border border-emerald-700/60">
-        <div className="absolute top-0 left-0 w-80 h-80 bg-radial from-amber-400/20 via-transparent to-transparent rounded-full -translate-x-20 -translate-y-20 pointer-events-none" />
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#102D29] via-[#1D4940] to-[#102D29] text-white p-7 md:p-10 shadow-xl border border-[#B99B62]/30">
+        <WirdIslamicPattern opacity={0.06} className="text-white" />
+        <div className="absolute top-0 left-0 w-80 h-80 bg-radial from-[#B99B62]/20 via-transparent to-transparent rounded-full -translate-x-20 -translate-y-20 pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3 max-w-2xl text-right">
-            <div className="inline-flex items-center gap-2 text-xs font-semibold text-amber-300 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1 rounded-full">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#DFCAA2] bg-[#102D29]/60 border border-[#B99B62]/40 px-3 py-1 rounded-full">
+              <Sparkles className="w-3.5 h-3.5 text-[#B99B62]" />
               <span>قراءة القرآن الكريم · برواية حفص عن عاصم</span>
             </div>
-            <h1 className="text-3xl md:text-5xl font-black font-quran text-amber-50 tracking-wide leading-tight">
+            <h1 className="text-3xl md:text-5xl font-black font-quran text-[#F6F3EA] tracking-wide leading-tight">
               القرآن الكريم
             </h1>
-            <p className="text-emerald-100/90 text-sm md:text-base leading-relaxed font-sans-ui">
+            <p className="text-[#E8DFC9]/90 text-sm md:text-base leading-relaxed font-sans-ui">
               تصفّح سور القرآن الكريم الـ 114 كاملة مع الاستماع المباشر لكبار القرّاء، وعرض التفسير المعتمد من منصة Quran.com، والقراءة بصفحات المصحف الشريف.
             </p>
           </div>
@@ -375,9 +377,9 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             <button
               type="button"
               onClick={() => handleOpenMushafPage(selectedSurah.pageStart)}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-sm transition-all shadow-md active:scale-95"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl wird-btn-accent text-sm font-bold shadow-lg"
             >
-              <BookOpen className="w-4 h-4 fill-emerald-950" />
+              <BookOpen className="w-4 h-4 fill-[#102D29]" />
               <span>فتح المصحف بالصفحات (604)</span>
             </button>
           </div>
@@ -412,7 +414,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             onClick={() => setActiveTab('surahs')}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === 'surahs'
-                ? 'bg-emerald-800 text-white shadow-xs font-bold'
+                ? 'bg-[#102D29] dark:bg-[#1D4940] text-white shadow-xs font-bold'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
@@ -423,7 +425,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             onClick={() => setActiveTab('juz')}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === 'juz'
-                ? 'bg-emerald-800 text-white shadow-xs font-bold'
+                ? 'bg-[#102D29] dark:bg-[#1D4940] text-white shadow-xs font-bold'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
@@ -434,7 +436,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             onClick={() => setActiveTab('study')}
             className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'study'
-                ? 'bg-emerald-800 text-white shadow-xs font-bold'
+                ? 'bg-[#102D29] dark:bg-[#1D4940] text-white shadow-xs font-bold'
                 : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
             }`}
           >
@@ -526,19 +528,19 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                   onClick={() => handleOpenStudy(surah)}
                   className={`group relative p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
                     isSelected
-                      ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-600 shadow-sm ring-1 ring-emerald-600/30'
-                      : 'bg-white dark:bg-stone-900/90 border-stone-200/90 dark:border-stone-800 hover:border-emerald-500 hover:shadow-md'
+                      ? 'bg-[#102D29]/5 dark:bg-[#1D4940]/25 border-[#B99B62] shadow-sm ring-1 ring-[#B99B62]/40'
+                      : 'bg-white dark:bg-[#122723] border-stone-200/90 dark:border-stone-800 hover:border-[#B99B62] hover:shadow-md'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      {/* Surah Number Square */}
-                      <div className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 flex items-center justify-center font-mono font-bold text-xs text-stone-700 dark:text-stone-300 group-hover:bg-emerald-800 group-hover:text-white transition-colors">
+                      {/* Surah Number Badge */}
+                      <div className="w-10 h-10 rounded-xl bg-stone-100 dark:bg-[#18332E] border border-stone-200 dark:border-stone-700/80 flex items-center justify-center font-mono font-bold text-xs text-stone-700 dark:text-[#DFCAA2] group-hover:bg-[#102D29] group-hover:text-white group-hover:border-[#B99B62] transition-colors">
                         {surah.number}
                       </div>
 
                       <div className="text-right">
-                        <h3 className="font-quran text-xl font-bold text-stone-900 dark:text-stone-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-400 transition-colors">
+                        <h3 className="font-quran text-xl font-bold text-stone-900 dark:text-[#F6F3EA] group-hover:text-[#102D29] dark:group-hover:text-[#DFCAA2] transition-colors">
                           سورة {surah.name}
                         </h3>
                         <p className="text-xs text-stone-400 font-sans tracking-wide">

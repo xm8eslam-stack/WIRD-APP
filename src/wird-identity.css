@@ -1,30 +1,73 @@
-/* WIRD visual identity: warm paper, muted sage, and restrained brass accents. */
+/* ==========================================================================
+   WIRD — Master Visual Identity & Brand Design System
+   Palettes:
+     [Day Mode / الوضع النهاري]:
+       - Naskh Cream Canvas:   #F9F6EE
+       - Pure White Surfaces:  #FFFFFF & #F2EDE2
+       - Soft Mint / Teal:     #1C4E46 & #28665B
+       - Bright Gold Accents:  #C59B27 & #D4AF37
+       - High-Contrast Text:   #142421
+
+     [Night Mode / الوضع الليلي]:
+       - Midnight Navy Canvas: #0B132B / #0D1B2A
+       - Dark Glass Surfaces:  #111F36 & #162744
+       - Muted Dark Teal:      #1E4A47 & #235D59
+       - Glowing Amber Gold:   #E0A96D & #F39C12
+       - Soft Ivory Text:      #F5F1E8
+   ========================================================================== */
+
 :root {
   color-scheme: light;
-  --wird-bg: #f5f5ef;
-  --wird-surface: #fffefa;
-  --wird-surface-muted: #efefe7;
-  --wird-text: #28332c;
-  --wird-muted: #737c72;
-  --wird-primary: #52735e;
-  --wird-primary-strong: #355b45;
-  --wird-border: rgba(92, 108, 91, 0.16);
-  --wird-accent: #b59a63;
-  --wird-shadow: 0 10px 32px rgba(45, 60, 48, 0.055);
+
+  /* Raw Brand Constants */
+  --wird-brand-cream: #f9f6ee;
+  --wird-brand-teal: #1c4e46;
+  --wird-brand-teal-light: #28665b;
+  --wird-brand-gold: #c59b27;
+  --wird-brand-gold-bright: #d4af37;
+  --wird-brand-gold-amber: #e0a96d;
+  --wird-brand-midnight: #0b132b;
+  --wird-brand-glass: #111f36;
+
+  /* Semantic Light Mode Tokens (Day Mode) */
+  --wird-bg: #f9f6ee;
+  --wird-surface: #ffffff;
+  --wird-surface-muted: #f2ede2;
+  --wird-surface-elevated: #ffffff;
+  --wird-text: #142421;
+  --wird-muted: #5b6f6b;
+  --wird-primary: #1c4e46;
+  --wird-primary-strong: #123731;
+  --wird-primary-hover: #28665b;
+  --wird-secondary: #28665b;
+  --wird-accent: #c59b27;
+  --wird-accent-hover: #af851a;
+  --wird-border: rgba(28, 78, 70, 0.12);
+  --wird-border-gold: rgba(197, 155, 39, 0.4);
+  --wird-shadow: 0 10px 30px -5px rgba(28, 78, 70, 0.07);
+  --wird-shadow-lg: 0 20px 40px -10px rgba(28, 78, 70, 0.12);
 }
 
 .dark {
   color-scheme: dark;
-  --wird-bg: #171c18;
-  --wird-surface: #202720;
-  --wird-surface-muted: #252d26;
-  --wird-text: #e8ece5;
-  --wird-muted: #a0aa9f;
-  --wird-primary: #91b39a;
-  --wird-primary-strong: #6f9b7c;
-  --wird-border: rgba(191, 207, 188, 0.13);
-  --wird-accent: #c8ad73;
-  --wird-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
+
+  /* Semantic Dark Mode Tokens (Night Mode - Midnight Navy & Glowing Amber) */
+  --wird-bg: #0b132b;
+  --wird-surface: #111f36;
+  --wird-surface-muted: #0e1a2f;
+  --wird-surface-elevated: #162744;
+  --wird-text: #f5f1e8;
+  --wird-muted: #8b9e9b;
+  --wird-primary: #1e4a47;
+  --wird-primary-strong: #235d59;
+  --wird-primary-hover: #2c6e69;
+  --wird-secondary: #142e2c;
+  --wird-accent: #e0a96d;
+  --wird-accent-hover: #f3b77b;
+  --wird-border: rgba(224, 169, 109, 0.15);
+  --wird-border-gold: rgba(224, 169, 109, 0.35);
+  --wird-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6);
+  --wird-shadow-lg: 0 20px 40px -10px rgba(0, 0, 0, 0.75), 0 0 20px rgba(224, 169, 109, 0.08);
 }
 
 html,
@@ -39,6 +82,97 @@ body {
   transition: background-color 180ms ease, color 180ms ease;
 }
 
+/* Luxury Islamic Surface Card */
+.wird-card {
+  background: var(--wird-surface);
+  border: 1px solid var(--wird-border);
+  box-shadow: var(--wird-shadow);
+  border-radius: 1.25rem;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.dark .wird-card {
+  background: rgba(17, 31, 54, 0.85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(224, 169, 109, 0.18);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 15px rgba(224, 169, 109, 0.05);
+}
+
+.wird-card:hover {
+  border-color: color-mix(in srgb, var(--wird-accent) 40%, transparent);
+}
+
+/* Primary Button in Soft Teal / Night Muted Teal */
+.wird-btn-primary {
+  background-color: var(--wird-primary);
+  color: #ffffff;
+  border-radius: 0.875rem;
+  font-weight: 700;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 10px rgba(28, 78, 70, 0.22);
+}
+
+.wird-btn-primary:hover {
+  background-color: var(--wird-primary-hover);
+  transform: translateY(-1px);
+}
+
+.dark .wird-btn-primary {
+  box-shadow: 0 2px 10px rgba(30, 74, 71, 0.4), 0 0 12px rgba(224, 169, 109, 0.1);
+}
+
+.wird-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Accent Button in Bright Gold / Glowing Amber */
+.wird-btn-accent {
+  background: linear-gradient(135deg, #f3b77b 0%, #c59b27 100%);
+  color: #0b132b;
+  border-radius: 0.875rem;
+  font-weight: 700;
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 2px 12px rgba(197, 155, 39, 0.3);
+}
+
+.wird-btn-accent:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(224, 169, 109, 0.4);
+}
+
+.wird-btn-accent:active {
+  transform: translateY(0);
+}
+
+/* Secondary Button */
+.wird-btn-secondary {
+  background-color: var(--wird-surface-muted);
+  color: var(--wird-text);
+  border: 1px solid var(--wird-border);
+  border-radius: 0.875rem;
+  font-weight: 600;
+  transition: all 160ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.wird-btn-secondary:hover {
+  background-color: color-mix(in srgb, var(--wird-surface-muted) 85%, var(--wird-primary));
+}
+
+/* Mobile Quick Navigation Bar */
 .wird-mobile-nav {
   position: fixed;
   inset-inline: 0;
@@ -46,12 +180,13 @@ body {
   z-index: 40;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 2px;
-  padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+  gap: 3px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--wird-border);
-  background: color-mix(in srgb, var(--wird-surface) 94%, transparent);
-  -webkit-backdrop-filter: blur(18px);
-  backdrop-filter: blur(18px);
+  background: color-mix(in srgb, var(--wird-surface) 95%, transparent);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 -4px 20px rgba(11, 19, 43, 0.08);
 }
 
 .wird-mobile-nav__item {
@@ -63,21 +198,21 @@ body {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  border-radius: 13px;
+  border-radius: 14px;
   color: var(--wird-muted);
   font-size: 10px;
   font-weight: 700;
-  transition: color 160ms ease, background-color 160ms ease;
+  transition: color 160ms ease, background-color 160ms ease, transform 140ms ease;
 }
 
 .wird-mobile-nav__item.is-active {
-  color: var(--wird-primary-strong);
+  color: var(--wird-primary);
   background: color-mix(in srgb, var(--wird-primary) 12%, transparent);
 }
 
 .dark .wird-mobile-nav__item.is-active {
-  color: #c5dfca;
-  background: rgba(111, 155, 124, 0.16);
+  color: var(--wird-accent);
+  background: rgba(224, 169, 109, 0.16);
 }
 
 .wird-mobile-nav__item:focus-visible {
@@ -88,29 +223,33 @@ body {
 .wird-mobile-nav__badge {
   position: absolute;
   top: 3px;
-  inset-inline-start: calc(50% + 5px);
-  min-width: 16px;
-  height: 16px;
+  inset-inline-start: calc(50% + 6px);
+  min-width: 17px;
+  height: 17px;
   padding: 0 4px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #d8b56b;
-  color: #28332c;
+  background: var(--wird-accent);
+  color: #0b132b;
   font-size: 9px;
+  font-weight: 800;
   line-height: 1;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .wird-app-shell,
-  .wird-mobile-nav__item {
+  .wird-mobile-nav__item,
+  .wird-btn-primary,
+  .wird-btn-accent {
     transition: none;
+    transform: none;
   }
 }
 
-
-/* The identity layer loads after Tailwind; explicitly preserve the desktop hidden state. */
+/* Explicit desktop hidden state for mobile nav bar */
 @media (min-width: 768px) {
   .wird-mobile-nav {
     display: none;

@@ -14,6 +14,8 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
+import { WirdBrandLockup } from '../brand/WirdLogo';
+import { WirdAvatar } from '../brand/WirdAvatar';
 
 export type NavTabId = 
   | 'dashboard' 
@@ -25,7 +27,8 @@ export type NavTabId =
   | 'progress' 
   | 'advisor' 
   | 'ruqyah'
-  | 'settings';
+  | 'settings'
+  | 'showcase';
 
 interface SidebarProps {
   currentTab: NavTabId;
@@ -79,8 +82,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]
     },
     {
-      label: 'التطبيق',
-      items: [{ id: 'settings', label: 'الإعدادات', icon: Settings }]
+      label: 'التطبيق والهوية',
+      items: [
+        { id: 'settings', label: 'الإعدادات', icon: Settings },
+        { id: 'showcase', label: 'معرض الهوية (Showcase)', icon: Sparkles }
+      ]
     }
   ];
 
@@ -90,32 +96,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const sidebarContent = (
-    <aside className="w-64 bg-[#f8f6f0] dark:bg-stone-900 border-l border-stone-200/80 dark:border-stone-800 flex flex-col h-full select-none transition-colors">
-      {/* Brand Header */}
-      <div className="p-5 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-800 text-amber-200 flex items-center justify-center font-bold text-xl shadow-xs border border-emerald-700 font-quran">
-            وِ
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-extrabold text-lg text-emerald-950 dark:text-emerald-100 tracking-tight font-quran">
-                وِرد
-              </span>
-              <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-400 tracking-wider">
-                WIRD
-              </span>
-            </div>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400">
-              رفيق القرآن والورد اليومي
-            </p>
-          </div>
-        </div>
+    <aside className="w-64 bg-[#F9F6EE] dark:bg-[#0B132B] border-l border-[#1C4E46]/10 dark:border-[#E0A96D]/15 flex flex-col h-full select-none transition-colors">
+      {/* Brand Header with Official WIRD Emblem & Wordmark */}
+      <div className="p-4 sm:p-5 border-b border-[#1C4E46]/10 dark:border-[#E0A96D]/15 flex items-center justify-between">
+        <WirdBrandLockup symbolSize={40} textSize="md" showSubtitle={true} />
 
         {isOpenMobile && (
           <button 
             onClick={onCloseMobile}
-            className="md:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-lg transition-colors"
+            className="md:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
             aria-label="إغلاق القائمة"
           >
             <X className="w-5 h-5" />
@@ -127,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <nav aria-label="القائمة الرئيسية" className="flex-1 px-3 py-4 space-y-5 overflow-y-auto">
         {navGroups.map(group => (
           <div key={group.label} className="space-y-1.5">
-            <p className="px-3.5 text-[10px] font-bold tracking-wide text-stone-400 dark:text-stone-500">{group.label}</p>
+            <p className="px-3.5 text-[10px] font-bold tracking-wider text-[#5B6F6B] dark:text-[#8B9E9B]">{group.label}</p>
             {group.items.map(item => {
               const Icon = item.icon;
               const isActive = currentTab === item.id;
@@ -136,19 +125,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   key={item.id}
                   onClick={() => handleSelect(item.id)}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`w-full min-h-11 flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
+                  className={`w-full min-h-11 flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs md:text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] ${
                     isActive
-                      ? 'bg-emerald-800 text-white shadow-sm dark:bg-emerald-700'
-                      : 'text-stone-700 dark:text-stone-300 hover:bg-white/80 dark:hover:bg-stone-800 hover:text-emerald-900 dark:hover:text-emerald-300'
+                      ? 'bg-[#1C4E46] text-white shadow-xs dark:bg-[#1E4A47] ring-1 ring-[#C59B27]/40 dark:ring-[#E0A96D]/40'
+                      : 'text-[#142421] dark:text-[#F5F1E8] hover:bg-white/80 dark:hover:bg-[#111F36] hover:text-[#1C4E46] dark:hover:text-[#E0A96D]'
                   }`}
                 >
                   <span className="flex items-center gap-3 min-w-0">
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-300' : 'text-stone-500 dark:text-stone-400'}`} />
+                    <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-[#C59B27] dark:text-[#E0A96D]' : 'text-stone-500 dark:text-stone-400'}`} />
                     <span className="truncate">{item.label}</span>
                   </span>
                   {item.badge !== undefined && (
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
-                      isActive ? 'bg-amber-400 text-emerald-950' : 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold tabular-nums font-mono ${
+                      isActive ? 'bg-[#C59B27] text-[#0B132B]' : 'bg-[#1C4E46]/10 dark:bg-[#1E4A47]/80 text-[#1C4E46] dark:text-[#F5F1E8]'
                     }`}>{item.badge}</span>
                   )}
                 </button>
@@ -159,16 +148,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* User Mini Profile Card */}
-      <div className="p-3 border-t border-stone-200/80 dark:border-stone-800">
-        <div className="bg-stone-100/90 dark:bg-stone-800/80 rounded-xl p-3 flex items-center gap-3 border border-stone-200/60 dark:border-stone-700/60">
-          <div className="w-9 h-9 rounded-full bg-emerald-900 text-amber-200 flex items-center justify-center font-bold text-sm shrink-0 font-quran">
-            {profile.name.charAt(0) || 'ق'}
-          </div>
+      <div className="p-3 border-t border-[#1C4E46]/10 dark:border-[#E0A96D]/15">
+        <div className="bg-white/90 dark:bg-[#111F36]/80 rounded-xl p-3 flex items-center gap-3 border border-stone-200/80 dark:border-[#E0A96D]/20 shadow-2xs">
+          <WirdAvatar size="sm" shape="circle" variant="primary" />
           <div className="min-w-0 flex-1 text-right">
-            <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+            <h4 className="text-xs font-bold text-[#142421] dark:text-[#F5F1E8] truncate">
               {profile.name}
             </h4>
-            <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+            <p className="text-[11px] text-[#5B6F6B] dark:text-[#8B9E9B] truncate">
               {profile.memorizationGoal || 'طالب حفظ'}
             </p>
           </div>

@@ -462,13 +462,13 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#fffefb] dark:bg-stone-900 px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
-        <div className="mb-8 flex items-center justify-between border-b-2 border-[#d4af37]/40 dark:border-[#785310]/60 pb-3 text-xs font-bold text-stone-600 dark:text-stone-400">
-          <span className="font-quran text-base text-emerald-900 dark:text-emerald-300">
+        <div className="mb-8 flex items-center justify-between border-b-2 border-[#b99b62]/40 dark:border-[#c8ad73]/40 pb-3 text-xs font-bold text-stone-700 dark:text-stone-300">
+          <span className="font-quran text-base text-[#102d29] dark:text-[#dfcaa2]">
             {primarySurah?.name ? `سورة ${primarySurah.name}` : 'القرآن الكريم'}
           </span>
-          <span className="font-mono text-xs px-3 py-0.5 rounded-full bg-amber-100/60 dark:bg-stone-800 text-amber-900 dark:text-amber-200 border border-amber-300/50">
+          <span className="font-mono text-xs px-3 py-0.5 rounded-full bg-[#e8dfc9] dark:bg-[#18332e] text-[#102d29] dark:text-[#dfcaa2] border border-[#b99b62]/40">
             صفحة {page}
           </span>
           <span className="font-sans-ui text-xs text-stone-600 dark:text-stone-400">
@@ -548,8 +548,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                     title={`عرض التفسير المعتمد لسورة ${surah?.name || ayah.surahNumber}، الآية ${ayah.numberInSurah}`}
                     className={`inline rounded-xl px-1.5 py-0.5 text-right transition-all cursor-pointer ${
                       isCurrent
-                        ? 'bg-amber-200/80 dark:bg-amber-950/80 ring-2 ring-amber-500/60 shadow-xs'
-                        : 'hover:bg-amber-100/70 dark:hover:bg-amber-950/40'
+                        ? 'bg-[#e8dfc9] dark:bg-[#1d4940] ring-2 ring-[#b99b62] shadow-xs'
+                        : 'hover:bg-[#e8dfc9]/50 dark:hover:bg-[#18332e]/60'
                     }`}
                   >
                     <QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>
@@ -569,8 +569,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                     title={`استماع للآية ${ayah.numberInSurah}`}
                     className={`mx-1 inline-flex h-6 w-6 translate-y-[-2px] items-center justify-center rounded-full text-[10px] transition-colors ${
                       isCurrent
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:text-emerald-300'
+                        ? 'bg-[#b99b62] text-[#102d29]'
+                        : 'bg-[#102d29]/5 text-[#102d29] hover:bg-[#102d29]/15 dark:bg-[#18332e] dark:text-[#dfcaa2]'
                     }`}
                   >
                     {isCurrent ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}

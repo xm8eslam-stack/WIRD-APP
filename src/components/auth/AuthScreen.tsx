@@ -16,6 +16,9 @@ import {
   Check
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { WirdBrandLockup } from '../brand/WirdLogo';
+import { WirdAvatar } from '../brand/WirdAvatar';
+import { WirdIslamicPattern } from '../brand/WirdPattern';
 
 export const AuthScreen: React.FC = () => {
   const { 
@@ -225,36 +228,31 @@ export const AuthScreen: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 flex flex-col items-center justify-center p-4 dir-rtl font-cairo">
-      <div className="w-full max-w-md bg-white dark:bg-stone-900 rounded-3xl p-8 shadow-xl border border-stone-200/80 dark:border-stone-800 space-y-6">
+    <div className="relative min-h-screen bg-[#F6F3EA] dark:bg-[#0D1C19] flex flex-col items-center justify-center p-4 dir-rtl font-cairo overflow-hidden">
+      {/* Subtle Islamic Geometry Background Watermark */}
+      <WirdIslamicPattern opacity={0.035} variant="emerald" />
+
+      <div className="relative z-10 w-full max-w-md bg-white dark:bg-[#122723] rounded-3xl p-7 sm:p-8 shadow-xl border border-[#102D29]/10 dark:border-[#E8DFC9]/15 space-y-6">
         
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 bg-emerald-800 text-amber-300 rounded-2xl flex items-center justify-center mx-auto shadow-md border border-emerald-700">
-            <BookOpen className="w-7 h-7" />
-          </div>
-          <h1 className="text-2xl font-black text-stone-900 dark:text-stone-100 font-quran">
-            منصة وِرد | WIRD
-          </h1>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            حفظ وتثبيت القرآن الكريم وفق منهجيات المراجعة المتباعدة
-          </p>
+        <div className="text-center pt-2">
+          <WirdBrandLockup symbolSize={58} textSize="lg" layout="vertical" showSubtitle={true} />
         </div>
 
         {/* Firebase Config Notice Banner */}
         {!isFirebaseReady && (
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-2xl text-amber-900 dark:text-amber-200 text-xs space-y-2.5 dir-rtl">
-            <div className="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-300">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="p-4 bg-[#E8DFC9]/40 dark:bg-[#18332E]/80 border border-[#B99B62]/40 rounded-2xl text-[#29332F] dark:text-[#E8DFC9] text-xs space-y-2.5 dir-rtl">
+            <div className="flex items-center gap-2 font-bold text-[#102D29] dark:text-[#E8DFC9]">
+              <AlertCircle className="w-4 h-4 text-[#B99B62] shrink-0" />
               <span>تنبيه: مفاتيح Firebase غير مهيأة بعد</span>
             </div>
-            <p className="text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+            <p className="text-[11px] leading-relaxed text-stone-600 dark:text-[#9BB0A7]">
               يتطلب تسجيل الدخول السحابي ضبط متغيرات البيئة (VITE_FIREBASE_*). يمكنك المتابعة الآن مباشرة كزائر بدون عائق وبكامل الميزات محلياً.
             </p>
             <button
               type="button"
               onClick={continueAsGuest}
-              className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 bg-[#B99B62] hover:bg-[#a88a50] text-[#102D29] rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>المتابعة السريعة كزائر (Guest Mode)</span>
@@ -264,14 +262,14 @@ export const AuthScreen: React.FC = () => {
 
         {/* Tab Switchers */}
         {mode !== 'forgot' && (
-          <div className="flex bg-[#faf8f5] dark:bg-stone-800/80 p-1 rounded-2xl border border-stone-200/80 dark:border-stone-700 text-xs font-bold">
+          <div className="flex bg-[#F6F3EA] dark:bg-[#18332E] p-1 rounded-2xl border border-[#102D29]/10 dark:border-[#E8DFC9]/10 text-xs font-bold">
             <button
               type="button"
               onClick={() => { setMode('login'); clearError(); setSuccessMessage(null); }}
               className={`flex-1 py-2.5 rounded-xl transition-all ${
                 mode === 'login' 
-                  ? 'bg-white dark:bg-stone-900 text-emerald-900 dark:text-emerald-300 shadow-xs' 
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'bg-[#102D29] text-white dark:bg-[#1D4940] dark:text-[#E8DFC9] shadow-xs' 
+                  : 'text-[#62726B] hover:text-[#102D29] dark:text-[#9BB0A7]'
               }`}
             >
               تسجيل الدخول
@@ -281,8 +279,8 @@ export const AuthScreen: React.FC = () => {
               onClick={() => { setMode('register'); clearError(); setSuccessMessage(null); }}
               className={`flex-1 py-2.5 rounded-xl transition-all ${
                 mode === 'register' 
-                  ? 'bg-white dark:bg-stone-900 text-emerald-900 dark:text-emerald-300 shadow-xs' 
-                  : 'text-stone-500 hover:text-stone-900'
+                  ? 'bg-[#102D29] text-white dark:bg-[#1D4940] dark:text-[#E8DFC9] shadow-xs' 
+                  : 'text-[#62726B] hover:text-[#102D29] dark:text-[#9BB0A7]'
               }`}
             >
               حساب جديد
@@ -464,7 +462,7 @@ export const AuthScreen: React.FC = () => {
           <button
             type="submit"
             disabled={isSubmitting || (mode === 'register' && password !== confirmPassword)}
-            className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 bg-[#102D29] hover:bg-[#1D4940] text-white rounded-2xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 ring-1 ring-[#B99B62]/30"
           >
             {isSubmitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -482,24 +480,24 @@ export const AuthScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => { setMode('login'); clearError(); setSuccessMessage(null); }}
-            className="w-full text-center text-xs text-stone-500 hover:text-emerald-800 dark:text-stone-400 font-medium"
+            className="w-full text-center text-xs text-[#62726B] hover:text-[#102D29] dark:text-[#9BB0A7] font-medium"
           >
             العودة إلى تسجيل الدخول
           </button>
         )}
 
         {/* Continue as Guest CTA - Critical Protected Flow */}
-        <div className="pt-4 border-t border-stone-200 dark:border-stone-800 space-y-2">
+        <div className="pt-4 border-t border-[#102D29]/10 dark:border-[#E8DFC9]/10 space-y-2">
           <button
             type="button"
             onClick={continueAsGuest}
-            className="w-full py-3 bg-[#faf8f5] dark:bg-stone-800/80 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 border border-stone-300/80 dark:border-stone-700 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 group"
+            className="w-full py-3 bg-[#F6F3EA] dark:bg-[#18332E] hover:bg-[#E8DFC9] dark:hover:bg-[#1d423b] text-[#102D29] dark:text-[#E8DFC9] border border-[#B99B62]/40 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 group shadow-2xs"
           >
-            <Sparkles className="w-4 h-4 text-amber-500 group-hover:rotate-12 transition-transform" />
+            <Sparkles className="w-4 h-4 text-[#B99B62] group-hover:rotate-12 transition-transform" />
             <span>المتابعة كزائر دون تسجيل حساب</span>
-            <ArrowRight className="w-3.5 h-3.5 rotate-180 text-stone-400" />
+            <ArrowRight className="w-3.5 h-3.5 rotate-180 text-[#B99B62]" />
           </button>
-          <p className="text-[10px] text-center text-stone-400 leading-normal">
+          <p className="text-[10px] text-center text-[#62726B] dark:text-[#9BB0A7] leading-normal">
             تتيح لك تجربة الزائر الوصول التام لكافة سور المصحف الشريف والخطط وجلسات الحفظ والتكرار المتباعد محلياً دون الحاجة لتسجيل حساب.
           </p>
         </div>

@@ -59,15 +59,15 @@
 
 /* Islamic pattern background overlay helper */
 .bg-islamic-pattern {
-  background-color: #faf7f2;
-  background-image: radial-gradient(#065f46 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #faf7f2 0.75px);
+  background-color: #f9f6ee;
+  background-image: radial-gradient(#1c4e46 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #f9f6ee 0.75px);
   background-size: 32px 32px;
   background-position: 0 0, 16px 16px;
 }
 
 .dark .bg-islamic-pattern {
-  background-color: #0c0a09;
-  background-image: radial-gradient(#10b981 0.75px, transparent 0.75px), radial-gradient(#c59b27 0.75px, #0c0a09 0.75px);
+  background-color: #0b132b;
+  background-image: radial-gradient(#1e4a47 0.75px, transparent 0.75px), radial-gradient(#e0a96d 0.75px, #0b132b 0.75px);
   background-size: 32px 32px;
   background-position: 0 0, 16px 16px;
 }
@@ -75,13 +75,13 @@
 /* Quranic Mushaf Page Double Border */
 .mushaf-page-frame {
   position: relative;
-  border: 2px solid #d4af37;
-  box-shadow: 0 0 0 4px #faf7f2, 0 0 0 6px #b45309;
+  border: 2px solid #c59b27;
+  box-shadow: 0 0 0 4px #f9f6ee, 0 0 0 6px #1c4e46;
 }
 
 .dark .mushaf-page-frame {
-  border: 2px solid #785310;
-  box-shadow: 0 0 0 4px #1c1917, 0 0 0 6px #451a03;
+  border: 2px solid #e0a96d;
+  box-shadow: 0 0 0 4px #0b132b, 0 0 0 6px #162744, 0 0 20px rgba(224, 169, 109, 0.12);
 }
 
 @keyframes mushaf-page-next {
@@ -104,15 +104,16 @@
 
 /* Ornate Surah Header Banner */
 .surah-header-banner {
-  background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
-  border: 2px solid #d97706;
+  background: linear-gradient(135deg, #1c4e46 0%, #28665b 50%, #1c4e46 100%);
+  border: 2px solid #c59b27;
   position: relative;
-  box-shadow: 0 2px 10px rgba(6, 78, 59, 0.2);
+  box-shadow: 0 4px 20px rgba(28, 78, 70, 0.25);
 }
 
 .dark .surah-header-banner {
-  background: linear-gradient(135deg, #022c22 0%, #064e3b 50%, #065f46 100%);
-  border: 2px solid #b45309;
+  background: linear-gradient(135deg, #0b132b 0%, #162744 50%, #0b132b 100%);
+  border: 2px solid #e0a96d;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(224, 169, 109, 0.15);
 }
 
 /* Quran Ayah End Rosette Marker */
@@ -125,20 +126,20 @@
   margin: 0 0.35rem;
   font-size: 0.8rem;
   font-family: 'Cairo', system-ui, sans-serif;
-  color: #b45309;
-  border: 1.5px solid #d97706;
+  color: #c59b27;
+  border: 1.5px solid #c59b27;
   border-radius: 50%;
   vertical-align: middle;
-  background: rgba(251, 191, 36, 0.1);
+  background: rgba(197, 155, 39, 0.08);
   font-feature-settings: "tnum";
-  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.2);
+  box-shadow: 0 0 0 1px rgba(197, 155, 39, 0.2);
 }
 
 .dark .ayah-number {
-  color: #fcd34d;
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.18);
-  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2);
+  color: #e0a96d;
+  border-color: #e0a96d;
+  background: rgba(224, 169, 109, 0.14);
+  box-shadow: 0 0 8px rgba(224, 169, 109, 0.25);
 }
 
 

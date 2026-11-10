@@ -28,6 +28,8 @@ import { getLocalDateString } from '../../services/unifiedPortionService';
 import { getDailySessionSelection } from '../../services/dailySessionSelection';
 import { getPagesForAyahRange } from '../../services/pageProgressService';
 import { QuranText } from '../shared/QuranText';
+import { WirdIslamicPattern, WirdGeometricDivider } from '../brand/WirdPattern';
+import { WirdSymbol } from '../brand/WirdLogo';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -133,21 +135,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. Personalized Welcome & Daily Ayah Banner */}
-      <section className="bg-gradient-to-l from-emerald-950 via-emerald-900 to-emerald-800 text-white rounded-3xl p-6 md:p-8 shadow-sm relative overflow-hidden border border-emerald-800/60">
-        {/* Subtle decorative radial atmosphere */}
-        <div className="absolute top-0 left-0 w-96 h-96 bg-radial from-amber-400/15 via-emerald-700/5 to-transparent rounded-full -translate-x-32 -translate-y-32 pointer-events-none" />
+      {/* 1. Personalized Welcome & Daily Ayah Banner with Master Visual Identity */}
+      <section className="relative bg-gradient-to-l from-[#0B132B] via-[#0E1E38] to-[#1C4E46] text-white rounded-3xl p-6 md:p-8 shadow-md overflow-hidden border border-[#C59B27]/35">
+        {/* Authentic Islamic geometric watermark */}
+        <WirdIslamicPattern opacity={0.06} variant="gold" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl text-right">
-            <div className="flex items-center gap-2 text-amber-300 text-xs font-semibold">
-              <Sparkles className="w-4 h-4 text-amber-300" />
+            <div className="flex items-center gap-2 text-[#F2EDE2] text-xs font-semibold">
+              <span className="w-6 h-6 rounded-lg bg-[#C59B27]/20 border border-[#C59B27]/30 flex items-center justify-center shrink-0">
+                <WirdSymbol size={16} variant="gold" />
+              </span>
               <span>وِردك القرآني اليومي رِفعةٌ لدرجاتك في الجنة</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran text-amber-50 leading-tight">
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran text-[#F5F1E8] leading-tight">
               السلام عليكم ورحمة الله، {profile.name}
             </h2>
-            <p className="text-emerald-100/90 text-sm md:text-base leading-relaxed font-quran pt-1">
+            <p className="text-[#F2EDE2]/90 text-sm md:text-base leading-relaxed font-quran pt-1">
               «وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ» — استعن بالله وابدأ وِردك ليظل كتاب الله غضاً طرياً في صدرك.
             </p>
           </div>
@@ -156,17 +160,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               disabled={dailyTask.source === 'blocked'}
               onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs md:text-sm rounded-xl shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#F3B77B] to-[#C59B27] hover:brightness-105 text-[#0B132B] font-bold text-xs md:text-sm rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#F2EDE2] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Play className="w-4 h-4 fill-emerald-950" />
+              <Play className="w-4 h-4 fill-[#0B132B]" />
               <span>{dailyTask.source === 'blocked' ? 'افتح تفاصيل الخطة' : dailyTask.mode === 'review' ? `ابدأ مراجعة اليوم (سورة ${dailyTask.surahName})` : `ابدأ ورد اليوم (سورة ${dailyTask.surahName})`}</span>
             </button>
 
             <button
               onClick={() => onNavigate('revision')}
-              className="flex items-center gap-2 px-4 py-3 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 font-semibold text-xs md:text-sm rounded-xl border border-emerald-600/40 transition-colors"
+              className="flex items-center gap-2 px-4 py-3 bg-[#1C4E46] hover:bg-[#28665B] text-[#F5F1E8] font-semibold text-xs md:text-sm rounded-xl border border-[#C59B27]/30 transition-colors shadow-xs"
             >
-              <Repeat className="w-4 h-4" />
+              <Repeat className="w-4 h-4 text-[#C59B27]" />
               <span>المراجعة والتثبيت ({totalDueCount})</span>
             </button>
           </div>
@@ -176,72 +180,72 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 2. Primary Focus: Clear Distinction Between New Memorization vs. Revision */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* NEW MEMORIZATION CARD (الحفظ الجديد) */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#122723] rounded-2xl p-6 border border-[#102D29]/10 dark:border-[#E8DFC9]/10 shadow-xs flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
+            <div className="flex items-center justify-between pb-3 border-b border-[#102D29]/8 dark:border-[#E8DFC9]/8">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#102D29]/10 dark:bg-[#1D4940] text-[#102D29] dark:text-[#E8DFC9] flex items-center justify-center border border-[#B99B62]/20">
                   <BookOpen className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
+                  <h3 className="font-bold text-base text-[#29332F] dark:text-[#F6F3EA]">
                     {dailyTask.source === 'blocked' ? 'تحتاج خطتك إلى نطاق محدد' : dailyTask.mode === 'review' ? 'المراجعة المستحقة' : 'الحفظ الجديد (الورد اليومي)'}
                   </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                  <p className="text-xs text-[#62726B] dark:text-[#9BB0A7]">
                     {dailyTask.label}
                   </p>
                 </div>
               </div>
 
-              <span className="text-xs font-semibold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded-md border border-emerald-200/50 dark:border-emerald-800/40">
+              <span className="text-xs font-semibold px-2.5 py-1 bg-[#E8DFC9]/50 dark:bg-[#18332E] text-[#102D29] dark:text-[#E8DFC9] rounded-lg border border-[#B99B62]/30">
                 مستهدف اليوم
               </span>
             </div>
 
-            <div className="bg-[#fcfbf7] dark:bg-stone-900/60 rounded-xl p-4 border border-stone-200/70 dark:border-stone-700/60 space-y-3">
+            <div className="bg-[#F6F3EA] dark:bg-[#0D1C19]/80 rounded-xl p-4 border border-[#B99B62]/25 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs text-stone-500 dark:text-stone-400">السورة والآيات:</div>
-                  <div className="text-lg font-bold text-emerald-900 dark:text-emerald-200 font-quran">
+                  <div className="text-xs text-[#62726B] dark:text-[#9BB0A7]">السورة والآيات:</div>
+                  <div className="text-lg font-bold text-[#102D29] dark:text-[#E8DFC9] font-quran">
                     {dailyTask.source === 'blocked' ? dailyTask.label : `سورة ${dailyTask.surahName} • الآيات (${dailyTask.startAyah} - ${dailyTask.endAyah})`}
                   </div>
                 </div>
                 <div className="text-left">
-                  <div className="text-xs text-stone-500 dark:text-stone-400">الكمية المقررة:</div>
-                  <div className="text-sm font-bold text-stone-800 dark:text-stone-200 font-mono tabular-nums">
+                  <div className="text-xs text-[#62726B] dark:text-[#9BB0A7]">الكمية المقررة:</div>
+                  <div className="text-sm font-bold text-[#29332F] dark:text-[#F6F3EA] font-mono tabular-nums">
                     {dailyTask.source === 'blocked' ? '—' : dailyTask.mode === 'review' ? `${dailyTask.versesCount} آيات • ${dailyTask.pagesCount} صفحات` : `${dailyTask.versesCount} آيات (صفحة ${dailyTask.pageNumber})`}
                   </div>
                 </div>
               </div>
 
-              <div className="text-xs text-stone-700 dark:text-stone-300 font-quran text-base leading-loose bg-white dark:bg-stone-800 p-3.5 rounded-lg border border-stone-200/60 dark:border-stone-700/50 text-right">
+              <div className="text-xs text-[#29332F] dark:text-[#F6F3EA] font-quran text-base leading-loose bg-white dark:bg-[#122723] p-3.5 rounded-lg border border-[#B99B62]/20 text-right shadow-2xs">
                 <QuranText>{dailyPreviewText}</QuranText>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+            <div className="flex items-center justify-between text-xs text-[#62726B] dark:text-[#9BB0A7]">
               <div className="flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-stone-400" />
-                <span>المدة: <strong className="text-stone-800 dark:text-stone-200">تختلف حسب مقدار الورد وسرعة التسميع</strong></span>
+                <Clock className="w-3.5 h-3.5 text-[#B99B62]" />
+                <span>المدة: <strong className="text-[#29332F] dark:text-[#F6F3EA]">تختلف حسب مقدار الورد وسرعة التسميع</strong></span>
               </div>
               <div>
-                <span>طريقة الجلسة: <strong className="text-emerald-700 dark:text-emerald-400">{dailyTask.source === 'blocked' ? 'لا توجد جلسة تلقائية' : dailyTask.mode === 'review' ? 'مراجعة وتسميع وتثبيت' : `التكرار ${profile.repetitionTarget} مرات مع الإخفاء`}</strong></span>
+                <span>طريقة الجلسة: <strong className="text-[#102D29] dark:text-[#E8DFC9]">{dailyTask.source === 'blocked' ? 'لا توجد جلسة تلقائية' : dailyTask.mode === 'review' ? 'مراجعة وتسميع وتثبيت' : `التكرار ${profile.repetitionTarget} مرات مع الإخفاء`}</strong></span>
               </div>
             </div>
           </div>
 
-          <div className="pt-5 mt-4 border-t border-stone-100 dark:border-stone-700 flex flex-col sm:flex-row items-center gap-3">
+          <div className="pt-5 mt-4 border-t border-[#102D29]/8 dark:border-[#E8DFC9]/8 flex flex-col sm:flex-row items-center gap-3">
             <button
               disabled={dailyTask.source === 'blocked'}
               onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ring-1 ring-[#B99B62]/30"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>{dailyTask.source === 'blocked' ? 'اختر نطاق الخطة' : dailyTask.mode === 'review' ? 'بدء جلسة المراجعة التفاعلية' : 'بدء جلسة الحفظ التفاعلية'}</span>
             </button>
             <button
               onClick={() => onNavigate('library')}
-              className="w-full sm:w-auto px-4 py-3 bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 dark:hover:bg-stone-600 text-stone-800 dark:text-stone-200 font-semibold text-xs md:text-sm rounded-xl transition-colors"
+              className="w-full sm:w-auto px-4 py-3 bg-[#E8DFC9]/40 hover:bg-[#E8DFC9]/80 dark:bg-[#18332E] dark:hover:bg-[#20403a] text-[#29332F] dark:text-[#F6F3EA] font-semibold text-xs md:text-sm rounded-xl transition-colors border border-[#102D29]/10 dark:border-[#E8DFC9]/10"
               title="تصفح المصحف واختيار سورة أخرى يدوياً"
             >
               سورة أخرى
@@ -250,24 +254,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* REVISION CARD (المراجعة والتثبيت) */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#122723] rounded-2xl p-6 border border-[#102D29]/10 dark:border-[#E8DFC9]/10 shadow-xs flex flex-col justify-between">
           <div className="space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-700">
+            <div className="flex items-center justify-between pb-3 border-b border-[#102D29]/8 dark:border-[#E8DFC9]/8">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-xl bg-[#B99B62]/20 dark:bg-[#B99B62]/20 text-[#B99B62] flex items-center justify-center border border-[#B99B62]/30">
                   <Repeat className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-stone-900 dark:text-stone-100">
+                  <h3 className="font-bold text-base text-[#29332F] dark:text-[#F6F3EA]">
                     المراجعة والتثبيت (التكرار المتباعد)
                   </h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                  <p className="text-xs text-[#62726B] dark:text-[#9BB0A7]">
                     المراجعة الصغرى (الحديثة) والكبرى (التراكمية)
                   </p>
                 </div>
               </div>
 
-              <span className="text-xs font-semibold px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 rounded-md border border-amber-200/50 dark:border-amber-800/40">
+              <span className="text-xs font-semibold px-2.5 py-1 bg-[#B99B62]/15 text-[#102D29] dark:text-[#E8DFC9] rounded-lg border border-[#B99B62]/35">
                 {totalDueCount} مهام مستحقة
               </span>
             </div>
@@ -332,66 +336,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 3. Overall Quran Progress & Active Plan Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Metric 1: Verses */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الآيات المحفوظة</div>
+        <div className="bg-white dark:bg-[#122723] rounded-2xl p-5 border border-[#102D29]/10 dark:border-[#E8DFC9]/10 shadow-xs">
+          <div className="text-xs text-[#62726B] dark:text-[#9BB0A7] mb-1">الآيات المحفوظة</div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
+            <span className="text-2xl font-bold text-[#29332F] dark:text-[#F6F3EA] tabular-nums font-mono">
               {totalMemorizedAyahs}
             </span>
-            <span className="text-xs text-stone-400 tabular-nums font-mono">من {TOTAL_QURAN_VERSES}</span>
+            <span className="text-xs text-[#62726B] dark:text-[#9BB0A7] tabular-nums font-mono">من {TOTAL_QURAN_VERSES}</span>
           </div>
-          <div className="w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden">
-            <div className="bg-emerald-600 h-full rounded-full" style={{ width: `${versesPercentage}%` }} />
+          <div className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
+            <div className="bg-[#102D29] dark:bg-[#1D4940] h-full rounded-full" style={{ width: `${versesPercentage}%` }} />
           </div>
-          <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1.5 font-medium">
+          <div className="text-[11px] text-[#1D4940] dark:text-[#C8AD73] mt-1.5 font-medium">
             {versesPercentage}% من مجموع آيات القرآن
           </div>
         </div>
 
         {/* Metric 2: Pages */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">الصفحات المحفوظة بالكامل</div>
+        <div className="bg-white dark:bg-[#122723] rounded-2xl p-5 border border-[#102D29]/10 dark:border-[#E8DFC9]/10 shadow-xs">
+          <div className="text-xs text-[#62726B] dark:text-[#9BB0A7] mb-1">الصفحات المحفوظة بالكامل</div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
+            <span className="text-2xl font-bold text-[#29332F] dark:text-[#F6F3EA] tabular-nums font-mono">
               {totalMemorizedPages}
             </span>
-            <span className="text-xs text-stone-400 tabular-nums font-mono">من {TOTAL_QURAN_PAGES} صفحة</span>
+            <span className="text-xs text-[#62726B] dark:text-[#9BB0A7] tabular-nums font-mono">من {TOTAL_QURAN_PAGES} صفحة</span>
           </div>
-          <div className="w-full bg-stone-100 dark:bg-stone-700 h-1.5 rounded-full mt-3 overflow-hidden">
-            <div className="bg-amber-600 h-full rounded-full" style={{ width: `${pagesPercentage}%` }} />
+          <div className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
+            <div className="bg-[#B99B62] h-full rounded-full" style={{ width: `${pagesPercentage}%` }} />
           </div>
-          <div className="text-[11px] text-amber-700 dark:text-amber-400 mt-1.5 font-medium">
+          <div className="text-[11px] text-[#B99B62] dark:text-[#C8AD73] mt-1.5 font-medium">
             {pagesPercentage}% إنجاز المصحف الشريف
           </div>
         </div>
 
         {/* Metric 3: Weekly Activity */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs">
-          <div className="text-xs text-stone-500 dark:text-stone-400 mb-1">نشاط هذا الأسبوع</div>
+        <div className="bg-white dark:bg-[#122723] rounded-2xl p-5 border border-[#102D29]/10 dark:border-[#E8DFC9]/10 shadow-xs">
+          <div className="text-xs text-[#62726B] dark:text-[#9BB0A7] mb-1">نشاط هذا الأسبوع</div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100 tabular-nums font-mono">
+            <span className="text-2xl font-bold text-[#29332F] dark:text-[#F6F3EA] tabular-nums font-mono">
               {totalWeeklyMinutes}
             </span>
-            <span className="text-xs text-stone-400">دقيقة حفظ ومراجعة</span>
+            <span className="text-xs text-[#62726B] dark:text-[#9BB0A7]">دقيقة حفظ ومراجعة</span>
           </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-3 font-medium">
-            تم حفظ <strong className="text-emerald-700 dark:text-emerald-400">{totalWeeklyAyahs} آية</strong> جديدة
+          <div className="text-[11px] text-[#62726B] dark:text-[#9BB0A7] mt-3 font-medium">
+            تم حفظ <strong className="text-[#102D29] dark:text-[#E8DFC9]">{totalWeeklyAyahs} آية</strong> جديدة
           </div>
         </div>
 
         {/* Metric 4: Streak */}
-        <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#122723] rounded-2xl p-5 border border-[#102D29]/10 dark:border-[#E8DFC9]/10 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="text-xs text-stone-500 dark:text-stone-400 mb-1 flex items-center justify-between">
+            <div className="text-xs text-[#62726B] dark:text-[#9BB0A7] mb-1 flex items-center justify-between">
               <span>سلسلة الالتزام</span>
-              <Flame className="w-4 h-4 text-amber-500 fill-amber-500/20" />
+              <Flame className="w-4 h-4 text-[#B99B62] fill-[#B99B62]/30" />
             </div>
-            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400 tabular-nums font-mono">
+            <div className="text-2xl font-bold text-[#B99B62] dark:text-[#C8AD73] tabular-nums font-mono">
               {profile.streakDays} يوماً متواصلاً
             </div>
           </div>
-          <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-2">
-            مستوى التثبيت الحالي: <strong className="text-emerald-700 dark:text-emerald-400">{retentionStatusLabel}</strong>
+          <div className="text-[11px] text-[#62726B] dark:text-[#9BB0A7] mt-2">
+            مستوى التثبيت الحالي: <strong className="text-[#102D29] dark:text-[#E8DFC9]">{retentionStatusLabel}</strong>
           </div>
         </div>
       </div>

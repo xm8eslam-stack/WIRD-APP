@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { StorageService } from '../../services/storageService';
 import { replayJournalProjection } from '../../services/journalProjectionReplayer';
 import { migrateLegacyPortionsJournaled } from '../../services/backupPersistence';
 import { AuthScreen } from './AuthScreen';
+import { WirdAvatar } from '../brand/WirdAvatar';
+import { WirdBrandLockup } from '../brand/WirdLogo';
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading, isGuest, isEmailVerified } = useAuth();
@@ -87,14 +89,15 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // 1. Loading state during auth initialization
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 flex flex-col items-center justify-center p-4 dir-rtl font-cairo">
-        <div className="flex flex-col items-center space-y-4 text-center">
-          <div className="w-16 h-16 bg-emerald-800 text-amber-300 rounded-2xl flex items-center justify-center shadow-lg border border-emerald-700 animate-pulse">
-            <BookOpen className="w-8 h-8" />
-          </div>
-          <div className="flex items-center gap-2 text-stone-700 dark:text-stone-300 text-sm font-bold">
-            <Loader2 className="w-4 h-4 animate-spin text-emerald-700 dark:text-emerald-400" />
-            <span>جاري تهيئة منصة وِرد...</span>
+      <div className="min-h-screen bg-[#F6F3EA] dark:bg-[#0D1C19] flex flex-col items-center justify-center p-4 dir-rtl font-cairo">
+        <div className="flex flex-col items-center space-y-5 text-center">
+          <WirdAvatar size="xl" shape="squircle" variant="primary" withGlow={true} />
+          <div className="flex flex-col items-center space-y-1.5">
+            <h1 className="text-xl font-bold font-quran text-[#102D29] dark:text-[#E8DFC9]">منصة وِرد | WIRD</h1>
+            <div className="flex items-center gap-2 text-[#62726B] dark:text-[#9BB0A7] text-xs font-semibold">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#B99B62]" />
+              <span>جاري تهيئة المنصة القرآنية...</span>
+            </div>
           </div>
         </div>
       </div>
@@ -105,9 +108,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // Existing unscoped data must be explicitly assigned to this account or kept in guest mode.
   if (storageScope && legacyDecisionScope === storageScope) {
     return (
-      <div className="min-h-screen bg-[#faf8f5] dark:bg-stone-950 flex items-center justify-center p-4 dir-rtl font-cairo">
-        <div className="max-w-lg rounded-2xl border border-amber-200 dark:border-amber-900 bg-white dark:bg-stone-900 p-6 text-center shadow-sm">
-          <h2 className="text-lg font-bold text-stone-900 dark:text-white">بيانات محفوظة على هذا الجهاز</h2>
+      <div className="min-h-screen bg-[#F6F3EA] dark:bg-[#0D1C19] flex items-center justify-center p-4 dir-rtl font-cairo">
+        <div className="max-w-lg rounded-2xl border border-[#B99B62]/35 bg-white dark:bg-[#122723] p-6 text-center shadow-xs">
+          <h2 className="text-lg font-bold text-[#102D29] dark:text-[#E8DFC9]">بيانات محفوظة على هذا الجهاز</h2>
           <p className="mt-3 text-sm leading-7 text-stone-600 dark:text-stone-300">
             وجدنا تقدماً سابقاً محفوظاً قبل فصل بيانات الحسابات. هل تريد نقله إلى حسابك الحالي، أم بدء حساب فارغ مع الاحتفاظ بالبيانات السابقة في وضع الزائر؟ لن نحذف بياناتك دون اختيارك.
           </p>
