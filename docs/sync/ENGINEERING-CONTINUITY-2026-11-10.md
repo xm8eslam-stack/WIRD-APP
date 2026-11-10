@@ -151,3 +151,12 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
 - Never change Firestore rules/schema or production sync flags without explicit approval.
 - Preserve old backup compatibility and local-first access.
 - If a collection cannot be merged without data loss, fail closed and document the limitation rather than silently overwriting or inventing a merge.
+
+
+
+## Latest checkpoint update — after PR #200 merge
+
+- PR #200 is merged to `main` at `5a866f22c254fd35b9c487f7d69546e6b691a9d3`. Its exact head `7ed3af44291cf439b89625e30722750a9366e3e8` passed the full GitHub Quality Gate. Grouped child `documentId` is now forwarded for apply and recovery; test snapshot vs per-result merge semantics remain distinct.
+- No Vercel deployment record exists for that merge SHA because the PR's Vercel status was blocked by the Free-plan `build-rate-limit`. Do not claim this fix has reached Production.
+- PR #201 is open for the next verified issue: revision-rating profile projection uses document ID `profile`, while other profile writers use `main`. This splits one logical profile across separate revision/conflict streams. The fix changes it to `main` and adds a regression assertion; exact-head CI is pending.
+- Weak-verse and daily activity remain full-snapshot projections and are not safe to union or add. Tombstones remain fail-closed.
