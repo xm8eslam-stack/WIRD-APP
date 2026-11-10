@@ -34,6 +34,59 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTabId>(initialRoute.tab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Desktop sidebar collapse/expand state with localStorage persistence
+  const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const saved = localStorage.getItem('wird_desktop_sidebar_open');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleToggleSidebar = () => {
+    if (isDesktop) {
+      setIsDesktopSidebarOpen(prev => {
+        const next = !prev;
+        try {
+          localStorage.setItem('wird_desktop_sidebar_open', String(next));
+        } catch {}
+        return next;
+      });
+    } else {
+      setIsMobileMenuOpen(prev => !prev);
+    }
+  };
+
+  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar from any page
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B' || e.key === 'لا')) {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        handleToggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDesktop]);
+
   // App persistent state
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
   const [plans, setPlans] = useState<MemorizationPlan[]>(() => StorageService.getPlans());
@@ -471,12 +524,14 @@ export default function App() {
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
         onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
+        isDesktopOpen={isDesktopSidebarOpen}
+        onToggleDesktop={handleToggleSidebar}
         profile={profile}
         dueRevisionCount={dueRevisionCount}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden transition-all duration-300">
         {/* Header */}
         <Header
           currentTab={currentTab}
@@ -487,6 +542,8 @@ export default function App() {
           pwaInstallPrompt={pwaInstallPrompt}
           isStandalone={isStandalone}
           onInstallPwa={handleTriggerPwaInstall}
+          isSidebarOpen={isDesktop ? isDesktopSidebarOpen : isMobileMenuOpen}
+          onToggleSidebar={handleToggleSidebar}
         />
 
         {/* PWA Update Ready Banner */}

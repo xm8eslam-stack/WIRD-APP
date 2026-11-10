@@ -36,6 +36,8 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   onOpenMobileMenu: () => void;
+  isDesktopOpen?: boolean;
+  onToggleDesktop?: () => void;
   profile: UserProfile;
   dueRevisionCount: number;
 }
@@ -53,6 +55,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   onOpenMobileMenu,
+  isDesktopOpen = true,
+  onToggleDesktop,
   profile,
   dueRevisionCount
 }) => {
@@ -100,15 +104,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-4 sm:p-5 border-b border-[#1C4E46]/10 dark:border-[#E0A96D]/15 flex items-center justify-between">
         <WirdBrandLockup symbolSize={40} textSize="md" showSubtitle={true} />
 
-        {isOpenMobile && (
-          <button 
-            onClick={onCloseMobile}
-            className="lg:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
-            aria-label="إغلاق القائمة"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {/* Close / Collapse button for Desktop */}
+          {onToggleDesktop && (
+            <button 
+              type="button"
+              onClick={onToggleDesktop}
+              className="hidden lg:flex p-1.5 text-stone-500 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-xl transition-colors"
+              title="إغلاق الشريط الجانبي (Ctrl+B)"
+              aria-label="إغلاق الشريط الجانبي"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+
+          {/* Close button for Mobile Drawer */}
+          {isOpenMobile && (
+            <button 
+              type="button"
+              onClick={onCloseMobile}
+              className="lg:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
+              aria-label="إغلاق القائمة"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Grouped navigation */}
@@ -165,8 +186,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Desktop Sidebar (Permanent) */}
-      <div className="hidden lg:block shrink-0 h-screen sticky top-0">
+      {/* Desktop Sidebar (Collapsible with smooth transition) */}
+      <div 
+        className={`hidden lg:block shrink-0 h-screen sticky top-0 transition-all duration-300 ease-in-out ${
+          isDesktopOpen 
+            ? 'w-64 opacity-100' 
+            : 'w-0 opacity-0 pointer-events-none overflow-hidden'
+        }`}
+      >
         {sidebarContent}
       </div>
 

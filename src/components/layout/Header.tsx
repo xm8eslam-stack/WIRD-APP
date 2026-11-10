@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Play, Moon, Sun, BookOpen, ChevronLeft, Download, Cloud, CloudCheck, CloudOff, CloudAlert, RefreshCw } from 'lucide-react';
+import { Flame, Play, Moon, Sun, BookOpen, ChevronLeft, Download, Cloud, CloudCheck, CloudOff, CloudAlert, RefreshCw, Menu } from 'lucide-react';
 import { UserProfile } from '../../types/quran';
 import { useCloudSync } from '../../hooks/useCloudSync';
 import { WirdSymbol } from '../brand/WirdLogo';
@@ -13,6 +13,8 @@ interface HeaderProps {
   pwaInstallPrompt?: any;
   isStandalone?: boolean;
   onInstallPwa?: () => void;
+  isSidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -23,13 +25,31 @@ export const Header: React.FC<HeaderProps> = ({
   onStartDailySession,
   pwaInstallPrompt,
   isStandalone,
-  onInstallPwa
+  onInstallPwa,
+  isSidebarOpen,
+  onToggleSidebar
 }) => {
   const { status, pendingCount, triggerSync } = useCloudSync();
   return (
     <header className="sticky top-0 z-30 h-[68px] bg-[#F9F6EE]/90 dark:bg-[#0B132B]/90 backdrop-blur-xl border-b border-[#1C4E46]/10 dark:border-[#E0A96D]/15 px-4 md:px-7 flex items-center justify-between gap-3 transition-colors">
-      {/* Page context with official WIRD Symbol badge */}
-      <div className="flex items-center gap-2 min-w-0">
+      {/* Page context with official WIRD Symbol badge and Sidebar Toggle */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className={`p-2 rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] shrink-0 ${
+              !isSidebarOpen
+                ? 'bg-[#F2EDE2] dark:bg-[#111F36] text-[#1C4E46] dark:text-[#E0A96D] ring-1 ring-[#C59B27]/40 shadow-2xs'
+                : 'text-stone-700 dark:text-stone-300 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-[#F2EDE2] dark:hover:bg-[#111F36]'
+            }`}
+            title={isSidebarOpen ? "إغلاق الشريط الجانبي (Ctrl+B)" : "فتح الشريط الجانبي (Ctrl+B)"}
+            aria-label={isSidebarOpen ? "إغلاق الشريط الجانبي" : "فتح الشريط الجانبي"}
+            aria-expanded={isSidebarOpen}
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
         <nav aria-label="مسار التنقل" className="flex items-center gap-2 text-xs min-w-0">
           <span className="hidden sm:inline-flex items-center gap-1.5 font-bold text-[#1C4E46] dark:text-[#F5F1E8] bg-[#F2EDE2] dark:bg-[#111F36] border border-[#C59B27]/30 px-2.5 py-1 rounded-xl shadow-2xs font-quran">
             <WirdSymbol size={20} variant="primary" />
