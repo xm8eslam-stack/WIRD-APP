@@ -220,3 +220,38 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - PR #183 CI is pending at this checkpoint; do not merge until its exact-head Quality Gate succeeds.
 - Attempted to provision a Vercel sandbox for a fresh post-merge checkout, but the Vercel Sandbox API returned 403 Forbidden. No CLI fallback is available in the current execution environment. No sandbox was created and no production state was changed.
 - Firebase production rules have still not been inspected or deployed. The manual setup of `FIREBASE_PROJECT_ID=wird-quran-app` and `FIREBASE_SERVICE_ACCOUNT_JSON` remains deferred until the workflow preflight is merged and reviewed.
+
+
+
+## 2026-11-10 — Latest sync continuity and grouped projection follow-up
+
+- PR #197 merged: grouped `syncMeta` keep-local is atomic; unsupported tombstones/operations fail closed.
+- PR #198 merged and deployed to Production. Tested head `0709b25663b0b52d151bff8de7508823dad89eee`; merge commit `c6befabbacbb5f7ad6351e9dca6c604408713285`; Vercel deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J` is `READY` on `wird-app.vercel.app`.
+- PR #198 test-result behavior: `tests/snapshot` remains authoritative; per-result documents merge by immutable result ID and fail closed on same-ID/different-content collisions. Exact-head Quality Gate passed.
+- The user manually confirmed successful account sync across two devices. Record this as user-reported live verification; do not relabel it as an automated test.
+- New code review found weak-verse first-failure IDs are `weak-{surah}-{ayah}-{mutationId}`; subsequent local failures update by coordinate and increment the counter. Resolution persists a replacement snapshot after filtering by ID. Cross-device first failures can create separate IDs for one coordinate, and stale snapshots can reintroduce a resolved verse. No safe generic merge exists while tombstones are unsupported.
+- Activity events are currently daily `DailyLog` aggregates. Session completion emits a stable mutation ID and a typed `session.completed` event, but its local activity projection still replaces the aggregate array. Two distinct device sessions can compete as full snapshots; summing snapshots can double-count.
+- The remote inbox projector blocks pending local mutations, base-revision conflicts, and tombstones without advancing past unresolved events. It has a dedicated constrained V2 Ruqyah counter merge, but no weak-verse/activity merge.
+- PR #200 is open for a narrow bug fix: grouped transaction application was dropping each child's `documentId`, and grouped recovery matching also ignored it. The patch forwards the ID and makes `tests` recovery distinguish authoritative snapshot from per-result merge. Regression coverage is added; exact-head CI is pending.
+- PR #199 is the documentation continuity checkpoint, including this worklog update and the collection-level findings.
+- PR PR checks may show Vercel `build-rate-limit` due to the Free plan. This does not establish a code failure, but also does not count as a successful preview deployment. Keep CI, Vercel deployment, and live verification separate.
+- No production Firestore rules/schema, secrets, environment settings, or sync flags were changed in this review.
+
+
+
+## 2026-11-10 — PR #200 merged; canonical profile key mismatch found
+
+- PR #200 merged as `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; exact PR head `7ed3af44291cf439b89625e30722750a9366e3e8` passed the full Quality Gate.
+- Grouped child `documentId` is now forwarded during local projection and grouped recovery. Test-result recovery uses authoritative replacement for `snapshot` and immutable-ID merge for per-result documents.
+- Vercel Free-plan `build-rate-limit` prevented a preview deployment; no Vercel deployment record exists for the merge SHA. Production live verification of this patch is therefore not claimed.
+- Found a second revisioned identity inconsistency: `RetentionService.buildRevisionPerformanceSnapshot` emits `profile/profile`, while session completion and profile snapshot writers use `profile/main`. This splits revision/conflict tracking for one logical profile. PR #201 changes the revision writer to the canonical `main` document and adds a regression assertion; CI pending.
+- Weak-verse and daily-activity collection merge limitations remain unchanged and fail closed where conflicts are detected.
+
+
+
+## 2026-11-10 — Canonical profile key fix merged and deployed
+
+- PR #201 merged as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`; exact-head Quality Gate run `42777475075` succeeded.
+- Revision rating now targets the canonical `profile/main` document, aligned with session completion and profile snapshot persistence.
+- Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` reached `READY` on `wird-app.vercel.app` and is built from exact SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. The deployed source includes PR #200's grouped document-ID fix and PR #201's profile-key fix.
+- Previous Vercel PR check failures were caused by the build-rate limit; the later main deployment completed successfully. No Firebase rules/schema or production sync flags were changed.

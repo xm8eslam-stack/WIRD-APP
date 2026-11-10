@@ -149,3 +149,32 @@ Only after explicit user approval:
 - All 114 Surah page starts have regression coverage.
 - Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed PR Quality Gate `42267248254` and push Quality Gate `42267243769`.
 - Vercel deployment was blocked by the daily Free-plan deployment cap. Do not claim production deployment or merge until the deployment gate is resolved and the deployed app is verified.
+
+## 2026-11-10 — Current cloud-sync status (supersedes older sync checkpoint statements)
+
+The historical sections below describe earlier project phases and are not the current implementation state. Use this update as the source of truth for cloud sync.
+
+- The revisioned local journal/outbox, Firestore remote mutation path, remote inbox, and local projection flow are implemented and active in the deployed WIRD release.
+- PR #197 and PR #198 are merged. PR #198 is deployed to Production at `wird-app.vercel.app`; merge commit `c6befabbacbb5f7ad6351e9dca6c604408713285`, Vercel deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J`.
+- PR #198 passed exact-head GitHub Quality Gate, including application tests, Firestore Rules Emulator, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- The user manually tested the account on two devices and confirmed that cloud synchronization works. This is a user-reported live test and must be distinguished from CI.
+- `tests` now has safe per-result merge by immutable result ID while `tests/snapshot` remains authoritative.
+- `weakVerses` and `activityEvents` remain full-snapshot projections. Weak-verse IDs include the mutation ID for first failure; resolution is a full-snapshot removal. Activity uses per-day aggregates even though session completion emits a stable-ID domain event. Do not use blind union or addition.
+- Tombstones remain unsupported and fail closed. Do not change their behavior without a per-collection deletion and anti-resurrection design.
+- PR #200 is open to preserve child document IDs in grouped journal apply/recovery, with a regression test. It is not merged until its exact-head quality gates pass.
+- PR #199 is the documentation continuity update. No production Firestore rules/schema, secrets, environment settings, or sync flags were changed during this review.
+- The Vercel Free-plan build-rate-limit can block preview deployments; it does not invalidate a passing GitHub test run, and a passing GitHub run does not prove a Vercel deployment.
+
+## 2026-11-10 — Latest post-PR #200 sync follow-up
+
+- PR #200 merged to `main` at `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; its exact-head Quality Gate passed all stages. Grouped journal projections and recovery now preserve each child document ID, including the distinction between test-result snapshot and per-result semantics.
+- Vercel did not produce a deployment record for that merge SHA because the Free-plan `build-rate-limit` blocked the PR deployment check. Do not claim the latest sync fix is live until a matching deployment is verified.
+- PR #201 addresses a newly found mismatch between revision profile writes (`profile/profile`) and all other profile snapshot writers (`profile/main`). The duplicate document IDs create separate Firestore revision streams for one profile; the fix and regression test are pending exact-head CI.
+
+## 2026-11-10 — Latest production sync baseline after PR #201
+
+- PR #201 merged as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`; its exact-head Quality Gate passed.
+- Production Vercel deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` and matches the same SHA on alias `wird-app.vercel.app`.
+- The deployed source includes PR #200's grouped child document-ID forwarding/recovery semantics and PR #201's correction so revision rating writes the canonical `profile/main` document.
+- The user confirmed two-device sync before these latest fixes; a fresh physical-device round trip after this deployment is not yet claimed.
+- Remaining known integrity work is weak-verse anti-resurrection and daily activity event-based aggregation; tombstones remain fail-closed.

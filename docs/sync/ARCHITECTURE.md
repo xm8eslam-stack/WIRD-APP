@@ -152,3 +152,38 @@ Never enable upload or projection against production until the deployed Firestor
 Normal remote events now use the `uid + collection + documentId` outbox index both before projection and inside the atomic IndexedDB cursor/revision commit. This prevents a pending write to one test-result/activity document from blocking an unrelated document in the same collection. Grouped `syncMeta` operations intentionally retain collection-wide checks to preserve transaction atomicity. Same-document conflicts remain blocking.
 
 Conflict records now preserve the raw local snapshot plus the exact pending local outbox entries for the conflicting document. Evidence is deduplicated by mutation ID and fingerprint and shares a 500 KB cap. This is an evidence-preservation layer only; it does not yet authorize or execute a conflict decision.
+
+
+
+## 2026-11-10 — Current revisioned-sync release and collection review
+
+This addendum supersedes older release-state statements above where they conflict with the current checkpoint.
+
+- PR #197 is merged: grouped `syncMeta` keep-local operations use an atomic local transaction; unsupported tombstones and unsupported grouped operations fail closed.
+- PR #198 is merged and deployed. Tested head: `0709b25663b0b52d151bff8de7508823dad89eee`; merge commit: `c6befabbacbb5f7ad6351e9dca6c604408713285`; Vercel deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J` reached `READY` on `wird-app.vercel.app`.
+- PR #198 fixed test-result projection: legacy `tests/snapshot` is authoritative; immutable per-result documents merge by result ID and reject conflicting reuse. Exact-head Quality Gate passed tests, Rules Emulator, TypeScript, build, server smoke, and desktop/mobile browser smoke.
+- The user has since manually verified account synchronization across two devices and confirmed it works. This is user-reported live verification, separate from CI.
+- Current collection review confirms `weakVerses` and `activityEvents` still use full snapshots. Weak-verse first-failure IDs are mutation-scoped; resolution removes a record from a replacement snapshot. Daily activity remains per-date aggregates even though session completion also emits a stable-ID `session.completed` domain event. Neither collection may be reconciled with blind union or numeric addition.
+- Tombstones remain unsupported end-to-end. Remote projector blocks them without advancing its cursor. Do not bypass this guard or infer deletion semantics from snapshot writers.
+- PR #200 is open for a narrow grouped-projection correctness fix: forward child `documentId` into both projection and recovery matching, preserving authoritative test snapshots versus immutable per-result merge. Its exact-head regression test and Quality Gate are pending; no merge or deployment is claimed.
+- PR #199 contains the durable continuity checkpoint and documentation refresh. It remains separate from runtime changes.
+- Vercel PR checks currently report the Free-plan `build-rate-limit`; this is not a successful preview deployment. Do not conflate it with GitHub Actions CI or the existing production deployment.
+
+
+
+## 2026-11-10 — Post-PR #200 grouped identity fix and profile-key follow-up
+
+- PR #200 merged to `main` as `5a866f22c254fd35b9c487f7d69546e6b691a9d3`. Exact PR head `7ed3af44291cf439b89625e30722750a9366e3e8` passed the complete GitHub Quality Gate, including automated tests, Firestore Rules Emulator, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- The fix forwards each grouped child operation's `documentId` into local apply and grouped recovery matching. Test-result recovery now distinguishes the authoritative `tests/snapshot` replacement from immutable per-result merges.
+- Vercel reported `build-rate-limit` for the PR. A deployment lookup for merge SHA `5a866f22c254fd35b9c487f7d69546e6b691a9d3` returned no deployment record; do not claim this fix is live on Production yet.
+- A further review found `RetentionService.buildRevisionPerformanceSnapshot` writes the profile projection under `profile/profile`, while session completion and `persistProfileSnapshot` use `profile/main`. Since revisioned conflict control keys by document ID, these create separate revision streams for the same logical profile. PR #201 is open to unify the revision path to `profile/main` and add a regression assertion; exact-head CI is pending.
+
+
+
+## 2026-11-10 — PR #201 merged and combined production release verified
+
+- PR #201 merged to `main` as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. Its exact PR head `fa6ef0ab821ea3ca9cea8ae59fd3197f75400fcf` passed the complete GitHub Quality Gate.
+- Revision-rating profile projection now uses `profile/main`, matching session completion and profile snapshot writers. This removes the separate `profile/profile` revision stream for the same logical profile.
+- Vercel Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` on alias `wird-app.vercel.app`, with exact Git SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. This deployed tree includes PR #200 and PR #201.
+- The earlier Vercel PR checks were rate-limited, but the subsequent main production deployment succeeded. Use the deployment record above as the current deployment evidence.
+- Remaining unresolved collection-level work is weak-verse deletion/anti-resurrection and daily activity event-derived aggregation. Keep tombstones fail-closed.
