@@ -209,3 +209,45 @@ test('Mushaf width and line spacing controls persist and can be reset', async ({
   await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toHaveAttribute('data-mushaf-page-width', 'comfortable');
   await expect(page.getByLabel('تباعد أسطر المصحف')).toHaveValue('normal');
 });
+
+test('full Mushaf page playback continues automatically into the next page', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('wird.audio.repeatCount.v1', '1');
+    const instances: any[] = [];
+    class MockAudio {
+      url: string;
+      preload = 'auto';
+      playbackRate = 1;
+      playCalls = 0;
+      onended: ((event: Event) => void) | null = null;
+      onplaying: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      constructor(url: string) { this.url = url; instances.push(this); }
+      load() {}
+      pause() {}
+      play() { this.playCalls += 1; return Promise.resolve(); }
+    }
+    (window as any).__wirdFullPageAudioInstances = instances;
+    (window as any).Audio = MockAudio;
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await expect(page.locator('[id^="wird-ayah-"]').first()).toBeVisible();
+  const firstPageAyahCount = await page.locator('[id^="wird-ayah-"]').count();
+  await page.getByRole('button', { name: 'استماع للمقطع' }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(0);
+
+  for (let index = 0; index < firstPageAyahCount; index += 1) {
+    await page.evaluate(index => {
+      const audio = (window as any).__wirdFullPageAudioInstances[index];
+      if (!audio?.onended) throw new Error('Expected the next ayah audio track to be ready');
+      audio.onended(new Event('ended'));
+    }, index);
+  }
+
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 2' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(firstPageAyahCount);
+});
