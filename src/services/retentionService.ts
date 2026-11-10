@@ -583,7 +583,7 @@ export const RetentionService = {
         reviewedPagesCount,
         operations: [
           { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: updatedList } },
-          { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs } },
+          { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs, baseSnapshotFingerprint: activity.baseLogsFingerprint } },
           { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: activity.profile } }
         ]
       };
