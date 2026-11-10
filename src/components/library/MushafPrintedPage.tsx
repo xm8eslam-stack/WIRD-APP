@@ -107,9 +107,6 @@ export const MushafPrintedPage: React.FC<MushafPrintedPageProps> = ({
         });
         if (!response.ok) throw new Error(`تعذر تحميل صفحة المصحف المطبوعة (HTTP ${response.status}).`);
         const contentType = (response.headers.get('content-type') || '').toLowerCase();
-        if (!contentType.includes('svg') && !contentType.includes('xml')) {
-          throw new Error('ملف الصفحة المستلمة ليس بصيغة SVG المعتمدة.');
-        }
         const declaredLength = Number(response.headers.get('content-length') || 0);
         if (declaredLength > 5 * 1024 * 1024) {
           throw new Error('حجم ملف الصفحة يتجاوز الحد الآمن للعرض.');
@@ -117,6 +114,11 @@ export const MushafPrintedPage: React.FC<MushafPrintedPageProps> = ({
         const svgText = await response.text();
         if (!svgText || svgText.length > 5 * 1024 * 1024) {
           throw new Error('ملف الصفحة المطبوعة فارغ أو يتجاوز الحد الآمن.');
+        }
+        const svgHeader = svgText.trimStart();
+        if (!contentType.includes('svg') && !contentType.includes('xml') &&
+            !svgHeader.startsWith('<svg') && !svgHeader.startsWith('<?xml')) {
+          throw new Error('ملف الصفحة المستلمة ليس بصيغة SVG المعتمدة.');
         }
 
         const parsed = new DOMParser().parseFromString(svgText, 'image/svg+xml');
