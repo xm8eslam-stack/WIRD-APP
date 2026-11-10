@@ -72,6 +72,7 @@ test('dashboard shows the daily session action once and no hard-coded monthly pr
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await expect(page.getByText('الهدف الشهري: ختم جزء عمّ')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'جلسة اليوم' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /ابدأ ورد اليوم|ابدأ مراجعة اليوم/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /بدء جلسة الحفظ التفاعلية|بدء جلسة المراجعة التفاعلية/ })).toBeVisible();
 });
