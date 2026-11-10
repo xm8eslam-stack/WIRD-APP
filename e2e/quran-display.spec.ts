@@ -81,7 +81,7 @@ test('Mushaf primary touch controls meet the 44px minimum target on phones', asy
   await expect(page.getByRole('button', { name: 'الصفحة السابقة' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'الصفحة التالية' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' })).toHaveCSS('min-height', '44px');
-  await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toHaveCSS('min-height', '44px');
+  await expect(page.getByRole('button', { name: 'استماع للمقطع' })).toHaveCSS('min-height', '44px');
 });
 
 
@@ -113,6 +113,118 @@ test('Tafsir dialog supports Escape, traps keyboard focus, and restores the ayah
   await expect(ayahAction).toBeFocused();
 });
 
+
+test('Mushaf plays a selected ayah segment continuously and repeats the bounded range', async ({ page }) => {
+  await page.addInitScript(() => {
+    const instances: any[] = [];
+    class MockAudio {
+      url: string;
+      preload = 'auto';
+      playbackRate = 1;
+      playCalls = 0;
+      onended: ((event: Event) => void) | null = null;
+      onplaying: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      constructor(url: string) { this.url = url; instances.push(this); }
+      load() {}
+      pause() {}
+      play() { this.playCalls += 1; return Promise.resolve(); }
+    }
+    (window as any).__wirdMushafAudioInstances = instances;
+    (window as any).Audio = MockAudio;
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toBeVisible();
+
+  await page.getByLabel('بداية المقطع الصوتي').selectOption('1');
+  await page.getByLabel('نهاية المقطع الصوتي').selectOption('2');
+  await page.getByLabel('عدد مرات تكرار المقطع الصوتي').selectOption('2');
+  await page.getByRole('button', { name: 'استماع للمقطع' }).click();
+
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances.length)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].playCalls)).toBe(1);
+  await page.getByRole('button', { name: 'إيقاف مؤقت' }).click();
+  await expect(page.getByRole('button', { name: 'استئناف التلاوة' })).toBeVisible();
+  await page.getByRole('button', { name: 'استئناف التلاوة' }).click();
+  await page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].playCalls)).toBe(1);
+  await page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances.length)).toBe(4);
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[2].playCalls)).toBe(1);
+});
+
+test('Mushaf width and line spacing controls persist and can be reset', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+
+  const pageRegion = page.getByRole('main', { name: 'صفحة المصحف 1' });
+  const spacing = page.getByLabel('تباعد أسطر المصحف');
+  await spacing.selectOption('relaxed');
+  await page.getByRole('button', { name: 'ملء الشاشة' }).click();
+  await expect(pageRegion).toHaveAttribute('data-mushaf-page-width', 'full');
+  await expect(page.locator('[data-mushaf-line-spacing="relaxed"]')).toBeVisible();
+
+  await page.getByRole('button', { name: 'العودة للفهرس' }).click();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toHaveAttribute('data-mushaf-page-width', 'full');
+  await expect(page.getByLabel('تباعد أسطر المصحف')).toHaveValue('relaxed');
+
+  await page.getByRole('button', { name: 'إعادة ضبط العرض' }).click();
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toHaveAttribute('data-mushaf-page-width', 'comfortable');
+  await expect(page.getByLabel('تباعد أسطر المصحف')).toHaveValue('normal');
+});
+
+test('full Mushaf page playback continues automatically into the next page', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('wird.audio.repeatCount.v1', '1');
+    const instances: any[] = [];
+    class MockAudio {
+      url: string;
+      preload = 'auto';
+      playbackRate = 1;
+      playCalls = 0;
+      onended: ((event: Event) => void) | null = null;
+      onplaying: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      constructor(url: string) { this.url = url; instances.push(this); }
+      load() {}
+      pause() {}
+      play() { this.playCalls += 1; return Promise.resolve(); }
+    }
+    (window as any).__wirdFullPageAudioInstances = instances;
+    (window as any).Audio = MockAudio;
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+  await expect(page.locator('[id^="wird-ayah-"]').first()).toBeVisible();
+  const firstPageAyahCount = await page.locator('[id^="wird-ayah-"]').count();
+  await expect(page.getByLabel('نهاية المقطع الصوتي')).toHaveValue(String(firstPageAyahCount - 1));
+  await page.getByRole('button', { name: 'استماع للمقطع' }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(0);
+
+  for (let index = 0; index < firstPageAyahCount; index += 1) {
+    await page.evaluate(index => {
+      const audio = (window as any).__wirdFullPageAudioInstances[index];
+      if (!audio?.onended) throw new Error('Expected the next ayah audio track to be ready');
+      audio.onended(new Event('ended'));
+    }, index);
+  }
+
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 2' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(firstPageAyahCount);
+  await expect.poll(() => page.evaluate(firstPageAyahCount =>
+    (window as any).__wirdFullPageAudioInstances[firstPageAyahCount]?.url || '', firstPageAyahCount
+  )).toMatch(/002001\.mp3$/);
+});
 
 test('Mushaf reader keeps flexible layout disclosure and remembers reading display preferences', async ({ page }) => {
   await page.goto('/');
