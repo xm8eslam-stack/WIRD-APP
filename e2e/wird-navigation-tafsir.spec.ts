@@ -44,6 +44,38 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(page.getByText(/الآية 1 من 3/)).toBeVisible();
   });
 
+
+  test('Space shortcut ignores focused controls while masked words remain keyboard operable', async ({ page }) => {
+    await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
+    await expect(page.getByText(/عداد التكرار والتثبيت/)).toContainText('0 /');
+
+    await page.getByRole('button', { name: 'إخفاء تام' }).click();
+    const maskedWord = page.getByRole('button', { name: 'إظهار الكلمة رقم 1' });
+    await expect(maskedWord).toBeVisible();
+    await expect(maskedWord).toHaveCSS('min-height', '44px');
+    await maskedWord.focus();
+    await page.keyboard.press('Space');
+
+    await expect(page.getByRole('button', { name: 'إظهار الكلمة رقم 1' })).toHaveCount(0);
+    await expect(page.getByText(/عداد التكرار والتثبيت/)).toContainText('0 /');
+
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    });
+    await page.keyboard.press('Space');
+    await expect(page.getByText(/عداد التكرار والتثبيت/)).toContainText('1 /');
+  });
+
+  test('session controls keep comfortable touch targets on a phone viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
+
+    await expect(page.getByRole('button', { name: 'إخفاء تام' })).toHaveCSS('min-height', '44px');
+    await expect(page.getByRole('button', { name: /\+ تكرار/ })).toHaveCSS('min-height', '44px');
+    await expect(page.getByRole('button', { name: 'الآية السابقة' })).toHaveCSS('min-height', '44px');
+    await expect(page.getByRole('button', { name: /أتقنت الآية/ })).toHaveCSS('min-height', '44px');
+  });
+
   test('full offline preparation caches lazy Quran assets and opens the mushaf offline', async ({ page, context }) => {
     test.skip((page.viewportSize()?.width ?? 1280) < 768, 'The full asset download is exercised once on desktop; mobile settings reachability is covered separately.');
     test.setTimeout(180_000);
