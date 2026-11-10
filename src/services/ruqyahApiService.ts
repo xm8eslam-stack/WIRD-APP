@@ -6,6 +6,13 @@ export type RuqyahApiProgram = 'brief-ruqya' | 'a-medium-ruqya' | 'a-long-ruqya'
 export type RuqyahApiSource = 'from-quran';
 
 const MAX_EXTERNAL_INDEX_ID = 999_999_999;
+const RUQYAH_INDEX_CACHE_PREFIX = 'wird.ruqyah.index-cache.v1:';
+const RUQYAH_INDEX_CACHE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+export interface CachedRuqyahApiIndex {
+  entries: RuqyahApiEntry[];
+  savedAt: string;
+}
 
 export interface RuqyahApiEntry {
   id: number | string;
@@ -71,7 +78,21 @@ export async function fetchRuqyahApiData<T = unknown>(
     if (response.status === 503 && code === 'RUQYAH_API_KEY_NOT_CONFIGURED') {
       throw new Error('مصدر الرقية الخارجي يحتاج إلى ضبط مفتاح API في إعدادات الخادم.');
     }
-    if (response.status === 429) throw new Error('تم تجاوز حد طلبات مصدر الرقية مؤقتًا. حاول بعد قليل.');
+    if (code === 'RUQYAH_API_KEY_REJECTED') {
+      throw new Error('رفض مصدر الرقية مفتاح API. تحقق من قيمة ISLAMICAPI_API_KEY في إعدادات Vercel ثم أعد النشر.');
+    }
+    if (code === 'RUQYAH_SOURCE_RATE_LIMITED' || response.status === 429) {
+      throw new Error('بلغ مصدر الرقية حد الطلبات مؤقتًا. انتظر قليلاً ثم أعد المحاولة.');
+    }
+    if (code === 'RUQYAH_SOURCE_UNAVAILABLE') {
+      throw new Error('مصدر الرقية الخارجي غير متاح مؤقتًا (HTTP ' + response.status + '). يمكنك إعادة المحاولة أو استخدام آخر فهرس محفوظ.');
+    }
+    if (code === 'INVALID_RUQYAH_SOURCE_RESPONSE') {
+      throw new Error('أعاد مصدر الرقية استجابة غير صالحة؛ لم يتم عرض أي محتوى منها.');
+    }
+    if (code === 'RUQYAH_SOURCE_ERROR' && isRecord(payload) && payload.message === 'SOURCE_TIMEOUT') {
+      throw new Error('انتهت مهلة الاتصال بمصدر الرقية الخارجي. أعد المحاولة بعد قليل.');
+    }
     throw new Error('تعذر جلب محتوى الرقية من المصدر الخارجي (HTTP ' + response.status + ').');
   }
   if (!/application\/(?:[a-z0-9.+-]*\+)?json/i.test(contentType)) {
@@ -123,6 +144,62 @@ function resolveApiQuranLocator(entry: RuqyahApiEntry): ValidatedApiQuranLocator
     throw new Error('موضع الآيات في الفهرس الخارجي خارج حدود المصحف المعتمد.');
   }
   return { id: entry.id, surahNumber, surahName: surah.name, startAyah, endAyah };
+}
+
+/** Store only validated numeric Quran coordinates; no provider-authored text is cached. */
+export function writeRuqyahApiIndexCache(
+  program: RuqyahApiProgram,
+  entries: RuqyahApiEntry[],
+  storage: Pick<Storage, 'setItem'> = localStorage,
+  now = new Date()
+): boolean {
+  try {
+    if (!Array.isArray(entries) || entries.length === 0 || entries.length > 300) return false;
+    const sanitized = entries.map(entry => {
+      const locator = resolveApiQuranLocator(entry);
+      return {
+        id: locator.id,
+        title: locator.surahNumber + ':' + locator.startAyah + '-' + locator.endAyah
+      };
+    });
+    storage.setItem(RUQYAH_INDEX_CACHE_PREFIX + program, JSON.stringify({
+      savedAt: now.toISOString(),
+      entries: sanitized
+    }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Read a recent, schema-checked locator cache for offline/stale-source fallback. */
+export function readRuqyahApiIndexCache(
+  program: RuqyahApiProgram,
+  storage: Pick<Storage, 'getItem'> = localStorage,
+  now = new Date()
+): CachedRuqyahApiIndex | null {
+  try {
+    const raw = storage.getItem(RUQYAH_INDEX_CACHE_PREFIX + program);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!isRecord(value) || typeof value.savedAt !== 'string' ||
+        !Number.isFinite(Date.parse(value.savedAt)) || !Array.isArray(value.entries) ||
+        value.entries.length === 0 || value.entries.length > 300) return null;
+    const age = now.getTime() - Date.parse(value.savedAt);
+    if (age < 0 || age > RUQYAH_INDEX_CACHE_TTL_MS) return null;
+    const entries = value.entries.map(item => {
+      if (!isRecord(item)) throw new Error('Invalid cached locator');
+      const entry = { id: item.id as number | string, title: item.title as string };
+      const locator = resolveApiQuranLocator(entry);
+      return {
+        id: locator.id,
+        title: locator.surahNumber + ':' + locator.startAyah + '-' + locator.endAyah
+      };
+    });
+    return { entries, savedAt: value.savedAt };
+  } catch {
+    return null;
+  }
 }
 
 /**

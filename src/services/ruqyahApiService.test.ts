@@ -1,6 +1,13 @@
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
 import { getRuqyahDisplayText } from './ruqyahContentService';
-import { fetchRuqyahApiData, matchesApiQuranEntry, resolveApiQuranEntry, resolveApiQuranEntryText } from './ruqyahApiService';
+import {
+  fetchRuqyahApiData,
+  matchesApiQuranEntry,
+  readRuqyahApiIndexCache,
+  resolveApiQuranEntry,
+  resolveApiQuranEntryText,
+  writeRuqyahApiIndexCache
+} from './ruqyahApiService';
 
 export async function runRuqyahApiServiceTests(): Promise<{ passed: number; failed: number }> {
   let passed = 0;
@@ -78,6 +85,41 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       let envelopeRejected = false;
       try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); } catch { envelopeRejected = true; }
       assert(envelopeRejected, 'Invalid success envelope must be rejected');
+    });
+
+    await test('validated numeric Quran index cache survives a temporary provider outage and expires safely', () => {
+      const data = new Map<string, string>();
+      const storage = {
+        getItem: (key: string) => data.get(key) ?? null,
+        setItem: (key: string, value: string) => { data.set(key, value); }
+      };
+      const savedAt = new Date(2026, 0, 1, 10);
+      const entries = [{ id: 1, title: '1:1-7' }, { id: 2, title: '2:1-5' }];
+      assert(writeRuqyahApiIndexCache('brief-ruqya', entries, storage, savedAt), 'valid numeric locators should be cached');
+      const cached = readRuqyahApiIndexCache('brief-ruqya', storage, new Date(2026, 0, 2, 10));
+      assert(cached?.entries.length === 2 && cached.entries[0].title === '1:1-7', 'cache should return normalized verified coordinates');
+      assert(!writeRuqyahApiIndexCache('brief-ruqya', [{ id: 3, title: '115:1' }], storage, savedAt), 'invalid coordinates must not enter the cache');
+      assert(readRuqyahApiIndexCache('brief-ruqya', storage, new Date(2026, 4, 5)) === null, 'cache older than its TTL should expire');
+      data.set('wird.ruqyah.index-cache.v1:a-long-ruqya', '{broken');
+      assert(readRuqyahApiIndexCache('a-long-ruqya', storage, savedAt) === null, 'corrupt cache should fail closed');
+    });
+
+    await test('API client distinguishes rejected keys and temporary upstream outages', async () => {
+      globalThis.fetch = (async () => new Response(JSON.stringify({ error: 'RUQYAH_API_KEY_REJECTED' }), {
+        status: 502, headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let rejectedKeyMessage = '';
+      try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); }
+      catch (error) { rejectedKeyMessage = error instanceof Error ? error.message : String(error); }
+      assert(rejectedKeyMessage.includes('ISLAMICAPI_API_KEY'), 'rejected key should be actionable and not appear as a generic HTTP 502');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({ error: 'RUQYAH_SOURCE_UNAVAILABLE' }), {
+        status: 502, headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let unavailableMessage = '';
+      try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); }
+      catch (error) { unavailableMessage = error instanceof Error ? error.message : String(error); }
+      assert(unavailableMessage.includes('غير متاح مؤقتًا'), 'provider outage should be explained as temporary');
     });
 
     await test('API client reports missing server key without exposing any client-side key option', async () => {

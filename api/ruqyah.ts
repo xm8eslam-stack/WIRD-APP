@@ -107,7 +107,7 @@ function validPayload(payload: unknown): boolean {
   if (!isRecord(payload) || payload.status !== 'success' || !('data' in payload)) return false;
   const rawData = payload.data;
   const rawRows: unknown[] = Array.isArray(rawData) ? rawData : [rawData];
-  if (rawRows.length === 0 || rawRows.length > 500) return false;
+  if (rawRows.length > 500) return false;
   const rows = rawRows.filter(isRecord);
   if (rows.length !== rawRows.length) return false;
   return !rows.some(row =>
@@ -121,6 +121,22 @@ function parseUpstreamJson(raw: string): unknown | null {
   const trimmed = raw.trim();
   if (!trimmed || trimmed.startsWith('<')) return null;
   try { return JSON.parse(trimmed) as unknown; } catch { return null; }
+}
+
+async function fetchRuqyahSourceWithRetry(url: string): Promise<Response> {
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(12_000)
+    });
+    if (![502, 503, 504].includes(response.status) || attempt === 1) return response;
+    await response.body?.cancel().catch(() => undefined);
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (!response) throw new Error('RUQYAH_SOURCE_NO_RESPONSE');
+  return response;
 }
 
 async function readBoundedUpstreamText(response: Response): Promise<string | null> {
@@ -208,11 +224,7 @@ export default async function handler(req: any, res: any) {
 
   params.set('api_key', apiKey.trim());
   try {
-    const upstream = await fetch(API_BASE + '?' + params.toString(), {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(12_000)
-    });
+    const upstream = await fetchRuqyahSourceWithRetry(API_BASE + '?' + params.toString());
     const contentType = upstream.headers.get('content-type') || '';
     const declaredLengthHeader = upstream.headers.get('content-length');
     const declaredLength = declaredLengthHeader === null ? null : Number(declaredLengthHeader);
@@ -231,9 +243,15 @@ export default async function handler(req: any, res: any) {
 
     if (!upstream.ok) {
       res.setHeader('Cache-Control', 'no-store');
-      return send(res, upstream.status === 401 ? 502 : 502, {
-        error: upstream.status === 401 ? 'RUQYAH_API_KEY_REJECTED' : 'RUQYAH_SOURCE_UNAVAILABLE'
-      });
+      if (upstream.status === 401) {
+        return send(res, 502, { error: 'RUQYAH_API_KEY_REJECTED' });
+      }
+      if (upstream.status === 429) {
+        const retryAfter = upstream.headers.get('retry-after');
+        if (retryAfter && /^\d{1,4}$/.test(retryAfter)) res.setHeader('Retry-After', retryAfter);
+        return send(res, 503, { error: 'RUQYAH_SOURCE_RATE_LIMITED' });
+      }
+      return send(res, 502, { error: 'RUQYAH_SOURCE_UNAVAILABLE' });
     }
     if (!validPayload(payload)) {
       res.setHeader('Cache-Control', 'no-store');
