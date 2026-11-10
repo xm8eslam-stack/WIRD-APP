@@ -133,8 +133,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return () => { cancelled = true; };
   }, [dailyTask.source, dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.label]);
 
-  // Weekly stats
-  const last7Logs = logs.slice(-7);
+  // Show the actual seven calendar days, including quiet days as zero activity.
+  // Aggregate defensively in case more than one log exists for a date.
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const last7Logs = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const matchingLogs = logs.filter(log => log.date === dateKey);
+    return {
+      date: dateKey,
+      minutesSpent: matchingLogs.reduce((sum, log) => sum + log.minutesSpent, 0),
+      memorizedAyahsCount: matchingLogs.reduce((sum, log) => sum + log.memorizedAyahsCount, 0)
+    };
+  });
   const totalWeeklyMinutes = last7Logs.reduce((acc, curr) => acc + curr.minutesSpent, 0);
   const totalWeeklyAyahs = last7Logs.reduce((acc, curr) => acc + curr.memorizedAyahsCount, 0);
 
@@ -406,7 +419,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {last7Logs.map((log, idx) => {
               const maxMinutes = 50;
               const heightPercent = Math.min(100, Math.round((log.minutesSpent / maxMinutes) * 100));
-              const dayName = new Date(log.date).toLocaleDateString('ar-SA', { weekday: 'short' });
+              const [year, month, day] = log.date.split('-').map(Number);
+              const dayName = new Date(year, month - 1, day).toLocaleDateString('ar-SA', { weekday: 'short' });
 
               return (
                 <div key={idx} role="listitem" aria-label={`${dayName}: ${log.minutesSpent} دقيقة و${log.memorizedAyahsCount} آيات`} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
