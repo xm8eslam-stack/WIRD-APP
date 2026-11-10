@@ -177,3 +177,13 @@ This addendum supersedes older release-state statements above where they conflic
 - The fix forwards each grouped child operation's `documentId` into local apply and grouped recovery matching. Test-result recovery now distinguishes the authoritative `tests/snapshot` replacement from immutable per-result merges.
 - Vercel reported `build-rate-limit` for the PR. A deployment lookup for merge SHA `5a866f22c254fd35b9c487f7d69546e6b691a9d3` returned no deployment record; do not claim this fix is live on Production yet.
 - A further review found `RetentionService.buildRevisionPerformanceSnapshot` writes the profile projection under `profile/profile`, while session completion and `persistProfileSnapshot` use `profile/main`. Since revisioned conflict control keys by document ID, these create separate revision streams for the same logical profile. PR #201 is open to unify the revision path to `profile/main` and add a regression assertion; exact-head CI is pending.
+
+
+
+## 2026-11-10 — PR #201 merged and combined production release verified
+
+- PR #201 merged to `main` as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. Its exact PR head `fa6ef0ab821ea3ca9cea8ae59fd3197f75400fcf` passed the complete GitHub Quality Gate.
+- Revision-rating profile projection now uses `profile/main`, matching session completion and profile snapshot writers. This removes the separate `profile/profile` revision stream for the same logical profile.
+- Vercel Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` on alias `wird-app.vercel.app`, with exact Git SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. This deployed tree includes PR #200 and PR #201.
+- The earlier Vercel PR checks were rate-limited, but the subsequent main production deployment succeeded. Use the deployment record above as the current deployment evidence.
+- Remaining unresolved collection-level work is weak-verse deletion/anti-resurrection and daily activity event-derived aggregation. Keep tombstones fail-closed.
