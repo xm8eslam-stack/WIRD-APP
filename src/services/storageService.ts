@@ -1477,6 +1477,15 @@ export const StorageService = {
     return setItem(STORAGE_KEYS.TESTS, JSON.stringify(tests));
   },
 
+  /** Strictly read the current weak-verse archive for snapshot preconditions. */
+  getWeakVerses(): WeakVerseItem[] {
+    return readStrictJsonArrayArchive<WeakVerseItem>(
+      STORAGE_KEYS.WEAK_VERSES,
+      'Weak verses',
+      isValidWeakVerseRecord
+    );
+  },
+
   /** Replace the complete weak-verse snapshot after duplicate-coordinate validation. */
   saveWeakVerses(items: WeakVerseItem[]): boolean {
     if (!Array.isArray(items) || items.length > 10000 ||
@@ -1582,13 +1591,7 @@ export const StorageService = {
       case 'weakVerses': {
         if (!Array.isArray(payload.records)) return false;
         let current: WeakVerseItem[];
-        try {
-          current = readStrictJsonArrayArchive<WeakVerseItem>(
-            STORAGE_KEYS.WEAK_VERSES,
-            'Weak verses',
-            isValidWeakVerseRecord
-          );
-        } catch { return false; }
+        try { current = this.getWeakVerses(); } catch { return false; }
         if (!allowSnapshotReplacement && !canApplySnapshotPrecondition(payload, current, payload.records)) return false;
         return this.saveWeakVerses(payload.records as WeakVerseItem[]);
       }
