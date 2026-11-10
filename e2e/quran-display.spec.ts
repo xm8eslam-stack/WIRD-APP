@@ -69,3 +69,17 @@ test('Mushaf page jump rejects invalid pages and accepts a valid page', async ({
   await page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' }).click();
   await expect(page.getByText('2 / 604')).toBeVisible();
 });
+
+
+test('Mushaf primary touch controls meet the 44px minimum target on phones', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: /فتح المصحف بالصفحات/ }).click();
+
+  await expect(page.getByRole('button', { name: 'الصفحة السابقة' })).toHaveCSS('min-height', '44px');
+  await expect(page.getByRole('button', { name: 'الصفحة التالية' })).toHaveCSS('min-height', '44px');
+  await expect(page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' })).toHaveCSS('min-height', '44px');
+  await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toHaveCSS('min-height', '44px');
+});
