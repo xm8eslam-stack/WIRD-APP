@@ -1,5 +1,16 @@
 ### GOOGLE AI STUDIO HANDOFF
 
+
+## 2026-11-11 — Current verified handoff (supersedes older status below)
+
+- Repository: `xm8eslam-stack/WIRD-APP`; current `main` after PR #325 is `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`.
+- PR #325 (snapshot compare-and-set protection) is merged. Exact-head Quality Gate run `42917981860` passed: 667 automated assertions, 31 Firestore Rules Emulator tests, 8/8 approved Quran audio probes, 140 desktop/mobile Playwright tests, TypeScript, production build, and server smoke.
+- PR #326 (continuous Quran audio queue, Mushaf reading controls, 10-second offline pre-cache timeout) is the active current-main port at head `89761a457079a7b1f9b36d8abd5566b71f4d2565`. Quality Gate run `42919276966`: automated tests, 604-page coordinate validation, audio CDN probes, emulator tests, TypeScript, build, and server smoke have passed; desktop/mobile Playwright is still running. Do not merge until that exact-head run completes successfully.
+- Memorization display sizing is already implemented: PR #202/#206 merged; PR #206 merge `391be261e32f4d3634b0bf0010972c0297077d67` is an ancestor of current Production. Controls: session UI scale 80–110%, ayah font 20–44px, compact/comfortable spacing, focused/all-session ayah view, and sticky navigation. These preferences are device-local and intentionally excluded from cloud sync/backups.
+- Latest verified Production deployment remains `dac125dd8770cc4881e2c6cea6fe94623ad52144` (`READY`, alias `wird-app.vercel.app`). It predates PR #325; Vercel preview/deployment checks for the newer commits are blocked by `build-rate-limit`. No manual deployment or Vercel/Firebase settings change was made.
+- No Firestore rules/schema, secrets, environment variables, or remote-sync flags were changed. Google AI Studio synchronization has not been independently verified; do not claim it is synced until the owner verifies the connected `main` source.
+- Sync limitation remains: whole-snapshot `keep-local/use-remote` decisions for `weakVerses` and `activityEvents` stay blocked by `syncConflictSafety`; tombstone/delete semantics and a real two-device post-change test remain outstanding. PR #325 is a stale-snapshot safety guard, not proof that bidirectional sync is fully released.
+
 ## 2026-11-10 — Current verified state and continuation
 
 - Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
