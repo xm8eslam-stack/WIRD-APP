@@ -74,6 +74,8 @@ export function runQuranMushafReaderTests(): { passed: number; failed: number } 
     const facsimile = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranMushafFacsimilePage.tsx'), 'utf8');
     assert(facsimile.includes('sanitizeMushafSvgMarkup') === false, 'SVG sanitization must remain centralized in the page data service');
     assert(facsimile.includes('matchMushafAyahAreas') && facsimile.includes('onSelectAyah(ayah)'), 'Printed hit regions must resolve through local ayah coordinates');
+    assert(facsimile.includes('loadAyahByCoordinate'), 'Printed pages must resolve text by canonical ayah coordinates, not by local page-number metadata');
+    assert(facsimile.includes('onAyahsResolved'), 'Printed-page audio queue must use the exact rendered page ayah order');
     assert(facsimile.includes('dangerouslySetInnerHTML={{ __html: pageData.svgMarkup }}'), 'Only the sanitized SVG markup may be mounted inline');
     const facsimileService = fs.readFileSync(path.resolve(process.cwd(), 'src/services/mushafFacsimileService.ts'), 'utf8');
     assert(facsimileService.includes('ALLOWED_SVG_ELEMENTS') && facsimileService.includes('ALLOWED_SVG_ATTRIBUTES'), 'SVG must be sanitized by strict element and attribute allowlists');
