@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, RefreshCw, ShieldCheck, AlertCircle } from 'lucide-react';
 import {
   fetchRuqyahApiData,
+  readRuqyahApiIndexCache,
   resolveApiQuranEntry,
-  matchesApiQuranEntry
+  matchesApiQuranEntry,
+  writeRuqyahApiIndexCache
 } from '../../services/ruqyahApiService';
 import type { RuqyahApiEntry } from '../../services/ruqyahApiService';
 import { QuranText } from '../shared/QuranText';
@@ -23,12 +25,18 @@ export const RuqyahApiLibrary: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isShowingCachedData, setIsShowingCachedData] = useState(false);
+  const [cacheSavedAt, setCacheSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
+    const cached = readRuqyahApiIndexCache(program);
     setLoading(true);
     setError(null);
-    setEntries([]);
+    setEntries(cached?.entries || []);
+    setIsShowingCachedData(Boolean(cached));
+    setCacheSavedAt(cached?.savedAt || null);
+
     fetchRuqyahApiData<RuqyahApiEntry[]>({
       type: 'instant',
       program,
@@ -36,7 +44,7 @@ export const RuqyahApiLibrary: React.FC = () => {
     }, controller.signal)
       .then(data => {
         const normalized = Array.isArray(data) ? data : data ? [data as unknown as RuqyahApiEntry] : [];
-        if (normalized.length > 300 || normalized.some(entry =>
+        if (normalized.length === 0 || normalized.length > 300 || normalized.some(entry =>
           !entry ||
           (typeof entry.id !== 'number' && typeof entry.id !== 'string') ||
           typeof entry.title !== 'string' ||
@@ -44,11 +52,23 @@ export const RuqyahApiLibrary: React.FC = () => {
         )) {
           throw new Error('أعاد فهرس الآيات مواضع غير صالحة؛ لم يتم عرض أي محتوى منه.');
         }
+        writeRuqyahApiIndexCache(program, normalized);
         setEntries(normalized);
+        setCacheSavedAt(new Date().toISOString());
+        setIsShowingCachedData(false);
+        setError(null);
       })
       .catch(reason => {
         if (!controller.signal.aborted) {
-          setError(reason instanceof Error ? reason.message : 'تعذر تحميل فهرس مواضع الآيات.');
+          const detail = reason instanceof Error ? reason.message : 'تعذر تحميل فهرس مواضع الآيات.';
+          if (cached) {
+            setEntries(cached.entries);
+            setIsShowingCachedData(true);
+            setCacheSavedAt(cached.savedAt);
+            setError('تعذر تحديث الفهرس الآن؛ نعرض آخر نسخة محفوظة بعد التحقق من مواضعها. ' + detail);
+          } else {
+            setError(detail);
+          }
         }
       })
       .finally(() => {
@@ -58,7 +78,8 @@ export const RuqyahApiLibrary: React.FC = () => {
   }, [program, retryNonce]);
 
   const filteredEntries = entries.filter(entry => matchesApiQuranEntry(entry, searchQuery));
-  const isMissingApiKey = Boolean(error?.includes('مفتاح API'));
+  const isMissingApiKey = Boolean(error?.includes('يحتاج إلى ضبط مفتاح API'));
+  const isRejectedApiKey = Boolean(error?.includes('رفض مصدر الرقية مفتاح API'));
   const retry = () => {
     setError(null);
     setRetryNonce(value => value + 1);
@@ -104,8 +125,15 @@ export const RuqyahApiLibrary: React.FC = () => {
               className="w-full min-w-0 min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             />
           </label>
-          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 px-3 py-2.5 text-xs text-stone-500 dark:text-stone-400" role="status" aria-live="polite">
-            {loading ? 'جارٍ تحديث الفهرس' : filteredEntries.length + ' من ' + entries.length + ' موضع'}
+          <div className="space-y-1">
+            <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 px-3 py-2.5 text-xs text-stone-500 dark:text-stone-400" role="status" aria-live="polite">
+              {loading ? 'جارٍ تحديث الفهرس' : filteredEntries.length + ' من ' + entries.length + ' موضع'}
+            </div>
+            {isShowingCachedData && cacheSavedAt && (
+              <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                نسخة محفوظة · آخر تحديث {new Date(cacheSavedAt).toLocaleDateString('ar-EG')}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -119,7 +147,12 @@ export const RuqyahApiLibrary: React.FC = () => {
               <p className="text-xs leading-relaxed text-amber-800 dark:text-amber-200 mt-1">{error}</p>
               {isMissingApiKey && (
                 <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-200/80 mt-2">
-                  يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub.
+                  يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في إعدادات Vercel ثم إعادة النشر. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub.
+                </p>
+              )}
+              {isRejectedApiKey && (
+                <p className="text-xs leading-relaxed text-amber-800/80 dark:text-amber-200/80 mt-2">
+                  المفتاح موجود لكنه مرفوض من المزود؛ راجع قيمته في Vercel وتأكد من نسخه كاملاً دون مسافات.
                 </p>
               )}
               <button type="button" onClick={retry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
@@ -130,19 +163,19 @@ export const RuqyahApiLibrary: React.FC = () => {
         </div>
       )}
 
-      {loading ? (
+      {loading && entries.length === 0 ? (
         <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-8 text-sm text-stone-500">
           <Loader2 className="w-5 h-5 animate-spin" /> جارٍ تحميل فهرس مواضع الآيات...
         </div>
-      ) : !error && entries.length === 0 ? (
+      ) : entries.length === 0 && !error ? (
         <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center text-sm text-stone-500">
           لا توجد مواضع قرآنية في هذا القسم من الفهرس.
         </div>
-      ) : !error && filteredEntries.length === 0 ? (
+      ) : entries.length > 0 && filteredEntries.length === 0 ? (
         <div role="status" className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center text-sm text-stone-500">
           {searchQuery.trim() ? 'لا توجد مواضع مطابقة لعبارة البحث.' : 'لا توجد مواضع قرآنية في هذا القسم من الفهرس.'}
         </div>
-      ) : !error ? (
+      ) : entries.length > 0 ? (
         <div className="space-y-3">
           {filteredEntries.map((entry, index) => {
             let resolved: ReturnType<typeof resolveApiQuranEntry> | null = null;
