@@ -69,6 +69,20 @@ export function runMushafFacsimileServiceTests(): { passed: number; failed: numb
     expectThrow(() => matchMushafAyahAreas(coordinates, [...local, { surahNumber: 1, numberInSurah: 3, text: 'extra' }]), 'Extra local ayahs must fail closed');
   });
 
+  test('Printed page matching uses WIRD-local ayahs even when local page metadata has a different boundary', () => {
+    const printedPageCoordinates = [78, 79, 80, 81, 82, 83].map(ayahNumber => ({ surahNumber: 5, ayahNumber }));
+    const localRecords = [
+      ...[77, 78, 79, 80, 81, 82].map(numberInSurah => ({ surahNumber: 5, numberInSurah, page: 121, text: 'verified local ' + numberInSurah })),
+      { surahNumber: 5, numberInSurah: 83, page: 122, text: 'verified local 83' }
+    ];
+    const printedPageAyahs = localRecords.filter(ayah => printedPageCoordinates.some(area =>
+      area.surahNumber === ayah.surahNumber && area.ayahNumber === ayah.numberInSurah
+    ));
+    const matched = matchMushafAyahAreas(printedPageCoordinates, printedPageAyahs);
+    assert(matched.length === 6 && matched[0].ayah.numberInSurah === 78 && matched[5].ayah.numberInSurah === 83,
+      'The printed page must bind to the exact local coordinates across differing page metadata');
+  });
+
   test('The service extracts coordinates only; Quran text is not read from the SVG', () => {
     const svgWithTextTag = sampleSvg.replace('</svg>', '<text>external text</text></svg>');
     const coordinates = parseMushafAyahCoordinates(svgWithTextTag);
