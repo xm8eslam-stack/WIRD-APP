@@ -28,12 +28,18 @@ export function getMushafPageArtworkUrl(page: number): string {
 
 export function parseMushafViewBox(value: string | null): MushafViewBox {
   if (!value) throw new Error('Printed Mushaf page is missing its viewBox.');
-  const values = value.trim().split(/[ ,]+/).map(Number);
+  const values = value.trim().replaceAll(',', ' ').replaceAll('\\t', ' ').replaceAll('\\n', ' ').replaceAll('\\r', ' ').split(' ').filter(Boolean).map(Number);
   if (values.length !== 4 || values.some(number => !Number.isFinite(number)) ||
       values[2] <= 0 || values[3] <= 0) {
     throw new Error('Printed Mushaf page has an invalid viewBox.');
   }
   return { x: values[0], y: values[1], width: values[2], height: values[3] };
+}
+
+const SAFE_SVG_PATH_CHARACTERS = new Set('MmLlHhVvCcSsQqTtAaZz0123456789., +-eE');
+
+function isSafeSvgPath(path: string): boolean {
+  return [...path].every(character => SAFE_SVG_PATH_CHARACTERS.has(character) || character === '\\n' || character === '\\r' || character === '\\t');
 }
 
 /**
