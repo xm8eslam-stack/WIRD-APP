@@ -13,9 +13,8 @@ test.describe('WIRD dashboard accessibility and responsive UX', () => {
     const quickAction = page.getByRole('button', { name: /اختبر حفظك الآن/ });
     await expect(quickAction).toBeVisible();
     await expect(quickAction).toHaveCSS('min-height', '44px');
-    await expect(quickAction).toBeFocused({ timeout: 1 }).catch(() => {});
     await quickAction.focus();
-    await expect(quickAction).toHaveCSS('outline-style', 'solid').catch(() => {});
+    await expect(quickAction).toBeFocused();
   });
 
   test('dashboard remains usable on a narrow phone without horizontal overflow', async ({ page }) => {
