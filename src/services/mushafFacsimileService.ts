@@ -64,9 +64,8 @@ export function parseMushafViewBox(svgMarkup: string): MushafViewBox {
   return { x: values[0], y: values[1], width: values[2], height: values[3], raw: raw.trim() };
 }
 
-function readSvgAttribute(tag: string, attribute: string): string | null {
-  const escaped = attribute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return tag.match(new RegExp('\\\\b' + escaped + '=["\\\\']([^"\\\\']*)["\\\\']', 'i'))?.[1] ?? null;
+function readSvgAttribute(tag: string, attribute: 'surah' | 'ayah'): string | null {
+  return tag.match(new RegExp('\\\\b' + attribute + '="([^"]*)"', 'i'))?.[1] ?? null;
 }
 
 export function parseMushafAyahCoordinates(svgMarkup: string): MushafAyahCoordinate[] {
