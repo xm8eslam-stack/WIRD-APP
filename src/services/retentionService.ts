@@ -856,7 +856,7 @@ export const RetentionService = {
       if (notes) items[existingIndex].notes = notes;
     } else {
       items.unshift({
-        id: `weak-${surahNumber}-${ayahNumber}-${createSecureId()}`,
+        id: `weak-${surahNumber}-${ayahNumber}`,
         surahNumber,
         surahName: surah.name,
         ayahNumber,
