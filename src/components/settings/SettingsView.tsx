@@ -477,6 +477,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Database className="w-4 h-4" />
             {isCheckingOfflineStatus ? 'جارٍ فحص الملفات...' : 'فحص الملفات المحفوظة'}
           </button>
+        </div>
         {offlineProgress && (
           <div className="space-y-2" aria-live="polite">
             <div className="flex justify-between text-stone-600 dark:text-stone-300">
@@ -495,9 +496,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
         )}
+        <div>
         <button
           type="button"
-          onClick={handlePrepareOffline}
+          onClick={handlePrepareOffline
           disabled={isPreparingOffline || !isOnline}
           className="w-full sm:w-auto min-h-11 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold inline-flex items-center justify-center gap-2"
         >
