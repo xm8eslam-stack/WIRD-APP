@@ -127,26 +127,38 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
     const portions = RetentionService.getPortions();
     const weakVerses = RetentionService.getWeakVerses();
 
-    const response = await AdvisorService.analyzeProgress(
-      action.contextType,
-      logs,
-      userProfile,
-      plans,
-      portions,
-      weakVerses,
-      userMsg
-    );
-
-    setIsLoading(false);
-    setChatMessages([
-      ...newMsgs,
-      {
-        sender: 'advisor',
-        text: response.text,
-        isFallback: response.isFallback,
-        timestamp: 'الآن'
-      }
-    ]);
+    try {
+      const response = await AdvisorService.analyzeProgress(
+        action.contextType,
+        logs,
+        userProfile,
+        plans,
+        portions,
+        weakVerses,
+        userMsg
+      );
+      setChatMessages([
+        ...newMsgs,
+        {
+          sender: 'advisor',
+          text: response.text,
+          isFallback: response.isFallback,
+          timestamp: 'الآن'
+        }
+      ]);
+    } catch {
+      setChatMessages([
+        ...newMsgs,
+        {
+          sender: 'advisor',
+          text: 'تعذر إكمال التحليل الآن. بياناتك المحلية لم تتغير؛ حاول مرة أخرى بعد قليل.',
+          isFallback: true,
+          timestamp: 'الآن'
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Submit custom user message
@@ -161,18 +173,30 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
     setChatMessages(newMsgs);
     setIsLoading(true);
 
-    const response = await AdvisorService.sendChatMessage(query, chatMessages);
-
-    setIsLoading(false);
-    setChatMessages([
-      ...newMsgs,
-      {
-        sender: 'advisor',
-        text: response.text,
-        isFallback: response.isFallback,
-        timestamp: 'الآن'
-      }
-    ]);
+    try {
+      const response = await AdvisorService.sendChatMessage(query, chatMessages);
+      setChatMessages([
+        ...newMsgs,
+        {
+          sender: 'advisor',
+          text: response.text,
+          isFallback: response.isFallback,
+          timestamp: 'الآن'
+        }
+      ]);
+    } catch {
+      setChatMessages([
+        ...newMsgs,
+        {
+          sender: 'advisor',
+          text: 'تعذر إرسال الرسالة الآن. لم تتغير بيانات الحفظ؛ يمكنك إعادة المحاولة.',
+          isFallback: true,
+          timestamp: 'الآن'
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Classical Methodologies
