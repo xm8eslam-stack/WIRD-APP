@@ -100,6 +100,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         label: selection.messageAr
       };
 
+  // The selected review is already shown as today's primary task; avoid listing it twice.
+  const displayedQueuePortions = dailyTask.source === 'revision'
+    ? queuePortions.filter(item => !(
+        item.surahNumber === dailyTask.surahNumber &&
+        item.startAyah === dailyTask.startAyah &&
+        item.endAyah === dailyTask.endAyah
+      ))
+    : queuePortions;
+
   useEffect(() => {
     let cancelled = false;
     if (dailyTask.source === 'blocked') {
@@ -256,7 +265,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-2.5">
-              {queuePortions.slice(0, 3).map((item) => (
+              {displayedQueuePortions.slice(0, 3).map((item) => (
                 <div 
                   key={item.id}
                   className="p-3.5 bg-[#faf8f5] dark:bg-stone-900/60 rounded-xl border border-stone-200/60 dark:border-stone-700/60 flex items-center justify-between text-xs"
