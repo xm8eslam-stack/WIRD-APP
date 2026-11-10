@@ -490,7 +490,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <button
                 onClick={() => onNavigate('library')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-16 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center">
@@ -506,7 +506,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <button
                 onClick={() => onNavigate('plans')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-16 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 flex items-center justify-center">
@@ -522,7 +522,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <button
                 onClick={() => onNavigate('advisor')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-16 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 flex items-center justify-center">
