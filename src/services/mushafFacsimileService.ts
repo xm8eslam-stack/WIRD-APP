@@ -35,10 +35,6 @@ const ALLOWED_SVG_ATTRIBUTES = new Set([
   'ayah:x', 'ayah:y', 'number', 'ayah', 'surah'
 ]);
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
 export function getMushafFacsimilePageUrls(page: number): { svgUrl: string } {
   if (!Number.isInteger(page) || page < 1 || page > 604) {
     throw new Error('رقم صفحة المصحف غير صالح.');
@@ -65,7 +61,7 @@ export function parseMushafViewBox(svgMarkup: string): MushafViewBox {
 }
 
 function readSvgAttribute(tag: string, attribute: 'surah' | 'ayah'): string | null {
-  return tag.match(new RegExp('\\\b' + attribute + '="([^"]*)"', 'i'))?.[1] ?? null;
+  return tag.match(new RegExp(attribute + '="([^"]*)"', 'i'))?.[1] ?? null;
 }
 
 export function parseMushafAyahCoordinates(svgMarkup: string): MushafAyahCoordinate[] {
