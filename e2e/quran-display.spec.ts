@@ -183,3 +183,26 @@ test('Mushaf plays a selected ayah segment continuously and repeats the bounded 
   await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances.length)).toBe(3);
   await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[2].playCalls)).toBe(1);
 });
+
+test('Mushaf width and line spacing controls persist and can be reset', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+
+  const pageRegion = page.getByRole('main', { name: 'صفحة المصحف 1' });
+  const spacing = page.getByLabel('تباعد أسطر المصحف');
+  await spacing.selectOption('relaxed');
+  await page.getByRole('button', { name: 'ملء الشاشة' }).click();
+  await expect(pageRegion).toHaveAttribute('data-mushaf-page-width', 'full');
+  await expect(page.locator('[data-mushaf-line-spacing="relaxed"]')).toBeVisible();
+
+  await page.getByRole('button', { name: 'العودة للفهرس' }).click();
+  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toHaveAttribute('data-mushaf-page-width', 'full');
+  await expect(page.getByLabel('تباعد أسطر المصحف')).toHaveValue('relaxed');
+
+  await page.getByRole('button', { name: 'إعادة ضبط العرض' }).click();
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toHaveAttribute('data-mushaf-page-width', 'comfortable');
+  await expect(page.getByLabel('تباعد أسطر المصحف')).toHaveValue('normal');
+});
