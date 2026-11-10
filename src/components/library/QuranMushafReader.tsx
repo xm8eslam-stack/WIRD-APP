@@ -106,6 +106,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [textScale, setTextScale] = useState<MushafTextScale>(readMushafTextScale);
   const [isWidePage, setIsWidePage] = useState(readMushafPageWidth);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
+  const [printedAyahs, setPrintedAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(getSavedPlaybackRate);
@@ -126,12 +127,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const touchStartX = useRef<number | null>(null);
 
   const pageSegments = useMemo(() => PAGE_INDEX[String(page)] || [], [page]);
+  const activeAyahs = readerLayout === 'printed' && printedAyahs.length ? printedAyahs : ayahs;
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setLoadError(null);
     setAyahs([]);
+    setPrintedAyahs([]);
     audioRef.current?.pause();
     setIsPlaying(false);
     setPlayingIndex(null);
@@ -187,7 +190,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setPlayingIndex(null);
   };
 
-  const playAyahAt = (index: number, queue: Ayah[] = ayahs) => {
+  const playAyahAt = (index: number, queue: Ayah[] = activeAyahs) => {
     const ayah = queue[index];
     if (!ayah) {
       setIsPlaying(false);
@@ -226,11 +229,11 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   };
 
   useEffect(() => {
-    if (!isLoading && ayahs.length > 0 && autoPlayNextPageRef.current) {
+    if (!isLoading && activeAyahs.length > 0 && autoPlayNextPageRef.current) {
       autoPlayNextPageRef.current = false;
-      playAyahAt(0, ayahs);
+      playAyahAt(0, activeAyahs);
     }
-  }, [ayahs, isLoading, page]);
+  }, [activeAyahs, isLoading, page]);
 
   const togglePageAudio = () => {
     if (isPlaying) {
@@ -243,7 +246,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       return;
     }
-    if (ayahs.length) playAyahAt(0, ayahs);
+    if (activeAyahs.length) playAyahAt(0, activeAyahs);
   };
 
   const changePage = (nextPage: number) => {
@@ -324,8 +327,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   };
 
   const currentBookmark = bookmarks.includes(page);
-  const primarySurah = ayahs.length ? ALL_SURAHS.find(s => s.number === ayahs[0].surahNumber) : undefined;
-  const currentJuz = ayahs.length ? ayahs[0].juz : Math.ceil(page / 20);
+  const primarySurah = activeAyahs.length ? ALL_SURAHS.find(s => s.number === activeAyahs[0].surahNumber) : undefined;
+  const currentJuz = activeAyahs.length ? activeAyahs[0].juz : Math.ceil(page / 20);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -522,7 +525,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             <button
               type="button"
               onClick={togglePageAudio}
-              disabled={!ayahs.length || isLoading}
+              disabled={!ayahs.length || isLoading || (readerLayout === 'printed' && !printedAyahs.length)}
               className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50 ${
                 isPlaying ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-800 hover:bg-emerald-900'
               }`}
@@ -547,6 +550,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             ayahs={ayahs}
             selectedAyah={tafsirAyah}
             onSelectAyah={setTafsirAyah}
+            onVerifiedAyahs={setPrintedAyahs}
             onFallback={() => selectReaderLayout('flow')}
           />
         ) : (
@@ -703,7 +707,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             — {page} —
           </span>
           <span>
-            {ayahs.length ? `من الآية ${ayahs[0].number} إلى ${ayahs[ayahs.length - 1].number}` : '—'}
+            {activeAyahs.length ? `من الآية ${activeAyahs[0].number} إلى ${activeAyahs[activeAyahs.length - 1].number}` : '—'}
           </span>
         </div>
                 </div>
