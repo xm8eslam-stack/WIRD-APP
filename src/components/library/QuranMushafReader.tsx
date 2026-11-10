@@ -569,7 +569,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={readerLayout === 'printed' ? "mx-auto w-full max-w-4xl" : `mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} role="region" aria-label={`صفحة المصحف ${page}`} className={readerLayout === 'printed' ? "mx-auto w-full max-w-4xl" : `mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {readerLayout === 'printed' ? (
           <QuranMushafFacsimilePage page={page} onAyahsResolved={setPrintedPageAyahs} selectedAyah={tafsirAyah} onSelectAyah={setTafsirAyah} onFallback={() => selectReaderLayout('flow')} />
         ) : (
