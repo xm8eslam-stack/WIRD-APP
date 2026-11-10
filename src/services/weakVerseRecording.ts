@@ -116,7 +116,7 @@ export function buildWeakVerseFailureTransaction(
       };
     } else {
       weakVerses.unshift({
-        id: `weak-${input.surahNumber}-${input.ayahNumber}-${mutationId}`,
+        id: `weak-${input.surahNumber}-${input.ayahNumber}`,
         surahNumber: input.surahNumber,
         surahName: surah.name,
         ayahNumber: input.ayahNumber,
