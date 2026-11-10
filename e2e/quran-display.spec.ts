@@ -114,36 +114,6 @@ test('Tafsir dialog supports Escape, traps keyboard focus, and restores the ayah
 });
 
 
-test('Mushaf reader keeps flexible layout disclosure and remembers reading display preferences', async ({ page }) => {
-  await page.goto('/');
-  const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
-  const appNavigation = page.getByRole('navigation', { name: 'القائمة الرئيسية' })
-    .or(page.getByRole('navigation', { name: 'التنقل السريع' }));
-  await expect(guestEntry.or(appNavigation)).toBeVisible({ timeout: 15000 });
-  if (await guestEntry.isVisible()) await guestEntry.click();
-  await page.goto('/#/library');
-  await expect(page.getByRole('heading', { name: 'القرآن الكريم' })).toBeVisible();
-  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
-
-  await expect(page.getByRole('main', { name: /صفحة المصحف/ })).toBeVisible();
-  await expect(page.getByText(/عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع/)).toBeVisible();
-
-  const displayControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
-  await expect(displayControls).toBeVisible();
-  await displayControls.getByRole('button', { name: 'أكبر' }).click();
-  await expect(displayControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
-  await displayControls.getByRole('button', { name: 'توسيع مساحة القراءة' }).click();
-  await expect(displayControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
-
-  await page.reload();
-  await page.goto('/#/library');
-  await expect(page.getByRole('heading', { name: 'القرآن الكريم' })).toBeVisible();
-  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
-  const restoredControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
-  await expect(restoredControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
-  await expect(restoredControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
-});
-
 test('Mushaf plays a selected ayah segment continuously and repeats the bounded range', async ({ page }) => {
   await page.addInitScript(() => {
     const instances: any[] = [];
@@ -252,6 +222,39 @@ test('full Mushaf page playback continues automatically into the next page', asy
   await expect(page.getByRole('main', { name: 'صفحة المصحف 2' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(firstPageAyahCount);
 });
+
+test('Mushaf reader keeps flexible layout disclosure and remembers reading display preferences', async ({ page }) => {
+  await page.goto('/');
+  const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
+  const appNavigation = page.getByRole('navigation', { name: 'القائمة الرئيسية' })
+    .or(page.getByRole('navigation', { name: 'التنقل السريع' }));
+  await expect(guestEntry.or(appNavigation)).toBeVisible({ timeout: 15000 });
+  if (await guestEntry.isVisible()) await guestEntry.click();
+  await page.goto('/#/library');
+  await expect(page.getByRole('heading', { name: 'القرآن الكريم' })).toBeVisible();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+
+  await expect(page.getByRole('main', { name: /صفحة المصحف/ })).toBeVisible();
+  await expect(page.getByText(/عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع/)).toBeVisible();
+
+  const displayControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
+  await expect(displayControls).toBeVisible();
+  await displayControls.getByRole('button', { name: 'أكبر' }).click();
+  await expect(displayControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
+  await displayControls.getByRole('button', { name: 'توسيع مساحة القراءة' }).click();
+  await expect(displayControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.reload();
+  await page.goto('/#/library');
+  await expect(page.getByRole('heading', { name: 'القرآن الكريم' })).toBeVisible();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+  const restoredControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
+  await expect(restoredControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(restoredControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+
+
 
 test('reading khatma supports a daily plan, actual page progress, pause, resume, and plan updates', async ({ page }) => {
   await page.goto('/');
