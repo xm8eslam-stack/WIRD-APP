@@ -160,6 +160,26 @@ export function runActivityEventProjectionTests(): { passed: number; failed: num
       'Overflow must fail the complete projection instead of returning partial totals');
   });
 
+  test('the projected daily archive cannot exceed the legacy storage bound', () => {
+    const logs = Array.from({ length: 10_000 }, (_, index) => ({
+      date: new Date(Date.UTC(2000, 0, 1 + index)).toISOString().slice(0, 10),
+      memorizedAyahsCount: 0,
+      reviewedPagesCount: 0,
+      minutesSpent: 0,
+      completedTasks: []
+    }));
+    const largeBaseline: ActivityBaselineV1 = {
+      schemaVersion: 1,
+      baselineId: 'baseline-current',
+      logs
+    };
+    const result = projectDailyActivityFromEvents(largeBaseline, [
+      makeEvent({ localDate: '2030-01-01' })
+    ]);
+    assert(!result.success && result.errorCode === 'aggregate_overflow',
+      'A new date beyond the 10,000-day archive limit must fail closed');
+  });
+
   test('an empty event list returns a separate copy of the legacy baseline', () => {
     const result = projectDailyActivityFromEvents(baseline, []);
     assert(result.success, 'An empty event list should return the baseline');
