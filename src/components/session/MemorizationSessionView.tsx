@@ -18,6 +18,7 @@ import { loadSurahVerses, getAyahWords, loadSimpleAyahText, loadSimpleAyahRange 
 import { QuranBasmala } from '../shared/QuranBasmala';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
+import { QuranAudioQueueController } from '../../services/audioQueueController';
 import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
 import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
@@ -136,7 +137,14 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(() => getSavedPlaybackRate());
   const [audioRepeatCount, setAudioRepeatCount] = useState<AudioRepeatCount>(() => getSavedAudioRepeatCount());
+  const [segmentStartIndex, setSegmentStartIndex] = useState(0);
+  const [segmentEndIndex, setSegmentEndIndex] = useState(Math.max(0, sessionAyahs.length - 1));
+  const [isSegmentPlaying, setIsSegmentPlaying] = useState(false);
+  const [isSegmentPaused, setIsSegmentPaused] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const segmentAudioQueueRef = useRef<QuranAudioQueueController | null>(null);
+  const queueAdvanceRef = useRef(false);
+  const currentAyahIndexRef = useRef(currentAyahIndex);
   const playbackIterationRef = useRef(1);
   const repeatTargetRef = useRef<number | null>(audioRepeatCount === -1 ? null : audioRepeatCount);
   const completionInProgressRef = useRef(false);
@@ -145,12 +153,14 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     const savedRate = savePlaybackRate(rate);
     setPlaybackRate(savedRate);
     if (audioRef.current) audioRef.current.playbackRate = savedRate;
+    segmentAudioQueueRef.current?.setPlaybackRate(savedRate);
   };
 
   const handleAudioRepeatCountChange = (count: AudioRepeatCount) => {
     const savedCount = saveAudioRepeatCount(count);
     repeatTargetRef.current = savedCount === -1 ? null : savedCount;
     setAudioRepeatCount(savedCount);
+    segmentAudioQueueRef.current?.setRepeatCount(savedCount === -1 ? null : savedCount);
   };
 
   // 2. Progressive word masking: 0 = none, 1 = 30%, 2 = 60%, 3 = 100% (hidden)
@@ -191,14 +201,31 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // Reset revealed words when ayah or mask changes
   useEffect(() => {
+    currentAyahIndexRef.current = currentAyahIndex;
+  }, [currentAyahIndex]);
+
+  useEffect(() => {
+    setSegmentStartIndex(0);
+    setSegmentEndIndex(Math.max(0, sessionAyahs.length - 1));
+  }, [sessionAyahs.length, surahNumber, initialStartAyah, initialEndAyah]);
+
+  useEffect(() => {
     setRevealedWordIndices(new Set());
     setRepeatCount(0);
+    if (queueAdvanceRef.current) {
+      queueAdvanceRef.current = false;
+      return;
+    }
     handleStopAudio();
   }, [currentAyahIndex, maskLevel]);
 
   // Audio Playback
   const handleToggleAudio = () => {
     if (!currentAyah) return;
+    segmentAudioQueueRef.current?.stop();
+    segmentAudioQueueRef.current = null;
+    setIsSegmentPlaying(false);
+    setIsSegmentPaused(false);
 
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
@@ -278,7 +305,70 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       setIsPlaying(false);
       setIsAudioLoading(false);
     }
+    segmentAudioQueueRef.current?.stop();
+    segmentAudioQueueRef.current = null;
+    setIsSegmentPlaying(false);
+    setIsSegmentPaused(false);
+    queueAdvanceRef.current = false;
     playbackIterationRef.current = 1;
+  };
+
+  const handleToggleSegmentAudio = () => {
+    const activeQueue = segmentAudioQueueRef.current;
+    if (activeQueue?.getState().active) {
+      if (activeQueue.getState().paused) { activeQueue.resume(); setIsSegmentPaused(false); }
+      else activeQueue.pause();
+      return;
+    }
+    if (!sessionAyahs.length || segmentStartIndex > segmentEndIndex) return;
+
+    handleStopAudio();
+    const tracks = sessionAyahs.map(ayah => ({
+      id: String(ayah.number),
+      url: formatAyahAudioUrl(surahNumber, ayah.numberInSurah, profile.preferredReciter)
+    }));
+    const controller = new QuranAudioQueueController({
+      onTrackChange: index => {
+        if (index !== currentAyahIndexRef.current) {
+          queueAdvanceRef.current = true;
+          currentAyahIndexRef.current = index;
+          setCurrentAyahIndex(index);
+        }
+      },
+      onPlaying: () => { setIsSegmentPlaying(true); setIsSegmentPaused(false); },
+      onPaused: () => { setIsSegmentPlaying(false); setIsSegmentPaused(true); },
+      onComplete: () => {
+        if (segmentAudioQueueRef.current !== controller) return;
+        segmentAudioQueueRef.current = null;
+        setIsSegmentPlaying(false);
+        setIsSegmentPaused(false);
+      },
+      onError: error => {
+        console.warn('[WIRD Session] Segment audio queue failed:', error);
+        if (segmentAudioQueueRef.current !== controller) return;
+        segmentAudioQueueRef.current = null;
+        setIsSegmentPlaying(false);
+        setIsSegmentPaused(false);
+      }
+    });
+    segmentAudioQueueRef.current = controller;
+    try {
+      controller.start({
+        tracks,
+        startIndex: segmentStartIndex,
+        endIndex: segmentEndIndex,
+        repeatCount: audioRepeatCount === -1 ? null : audioRepeatCount,
+        playbackRate: getSavedPlaybackRate()
+      });
+      setIsSegmentPlaying(true);
+      setIsSegmentPaused(false);
+    } catch (error) {
+      controller.stop();
+      segmentAudioQueueRef.current = null;
+      setIsSegmentPlaying(false);
+      setIsSegmentPaused(false);
+      console.warn('[WIRD Session] Could not start segment audio:', error);
+    }
   };
 
   useEffect(() => () => {
@@ -287,6 +377,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       audioRef.current.pause();
       audioRef.current = null;
     }
+    segmentAudioQueueRef.current?.stop();
+    segmentAudioQueueRef.current = null;
   }, []);
 
   const handleExit = () => {
@@ -799,6 +891,47 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               <option value={-1}>حتى الإيقاف</option>
             </select>
           </label>
+          <div className="basis-full flex flex-wrap items-center gap-2 border-t border-stone-100 dark:border-stone-700 pt-3">
+            <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">تحديد مقطع للحفظ أو المراجعة</span>
+            <label className="inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300">
+              <span>من</span>
+              <select
+                aria-label="بداية المقطع الصوتي في الجلسة"
+                value={segmentStartIndex}
+                disabled={!sessionAyahs.length}
+                onChange={event => {
+                  const next = Number(event.target.value);
+                  setSegmentStartIndex(next);
+                  if (segmentEndIndex < next) setSegmentEndIndex(next);
+                }}
+                className="min-h-11 max-w-36 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2"
+              >
+                {sessionAyahs.map((ayah, index) => <option key={ayah.number} value={index}>{surahNumber}:{ayah.numberInSurah}</option>)}
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300">
+              <span>إلى</span>
+              <select
+                aria-label="نهاية المقطع الصوتي في الجلسة"
+                value={segmentEndIndex}
+                disabled={!sessionAyahs.length}
+                onChange={event => setSegmentEndIndex(Number(event.target.value))}
+                className="min-h-11 max-w-36 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2"
+              >
+                {sessionAyahs.slice(segmentStartIndex).map((ayah, offset) => (
+                  <option key={ayah.number} value={segmentStartIndex + offset}>{surahNumber}:{ayah.numberInSurah}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={!sessionAyahs.length}
+              onClick={handleToggleSegmentAudio}
+              className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-colors disabled:opacity-50 ${isSegmentPlaying ? 'bg-amber-500 text-white' : 'bg-emerald-800 text-white hover:bg-emerald-900'}`}
+            >
+              {isSegmentPlaying ? 'إيقاف مؤقت للمقطع الصوتي' : isSegmentPaused ? 'استئناف المقطع الصوتي' : 'تشغيل المقطع الصوتي المحدد'}
+            </button>
+          </div>
           {isAudioLoading && <span role="status" className="text-xs text-stone-500">جارٍ تحميل التلاوة…</span>}
         </div>
 
