@@ -136,6 +136,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(getSavedPlaybackRate);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioPaused, setIsAudioPaused] = useState(false);
   const [segmentStartIndex, setSegmentStartIndex] = useState(0);
   const [segmentEndIndex, setSegmentEndIndex] = useState(0);
   const [segmentRepeatCount, setSegmentRepeatCount] = useState<AudioRepeatCount>(getSavedAudioRepeatCount);
@@ -232,6 +233,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     audioQueueRef.current?.stop();
     audioQueueRef.current = null;
     setIsPlaying(false);
+    setIsAudioPaused(false);
     setPlayingIndex(null);
   };
 
@@ -258,12 +260,13 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         setPlayingIndex(index);
         if ((index - startIndex) % 10 === 0) cacheUpcoming(index);
       },
-      onPlaying: () => setIsPlaying(true),
-      onPaused: () => setIsPlaying(false),
+      onPlaying: () => { setIsPlaying(true); setIsAudioPaused(false); },
+      onPaused: () => { setIsPlaying(false); setIsAudioPaused(true); },
       onComplete: () => {
         if (audioQueueRef.current !== controller) return;
         audioQueueRef.current = null;
         setIsPlaying(false);
+        setIsAudioPaused(false);
         setPlayingIndex(null);
         if (continueAcrossPages && page < 604) {
           autoPlayNextPageRef.current = true;
@@ -275,6 +278,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (audioQueueRef.current !== controller) return;
         audioQueueRef.current = null;
         setIsPlaying(false);
+        setIsAudioPaused(false);
         setPlayingIndex(null);
       }
     });
@@ -289,10 +293,12 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
       });
       setPlayingIndex(startIndex);
       setIsPlaying(true);
+      setIsAudioPaused(false);
     } catch (error) {
       controller.stop();
       audioQueueRef.current = null;
       setIsPlaying(false);
+      setIsAudioPaused(false);
       setPlayingIndex(null);
       console.warn('[WIRD Mushaf] Could not start Quran audio queue:', error);
     }
@@ -684,7 +690,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               }`}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              <span>{isPlaying ? 'إيقاف مؤقت' : 'استماع للمقطع'}</span>
+              <span>{isPlaying ? 'إيقاف مؤقت' : isAudioPaused ? 'استئناف التلاوة' : 'استماع للمقطع'}</span>
             </button>
           </div>
         </div>
