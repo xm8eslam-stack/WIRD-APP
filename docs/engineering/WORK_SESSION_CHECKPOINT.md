@@ -164,3 +164,9 @@ The historical sections below describe earlier project phases and are not the cu
 - PR #200 is open to preserve child document IDs in grouped journal apply/recovery, with a regression test. It is not merged until its exact-head quality gates pass.
 - PR #199 is the documentation continuity update. No production Firestore rules/schema, secrets, environment settings, or sync flags were changed during this review.
 - The Vercel Free-plan build-rate-limit can block preview deployments; it does not invalidate a passing GitHub test run, and a passing GitHub run does not prove a Vercel deployment.
+
+## 2026-11-10 — Latest post-PR #200 sync follow-up
+
+- PR #200 merged to `main` at `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; its exact-head Quality Gate passed all stages. Grouped journal projections and recovery now preserve each child document ID, including the distinction between test-result snapshot and per-result semantics.
+- Vercel did not produce a deployment record for that merge SHA because the Free-plan `build-rate-limit` blocked the PR deployment check. Do not claim the latest sync fix is live until a matching deployment is verified.
+- PR #201 addresses a newly found mismatch between revision profile writes (`profile/profile`) and all other profile snapshot writers (`profile/main`). The duplicate document IDs create separate Firestore revision streams for one profile; the fix and regression test are pending exact-head CI.
