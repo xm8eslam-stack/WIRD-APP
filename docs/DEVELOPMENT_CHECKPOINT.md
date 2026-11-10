@@ -1,3 +1,45 @@
+# CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11
+
+> This is the latest verified checkpoint. Older checkpoints below are historical and must not override this section.
+
+## Repository and exact source state
+
+- Repository: xm8eslam-stack/WIRD-APP; source branch: main.
+- Current main SHA: 3667a8c003b79984546d48a9defc20c6f2bcd367.
+- Exact-main Quality Gate: [run 42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) — success on the exact main SHA.
+- Latest verified Production deployment: dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5, state READY, source SHA dac125dd8770cc4881e2c6cea6fe94623ad52144. Production is behind current main.
+- Current-main Vercel check: build-rate-limit; Vercel's PR comment reports api-deployments-free-per-day. No manual deployment or quota bypass was attempted.
+- Google AI Studio sync is not independently verified.
+
+## Memorization session UX
+
+- PR #202/#206 already provide UI scale 80–110%, Quran font size 20–44px, compact/comfortable density, focused/all-session ayah view, and sticky previous/next navigation. This implementation is present in the current Production ancestry; preferences remain local-only.
+- Draft PR #328 adds a direct ayah selector to the sticky navigation so users can jump within the selected range without repeatedly pressing Next or scrolling to the all-ayah list.
+- PR #328 branch: ux/session-direct-ayah-jump-20261111; head: 0c41126b1e018892119ced669936335326f8b1e7; Quality Gate run [42921569974](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42921569974) was still running at checkpoint time. Do not merge until exact-head checks and review pass.
+
+## Sync integrity
+
+- PR #325 merged at 966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6 with stale-snapshot compare-and-set protection for weakVerses and activityEvents.
+- PR #326 merged at 3667a8c003b79984546d48a9defc20c6f2bcd367; its Quality Gate passed continuous Quran playback and Mushaf controls.
+- Whole-snapshot conflict choices for weakVerses and activityEvents remain blocked by syncConflictSafety. Tombstones remain unsupported and fail closed. No fresh post-PR #325 real-device A↔B test is verified.
+- Next sync design: immutable/idempotent session-activity events with exact legacy DailyLog baseline handling; separately define per-collection tombstone, replay, restore, and anti-resurrection semantics. No migration or conflict-policy change until tests prove safety.
+
+## Production and owner-only boundaries
+
+- Vercel project metadata reports SSO protection enabled for all non-custom domains; only wird-app.vercel.app is listed. Do not change public-access settings without explicit owner approval.
+- A prior Vercel inventory recorded both sync build flags as enabled; they were not re-read or changed in this follow-up. The release gate remains HOLD for full sync certification.
+- No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags were changed.
+- Do not claim current main is deployed, cloud sync is fully certified, or Google AI Studio is synchronized without new direct evidence.
+
+## Immediate continuation
+
+1. Complete exact-head CI and review for PR #328; merge only if all required gates pass.
+2. Continue sync work from the current main and the updated docs/sync/CLOUD_SYNC_WORKLOG.md / docs/sync/TEST-MATRIX.md.
+3. Verify Vercel deployment only through the normal GitHub→Vercel path after quota recovery; then verify exact SHA and perform safe read-only smoke.
+4. Keep all production settings, secrets, rules, and data unchanged without explicit authorization.
+
+---
+
 # CURRENT DEVELOPMENT CHECKPOINT — 2026-11-07
 
 > This section supersedes the historical Phase 4 checkpoint below. Read this current section first.
