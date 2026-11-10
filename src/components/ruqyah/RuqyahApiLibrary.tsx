@@ -81,8 +81,8 @@ export const RuqyahApiLibrary: React.FC = () => {
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block">
             <span className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">تقسيم الفهرس</span>
-            <select value={program} onChange={event => { setProgram(event.target.value as ProgramId); setSearchQuery(''); }}
-              className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+            <select aria-label="تقسيم فهرس مواضع الآيات" value={program} onChange={event => { setProgram(event.target.value as ProgramId); setSearchQuery(''); }}
+              className="w-full min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
               {PROGRAMS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
           </label>
@@ -101,7 +101,7 @@ export const RuqyahApiLibrary: React.FC = () => {
               onChange={event => setSearchQuery(event.target.value)}
               placeholder="مثال: البقرة أو ٢:٢٥٥"
               aria-label="البحث في فهرس مواضع الآيات"
-              className="w-full min-w-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              className="w-full min-w-0 min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2.5 text-sm text-stone-900 dark:text-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             />
           </label>
           <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white/70 dark:bg-stone-900/70 px-3 py-2.5 text-xs text-stone-500 dark:text-stone-400" role="status" aria-live="polite">
@@ -122,7 +122,7 @@ export const RuqyahApiLibrary: React.FC = () => {
                   يلزم ضبط ISLAMICAPI_API_KEY كمتغير سري في الخادم. لا تضع المفتاح في ملفات الواجهة أو داخل GitHub.
                 </p>
               )}
-              <button type="button" onClick={retry} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
+              <button type="button" onClick={retry} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500">
                 <RefreshCw className="w-3.5 h-3.5" /> إعادة المحاولة
               </button>
             </div>

@@ -457,7 +457,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
           <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
             تعذر قراءة تقدم الرقية المحفوظ. احتفظنا بالبيانات الأصلية دون استبدالها؛ يمكنك متابعة القراءة دون حفظ حتى تختار إعادة ضبط هذا السجل.
           </p>
-          <button type="button" onClick={handleRecoverProgress} className="shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
+          <button type="button" onClick={handleRecoverProgress} className="min-h-11 shrink-0 rounded-xl bg-amber-200 dark:bg-amber-900 px-3 py-2 text-xs font-bold text-amber-950 dark:text-amber-100">
             إعادة ضبط سجل الرقية
           </button>
         </div>
@@ -568,17 +568,17 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 <div className="flex flex-wrap items-end gap-2">
                   <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300">
                     <span>القارئ</span>
-                    <select aria-label="اختيار قارئ الرقية" value={selectedReciterId} onChange={event => handleAudioReciterChange(event.target.value)} className="min-w-48 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                    <select aria-label="اختيار قارئ الرقية" value={selectedReciterId} onChange={event => handleAudioReciterChange(event.target.value)} className="min-h-11 min-w-48 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                       {reciters.map(reciter => <option key={reciter.id} value={reciter.id}>{reciter.arabicName}</option>)}
                     </select>
                   </label>
-                  <button type="button" onClick={() => startRuqyahAudio()} disabled={audioIsLoading || !currentItems.some(item => item.type === 'quran')} className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                  <button type="button" onClick={() => startRuqyahAudio()} disabled={audioIsLoading || !currentItems.some(item => item.type === 'quran')} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                     <Play className="w-4 h-4" />
                     <span>تشغيل آيات القسم</span>
                   </button>
                   {audioQueueLength > 0 && (
                     <>
-                      <button type="button" onClick={toggleAudioPlayback} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                      <button type="button" onClick={toggleAudioPlayback} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                         {audioIsPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         <span>{audioIsPlaying ? 'إيقاف مؤقت' : 'استكمال'}</span>
                       </button>
@@ -654,7 +654,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                   disabled={!progressHydrated || progressCorrupt || !progressDeviceId}
                   aria-expanded={showResetConfirmation}
                   aria-controls="ruqyah-reset-confirmation"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  className="flex min-h-11 items-center gap-1.5 px-3 py-1.5 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 disabled:opacity-50 disabled:cursor-not-allowed text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   title={progressCorrupt ? "أعد ضبط سجل الرقية التالف من رسالة الاسترداد أعلاه" : "إعادة ضبط عداد القسم"}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -671,8 +671,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                 <p id="ruqyah-reset-confirmation-description" className="mt-1 text-xs leading-relaxed text-amber-900 dark:text-amber-200">سيتم تصفير عدادات هذا القسم فقط. لن تتغير نصوص القرآن أو الأدعية أو بيانات الأقسام الأخرى.</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <button type="button" onClick={closeResetConfirmation} className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">إلغاء</button>
-                <button type="button" onClick={handleResetCategoryCounts} disabled={!progressHydrated || progressCorrupt || !progressDeviceId} className="rounded-xl bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">تأكيد إعادة الضبط</button>
+                <button type="button" onClick={closeResetConfirmation} className="min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">إلغاء</button>
+                <button type="button" onClick={handleResetCategoryCounts} disabled={!progressHydrated || progressCorrupt || !progressDeviceId} className="min-h-11 rounded-xl bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">تأكيد إعادة الضبط</button>
               </div>
             </div>
           )}
@@ -726,7 +726,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         onClick={() => toggleItemAudio(item)}
                         aria-pressed={audioCurrentItemId === item.id && audioIsPlaying}
                         aria-label={audioCurrentItemId === item.id && audioIsPlaying ? 'إيقاف تلاوة ' + item.title : 'تشغيل تلاوة ' + item.title}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                        className={`flex min-h-11 items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                           audioCurrentItemId === item.id && audioIsPlaying
                             ? 'bg-emerald-800 text-white'
                             : 'text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900'
@@ -780,7 +780,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         aria-label={item.repeatTarget === null
                           ? `تسجيل قراءة جديدة لـ ${item.title}. العدد الحالي ${currentCount}`
                           : `تسجيل قراءة ${item.title}`}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-500 dark:disabled:bg-stone-800 text-white px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-500 dark:disabled:bg-stone-800 text-white px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         <span>{item.repeatTarget !== null && isCompleted ? 'اكتمل' : currentCount > 0 ? 'تسجيل قراءة أخرى' : 'سجل قراءة'}</span>
