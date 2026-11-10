@@ -1168,12 +1168,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: RATE FAILED REVISION DETAILS */}
       {ratingPortion && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-failed-dialog-title" tabIndex={-1} className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-failed-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
               </h3>
-              <button disabled={isSavingRating} onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="text-stone-400 hover:text-stone-600">
+              <button type="button" aria-label="إغلاق نافذة تسجيل التعثر" disabled={isSavingRating} onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1184,10 +1184,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-weak-ayah-number" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   رقم الآية الملتبسة (اختياري، بين {ratingPortion.startAyah} و {ratingPortion.endAyah}):
                 </label>
                 <input
+                  id="revision-weak-ayah-number"
                   type="number"
                   min={ratingPortion.startAyah}
                   max={ratingPortion.endAyah}
@@ -1199,10 +1200,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-failure-notes" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   ملاحظة سبب الخطأ أو الكلمة المشكلة:
                 </label>
                 <input
+                  id="revision-failure-notes"
                   type="text"
                   value={reviewNotes}
                   onChange={e => setReviewNotes(e.target.value)}
@@ -1217,7 +1219,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 type="button"
                 disabled={isSavingRating}
                 onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }}
-                className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold"
+                className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold"
               >
                 إلغاء
               </button>
@@ -1225,7 +1227,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 type="button"
                 disabled={isSavingRating}
                 onClick={() => handleRatePortion('failed')}
-                className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors"
+                className="min-h-11 px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors"
               >
                 تأكيد التسجيل كـ "غير متقن"
               </button>
@@ -1237,22 +1239,23 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD NEW PORTION */}
       {isAddPortionModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-add-portion-dialog-title" tabIndex={-1} className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-add-portion-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
               </h3>
-              <button onClick={() => setIsAddPortionModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+              <button type="button" aria-label="إغلاق نافذة إضافة مقطع" onClick={() => setIsAddPortionModalOpen(false)} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleAddNewPortion} className="space-y-3 text-xs">
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-new-portion-surah" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   اختر السورة:
                 </label>
                 <select
+                  id="revision-new-portion-surah"
                   value={newSurahNum}
                   onChange={e => {
                     const num = Number(e.target.value);
@@ -1275,10 +1278,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                  <label htmlFor="revision-new-portion-start" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                     من الآية:
                   </label>
                   <input
+                    id="revision-new-portion-start"
                     type="number"
                     min={1}
                     value={newStartAyah}
@@ -1288,10 +1292,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                  <label htmlFor="revision-new-portion-end" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                     إلى الآية:
                   </label>
                   <input
+                    id="revision-new-portion-end"
                     type="number"
                     min={newStartAyah}
                     value={newEndAyah}
@@ -1303,10 +1308,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-new-portion-status" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   الحالة المبدئية للمقطع:
                 </label>
                 <select
+                  id="revision-new-portion-status"
                   value={newStatus}
                   onChange={e => setNewStatus(e.target.value as PortionMemorizationStatus)}
                   className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
@@ -1323,13 +1329,13 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddPortionModalOpen(false)}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl font-semibold"
+                  className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl font-semibold"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold"
+                  className="min-h-11 px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold"
                 >
                   إضافة المقطع
                 </button>
@@ -1342,22 +1348,23 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD MANUAL WEAK VERSE */}
       {isAddWeakVerseModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="revision-add-weak-dialog-title" tabIndex={-1} className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-add-weak-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
               </h3>
-              <button onClick={() => setIsAddWeakVerseModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+              <button type="button" aria-label="إغلاق نافذة تسجيل آية ملتبسة" onClick={() => setIsAddWeakVerseModalOpen(false)} className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-xl text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleAddManualWeakVerse} className="space-y-3 text-xs">
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-surah" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   اختر السورة:
                 </label>
                 <select
+                  id="revision-manual-weak-surah"
                   value={weakSurahNum}
                   onChange={e => {
                     const num = Number(e.target.value);
@@ -1378,10 +1385,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-ayah" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   رقم الآية:
                 </label>
                 <input
+                  id="revision-manual-weak-ayah"
                   type="number"
                   min={1}
                   value={manualWeakAyahNum}
@@ -1392,10 +1400,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-text" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   نص الآية (اختياري - يتم جلبه تلقائياً إن وُجد):
                 </label>
                 <textarea
+                  id="revision-manual-weak-text"
                   value={manualWeakText}
                   onChange={e => setManualWeakText(e.target.value)}
                   placeholder="اكتب نص الآية بالرسم القرآني إن أردت..."
@@ -1405,10 +1414,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-notes" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   سبب اللبس أو المتشابه المشكل:
                 </label>
                 <input
+                  id="revision-manual-weak-notes"
                   type="text"
                   value={manualWeakNotes}
                   onChange={e => setManualWeakNotes(e.target.value)}
@@ -1421,14 +1431,14 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsAddWeakVerseModalOpen(false)}
-                  className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl font-semibold"
+                  className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl font-semibold"
                 >
                   إلغاء
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingWeakVerse}
-                  className="px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-bold disabled:opacity-60"
+                  className="min-h-11 px-5 py-2 bg-amber-700 hover:bg-amber-800 text-white rounded-xl font-bold disabled:opacity-60"
                 >
                   {isSavingWeakVerse ? 'جارٍ حفظ الآية...' : 'تسجيل الآية الملتبسة'}
                 </button>
