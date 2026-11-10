@@ -9,6 +9,10 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
   let failed = 0;
   const originalFetch = globalThis.fetch;
   const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: { length: 0, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {} }
+  });
   const test = async (name: string, callback: () => void | Promise<void>) => {
     try { await callback(); passed++; console.log(`  ✅ ${name}`); }
     catch (error) { failed++; console.error(`  ❌ ${name}:`, error); }
