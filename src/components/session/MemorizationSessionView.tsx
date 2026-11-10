@@ -176,13 +176,14 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     onProgressChange?.(repeatCount > 0 && !isCompleted);
   }, [repeatCount, isCompleted, onProgressChange]);
 
-  // Keyboard shortcut: Spacebar to repeat
+  // Keyboard shortcut: Spacebar repeats only when focus is outside interactive controls.
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
-        e.preventDefault();
-        setRepeatCount(c => c + 1);
-      }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || event.repeat) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('button, a, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"]')) return;
+      event.preventDefault();
+      setRepeatCount(count => count + 1);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -503,20 +504,20 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   return (
     <div className="space-y-6 max-w-4xl mx-auto" style={{ zoom: displayPreferences.uiScale / 100 }}>
       {/* 1. Session Navigation & Progress Bar */}
-      <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <button
           onClick={handleExit}
-          className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
+          className="min-h-11 inline-flex items-center justify-center gap-1.5 self-start rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100 transition-colors"
         >
           <ArrowRight className="w-4 h-4" />
           <span>خروج من الجلسة</span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 min-w-0">
           <span className="font-bold text-sm text-stone-900 dark:text-stone-100 font-quran">
             سورة {surahMeta.name}
           </span>
-          <span className="text-xs text-stone-500 font-mono tabular-nums">
+          <span aria-live="polite" className="text-xs text-stone-500 font-mono tabular-nums">
             الآية {currentAyah.numberInSurah} من {sessionAyahs[sessionAyahs.length - 1]?.numberInSurah || surahMeta.versesCount}
           </span>
           <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono">
@@ -524,21 +525,16 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           </span>
         </div>
 
-        {/* Ayah Steps Indicators */}
-        <div className="flex items-center gap-1.5">
-          {sessionAyahs.map((a, idx) => (
-            <div
-              key={a.numberInSurah}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                idx === currentAyahIndex
-                  ? 'bg-emerald-600 ring-2 ring-emerald-300 dark:ring-emerald-700 scale-125'
-                  : idx < currentAyahIndex
-                  ? 'bg-emerald-800'
-                  : 'bg-stone-200 dark:bg-stone-700'
-              }`}
-              title={`آية ${a.numberInSurah}`}
-            />
-          ))}
+        <div
+          role="progressbar"
+          aria-label="تقدم جلسة الحفظ"
+          aria-valuemin={0}
+          aria-valuemax={sessionAyahs.length}
+          aria-valuenow={currentAyahIndex + 1}
+          aria-valuetext={`الآية ${currentAyah.numberInSurah} من ${sessionAyahs.length}`}
+          className="h-2 w-full sm:w-28 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700"
+        >
+          <div className="h-full rounded-full bg-emerald-700 transition-all duration-300" style={{ width: `${((currentAyahIndex + 1) / Math.max(1, sessionAyahs.length)) * 100}%` }} />
         </div>
       </div>
 
@@ -701,22 +697,21 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               lineHeight: displayPreferences.density === 'compact' ? 1.8 : 2.25
             }}
           >
-            {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.map((word, idx) => {
+            {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.length === 0 ? <span role="status" className="text-sm text-stone-500">جارٍ تجهيز نص الآية للتسميع...</span> : words.map((word, idx) => {
               const masked = isWordMasked(idx);
-
-              return (
-                <span
+              return masked ? (
+                <button
                   key={idx}
-                  onClick={() => masked ? handleToggleWordReveal(idx) : null}
-                  className={`inline-block px-2.5 py-0.5 rounded-lg transition-all select-none ${
-                    masked
-                      ? 'bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500'
-                      : 'cursor-default'
-                  }`}
-                  title={masked ? "اضغط لإظهار الكلمة للتسميع" : undefined}
+                  type="button"
+                  onClick={() => handleToggleWordReveal(idx)}
+                  aria-label={`إظهار الكلمة رقم ${idx + 1}`}
+                  className="inline-flex min-h-11 items-center justify-center px-2.5 py-0.5 rounded-lg transition-all select-none bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500"
+                  title="اضغط لإظهار الكلمة للتسميع"
                 >
                   {word}
-                </span>
+                </button>
+              ) : (
+                <span key={idx} className="inline-block px-2.5 py-0.5 select-none">{word}</span>
               );
             })}
             <span className="ayah-number">{currentAyah.numberInSurah}</span>
@@ -739,8 +734,10 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             ].map(m => (
               <button
                 key={m.level}
+                type="button"
+                aria-pressed={maskLevel === m.level}
                 onClick={() => setMaskLevel(m.level)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`min-h-11 px-3 py-1.5 rounded-lg font-medium transition-colors ${
                   maskLevel === m.level
                     ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold shadow-xs'
                     : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -819,16 +816,18 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setRepeatCount(c => Math.max(0, c - 1))}
-              className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs flex items-center justify-center"
+              className="min-h-11 min-w-11 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs flex items-center justify-center"
               title="إنقاص مرة واحدة"
             >
               -1
             </button>
 
             <button
+              type="button"
               onClick={() => setRepeatCount(c => c + 1)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-sm shadow-xs transition-transform active:scale-95"
+              className="min-h-11 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-sm shadow-xs transition-transform active:scale-95"
               title="زيادة التكرار (أو اضغط مسافة)"
             >
               + تكرار ({repeatCount})
