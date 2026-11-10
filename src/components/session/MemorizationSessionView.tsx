@@ -504,20 +504,20 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* 1. Session Navigation & Progress Bar */}
-      <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
+      <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <button
           onClick={handleExit}
-          className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
+          className="min-h-11 inline-flex items-center justify-center gap-1.5 self-start rounded-xl border border-stone-200 dark:border-stone-700 px-3 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100 transition-colors"
         >
           <ArrowRight className="w-4 h-4" />
           <span>خروج من الجلسة</span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 min-w-0">
           <span className="font-bold text-sm text-stone-900 dark:text-stone-100 font-quran">
             سورة {surahMeta.name}
           </span>
-          <span className="text-xs text-stone-500 font-mono tabular-nums">
+          <span aria-live="polite" className="text-xs text-stone-500 font-mono tabular-nums">
             الآية {currentAyah.numberInSurah} من {sessionAyahs[sessionAyahs.length - 1]?.numberInSurah || surahMeta.versesCount}
           </span>
           <span className="text-xs px-2.5 py-0.5 rounded-full bg-stone-100 dark:bg-stone-700 text-stone-700 dark:text-stone-300 font-mono">
@@ -525,21 +525,19 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           </span>
         </div>
 
-        {/* Ayah Steps Indicators */}
-        <div className="flex items-center gap-1.5">
-          {sessionAyahs.map((a, idx) => (
-            <div
-              key={a.numberInSurah}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                idx === currentAyahIndex
-                  ? 'bg-emerald-600 ring-2 ring-emerald-300 dark:ring-emerald-700 scale-125'
-                  : idx < currentAyahIndex
-                  ? 'bg-emerald-800'
-                  : 'bg-stone-200 dark:bg-stone-700'
-              }`}
-              title={`آية ${a.numberInSurah}`}
-            />
-          ))}
+        <div
+          role="progressbar"
+          aria-label="تقدم جلسة الحفظ"
+          aria-valuemin={0}
+          aria-valuemax={sessionAyahs.length}
+          aria-valuenow={currentAyahIndex + 1}
+          aria-valuetext={`الآية ${currentAyah.numberInSurah} من ${sessionAyahs.length}`}
+          className="h-2 w-full sm:w-28 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700"
+        >
+          <div
+            className="h-full rounded-full bg-emerald-700 transition-all duration-300"
+            style={{ width: `${((currentAyahIndex + 1) / Math.max(1, sessionAyahs.length)) * 100}%` }}
+          />
         </div>
       </div>
 
@@ -682,7 +680,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               lineHeight: displayPreferences.density === 'compact' ? 1.8 : 2.25
             }}
           >
-            {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.map((word, idx) => {
+            {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.length === 0 ? <span role="status" className="text-sm text-stone-500">جارٍ تجهيز نص الآية للتسميع...</span> : words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
               return masked ? (
@@ -720,6 +718,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             ].map(m => (
               <button
                 key={m.level}
+                type="button"
+                aria-pressed={maskLevel === m.level}
                 onClick={() => setMaskLevel(m.level)}
                 className={`min-h-11 px-3 py-1.5 rounded-lg font-medium transition-colors ${
                   maskLevel === m.level
