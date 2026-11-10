@@ -2,6 +2,8 @@ import { PRESET_PLANS } from '../data/presetPlans';
 import {
   DEMO_LOGS,
   DEMO_PROFILE,
+  StorageService,
+  createJournalSnapshotFingerprint,
   buildDemoEnginePlan,
   type JournalProjectionOperation
 } from './storageService';
@@ -19,6 +21,8 @@ import { persistJournaledTransaction, type JournaledSnapshotOptions } from './jo
 export function loadDemoDataJournaled(
   options: JournaledSnapshotOptions = {}
 ) {
+  const baseWeakVersesFingerprint = createJournalSnapshotFingerprint(StorageService.getWeakVerses());
+  const baseLogsFingerprint = createJournalSnapshotFingerprint(StorageService.getLogs());
   const canonicalPortions = DEFAULT_PORTIONS.map(portion => ({
     ...portion,
     id: createCanonicalPortionId(portion.surahNumber, portion.startAyah, portion.endAyah)
@@ -29,8 +33,8 @@ export function loadDemoDataJournaled(
     { collection: 'plans', documentId: 'demo-plans', operation: 'upsert', payload: { records: PRESET_PLANS.map(plan => ({ ...plan })) } },
     { collection: 'enginePlans', documentId: 'demo-engine-plans', operation: 'upsert', payload: { records: [buildDemoEnginePlan()] } },
     { collection: 'portions', documentId: 'demo-portions', operation: 'upsert', payload: { records: canonicalPortions } },
-    { collection: 'weakVerses', documentId: 'demo-weak-verses', operation: 'upsert', payload: { records: DEFAULT_WEAK_VERSES.map(item => ({ ...item })) } },
-    { collection: 'activityEvents', documentId: 'demo-activity', operation: 'upsert', payload: { records: DEMO_LOGS.map(log => ({ ...log, completedTasks: [...log.completedTasks] })) } }
+    { collection: 'weakVerses', documentId: 'demo-weak-verses', operation: 'upsert', payload: { records: DEFAULT_WEAK_VERSES.map(item => ({ ...item })), baseSnapshotFingerprint: baseWeakVersesFingerprint } },
+    { collection: 'activityEvents', documentId: 'demo-activity', operation: 'upsert', payload: { records: DEMO_LOGS.map(log => ({ ...log, completedTasks: [...log.completedTasks] })), baseSnapshotFingerprint: baseLogsFingerprint } }
   ];
 
   return persistJournaledTransaction(
