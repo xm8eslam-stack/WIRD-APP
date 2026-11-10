@@ -177,3 +177,36 @@
 
   .dark .hadith-quran-text { color: #a7f3d0; }
 }
+
+
+/* Printed Mushaf page hit regions: invisible by default, discoverable on focus/selection. */
+.mushaf-ayah-hit-area {
+  cursor: pointer;
+  pointer-events: all;
+  outline: none;
+  transition: fill 120ms ease, stroke 120ms ease;
+}
+.mushaf-ayah-hit-area:hover,
+.mushaf-ayah-hit-area:focus-visible {
+  fill: rgba(28, 78, 70, 0.16);
+  fill-opacity: 0.22;
+  stroke: rgba(28, 78, 70, 0.72);
+  stroke-width: 0.9;
+}
+.dark .mushaf-ayah-hit-area:hover,
+.dark .mushaf-ayah-hit-area:focus-visible {
+  fill: rgba(224, 169, 109, 0.2);
+  fill-opacity: 0.24;
+  stroke: rgba(224, 169, 109, 0.82);
+}
+.mushaf-ayah-hit-area:focus-visible {
+  stroke-width: 1.5;
+}
+.mushaf-ayah-hit-area[aria-pressed='true'] {
+  fill-opacity: 0.34;
+  stroke: #a87912;
+  stroke-width: 1.1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mushaf-ayah-hit-area { transition: none; }
+}
