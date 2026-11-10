@@ -1,6 +1,6 @@
 # WIRD Sync Engineering Continuity Checkpoint
 
-Last updated: 2026-11-10
+Last updated: 2026-11-10 (follow-up review of weak-verse, session, and remote projection paths)
 
 This document preserves the current cloud-sync engineering state and the next safe investigation steps. Update it whenever sync behavior, release status, or known risks change.
 
