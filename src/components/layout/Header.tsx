@@ -16,6 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  currentTab,
   tabTitle,
   profile,
   onToggleTheme,
@@ -24,7 +25,6 @@ export const Header: React.FC<HeaderProps> = ({
   isStandalone,
   onInstallPwa
 }) => {
-  const { currentTab, tabTitle, profile, onToggleTheme, onStartDailySession, pwaInstallPrompt, isStandalone, onInstallPwa } = arguments[0] as HeaderProps;
   const { status, pendingCount, triggerSync } = useCloudSync();
   return (
     <header className="sticky top-0 z-30 h-[68px] bg-[#F9F6EE]/90 dark:bg-[#0B132B]/90 backdrop-blur-xl border-b border-[#1C4E46]/10 dark:border-[#E0A96D]/15 px-4 md:px-7 flex items-center justify-between gap-3 transition-colors">
