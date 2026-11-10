@@ -721,7 +721,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                 type="button"
                 aria-pressed={maskLevel === m.level}
                 onClick={() => setMaskLevel(m.level)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`min-h-11 px-3 py-1.5 rounded-lg font-medium transition-colors ${
                   maskLevel === m.level
                     ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold shadow-xs'
                     : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
