@@ -48,6 +48,26 @@ test.describe('Ruqyah Quran locator library', () => {
     await expect(page.getByText(/بِسْمِ/)).toBeVisible();
   });
 
+  test('keeps the last validated Quran index visible when IslamicAPI returns HTTP 502', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('wird.ruqyah.index-cache.v1:brief-ruqya', JSON.stringify({
+        savedAt: new Date().toISOString(),
+        entries: [{ id: 1, title: '1:1-7' }]
+      }));
+    });
+    await page.route(INDEX_ENDPOINT, route => route.fulfill({
+      status: 502,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'RUQYAH_SOURCE_UNAVAILABLE' })
+    }));
+
+    await openExtendedLibrary(page);
+    await expect(page.getByRole('heading', { name: 'سورة الفاتحة' })).toBeVisible();
+    await expect(page.getByText(/نسخة محفوظة/)).toBeVisible();
+    await expect(page.getByRole('alert')).toContainText('تعذر تحديث الفهرس الآن');
+    await expect(page.getByText(/بِسْمِ/)).toBeVisible();
+  });
+
   test('shows a distinct empty state when the locator index returns no entries', async ({ page }) => {
     await page.route(INDEX_ENDPOINT, route => route.fulfill(validIndexResponse([])));
     await openExtendedLibrary(page);
