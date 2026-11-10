@@ -34,7 +34,15 @@ import type { PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { QuranMushafReader } from './QuranMushafReader';
 import { QURAN_JUZ_STARTS } from '../../data/quranNavigationIndex.generated';
-import { clearReadingKhatma, markReadingPage, readReadingKhatma, startReadingKhatma } from '../../services/readingKhatmaService';
+import {
+  clearReadingKhatma,
+  markReadingPage,
+  pauseReadingKhatma,
+  readReadingKhatma,
+  resumeReadingKhatma,
+  startReadingKhatma,
+  updateReadingKhatmaPlan
+} from '../../services/readingKhatmaService';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { ReadingKhatmaPanel } from './ReadingKhatmaPanel';
 import { QuranText } from '../shared/QuranText';
@@ -350,8 +358,11 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
       <ReadingKhatmaPanel
         khatma={readingKhatma}
         error={readingKhatmaError}
-        onStart={() => { try { setReadingKhatma(startReadingKhatma()); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر بدء الختمة.'); } }}
+        onStart={plan => { try { setReadingKhatma(startReadingKhatma(localStorage, new Date(), plan)); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر بدء الختمة.'); } }}
         onReset={() => { try { clearReadingKhatma(); setReadingKhatma(null); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر إعادة ضبط الختمة.'); } }}
+        onPause={() => { try { setReadingKhatma(pauseReadingKhatma()); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر إيقاف الختمة مؤقتاً.'); } }}
+        onResume={() => { try { setReadingKhatma(resumeReadingKhatma()); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر استئناف الختمة.'); } }}
+        onUpdatePlan={plan => { try { setReadingKhatma(updateReadingKhatmaPlan(plan)); setReadingKhatmaError(''); } catch (error) { setReadingKhatmaError(error instanceof Error ? error.message : 'تعذر تحديث خطة الختمة.'); } }}
         onContinue={page => handleOpenMushafPage(page)}
       />
       {/* 1. Hero Quran.com Header Banner */}
