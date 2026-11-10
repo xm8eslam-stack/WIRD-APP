@@ -1,4 +1,4 @@
-import { prepareWirdForOffline, type OfflinePreparationProgress } from './offlinePreparationService';
+import { getWirdOfflinePackageStatus, prepareWirdForOffline, type OfflinePreparationProgress } from './offlinePreparationService';
 
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -126,6 +126,61 @@ export async function runOfflinePreparationServiceTests(): Promise<{ passed: num
       await expectError(prepareWirdForOffline(undefined, 1000), 'افتح وِرد مرة أخرى');
     } finally {
       restoreUncontrolled();
+    }
+  });
+
+
+  await test('reports exact cached and missing offline package counts', async () => {
+    let remotePort: MessagePort | undefined;
+    const restore = installNavigator(createServiceWorkerContainer(port => {
+      remotePort = port;
+      queueMicrotask(() => port.postMessage({ type: 'status', cached: 7, total: 10, missing: 3 }));
+    }));
+    try {
+      const status = await getWirdOfflinePackageStatus(1000);
+      assert(status.cached === 7 && status.total === 10 && status.missing === 3, 'Status must preserve exact cached, total, and missing counts.');
+    } finally {
+      remotePort?.close();
+      restore();
+    }
+  });
+
+  await test('rejects inconsistent offline package counts', async () => {
+    let remotePort: MessagePort | undefined;
+    const restore = installNavigator(createServiceWorkerContainer(port => {
+      remotePort = port;
+      queueMicrotask(() => port.postMessage({ type: 'status', cached: 8, total: 10, missing: 1 }));
+    }));
+    try {
+      await expectError(getWirdOfflinePackageStatus(1000), 'نتيجة غير صالحة');
+    } finally {
+      remotePort?.close();
+      restore();
+    }
+  });
+
+  await test('surfaces offline package inspection errors', async () => {
+    let remotePort: MessagePort | undefined;
+    const restore = installNavigator(createServiceWorkerContainer(port => {
+      remotePort = port;
+      queueMicrotask(() => port.postMessage({ type: 'error', message: 'offline manifest unavailable' }));
+    }));
+    try {
+      await expectError(getWirdOfflinePackageStatus(1000), 'offline manifest unavailable');
+    } finally {
+      remotePort?.close();
+      restore();
+    }
+  });
+
+  await test('times out if offline package inspection receives no response', async () => {
+    let remotePort: MessagePort | undefined;
+    const restore = installNavigator(createServiceWorkerContainer(port => { remotePort = port; }));
+    try {
+      await expectError(getWirdOfflinePackageStatus(5), 'انتهت مهلة فحص ملفات وِرد');
+    } finally {
+      remotePort?.close();
+      restore();
     }
   });
 
