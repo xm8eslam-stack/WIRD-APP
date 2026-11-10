@@ -12,6 +12,8 @@ export function runSessionStudyUiTests(): { passed: number; failed: number } {
     const session = read('src/components/session/MemorizationSessionView.tsx');
     const preferences = read('src/services/memorizationDisplayPreferences.ts');
     assert(session.includes('aria-label="حجم خط الآيات"'), 'font size control must be accessible');
+    assert(session.includes('aria-label="حجم واجهة جلسة الحفظ"') && session.includes('style={{ zoom: displayPreferences.uiScale / 100 }}'), 'overall session interface must be resizable without changing Quran text content');
+    assert(session.includes('sticky bottom-2') && session.includes('aria-label="التنقل بين آيات جلسة الحفظ"'), 'previous/next navigation must remain reachable while scrolling');
     assert(session.includes('aria-label="كثافة عرض العناصر"') && session.includes("density: 'compact'"), 'compact spacing control must be available');
     assert(session.includes('viewMode === \'page\'') && session.includes('كل آيات الجلسة'), 'whole-session verse view must be available');
     assert(session.includes('aria-pressed={index === currentAyahIndex}'), 'active verse must be announced to assistive technology');
