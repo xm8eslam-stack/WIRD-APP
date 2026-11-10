@@ -42,7 +42,7 @@ export function runMemorizationDisplayPreferenceTests(): { passed: number; faile
         'Corrupt presentation preferences should use safe defaults');
     });
     test('display font size is clamped to the accessible supported range', () => {
-      assert(saveMemorizationDisplayPreferences({ fontSize: 100, density: 'comfortable', viewMode: 'focused' }),
+      assert(saveMemorizationDisplayPreferences({ fontSize: 100, uiScale: 100, density: 'comfortable', viewMode: 'focused' }),
         'Out-of-range font size should be safely normalized');
       assert(getMemorizationDisplayPreferences().fontSize === 44, 'Font size must not exceed 44px');
     });
