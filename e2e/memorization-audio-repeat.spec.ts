@@ -118,11 +118,13 @@ test.describe('Memorization session audio repetition', () => {
 
     const scale = page.getByLabel('حجم واجهة جلسة الحفظ');
     await expect(scale).toHaveValue('100');
-    await scale.evaluate((element: HTMLInputElement) => {
-      element.value = '85';
-      element.dispatchEvent(new Event('input', { bubbles: true }));
-      element.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    await scale.focus();
+    await scale.press('Home');
+    await expect.poll(() => page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('wird:memorization-display:v1') || '{}');
+      return saved.uiScale;
+    })).toBe(80);
+    await scale.press('ArrowRight');
     await expect.poll(() => page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('wird:memorization-display:v1') || '{}');
       return saved.uiScale;
