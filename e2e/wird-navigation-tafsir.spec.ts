@@ -25,6 +25,16 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(drawerNav.getByRole('button', { name: 'الإعدادات' })).toBeVisible();
   });
 
+
+  test('More navigation is marked active when a secondary section is selected', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('button', { name: 'المزيد من الأقسام' }).click();
+    const drawer = page.getByRole('navigation', { name: 'القائمة الرئيسية' });
+    await drawer.getByRole('button', { name: 'التقدم والإنجاز' }).click();
+
+    await expect(page.getByRole('button', { name: 'المزيد من الأقسام' })).toHaveAttribute('aria-current', 'page');
+  });
+
   test('memorization tafsir is collapsed by default and can be toggled without leaving the session', async ({ page }) => {
     await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
 
