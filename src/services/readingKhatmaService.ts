@@ -75,10 +75,13 @@ function dateFromKey(key: string): Date {
 function isValidPlan(value: unknown): value is ReadingKhatmaPlan {
   if (!value || typeof value !== 'object') return false;
   const plan = value as ReadingKhatmaPlan;
+  const targetDate = typeof plan.targetCompletionDate === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(plan.targetCompletionDate)
+      ? dateFromKey(plan.targetCompletionDate)
+      : null;
   return Number.isInteger(plan.durationDays) && plan.durationDays >= 1 && plan.durationDays <= 365 &&
     Number.isInteger(plan.sessionsPerDay) && plan.sessionsPerDay >= 1 && plan.sessionsPerDay <= 6 &&
-    typeof plan.targetCompletionDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(plan.targetCompletionDate) &&
-    Number.isFinite(dateFromKey(plan.targetCompletionDate).getTime());
+    Boolean(targetDate && Number.isFinite(targetDate.getTime()) && localDateKey(targetDate) === plan.targetCompletionDate);
 }
 
 function normalizePlan(options: ReadingKhatmaPlanOptions, now: Date): ReadingKhatmaPlan {
@@ -98,8 +101,10 @@ function normalizePlan(options: ReadingKhatmaPlanOptions, now: Date): ReadingKha
 function isValidDailyLog(value: unknown): value is ReadingKhatmaDailyLog {
   if (!value || typeof value !== 'object') return false;
   const log = value as ReadingKhatmaDailyLog;
-  return typeof log.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(log.date) &&
-    Number.isFinite(dateFromKey(log.date).getTime()) &&
+  const logDate = typeof log.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(log.date)
+    ? dateFromKey(log.date)
+    : null;
+  return Boolean(logDate && Number.isFinite(logDate.getTime()) && localDateKey(logDate) === log.date) &&
     Array.isArray(log.pages) && log.pages.every(page => Number.isInteger(page) && page >= 1 && page <= 604);
 }
 
@@ -202,8 +207,8 @@ export function resumeReadingKhatma(
   const current = readReadingKhatma(storage);
   if (!current || current.completedAt) throw new Error('لا توجد ختمة نشطة لاستئنافها.');
   if (!current.isPaused) return current;
-  const { pausedAt: _pausedAt, ...rest } = current;
-  const next = { ...rest, isPaused: false };
+  const next = { ...current, isPaused: false };
+  delete next.pausedAt;
   storage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }
