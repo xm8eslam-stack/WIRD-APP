@@ -40,17 +40,28 @@ test.describe('WIRD progress map UX', () => {
     await expect(normal).toHaveAttribute('aria-pressed', 'false');
   });
 
-  test('page inspection opens the exact ayah segment and closes with Escape', async ({ page }) => {
-    await page.getByRole('button', { name: /صفحة 1 - الفاتحة/ }).click();
+  test('page inspection traps focus, restores its trigger, and stays within a phone viewport', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const trigger = page.getByRole('button', { name: /صفحة 1 - الفاتحة/ });
+    await trigger.click();
     const dialog = page.getByRole('dialog', { name: /صفحة رقم 1/ });
+    const close = dialog.getByRole('button', { name: 'إغلاق تفاصيل الصفحة' });
+    const dismiss = dialog.getByRole('button', { name: 'إغلاق', exact: true });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText('الآيات 1–7');
-
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(dismiss).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    const bounds = await dialog.boundingBox();
+    expect(bounds?.height).toBeLessThanOrEqual(812);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
 
-    await page.getByRole('button', { name: /صفحة 1 - الفاتحة/ }).click();
-    await page.getByRole('button', { name: 'فتح الصفحة في جلسة التسميع' }).click();
+    await trigger.click();
+    await dialog.getByRole('button', { name: 'فتح الصفحة في جلسة التسميع' }).click();
     await expect(page.getByText(/الآية 1 من 7/)).toBeVisible();
   });
 });
