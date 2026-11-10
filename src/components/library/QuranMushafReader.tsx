@@ -725,7 +725,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             — {page} —
           </span>
           <span>
-            {audioAyahs.length ? `من الآية ${audioAyahs[0].numberInSurah} إلى ${audioAyahs[audioAyahs.length - 1].numberInSurah}` : '—'}
+            {audioAyahs.length ? `من الآية ${audioAyahs[0].number} إلى ${audioAyahs[audioAyahs.length - 1].number}` : '—'}
           </span>
         </div>
           </div>
