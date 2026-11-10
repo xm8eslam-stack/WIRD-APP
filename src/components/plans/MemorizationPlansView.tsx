@@ -35,6 +35,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   const [activeTab, setActiveTab] = useState<'engine' | 'presets'>('engine');
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const isDeletingRef = useRef(false);
+  isDeletingRef.current = isDeleting;
   const deleteDialogRef = useRef<HTMLDivElement | null>(null);
   const cancelDeleteButtonRef = useRef<HTMLButtonElement | null>(null);
   const presetsTabRef = useRef<HTMLButtonElement | null>(null);
@@ -54,7 +56,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     const handleDialogKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        if (!isDeleting) setPlanToDelete(null);
+        if (!isDeletingRef.current) setPlanToDelete(null);
         return;
       }
       if (event.key !== 'Tab') return;
@@ -79,7 +81,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     };
     document.addEventListener('keydown', handleDialogKeyDown);
     return () => document.removeEventListener('keydown', handleDialogKeyDown);
-  }, [planToDelete, isDeleting]);
+  }, [planToDelete]);
 
   // Toggle active plan in presets
   const handleToggleActive = async (planId: string) => {
