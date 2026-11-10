@@ -16,7 +16,7 @@ This checkpoint supplements older sync-focused resume notes. Always re-fetch the
 
 ## Active feature work
 
-### PR #304 — Global sidebar controls
+### PR #307 — Global sidebar controls
 
 Branch: `feat/sidebar-global-controls-20261110`
 
@@ -29,7 +29,7 @@ Branch: `feat/sidebar-global-controls-20261110`
 - First exact-head run failed because the E2E locator matched both header and sidebar close buttons. The test now targets the header toggle explicitly.
 - Latest exact-head run status must be checked before merge.
 
-PR #292, #298, and #291 are closed as superseded by PR #304. PR #294 and #303 are closed as superseded by PR #306. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
+PR #292, #298, #291, and #304 are closed as superseded by PR #307. PR #294 and #303 are closed as superseded by PR #306. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
 
 ### PR #306 — Continuous Quran audio and segment repetition
 
@@ -74,7 +74,7 @@ Branch: `fix/ruqyah-index-resilience-20261110`
 - PR #290 (memorization session display controls) passed its exact-head Quality Gate on SHA `8f1f2ab52b5cf6f729591c01763a79e401965a9c` and was merged at `6fa121a411c4c6a904ac175007fa27f7569f0c61`. The display controls are now part of main; revalidate the audio queue against the post-merge base.
 - PR #300 (offline Quran and Ruqyah audio cache/storage protection) is still running its Quality Gate. It changes `QuranMushafReader.tsx`, `QuranLibraryView.tsx`, the service worker, and settings; coordinate it with PRs #302 and #303 because the same reader/library files are being extended.
 - PR #293 (verified offline package readiness) is still in progress and also touches service-worker/settings code. Reconcile it with PR #300 rather than merging conflicting settings imports blindly.
-- PR #291's focus-trap implementation was incorporated into PR #304; its failing Playwright selector was corrected to use an exact accessible name. PR #291 is closed as superseded.
+- PR #291's focus-trap implementation was incorporated into PR #307; its failing Playwright selector was corrected to use an exact accessible name. PR #291 is closed as superseded.
 
 ## Validation and merge policy
 
