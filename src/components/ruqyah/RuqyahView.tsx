@@ -582,7 +582,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         {audioIsPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         <span>{audioIsPlaying ? 'إيقاف مؤقت' : 'استكمال'}</span>
                       </button>
-                      <button type="button" onClick={stopRuqyahAudio} className="inline-flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                      <button type="button" onClick={stopRuqyahAudio} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 px-3 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
                         <Square className="w-3.5 h-3.5" />
                         <span>إيقاف</span>
                       </button>
@@ -598,13 +598,26 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     </p>
                     <span className="font-mono text-stone-500">{audioQueuePosition} / {audioQueueRef.current.length} — {audioQueueLabel}</span>
                   </div>
+                  <div
+                    role="progressbar"
+                    aria-label="تقدم قائمة التلاوة"
+                    aria-valuemin={0}
+                    aria-valuemax={audioQueueRef.current.length}
+                    aria-valuenow={audioQueuePosition}
+                    aria-valuetext={`الآية ${audioQueuePosition} من ${audioQueueRef.current.length}`}
+                    className="h-1.5 overflow-hidden rounded-full bg-stone-200 dark:bg-stone-700"
+                  >
+                    <div className="h-full rounded-full bg-emerald-700 transition-[width]" style={{ width: `${audioQueueLength ? (audioQueuePosition / audioQueueRef.current.length) * 100 : 0}%` }} />
+                  </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <input type="range" min="0" max={audioDuration || 0} step="0.1" value={Math.min(audioCurrentTime, audioDuration || 0)} disabled={!audioDuration} aria-label="موضع التلاوة الصوتية" onChange={event => { const nextTime = Number(event.target.value); setAudioCurrentTime(nextTime); if (audioRef.current) audioRef.current.currentTime = nextTime; }} className="w-full accent-emerald-700 disabled:opacity-50" />
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <input type="range" min="0" max={audioDuration || 0} step="0.1" value={Math.min(audioCurrentTime, audioDuration || 0)} disabled={!audioDuration} aria-label="موضع التلاوة الصوتية" onChange={event => { const nextTime = Number(event.target.value); setAudioCurrentTime(nextTime); if (audioRef.current) audioRef.current.currentTime = nextTime; }} className="min-h-11 w-full accent-emerald-700 disabled:opacity-50" />
                     <span className="shrink-0 font-mono text-[11px] text-stone-500">{formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}</span>
                     <label className="flex shrink-0 items-center gap-2 text-[11px] text-stone-500">
                       <Volume2 className="w-4 h-4" />
                       <span>الصوت</span>
-                      <input type="range" min="0" max="1" step="0.05" value={audioVolume} aria-label="مستوى صوت التلاوة" onChange={event => setAudioVolume(Number(event.target.value))} className="w-20 accent-emerald-700" />
+                      <input type="range" min="0" max="1" step="0.05" value={audioVolume} aria-label="مستوى صوت التلاوة" onChange={event => setAudioVolume(Number(event.target.value))} className="min-h-11 w-20 accent-emerald-700" />
                     </label>
                   </div>
                 </div>
