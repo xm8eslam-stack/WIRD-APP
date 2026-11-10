@@ -64,11 +64,11 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     <div className="space-y-6">
       {/* Top Segmented Control */}
       <div role="group" aria-label="طرق إدارة خطط الحفظ" className="bg-white dark:bg-stone-800/90 p-2 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
           <button
             onClick={() => setActiveTab('engine')}
             aria-pressed={activeTab === 'engine'}
-            className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+            className={`flex w-full min-h-11 items-center justify-center gap-2 px-4 py-2 rounded-xl text-center transition-all sm:w-auto ${
               activeTab === 'engine'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
