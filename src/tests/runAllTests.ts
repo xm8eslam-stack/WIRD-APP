@@ -35,6 +35,8 @@ import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runAudioPreferencesTests } from '../services/audioPreferences.test';
+import { runAudioServiceOfflineCacheTests } from '../services/audioService.test';
+import { runOfflineStorageServiceTests } from '../services/offlineStorageService.test';
 import { runMemorizationDisplayPreferenceTests } from '../services/memorizationDisplayPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
 import { runMushafFacsimileServiceTests } from '../services/mushafFacsimileService.test';
@@ -134,6 +136,8 @@ async function main() {
     { name: 'Unique Ayah Retention Quality Score', runner: runUniqueRetentionScoreTests },
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
+    { name: 'Offline Quran Audio Cache Allowlist and Limits', runner: runAudioServiceOfflineCacheTests },
+    { name: 'Offline Persistent Storage Permission and Quota', runner: runOfflineStorageServiceTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
     { name: 'Device-local Memorization Display Preferences', runner: runMemorizationDisplayPreferenceTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
