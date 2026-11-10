@@ -149,3 +149,18 @@ Only after explicit user approval:
 - All 114 Surah page starts have regression coverage.
 - Code head `8f213b3a912657b0d1e36f7c851085b742629e2c` passed PR Quality Gate `42267248254` and push Quality Gate `42267243769`.
 - Vercel deployment was blocked by the daily Free-plan deployment cap. Do not claim production deployment or merge until the deployment gate is resolved and the deployed app is verified.
+
+## 2026-11-10 — Current cloud-sync status (supersedes older sync checkpoint statements)
+
+The historical sections below describe earlier project phases and are not the current implementation state. Use this update as the source of truth for cloud sync.
+
+- The revisioned local journal/outbox, Firestore remote mutation path, remote inbox, and local projection flow are implemented and active in the deployed WIRD release.
+- PR #197 and PR #198 are merged. PR #198 is deployed to Production at `wird-app.vercel.app`; merge commit `c6befabbacbb5f7ad6351e9dca6c604408713285`, Vercel deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J`.
+- PR #198 passed exact-head GitHub Quality Gate, including application tests, Firestore Rules Emulator, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- The user manually tested the account on two devices and confirmed that cloud synchronization works. This is a user-reported live test and must be distinguished from CI.
+- `tests` now has safe per-result merge by immutable result ID while `tests/snapshot` remains authoritative.
+- `weakVerses` and `activityEvents` remain full-snapshot projections. Weak-verse IDs include the mutation ID for first failure; resolution is a full-snapshot removal. Activity uses per-day aggregates even though session completion emits a stable-ID domain event. Do not use blind union or addition.
+- Tombstones remain unsupported and fail closed. Do not change their behavior without a per-collection deletion and anti-resurrection design.
+- PR #200 is open to preserve child document IDs in grouped journal apply/recovery, with a regression test. It is not merged until its exact-head quality gates pass.
+- PR #199 is the documentation continuity update. No production Firestore rules/schema, secrets, environment settings, or sync flags were changed during this review.
+- The Vercel Free-plan build-rate-limit can block preview deployments; it does not invalidate a passing GitHub test run, and a passing GitHub run does not prove a Vercel deployment.
