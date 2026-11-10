@@ -297,10 +297,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ))}
 
-              {queuePortions.length === 0 && (
+              {displayedQueuePortions.length === 0 && (
                 <div className="text-center py-6 text-stone-500 text-xs space-y-1">
                   <Check className="w-6 h-6 text-emerald-600 mx-auto" />
-                  <p>أتممت جميع مهام المراجعة لليوم، بارك الله فيك!</p>
+                  <p>{totalDueCount > 0 ? 'جلسة اليوم تعرض المراجعة ذات الأولوية؛ لا توجد مهام أخرى في القائمة.' : 'أتممت جميع مهام المراجعة لليوم، بارك الله فيك!'}</p>
                 </div>
               )}
             </div>
