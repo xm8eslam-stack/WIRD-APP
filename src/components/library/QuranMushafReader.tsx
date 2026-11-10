@@ -58,13 +58,22 @@ const LAST_PAGE_KEY = 'wird.quran.lastPage.v1';
 const BOOKMARKS_KEY = 'wird.quran.pageBookmarks.v1';
 const MUSHAF_TEXT_SCALE_KEY = 'wird.quran.mushafTextScale.v1';
 const MUSHAF_PAGE_WIDTH_KEY = 'wird.quran.mushafPageWidth.v1';
+const MUSHAF_FULL_WIDTH_KEY = 'wird.quran.mushafFullWidth.v1';
+const MUSHAF_LINE_SPACING_KEY = 'wird.quran.mushafLineSpacing.v1';
 
 type MushafTextScale = 'comfortable' | 'large' | 'extraLarge';
+type MushafLineSpacing = 'compact' | 'normal' | 'relaxed';
 
 const MUSHAF_TEXT_SCALE_CLASSES: Record<MushafTextScale, string> = {
-  comfortable: 'text-[1.35rem] md:text-[1.6rem] leading-[2.35] md:leading-[2.5]',
-  large: 'text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75]',
-  extraLarge: 'text-[1.8rem] md:text-[2.1rem] leading-[2.7] md:leading-[2.9]',
+  comfortable: 'text-[1.35rem] md:text-[1.6rem]',
+  large: 'text-[1.55rem] md:text-[1.85rem]',
+  extraLarge: 'text-[1.8rem] md:text-[2.1rem]',
+};
+
+const MUSHAF_LINE_SPACING_CLASSES: Record<MushafLineSpacing, string> = {
+  compact: 'leading-[2.1] md:leading-[2.3]',
+  normal: 'leading-[2.35] md:leading-[2.55]',
+  relaxed: 'leading-[2.6] md:leading-[2.85]',
 };
 
 function readMushafTextScale(): MushafTextScale {
@@ -77,6 +86,18 @@ function readMushafTextScale(): MushafTextScale {
 function readMushafPageWidth(): boolean {
   try { return localStorage.getItem(MUSHAF_PAGE_WIDTH_KEY) === 'wide'; }
   catch { return false; }
+}
+
+function readMushafFullWidth(): boolean {
+  try { return localStorage.getItem(MUSHAF_FULL_WIDTH_KEY) === 'true'; }
+  catch { return false; }
+}
+
+function readMushafLineSpacing(): MushafLineSpacing {
+  try {
+    const value = localStorage.getItem(MUSHAF_LINE_SPACING_KEY);
+    return value === 'compact' || value === 'relaxed' ? value : 'normal';
+  } catch { return 'normal'; }
 }
 const PAGE_INDEX = QURAN_PAGE_INDEX as unknown as Record<string, PageSegment[]>;
 const JUZ_INDEX = QURAN_JUZ_STARTS as unknown as Record<string, NavigationPoint>;
