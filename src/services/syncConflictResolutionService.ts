@@ -7,6 +7,7 @@ import {
   type RemoteProjectionConflict
 } from './indexedDbSyncJournal';
 import { StorageService } from './storageService';
+import { containsUnsafeFullSnapshotProjection } from './syncConflictSafety';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -77,6 +78,9 @@ export async function resolveProjectionConflictUsingRemote(
     throw new Error('هذا التعارض يتضمن حدث حذف؛ سياسة Tombstones لم تكتمل بعد، لذلك لم نطبق قراراً قد يعيد إحياء بيانات محذوفة.');
   }
 
+  if (containsUnsafeFullSnapshotProjection(conflict.event)) {
+    throw new Error('هذا التعارض يحتوي على قائمة آيات متعثرة أو سجل نشاط يومي محفوظ كلقطة كاملة. اختيار النسخة المحلية أو السحابية قد يفقد تغييرات جهاز آخر؛ أبقينا التعارض محفوظاً حتى تكتمل آلية الدمج الآمن.');
+  }
   const stateRef = doc(db, 'users', uid, conflict.event.collection, conflict.event.documentId);
   const stateSnapshot = await getDoc(stateRef);
   assertActiveConflictScope(uid);
@@ -213,6 +217,9 @@ export async function resolveProjectionConflictUsingLocal(
     throw new Error('إعادة نشر أحداث الحذف وعدادات الرقية غير مفعّلة حتى تكتمل دلالات الحذف والدمج الإضافي واختباراتها.');
   }
 
+  if (containsUnsafeFullSnapshotProjection(conflict.event)) {
+    throw new Error('هذا التعارض يحتوي على قائمة آيات متعثرة أو سجل نشاط يومي محفوظ كلقطة كاملة. اختيار النسخة المحلية أو السحابية قد يفقد تغييرات جهاز آخر؛ أبقينا التعارض محفوظاً حتى تكتمل آلية الدمج الآمن.');
+  }
   const archivedMutations = [...(conflict.localMutations || [])]
     .sort((a, b) => a.sequence - b.sequence || a.mutationId.localeCompare(b.mutationId));
   if (archivedMutations.length === 0 ||
