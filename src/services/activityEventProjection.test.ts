@@ -107,8 +107,8 @@ export function runActivityEventProjectionTests(): { passed: number; failed: num
       ]
     };
     const events = [
-      makeEvent({ eventId: 'event-z', localDate: '2026-11-13', memorizedAyahs: 1, minutes: 2 }),
-      makeEvent({ eventId: 'event-y', localDate: '2026-11-12', memorizedAyahs: 1, minutes: 2 })
+      makeEvent({ eventId: 'event-z', occurredAtMs: Date.parse('2026-11-13T03:00:00.000Z'), localDate: '2026-11-13', memorizedAyahs: 1, minutes: 2 }),
+      makeEvent({ eventId: 'event-y', occurredAtMs: Date.parse('2026-11-12T03:00:00.000Z'), localDate: '2026-11-12', memorizedAyahs: 1, minutes: 2 })
     ];
     const result = projectDailyActivityFromEvents(multiBaseline, events);
     assert(result.success, 'Valid new activity dates should project');
@@ -175,7 +175,7 @@ export function runActivityEventProjectionTests(): { passed: number; failed: num
       logs
     };
     const result = projectDailyActivityFromEvents(largeBaseline, [
-      makeEvent({ localDate: '2030-01-01' })
+      makeEvent({ occurredAtMs: Date.parse('2030-01-01T03:00:00.000Z'), localDate: '2030-01-01' })
     ]);
     assert(!result.success && result.errorCode === 'aggregate_overflow',
       'A new date beyond the 10,000-day archive limit must fail closed');
