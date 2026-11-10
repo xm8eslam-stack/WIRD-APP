@@ -254,6 +254,10 @@ export function projectDailyActivityFromEvents(
     }
   }
 
+  if (logsByDate.size > MAX_DAILY_LOGS) {
+    return failure('aggregate_overflow', 'عدد أيام النشاط يتجاوز الحد المسموح؛ لم يتم إرجاع إسقاط جزئي.');
+  }
+
   const existingDates = baseline.logs.map(log => logsByDate.get(log.date)!);
   const appendedDates = [...newDates].sort().map(date => logsByDate.get(date)!);
   return {
