@@ -1531,7 +1531,8 @@ export const StorageService = {
    */
   applyJournalProjection(
     collection: Exclude<SyncCollection, 'syncMeta'>,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    documentId?: string
   ): boolean {
     if (!isPlainRecord(payload)) return false;
     switch (collection) {
@@ -1546,9 +1547,16 @@ export const StorageService = {
       case 'weakVerses':
         return Array.isArray(payload.records) && this.saveWeakVerses(payload.records as WeakVerseItem[]);
       case 'tests': {
-        if (!Array.isArray(payload.records)) return false;
-        const current = this.getTests();
-        const merged = mergeTestResultSnapshots(current, payload.records);
+        if (!Array.isArray(payload.records) || payload.records.length > 50 ||
+            !payload.records.every(isValidTestResultRecord)) return false;
+        // Legacy per-result documents carry a rolling archive and must merge by
+        // immutable result ID. The explicit collection snapshot document remains
+        // authoritative and supports whole-archive replacement for revisioned
+        // snapshot writers and existing snapshot events.
+        if (documentId === 'snapshot') {
+          return this.saveTests(payload.records as TestResult[]);
+        }
+        const merged = mergeTestResultSnapshots(this.getTests(), payload.records);
         return merged !== null && this.saveTests(merged);
       }
       case 'activityEvents':
@@ -1667,7 +1675,7 @@ export const StorageService = {
           !Array.isArray(payload.transaction.operations)) return false;
       return this.applyJournalTransaction(payload.transaction.operations);
     }
-    return this.applyJournalProjection(event.collection, event.payload);
+    return this.applyJournalProjection(event.collection, event.payload, event.documentId);
   },
 
   /**
