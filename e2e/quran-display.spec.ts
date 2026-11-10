@@ -167,7 +167,7 @@ test('Mushaf plays a selected ayah segment continuously and repeats the bounded 
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/library');
-  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
   await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toBeVisible();
 
   await page.getByLabel('بداية المقطع الصوتي').selectOption('1');
@@ -191,7 +191,7 @@ test('Mushaf width and line spacing controls persist and can be reset', async ({
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/library');
-  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
 
   const pageRegion = page.getByRole('main', { name: 'صفحة المصحف 1' });
   const spacing = page.getByLabel('تباعد أسطر المصحف');
@@ -201,7 +201,7 @@ test('Mushaf width and line spacing controls persist and can be reset', async ({
   await expect(page.locator('[data-mushaf-line-spacing="relaxed"]')).toBeVisible();
 
   await page.getByRole('button', { name: 'العودة للفهرس' }).click();
-  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
   await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toHaveAttribute('data-mushaf-page-width', 'full');
   await expect(page.getByLabel('تباعد أسطر المصحف')).toHaveValue('relaxed');
 
@@ -234,7 +234,7 @@ test('full Mushaf page playback continues automatically into the next page', asy
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/library');
-  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
   await expect(page.locator('[id^="wird-ayah-"]').first()).toBeVisible();
   const firstPageAyahCount = await page.locator('[id^="wird-ayah-"]').count();
   await expect(page.getByLabel('نهاية المقطع الصوتي')).toHaveValue(String(firstPageAyahCount - 1));
