@@ -69,7 +69,7 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
 
     await expect(page.getByRole('button', { name: 'إخفاء تام' })).toHaveCSS('min-height', '44px');
-    await expect(page.getByRole('button', { name: /\\+ تكرار/ })).toHaveCSS('min-height', '44px');
+    await expect(page.getByRole('button', { name: /\+ تكرار/ })).toHaveCSS('min-height', '44px');
     await expect(page.getByRole('combobox', { name: 'سرعة تشغيل الصوت' })).toHaveCSS('min-height', '44px');
     const navigation = page.getByRole('group', { name: 'التنقل بين آيات جلسة الحفظ' });
     await expect(navigation.getByRole('button', { name: 'السابقة' })).toHaveCSS('min-height', '56px');
