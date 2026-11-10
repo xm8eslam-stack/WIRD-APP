@@ -12,6 +12,7 @@ const commit = serviceSource.match(/MUSHAF_FACSIMILE_COMMIT\s*=\s*'([a-f0-9]{40}
 if (!commit) throw new Error('[WIRD Mushaf] Could not read the pinned quran-svg commit from the page service.');
 
 const localCoordinates = new Set();
+const localPageByCoordinate = new Map();
 let totalLocalAyahs = 0;
 for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
   const ayahs = quran[String(surahNumber)] ?? quran[surahNumber];
@@ -25,7 +26,9 @@ for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
         typeof ayah.text !== 'string' || !ayah.text.trim()) {
       throw new Error('[WIRD Mushaf] Invalid local Quran coordinate/text at ' + surahNumber + ':' + ayahNumber + '.');
     }
-    localCoordinates.add(surahNumber + ':' + ayahNumber);
+    const key = surahNumber + ':' + ayahNumber;
+    localCoordinates.add(key);
+    if (Number.isInteger(ayah.page)) localPageByCoordinate.set(key, ayah.page);
     totalLocalAyahs++;
   }
 }
@@ -83,6 +86,7 @@ async function fetchPage(page) {
 
 let nextPage = 1;
 const allSourceCoordinates = new Set();
+const sourcePageByCoordinate = new Map();
 const workerCount = 16;
 async function worker() {
   while (true) {
@@ -92,6 +96,7 @@ async function worker() {
     for (const key of coordinates) {
       if (allSourceCoordinates.has(key)) throw new Error('[WIRD Mushaf] Coordinate ' + key + ' appears on more than one printed page.');
       allSourceCoordinates.add(key);
+      sourcePageByCoordinate.set(key, page);
     }
   }
 }
@@ -105,7 +110,16 @@ if (missing.length || extra.length || allSourceCoordinates.size !== localCoordin
     'Missing: ' + missing.slice(0, 12).join(', ') + '. Extra: ' + extra.slice(0, 12).join(', ') + '.'
   );
 }
+const pageAssignmentMismatches = [...sourcePageByCoordinate.entries()]
+  .filter(([key, sourcePage]) => localPageByCoordinate.has(key) && localPageByCoordinate.get(key) !== sourcePage);
 console.log(
   '[WIRD Mushaf] Verified all 604 Hafs/KFGQPC SVG pages: ' +
   totalLocalAyahs + ' unique local Quran ayahs mapped exactly once; source commit ' + commit + '.'
+);
+console.log(
+  '[WIRD Mushaf] Separate printed-vs-flexible page metadata differences: ' +
+  pageAssignmentMismatches.length + (pageAssignmentMismatches.length
+    ? ' (sample: ' + pageAssignmentMismatches.slice(0, 12).map(([key, page]) =>
+      key + ' printed=' + page + ' flexible=' + localPageByCoordinate.get(key)).join(', ') + ')'
+    : '.')
 );
