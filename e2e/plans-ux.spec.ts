@@ -31,8 +31,9 @@ test.describe('WIRD memorization plans UX', () => {
     const selector = page.getByRole('group', { name: 'طرق إدارة خطط الحفظ' });
     const engineTab = selector.getByRole('button', { name: /محرك التخطيط الذكي/ });
     const presetsTab = selector.getByRole('button', { name: /النماذج والخطط المعتمدة/ });
-    await expect(engineTab).toHaveCSS('width', /\d+px/);
-    await expect(presetsTab).toHaveCSS('width', /\d+px/);
+    const tabWidths = await Promise.all([engineTab, presetsTab].map(tab => tab.evaluate(element => element.getBoundingClientRect().width)));
+    expect(tabWidths[0]).toBeGreaterThan(320);
+    expect(Math.abs(tabWidths[0] - tabWidths[1])).toBeLessThanOrEqual(1);
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await presetsTab.click();
     await expect(presetsTab).toHaveAttribute('aria-pressed', 'true');
