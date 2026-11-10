@@ -135,6 +135,7 @@ test('desktop sidebar toggle is persistent, exposes state, and expands the readi
   await expect(toggle).toHaveAttribute('aria-keyshortcuts', 'Control+B Meta+B');
   await toggle.click();
   await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toBeFocused();
   await expect.poll(() => page.locator('main').evaluate(element => getComputedStyle(element).maxWidth)).toBe('none');
 
   await page.reload();
