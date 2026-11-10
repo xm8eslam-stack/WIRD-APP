@@ -113,15 +113,15 @@ export async function getRelatedSahihHadiths(
       !Number.isSafeInteger(page) || page < 1 || page > 100) {
     throw new RangeError('إحداثيات الآية أو رقم الصفحة غير صحيح.');
   }
-  const verseKey = \`\${surahNumber}:\${ayahNumber}\`;
-  const cacheKey = \`\${CACHE_PREFIX}\${verseKey}:page:\${page}\`;
+  const verseKey = `${surahNumber}:${ayahNumber}`;
+  const cacheKey = `${CACHE_PREFIX}${verseKey}:page:${page}`;
   if (signal?.aborted) throw new Error('تم إلغاء طلب الأحاديث.');
   const cached = readCachedHadithPage(cacheKey, verseKey);
   if (cached) return cached;
 
   let response: Response;
   try {
-    response = await fetch(\`/api/hadith-references?surah=\${surahNumber}&ayah=\${ayahNumber}&page=\${page}\`, {
+    response = await fetch(`/api/hadith-references?surah=${surahNumber}&ayah=${ayahNumber}&page=${page}`, {
       headers: { Accept: 'application/json' },
       signal
     });
