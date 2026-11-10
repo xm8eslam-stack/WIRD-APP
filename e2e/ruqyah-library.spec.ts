@@ -50,7 +50,7 @@ test.describe('Ruqyah Quran locator library', () => {
 
   test('keeps the last validated Quran index visible when IslamicAPI returns HTTP 502', async ({ page }) => {
     await page.addInitScript(() => {
-      localStorage.setItem('wird.ruqyah.index-cache.v1:brief-ruqya', JSON.stringify({
+      localStorage.setItem('wird.ruqyah.index-cache.v1:a-long-ruqya', JSON.stringify({
         savedAt: new Date().toISOString(),
         entries: [{ id: 1, title: '1:1-7' }]
       }));
@@ -62,6 +62,7 @@ test.describe('Ruqyah Quran locator library', () => {
     }));
 
     await openExtendedLibrary(page);
+    await page.getByLabel('تقسيم فهرس مواضع الآيات').selectOption('a-long-ruqya');
     await expect(page.getByRole('heading', { name: 'سورة الفاتحة' })).toBeVisible();
     await expect(page.getByText(/^نسخة محفوظة/)).toBeVisible();
     await expect(page.getByRole('alert')).toContainText('تعذر تحديث الفهرس الآن');
