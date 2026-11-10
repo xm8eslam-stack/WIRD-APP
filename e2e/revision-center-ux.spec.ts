@@ -7,6 +7,28 @@ test.describe('WIRD revision center UX', () => {
     await page.goto('/#/revision');
   });
 
+  test('failed-rating dialog traps keyboard focus, closes on Escape, and restores its trigger', async ({ page }) => {
+    await page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' }).click();
+    await expect(page.getByRole('heading', { name: 'إضافة مقطع حفظ ومراجعة جديد' })).toBeVisible();
+    await page.locator('form').last().getByRole('button', { name: 'إضافة المقطع' }).click();
+
+    const trigger = page.getByRole('button', { name: 'غير متقنة (يتفلت)' }).first();
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+
+    const dialog = page.getByRole('dialog', { name: /تسجيل تعثر في سورة/ });
+    const close = dialog.getByRole('button', { name: 'إغلاق نافذة تسجيل التعثر' });
+    const confirm = dialog.getByRole('button', { name: /تأكيد التسجيل كـ/ });
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(confirm).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
   test('weekly revision overview adapts its columns to tablet and desktop widths', async ({ page }) => {
     const weeklyTab = page.getByRole('button', { name: 'نظرة أسبوعية للمراجعات' });
     await expect(weeklyTab).toHaveAttribute('aria-pressed', 'false');
