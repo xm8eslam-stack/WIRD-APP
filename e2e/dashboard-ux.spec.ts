@@ -7,7 +7,7 @@ test.describe('WIRD dashboard responsive and accessible layout', () => {
   });
 
   test('dashboard exposes named Quran progress and weekly activity to assistive technology', async ({ page }) => {
-    await expect(page.getByRole('region', { name: 'dashboard-welcome-title' })).toBeVisible();
+    await expect(page.getByRole('region', { name: /السلام عليكم/ })).toBeVisible();
     await expect(page.getByRole('progressbar', { name: 'نسبة الآيات المحفوظة' })).toBeVisible();
     await expect(page.getByRole('progressbar', { name: 'نسبة الصفحات المحفوظة بالكامل' })).toBeVisible();
     await expect(page.getByRole('list', { name: 'نشاط الحفظ والمراجعة خلال آخر سبعة أيام' })).toBeVisible();
@@ -17,7 +17,7 @@ test.describe('WIRD dashboard responsive and accessible layout', () => {
 
   test('phone dashboard keeps its primary actions tappable without horizontal overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(page.getByRole('button', { name: /بدء جلسة الحفظ التفاعلية|بدء جلسة المراجعة التفاعلية/ })).toHaveCSS('min-height', '48px');
+    await expect(page.getByRole('button', { name: /بدء جلسة|اختر نطاق الخطة/ })).toHaveCSS('min-height', '48px');
     await expect(page.getByRole('button', { name: 'سورة أخرى' })).toHaveCSS('min-height', '44px');
     await expect(page.getByRole('button', { name: /اختبر حفظك الآن/ })).toHaveCSS('min-height', '64px');
     const dimensions = await page.evaluate(() => ({
