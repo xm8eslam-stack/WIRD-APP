@@ -25,7 +25,7 @@ PR #325 passed 667 assertions, 31 Firestore Rules Emulator tests, 8/8 approved a
 ## Release/deployment distinction
 
 - Latest verified Production remains deployment dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5 on SHA dac125dd8770cc4881e2c6cea6fe94623ad52144, state READY.
-- Current main SHA `50bb25e` is not confirmed deployed. Its post-merge GitHub Vercel status was pending at the last check; the last documented READY Production SHA remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`. No live smoke is verified.
+- Current main SHA `50bb25e` is not confirmed deployed. Its post-merge GitHub Vercel status now reports `success`, but Vercel deployment details could not be read (team-scope 403); exact Production SHA/state and live smoke are not verified. The last documented READY Production SHA remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`.
 - PR #328's GitHub Quality Gate passed; Vercel Production deployment remains a separate, unverified gate.
 - No production Firestore rules/schema, secrets, sync flags, or user data were changed.
 
