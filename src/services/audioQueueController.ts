@@ -137,6 +137,13 @@ export class QuranAudioQueueController {
     if (this.nextAudio) this.nextAudio.playbackRate = rate;
   }
 
+  setRepeatCount(repeatCount: QuranAudioRepeatCount): void {
+    if (repeatCount !== null &&
+        (typeof repeatCount !== 'number' || !Number.isInteger(repeatCount) || repeatCount < 1)) return;
+    this.repeatCount = repeatCount;
+    if (this.active) this.prepareNext();
+  }
+
   stop(): void {
     this.generation += 1;
     this.active = false;
