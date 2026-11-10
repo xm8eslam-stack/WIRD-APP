@@ -847,7 +847,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         <button
           onClick={handlePrevAyah}
           disabled={currentAyahIndex === 0}
-          className="min-h-12 flex flex-1 items-center justify-center gap-2 px-3 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="min-h-14 flex flex-1 items-center justify-center gap-2 px-3 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronRight className="w-4 h-4 shrink-0" />
           <span>السابقة</span>
@@ -859,7 +859,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         <button
           onClick={handleNextAyah}
-          className="min-h-12 flex flex-[1.4] items-center justify-center gap-2 px-3 sm:px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors active:scale-[0.98]"
+          className="min-h-14 flex flex-[1.4] items-center justify-center gap-2 px-3 sm:px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors active:scale-[0.98]"
         >
           <span>
             {currentAyahIndex === sessionAyahs.length - 1 ? 'إتمام الجلسة' : 'الآية التالية'}
