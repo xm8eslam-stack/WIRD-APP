@@ -90,7 +90,7 @@ test.describe('Memorization session audio repetition', () => {
     await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
     await page.getByRole('button', { name: 'استماع للآية' }).click();
     await expect.poll(() => page.evaluate(() => (window as any).__wirdAudioPlayCalls)).toBe(1);
-    await page.getByRole('button', { name: 'أتقنت الآية — التالية' }).click();
+    await page.getByRole('button', { name: 'الآية التالية' }).click();
     await expect(page.getByText(/الآية 2 من 3/)).toBeVisible();
     await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.at(-1).onended)).toBeNull();
   });
@@ -109,5 +109,31 @@ test.describe('Memorization session audio repetition', () => {
     await page.evaluate(() => (window as any).__wirdMockAudios.at(-1).onerror?.());
     await expect(page.getByRole('button', { name: 'استماع للآية' })).toBeVisible();
     await expect(audioStatus).toHaveCount(0);
+  });
+
+  test('session interface can be resized and ayah navigation remains sticky and reachable', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+    await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
+
+    const scale = page.getByLabel('حجم واجهة جلسة الحفظ');
+    await expect(scale).toHaveValue('100');
+    await scale.evaluate((element: HTMLInputElement) => {
+      element.value = '85';
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await expect.poll(() => page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('wird:memorization-display:v1') || '{}');
+      return saved.uiScale;
+    })).toBe(85);
+
+    const navigation = page.getByRole('group', { name: 'التنقل بين آيات جلسة الحفظ' });
+    await expect(navigation).toBeVisible();
+    await expect.poll(() => navigation.evaluate(element => getComputedStyle(element).position)).toBe('sticky');
+    await expect(navigation.getByRole('button', { name: 'السابقة' })).toBeDisabled();
+    await navigation.getByRole('button', { name: 'الآية التالية' }).click();
+    await expect(page.getByText(/الآية 2 من 3/)).toBeVisible();
+    await expect(navigation.getByRole('button', { name: 'السابقة' })).toBeEnabled();
   });
 });
