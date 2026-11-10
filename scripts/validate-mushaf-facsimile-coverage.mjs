@@ -33,43 +33,47 @@ if (totalLocalAyahs !== 6236 || localCoordinates.size !== 6236) {
   throw new Error('[WIRD Mushaf] Expected 6,236 unique local ayahs; found ' + totalLocalAyahs + '.');
 }
 
+function readAttribute(tag, name) {
+  return tag.match(new RegExp('\\\\b' + name + '=["\\']([^"\\']*)["\\']', 'i'))?.[1] ?? null;
+}
+
 async function fetchPage(page) {
-  const file = String(page).padStart(3, '0') + '.json';
-  const url = 'https://raw.githubusercontent.com/quran-ws/quran-svg/' + commit + '/mushafs/hafs/kfqc/json/' + file;
+  const file = String(page).padStart(3, '0') + '.svg';
+  const url = 'https://raw.githubusercontent.com/quran-ws/quran-svg/' + commit + '/mushafs/hafs/kfqc/svg/' + file;
   let lastError;
   for (let attempt = 1; attempt <= 4; attempt++) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(20000), headers: { Accept: 'application/json' } });
+      const response = await fetch(url, { signal: AbortSignal.timeout(20000), headers: { Accept: 'image/svg+xml' } });
       if (!response.ok) throw new Error('HTTP ' + response.status);
-      const records = await response.json();
-      if (!Array.isArray(records) || records.length === 0) throw new Error('Source page JSON is empty or invalid.');
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      if (!contentType.includes('image/svg+xml')) throw new Error('Unexpected SVG content type: ' + contentType);
+      const markup = await response.text();
+      if (!/<svg\\b/i.test(markup) || markup.length < 100) throw new Error('Malformed or empty SVG page.');
+      const tags = [...markup.matchAll(/<path\\b[^>]*class=["'][^"']*\\bayahPolygon\\b[^"']*["'][^>]*>/gi)].map(match => match[0]);
+      if (!tags.length || tags.length > 100) throw new Error('Page has no complete ayah hit-region layer.');
 
       const pageCoordinates = new Set();
-      for (const record of records) {
-        const surahNumber = record?.surahNumber;
-        const ayahNumber = record?.ayahNumber;
+      for (const tag of tags) {
+        const surahNumber = Number(readAttribute(tag, 'surah'));
+        const ayahNumber = Number(readAttribute(tag, 'ayah'));
         const key = surahNumber + ':' + ayahNumber;
+        const pathData = readAttribute(tag, 'd') || '';
+        const commands = pathData.match(/[A-Za-z]/g) ?? [];
+        const numbers = pathData.match(/[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?/g)?.map(Number) ?? [];
+        const unsupported = pathData
+          .replace(/[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?|[MLZmlz]/g, '')
+          .replace(/[\\s,]/g, '');
         if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 ||
             !Number.isInteger(ayahNumber) || ayahNumber < 1 ||
-            !Number.isFinite(record?.x) || !Number.isFinite(record?.y) ||
-            typeof record?.polygon !== 'string' || !record.polygon.trim()) {
-          throw new Error('Invalid source ayah geometry record: ' + key);
-        }
-        const polygon = record.polygon.trim();
-        const commands = polygon.match(/[A-Za-z]/g) ?? [];
-        const numbers = polygon.match(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?/g)?.map(Number) ?? [];
-        const unsupported = polygon
-          .replace(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|[MLZmlz]/g, '')
-          .replace(/[\s,]/g, '');
-        if (unsupported || numbers.length < 6 || numbers.length % 2 !== 0 ||
+            unsupported || numbers.length < 6 || numbers.length % 2 !== 0 ||
             numbers.some(number => !Number.isFinite(number)) ||
-            (commands.length > 0 && (!commands.some(command => command.toUpperCase() === 'M') ||
-              !commands.some(command => command.toUpperCase() === 'L') ||
-              commands.some(command => !'MLZmlz'.includes(command))))) {
-          throw new Error('Invalid polygon geometry for ' + key);
+            !commands.some(command => command.toUpperCase() === 'M') ||
+            !commands.some(command => command.toUpperCase() === 'L') ||
+            commands.some(command => !'MLZmlz'.includes(command))) {
+          throw new Error('Invalid printed SVG hit region for ' + key + '.');
         }
-        if (!localCoordinates.has(key)) throw new Error('Source page ' + page + ' contains unknown local Quran coordinate ' + key + '.');
-        if (pageCoordinates.has(key)) throw new Error('Source page ' + page + ' repeats coordinate ' + key + '.');
+        if (!localCoordinates.has(key)) throw new Error('Printed page ' + page + ' contains unknown local Quran coordinate ' + key + '.');
+        if (pageCoordinates.has(key)) throw new Error('Printed page ' + page + ' repeats coordinate ' + key + '.');
         pageCoordinates.add(key);
       }
       return [...pageCoordinates];
@@ -101,11 +105,11 @@ const missing = [...localCoordinates].filter(key => !allSourceCoordinates.has(ke
 const extra = [...allSourceCoordinates].filter(key => !localCoordinates.has(key));
 if (missing.length || extra.length || allSourceCoordinates.size !== localCoordinates.size) {
   throw new Error(
-    '[WIRD Mushaf] Printed edition does not cover the exact local Quran corpus. ' +
+    '[WIRD Mushaf] Printed SVG pages do not cover the exact local Quran corpus. ' +
     'Missing: ' + missing.slice(0, 12).join(', ') + '. Extra: ' + extra.slice(0, 12).join(', ') + '.'
   );
 }
 console.log(
-  '[WIRD Mushaf] Verified all 604 Hafs/KFGQPC printed pages: ' +
+  '[WIRD Mushaf] Verified all 604 Hafs/KFGQPC SVG pages: ' +
   totalLocalAyahs + ' unique local Quran ayahs mapped exactly once; source commit ' + commit + '.'
 );
