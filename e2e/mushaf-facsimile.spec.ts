@@ -21,7 +21,7 @@ test('printed Mushaf mode renders a verified page and maps keyboard-selected hit
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
-      if (url === 'https://cdn.quran.ws/svg/pages/v1.1.1/hafs-kfqc/001.svg') {
+      if (url === 'https://raw.githubusercontent.com/quran-ws/quran-svg/v1.1.1/mushafs/hafs/kfqc/svg/001.svg') {
         return new Response(svg, { status: 200, headers: { 'content-type': 'image/svg+xml' } });
       }
       return originalFetch(input, init);
@@ -54,7 +54,7 @@ test('printed Mushaf mode fails closed and offers the local flexible-text reader
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
-      if (url.startsWith('https://cdn.quran.ws/svg/pages/v1.1.1/hafs-kfqc/')) {
+      if (url.startsWith('https://raw.githubusercontent.com/quran-ws/quran-svg/v1.1.1/mushafs/hafs/kfqc/svg/')) {
         throw new TypeError('offline');
       }
       return originalFetch(input, init);
