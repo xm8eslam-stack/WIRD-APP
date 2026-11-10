@@ -1,7 +1,7 @@
 ### GOOGLE AI STUDIO HANDOFF
 
 
-## 2026-11-11 — Latest verified state after PR #326 merge
+## 2026-11-11 — Latest verified state after PR #328 merge
 
 - Repository: `xm8eslam-stack/WIRD-APP`; current `main` SHA is `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
 - PR #325 (stale full-snapshot compare-and-set guard) merged as `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`.
