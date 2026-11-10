@@ -403,3 +403,15 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Current-main Vercel status is rate-limited. Do not confuse this with the READY Production deployment or a code failure.
 - Exact application-code SHA `2405067...` has completed Quality Gate run `42865304625` successfully. Newer docs-only main run `42876158628` was still in progress at last poll; no failed step had appeared.
 - This supersedes the prior interim note that Production was exactly on `9a508d...`; the latest READY deployment is now `dac125...`.
+
+## 2026-11-11 — Post-merge checkpoint: PR #325 and PR #326
+
+- Current main: `3667a8c003b79984546d48a9defc20c6f2bcd367`.
+- PR #325 merged at `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`. Its exact-head Quality Gate run `42917981860` passed 667 assertions, 31 Firestore Rules Emulator tests, 8/8 approved Quran audio probes, 140 Playwright tests, TypeScript, production build, and server smoke.
+- PR #326 merged at `3667a8c003b79984546d48a9defc20c6f2bcd367`. Its exact-head Quality Gate run `42919276966` passed 674 assertions, 604 Mushaf coordinate-map checks, 31 Firestore Rules Emulator tests, 8/8 approved Quran audio probes, 150 Playwright tests, TypeScript, production build, and server smoke.
+- PR #325 protects `weakVerses` and `activityEvents` full-snapshot writes with a deterministic non-cryptographic base fingerprint. New mutation builders carry the base identity; stale snapshots are rejected; grouped transactions roll back. Legacy events may bootstrap empty archives or replay identical data only. The fingerprint is a compare-and-set identity, not authentication.
+- Existing higher-level `syncConflictSafety` still blocks whole-snapshot `keep-local/use-remote` decisions for `weakVerses` and `activityEvents`. No automatic counter summation, timestamp winner, array-union, tombstone, or delete semantics were introduced. PR #325 is a data-loss guard, not complete conflict resolution or proof of full bidirectional sync.
+- PR #326 adds continuous ayah audio playback across a selected range and across Mushaf pages, pause/resume, speed/repeat controls, Mushaf text/spacing/width controls, and a 10-second timeout for opportunistic audio pre-cache. The current flexible text flow remains distinct from a verified printed-line facsimile.
+- No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
+- Latest Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144` (`READY`), which predates PR #325/#326. Vercel status for current main is `build-rate-limit`; the new main SHA is not claimed as deployed and no live smoke test for it has been completed.
+- Follow-up: when Vercel quota recovers, deploy through the normal GitHub→Vercel path, verify exact SHA `3667a8c`, and run live smoke. Then run a controlled two-device sync test and design tombstone/delete semantics separately before any broader conflict-resolution changes.
