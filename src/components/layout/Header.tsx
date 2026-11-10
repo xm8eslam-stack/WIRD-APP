@@ -47,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
               ? "إغلاق الشريط الجانبي (Ctrl+B / Cmd+B)"
               : "فتح الشريط الجانبي (Ctrl+B / Cmd+B)"}
             aria-label={isSidebarOpen ? "إغلاق الشريط الجانبي" : "فتح الشريط الجانبي"}
+            data-sidebar-toggle="desktop"
             aria-keyshortcuts="Control+B Meta+B"
             aria-expanded={isSidebarOpen}
             data-sidebar-state={isSidebarOpen ? "open" : "closed"}
