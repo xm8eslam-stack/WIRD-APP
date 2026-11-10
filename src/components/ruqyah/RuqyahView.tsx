@@ -610,8 +610,6 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                     <div className="h-full rounded-full bg-emerald-700 transition-[width]" style={{ width: `${audioQueueLength ? (audioQueuePosition / audioQueueRef.current.length) * 100 : 0}%` }} />
                   </div>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <input type="range" min="0" max={audioDuration || 0} step="0.1" value={Math.min(audioCurrentTime, audioDuration || 0)} disabled={!audioDuration} aria-label="موضع التلاوة الصوتية" onChange={event => { const nextTime = Number(event.target.value); setAudioCurrentTime(nextTime); if (audioRef.current) audioRef.current.currentTime = nextTime; }} className="min-h-11 w-full accent-emerald-700 disabled:opacity-50" />
                     <span className="shrink-0 font-mono text-[11px] text-stone-500">{formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}</span>
                     <label className="flex shrink-0 items-center gap-2 text-[11px] text-stone-500">
