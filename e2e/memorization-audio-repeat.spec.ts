@@ -142,6 +142,22 @@ test.describe('Memorization session audio repetition', () => {
 });
 
 
+test('session segment playback can pause and resume without losing its selected range', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
+  await page.getByLabel('بداية المقطع الصوتي في الجلسة').selectOption('1');
+  await page.getByLabel('نهاية المقطع الصوتي في الجلسة').selectOption('2');
+  await page.getByRole('button', { name: 'تشغيل المقطع الصوتي المحدد' }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdAudioPlayCalls)).toBe(1);
+
+  await page.getByRole('button', { name: 'إيقاف مؤقت للمقطع الصوتي' }).click();
+  await expect(page.getByRole('button', { name: 'استئناف المقطع الصوتي' })).toBeVisible();
+  await page.getByRole('button', { name: 'استئناف المقطع الصوتي' }).click();
+  await expect(page.getByRole('button', { name: 'إيقاف مؤقت للمقطع الصوتي' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdAudioPlayCalls)).toBe(2);
+});
+
 test('session header and progress adapt to mobile, and masked words remain keyboard operable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
