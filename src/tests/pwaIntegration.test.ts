@@ -137,6 +137,16 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
 
   });
 
+  test('offline shell includes the favicon and official Uthmanic Quran font', () => {
+    const worker = fs.readFileSync(path.resolve('./public/sw.js'), 'utf8');
+    assert(worker.includes("'/favicon.svg'"), 'The linked favicon must be part of the app shell cache');
+    assert(worker.includes('QURAN_FONT_URL'), 'Service worker must identify the official Uthmanic Quran font');
+    assert(worker.includes('precacheQuranFont'), 'The official Quran font must be cached opportunistically during shell installation');
+    assert(worker.includes('url.href === QURAN_FONT_URL'), 'Only the exact official Quran font URL may use the special font cache path');
+    assert(worker.includes("url.hostname === 'fonts.googleapis.com'"), 'Google Fonts caching must use an exact host allowlist');
+    assert(worker.includes("url.hostname === 'fonts.gstatic.com'"), 'Google font file caching must use an exact host allowlist');
+  });
+
   // 3. HTML integration
   test('index.html links manifest.json and specifies theme-color and mobile web app tags', () => {
     const htmlPath = path.resolve('./index.html');
