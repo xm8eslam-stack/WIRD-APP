@@ -1,6 +1,8 @@
 const CACHE_NAME = 'wird-app-v3';
 const AUDIO_CACHE_NAME = 'wird-app-audio-v1';
 const CONTENT_CACHE_NAME = 'wird-app-content-v1';
+const MUSHAF_PAGE_CACHE_NAME = 'wird-app-mushaf-v1';
+const MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24;
 const MAX_OFFLINE_PACKAGE_ASSETS = 2000;
 const OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS = 15000;
 const OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000;
@@ -142,7 +144,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => Promise.all(
       cacheNames
-        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME)
+        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME && name !== MUSHAF_PAGE_CACHE_NAME)
         .map((name) => caches.delete(name))
     )).then(() => self.clients.claim())
   );
@@ -226,6 +228,36 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Cache public Google Fonts only; never cache authenticated or application API responses.
+  // Cache only the pinned Hafs/KFQC printed-page artwork and ayah geometry.
+  // Pages are downloaded on demand; the cache is bounded to the most recent 12 pages.
+  if (url.hostname === 'cdn.quran.ws' &&
+      url.pathname.startsWith('/svg/pages/v1.1.1/hafs-kfqc/') &&
+      (url.pathname.endsWith('.svg') || url.pathname.endsWith('.json'))) {
+    event.respondWith((async () => {
+      const cache = await caches.open(MUSHAF_PAGE_CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      try {
+        const response = await fetch(req);
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        const validType = url.pathname.endsWith('.svg')
+          ? contentType.includes('image/svg+xml')
+          : contentType.includes('application/json');
+        if (response.status === 200 && response.type === 'cors' && validType) {
+          await cache.put(req, response.clone());
+          const keys = await cache.keys();
+          const overflow = keys.length - MAX_MUSHAF_PAGE_CACHE_ENTRIES;
+          for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
+        }
+        return response;
+      } catch (error) {
+        console.warn('[WIRD SW] Printed Mushaf page unavailable:', req.url, error);
+        return Response.error();
+      }
+    })());
+    return;
+  }
+
   if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
