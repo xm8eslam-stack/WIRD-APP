@@ -147,3 +147,32 @@
     direction: rtl;
     unicode-bidi: isolate;
   }
+
+
+/* Readable Arabic hadith matn: distinct from the dedicated Mushaf typography. */
+@layer base {
+  .hadith-matn {
+    font-family: 'Amiri', 'Noto Naskh Arabic', serif;
+    font-size: 1.18rem;
+    line-height: 2.35;
+    font-weight: 400;
+    letter-spacing: 0;
+    word-spacing: 0.04em;
+    text-align: justify;
+    text-justify: inter-word;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 640px) {
+    .hadith-matn { font-size: 1.28rem; line-height: 2.3; }
+  }
+
+  .hadith-quran-text {
+    font-size: 1.08em;
+    color: #065f46;
+    line-height: inherit;
+    white-space: normal;
+  }
+
+  .dark .hadith-quran-text { color: #a7f3d0; }
+}
