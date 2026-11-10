@@ -81,7 +81,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
           <button
             onClick={() => setActiveTab('presets')}
             aria-pressed={activeTab === 'presets'}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+            className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'presets'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
