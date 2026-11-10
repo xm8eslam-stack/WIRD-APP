@@ -947,6 +947,88 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Grouped keep-local syncMeta conflict fails closed without consuming evidence or pending writes', async () => {
+      const uid = 'keep-local-grouped-syncmeta-owner';
+      const { journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'keep-local-grouped-syncmeta-event',
+        mutationId: 'keep-local-grouped-syncmeta-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'syncMeta' as const,
+        documentId: 'remote-grouped-transaction',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9610,
+        payload: {
+          transaction: {
+            version: 1,
+            operations: [
+              { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+              { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
+            ]
+          }
+        },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({
+        mutationId: 'keep-local-grouped-plan-pending',
+        collection: 'plans',
+        documentId: 'local-plan',
+        payload: { records: [{ id: 'local-plan' }] },
+        nowMs: 9611
+      });
+      await journal.enqueue({
+        mutationId: 'keep-local-grouped-test-pending',
+        collection: 'tests',
+        documentId: 'local-test',
+        payload: { records: [{ id: 'local-test' }] },
+        nowMs: 9612
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9613),
+        'The grouped conflict must be archived before a user decision');
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const localPayload = { transactionDecision: 'preserve-local-group' };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'keep-local-grouped-syncmeta-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'keep-local',
+        baseRevision: 1,
+        payload: localPayload,
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({
+          mutationId: item.mutationId,
+          fingerprint: item.fingerprint
+        })),
+        nowMs: 9614
+      });
+
+      let rejected = false;
+      try {
+        await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9615);
+      } catch { rejected = true; }
+
+      const after = await journal.getSnapshot();
+      const remainingConflict = (await journal.listProjectionConflicts(10))[0];
+      const inboxAfter = await journal.listRemoteInboxAfter(0, 10);
+      assert(rejected, 'The journal executor must reject grouped syncMeta keep-local until its collection-wide semantics are implemented');
+      assert(after.pendingCount === 2 && after.projectionCursor === 0 &&
+        (await journal.listReady(9700, 10)).length === 2,
+        'Rejecting grouped keep-local must preserve every affected local Outbox mutation and leave the projection cursor unchanged');
+      assert(inboxAfter.length === 1 && inboxAfter[0].eventId === event.eventId &&
+        remainingConflict?.status === 'open' &&
+        !!await journal.getConflictResolutionIntent(event.eventId),
+        'Rejecting grouped keep-local must preserve the remote inbox event, open conflict archive, and prepared user intent');
+      journal.close();
+    });
+
     await test('Use-remote commit rejects a new local mutation created after the decision was prepared', async () => {
       const uid = 'use-remote-stale-owner';
       const { journal } = createJournal(uid);
