@@ -103,6 +103,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
       const selected = selectedAyah?.surahNumber === surahNumber &&
         selectedAyah?.numberInSurah === ayahNumber;
       const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+      path.setAttribute('id', `wird-ayah-${surahNumber}-${ayahNumber}`);
       path.setAttribute('class', 'ayahPolygon mushaf-ayah-hit-area');
       path.setAttribute('role', 'button');
       path.setAttribute('tabindex', '0');
