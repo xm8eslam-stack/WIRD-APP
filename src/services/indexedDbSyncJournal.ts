@@ -2769,6 +2769,7 @@ export class IndexedDbSyncJournal {
             transaction.abort();
             return;
           }
+          const latestGroupedSnapshots = new Map<string, { documentId: string; payload: Record<string, unknown> }>();
           for (const localGroupedMutation of archivedMutations.filter(item => item.collection === 'syncMeta')) {
             const localTransaction = localGroupedMutation.payload.transaction;
             if (!isRecord(localTransaction) || localTransaction.version !== 1 ||
@@ -2783,12 +2784,23 @@ export class IndexedDbSyncJournal {
               transaction.abort();
               return;
             }
+            for (const operation of localTransaction.operations) {
+              if (isRecord(operation) && typeof operation.collection === 'string' &&
+                  typeof operation.documentId === 'string' && isRecord(operation.payload)) {
+                latestGroupedSnapshots.set(operation.collection, {
+                  documentId: operation.documentId,
+                  payload: operation.payload
+                });
+              }
+            }
           }
           for (const operation of groupedOperations) {
             const localForCollection = archivedMutations.filter(item => item.collection === operation.collection);
-            if (localForCollection.some(item => item.documentId !== operation.documentId) ||
-                (localForCollection.length > 0 &&
-                  stableStringify(localForCollection[localForCollection.length - 1].payload) !== stableStringify(operation.payload))) {
+            const groupedSnapshot = latestGroupedSnapshots.get(operation.collection);
+            const expectedDocumentId = localForCollection[localForCollection.length - 1]?.documentId || groupedSnapshot?.documentId;
+            const expectedLocalPayload = localForCollection[localForCollection.length - 1]?.payload || groupedSnapshot?.payload;
+            if ((expectedDocumentId && expectedDocumentId !== operation.documentId) ||
+                (expectedLocalPayload && stableStringify(expectedLocalPayload) !== stableStringify(operation.payload))) {
               failure = new Error('دليل إحدى المجموعات لا يطابق آخر لقطة محلية معتمدة؛ لم ننشئ عملية إعادة نشر.');
               transaction.abort();
               return;
