@@ -8,8 +8,10 @@ test.describe('WIRD memorization plans UX', () => {
   });
 
   test('plan library tabs expose selected state accessibly', async ({ page }) => {
-    const engineTab = page.getByRole('button', { name: /محرك التخطيط الذكي/ });
-    const presetsTab = page.getByRole('button', { name: /النماذج والخطط المعتمدة/ });
+    const selector = page.getByRole('group', { name: 'طرق إدارة خطط الحفظ' });
+    await expect(selector).toBeVisible();
+    const engineTab = selector.getByRole('button', { name: /محرك التخطيط الذكي/ });
+    const presetsTab = selector.getByRole('button', { name: /النماذج والخطط المعتمدة/ });
 
     await expect(engineTab).toHaveAttribute('aria-pressed', 'true');
     await expect(presetsTab).toHaveAttribute('aria-pressed', 'false');
@@ -17,6 +19,11 @@ test.describe('WIRD memorization plans UX', () => {
     await presetsTab.click();
     await expect(presetsTab).toHaveAttribute('aria-pressed', 'true');
     await expect(engineTab).toHaveAttribute('aria-pressed', 'false');
+    const planProgress = page.getByRole('progressbar');
+    for (const progress of await planProgress.all()) {
+      await expect(progress).toHaveAttribute('aria-valuetext', /%/);
+      await expect(progress).toHaveAttribute('aria-label', /نسبة إنجاز خطة/);
+    }
   });
 
   test('planning wizard pacing and rest-day controls are keyboard and touch accessible', async ({ page }) => {
