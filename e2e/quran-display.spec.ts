@@ -81,7 +81,7 @@ test('Mushaf primary touch controls meet the 44px minimum target on phones', asy
   await expect(page.getByRole('button', { name: 'الصفحة السابقة' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'الصفحة التالية' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' })).toHaveCSS('min-height', '44px');
-  await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toHaveCSS('min-height', '44px');
+  await expect(page.getByRole('button', { name: 'استماع للمقطع' })).toHaveCSS('min-height', '44px');
 });
 
 
@@ -142,4 +142,56 @@ test('Mushaf reader keeps flexible layout disclosure and remembers reading displ
   const restoredControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
   await expect(restoredControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
   await expect(restoredControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('Mushaf audio plays a preloaded selected ayah segment and repeats only that segment', async ({ page }) => {
+  await page.addInitScript(() => {
+    const audios: Array<{ url: string; onended: ((event?: Event) => void) | null; onerror: ((event?: Event) => void) | null; onplaying: ((event?: Event) => void) | null; playbackRate: number; preload: string; playCalls: number }> = [];
+    (window as any).__wirdMockAudios = audios;
+    (window as any).Audio = class MockAudio {
+      url: string;
+      currentTime = 0;
+      playbackRate = 1;
+      preload = '';
+      onended: ((event?: Event) => void) | null = null;
+      onerror: ((event?: Event) => void) | null = null;
+      onplaying: ((event?: Event) => void) | null = null;
+      playCalls = 0;
+      constructor(url: string) { this.url = url; audios.push(this); }
+      load() {}
+      play() { this.playCalls += 1; return Promise.resolve(); }
+      pause() {}
+    };
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+
+  const start = page.getByLabel('بداية المقطع الصوتي');
+  const end = page.getByLabel('نهاية المقطع الصوتي');
+  const repeat = page.getByLabel('عدد مرات تكرار المقطع الصوتي');
+  await expect(start).toBeVisible();
+  await start.selectOption('1');
+  await end.selectOption('2');
+  await repeat.selectOption('2');
+
+  await page.getByRole('button', { name: 'استماع للمقطع' }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.length)).toBe(2);
+  await page.evaluate(() => (window as any).__wirdMockAudios[0].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios[1].playCalls)).toBe(1);
+  await page.evaluate(() => (window as any).__wirdMockAudios[1].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.length)).toBe(4);
+  await page.evaluate(() => (window as any).__wirdMockAudios[2].onended?.(new Event('ended')));
+  await page.evaluate(() => (window as any).__wirdMockAudios[3].onended?.(new Event('ended')));
+
+  const urls = await page.evaluate(() => (window as any).__wirdMockAudios.map((audio: { url: string }) => audio.url));
+  expect(urls).toEqual([
+    expect.stringContaining('/001002.mp3'),
+    expect.stringContaining('/001003.mp3'),
+    expect.stringContaining('/001002.mp3'),
+    expect.stringContaining('/001003.mp3')
+  ]);
+  await expect(page.getByRole('button', { name: 'استماع للمقطع' })).toBeVisible();
 });
