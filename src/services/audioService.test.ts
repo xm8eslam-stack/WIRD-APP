@@ -26,7 +26,8 @@ export async function runAudioServiceOfflineCacheTests(): Promise<{ passed: numb
         'https://cdn.islamic.network/quran/audio/128/ar.husary/1.mp3',
         'https://evil.example/data/Alafasy_128kbps/001001.mp3',
         'http://everyayah.com/data/Alafasy_128kbps/001001.mp3',
-        'https://cdn.islamic.network/quran/audio/128/unreviewed-reciter/1.mp3'
+        'https://cdn.islamic.network/quran/audio/128/unreviewed-reciter/1.mp3',
+        'https://everyayah.com/data/Alafasy_128kbps/001001.mp3?token=unexpected'
       ]);
       await Promise.resolve();
       await Promise.resolve();
