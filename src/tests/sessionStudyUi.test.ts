@@ -16,7 +16,7 @@ export function runSessionStudyUiTests(): { passed: number; failed: number } {
     assert(session.includes('viewMode === \'page\'') && session.includes('كل آيات الجلسة'), 'whole-session verse view must be available');
     assert(session.includes('aria-pressed={index === currentAyahIndex}'), 'active verse must be announced to assistive technology');
     assert(session.includes('{ayah.text}'), 'whole-session view must use the existing local Quran verse corpus');
-    assert(preferences.includes('device-local') && preferences.includes('wird:memorization-display:v1'), 'presentation preferences must remain device-local and separate from cloud sync');
+    assert(preferences.toLowerCase().includes('device-local') && preferences.includes('wird:memorization-display:v1'), 'presentation preferences must remain device-local and separate from cloud sync');
   });
   return { passed, failed };
 }
