@@ -121,7 +121,7 @@ export class QuranAudioQueueController {
     const audio = this.currentAudio;
     const generation = this.generation;
     audio.play().then(() => {
-      if (this.active && generation === this.generation && audio === this.currentAudio) {
+      if (this.active && !this.paused && generation === this.generation && audio === this.currentAudio) {
         this.callbacks.onPlaying?.();
       }
     }).catch(error => {
