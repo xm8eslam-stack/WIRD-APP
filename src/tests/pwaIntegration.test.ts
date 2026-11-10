@@ -108,6 +108,12 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(client.includes('onProgress'), 'Client must report download progress');
     assert(client.includes('DEFAULT_OFFLINE_PREPARATION_TIMEOUT_MS'), 'The UI must not remain stuck indefinitely if the worker stops responding');
     assert(client.includes('onmessageerror'), 'MessageChannel transport errors must be surfaced to the UI');
+    assert(worker.includes('WIRD_GET_OFFLINE_PACKAGE_STATUS'), 'Worker must expose a read-only offline package status check');
+    assert(worker.includes('inspectFullOfflinePackage'), 'Worker status must count cached and missing package assets');
+    assert(worker.includes('caches.match(PRECACHE_MANIFEST_URL)'), 'Offline status must use the cached manifest when available');
+    assert(client.includes('getWirdOfflinePackageStatus'), 'Client must expose offline package status inspection');
+    assert(client.includes('OfflinePackageStatus'), 'Offline status must report cached, total, and missing asset counts');
+
   });
 
   // 3. HTML integration
