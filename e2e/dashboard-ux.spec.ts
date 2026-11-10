@@ -11,7 +11,7 @@ test.describe('WIRD dashboard responsive and accessible layout', () => {
     await expect(page.getByRole('progressbar', { name: 'نسبة الآيات المحفوظة' })).toBeVisible();
     await expect(page.getByRole('progressbar', { name: 'نسبة الصفحات المحفوظة بالكامل' })).toBeVisible();
     await expect(page.getByRole('list', { name: 'نشاط الحفظ والمراجعة خلال آخر سبعة أيام' })).toBeVisible();
-    await expect(page.getByRole('listitem')).toHaveCount(7);
+    await expect(page.getByRole('list', { name: 'نشاط الحفظ والمراجعة خلال آخر سبعة أيام' }).getByRole('listitem')).toHaveCount(7);
     await expect(page.getByRole('progressbar')).toHaveCount(9);
   });
 
