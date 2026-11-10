@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Calendar, 
   Plus, 
@@ -34,6 +34,52 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'engine' | 'presets'>('engine');
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
+  const cancelDeleteButtonRef = useRef<HTMLButtonElement | null>(null);
+  const presetsTabRef = useRef<HTMLButtonElement | null>(null);
+  const wasDeleteDialogOpenRef = useRef(false);
+
+  useEffect(() => {
+    if (!planToDelete) {
+      if (wasDeleteDialogOpenRef.current) {
+        wasDeleteDialogOpenRef.current = false;
+        presetsTabRef.current?.focus();
+      }
+      return;
+    }
+
+    wasDeleteDialogOpenRef.current = true;
+    cancelDeleteButtonRef.current?.focus();
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!isDeleting) setPlanToDelete(null);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const dialog = deleteDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleDialogKeyDown);
+    return () => document.removeEventListener('keydown', handleDialogKeyDown);
+  }, [planToDelete, isDeleting]);
 
   // Toggle active plan in presets
   const handleToggleActive = async (planId: string) => {
@@ -48,15 +94,20 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   };
 
   const handleConfirmDelete = async () => {
-    if (!planToDelete) return;
-    const updated = plans.filter(p => p.id !== planToDelete);
-    if (updated.length > 0 && !updated.some(p => p.isActive)) {
-      updated[0].isActive = true;
-    }
-    if (!await onUpdatePlans(updated)) return;
-    setPlanToDelete(null);
-    if (onToast) {
-      onToast("تم حذف الخطة من قائمتك بنجاح", "info");
+    if (!planToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const updated = plans.filter(p => p.id !== planToDelete);
+      if (updated.length > 0 && !updated.some(p => p.isActive)) {
+        updated[0].isActive = true;
+      }
+      if (!await onUpdatePlans(updated)) return;
+      setPlanToDelete(null);
+      if (onToast) onToast("تم حذف الخطة من قائمتك بنجاح", "info");
+    } catch {
+      if (onToast) onToast("تعذر حذف الخطة. لم يتم تأكيد حفظ التغيير.", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -79,7 +130,9 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('presets')}
+            ref={presetsTabRef}
+            type="button"
+            onClick={() => setActiveTab('presets')
             aria-pressed={activeTab === 'presets'}
             className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'presets'
@@ -115,6 +168,23 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
             </span>
           </div>
 
+          {plans.length === 0 ? (
+            <div aria-label="حالة الخطط الجاهزة" role="region" className="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-5 py-10 text-center dark:border-stone-700 dark:bg-stone-900/50">
+              <Calendar className="mx-auto mb-3 h-8 w-8 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+              <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100">لا توجد خطط جاهزة محفوظة حالياً</h4>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-6 text-stone-500 dark:text-stone-400">
+                يمكنك إنشاء خطة شخصية من محرك التخطيط الذكي، أو استيراد نسخة احتياطية تحتوي على خططك السابقة.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('engine')}
+                className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                فتح محرك التخطيط الذكي
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {plans.map((plan) => {
               const percent = plan.totalUnits > 0
@@ -223,13 +293,14 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
               );
             })}
           </div>
+          )}
         </div>
       )}
 
       {/* In-app Plan Delete Confirmation Modal */}
       {planToDelete && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="wird-plan-delete-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+          <div ref={deleteDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-plan-delete-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5" />
@@ -250,7 +321,9 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
+                ref={cancelDeleteButtonRef}
                 type="button"
+                disabled={isDeleting}
                 onClick={() => setPlanToDelete(null)}
                 className="min-h-11 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
               >
@@ -259,9 +332,10 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
+                disabled={isDeleting}
+                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
               >
-                تأكيد الحذف
+                {isDeleting ? 'جارٍ حذف الخطة...' : 'تأكيد الحذف'}
               </button>
             </div>
           </div>
