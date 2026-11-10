@@ -55,7 +55,7 @@ Current navigation groups: Home and Quran; Memorization and retention; Progress 
 The current navigation has no dedicated destination for daily adhkar, prayer tracking, prayer times, qibla, or Hijri date. Research free/open-source sources, licensing, reliability, privacy, offline behavior, and maintenance before adding any. Do not use unverified religious content.
 
 ## Execution order
-1. Finish exact-head gates for the active Mushaf, test, and dashboard work.
+1. Finish exact-head gates for the active Mushaf, plans, and Ruqyah work.
 2. Audit Quran library end-to-end on phone and iPad.
 3. Audit plans and revision state transitions against saved data.
 4. Audit progress and advisor for truthful metrics and useful actions.
@@ -65,7 +65,11 @@ The current navigation has no dedicated destination for daily adhkar, prayer tra
 
 ## Checkpoints
 - Navigation shell, settings UX, and session UX improvements are present in current `main`.
-- Printed Mushaf mode: PR #238, not approved as default.
-- Memorization test UX: PR #233, pending exact-head gates.
-- Dashboard UX: PR #236, pending exact-head gates.
+- Printed Mushaf mode: PR #277, pending exact-head CI and real-device/visual review; remains opt-in.
+- Memorization test accessibility: PR #247 merged after CI success.
+- Dashboard weekly activity and quick-action accessibility: PRs #236 and #246 merged.
+- Revision failed-rating dialog keyboard accessibility: PR #266 merged after CI success.
+- Plan selector and delete-dialog accessibility: PR #275 pending exact-head CI.
+- Ruqyah audio queue progress and touch controls: PR #276 pending exact-head CI.
+- Page/tool inventory: this document is tracked in PR #278.
 - Green CI is not proof of deployment. Report Vercel status and live verification separately.
