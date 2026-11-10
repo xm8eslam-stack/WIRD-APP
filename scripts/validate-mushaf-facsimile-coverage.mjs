@@ -67,9 +67,13 @@ async function fetchPage(page) {
             typeof record?.polygon !== 'string' || !record.polygon.trim()) {
           throw new Error('Invalid ayah geometry record: ' + key);
         }
-        const points = record.polygon.trim().split(/\s+/).map(point => point.split(',').map(Number));
-        if (points.length < 3 || points.some(point => point.length !== 2 || !point.every(Number.isFinite))) {
-          throw new Error('Invalid polygon geometry for ' + key);
+        const pathData = record.polygon.trim();
+        const pathCommands = pathData.match(/[A-Za-z]/g) ?? [];
+        const pathNumbers = pathData.match(/[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g)?.map(Number) ?? [];
+        if (!pathCommands.some(command => command.toUpperCase() === 'M') ||
+            !pathCommands.some(command => command.toUpperCase() === 'L') ||
+            pathNumbers.length < 6 || pathNumbers.some(number => !Number.isFinite(number))) {
+          throw new Error('Invalid SVG path geometry for ' + key);
         }
         if (actual.has(key)) throw new Error('Duplicate source coordinate ' + key);
         actual.add(key);
