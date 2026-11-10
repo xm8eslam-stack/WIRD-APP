@@ -94,21 +94,14 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDesktop]);
 
-  // Treat the mobile/tablet sidebar as a true drawer: lock background scroll
-  // while open and provide a global Escape dismissal from every route.
+  // Treat the mobile/tablet sidebar as a true modal drawer: lock background
+  // scrolling while open. Sidebar owns Escape and focus-trap behavior.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      setIsMobileMenuOpen(false);
-    };
-    window.addEventListener('keydown', handleEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleEscape);
     };
   }, [isMobileMenuOpen]);
 
