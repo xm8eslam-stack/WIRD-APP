@@ -1,6 +1,13 @@
-# CURRENT CONFLICT AND PROJECTION STATE — 2026-11-07
+# CURRENT CONFLICT AND PROJECTION STATE — 2026-11-10
 
-This section supersedes older limitation statements below.
+This current section supersedes older blanket statements about production activation and device verification below.
+
+## Production operating baseline
+
+- Production revisioned upload and remote projection flags are both enabled (`true`), verified by environment-variable inventory without reading secret values.
+- Latest Production deployment is `READY` on current main SHA `c8f86a4a32e554cf2275dd070d5bf864896e251c`.
+- Owner reports successful authenticated two-device sync testing after enabling the feature. This is a bounded owner-reported real-device PASS; do not claim that every lifecycle/offline/conflict path was covered.
+- Preserve the currently working Production configuration. Do not disable flags as a precaution or change secrets/rules/settings without explicit approval.
 
 ## User-directed conflict decisions
 
