@@ -160,6 +160,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     const savedCount = saveAudioRepeatCount(count);
     repeatTargetRef.current = savedCount === -1 ? null : savedCount;
     setAudioRepeatCount(savedCount);
+    segmentAudioQueueRef.current?.setRepeatCount(savedCount === -1 ? null : savedCount);
   };
 
   // 2. Progressive word masking: 0 = none, 1 = 30%, 2 = 60%, 3 = 100% (hidden)
