@@ -30,7 +30,13 @@ test.describe('WIRD revision center UX', () => {
     await expect(page.getByRole('button', { name: 'طابور المراجعة اليومي' })).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' })).toHaveCSS('min-height', '44px');
     await expect(page.getByRole('button', { name: 'تسجيل آية ملتبسة' })).toHaveCSS('min-height', '44px');
-    await expect(page.getByRole('button', { name: /ناجحة \(متقن\)/ }).first()).toHaveCSS('min-height', '44px');
+    // A new guest starts with an empty review queue. Add a due portion through the real UI.
+    await page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' }).click();
+    await expect(page.getByRole('heading', { name: 'إضافة مقطع حفظ ومراجعة جديد' })).toBeVisible();
+    await page.locator('form').last().getByRole('button', { name: 'إضافة المقطع' }).click();
+    const successfulRating = page.getByRole('button', { name: 'ناجحة (متقن)' }).first();
+    await expect(successfulRating).toBeVisible();
+    await expect(successfulRating).toHaveCSS('min-height', '44px');
 
     await page.getByRole('button', { name: 'الآيات الملتبسة والصعبة' }).click();
     await expect(page.getByRole('textbox', { name: 'البحث في الآيات الملتبسة' })).toBeVisible();
