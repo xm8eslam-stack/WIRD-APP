@@ -65,7 +65,7 @@ export function assertMushafPageAyahCoverage(
         !Number.isInteger(polygon.ayahNumber) || polygon.ayahNumber < 1 ||
         typeof polygon.path !== 'string' || !polygon.path.trim() ||
         polygon.path.length > 120_000 ||
-        !/^[MmLlHhVvCcSsQqTtAaZz0-9., +eE-]+$.test(polygon.path)) {
+        !/^[MmLlHhVvCcSsQqTtAaZz0-9., +eE-]+$/.test(polygon.path)) {
       throw new Error('Printed Mushaf page contains an invalid ayah hit region.');
     }
     const key = `${polygon.surahNumber}:${polygon.ayahNumber}`;
