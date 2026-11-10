@@ -31,8 +31,17 @@ test.describe('WIRD revision center UX', () => {
     await expect(page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' })).toHaveCSS('min-height', '44px');
     await expect(page.getByRole('button', { name: 'تسجيل آية ملتبسة' })).toHaveCSS('min-height', '44px');
     // A new guest starts with an empty review queue. Add a due portion through the real UI.
-    await page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' }).click();
-    await expect(page.getByRole('heading', { name: 'إضافة مقطع حفظ ومراجعة جديد' })).toBeVisible();
+    const addPortionTrigger = page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' });
+    await addPortionTrigger.click();
+    const addPortionDialog = page.getByRole('dialog', { name: 'إضافة مقطع حفظ ومراجعة جديد' });
+    await expect(addPortionDialog).toBeVisible();
+    await expect(addPortionDialog.getByLabel('اختر السورة')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(addPortionDialog).toHaveCount(0);
+    await expect(addPortionTrigger).toBeFocused();
+
+    await addPortionTrigger.click();
+    await expect(page.getByRole('dialog', { name: 'إضافة مقطع حفظ ومراجعة جديد' })).toBeVisible();
     await page.locator('form').last().getByRole('button', { name: 'إضافة المقطع' }).click();
     const successfulRating = page.getByRole('button', { name: 'ناجحة (متقن)' }).first();
     await expect(successfulRating).toBeVisible();
