@@ -2644,8 +2644,9 @@ export class IndexedDbSyncJournal {
    * freshly verified remote revision. The chosen local projection is never
    * overwritten; old mutation evidence remains in the conflict archive.
    *
-   * Grouped syncMeta events, additive Ruqyah counter snapshots, and tombstones are intentionally rejected until
-   * their collection-wide replay semantics have a dedicated executor.
+   * Grouped syncMeta upserts use one consolidated transaction and one Outbox event.
+   * Additive Ruqyah counter snapshots and tombstones remain rejected until their
+   * collection-wide replay semantics have a dedicated executor.
    */
   async commitKeepLocalConflictResolution(
     eventId: string,
@@ -2739,7 +2740,7 @@ export class IndexedDbSyncJournal {
         const groupedOperations: Array<{ collection: string; documentId: string; operation: 'upsert'; payload: Record<string, unknown> }> = [];
         if (event.collection === 'syncMeta') {
           const grouped = payload.transaction;
-          const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress']);
+          const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents']);
           if (!isRecord(grouped) || grouped.version !== 1 || !Array.isArray(grouped.operations) ||
               grouped.operations.length < 1 || grouped.operations.length > 8) {
             failure = new Error('معاملة الاحتفاظ بالنسخة المحلية المجمعة غير صالحة.');
