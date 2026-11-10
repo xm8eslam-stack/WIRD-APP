@@ -60,6 +60,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
     assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
+    assert(swContent.includes('fetchWithTimeout(request, {}, 10000)'), 'Audio pre-caching must time out rather than hold the service-worker event indefinitely');
     const audioService = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
     assert(audioService.includes('requestOfflineAudioCache'), 'Quran audio service must expose opportunistic offline pre-caching');
     assert(audioService.includes("url.hostname === 'everyayah.com'"), 'Audio client must restrict EveryAyah URLs to the reviewed host');

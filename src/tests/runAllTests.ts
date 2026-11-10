@@ -35,6 +35,7 @@ import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runAudioPreferencesTests } from '../services/audioPreferences.test';
+import { runQuranAudioQueueControllerTests } from '../services/audioQueueController.test';
 import { runAudioServiceOfflineCacheTests } from '../services/audioService.test';
 import { runOfflineStorageServiceTests } from '../services/offlineStorageService.test';
 import { runMemorizationDisplayPreferenceTests } from '../services/memorizationDisplayPreferences.test';
@@ -139,6 +140,7 @@ async function main() {
     { name: 'Offline Quran Audio Cache Allowlist and Limits', runner: runAudioServiceOfflineCacheTests },
     { name: 'Offline Persistent Storage Permission and Quota', runner: runOfflineStorageServiceTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
+    { name: 'Continuous Quran Audio Queue and Segment Repetition', runner: runQuranAudioQueueControllerTests },
     { name: 'Device-local Memorization Display Preferences', runner: runMemorizationDisplayPreferenceTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
     { name: 'Printed Mushaf Facsimile Source, Geometry & Local Ayah Matching', runner: runMushafFacsimileServiceTests },

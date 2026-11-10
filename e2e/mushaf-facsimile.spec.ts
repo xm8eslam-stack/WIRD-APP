@@ -101,7 +101,7 @@ test('printed page coordinates resolve local Quran text even when flexible page 
   await expect(printedPage).toHaveAttribute('viewBox', '0 0 341.75 547.98');
   const ayah77 = page.getByRole('button', { name: 'تفسير الآية 77 من سورة المائدة' });
   await expect(ayah77).toBeVisible();
-  await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'استماع للمقطع' })).toBeEnabled();
   await ayah77.focus();
   await page.keyboard.press('Enter');
   await expect(ayah77).toHaveAttribute('aria-pressed', 'true');
