@@ -7,8 +7,8 @@ This checkpoint supplements older sync-focused resume notes. Always re-fetch the
 
 - Repository: `xm8eslam-stack/WIRD-APP`
 - Canonical branch: `main` (Google AI Studio source)
-- Main SHA observed: `0c462cab03ef3792a1241d20b36132684f6f173a`
-- Exact main Quality Gate run: `42850126184` — passed on the observed main SHA.
+- Main SHA observed: `6fa121a411c4c6a904ac175007fa27f7569f0c61`
+- Exact main Quality Gate run `42850126184` passed on the previous main SHA `0c462cab03ef3792a1241d20b36132684f6f173a`. PR #290 was subsequently merged at `6fa121a411c4c6a904ac175007fa27f7569f0c61`; verify the post-merge main workflow before treating the new SHA as validated.
 - Latest production deployment observed: commit `f287670a28c8ed96b734044f96b3e3a4036c7f09`, older than the observed main SHA.
 - Vercel production/preview deployments are currently blocked by the Free-plan daily deployment limit (`api-deployments-free-per-day`). Do not describe current main as live in production.
 - `ISLAMICAPI_API_KEY` exists as a sensitive environment variable in both Preview and Production. Its value was not read; existence does not prove that the provider accepts it.
@@ -71,10 +71,10 @@ Branch: `fix/ruqyah-index-resilience-20261110`
 
 ## Related existing work to coordinate before merge
 
-- PR #290 (memorization session display controls) passed its observed exact-head Quality Gate on SHA `8f1f2ab52b5cf6f729591c01763a79e401965a9c`; it changes a separate section of the shared session component and should be reviewed/merged without dropping the new audio queue work.
+- PR #290 (memorization session display controls) passed its exact-head Quality Gate on SHA `8f1f2ab52b5cf6f729591c01763a79e401965a9c` and was merged at `6fa121a411c4c6a904ac175007fa27f7569f0c61`. The display controls are now part of main; revalidate the audio queue against the post-merge base.
 - PR #300 (offline Quran and Ruqyah audio cache/storage protection) is still running its Quality Gate. It changes `QuranMushafReader.tsx`, `QuranLibraryView.tsx`, the service worker, and settings; coordinate it with PRs #302 and #303 because the same reader/library files are being extended.
 - PR #293 (verified offline package readiness) is still in progress and also touches service-worker/settings code. Reconcile it with PR #300 rather than merging conflicting settings imports blindly.
-- PR #291's focus-trap implementation was incorporated into PR #304; its failing Playwright selector was corrected to use an exact accessible name.
+- PR #291's focus-trap implementation was incorporated into PR #304; its failing Playwright selector was corrected to use an exact accessible name. PR #291 is closed as superseded.
 
 ## Validation and merge policy
 
