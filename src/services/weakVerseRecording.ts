@@ -1,6 +1,6 @@
 import type { PortionStatusRecord, WeakVerseItem } from '../types/quran';
 import { RetentionService } from './retentionService';
-import { StorageService, STORAGE_KEYS } from './storageService';
+import { StorageService, STORAGE_KEYS, createJournalSnapshotFingerprint } from './storageService';
 import { getLocalDateString } from './unifiedPortionService';
 import { ALL_SURAHS } from '../data/quranMeta';
 import type { JournaledTransactionOperation } from './journaledSnapshotService';
@@ -100,6 +100,7 @@ export function buildWeakVerseFailureTransaction(
     } as Omit<PortionStatusRecord, 'id' | 'history'>, portionBase);
 
     const weakVerses = RetentionService.getWeakVerses().map(item => ({ ...item }));
+    const baseWeakVerseFingerprint = createJournalSnapshotFingerprint(weakVerses);
     const existingIndex = weakVerses.findIndex(item =>
       item.surahNumber === input.surahNumber && item.ayahNumber === input.ayahNumber
     );
@@ -131,7 +132,7 @@ export function buildWeakVerseFailureTransaction(
       success: true,
       operations: [
         { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: portionSnapshot.portions } },
-        { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: weakVerses } }
+        { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: weakVerses, baseSnapshotFingerprint: baseWeakVerseFingerprint } }
       ]
     };
   } catch (error) {
@@ -143,7 +144,7 @@ export function buildWeakVerseFailureTransaction(
 }
 
 export type BuildWeakVerseResolutionSnapshotResult =
-  | { success: true; records: WeakVerseItem[]; changed: boolean }
+  | { success: true; records: WeakVerseItem[]; changed: boolean; baseSnapshotFingerprint: string }
   | { success: false; messageAr: string };
 
 /** Prepare an idempotent weak-verse resolution without writing to local storage. */
@@ -159,8 +160,9 @@ export function buildWeakVerseResolutionSnapshot(
       return { success: false, messageAr: 'تعذر التحقق من القراءة الدائمة لقائمة الآيات المتعثرة؛ لم يتم إنشاء عملية استعادة.' };
     }
     const current = RetentionService.getWeakVerses();
+    const baseSnapshotFingerprint = createJournalSnapshotFingerprint(current);
     const records = current.filter(item => item.id !== id);
-    return { success: true, records, changed: records.length !== current.length };
+    return { success: true, records, changed: records.length !== current.length, baseSnapshotFingerprint };
   } catch (error) {
     return {
       success: false,
