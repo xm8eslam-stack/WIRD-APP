@@ -8,9 +8,24 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
   let passed = 0;
   let failed = 0;
   const originalFetch = globalThis.fetch;
+  const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
   const test = async (name: string, callback: () => void | Promise<void>) => {
-    try { await callback(); passed++; console.log(`  ✅ ${name}`); }
-    catch (error) { failed++; console.error(`  ❌ ${name}:`, error); }
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const staleKeys: string[] = [];
+        for (let index = 0; index < localStorage.length; index++) {
+          const key = localStorage.key(index);
+          if (key?.startsWith('wird_related_hadiths_v1:')) staleKeys.push(key);
+        }
+        staleKeys.forEach(key => localStorage.removeItem(key));
+      }
+      await callback();
+      passed++;
+      console.log(`  ✅ ${name}`);
+    } catch (error) {
+      failed++;
+      console.error(`  ❌ ${name}:`, error);
+    }
   };
 
   try {
@@ -86,6 +101,59 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
       assert(rejected, 'verse key mismatch must be rejected');
     });
 
+
+    await test('returns previously verified hadith pages while offline', async () => {
+      const values = new Map<string, string>();
+      const storage = {
+        get length() { return values.size; },
+        key: (index: number) => Array.from(values.keys())[index] ?? null,
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); },
+      };
+      Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+      let networkCalls = 0;
+      globalThis.fetch = async () => {
+        networkCalls++;
+        return new Response(JSON.stringify({
+          verseKey: '2:255',
+          hadiths: [{
+            name: 'صحيح البخاري', collection: 'bukhari', hadithNumber: '1',
+            body: 'متن صحيح محفوظ محلياً', grades: [], authenticityBasis: 'sahih_collection'
+          }],
+          hasMore: false,
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      };
+      const online = await getRelatedSahihHadiths(2, 255, 1);
+      globalThis.fetch = async () => { throw new TypeError('offline'); };
+      const offline = await getRelatedSahihHadiths(2, 255, 1);
+      assert(networkCalls === 1, 'The offline read must not make a second network request.');
+      assert(online.hadiths[0].body === offline.hadiths[0].body, 'The exact validated Arabic matn must be preserved in the local cache.');
+    });
+
+    await test('rejects a tampered local hadith cache instead of displaying unverified content', async () => {
+      const values = new Map<string, string>();
+      const storage = {
+        get length() { return values.size; },
+        key: (index: number) => Array.from(values.keys())[index] ?? null,
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); },
+      };
+      Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: storage });
+      values.set('wird_related_hadiths_v1:2:255:page:1', JSON.stringify({
+        verseKey: '2:255',
+        hadiths: [{ name: 'مصدر مزيف', collection: 'unknown', hadithNumber: '1', body: 'نص غير موثق', grades: [], authenticityBasis: 'sahih_collection' }],
+        hasMore: false,
+      }));
+      globalThis.fetch = async () => { throw new TypeError('offline'); };
+      let rejected = false;
+      try { await getRelatedSahihHadiths(2, 255, 1); }
+      catch (error) { rejected = error instanceof Error && error.message.includes('لا توجد نسخة محفوظة'); }
+      assert(rejected, 'Tampered cache must be removed and never shown as an authenticated hadith.');
+      assert(values.size === 0, 'Invalid cached content must be deleted.');
+    });
+
     await test('hadith client validates Quran coordinates before making a request', async () => {
       let called = false;
       globalThis.fetch = async () => { called = true; return new Response('{}'); };
@@ -95,6 +163,8 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
     });
   } finally {
     globalThis.fetch = originalFetch;
+    if (originalLocalStorage) Object.defineProperty(globalThis, 'localStorage', originalLocalStorage);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
   }
 
   return { passed, failed };
