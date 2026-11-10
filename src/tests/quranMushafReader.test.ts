@@ -4,6 +4,7 @@ import { QURAN_PAGE_INDEX } from '../data/quranPageIndex.generated';
 import { ALL_SURAHS } from '../data/quranMeta';
 import { findSurahStartPage } from '../data/quranNavigation';
 import { QURAN_JUZ_STARTS, QURAN_HIZB_QUARTER_STARTS } from '../data/quranNavigationIndex.generated';
+import { assertMushafPageAyahCoverage, getMushafPageArtworkUrl, parseMushafViewBox } from '../services/mushafPrintedPage';
 
 function assert(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);
@@ -56,6 +57,46 @@ export function runQuranMushafReaderTests(): { passed: number; failed: number } 
       assert(Boolean(point), 'Missing Hizb quarter ' + quarter);
       assert(point.surahNumber >= 1 && point.surahNumber <= 114 && point.ayahNumber >= 1 && point.page >= 1 && point.page <= 604, 'Invalid Hizb quarter ' + quarter + ' coordinate');
     }
+  });
+
+  test('Printed page artwork URLs are pinned and page-bounded', () => {
+    assert(getMushafPageArtworkUrl(1) === 'https://cdn.quran.ws/svg/pages/v1.1.1/hafs-kfqc/001.svg', 'Page 1 must use the pinned Hafs/KFGQPC artwork');
+    assert(getMushafPageArtworkUrl(604).endsWith('/604.svg'), 'Page 604 must be addressable');
+    let rejected = false;
+    try { getMushafPageArtworkUrl(605); } catch { rejected = true; }
+    assert(rejected, 'Pages outside 1–604 must be rejected');
+  });
+
+  test('Printed page viewBox parser rejects invalid geometry', () => {
+    const box = parseMushafViewBox('0 0 345 550');
+    assert(box.width === 345 && box.height === 550, 'Expected the source page dimensions');
+    let rejected = false;
+    try { parseMushafViewBox('0 0 NaN 0'); } catch { rejected = true; }
+    assert(rejected, 'Invalid or zero-sized viewBoxes must be rejected');
+  });
+
+  test('Printed page ayah hit regions must exactly match WIRD local coordinates', () => {
+    const segments = (QURAN_PAGE_INDEX as unknown as Record<string, Array<{ surahNumber: number; startAyah: number; endAyah: number }>>)['1'];
+    const expected = segments.flatMap(segment => Array.from({ length: segment.endAyah - segment.startAyah + 1 }, (_, index) => ({
+      surahNumber: segment.surahNumber,
+      numberInSurah: segment.startAyah + index
+    })));
+    const polygons = expected.map(ayah => ({ surahNumber: ayah.surahNumber, ayahNumber: ayah.numberInSurah, path: 'M 0 0 L 1 1 Z' }));
+    assertMushafPageAyahCoverage(expected, polygons);
+    let rejected = false;
+    try { assertMushafPageAyahCoverage(expected, polygons.slice(1)); } catch { rejected = true; }
+    assert(rejected, 'A missing polygon must block printed-page rendering');
+  });
+
+  test('Printed page hit regions reject duplicates and malformed SVG paths', () => {
+    const expected = [{ surahNumber: 1, numberInSurah: 1 }];
+    const valid = { surahNumber: 1, ayahNumber: 1, path: 'M 0 0 L 1 1 Z' };
+    let duplicateRejected = false;
+    try { assertMushafPageAyahCoverage(expected, [valid, valid]); } catch { duplicateRejected = true; }
+    assert(duplicateRejected, 'Duplicate ayah hit regions must be rejected');
+    let pathRejected = false;
+    try { assertMushafPageAyahCoverage(expected, [{ ...valid, path: '<script>' }]); } catch { pathRejected = true; }
+    assert(pathRejected, 'Non-path markup must be rejected');
   });
 
   test('Mushaf reader loads local Surah chunks and does not eagerly import full Quran JSON', () => {
