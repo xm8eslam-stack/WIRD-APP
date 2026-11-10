@@ -266,3 +266,5 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Explicit `use-remote` conflict resolution retains its intended authoritative behavior and bypasses the compare-and-set only after the conflict-resolution intent and verified remote snapshot have been committed.
 - Tests cover weak-verse concurrent counter edits, weak-verse resolution vs concurrent notes, daily activity vs another device's aggregate, legacy bootstrap, and explicit remote selection.
 - No schema/rules changes, no blind summation/union, and no tombstones. PR #203 is awaiting exact-head CI.
+
+- Extended the same base precondition to backup import, ordered reset, and demo-fixture transactions. These flows now capture the current local archive before preparing their replacement snapshots, preserving intentional local actions while rejecting races with later changes.
