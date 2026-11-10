@@ -9,14 +9,14 @@ This checkpoint supplements older sync-focused resume notes. Always re-fetch the
 - Canonical branch: `main` (Google AI Studio source)
 - Main SHA observed: `6fa121a411c4c6a904ac175007fa27f7569f0c61`
 - Exact main Quality Gate run `42850126184` passed on the previous main SHA `0c462cab03ef3792a1241d20b36132684f6f173a`. PR #290 was subsequently merged at `6fa121a411c4c6a904ac175007fa27f7569f0c61`; verify the post-merge main workflow before treating the new SHA as validated.
-- Latest production deployment observed: commit `f287670a28c8ed96b734044f96b3e3a4036c7f09`, older than the observed main SHA.
+- Latest production deployment observed: commit `f287670a28c8ed96b734044f96b3e3a4036c7f09`, older than the observed main SHA. PR #300's offline audio cache/storage work was merged after PR #290; current main includes both.
 - Vercel production/preview deployments are currently blocked by the Free-plan daily deployment limit (`api-deployments-free-per-day`). Do not describe current main as live in production.
 - `ISLAMICAPI_API_KEY` exists as a sensitive environment variable in both Preview and Production. Its value was not read; existence does not prove that the provider accepts it.
 - No production secrets, Firebase rules, or sync feature flags were changed during this work.
 
 ## Active feature work
 
-### PR #307 — Global sidebar controls
+### PR #316 — Global sidebar controls
 
 Branch: `feat/sidebar-global-controls-20261110`
 
@@ -29,9 +29,9 @@ Branch: `feat/sidebar-global-controls-20261110`
 - First exact-head run failed because the E2E locator matched both header and sidebar close buttons. The test now targets the header toggle explicitly.
 - Latest exact-head run status must be checked before merge.
 
-PR #292, #298, #291, and #304 are closed as superseded by PR #307. PR #294 and #303 are closed as superseded by PR #306. PR #296 and #302 are closed as superseded by PR #309. PR #297 is closed as superseded by PR #301.
+PR #292, #298, #291, #304, and #307 are closed as superseded by PR #316. PR #294, #303, and #306 are closed as superseded by PR #313. PR #296, #302, and #309 are closed as superseded by PR #314. PR #297 and #301 are closed as superseded by PR #315.
 
-### PR #306 — Continuous Quran audio and segment repetition
+### PR #313 — Continuous Quran audio and segment repetition
 
 Branch: `feat/quran-continuous-audio-queue-20261110`
 
@@ -43,7 +43,7 @@ Branch: `feat/quran-continuous-audio-queue-20261110`
 - The first run failed only a static assertion that still expected a direct audio element after the Mushaf switched to the shared queue controller. The assertion was updated to verify queue playback-rate propagation.
 - Exact-head Quality Gate must be checked after that test update.
 
-### PR #309 — Reading Khatma plan and progress
+### PR #314 — Reading Khatma plan and progress
 
 Branch: `feat/reading-khatma-plan-20261110`
 
@@ -56,7 +56,7 @@ Branch: `feat/reading-khatma-plan-20261110`
 - Legacy records without plan metadata are normalized to a compatible default plan.
 - Exact-head Quality Gate must be checked on the latest branch SHA, not an earlier run.
 
-### PR #301 — Ruqyah index resilience
+### PR #315 — Ruqyah index resilience
 
 Branch: `fix/ruqyah-index-resilience-20261110`
 
@@ -74,7 +74,7 @@ Branch: `fix/ruqyah-index-resilience-20261110`
 - PR #290 (memorization session display controls) passed its exact-head Quality Gate on SHA `8f1f2ab52b5cf6f729591c01763a79e401965a9c` and was merged at `6fa121a411c4c6a904ac175007fa27f7569f0c61`. The display controls are now part of main; revalidate the audio queue against the post-merge base.
 - PR #300 (offline Quran and Ruqyah audio cache/storage protection) is still running its Quality Gate. It changes `QuranMushafReader.tsx`, `QuranLibraryView.tsx`, the service worker, and settings; coordinate it with PRs #302 and #303 because the same reader/library files are being extended.
 - PR #293 (verified offline package readiness) is still in progress and also touches service-worker/settings code. Reconcile it with PR #300 rather than merging conflicting settings imports blindly.
-- PR #291's focus-trap implementation was incorporated into PR #307; its failing Playwright selector was corrected to use an exact accessible name. PR #291 is closed as superseded.
+- PR #291's focus-trap implementation was incorporated into PR #316; its failing Playwright selector was corrected to use an exact accessible name. PR #291 is closed as superseded.
 
 ## Validation and merge policy
 
