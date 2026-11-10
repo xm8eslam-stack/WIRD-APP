@@ -48,7 +48,7 @@ function sanitizeMushafSvgRoot(root: SVGSVGElement): string {
         element.removeAttributeNode(attribute);
         continue;
       }
-      if (/javascript:|data:|https?:|url\\s*\\(/i.test(attribute.value) &&
+      if (/javascript:|data:|https?:|url\s*\(/i.test(attribute.value) &&
           attribute.name !== 'xmlns' && attribute.name !== 'xmlns:ayah') {
         throw new Error('ملف المصحف يحتوي على مرجع خارجي غير مسموح.');
       }
