@@ -168,3 +168,12 @@ This addendum supersedes older release-state statements above where they conflic
 - PR #200 is open for a narrow grouped-projection correctness fix: forward child `documentId` into both projection and recovery matching, preserving authoritative test snapshots versus immutable per-result merge. Its exact-head regression test and Quality Gate are pending; no merge or deployment is claimed.
 - PR #199 contains the durable continuity checkpoint and documentation refresh. It remains separate from runtime changes.
 - Vercel PR checks currently report the Free-plan `build-rate-limit`; this is not a successful preview deployment. Do not conflate it with GitHub Actions CI or the existing production deployment.
+
+
+
+## 2026-11-10 — Post-PR #200 grouped identity fix and profile-key follow-up
+
+- PR #200 merged to `main` as `5a866f22c254fd35b9c487f7d69546e6b691a9d3`. Exact PR head `7ed3af44291cf439b89625e30722750a9366e3e8` passed the complete GitHub Quality Gate, including automated tests, Firestore Rules Emulator, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- The fix forwards each grouped child operation's `documentId` into local apply and grouped recovery matching. Test-result recovery now distinguishes the authoritative `tests/snapshot` replacement from immutable per-result merges.
+- Vercel reported `build-rate-limit` for the PR. A deployment lookup for merge SHA `5a866f22c254fd35b9c487f7d69546e6b691a9d3` returned no deployment record; do not claim this fix is live on Production yet.
+- A further review found `RetentionService.buildRevisionPerformanceSnapshot` writes the profile projection under `profile/profile`, while session completion and `persistProfileSnapshot` use `profile/main`. Since revisioned conflict control keys by document ID, these create separate revision streams for the same logical profile. PR #201 is open to unify the revision path to `profile/main` and add a regression assertion; exact-head CI is pending.
