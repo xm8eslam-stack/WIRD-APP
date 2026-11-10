@@ -39,7 +39,7 @@ This document preserves the current cloud-sync engineering state and the next sa
 - `syncMeta` stores one transaction document per mutation ID. Transaction payload is version 1 and contains ordered operations.
 - Grouped journal transactions support 1..8 operations, one operation per collection, and currently only `upsert`.
 - `applyJournalTransaction` applies affected local projections atomically with rollback across affected local storage keys.
-- Important implementation detail to verify/fix: grouped transaction projection currently calls `applyJournalProjection(operation.collection, operation.payload)` without forwarding `operation.documentId`. Do not assume per-document projection semantics are active for grouped operations.
+- Important implementation detail: grouped transaction projection currently calls `applyJournalProjection(operation.collection, operation.payload)` without forwarding `operation.documentId`. The current affected operations use full snapshot IDs, but this prevents future document-scoped behavior from being inferred from the operation metadata.
 - Tombstones are not generally supported end-to-end:
   - Local outbox creation path rejects tombstones.
   - Inbox projection blocks tombstones and retains the event rather than advancing past it.
@@ -55,11 +55,11 @@ This document preserves the current cloud-sync engineering state and the next sa
 | `plans` | Full snapshot replacement | Review identity, concurrent edits, and deletion semantics. |
 | `enginePlans` | Full snapshot replacement | Review identity, concurrent edits, and deletion semantics. |
 | `portions` | Full snapshot replacement | Review identity, concurrent edits, and deletion semantics. |
-| `weakVerses` | Full list replacement | Investigate stable identity and update/delete semantics; do not sum counters or merge notes blindly. |
+| `weakVerses` | Full list replacement | Confirmed: first failure creates ID `weak-{surah}-{ayah}-{mutationId}`; later failures update the same record by coordinate and retain its ID. Independent first failures on two devices can therefore create different IDs for the same verse. Resolution filters the local list by ID and persists a full snapshot. Do not union by ID, add counters, or merge by coordinate until deletion and concurrent-failure semantics are designed. |
 | `tests` | Snapshot replacement for legacy snapshot ID; immutable per-result ID merge otherwise | PR #198 fix is deployed. |
-| `activityEvents` | Full replacement of daily aggregate logs | `DailyLog` is one aggregate per date, not immutable session events. Correct cross-device merge needs event IDs or another idempotent model. Do not sum aggregates. |
-| `ruqyahProgress` | Full snapshot replacement | Review progress identity and conflict semantics before changing. |
-| `syncMeta` | Independent transaction documents keyed by mutation ID | Preserve ordering, idempotent application, and atomic local projection. |
+| `activityEvents` | Full replacement of daily aggregate logs | `DailyLog` is one aggregate per date, not immutable session events. Session completion does carry a stable mutation ID and a `session.completed` domain-event payload, but its local projection still writes the full daily aggregate snapshot. Investigate whether a separate event-derived projection can be added without breaking legacy summaries. Do not sum aggregates. |
+| `ruqyahProgress` | Full snapshot replacement, with a dedicated V2 counter merge path under constrained conditions | Keep its existing dedicated merge rules separate from other collections. |
+| `syncMeta` | Independent transaction documents keyed by mutation ID | Preserves grouped operations and optional domain-event payloads; remote projector validates and applies child projections atomically. Preserve ordering, idempotent application, and local transaction atomicity. |
 
 ## Data shapes confirmed so far
 
@@ -75,7 +75,7 @@ This document preserves the current cloud-sync engineering state and the next sa
 - `lastFailedDate`
 - optional `notes`
 
-Validation checks coordinate validity and duplicate verse coordinates in backup payload validation. Each record has a verse coordinate, but the intended stable ID generation and update/delete callsites still need inspection. Do not assume `id` is deterministic or that counters are additive.
+Validation checks coordinate validity and duplicate verse coordinates in backup payload validation. The recording builder creates a mutation-scoped ID for a newly seen verse, then locates subsequent updates by Surah/Ayah coordinate and increments the local counter. The resolution builder filters by record ID and returns a replacement snapshot. Because tombstones are unsupported, a resolved record may be reintroduced by another device's older full snapshot. The event types `weak_verse.failed` and `weak_verse.resolved` exist in the domain-event schema, but the reviewed builder only returns snapshot operations; verify actual UI callsites before assuming those event types are emitted.
 
 ### Activity logs
 
@@ -86,7 +86,7 @@ Validation checks coordinate validity and duplicate verse coordinates in backup 
 - `minutesSpent`
 - `completedTasks[]`
 
-Validation requires unique dates, non-negative counts, and minutes no greater than 1440. This is a daily aggregate, not an append-only event stream. Summing two devices' snapshots can double-count the same session; selecting one snapshot can lose the other device's work.
+Validation requires unique dates, non-negative counts, and minutes no greater than 1440. This is a daily aggregate, not an append-only event stream. Session completion builds an updated aggregate for the day and groups it with profile and sometimes portion/engine-plan snapshots under a stable mutation ID. Replaying the same journal mutation is idempotent at the journal layer, but two distinct session mutations from separate devices still compete as full snapshots. Summing two device snapshots can double-count retries or duplicate logical sessions; selecting one snapshot can lose the other device's work.
 
 ## Known implementation paths
 
@@ -99,6 +99,19 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
   - `saveWeakVerses` validates then replaces the full list.
   - `saveLogs` validates unique dates then replaces the full list.
   - `matchesJournalProjection` has exact projection matching for activity logs; inspect weak-verse matching too.
+- `src/services/weakVerseRecording.ts`
+  - `buildWeakVerseFailureTransaction` builds full snapshots for `portions` and `weakVerses`; newly added IDs include the mutation ID.
+  - Existing failures find the verse by coordinate and increment `mistakeCount`; notes are replaced only when a non-empty note is supplied.
+  - `buildWeakVerseResolutionSnapshot` filters a record ID from the full current list.
+  - A legacy synchronous path is explicitly deprecated for authenticated UI.
+- `src/services/sessionPersistence.ts`
+  - `persistJournaledSessionCompletion` uses a stable retry mutation ID (or creates one), emits a `session.completed` domain event, and writes `activityEvents/snapshot` plus `profile/main` in the same grouped transaction, optionally including portion and engine-plan snapshots.
+  - Its activity projection is still the full daily `DailyLog[]` snapshot built by `StorageService.buildSessionCompletionSnapshot`.
+- `src/services/domainEvents.ts`
+  - Defines `session.completed`, `weak_verse.failed`, and `weak_verse.resolved` event types and validation.
+- `src/services/remoteInboxProjector.ts`
+  - Generic remote conflict gate blocks pending local mutations, base-revision mismatches, and tombstones; it preserves conflicts and does not advance the projection cursor past an unresolved event.
+  - A special V2 Ruqyah counter merge exists; there is no equivalent weak-verse or daily-activity merge in the reviewed path.
 - `src/services/journaledSnapshotService.ts`
   - Snapshot persistence helpers exist for profile, plans, engine plans, portions, ruqyah progress, and test results.
   - Test result documents use immutable `test.id`.
@@ -108,26 +121,26 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
 
 ## Immediate investigation plan
 
-1. Inspect all weak-verse mutation callsites and ID generation:
-   - add/update/remove operations;
-   - whether the ID is deterministic from surah/ayah or random;
-   - whether records can be removed and how removal is persisted;
-   - whether text/notes/counter changes are whole-record updates or separate events.
-2. Inspect weak-verse journal persistence and `matchesJournalProjection`.
-3. Inspect daily-log writers, especially session completion and grouped transactions:
-   - determine whether multiple devices can write the same date;
-   - identify whether any existing stable session/mutation IDs can be reused without schema migration;
-   - preserve legacy `DailyLog` readers and backups.
-4. Add narrow tests before changing behavior:
+1. Inspect actual weak-verse UI callsites and confirm whether domain events are emitted for failure and resolution. Check whether the caller persists the returned snapshots as grouped `syncMeta` transactions or standalone snapshots.
+2. Inspect `matchesJournalProjection` for weak verses and grouped transaction replay, including the document-ID forwarding omission.
+3. Inspect all daily-log writers and the exact behavior of `StorageService.buildSessionCompletionSnapshot`; confirm whether completed task strings contain stable IDs or only labels.
+4. Design weak-verse reconciliation with explicit semantics for:
+   - two devices independently recording the same previously unseen verse;
+   - two devices updating the same existing record;
+   - notes/text conflicts;
+   - resolve/delete on one device while a stale failure remains on another;
+   - replay and duplicate mutation IDs.
+5. Design activity reconciliation around immutable session IDs or a bounded event ledger. Preserve legacy `DailyLog` backups and summaries; do not derive sums from two aggregate snapshots.
+6. Add narrow tests before changing behavior:
    - replay idempotency;
    - same-verse updates from two devices;
    - conflicting notes/content;
    - deletion does not resurrect;
    - grouped transaction atomicity and document-ID forwarding;
    - same logical activity session replayed twice does not double-count.
-5. Implement only semantics proven by the callsites and data model. If correct activity merging requires a schema migration or new event model, document the design and leave the current projection unchanged until separately approved.
-6. Run relevant targeted tests, full CI, TypeScript, rules emulator, production build, and browser smoke tests on the exact PR head SHA. Recheck the SHA before merge.
-7. After merge, verify Vercel deployment and report separately whether live device verification was performed.
+7. Implement only semantics proven by the callsites and data model. If correct activity merging requires a schema migration or new event model, document the design and leave the current projection unchanged until separately approved.
+8. Run relevant targeted tests, full CI, TypeScript, rules emulator, production build, and browser smoke tests on the exact PR head SHA. Recheck the SHA before merge.
+9. After merge, verify Vercel deployment and report separately whether live device verification was performed.
 
 ## Non-negotiable safety rules
 
