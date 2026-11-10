@@ -26,6 +26,14 @@ test.describe('WIRD memorization plans UX', () => {
     }
   });
 
+  test('empty preset library guides the user to create a plan', async ({ page }) => {
+    await page.getByRole('button', { name: /النماذج والخطط المعتمدة/ }).click();
+    await expect(page.getByRole('heading', { name: 'لم تحفظ أي خطة بعد' })).toBeVisible();
+    await page.getByRole('button', { name: 'إنشاء خطة حفظ' }).click();
+    await expect(page.getByRole('button', { name: /محرك التخطيط الذكي/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /إنشاء خطة ذكية جديدة/ })).toBeVisible();
+  });
+
   test('plan mode selector fits narrow phones without horizontal overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const selector = page.getByRole('group', { name: 'طرق إدارة خطط الحفظ' });
