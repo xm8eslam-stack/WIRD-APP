@@ -14,7 +14,7 @@ import {
   Award
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { loadSurahVerses, getAyahWords, loadSimpleAyahText } from '../../data/quranDataLoader';
+import { loadSurahVerses, getAyahWords, loadSimpleAyahText, loadSimpleAyahRange } from '../../data/quranDataLoader';
 import { QuranBasmala } from '../shared/QuranBasmala';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
@@ -23,6 +23,11 @@ import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPrefere
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { attachAyahRepeatHandler } from '../../services/audioRepeatController';
 import { SessionTafsirPanel } from './SessionTafsirPanel';
+import {
+  getMemorizationDisplayPreferences,
+  saveMemorizationDisplayPreferences,
+  type MemorizationDisplayPreferences
+} from '../../services/memorizationDisplayPreferences';
 
 interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
@@ -88,6 +93,43 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   }, [surahNumber, profile.preferredReciter, allSurahAyahs, currentAyahIndex, initialStartAyah, initialEndAyah]);
 
   const currentAyah: Ayah | undefined = sessionAyahs[currentAyahIndex];
+
+  const [displayPreferences, setDisplayPreferences] = useState<MemorizationDisplayPreferences>(
+    () => getMemorizationDisplayPreferences()
+  );
+  useEffect(() => {
+    saveMemorizationDisplayPreferences(displayPreferences);
+  }, [displayPreferences]);
+  const updateDisplayPreferences = (updates: Partial<MemorizationDisplayPreferences>) => {
+    setDisplayPreferences(previous => ({ ...previous, ...updates }));
+  };
+
+  const [pageDisplayTexts, setPageDisplayTexts] = useState<string[]>([]);
+  const [pageDisplayError, setPageDisplayError] = useState(false);
+  useEffect(() => {
+    if (displayPreferences.viewMode !== 'page') {
+      setPageDisplayTexts([]);
+      setPageDisplayError(false);
+      return;
+    }
+    let cancelled = false;
+    setPageDisplayTexts([]);
+    setPageDisplayError(false);
+    loadSimpleAyahRange(surahNumber, initialStartAyah, initialEndAyah || 10)
+      .then(texts => {
+        if (cancelled) return;
+        if (texts.length !== sessionAyahs.length) {
+          throw new Error('Verified Tanzil Simple range did not match the selected memorization range.');
+        }
+        setPageDisplayTexts(texts);
+      })
+      .catch(error => {
+        if (cancelled) return;
+        console.error('[WIRD Session] Whole-session verified text unavailable:', error);
+        setPageDisplayError(true);
+      });
+    return () => { cancelled = true; };
+  }, [displayPreferences.viewMode, surahNumber, initialStartAyah, initialEndAyah, sessionAyahs.length]);
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -500,8 +542,129 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
       </div>
 
+      {/* Session display controls: local-only presentation preferences */}
+      <section
+        aria-label="إعدادات عرض جلسة الحفظ"
+        className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-4"
+      >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+          <label htmlFor="session-ayah-font-size" className="text-xs font-bold text-stone-700 dark:text-stone-200 whitespace-nowrap">
+            حجم خط الآيات
+          </label>
+          <input
+            id="session-ayah-font-size"
+            aria-label="حجم خط الآيات"
+            type="range"
+            min={20}
+            max={44}
+            step={2}
+            value={displayPreferences.fontSize}
+            onChange={event => updateDisplayPreferences({ fontSize: Number(event.target.value) })}
+            className="w-full accent-emerald-700"
+          />
+          <output htmlFor="session-ayah-font-size" className="text-xs font-mono tabular-nums text-stone-600 dark:text-stone-300 min-w-12 text-center">
+            {displayPreferences.fontSize}px
+          </output>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div role="group" aria-label="كثافة عرض العناصر" className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-stone-500">المسافات:</span>
+            <button
+              type="button"
+              aria-pressed={displayPreferences.density === 'comfortable'}
+              onClick={() => updateDisplayPreferences({ density: 'comfortable' })}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'comfortable' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+            >
+              مريحة
+            </button>
+            <button
+              type="button"
+              aria-pressed={displayPreferences.density === 'compact'}
+              onClick={() => updateDisplayPreferences({ density: 'compact' })}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'compact' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+            >
+              مضغوطة
+            </button>
+          </div>
+
+          <div role="group" aria-label="طريقة عرض الآيات" className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-stone-500">عرض الآيات:</span>
+            <button
+              type="button"
+              aria-pressed={displayPreferences.viewMode === 'focused'}
+              onClick={() => updateDisplayPreferences({ viewMode: 'focused' })}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'focused' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+            >
+              آية واحدة
+            </button>
+            <button
+              type="button"
+              aria-pressed={displayPreferences.viewMode === 'page'}
+              onClick={() => updateDisplayPreferences({ viewMode: 'page' })}
+              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'page' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+            >
+              كل آيات الجلسة
+            </button>
+          </div>
+        </div>
+        <p className="text-[11px] text-stone-500 dark:text-stone-400">
+          تُحفظ هذه الاختيارات على هذا الجهاز فقط، ولا تدخل ضمن مزامنة بيانات الحفظ.
+        </p>
+      </section>
+
+      {displayPreferences.viewMode === 'page' && (
+        <section
+          aria-label="كل آيات الجلسة"
+          className="bg-[#fdfbf7] dark:bg-stone-800/90 rounded-2xl p-3 sm:p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs"
+        >
+          <div className="flex items-center justify-between gap-3 px-2 pb-3">
+            <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100">كل آيات الجلسة</h3>
+            <span className="text-[11px] text-stone-500">اضغط على أي آية للانتقال إليها</span>
+          </div>
+          {pageDisplayError ? (
+            <p role="alert" className="px-3 py-5 text-sm text-red-700 dark:text-red-300">
+              تعذر تحميل النص القرآني المعتمد لهذا النطاق؛ لم نعرض نصًا بديلًا. أعد المحاولة أو استخدم عرض الآية الواحدة.
+            </p>
+          ) : pageDisplayTexts.length !== sessionAyahs.length ? (
+            <p role="status" className="px-3 py-5 text-sm text-stone-500">جارٍ تحميل نص الآيات المعتمد...</p>
+          ) : (
+          <div className={`max-h-[55vh] overflow-y-auto overscroll-contain ${displayPreferences.density === 'compact' ? 'space-y-1' : 'space-y-3'}`}>
+            {sessionAyahs.map((ayah, index) => (
+              <button
+                type="button"
+                key={ayah.numberInSurah}
+                aria-pressed={index === currentAyahIndex}
+                onClick={() => {
+                  if (index === currentAyahIndex) return;
+                  handleStopAudio();
+                  setCurrentAyahIndex(index);
+                }}
+                className={`w-full text-right rounded-xl border px-3 sm:px-4 transition-colors ${displayPreferences.density === 'compact' ? 'py-2' : 'py-4'} ${index === currentAyahIndex ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40' : 'border-stone-200 dark:border-stone-700 bg-white/70 dark:bg-stone-900/40 hover:border-emerald-400'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className="shrink-0 min-w-8 h-8 rounded-full bg-stone-100 dark:bg-stone-700 text-stone-600 dark:text-stone-300 flex items-center justify-center text-xs font-bold">
+                    {ayah.numberInSurah}
+                  </span>
+                  <span
+                    className="font-quran quran-text text-stone-900 dark:text-stone-100 flex-1"
+                    style={{
+                      fontSize: `${displayPreferences.fontSize}px`,
+                      lineHeight: displayPreferences.density === 'compact' ? 1.8 : 2.25
+                    }}
+                  >
+                    {pageDisplayTexts[index]}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          )}
+        </section>
+      )}
+
       {/* 2. Main Ayah Display & Word Masking Studio */}
-      <div className="bg-[#fdfbf7] dark:bg-stone-800/90 rounded-3xl p-6 md:p-10 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-6 text-center relative">
+      <div className={`bg-[#fdfbf7] dark:bg-stone-800/90 rounded-3xl ${displayPreferences.density === 'compact' ? 'p-4 md:p-6 space-y-4' : 'p-6 md:p-10 space-y-6'} border border-stone-200/80 dark:border-stone-700/80 shadow-xs text-center relative`}>
         {/* Basmala on first ayah if not At-Tawbah */}
         {currentAyah.numberInSurah === 1 && surahNumber !== 1 && surahNumber !== 9 && (
           <div className="font-quran text-lg text-stone-500 dark:text-stone-400 pb-2 border-b border-stone-200/50 dark:border-stone-700">
@@ -511,7 +674,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         {/* Quranic Text with Interactive Word Masking */}
         <div className="min-h-[140px] flex items-center justify-center py-4">
-          <p className="quran-text font-quran text-2xl md:text-3xl lg:text-4xl leading-loose text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4">
+          <p
+            className="quran-text font-quran text-stone-900 dark:text-stone-100 flex flex-wrap items-center justify-center gap-x-3 gap-y-4"
+            style={{
+              fontSize: `${displayPreferences.fontSize}px`,
+              lineHeight: displayPreferences.density === 'compact' ? 1.8 : 2.25
+            }}
+          >
             {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.map((word, idx) => {
               const masked = isWordMasked(idx);
 

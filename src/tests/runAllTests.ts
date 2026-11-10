@@ -35,6 +35,7 @@ import { runUniqueRetentionScoreTests } from './uniqueRetentionScore.test';
 import { runDailySessionSelectionTests } from '../services/dailySessionSelection.test';
 import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runAudioPreferencesTests } from '../services/audioPreferences.test';
+import { runMemorizationDisplayPreferenceTests } from '../services/memorizationDisplayPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
 import { runQuranTypographyTests } from './quranTypography.test';
 import { runReadingKhatmaServiceTests } from '../services/readingKhatmaService.test';
@@ -132,6 +133,7 @@ async function main() {
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
+    { name: 'Device-local Memorization Display Preferences', runner: runMemorizationDisplayPreferenceTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
     { name: 'Quran text typography and canonical hamza regression', runner: runQuranTypographyTests },
     { name: 'Reading Khatma Progress', runner: runReadingKhatmaServiceTests },
