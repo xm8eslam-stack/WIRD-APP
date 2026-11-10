@@ -318,7 +318,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const currentJuz = ayahs.length ? ayahs[0].juz : Math.ceil(page / 20);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Top Control Bar: Elegant, Floating, Responsive */}
       <header className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-[#fffdfa]/95 dark:bg-stone-900/95 backdrop-blur-md p-4 shadow-sm space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
