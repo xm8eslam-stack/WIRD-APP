@@ -259,7 +259,7 @@ export function getReadingKhatmaProgress(khatma: ReadingKhatma, now = new Date()
     ? 0
     : Math.max(1, Math.ceil((dateFromKey(plan.targetCompletionDate).getTime() - dateFromKey(localDateKey(now)).getTime()) / 86_400_000));
   const pagesPerDay = remainingPages === 0 ? 0 : Math.ceil(remainingPages / daysRemaining);
-  const sessionsPerDay = plan.sessionsPerDay;
+  const sessionsPerDay = pagesPerDay === 0 ? 0 : Math.min(plan.sessionsPerDay, pagesPerDay);
   const todayLog = khatma.dailyLogs?.find(log => log.date === localDateKey(now));
   return {
     completedPages,
