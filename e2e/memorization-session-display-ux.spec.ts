@@ -37,4 +37,18 @@ test.describe('WIRD memorization session display controls', () => {
     await expect(allAyahs).toHaveCSS('min-height', '44px');
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
+  test('sticky navigation can jump directly to any ayah in the selected session', async ({ page }) => {
+    const jump = page.getByRole('combobox', { name: 'الانتقال المباشر إلى آية في الجلسة' });
+    await expect(jump).toBeVisible();
+    await expect(jump).toHaveCSS('min-height', '56px');
+
+    await jump.selectOption('4');
+    await expect(jump).toHaveValue('4');
+    await expect(page.getByRole('progressbar', { name: 'تقدم جلسة الحفظ' })).toHaveAttribute('aria-valuenow', '5');
+    await expect(page.getByText('الآية 5 من 10')).toBeVisible();
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect(jump).toBeInViewport();
+  });
+
 });
