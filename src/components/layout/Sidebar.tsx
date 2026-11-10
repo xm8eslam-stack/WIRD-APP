@@ -82,10 +82,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ]
     },
     {
-      label: 'التطبيق والهوية',
+      label: 'إعدادات التطبيق',
       items: [
         { id: 'settings', label: 'الإعدادات', icon: Settings },
-        { id: 'showcase', label: 'معرض الهوية (Showcase)', icon: Sparkles }
       ]
     }
   ];
@@ -104,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {isOpenMobile && (
           <button 
             onClick={onCloseMobile}
-            className="md:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
+            className="lg:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
             aria-label="إغلاق القائمة"
           >
             <X className="w-5 h-5" />
@@ -167,13 +166,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Sidebar (Permanent) */}
-      <div className="hidden md:block shrink-0 h-screen sticky top-0">
+      <div className="hidden lg:block shrink-0 h-screen sticky top-0">
         {sidebarContent}
       </div>
 
       {/* Mobile Drawer (Overlay) */}
       {isOpenMobile && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div className="lg:hidden fixed inset-0 z-50 flex">
           <div 
             className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
@@ -186,7 +185,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Keep the memorization workspace distraction-free and controls unobstructed. */}
       {currentTab !== 'session' && (
-      <nav className="wird-mobile-nav md:hidden" aria-label="التنقل السريع">
+      <nav className="wird-mobile-nav lg:hidden" aria-label="التنقل السريع">
         {[
           { id: 'dashboard' as NavTabId, label: 'الرئيسية', icon: Home },
           { id: 'library' as NavTabId, label: 'القرآن', icon: BookOpen },
@@ -209,7 +208,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           );
         })}
-        <button type="button" onClick={onOpenMobileMenu} className="wird-mobile-nav__item" aria-label="المزيد من الأقسام">
+        <button
+          type="button"
+          onClick={onOpenMobileMenu}
+          aria-label="المزيد من الأقسام"
+          aria-expanded={isOpenMobile}
+          className={currentTab !== 'dashboard' && currentTab !== 'library' && currentTab !== 'session' && currentTab !== 'revision'
+            ? 'wird-mobile-nav__item is-active'
+            : 'wird-mobile-nav__item'}
+        >
           <MoreHorizontal className="h-5 w-5" />
           <span>المزيد</span>
         </button>
