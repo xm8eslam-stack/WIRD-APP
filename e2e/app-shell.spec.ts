@@ -93,6 +93,28 @@ test('tablet portrait keeps compact navigation and opens the full section drawer
   await expect(page.getByRole('button', { name: /معرض الهوية/ })).toHaveCount(0);
 });
 
+test('tablet section drawer traps focus, closes with Escape, and restores its trigger', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+
+  const trigger = page.getByRole('button', { name: 'المزيد من الأقسام' });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'قائمة الأقسام' });
+  const close = dialog.getByRole('button', { name: 'إغلاق القائمة' });
+  const settings = dialog.getByRole('button', { name: 'الإعدادات' });
+  await expect(dialog).toBeVisible();
+  await expect(close).toBeFocused();
+  await expect(close).toHaveCSS('min-height', '44px');
+  await page.keyboard.press('Shift+Tab');
+  await expect(settings).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
+
 test('more navigation is marked active while a secondary section is open', async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/');
