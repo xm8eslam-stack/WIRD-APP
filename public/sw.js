@@ -10,6 +10,41 @@ let offlinePackagePreparationInProgress = false;
 const MAX_SESSION_AUDIO_PRELOAD = 20;
 const MAX_AUDIO_CACHE_ENTRIES = 40;
 const PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json';
+const QURAN_FONT_URL = 'https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2';
+
+const OFFLINE_ASSET_CONTENT_TYPES = {
+  '.js': ['application/javascript', 'text/javascript', 'application/ecmascript', 'text/ecmascript'],
+  '.css': ['text/css'],
+  '.svg': ['image/svg+xml'],
+  '.png': ['image/png'],
+  '.jpg': ['image/jpeg'],
+  '.jpeg': ['image/jpeg'],
+  '.webp': ['image/webp'],
+  '.avif': ['image/avif'],
+  '.gif': ['image/gif'],
+  '.ico': ['image/x-icon', 'image/vnd.microsoft.icon'],
+  '.woff': ['font/woff', 'application/font-woff', 'application/octet-stream'],
+  '.woff2': ['font/woff2', 'application/font-woff2', 'application/octet-stream'],
+  '.ttf': ['font/ttf', 'application/x-font-ttf', 'application/octet-stream'],
+  '.otf': ['font/otf', 'application/x-font-opentype', 'application/octet-stream'],
+  '.json': ['application/json', 'text/json'],
+  '.webmanifest': ['application/manifest+json', 'application/json']
+};
+function offlineAssetExtension(pathname) {
+  const match = pathname.toLowerCase().match(/\.[a-z0-9]+$/);
+  return match ? match[0] : '';
+}
+function isSupportedOfflineAssetPath(pathname) {
+  return Object.prototype.hasOwnProperty.call(OFFLINE_ASSET_CONTENT_TYPES, offlineAssetExtension(pathname));
+}
+function isValidOfflineAssetResponse(pathname, response) {
+  const extension = offlineAssetExtension(pathname);
+  const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  const allowedTypes = OFFLINE_ASSET_CONTENT_TYPES[extension];
+  return response.status === 200 && response.type === 'basic' &&
+    Array.isArray(allowedTypes) && allowedTypes.includes(contentType);
+}
+
 
 async function trimAudioCache(cache) {
   const keys = await cache.keys();
@@ -24,6 +59,26 @@ async function fetchWithTimeout(input, init, timeoutMs) {
     return await fetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+function isValidQuranFontResponse(response) {
+  const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  return response.status === 200 && response.type === 'cors' &&
+    ['font/woff2', 'application/font-woff2', 'application/octet-stream'].includes(contentType);
+}
+
+async function precacheQuranFont(cache) {
+  const request = new Request(QURAN_FONT_URL, { mode: 'cors', credentials: 'omit' });
+  try {
+    const cached = await cache.match(request);
+    if (cached && isValidQuranFontResponse(cached)) return;
+    if (cached) await cache.delete(request);
+    const response = await fetchWithTimeout(request, {}, 8000);
+    if (isValidQuranFontResponse(response)) await cache.put(request, response.clone());
+  } catch (error) {
+    // The official Quran font is an enhancement; its failure must not block the app shell.
+    console.warn('[WIRD SW] Official Uthmanic font could not be pre-cached:', error);
   }
 }
 
@@ -42,24 +97,20 @@ async function prepareFullOfflinePackage(port) {
   const safeAssets = assets.filter((asset) => {
     if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
     const url = new URL(asset, self.location.origin);
-    return url.origin === self.location.origin &&
-      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+    return url.origin === self.location.origin && isSupportedOfflineAssetPath(url.pathname);
   });
   if (safeAssets.length !== assets.length) throw new Error('الفهرس يحتوي على ملفات غير مسموح بها.');
   const cache = await caches.open(CONTENT_CACHE_NAME);
   let completed = 0;
   for (const asset of safeAssets) {
     const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
-    if (!(await cache.match(request))) {
+    const cachedResponse = await cache.match(request);
+    const validCachedResponse = cachedResponse &&
+      isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, cachedResponse);
+    if (!validCachedResponse) {
+      if (cachedResponse) await cache.delete(request);
       const response = await fetchWithTimeout(request, {}, OFFLINE_ASSET_REQUEST_TIMEOUT_MS);
-      const contentType = (response.headers.get('content-type') || '')
-        .split(';')[0]
-        .trim()
-        .toLowerCase();
-      const validContentType = asset.endsWith('.js')
-        ? ['application/javascript', 'text/javascript', 'application/ecmascript', 'text/ecmascript'].includes(contentType)
-        : contentType === 'text/css';
-      if (response.status !== 200 || response.type !== 'basic' || !validContentType) {
+      if (!isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, response)) {
         throw new Error('تعذر التحقق من نوع أحد ملفات التطبيق قبل حفظه: ' + asset);
       }
       await cache.put(request, response.clone());
@@ -68,6 +119,42 @@ async function prepareFullOfflinePackage(port) {
     if (port) port.postMessage({ type: 'progress', completed, total: safeAssets.length, asset });
   }
   if (port) port.postMessage({ type: 'complete', completed, total: safeAssets.length });
+}
+
+async function inspectFullOfflinePackage() {
+  // Prefer the already-cached manifest so this diagnostic also works offline.
+  let manifestResponse = await caches.match(PRECACHE_MANIFEST_URL);
+  if (!manifestResponse) {
+    manifestResponse = await fetchWithTimeout(
+      PRECACHE_MANIFEST_URL,
+      { cache: 'no-store' },
+      OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS
+    );
+  }
+  if (!manifestResponse || !manifestResponse.ok) throw new Error('تعذر قراءة فهرس ملفات التجهيز المحلي.');
+  const manifest = await manifestResponse.json();
+  const assets = manifest && Array.isArray(manifest.allAssets) ? manifest.allAssets : null;
+  if (!assets || assets.length === 0 || assets.length > MAX_OFFLINE_PACKAGE_ASSETS) {
+    throw new Error('فهرس التجهيز المحلي غير صالح أو يتجاوز الحد الآمن.');
+  }
+  const safeAssets = assets.filter((asset) => {
+    if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
+    const url = new URL(asset, self.location.origin);
+    return url.origin === self.location.origin && isSupportedOfflineAssetPath(url.pathname);
+  });
+  if (safeAssets.length !== assets.length) throw new Error('الفهرس يحتوي على ملفات غير مسموح بها.');
+  const cache = await caches.open(CONTENT_CACHE_NAME);
+  let cached = 0;
+  for (const asset of safeAssets) {
+    const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse && isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, cachedResponse)) {
+      cached++;
+    } else if (cachedResponse) {
+      await cache.delete(request);
+    }
+  }
+  return { total: safeAssets.length, cached, missing: safeAssets.length - cached };
 }
 
 async function cacheSessionAudio(rawUrls) {
@@ -110,11 +197,13 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/favicon.svg'
 ];
 
 async function precacheApplicationShell(cache) {
   await cache.addAll(STATIC_ASSETS);
+  await precacheQuranFont(cache);
 
   const response = await fetch(PRECACHE_MANIFEST_URL, { cache: 'no-store' });
   if (!response.ok) {
@@ -285,7 +374,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
+  if (url.href === QURAN_FONT_URL) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached && isValidQuranFontResponse(cached)) return cached;
+      if (cached) await cache.delete(req);
+      try {
+        const response = await fetchWithTimeout(req, {}, 8000);
+        if (isValidQuranFontResponse(response)) await cache.put(req, response.clone());
+        return response;
+      } catch {
+        const fallback = await cache.match(req);
+        return fallback && isValidQuranFontResponse(fallback) ? fallback : Response.error();
+      }
+    })());
+    return;
+  }
+
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
@@ -304,6 +411,19 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'WIRD_GET_OFFLINE_PACKAGE_STATUS') {
+    const port = event.ports && event.ports[0];
+    if (!port) return;
+    event.waitUntil(
+      inspectFullOfflinePackage()
+        .then((status) => port.postMessage({ type: 'status', ...status }))
+        .catch((error) => port.postMessage({
+          type: 'error',
+          message: error instanceof Error ? error.message : 'تعذر فحص ملفات وِرد المحفوظة.'
+        }))
+    );
     return;
   }
   if (event.data && event.data.type === 'WIRD_CACHE_SESSION_AUDIO') {
