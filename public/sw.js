@@ -1,6 +1,8 @@
 const CACHE_NAME = 'wird-app-v3';
 const AUDIO_CACHE_NAME = 'wird-app-audio-v1';
 const CONTENT_CACHE_NAME = 'wird-app-content-v1';
+const QURAN_PAGE_CACHE_NAME = 'wird-app-quran-pages-v1';
+const MAX_CACHED_QURAN_PAGES = 12;
 const MAX_OFFLINE_PACKAGE_ASSETS = 2000;
 const OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS = 15000;
 const OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000;
@@ -12,6 +14,12 @@ const PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json';
 async function trimAudioCache(cache) {
   const keys = await cache.keys();
   const overflow = keys.length - MAX_AUDIO_CACHE_ENTRIES;
+  for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
+}
+
+async function trimQuranPageCache(cache) {
+  const keys = await cache.keys();
+  const overflow = keys.length - MAX_CACHED_QURAN_PAGES;
   for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
 }
 
@@ -142,7 +150,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => Promise.all(
       cacheNames
-        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME)
+        .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME && name !== QURAN_PAGE_CACHE_NAME)
         .map((name) => caches.delete(name))
     )).then(() => self.clients.claim())
   );
@@ -153,6 +161,29 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (req.method !== 'GET' || !url.protocol.startsWith('http')) return;
   if (url.pathname.startsWith('/api/')) return;
+
+  // Cache only the pinned, public KFGQPC Hafs page-artwork release. No API or user data is stored.
+  if (url.protocol === 'https:' && url.hostname === 'cdn.quran.ws' &&
+      /^\\/svg\\/pages\\/v1\\.1\\.1\\/hafs-kfqc\\/\\d{3}\\.svg$/.test(url.pathname) && !url.search) {
+    event.respondWith((async () => {
+      const cache = await caches.open(QURAN_PAGE_CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      try {
+        const response = await fetch(req);
+        const contentType = (response.headers.get('content-type') || '').toLowerCase();
+        if (response.ok && response.type === 'cors' && contentType.includes('svg')) {
+          await cache.put(req, response.clone());
+          await trimQuranPageCache(cache);
+        }
+        return response;
+      } catch (error) {
+        console.warn('[WIRD SW] Printed Mushaf page unavailable offline:', req.url, error);
+        return Response.error();
+      }
+    })());
+    return;
+  }
 
   // SPA navigations remain network-first, with a complete cached HTML fallback.
   if (req.mode === 'navigate') {
