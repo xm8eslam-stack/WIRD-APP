@@ -307,3 +307,13 @@ This section is the current status and supersedes older historical statements wh
 - This production deployment includes PR #200's grouped child document-ID propagation/recovery fix and PR #201's canonical profile document identity fix.
 - Remaining data-integrity work: weak-verse cross-device reconciliation including resolution anti-resurrection, and activity aggregation from immutable session events. No blind union or addition; tombstones remain blocked.
 - The user-reported two-device sync test predates these two latest code fixes; do not imply a fresh physical-device round trip was performed after this deployment.
+
+
+
+## Snapshot overwrite protection — 2026-11-10
+
+- PR #203 adds compare-and-set base fingerprints to weak-verse and daily-activity full snapshots. Merge only after exact-head unit tests, TypeScript, Firestore Rules Emulator, production build, and desktop/mobile smoke pass.
+- Confirm a stale divergent snapshot is rejected without changing local bytes and leaves the remote projection cursor blocked for explicit resolution.
+- Confirm legacy snapshots can bootstrap an empty device or replay identical state but cannot replace a non-empty divergent archive.
+- Confirm explicit `use-remote` resolution still applies the verified authoritative snapshot after preserving conflict evidence.
+- No Firestore rules/schema or production sync flags are part of this change.
