@@ -93,3 +93,23 @@ test('printed page refuses an ayah map that differs from WIRD and offers the fle
   await expect(page.getByText('هذا عرض نصي مرن قابل للتحديد والنسخ؛ توزيع الأسطر قد يختلف عن المصحف المطبوع.')).toBeVisible();
   await expect(page.getByRole('button', { name: /تفسير سورة الفاتحة، الآية 1/ })).toBeVisible();
 });
+
+
+test('printed Mushaf rejects unsupported SVG elements before creating the page image', async ({ page }) => {
+  const unsafeArtwork = pageOneArtwork(7).replace('</svg>', '<a href="https://example.invalid"><path d="M 0 0 L 1 1 Z"/></a></svg>');
+  await page.route('https://cdn.quran.ws/svg/pages/v1.1.1/hafs-kfqc/001.svg', route =>
+    route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      headers: { 'access-control-allow-origin': '*' },
+      body: unsafeArtwork
+    })
+  );
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: /فتح المصحف بالصفحات/ }).click();
+
+  await expect(page.getByRole('alert')).toContainText('عنصر رسومي غير مسموح');
+  await expect(page.getByRole('button', { name: 'استخدام العرض النصي المرن' })).toBeVisible();
+});
