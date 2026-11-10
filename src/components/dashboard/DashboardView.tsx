@@ -141,7 +141,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* 1. Personalized Welcome & Daily Ayah Banner with Master Visual Identity */}
-      <section className="relative bg-gradient-to-l from-[#0B132B] via-[#0E1E38] to-[#1C4E46] text-white rounded-3xl p-6 md:p-8 shadow-md overflow-hidden border border-[#C59B27]/35">
+      <section aria-labelledby="dashboard-welcome-title" className="relative bg-gradient-to-l from-[#0B132B] via-[#0E1E38] to-[#1C4E46] text-white rounded-3xl p-6 md:p-8 shadow-md overflow-hidden border border-[#C59B27]/35">
         {/* Authentic Islamic geometric watermark */}
         <WirdIslamicPattern opacity={0.06} variant="gold" />
 
@@ -153,7 +153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
               <span>وِردك القرآني اليومي رِفعةٌ لدرجاتك في الجنة</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran text-[#F5F1E8] leading-tight">
+            <h2 id="dashboard-welcome-title" className="text-2xl md:text-3xl font-extrabold tracking-tight font-quran text-[#F5F1E8] leading-tight">
               السلام عليكم ورحمة الله، {profile.name}
             </h2>
             <p className="text-[#F2EDE2]/90 text-sm md:text-base leading-relaxed font-quran pt-1">
@@ -224,14 +224,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               disabled={dailyTask.source === 'blocked'}
               onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ring-1 ring-[#B99B62]/30"
+              className="flex-1 w-full min-h-12 flex items-center justify-center gap-2 py-3 px-4 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ring-1 ring-[#B99B62]/30"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>{dailyTask.source === 'blocked' ? 'اختر نطاق الخطة' : dailyTask.mode === 'review' ? 'بدء جلسة المراجعة التفاعلية' : 'بدء جلسة الحفظ التفاعلية'}</span>
             </button>
             <button
               onClick={() => onNavigate('library')}
-              className="w-full sm:w-auto px-4 py-3 bg-[#E8DFC9]/40 hover:bg-[#E8DFC9]/80 dark:bg-[#18332E] dark:hover:bg-[#20403a] text-[#29332F] dark:text-[#F6F3EA] font-semibold text-xs md:text-sm rounded-xl transition-colors border border-[#102D29]/10 dark:border-[#E8DFC9]/10"
+              className="w-full sm:w-auto min-h-11 px-4 py-3 bg-[#E8DFC9]/40 hover:bg-[#E8DFC9]/80 dark:bg-[#18332E] dark:hover:bg-[#20403a] text-[#29332F] dark:text-[#F6F3EA] font-semibold text-xs md:text-sm rounded-xl transition-colors border border-[#102D29]/10 dark:border-[#E8DFC9]/10"
               title="تصفح المصحف واختيار سورة أخرى يدوياً"
             >
               سورة أخرى
@@ -288,7 +288,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                   <button
                     onClick={() => onNavigate('revision')}
-                    className="px-3.5 py-1.5 bg-stone-100 dark:bg-stone-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-stone-800 dark:text-stone-200 hover:text-emerald-900 dark:hover:text-emerald-300 rounded-lg font-semibold transition-colors"
+                    className="min-h-11 px-3.5 py-1.5 bg-stone-100 dark:bg-stone-700 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-stone-800 dark:text-stone-200 hover:text-emerald-900 dark:hover:text-emerald-300 rounded-lg font-semibold transition-colors"
                   >
                     مراجعة
                   </button>
@@ -310,7 +310,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <button
               onClick={() => onNavigate('revision')}
-              className="text-amber-700 dark:text-amber-400 font-bold hover:underline flex items-center gap-1"
+              className="min-h-11 px-2 text-amber-700 dark:text-amber-400 font-bold hover:underline flex items-center gap-1"
             >
               <span>فتح مركز المراجعة الكامل</span>
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -330,7 +330,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <span className="text-xs text-[#62726B] dark:text-[#9BB0A7] tabular-nums font-mono">من {TOTAL_QURAN_VERSES}</span>
           </div>
-          <div className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
+          <div role="progressbar" aria-label="نسبة الآيات المحفوظة" aria-valuemin={0} aria-valuemax={TOTAL_QURAN_VERSES} aria-valuenow={totalMemorizedAyahs} role="progressbar" aria-label="نسبة الصفحات المحفوظة بالكامل" aria-valuemin={0} aria-valuemax={TOTAL_QURAN_PAGES} aria-valuenow={totalMemorizedPages} className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
             <div className="bg-[#102D29] dark:bg-[#1D4940] h-full rounded-full" style={{ width: `${versesPercentage}%` }} />
           </div>
           <div className="text-[11px] text-[#1D4940] dark:text-[#C8AD73] mt-1.5 font-medium">
@@ -402,14 +402,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-xs text-stone-500 font-mono">آخر 7 أيام</span>
           </div>
 
-          <div className="flex items-end justify-between gap-3 h-40 pt-4 border-b border-stone-100 dark:border-stone-700">
+          <div role="list" aria-label="نشاط الحفظ والمراجعة خلال آخر سبعة أيام" className="flex items-end justify-between gap-3 h-40 pt-4 border-b border-stone-100 dark:border-stone-700">
             {last7Logs.map((log, idx) => {
               const maxMinutes = 50;
               const heightPercent = Math.min(100, Math.round((log.minutesSpent / maxMinutes) * 100));
               const dayName = new Date(log.date).toLocaleDateString('ar-SA', { weekday: 'short' });
 
               return (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
+                <div key={idx} role="listitem" aria-label={`${dayName}: ${log.minutesSpent} دقيقة و${log.memorizedAyahsCount} آيات`} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
                   {/* Tooltip on Hover */}
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 bg-stone-900 text-white text-[10px] py-1 px-2 rounded-md whitespace-nowrap pointer-events-none z-20 font-mono">
                     {log.minutesSpent}د · {log.memorizedAyahsCount} آيات
@@ -418,7 +418,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="text-[10px] text-stone-400 font-mono tabular-nums">
                     {log.minutesSpent}د
                   </div>
-                  <div className="w-full max-w-[32px] bg-stone-100 dark:bg-stone-700 rounded-t-lg overflow-hidden h-full flex items-end">
+                  <div role="progressbar" aria-label={`دقائق الحفظ والمراجعة يوم ${dayName}`} aria-valuemin={0} aria-valuemax={50} aria-valuenow={Math.min(50, log.minutesSpent)} className="w-full max-w-[32px] bg-stone-100 dark:bg-stone-700 rounded-t-lg overflow-hidden h-full flex items-end">
                     <div 
                       className="w-full bg-emerald-700 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 rounded-t-lg transition-all duration-300"
                       style={{ height: `${heightPercent}%` }}
@@ -439,7 +439,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <button
               onClick={() => onNavigate('progress')}
-              className="text-emerald-700 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+              className="min-h-11 px-2 text-emerald-700 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1"
             >
               <span>عرض تفاصيل المصحف والتقارير</span>
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -460,7 +460,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="space-y-2.5">
               <button
                 onClick={() => onNavigate('tests')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-16 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5]" dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
