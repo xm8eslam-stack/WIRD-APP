@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import type { Ayah } from '../../types/quran';
+import { loadAyahByCoordinate } from '../../data/quranDataLoader';
 import {
   loadMushafFacsimilePage,
   matchMushafAyahAreas
@@ -9,7 +10,7 @@ import type { MushafFacsimilePageData } from '../../services/mushafFacsimileServ
 
 interface QuranMushafFacsimilePageProps {
   page: number;
-  ayahs: Ayah[];
+  onAyahsResolved: (resolved: { page: number; ayahs: Ayah[] }) => void;
   selectedAyah: Ayah | null;
   onSelectAyah: (ayah: Ayah) => void;
   onFallback: () => void;
@@ -22,7 +23,7 @@ interface MatchedAyahArea {
 
 export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> = ({
   page,
-  ayahs,
+  onAyahsResolved,
   selectedAyah,
   onSelectAyah,
   onFallback
@@ -34,7 +35,6 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
   const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    if (!ayahs.length) return;
     const controller = new AbortController();
     setPageData(null);
     setMatchedAreas([]);
@@ -42,10 +42,18 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
 
     loadMushafFacsimilePage(page, controller.signal)
       .then(data => {
-        const matched = matchMushafAyahAreas(data.ayahAreas, ayahs);
+        const resolvedAyahs = await Promise.all(data.ayahAreas.map(area =>
+          loadAyahByCoordinate(area.surahNumber, area.ayahNumber)
+        ));
+        if (resolvedAyahs.some((ayah): ayah is undefined => !ayah)) {
+          throw new Error('تحتوي الصفحة المطبوعة على آية لا توجد في بيانات وِرد المحلية.');
+        }
+        const localAyahs = resolvedAyahs as Ayah[];
+        const matched = matchMushafAyahAreas(data.ayahAreas, localAyahs);
         if (!controller.signal.aborted) {
           setPageData(data);
           setMatchedAreas(matched);
+          onAyahsResolved({ page, ayahs: matched.map(item => item.ayah) });
         }
       })
       .catch(reason => {
@@ -56,7 +64,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
       });
 
     return () => controller.abort();
-  }, [page, ayahs, retry]);
+  }, [page, retry, onAyahsResolved]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -146,14 +154,6 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
       host.removeEventListener('keydown', handleKeyDown);
     };
   }, [page, pageData, matchedAreas, selectedAyah, onSelectAyah]);
-
-  if (!ayahs.length) {
-    return (
-      <div role="status" className="rounded-2xl border border-stone-200 bg-white/80 px-4 py-12 text-center text-sm text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300">
-        جارٍ تجهيز نص الصفحة المحلي للتحقق من مواضع الآيات...
-      </div>
-    );
-  }
 
   if (error) {
     return (
