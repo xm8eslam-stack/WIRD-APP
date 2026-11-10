@@ -29,7 +29,7 @@ Branch: `feat/sidebar-global-controls-20261110`
 - First exact-head run failed because the E2E locator matched both header and sidebar close buttons. The test now targets the header toggle explicitly.
 - Latest exact-head run status must be checked before merge.
 
-PR #292, #298, #291, and #304 are closed as superseded by PR #307. PR #294 and #303 are closed as superseded by PR #306. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
+PR #292, #298, #291, and #304 are closed as superseded by PR #307. PR #294 and #303 are closed as superseded by PR #306. PR #296 and #302 are closed as superseded by PR #309. PR #297 is closed as superseded by PR #301.
 
 ### PR #306 — Continuous Quran audio and segment repetition
 
@@ -43,7 +43,7 @@ Branch: `feat/quran-continuous-audio-queue-20261110`
 - The first run failed only a static assertion that still expected a direct audio element after the Mushaf switched to the shared queue controller. The assertion was updated to verify queue playback-rate propagation.
 - Exact-head Quality Gate must be checked after that test update.
 
-### PR #302 — Reading Khatma plan and progress
+### PR #309 — Reading Khatma plan and progress
 
 Branch: `feat/reading-khatma-plan-20261110`
 
