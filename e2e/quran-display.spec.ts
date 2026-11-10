@@ -83,3 +83,29 @@ test('Mushaf primary touch controls meet the 44px minimum target on phones', asy
   await expect(page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toHaveCSS('min-height', '44px');
 });
+
+
+test('Tafsir dialog supports Escape, traps keyboard focus, and restores the ayah action focus', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: /تلاوة ودراسة: سورة/ }).click();
+  await page.getByRole('button', { name: 'قراءة متصلة' }).click();
+
+  const ayahAction = page.getByRole('button', { name: 'تفسير سورة الفاتحة، الآية 1' });
+  await ayahAction.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+
+  const closeButton = dialog.getByRole('button', { name: 'إغلاق التفسير' });
+  const developerLink = dialog.getByRole('link', { name: 'منصة مطوري Quran.com' });
+  await expect(closeButton).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(dialog.getByRole('button', { name: 'نسخ الآية والتفسير' })).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(developerLink).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(ayahAction).toBeFocused();
+});
