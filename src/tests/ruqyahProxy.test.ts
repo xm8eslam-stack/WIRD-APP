@@ -111,7 +111,7 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       const res = new MockResponse();
       await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.230' } }, res);
       assert(calls === 2, 'A transient 502 should trigger exactly one retry');
-      assert(res.statusCode === 200 && res.body?.data?.[0]?.title === '2:255', 'A successful retry should return sanitized coordinates');
+      assert(res.statusCode === 200 && res.body?.data?.[0]?.title === '2:255-255', 'A successful retry should return sanitized coordinates');
     });
 
     await test('Ruqyah proxy classifies rejected keys and provider rate limits', async () => {
