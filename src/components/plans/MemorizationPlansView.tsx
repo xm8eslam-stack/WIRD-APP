@@ -94,15 +94,20 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   };
 
   const handleConfirmDelete = async () => {
-    if (!planToDelete) return;
-    const updated = plans.filter(p => p.id !== planToDelete);
-    if (updated.length > 0 && !updated.some(p => p.isActive)) {
-      updated[0].isActive = true;
-    }
-    if (!await onUpdatePlans(updated)) return;
-    setPlanToDelete(null);
-    if (onToast) {
-      onToast("تم حذف الخطة من قائمتك بنجاح", "info");
+    if (!planToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      const updated = plans.filter(p => p.id !== planToDelete);
+      if (updated.length > 0 && !updated.some(p => p.isActive)) {
+        updated[0].isActive = true;
+      }
+      if (!await onUpdatePlans(updated)) return;
+      setPlanToDelete(null);
+      if (onToast) onToast("تم حذف الخطة من قائمتك بنجاح", "info");
+    } catch {
+      if (onToast) onToast("تعذر حذف الخطة. لم يتم تأكيد حفظ التغيير.", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -112,9 +117,10 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
       <div role="group" aria-label="طرق إدارة خطط الحفظ" className="bg-white dark:bg-stone-800/90 p-2 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setActiveTab('engine')}
             aria-pressed={activeTab === 'engine'}
-            className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+            className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               activeTab === 'engine'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
