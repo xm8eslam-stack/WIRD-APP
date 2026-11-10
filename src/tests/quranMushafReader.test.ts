@@ -65,6 +65,16 @@ export function runQuranMushafReaderTests(): { passed: number; failed: number } 
     assert(!source.includes('completeQuranData.json') && !source.includes('verifiedAyahs'), 'Reader must not eagerly import the full Quran dataset');
     assert(source.includes('BOOKMARKS_KEY') && source.includes('LAST_PAGE_KEY'), 'Reader must persist bookmarks and last reading position');
     assert(source.includes('autoPlayNextPageRef') && source.includes('setPage(page + 1)'), 'Page recitation must continue across page boundaries');
+    assert(source.includes('QuranMushafFacsimilePage') && source.includes("readerLayout === 'printed'"), 'Reader must offer an explicit printed-page mode');
+    assert(source.includes("selectReaderLayout('flow')"), 'Reader must preserve a direct fallback to local flexible text');
+    const facsimile = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranMushafFacsimilePage.tsx'), 'utf8');
+    assert(facsimile.includes('sanitizeMushafSvgMarkup') === false, 'SVG sanitization must remain centralized in the page data service');
+    assert(facsimile.includes('matchMushafAyahAreas') && facsimile.includes('onSelectAyah(ayah)'), 'Printed hit regions must resolve through local ayah coordinates');
+    assert(facsimile.includes('dangerouslySetInnerHTML={{ __html: pageData.svgMarkup }}'), 'Only the sanitized SVG markup may be mounted inline');
+    const facsimileService = fs.readFileSync(path.resolve(process.cwd(), 'src/services/mushafFacsimileService.ts'), 'utf8');
+    assert(facsimileService.includes('ALLOWED_SVG_ELEMENTS') && facsimileService.includes('ALLOWED_SVG_ATTRIBUTES'), 'SVG must be sanitized by strict element and attribute allowlists');
+    assert(facsimileService.includes('sanitizeMushafSvgMarkup(svgMarkup)'), 'Fetched SVG must pass through sanitization before rendering');
+    assert(facsimileService.includes('matchMushafAyahAreas'), 'Every printed ayah must be checked against WIRD local data');
     const audioControl = fs.readFileSync(path.resolve(process.cwd(), 'src/components/shared/AudioPlaybackRateControl.tsx'), 'utf8');
     assert(audioControl.includes('https://everyayah.com/'), 'Audio controls must provide a visible EveryAyah source link-back');
   });
