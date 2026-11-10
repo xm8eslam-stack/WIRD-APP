@@ -63,7 +63,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Segmented Control */}
-      <div className="bg-white dark:bg-stone-800/90 p-2 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
+      <div role="group" aria-label="طرق إدارة خطط الحفظ" className="bg-white dark:bg-stone-800/90 p-2 rounded-2xl border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('engine')}
@@ -169,7 +169,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                         </span>
                       </div>
 
-                      <div className="w-full bg-stone-100 dark:bg-stone-700 h-2 rounded-full overflow-hidden">
+                      <div role="progressbar" aria-label={`نسبة إنجاز خطة ${plan.title}`} aria-valuemin={0} aria-valuemax={Math.max(1, plan.totalUnits)} aria-valuenow={Math.min(Math.max(0, plan.completedUnits), Math.max(1, plan.totalUnits))} aria-valuetext={`${percent}%`} className="w-full bg-stone-100 dark:bg-stone-700 h-2 rounded-full overflow-hidden">
                         <div
                           className="bg-emerald-600 h-full rounded-full transition-all duration-500"
                           style={{ width: `${percent}%` }}
