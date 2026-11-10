@@ -248,9 +248,24 @@ export async function resolveProjectionConflictUsingLocal(
       if (localForCollection.some(item => item.documentId !== localForCollection[0]?.documentId)) {
         throw new Error('توجد عدة هويات مستندات محلية للمجموعة نفسها؛ يلزم حل يدوي قبل إعادة النشر.');
       }
+      const localGroupedOperations = archivedMutations
+        .filter(item => item.collection === 'syncMeta')
+        .flatMap(item => {
+          const transaction = item.payload.transaction;
+          return isRecord(transaction) && Array.isArray(transaction.operations)
+            ? transaction.operations.filter(isRecord)
+            : [];
+        });
+      const latestGrouped = [...localGroupedOperations].reverse()
+        .find(operation => operation.collection === remoteOperation.collection);
       const latestLocal = localForCollection[localForCollection.length - 1];
-      const documentId = latestLocal?.documentId || remoteOperation.documentId;
-      const payload = JSON.parse(JSON.stringify(latestLocal?.payload || remoteOperation.payload)) as Record<string, unknown>;
+      const documentId = latestLocal?.documentId ||
+        (typeof latestGrouped?.documentId === 'string' ? latestGrouped.documentId : remoteOperation.documentId);
+      const sourcePayload = latestLocal?.payload || latestGrouped?.payload || remoteOperation.payload;
+      if (!isRecord(sourcePayload)) {
+        throw new Error('تعذر تحديد لقطة موثوقة لإحدى مجموعات المعاملة؛ لم نعد نشر أي بيانات.');
+      }
+      const payload = JSON.parse(JSON.stringify(sourcePayload)) as Record<string, unknown>;
       if (!StorageService.matchesJournalProjection(remoteOperation.collection as Parameters<typeof StorageService.matchesJournalProjection>[0], payload)) {
         throw new Error('لقطة إحدى المجموعات المحلية لا تطابق بياناتها الدائمة؛ لم نرفع نسخة قديمة.');
       }
