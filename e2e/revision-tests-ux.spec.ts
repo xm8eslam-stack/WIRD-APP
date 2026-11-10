@@ -38,7 +38,7 @@ test.describe('WIRD revision and memorization-test UX', () => {
     await enterGuestApp(page);
     await page.goto('/#/tests');
 
-    const modes = page.getByRole('group', { name: 'أنواع اختبارات الحفظ' });
+    const modes = page.getByRole('group', { name: 'نوع الاختبار' });
     const completeVerse = modes.getByRole('button', { name: /أكمل الآية التالية/ });
     const randomRecall = modes.getByRole('button', { name: /عشوائي من المحفوظ/ });
 
