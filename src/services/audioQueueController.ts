@@ -41,6 +41,11 @@ interface QueuePosition {
   cycle: number;
 }
 
+function isAbortError(error: unknown): boolean {
+  return Boolean(error && typeof error === 'object' && 'name' in error &&
+    (error as { name?: unknown }).name === 'AbortError');
+}
+
 /**
  * Plays a bounded Quran ayah segment in sequence while preloading the next
  * track. Preloading reduces artificial gaps between separate MP3 files; it
@@ -119,7 +124,10 @@ export class QuranAudioQueueController {
       if (this.active && generation === this.generation && audio === this.currentAudio) {
         this.callbacks.onPlaying?.();
       }
-    }).catch(error => this.fail(error, generation, audio));
+    }).catch(error => {
+      if (this.paused && isAbortError(error)) return;
+      this.fail(error, generation, audio);
+    });
   }
 
   setPlaybackRate(rate: number): void {
@@ -215,10 +223,13 @@ export class QuranAudioQueueController {
     this.callbacks.onTrackChange?.(index, cycle);
     this.prepareNext();
     audio.play().then(() => {
-      if (this.active && generation === this.generation && this.currentAudio === audio) {
+      if (this.active && !this.paused && generation === this.generation && this.currentAudio === audio) {
         this.callbacks.onPlaying?.();
       }
-    }).catch(error => this.fail(error, generation, audio));
+    }).catch(error => {
+      if (this.paused && isAbortError(error)) return;
+      this.fail(error, generation, audio);
+    });
   }
 
   private advance(generation: number): void {
