@@ -28,7 +28,7 @@ Source release: https://github.com/quran-ws/quran-svg/releases/tag/v1.1.1
 
 1. The SVG is a visual layer only. It contains vector paths and ayah coordinates, not the Quranic text.
 2. WIRD's checked-in Tanzil corpus remains the sole text source for display, search, audio coordinates, tafsir, memorization, bookmarks, and progress.
-3. Before interaction is enabled, every `surah:ayah` coordinate in the SVG must match exactly one local WIRD ayah on that page. Missing, duplicate, extra, or mismatched coordinates fail closed.
+3. Before interaction is enabled, every `surah:ayah` coordinate in the SVG must resolve to exactly one canonical local WIRD ayah. Across the complete 604-page edition, every local ayah must appear exactly once; unknown, duplicate, missing, or malformed coordinates fail closed. The printed edition's page assignment is authoritative only for the printed view; the flexible reader's page metadata is not rewritten.
 4. SVG is sanitized with a strict allowlist: only `svg`, `g`, and `path` elements and the required drawing/coordinate attributes are retained. Text, script, links, external references, and unknown elements are rejected.
 5. The original `viewBox` is read from each file. The first two pages are an opening spread with oversized declared bounds, so the rendered ink is measured and fitted after DOM layout.
 6. The current release is Hafs/KFGQPC only. Do not reuse its page number or geometry for Warsh, Qalun, or another print.
@@ -39,11 +39,11 @@ Source release: https://github.com/quran-ws/quran-svg/releases/tag/v1.1.1
 - The service worker caches only the pinned Hafs/KFGQPC SVG host/path, on demand, in a dedicated cache bounded to 24 files (12 page pairs).
 - The cache is preserved across service-worker upgrades; old page entries are evicted by the bound.
 - If network, SVG parsing, sanitization, or local coordinate matching fails, the reader offers the existing local flexible-text view. It never substitutes remote Quran text.
-- The reader mounts one page at a time rather than a long scrolling SVG document. This reduces the SVG performance cost, but real iOS/Android device testing remains a release gate.
+- The reader resolves the printed page's audio queue and ayah navigation from that page's exact local coordinate set, independent of flexible-layout page metadata. The reader mounts one page at a time rather than a long scrolling SVG document. This reduces the SVG performance cost, but real iOS/Android device testing remains a release gate.
 
 ## Validation required before making this the default
 
-- Validate exact coordinate coverage for all 604 pages against the local generated page index and local ayah loader.
+- Validate the actual SVG hit-region layer on all 604 pages against the complete local ayah coordinate set and verify one-to-one coverage across the edition.
 - Inspect opening pages 1–2 and dense final pages, and test page navigation across surah boundaries.
 - Confirm hit-region selection, tafsir opening, page audio, keyboard operation, reduced motion, and small-screen layout.
 - Test first-load CORS and offline cache behavior on Safari/iPadOS and Android Chrome.
