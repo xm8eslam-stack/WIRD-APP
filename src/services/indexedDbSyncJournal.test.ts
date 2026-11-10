@@ -1029,7 +1029,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
 
       const committed = await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9615);
       const after = await journal.getSnapshot();
-      const remainingConflict = (await journal.listProjectionConflicts(10))[0];
+      const openConflictCount = await journal.getProjectionConflictCount();
       const inboxAfter = await journal.listRemoteInboxAfter(0, 10);
       const ready = await journal.listReady(9700, 10);
       assert(after.pendingCount === 1 && after.projectionCursor === 1 && ready.length === 1,
@@ -1038,7 +1038,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         ready[0].mutationId === committed.mutationId &&
         JSON.stringify(ready[0].payload) === JSON.stringify(localPayload),
         'The replacement must be one syncMeta event carrying the exact grouped local snapshots');
-      assert(inboxAfter.length === 0 && remainingConflict?.status === 'resolved' &&
+      assert(inboxAfter.length === 0 && openConflictCount === 0 &&
         !(await journal.getConflictResolutionIntent(event.eventId)),
         'The grouped commit must close the conflict and consume the inbox event and prepared intent atomically');
       assert(await journal.isRemoteCollectionInitialized('plans') &&
