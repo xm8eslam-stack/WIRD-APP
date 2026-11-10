@@ -63,6 +63,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     const audioService = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
     assert(audioService.includes('requestOfflineAudioCache'), 'Quran audio service must expose opportunistic offline pre-caching');
     assert(audioService.includes("url.hostname === 'everyayah.com'"), 'Audio client must restrict EveryAyah URLs to the reviewed host');
+    assert(audioService.includes('Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps'), 'EveryAyah audio client must restrict reciter folders to the bundled catalogue');
     assert(audioService.includes("url.hostname === 'cdn.islamic.network'"), 'Audio client must support the curated Quran CDN used by ruqyah');
     const quranLibrary = fs.readFileSync(path.resolve('./src/components/library/QuranLibraryView.tsx'), 'utf8');
     const mushafReader = fs.readFileSync(path.resolve('./src/components/library/QuranMushafReader.tsx'), 'utf8');
