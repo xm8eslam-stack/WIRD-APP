@@ -14,8 +14,9 @@ class MockQuranAudio implements QuranAudioElement {
   playCalls = 0;
   pauseCalls = 0;
   loadCalls = 0;
+  playOverride: Promise<void> | null = null;
   constructor(readonly url: string) {}
-  play(): Promise<void> { this.playCalls += 1; return Promise.resolve(); }
+  play(): Promise<void> { this.playCalls += 1; return this.playOverride || Promise.resolve(); }
   pause(): void { this.pauseCalls += 1; }
   load(): void { this.loadCalls += 1; }
   finish(): void { this.onended?.(new Event('ended')); }
@@ -124,6 +125,25 @@ export async function runQuranAudioQueueControllerTests(): Promise<{ passed: num
     await Promise.resolve();
     assert(!queue.getState().paused && audios[0].playCalls === 2, 'Resume should reuse the current audio element');
     assert(audios[0].playbackRate === 1.5 && audios[1].playbackRate === 1.5, 'Rate changes should apply to current and preloaded audio');
+    queue.stop();
+  });
+
+  await test('a play promise aborted by pause does not destroy the paused queue', async () => {
+    const audios: MockQuranAudio[] = [];
+    let rejectPlay: ((error: Error) => void) | null = null;
+    const queue = new QuranAudioQueueController({}, url => {
+      const audio = new MockQuranAudio(url);
+      audio.playOverride = new Promise<void>((_resolve, reject) => { rejectPlay = reject; });
+      audios.push(audio);
+      return audio;
+    });
+    queue.start({ tracks, startIndex: 0, endIndex: 1 });
+    queue.pause();
+    const abort = new Error('play interrupted by pause');
+    abort.name = 'AbortError';
+    rejectPlay?.(abort);
+    await Promise.resolve();
+    assert(queue.getState().active && queue.getState().paused, 'AbortError caused by pause must preserve the queue position');
     queue.stop();
   });
 
