@@ -512,6 +512,46 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Independent test-result snapshots merge without losing either device result', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:test-results-two-device-merge');
+      const deviceA: TestResult = {
+        id: 'device-a-result', date: '2026-11-08', type: 'complete_verse',
+        surahName: 'الفاتحة', score: 4, totalQuestions: 5, weakVerses: []
+      };
+      const deviceB: TestResult = {
+        id: 'device-b-result', date: '2026-11-09', type: 'order_words',
+        surahName: 'البقرة', score: 3, totalQuestions: 4, weakVerses: []
+      };
+      assert(StorageService.applyJournalProjection('tests', { records: [deviceA] }),
+        'The first device result must project');
+      assert(StorageService.applyJournalProjection('tests', { records: [deviceB] }),
+        'A second device snapshot must merge instead of replacing the first device result');
+      const merged = StorageService.getTests();
+      assert(merged.length === 2 && merged.some(item => item.id === deviceA.id) &&
+        merged.some(item => item.id === deviceB.id),
+        'Both independent test results must remain in the local archive');
+      assert(StorageService.matchesJournalProjection('tests', { records: [deviceA] }),
+        'Recovery matching must recognize a snapshot already applied through a safe merge');
+    });
+
+    await test('Conflicting content for an existing test-result ID fails closed', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:test-results-id-collision');
+      const original: TestResult = {
+        id: 'same-result-id', date: '2026-11-08', type: 'complete_verse',
+        surahName: 'الفاتحة', score: 4, totalQuestions: 5, weakVerses: []
+      };
+      assert(StorageService.applyJournalProjection('tests', { records: [original] }),
+        'The original result must project');
+      const before = StorageService.getRawItem(STORAGE_KEYS.TESTS);
+      assert(!StorageService.applyJournalProjection('tests', {
+        records: [{ ...original, score: 1 }]
+      }), 'A duplicate ID with different content must be rejected');
+      assert(StorageService.getRawItem(STORAGE_KEYS.TESTS) === before,
+        'A conflicting duplicate must preserve the original archive byte-for-byte');
+    });
+
     await test('Invalid snapshots remain queued for recovery and never advance the projection cursor', async () => {
       const journal = createJournal();
       let fallbackCalled = false;
