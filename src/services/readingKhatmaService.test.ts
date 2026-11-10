@@ -38,8 +38,9 @@ export function runReadingKhatmaServiceTests(): { passed: number; failed: number
     let rejected = false;
     try { markReadingPage(1, storage, new Date(2026, 4, 1, 13)); } catch { rejected = true; }
     assert(rejected, 'reading progress must not be recorded while paused');
-    const resumed = resumeReadingKhatma(storage);
+    const resumed = resumeReadingKhatma(storage, new Date(2026, 4, 2, 8));
     assert(resumed.isPaused === false && resumed.pausedAt === undefined, 'resume should clear pause metadata');
+    assert(resumed.plan?.targetCompletionDate === '2026-06-01', 'the target date should move forward by the paused calendar day');
     const updated = updateReadingKhatmaPlan({ durationDays: 90, sessionsPerDay: 4 }, storage, new Date(2026, 4, 2, 8));
     assert(updated.plan?.durationDays === 90 && updated.plan.sessionsPerDay === 4, 'new plan options should persist');
     assert(updated.plan.targetCompletionDate === '2026-07-31', 'updated target date should be recalculated from the update date');
