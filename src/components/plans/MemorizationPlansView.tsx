@@ -182,7 +182,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                 className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                إنشاء خطة ذكية
+                فتح محرك التخطيط الذكي
               </button>
             </div>
           ) : (
