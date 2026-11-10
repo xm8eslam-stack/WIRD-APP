@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ALL_SURAHS } from '../../data/quranMeta';
 import type { Ayah } from '../../types/quran';
 import {
   loadMushafFacsimilePage,
@@ -26,6 +27,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
   onSelectAyah,
   onFallback
 }) => {
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const [pageData, setPageData] = useState<MushafFacsimilePageData | null>(null);
   const [matchedAreas, setMatchedAreas] = useState<MatchedAyahArea[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -56,11 +58,94 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
     return () => controller.abort();
   }, [page, ayahs, retry]);
 
-  const handleImageError = () => {
-    setError('تعذر تحميل رسم الصفحة المطبوعة من المصدر المعتمد.');
-    setPageData(null);
-    setMatchedAreas([]);
-  };
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !pageData || matchedAreas.length === 0) return;
+    const root = host.querySelector('svg');
+    if (!(root instanceof SVGSVGElement)) {
+      setError('ملف الصفحة لم ينتج رسمًا متجهيًا صالحًا.');
+      return;
+    }
+
+    root.removeAttribute('width');
+    root.removeAttribute('height');
+    root.setAttribute('role', 'group');
+    root.setAttribute('aria-label', `صفحة المصحف المطبوعة رقم ${page}`);
+    root.style.width = '100%';
+    root.style.height = 'auto';
+    root.style.display = 'block';
+
+    const localByCoordinate = new Map(
+      matchedAreas.map(({ area, ayah }) => [`${area.surahNumber}:${area.ayahNumber}`, ayah])
+    );
+    const paths = Array.from(root.querySelectorAll('path.ayahPolygon'));
+    if (paths.length !== matchedAreas.length) {
+      setError('عدد مواضع الآيات داخل الرسم لا يطابق فهرس الصفحة.');
+      return;
+    }
+
+    for (const path of paths) {
+      const surahNumber = Number(path.getAttribute('surah'));
+      const ayahNumber = Number(path.getAttribute('ayah'));
+      const ayah = localByCoordinate.get(`${surahNumber}:${ayahNumber}`);
+      if (!ayah) {
+        setError('تعذر ربط أحد مواضع الرسم بنص وِرد المحلي.');
+        return;
+      }
+      const selected = selectedAyah?.surahNumber === surahNumber &&
+        selectedAyah?.numberInSurah === ayahNumber;
+      const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+      path.setAttribute('class', 'ayahPolygon mushaf-ayah-hit-area');
+      path.setAttribute('role', 'button');
+      path.setAttribute('tabindex', '0');
+      path.setAttribute('aria-label', `تفسير الآية ${ayahNumber} من سورة ${surah?.name || surahNumber}`);
+      path.setAttribute('aria-pressed', selected ? 'true' : 'false');
+      path.setAttribute('fill', '#c59b27');
+      path.setAttribute('fill-opacity', selected ? '0.34' : '0');
+      path.setAttribute('pointer-events', 'visiblePainted');
+    }
+
+    const resolveTarget = (target: EventTarget | null): Ayah | null => {
+      if (!(target instanceof Element)) return null;
+      const path = target.closest('path.ayahPolygon');
+      if (!path || !root.contains(path)) return null;
+      return localByCoordinate.get(`${Number(path.getAttribute('surah'))}:${Number(path.getAttribute('ayah'))}`) || null;
+    };
+
+    const handleClick = (event: MouseEvent) => {
+      const ayah = resolveTarget(event.target);
+      if (ayah) onSelectAyah(ayah);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const ayah = resolveTarget(event.target);
+      if (!ayah) return;
+      event.preventDefault();
+      onSelectAyah(ayah);
+    };
+    host.addEventListener('click', handleClick);
+    host.addEventListener('keydown', handleKeyDown);
+
+    // The opening spread (pages 1–2) has a deliberately oversized viewBox.
+    // Fit the rendered ink, as prescribed by the source renderer documentation.
+    const frame = requestAnimationFrame(() => {
+      try {
+        const bounds = root.getBBox();
+        if (bounds.width > 0 && bounds.height > 0) {
+          const padding = Math.max(bounds.width, bounds.height) * 0.04;
+          root.setAttribute('viewBox', `${bounds.x - padding} ${bounds.y - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2}`);
+        }
+      } catch {
+        // Keep the publisher's original viewBox if the browser cannot measure SVG ink.
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      host.removeEventListener('click', handleClick);
+      host.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [page, pageData, matchedAreas, selectedAyah, onSelectAyah]);
 
   if (!ayahs.length) {
     return (
@@ -98,57 +183,16 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
     );
   }
 
-  const { viewBox } = pageData;
   return (
     <figure className="mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-[#b99b62]/50 bg-[#f8f5ed] p-2 shadow-xl dark:border-[#8d7449]/70 dark:bg-[#101b19] sm:p-4">
-      <svg
-        role="group"
-        aria-label={`صفحة المصحف المطبوعة رقم ${page}، اختر موضع الآية لفتح تفسيرها`}
-        viewBox={viewBox.raw}
-        preserveAspectRatio="xMidYMid meet"
-        className="block h-auto w-full select-none"
-      >
-        <image
-          href={pageData.svgUrl}
-          x={viewBox.x}
-          y={viewBox.y}
-          width={viewBox.width}
-          height={viewBox.height}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-          onError={handleImageError}
-        />
-        {matchedAreas.map(({ area, ayah }) => {
-          const isSelected = selectedAyah?.surahNumber === ayah.surahNumber &&
-            selectedAyah?.numberInSurah === ayah.numberInSurah;
-          const surah = ayah.surahNumber;
-          return (
-            <polygon
-              key={`${surah}:${ayah.numberInSurah}`}
-              points={area.polygon}
-              role="button"
-              tabIndex={0}
-              aria-label={`تفسير الآية ${ayah.numberInSurah} من سورة ${surah}`}
-              aria-pressed={isSelected}
-              className="mushaf-ayah-hit-area"
-              fill={isSelected ? 'rgba(197, 155, 39, 0.28)' : 'transparent'}
-              stroke={isSelected ? '#a87912' : 'transparent'}
-              strokeWidth={isSelected ? 1.1 : 0}
-              vectorEffect="non-scaling-stroke"
-              onClick={() => onSelectAyah(ayah)}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  onSelectAyah(ayah);
-                }
-              }}
-            />
-          );
-        })}
-      </svg>
+      <div
+        ref={hostRef}
+        className="mushaf-facsimile-svg w-full"
+        dangerouslySetInnerHTML={{ __html: pageData.svgMarkup }}
+      />
       <figcaption className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-[#b99b62]/30 px-2 pt-2 text-[10px] text-stone-500 dark:border-[#8d7449]/40 dark:text-stone-400">
         <span>رسم الصفحة: مجمع الملك فهد لطباعة المصحف الشريف</span>
-        <span>مواضع الآيات التفاعلية: Quran.ws · الإصدار { '1.1.1' }</span>
+        <span>مواضع الآيات التفاعلية: Quran.ws · الإصدار 1.1.1</span>
       </figcaption>
     </figure>
   );
