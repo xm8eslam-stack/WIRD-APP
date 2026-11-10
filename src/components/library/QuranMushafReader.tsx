@@ -293,7 +293,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
             >
               <ArrowRight className="h-4 w-4" /> العودة للفهرس
             </button>
@@ -317,13 +317,13 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                 aria-describedby={pageJumpError ? 'mushaf-page-jump-error' : undefined}
                 onKeyDown={event => event.key === 'Enter' && submitPageJump()}
                 aria-label="رقم صفحة المصحف"
-                className="w-14 rounded-lg bg-stone-100 dark:bg-stone-700/80 px-2 py-1 text-center font-mono font-bold text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className="min-h-11 w-14 rounded-lg bg-stone-100 dark:bg-stone-700/80 px-2 py-1 text-center font-mono font-bold text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
               <button
                 type="button"
                 onClick={submitPageJump}
                 aria-label="انتقال إلى رقم الصفحة"
-                className="rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition-colors"
+                className="min-h-11 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition-colors"
               >
                 انتقال
               </button>
@@ -335,7 +335,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               onClick={toggleBookmark}
               aria-label={currentBookmark ? 'إزالة العلامة المحفوظة' : 'حفظ علامة مرجعية'}
               title={currentBookmark ? 'إزالة العلامة من هذه الصفحة' : 'حفظ الصفحة في العلامات المرجعية'}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
                 currentBookmark
                   ? 'border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-200'
                   : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300'
@@ -353,7 +353,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             aria-label="الانتقال إلى سورة"
             value={primarySurah?.number || ''}
             onChange={event => event.target.value && jumpToSurah(Number(event.target.value))}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">انتقال إلى سورة...</option>
             {ALL_SURAHS.map(surah => (
@@ -416,7 +416,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               type="button"
               disabled={page <= 1}
               onClick={() => changePage(page - 1)}
-              className="inline-flex items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
             >
               <ChevronRight className="h-4 w-4" /> الصفحة السابقة
             </button>
@@ -458,7 +458,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               type="button"
               onClick={togglePageAudio}
               disabled={!ayahs.length || isLoading}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50 ${
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50 ${
                 isPlaying ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-800 hover:bg-emerald-900'
               }`}
             >
