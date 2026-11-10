@@ -44,8 +44,19 @@ export async function runHadithSanitizerTests(): Promise<{ passed: number; faile
     assert(!JSON.stringify(segments).includes('نص غير موثق'), 'invalid quoted text must be discarded');
   });
 
+  test('incomplete Quran markers never leak raw markup or unverified quoted text', () => {
+    const unclosedQuote = parseHadithMatn('قبل [quran sura="1" aya_start="2" aya_end="2"]{نص قرآني غير موثق');
+    assert(unclosedQuote.length === 2 && unclosedQuote[1].type === 'invalid-quran', 'unterminated quote must consume the remainder');
+    assert(!JSON.stringify(unclosedQuote).includes('نص قرآني'), 'unterminated quote text must not leak');
+    const unclosedHeader = parseHadithMatn('قبل [quran sura="1" aya_start="2"');
+    assert(unclosedHeader.length === 2 && unclosedHeader[1].type === 'invalid-quran', 'unterminated marker header must be hidden');
+    const missingQuote = parseHadithMatn('قبل [quran source="unknown"] وبعد');
+    assert(missingQuote[1]?.type === 'invalid-quran', 'marker without coordinates must be rejected');
+    assert(!JSON.stringify(missingQuote).includes('[quran'), 'raw citation header must never remain visible');
+  });
+
   test('malformed and empty content are safely handled', () => {
-    assert(parseHadithMatn('') .length === 0, 'empty matn must return no segments');
+    assert(parseHadithMatn('').length === 0, 'empty matn must return no segments');
     assert(parseHadithMatn('نص بلا مراجع')[0]?.type === 'text', 'ordinary Arabic prose must remain text');
     assert(sanitizeHadithHtmlToPlainText(null as any) === '', 'invalid sanitizer input must fail closed');
   });
