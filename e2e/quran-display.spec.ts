@@ -112,3 +112,29 @@ test('Tafsir dialog supports Escape, traps keyboard focus, and restores the ayah
   await expect(dialog).toHaveCount(0);
   await expect(ayahAction).toBeFocused();
 });
+
+
+test('Mushaf reader keeps flexible layout disclosure and remembers reading display preferences', async ({ page }) => {
+  await page.goto('/');
+  const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
+  if (await guestEntry.isVisible().catch(() => false)) await guestEntry.click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+
+  await expect(page.getByRole('main', { name: /صفحة المصحف/ })).toBeVisible();
+  await expect(page.getByText(/عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع/)).toBeVisible();
+
+  const displayControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
+  await expect(displayControls).toBeVisible();
+  await displayControls.getByRole('button', { name: 'أكبر' }).click();
+  await expect(displayControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
+  await displayControls.getByRole('button', { name: 'توسيع مساحة القراءة' }).click();
+  await expect(displayControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
+
+  await page.reload();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+  const restoredControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
+  await expect(restoredControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(restoredControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
+});
