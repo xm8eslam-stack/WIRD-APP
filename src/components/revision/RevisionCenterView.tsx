@@ -378,6 +378,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           operation: 'upsert',
           payload: {
             records: prepared.records,
+            baseSnapshotFingerprint: prepared.baseSnapshotFingerprint,
             domainEvent: {
               schemaVersion: 1,
               id: mutationId,
