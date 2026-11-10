@@ -1603,7 +1603,7 @@ export const StorageService = {
         if (!Array.isArray(payload.records)) return false;
         let current: DailyLog[];
         try { current = this.getLogs(); } catch { return false; }
-        if (!canApplySnapshotPrecondition(payload, current, payload.records)) return false;
+        if (!allowSnapshotReplacement && !canApplySnapshotPrecondition(payload, current, payload.records)) return false;
         return this.saveLogs(payload.records as DailyLog[]);
       }
       case 'ruqyahProgress':
