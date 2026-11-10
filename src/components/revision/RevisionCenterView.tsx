@@ -356,10 +356,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   // Handle adding new portion
   const handleAddNewPortion = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSavingPortion) return;
     const surah = ALL_SURAHS.find(s => s.number === newSurahNum);
     if (!surah) return;
 
-    let updatedPortions: PortionStatusRecord[];
+    setIsSavingPortion(true);
     try {
       const snapshot = RetentionService.buildAddPortionSnapshot({
         type: 'passage',
@@ -377,34 +378,36 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         repetitionCount: newStatus === 'stable' ? 4 : 1,
         mistakesCount: newStatus === 'weak' ? 2 : 0
       });
-      updatedPortions = snapshot.portions;
-    } catch (error) {
-      setActionFeedback({ message: error instanceof Error ? error.message : 'تعذر إعداد المقطع الجديد.', type: 'warn' });
-      return;
-    }
+      const result = await persistPortionsSnapshot(snapshot.portions);
+      if (!result.success) {
+        if (result.recoveredPriorEvents) refreshAll();
+        setActionFeedback({
+          message: result.recoveredPriorEvents
+            ? 'استعدنا تقدمًا سابقًا وحدّثنا بيانات المقاطع؛ لم ننفذ الإضافة الجديدة. راجع الحالة ثم أعد المحاولة.'
+            : result.queued
+              ? 'تم حفظ إضافة المقطع في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
+              : result.recoveryBlocked
+                ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف المقطع الجديد.'
+                : 'تعذر حفظ المقطع الجديد في التخزين المحلي؛ لم يتم تأكيد التغيير.',
+          type: 'warn'
+        });
+        return;
+      }
 
-    const result = await persistPortionsSnapshot(updatedPortions);
-    if (!result.success) {
-      if (result.recoveredPriorEvents) refreshAll();
+      setIsAddPortionModalOpen(false);
+      refreshAll();
       setActionFeedback({
-        message: result.recoveredPriorEvents
-          ? 'استعدنا تقدمًا سابقًا وحدّثنا بيانات المقاطع؛ لم ننفذ الإضافة الجديدة. راجع الحالة ثم أعد المحاولة.'
-          : result.queued
-            ? 'تم حفظ إضافة المقطع في سجل الاستعادة، لكن تعذر تطبيقها محلياً.'
-            : result.recoveryBlocked
-              ? 'تعذر تأمين الحفظ أو استعادة سجل سابق؛ لم نضف المقطع الجديد.'
-              : 'تعذر حفظ المقطع الجديد في التخزين المحلي؛ لم يتم تأكيد التغيير.',
+        message: `تمت إضافة مقطع سورة ${surah.name} بنجاح إلى منظومة المتابعة.`,
+        type: 'success'
+      });
+    } catch (error) {
+      setActionFeedback({
+        message: error instanceof Error ? error.message : 'تعذر إضافة المقطع؛ لم يتم تأكيد حفظ التغيير.',
         type: 'warn'
       });
-      return;
+    } finally {
+      setIsSavingPortion(false);
     }
-
-    setIsAddPortionModalOpen(false);
-    refreshAll();
-    setActionFeedback({
-      message: `تمت إضافة مقطع سورة ${surah.name} بنجاح إلى منظومة المتابعة.`,
-      type: 'success'
-    });
   };
 
   // Resolve a weak verse through a stable, journal-first snapshot mutation.
