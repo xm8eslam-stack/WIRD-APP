@@ -654,7 +654,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="button"
                                     onClick={() => void handleUseRemoteConflict(conflict.event.eventId)}
                                     disabled={resolvingConflictId !== null || !isOnline || syncStatus === 'syncing'}
-                                    className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                    className="min-h-11 px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
                                   >
                                     إعادة محاولة اعتماد النسخة السحابية
                                   </button>
@@ -663,7 +663,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                     type="button"
                                     onClick={() => void handleKeepLocalConflict(conflict.event.eventId)}
                                     disabled={resolvingConflictId !== null || !isOnline || syncStatus === 'syncing'}
-                                    className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                    className="min-h-11 px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
                                   >
                                     إعادة محاولة إعادة نشر النسخة المحلية
                                   </button>
@@ -676,7 +676,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   type="button"
                                   onClick={() => void handleCancelPreparedConflict(conflict.event.eventId)}
                                   disabled={resolvingConflictId !== null}
-                                  className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
+                                  className="min-h-11 px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
                                 >
                                   إلغاء القرار غير المنفذ مع الاحتفاظ بالأدلة
                                 </button>
@@ -692,7 +692,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                 type="button"
                                 onClick={() => { setConfirmLocalConflictId(null); setConfirmRemoteConflictId(conflict.event.eventId); }}
                                 disabled={!user || isGuest || !isEmailVerified || !isOnline || syncStatus === 'syncing' || resolvingConflictId !== null}
-                                className="px-3 py-2 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="min-h-11 px-3 py-2 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 استخدام أحدث نسخة سحابية
                               </button>
@@ -701,7 +701,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                   type="button"
                                   onClick={() => { setConfirmRemoteConflictId(null); setConfirmLocalConflictId(conflict.event.eventId); }}
                                   disabled={!user || isGuest || !isEmailVerified || !isOnline || syncStatus === 'syncing' || resolvingConflictId !== null}
-                                  className="px-3 py-2 rounded-lg border border-emerald-800 text-emerald-900 dark:text-emerald-200 dark:border-emerald-700 text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="min-h-11 px-3 py-2 rounded-lg border border-emerald-800 text-emerald-900 dark:text-emerald-200 dark:border-emerald-700 text-[11px] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   الاحتفاظ بالنسخة المحلية وإعادة نشرها
                                 </button>
@@ -716,7 +716,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       type="button"
                                       onClick={() => void handleKeepLocalConflict(conflict.event.eventId)}
                                       disabled={resolvingConflictId !== null}
-                                      className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                      className="min-h-11 px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
                                     >
                                       {resolvingConflictId === conflict.event.eventId ? 'جارٍ التحقق وتجهيز الرفع…' : 'تأكيد الاحتفاظ بالنسخة المحلية'}
                                     </button>
@@ -724,7 +724,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       type="button"
                                       onClick={() => setConfirmLocalConflictId(null)}
                                       disabled={resolvingConflictId !== null}
-                                      className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
+                                      className="min-h-11 px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
                                     >
                                       تراجع
                                     </button>
@@ -741,7 +741,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       type="button"
                                       onClick={() => void handleUseRemoteConflict(conflict.event.eventId)}
                                       disabled={resolvingConflictId !== null}
-                                      className="px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
+                                      className="min-h-11 px-3 py-2 rounded-lg bg-emerald-800 text-white text-[11px] font-bold disabled:opacity-50"
                                     >
                                       {resolvingConflictId === conflict.event.eventId ? 'جارٍ التحقق والتطبيق…' : 'تأكيد استخدام النسخة السحابية'}
                                     </button>
@@ -749,7 +749,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                                       type="button"
                                       onClick={() => setConfirmRemoteConflictId(null)}
                                       disabled={resolvingConflictId !== null}
-                                      className="px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
+                                      className="min-h-11 px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-600 text-[11px] font-semibold text-stone-700 dark:text-stone-200 disabled:opacity-50"
                                     >
                                       تراجع
                                     </button>
@@ -1056,13 +1056,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* In-app Reset Confirmation Dialog */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+          <div role="dialog" aria-modal="true" aria-labelledby="wird-reset-confirm-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                 <ShieldAlert className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                <h3 id="wird-reset-confirm-title" className="font-bold text-stone-900 dark:text-stone-100 text-base">
                   تأكيد إعادة الضبط الافتراضي
                 </h3>
                 <p className="text-xs text-stone-500">
@@ -1080,7 +1080,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
                 disabled={isResetting}
-                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+                className="min-h-11 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
               >
                 إلغاء التراجع
               </button>
@@ -1088,7 +1088,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="button"
                 onClick={handleConfirmReset}
                 disabled={isResetting}
-                className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
+                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
               >
                 تأكيد إعادة الضبط
               </button>
@@ -1100,13 +1100,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* In-app Demo Mode Confirmation Dialog */}
       {import.meta.env.DEV && showDemoConfirm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+          <div role="dialog" aria-modal="true" aria-labelledby="wird-demo-confirm-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Sparkles className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                <h3 id="wird-demo-confirm-title" className="font-bold text-stone-900 dark:text-stone-100 text-base">
                   تأكيد تفعيل البيانات التجريبية
                 </h3>
                 <p className="text-xs text-stone-500">
@@ -1123,14 +1123,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDemoConfirm(false)}
-                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+                className="min-h-11 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
               >
                 إلغاء
               </button>
               <button
                 type="button"
                 onClick={handleLoadDemoData}
-                className="px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors"
+                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-xs transition-colors"
               >
                 تحميل البيانات الآن
               </button>
