@@ -661,6 +661,48 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
       journal.close();
     });
 
+    await test('Grouped per-result test projection preserves document scope during apply and recovery', () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:grouped-test-document-scope');
+      const existing: TestResult = {
+        id: 'existing-device-result', date: '2026-11-08', type: 'complete_verse',
+        surahName: 'الفاتحة', score: 4, totalQuestions: 5, weakVerses: []
+      };
+      const incoming: TestResult = {
+        id: 'grouped-device-result', date: '2026-11-09', type: 'order_words',
+        surahName: 'البقرة', score: 3, totalQuestions: 4, weakVerses: []
+      };
+      assert(StorageService.saveTests([existing]), 'The pre-existing device result must seed the local archive');
+      const operation = {
+        collection: 'tests' as const,
+        documentId: incoming.id,
+        operation: 'upsert' as const,
+        payload: { records: [incoming] }
+      };
+      assert(StorageService.applyJournalTransaction([operation]),
+        'A grouped per-result operation must use its document ID and merge the new immutable result');
+      const merged = StorageService.getTests();
+      assert(merged.length === 2 && merged.some(item => item.id === existing.id) &&
+        merged.some(item => item.id === incoming.id),
+        'Grouped per-result projection must preserve the existing result from the other device');
+      assert(StorageService.matchesJournalProjection('syncMeta', {
+        transaction: { version: 1, operations: [operation] }
+      }), 'Recovery must recognize the grouped per-result merge as already applied');
+
+      const authoritativeSnapshot = {
+        transaction: {
+          version: 1,
+          operations: [{
+            ...operation,
+            documentId: 'snapshot',
+            payload: { records: [incoming] }
+          }]
+        }
+      };
+      assert(!StorageService.matchesJournalProjection('syncMeta', authoritativeSnapshot),
+        'Recovery must not mistake a merged per-result archive for an applied authoritative snapshot');
+    });
+
     await test('Weak-verse preparation rejects an inconsistent canonical archive before enqueue', async () => {
       const journal = createJournal();
       const corrupt = '{broken canonical portions';
