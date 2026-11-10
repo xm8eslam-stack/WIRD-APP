@@ -51,13 +51,13 @@ export function parseMushafViewBox(svgMarkup: string): MushafViewBox {
   if (typeof svgMarkup !== 'string' || svgMarkup.length < 100 || svgMarkup.length > 2_000_000) {
     throw new Error('ملف رسم صفحة المصحف غير صالح أو يتجاوز الحد الآمن.');
   }
-  const root = svgMarkup.match(/<svg\\b[^>]*>/i)?.[0];
+  const root = svgMarkup.match(/<svg\b[^>]*>/i)?.[0];
   if (!root || !/xmlns=["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(root)) {
     throw new Error('تعذر التحقق من صيغة رسم صفحة المصحف.');
   }
-  const raw = root.match(/\\bviewBox=["']([^"']+)["']/i)?.[1];
+  const raw = root.match(/\bviewBox=["']([^"']+)["']/i)?.[1];
   if (!raw) throw new Error('ملف صفحة المصحف لا يحدد مساحة العرض.');
-  const values = raw.trim().split(/[\\s,]+/).map(Number);
+  const values = raw.trim().split(/[\s,]+/).map(Number);
   if (values.length !== 4 || !values.every(Number.isFinite) || values[2] <= 0 || values[3] <= 0) {
     throw new Error('أبعاد صفحة المصحف غير صالحة.');
   }
@@ -65,11 +65,11 @@ export function parseMushafViewBox(svgMarkup: string): MushafViewBox {
 }
 
 function readSvgAttribute(tag: string, attribute: 'surah' | 'ayah'): string | null {
-  return tag.match(new RegExp('\\\\b' + attribute + '="([^"]*)"', 'i'))?.[1] ?? null;
+  return tag.match(new RegExp('\\\b' + attribute + '="([^"]*)"', 'i'))?.[1] ?? null;
 }
 
 export function parseMushafAyahCoordinates(svgMarkup: string): MushafAyahCoordinate[] {
-  const tags = [...svgMarkup.matchAll(/<path\\b[^>]*class=["'][^"']*\\bayahPolygon\\b[^"']*["'][^>]*>/gi)].map(match => match[0]);
+  const tags = [...svgMarkup.matchAll(/<path\b[^>]*class=["'][^"']*\bayahPolygon\b[^"']*["'][^>]*>/gi)].map(match => match[0]);
   if (tags.length === 0 || tags.length > 100) {
     throw new Error('لم يتم العثور على طبقة مواضع الآيات الكاملة في صفحة المصحف.');
   }
@@ -115,7 +115,7 @@ export function sanitizeMushafSvgMarkup(svgMarkup: string): string {
         continue;
       }
       const value = attribute.value;
-      if (/javascript:|data:|https?:|url\\s*\\(/i.test(value) &&
+      if (/javascript:|data:|https?:|url\s*\\(/i.test(value) &&
           attribute.name !== 'xmlns' && attribute.name !== 'xmlns:ayah') {
         throw new Error('يحتوي ملف المصحف على مرجع خارجي غير مسموح.');
       }
