@@ -11,8 +11,10 @@ test.describe('WIRD Quran advisor UX', () => {
     const advisorTab = page.getByRole('button', { name: /المستشار الذكي وتحليل وتيرة الحفظ/ });
     const rulesTab = page.getByRole('button', { name: 'قواعد ضبط المتشابهات' });
 
+    await expect(page.getByRole('group', { name: 'أقسام المستشار القرآني' })).toBeVisible();
     await expect(advisorTab).toHaveAttribute('aria-pressed', 'true');
     await expect(advisorTab).toHaveCSS('min-height', '44px');
+    await expect(advisorTab).toHaveClass(/focus-visible:ring-2/);
     await rulesTab.click();
     await expect(rulesTab).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByText(/وسائل تذكّر مساعدة وليست قواعد قطعية/)).toBeVisible();
