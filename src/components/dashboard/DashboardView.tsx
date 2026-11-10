@@ -330,7 +330,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <span className="text-xs text-[#62726B] dark:text-[#9BB0A7] tabular-nums font-mono">من {TOTAL_QURAN_VERSES}</span>
           </div>
-          <div role="progressbar" aria-label="نسبة الآيات المحفوظة" aria-valuemin={0} aria-valuemax={TOTAL_QURAN_VERSES} aria-valuenow={totalMemorizedAyahs} role="progressbar" aria-label="نسبة الصفحات المحفوظة بالكامل" aria-valuemin={0} aria-valuemax={TOTAL_QURAN_PAGES} aria-valuenow={totalMemorizedPages} className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
+          <div role="progressbar" aria-label="نسبة الآيات المحفوظة" aria-valuemin={0} aria-valuemax={TOTAL_QURAN_VERSES} aria-valuenow={totalMemorizedAyahs} className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
             <div className="bg-[#102D29] dark:bg-[#1D4940] h-full rounded-full" style={{ width: `${versesPercentage}%` }} />
           </div>
           <div className="text-[11px] text-[#1D4940] dark:text-[#C8AD73] mt-1.5 font-medium">
@@ -347,7 +347,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
             <span className="text-xs text-[#62726B] dark:text-[#9BB0A7] tabular-nums font-mono">من {TOTAL_QURAN_PAGES} صفحة</span>
           </div>
-          <div className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
+          <div role="progressbar" aria-label="نسبة الصفحات المحفوظة بالكامل" aria-valuemin={0} aria-valuemax={TOTAL_QURAN_PAGES} aria-valuenow={totalMemorizedPages} className="w-full bg-[#E8DFC9]/40 dark:bg-[#18332E] h-1.5 rounded-full mt-3 overflow-hidden">
             <div className="bg-[#B99B62] h-full rounded-full" style={{ width: `${pagesPercentage}%` }} />
           </div>
           <div className="text-[11px] text-[#B99B62] dark:text-[#C8AD73] mt-1.5 font-medium">
