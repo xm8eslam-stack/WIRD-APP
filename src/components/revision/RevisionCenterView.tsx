@@ -71,9 +71,55 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Active review drawer / modal for rating a portion
   const [ratingPortion, setRatingPortion] = useState<PortionStatusRecord | null>(null);
+  const ratingDialogRef = useRef<HTMLDivElement>(null);
+  const ratingCloseRef = useRef<HTMLButtonElement>(null);
+  const ratingTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
   const [weakAyahNum, setWeakAyahNum] = useState<number | ''>('');
   const [isSavingRating, setIsSavingRating] = useState(false);
+
+  useEffect(() => {
+    if (!ratingPortion) return;
+    const trigger = ratingTriggerRef.current;
+    ratingCloseRef.current?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        if (isSavingRating) return;
+        event.preventDefault();
+        setRatingPortion(null);
+        setReviewNotes('');
+        setWeakAyahNum('');
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const dialog = ratingDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
+      (ratingTriggerRef.current ?? trigger)?.focus();
+    };
+  }, [ratingPortion, isSavingRating]);
+
   const ratingInFlightRef = useRef(false);
   const ratingMutationKeyRef = useRef<string | null>(null);
   const ratingMutationIdRef = useRef<string | null>(null);
@@ -783,7 +829,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
                         <button
                           disabled={isSavingRating}
-                          onClick={() => { setRatingPortion(item); setReviewNotes(''); setWeakAyahNum(''); }}
+                          onClick={(event) => { ratingTriggerRef.current = event.currentTarget; setRatingPortion(item); setReviewNotes(''); setWeakAyahNum(''); }}
                           className="min-h-11 py-2 px-1 text-center bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
@@ -1168,12 +1214,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: RATE FAILED REVISION DETAILS */}
       {ratingPortion && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div ref={ratingDialogRef} role="dialog" aria-modal="true" aria-labelledby="revision-rating-dialog-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="revision-rating-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
               </h3>
-              <button disabled={isSavingRating} onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="text-stone-400 hover:text-stone-600">
+              <button ref={ratingCloseRef} type="button" aria-label="إغلاق نافذة تسجيل التعثر" disabled={isSavingRating} onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1217,7 +1263,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 type="button"
                 disabled={isSavingRating}
                 onClick={() => { setRatingPortion(null); setReviewNotes(''); setWeakAyahNum(''); }}
-                className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold"
+                className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 إلغاء
               </button>
@@ -1225,7 +1271,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 type="button"
                 disabled={isSavingRating}
                 onClick={() => handleRatePortion('failed')}
-                className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors"
+                className="min-h-11 px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
               >
                 تأكيد التسجيل كـ "غير متقن"
               </button>
