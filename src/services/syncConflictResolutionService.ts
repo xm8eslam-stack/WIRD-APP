@@ -185,9 +185,9 @@ export interface KeepLocalConflictResolutionResult {
 
 /**
  * Keep the current local full snapshot and queue one consolidated replacement
- * against the latest authoritative remote revision. This first executor is
- * deliberately limited to single-collection upserts; grouped syncMeta and
- * tombstones fail closed until their semantics are implemented separately.
+ * against the latest authoritative remote revision. Grouped syncMeta upserts
+ * are rebuilt from verified local collection snapshots and committed as one
+ * journal mutation. Tombstones and additive Ruqyah counters remain fail-closed.
  */
 export async function resolveProjectionConflictUsingLocal(
   eventId: string
