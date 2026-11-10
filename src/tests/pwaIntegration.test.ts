@@ -50,6 +50,11 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     const swContent = fs.readFileSync(swPath, 'utf8');
     assert(swContent.includes("CACHE_NAME = 'wird-app-v3'"), 'SW must declare the upgraded shell cache version');
     assert(swContent.includes("AUDIO_CACHE_NAME = 'wird-app-audio-v1'"), 'Session audio must use a separate persistent cache');
+    assert(swContent.includes("QURAN_PAGE_CACHE_NAME = 'wird-app-quran-pages-v1'"), 'Printed Quran pages must use a dedicated cache');
+    assert(swContent.includes("url.hostname === 'cdn.quran.ws'"), 'Only the approved Quran artwork host may be cached');
+    assert(swContent.includes("/svg/pages/v1.1.1/hafs-kfqc/"), 'Printed pages must be pinned to a reviewed Hafs/KFGQPC release');
+    assert(swContent.includes('MAX_CACHED_QURAN_PAGES = 12'), 'Printed page cache must remain bounded');
+    assert(swContent.includes('name !== QURAN_PAGE_CACHE_NAME'), 'Printed page cache must survive service-worker upgrades');
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
     assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
