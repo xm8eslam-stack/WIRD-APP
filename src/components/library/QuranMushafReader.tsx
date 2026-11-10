@@ -670,7 +670,11 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               <select
                 aria-label="عدد مرات تكرار المقطع الصوتي"
                 value={segmentRepeatCount}
-                onChange={event => setSegmentRepeatCount(saveAudioRepeatCount(Number(event.target.value)))}
+                onChange={event => {
+                  const next = saveAudioRepeatCount(Number(event.target.value));
+                  setSegmentRepeatCount(next);
+                  audioQueueRef.current?.setRepeatCount(next === -1 ? null : next);
+                }}
                 className="min-h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
               >
                 <option value={1}>مرة</option>
