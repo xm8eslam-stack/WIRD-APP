@@ -62,6 +62,66 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('Engine-plan snapshots accept a larger bounded payload while ordinary mutations keep the 128 KB cap', async () => {
+      const { journal } = createJournal('engine-plan-payload-budget');
+      const largePlanPayload = { records: [{ id: 'plan-large', data: 'x'.repeat(140_000) }] };
+      const queued = await journal.enqueue({
+        mutationId: 'engine-plan-large-payload',
+        collection: 'enginePlans',
+        documentId: 'snapshot',
+        payload: largePlanPayload,
+        nowMs: 1501
+      });
+      assert(queued.status === 'queued', 'A 140 KB engine-plan snapshot must fit the dedicated plan budget');
+
+      const grouped = await journal.enqueue({
+        mutationId: 'grouped-engine-plan-large-payload',
+        collection: 'syncMeta',
+        documentId: 'group-large-plan',
+        payload: {
+          transaction: {
+            version: 1,
+            operations: [{
+              collection: 'enginePlans',
+              documentId: 'snapshot',
+              operation: 'upsert',
+              payload: { records: [{ id: 'grouped-plan', data: 'x'.repeat(140_000) }] }
+            }]
+          }
+        },
+        nowMs: 1502
+      });
+      assert(grouped.status === 'queued',
+        'A grouped syncMeta transaction containing an engine-plan snapshot must use the plan-specific budget');
+
+      let ordinaryRejected = false;
+      try {
+        await journal.enqueue({
+          mutationId: 'ordinary-large-payload',
+          collection: 'plans',
+          documentId: 'snapshot',
+          payload: { records: [{ data: 'x'.repeat(140_000) }] },
+          nowMs: 1504
+        });
+      } catch { ordinaryRejected = true; }
+      assert(ordinaryRejected, 'Other collections must retain the smaller 128 KB safety limit');
+
+      let overBudgetRejected = false;
+      try {
+        await journal.enqueue({
+          mutationId: 'engine-plan-over-budget',
+          collection: 'enginePlans',
+          documentId: 'snapshot',
+          payload: { records: [{ id: 'plan-too-large', data: 'x'.repeat(450_001) }] },
+          nowMs: 1503
+        });
+      } catch { overBudgetRejected = true; }
+      const events = await journal.listEvents();
+      assert(overBudgetRejected && events.length === 2,
+        'An engine-plan payload above 450 KB must be rejected without appending a partial event');
+      journal.close();
+    });
+
     await test('Two tabs serialize duplicate enqueue and preserve exactly one event/outbox pair', async () => {
       const { factory, databaseName, journal } = createJournal();
       const secondTab = new IndexedDbSyncJournal({ indexedDBFactory: factory, databaseName });
