@@ -445,6 +445,40 @@ function stableSerialize(value: unknown): string {
   return JSON.stringify(value) ?? 'null';
 }
 
+/**
+ * Deterministic, non-cryptographic snapshot identity used only as a compare-and-set
+ * precondition. It prevents an old full snapshot from silently replacing a
+ * divergent local weak-verse or daily-activity archive.
+ */
+export function createJournalSnapshotFingerprint(value: unknown): string {
+  const source = stableSerialize(value);
+  let hashA = 0x811c9dc5;
+  let hashB = 0x9e3779b9;
+  for (let index = 0; index < source.length; index++) {
+    const code = source.charCodeAt(index);
+    hashA = Math.imul(hashA ^ code, 0x01000193);
+    hashB = Math.imul(hashB ^ code, 0x85ebca6b);
+  }
+  return source.length.toString(36) + ':' +
+    (hashA >>> 0).toString(16).padStart(8, '0') + ':' +
+    (hashB >>> 0).toString(16).padStart(8, '0');
+}
+
+function canApplySnapshotPrecondition(
+  payload: Record<string, unknown>,
+  current: unknown[],
+  next: unknown[]
+): boolean {
+  if (Object.prototype.hasOwnProperty.call(payload, 'baseSnapshotFingerprint')) {
+    return typeof payload.baseSnapshotFingerprint === 'string' &&
+      payload.baseSnapshotFingerprint === createJournalSnapshotFingerprint(current);
+  }
+  // Legacy events did not carry a base fingerprint. They may bootstrap an
+  // empty archive or replay an identical projection, but must not overwrite
+  // a non-empty divergent archive.
+  return current.length === 0 || stableSerialize(current) === stableSerialize(next);
+}
+
 function isPlainRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -1544,8 +1578,13 @@ export const StorageService = {
         return Array.isArray(payload.records) && this.saveEnginePlans(payload.records as EngineGeneratedPlan[]);
       case 'portions':
         return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[], payload.recoveryFromLegacy === true, payload.migration === true || payload.validatedImport === true);
-      case 'weakVerses':
-        return Array.isArray(payload.records) && this.saveWeakVerses(payload.records as WeakVerseItem[]);
+      case 'weakVerses': {
+        if (!Array.isArray(payload.records)) return false;
+        let current: WeakVerseItem[];
+        try { current = this.getWeakVerses(); } catch { return false; }
+        if (!canApplySnapshotPrecondition(payload, current, payload.records)) return false;
+        return this.saveWeakVerses(payload.records as WeakVerseItem[]);
+      }
       case 'tests': {
         if (!Array.isArray(payload.records) || payload.records.length > 50 ||
             !payload.records.every(isValidTestResultRecord)) return false;
@@ -1559,8 +1598,13 @@ export const StorageService = {
         const merged = mergeTestResultSnapshots(this.getTests(), payload.records);
         return merged !== null && this.saveTests(merged);
       }
-      case 'activityEvents':
-        return Array.isArray(payload.records) && this.saveLogs(payload.records as DailyLog[]);
+      case 'activityEvents': {
+        if (!Array.isArray(payload.records)) return false;
+        let current: DailyLog[];
+        try { current = this.getLogs(); } catch { return false; }
+        if (!canApplySnapshotPrecondition(payload, current, payload.records)) return false;
+        return this.saveLogs(payload.records as DailyLog[]);
+      }
       case 'ruqyahProgress':
         return isValidRuqyahProgressSnapshot(payload.snapshot) && this.saveRuqyahProgressSnapshot(payload.snapshot);
       default:
@@ -1764,7 +1808,7 @@ export const StorageService = {
     minutes: number,
     taskName: string
   ):
-    | { success: true; logs: DailyLog[]; profile: UserProfile }
+    | { success: true; logs: DailyLog[]; profile: UserProfile; baseLogsFingerprint: string }
     | { success: false; error: string } {
     if (!Number.isSafeInteger(memorizedAyahs) || memorizedAyahs < 0 || memorizedAyahs > 6236 ||
         !Number.isSafeInteger(reviewedPages) || reviewedPages < 0 || reviewedPages > 604 ||
@@ -1783,6 +1827,7 @@ export const StorageService = {
     let profile: UserProfile;
     try {
       logs = this.getLogs().map(log => ({ ...log, completedTasks: [...log.completedTasks] }));
+      const baseLogsFingerprint = createJournalSnapshotFingerprint(logs);
       if (profileRaw === null) {
         profile = { ...CLEAN_INITIAL_PROFILE };
       } else {
@@ -1833,7 +1878,7 @@ export const StorageService = {
       return { success: false, error: 'نتيجة تحديث سلسلة النشاط غير صالحة؛ لم يتم تعديل الملف الشخصي.' };
     }
 
-    return { success: true, logs, profile: updatedProfile };
+    return { success: true, logs, profile: updatedProfile, baseLogsFingerprint };
   },
 
   // Detailed result lets callers report when a multi-key rollback could not be verified.
