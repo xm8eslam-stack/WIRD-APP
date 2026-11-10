@@ -729,14 +729,44 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            aria-pressed={isWidePage}
-            onClick={() => setIsWidePage(value => !value)}
-            className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
-          >
-            {isWidePage ? 'تقليل عرض الصفحة' : 'توسيع مساحة القراءة'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-stone-600 dark:text-stone-300">
+              <span>تباعد الأسطر</span>
+              <select
+                aria-label="تباعد أسطر المصحف"
+                value={lineSpacing}
+                onChange={event => setLineSpacing(event.target.value as MushafLineSpacing)}
+                className="min-h-11 rounded-lg border border-stone-200 bg-white px-2.5 text-xs dark:border-stone-700 dark:bg-stone-800"
+              >
+                <option value="compact">متقارب</option>
+                <option value="normal">مريح</option>
+                <option value="relaxed">متباعد</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              aria-pressed={isWidePage}
+              onClick={() => { setIsFullWidth(false); setIsWidePage(value => !value); }}
+              className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+            >
+              {isWidePage ? 'تقليل عرض الصفحة' : 'توسيع مساحة القراءة'}
+            </button>
+            <button
+              type="button"
+              aria-pressed={isFullWidth}
+              onClick={() => setIsFullWidth(value => !value)}
+              className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${isFullWidth ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-stone-200 bg-white text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200'}`}
+            >
+              ملء الشاشة
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTextScale('large'); setLineSpacing('normal'); setIsWidePage(false); setIsFullWidth(false); }}
+              className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+            >
+              إعادة ضبط العرض
+            </button>
+          </div>
         </div>
 
         <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400" role="note">
