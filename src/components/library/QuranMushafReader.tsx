@@ -21,8 +21,9 @@ import { QURAN_JUZ_STARTS, QURAN_HIZB_QUARTER_STARTS } from '../../data/quranNav
 import { loadSurahVerses } from '../../data/quranDataLoader';
 import { findSurahStartPage } from '../../data/quranNavigation';
 import { RECITERS, formatAyahAudioUrl, requestOfflineAudioCache } from '../../services/audioService';
-import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
-import type { PlaybackRate } from '../../services/audioPreferences';
+import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
+import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPreferences';
+import { QuranAudioQueueController } from '../../services/audioQueueController';
 import type { Ayah, ReciterId } from '../../types/quran';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { TafsirSheet } from './TafsirSheet';
@@ -57,13 +58,22 @@ const LAST_PAGE_KEY = 'wird.quran.lastPage.v1';
 const BOOKMARKS_KEY = 'wird.quran.pageBookmarks.v1';
 const MUSHAF_TEXT_SCALE_KEY = 'wird.quran.mushafTextScale.v1';
 const MUSHAF_PAGE_WIDTH_KEY = 'wird.quran.mushafPageWidth.v1';
+const MUSHAF_FULL_WIDTH_KEY = 'wird.quran.mushafFullWidth.v1';
+const MUSHAF_LINE_SPACING_KEY = 'wird.quran.mushafLineSpacing.v1';
 
 type MushafTextScale = 'comfortable' | 'large' | 'extraLarge';
+type MushafLineSpacing = 'compact' | 'normal' | 'relaxed';
 
 const MUSHAF_TEXT_SCALE_CLASSES: Record<MushafTextScale, string> = {
-  comfortable: 'text-[1.35rem] md:text-[1.6rem] leading-[2.35] md:leading-[2.5]',
-  large: 'text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75]',
-  extraLarge: 'text-[1.8rem] md:text-[2.1rem] leading-[2.7] md:leading-[2.9]',
+  comfortable: 'text-[1.35rem] md:text-[1.6rem]',
+  large: 'text-[1.55rem] md:text-[1.85rem]',
+  extraLarge: 'text-[1.8rem] md:text-[2.1rem]',
+};
+
+const MUSHAF_LINE_SPACING_CLASSES: Record<MushafLineSpacing, string> = {
+  compact: 'leading-[2.1] md:leading-[2.3]',
+  normal: 'leading-[2.35] md:leading-[2.55]',
+  relaxed: 'leading-[2.6] md:leading-[2.85]',
 };
 
 function readMushafTextScale(): MushafTextScale {
@@ -76,6 +86,18 @@ function readMushafTextScale(): MushafTextScale {
 function readMushafPageWidth(): boolean {
   try { return localStorage.getItem(MUSHAF_PAGE_WIDTH_KEY) === 'wide'; }
   catch { return false; }
+}
+
+function readMushafFullWidth(): boolean {
+  try { return localStorage.getItem(MUSHAF_FULL_WIDTH_KEY) === 'true'; }
+  catch { return false; }
+}
+
+function readMushafLineSpacing(): MushafLineSpacing {
+  try {
+    const value = localStorage.getItem(MUSHAF_LINE_SPACING_KEY);
+    return value === 'compact' || value === 'relaxed' ? value : 'normal';
+  } catch { return 'normal'; }
 }
 const PAGE_INDEX = QURAN_PAGE_INDEX as unknown as Record<string, PageSegment[]>;
 const JUZ_INDEX = QURAN_JUZ_STARTS as unknown as Record<string, NavigationPoint>;
@@ -106,12 +128,18 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [pageJumpError, setPageJumpError] = useState('');
   const [textScale, setTextScale] = useState<MushafTextScale>(readMushafTextScale);
   const [isWidePage, setIsWidePage] = useState(readMushafPageWidth);
+  const [isFullWidth, setIsFullWidth] = useState(readMushafFullWidth);
+  const [lineSpacing, setLineSpacing] = useState<MushafLineSpacing>(readMushafLineSpacing);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(getSavedPlaybackRate);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioPaused, setIsAudioPaused] = useState(false);
+  const [segmentStartIndex, setSegmentStartIndex] = useState(0);
+  const [segmentEndIndex, setSegmentEndIndex] = useState(0);
+  const [segmentRepeatCount, setSegmentRepeatCount] = useState<AudioRepeatCount>(getSavedAudioRepeatCount);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
@@ -126,7 +154,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     : ayahs;
   useEffect(() => { setPrintedPageAyahs(null); }, [page]);
   const [pageTurnDirection, setPageTurnDirection] = useState<'next' | 'previous'>('next');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<QuranAudioQueueController | null>(null);
   const autoPlayNextPageRef = useRef(false);
   const pendingTargetRef = useRef<{ surahNumber: number; ayahNumber: number } | null>(null);
   const touchStartX = useRef<number | null>(null);
@@ -138,8 +166,10 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setIsLoading(true);
     setLoadError(null);
     setAyahs([]);
-    audioRef.current?.pause();
+    audioQueueRef.current?.stop();
+    audioQueueRef.current = null;
     setIsPlaying(false);
+    setIsAudioPaused(false);
     setPlayingIndex(null);
 
     if (!pageSegments.length) {
@@ -182,56 +212,106 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     try { localStorage.setItem(MUSHAF_PAGE_WIDTH_KEY, isWidePage ? 'wide' : 'comfortable'); } catch { /* Reading controls remain usable without storage. */ }
   }, [isWidePage]);
 
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_FULL_WIDTH_KEY, String(isFullWidth)); } catch { /* Reading controls remain usable without storage. */ }
+  }, [isFullWidth]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_LINE_SPACING_KEY, lineSpacing); } catch { /* Reading controls remain usable without storage. */ }
+  }, [lineSpacing]);
+
+  useEffect(() => {
+    setSegmentStartIndex(0);
+    setSegmentEndIndex(Math.max(0, audioAyahs.length - 1));
+  }, [page, audioAyahs.length]);
+
   useEffect(() => () => {
-    audioRef.current?.pause();
-    audioRef.current = null;
+    audioQueueRef.current?.stop();
+    audioQueueRef.current = null;
   }, []);
 
   const stopAudio = () => {
-    audioRef.current?.pause();
+    audioQueueRef.current?.stop();
+    audioQueueRef.current = null;
     setIsPlaying(false);
+    setIsAudioPaused(false);
     setPlayingIndex(null);
   };
 
+  const startAudioQueue = (
+    queue: Ayah[],
+    startIndex: number,
+    endIndex: number,
+    repeatCount: AudioRepeatCount,
+    continueAcrossPages: boolean
+  ) => {
+    if (!queue.length || startIndex < 0 || endIndex < startIndex || endIndex >= queue.length) return;
+    stopAudio();
+    const tracks = queue.map(ayah => ({
+      id: String(ayah.number),
+      url: formatAyahAudioUrl(ayah.surahNumber, ayah.numberInSurah, activeReciter)
+    }));
+    const cacheUpcoming = (index: number) => {
+      requestOfflineAudioCache(tracks.slice(index, Math.min(endIndex + 1, index + 20)).map(track => track.url));
+    };
+    cacheUpcoming(startIndex);
+
+    const controller = new QuranAudioQueueController({
+      onTrackChange: index => {
+        setPlayingIndex(index);
+        if ((index - startIndex) % 10 === 0) cacheUpcoming(index);
+      },
+      onPlaying: () => { setIsPlaying(true); setIsAudioPaused(false); },
+      onPaused: () => { setIsPlaying(false); setIsAudioPaused(true); },
+      onComplete: () => {
+        if (audioQueueRef.current !== controller) return;
+        audioQueueRef.current = null;
+        setIsPlaying(false);
+        setIsAudioPaused(false);
+        setPlayingIndex(null);
+        if (continueAcrossPages && page < 604) {
+          autoPlayNextPageRef.current = true;
+          setPage(page + 1);
+        }
+      },
+      onError: error => {
+        console.warn('[WIRD Mushaf] Quran audio queue failed:', error);
+        if (audioQueueRef.current !== controller) return;
+        audioQueueRef.current = null;
+        setIsPlaying(false);
+        setIsAudioPaused(false);
+        setPlayingIndex(null);
+      }
+    });
+    audioQueueRef.current = controller;
+    try {
+      controller.start({
+        tracks,
+        startIndex,
+        endIndex,
+        repeatCount: repeatCount === -1 ? null : repeatCount,
+        playbackRate: getSavedPlaybackRate()
+      });
+      setPlayingIndex(startIndex);
+      setIsPlaying(true);
+      setIsAudioPaused(false);
+    } catch (error) {
+      controller.stop();
+      audioQueueRef.current = null;
+      setIsPlaying(false);
+      setIsAudioPaused(false);
+      setPlayingIndex(null);
+      console.warn('[WIRD Mushaf] Could not start Quran audio queue:', error);
+    }
+  };
+
   const playAyahAt = (index: number, queue: Ayah[] = audioAyahs) => {
-    const ayah = queue[index];
-    if (!ayah) {
+    if (!queue[index]) {
       setIsPlaying(false);
       setPlayingIndex(null);
       return;
     }
-
-    audioRef.current?.pause();
-    requestOfflineAudioCache(
-      queue.slice(index, index + 20).map(item => formatAyahAudioUrl(item.surahNumber, item.numberInSurah, activeReciter))
-    );
-    const audio = new Audio(formatAyahAudioUrl(ayah.surahNumber, ayah.numberInSurah, activeReciter));
-    audio.playbackRate = getSavedPlaybackRate();
-    audioRef.current = audio;
-    setPlayingIndex(index);
-    setIsPlaying(true);
-
-    audio.onended = () => {
-      if (index + 1 < queue.length) playAyahAt(index + 1, queue);
-      else if (page < 604) {
-        autoPlayNextPageRef.current = true;
-        setIsPlaying(false);
-        setPlayingIndex(null);
-        setPage(page + 1);
-      } else {
-        setIsPlaying(false);
-        setPlayingIndex(null);
-      }
-    };
-    audio.onerror = () => {
-      setIsPlaying(false);
-      setPlayingIndex(null);
-    };
-    audio.play().catch(error => {
-      console.warn('[WIRD Mushaf] Audio playback failed:', error);
-      setIsPlaying(false);
-      setPlayingIndex(null);
-    });
+    startAudioQueue(queue, index, queue.length - 1, 1, true);
   };
 
   useEffect(() => {
@@ -242,17 +322,16 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   }, [audioAyahs, isLoading, page]);
 
   const togglePageAudio = () => {
-    if (isPlaying) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
+    const controller = audioQueueRef.current;
+    if (controller?.getState().active) {
+      if (controller.getState().paused) controller.resume();
+      else controller.pause();
       return;
     }
-    if (audioRef.current && playingIndex !== null) {
-      audioRef.current.playbackRate = getSavedPlaybackRate();
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-      return;
+    if (audioAyahs.length) {
+      const fullPage = segmentStartIndex === 0 && segmentEndIndex === audioAyahs.length - 1;
+      startAudioQueue(audioAyahs, segmentStartIndex, segmentEndIndex, segmentRepeatCount, fullPage);
     }
-    if (audioAyahs.length) playAyahAt(0, audioAyahs);
   };
 
   const changePage = (nextPage: number) => {
@@ -347,7 +426,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const handlePlaybackRateChange = (rate: PlaybackRate) => {
     const savedRate = savePlaybackRate(rate);
     setPlaybackRate(savedRate);
-    if (audioRef.current) audioRef.current.playbackRate = savedRate;
+    audioQueueRef.current?.setPlaybackRate(savedRate);
   };
 
   const selectReaderLayout = (layout: 'flow' | 'printed') => {
@@ -360,7 +439,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const currentJuz = audioAyahs.length ? audioAyahs[0].juz : Math.ceil(page / 20);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className={`space-y-6 ${isFullWidth ? 'max-w-none' : 'max-w-7xl'} mx-auto pb-12`}>
       {/* Top Control Bar: Elegant, Floating, Responsive */}
       <header className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-[#fffdfa]/95 dark:bg-stone-900/95 backdrop-blur-md p-4 shadow-sm space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -551,6 +630,62 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
             <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
 
+            <label className="inline-flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+              <span>من</span>
+              <select
+                aria-label="بداية المقطع الصوتي"
+                value={segmentStartIndex}
+                disabled={!audioAyahs.length}
+                onChange={event => {
+                  const next = Number(event.target.value);
+                  setSegmentStartIndex(next);
+                  if (segmentEndIndex < next) setSegmentEndIndex(next);
+                }}
+                className="min-h-11 max-w-32 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
+              >
+                {audioAyahs.map((ayah, index) => (
+                  <option key={ayah.number} value={index}>{ayah.surahNumber}:{ayah.numberInSurah}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+              <span>إلى</span>
+              <select
+                aria-label="نهاية المقطع الصوتي"
+                value={segmentEndIndex}
+                disabled={!audioAyahs.length}
+                onChange={event => setSegmentEndIndex(Number(event.target.value))}
+                className="min-h-11 max-w-32 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
+              >
+                {audioAyahs.slice(segmentStartIndex).map((ayah, offset) => {
+                  const index = segmentStartIndex + offset;
+                  return <option key={ayah.number} value={index}>{ayah.surahNumber}:{ayah.numberInSurah}</option>;
+                })}
+              </select>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+              <span>التكرار</span>
+              <select
+                aria-label="عدد مرات تكرار المقطع الصوتي"
+                value={segmentRepeatCount}
+                onChange={event => {
+                  const next = saveAudioRepeatCount(Number(event.target.value));
+                  setSegmentRepeatCount(next);
+                  audioQueueRef.current?.setRepeatCount(next === -1 ? null : next);
+                }}
+                className="min-h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
+              >
+                <option value={1}>مرة</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={-1}>مستمر</option>
+              </select>
+            </label>
+
             <button
               type="button"
               onClick={togglePageAudio}
@@ -560,7 +695,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               }`}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              <span>{isPlaying ? 'إيقاف مؤقت' : 'استماع للصفحة'}</span>
+              <span>{isPlaying ? 'إيقاف مؤقت' : isAudioPaused ? 'استئناف التلاوة' : 'استماع للمقطع'}</span>
             </button>
           </div>
         </div>
@@ -572,7 +707,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={readerLayout === 'printed' ? "mx-auto w-full max-w-4xl" : `mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} aria-label={`صفحة المصحف ${page}`} data-mushaf-page-width={isFullWidth ? 'full' : isWidePage ? 'wide' : 'comfortable'} className={readerLayout === 'printed' ? `mx-auto w-full ${isFullWidth ? 'max-w-none' : isWidePage ? 'max-w-6xl' : 'max-w-4xl'}` : `mushaf-page-frame mx-auto ${isFullWidth ? 'max-w-none' : isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {readerLayout === 'printed' ? (
           <QuranMushafFacsimilePage page={page} onAyahsResolved={setPrintedPageAyahs} selectedAyah={tafsirAyah} onSelectAyah={setTafsirAyah} onFallback={() => selectReaderLayout('flow')} />
         ) : (
@@ -605,14 +740,44 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            aria-pressed={isWidePage}
-            onClick={() => setIsWidePage(value => !value)}
-            className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
-          >
-            {isWidePage ? 'تقليل عرض الصفحة' : 'توسيع مساحة القراءة'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex min-h-11 items-center gap-2 text-xs font-semibold text-stone-600 dark:text-stone-300">
+              <span>تباعد الأسطر</span>
+              <select
+                aria-label="تباعد أسطر المصحف"
+                value={lineSpacing}
+                onChange={event => setLineSpacing(event.target.value as MushafLineSpacing)}
+                className="min-h-11 rounded-lg border border-stone-200 bg-white px-2.5 text-xs dark:border-stone-700 dark:bg-stone-800"
+              >
+                <option value="compact">متقارب</option>
+                <option value="normal">مريح</option>
+                <option value="relaxed">متباعد</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              aria-pressed={isWidePage}
+              onClick={() => { setIsFullWidth(false); setIsWidePage(value => !value); }}
+              className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+            >
+              {isWidePage ? 'تقليل عرض الصفحة' : 'توسيع مساحة القراءة'}
+            </button>
+            <button
+              type="button"
+              aria-pressed={isFullWidth}
+              onClick={() => setIsFullWidth(value => !value)}
+              className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${isFullWidth ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-stone-200 bg-white text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200'}`}
+            >
+              ملء الشاشة
+            </button>
+            <button
+              type="button"
+              onClick={() => { setTextScale('large'); setLineSpacing('normal'); setIsWidePage(false); setIsFullWidth(false); }}
+              className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+            >
+              إعادة ضبط العرض
+            </button>
+          </div>
         </div>
 
         <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400" role="note">
@@ -651,7 +816,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Verses Flow with Authentic Typography */}
         {!isLoading && !loadError && ayahs.length > 0 && (
-          <div className={`text-right font-quran ${MUSHAF_TEXT_SCALE_CLASSES[textScale]} text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950`}>
+          <div data-mushaf-line-spacing={lineSpacing} className={`text-right font-quran ${MUSHAF_TEXT_SCALE_CLASSES[textScale]} ${MUSHAF_LINE_SPACING_CLASSES[lineSpacing]} text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950`}>
             {ayahs.map((ayah, index) => {
               const surah = ALL_SURAHS.find(item => item.number === ayah.surahNumber);
               const isCurrent = playingIndex === index && isPlaying;
