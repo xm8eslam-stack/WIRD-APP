@@ -45,17 +45,17 @@ export function assertMushafPageAyahCoverage(
   polygons: readonly MushafAyahPolygon[]
 ): void {
   if (!expectedAyahs.length || !polygons.length) {
-    throw new Error('Printed page is missing expected local ayahs or ayah hit regions.');
+    throw new Error('صفحة المصحف لا تحتوي على كل الآيات أو مناطق تحديدها المطلوبة.');
   }
 
   const expected = new Set<string>();
   for (const ayah of expectedAyahs) {
     if (!Number.isInteger(ayah.surahNumber) || ayah.surahNumber < 1 || ayah.surahNumber > 114 ||
         !Number.isInteger(ayah.numberInSurah) || ayah.numberInSurah < 1) {
-      throw new Error('WIRD local Quran coordinates are invalid for this printed page.');
+      throw new Error('إحداثيات الآيات المحلية في وِرد غير صالحة لهذه الصفحة.');
     }
     const key = `${ayah.surahNumber}:${ayah.numberInSurah}`;
-    if (expected.has(key)) throw new Error('WIRD local Quran coordinates contain a duplicate ayah.');
+    if (expected.has(key)) throw new Error('بيانات وِرد المحلية تحتوي على إحداثيات آية مكررة.');
     expected.add(key);
   }
 
@@ -66,14 +66,14 @@ export function assertMushafPageAyahCoverage(
         typeof polygon.path !== 'string' || !polygon.path.trim() ||
         polygon.path.length > 120_000 ||
         !/^[MmLlHhVvCcSsQqTtAaZz0-9., +eE-]+$/.test(polygon.path)) {
-      throw new Error('Printed Mushaf page contains an invalid ayah hit region.');
+      throw new Error('ملف المصحف المطبوع يحتوي على منطقة تحديد آية غير صالحة.');
     }
     const key = `${polygon.surahNumber}:${polygon.ayahNumber}`;
-    if (actual.has(key)) throw new Error('Printed Mushaf page contains a duplicate ayah hit region.');
+    if (actual.has(key)) throw new Error('ملف المصحف المطبوع يحتوي على منطقة تحديد مكررة.');
     actual.add(key);
   }
 
   if (actual.size !== expected.size || [...expected].some(key => !actual.has(key))) {
-    throw new Error('Printed Mushaf page ayah coordinates do not match WIRD local Quran data; the flexible text view remains available.');
+    throw new Error('مواضع الآيات في الصفحة المطبوعة لا تطابق إحداثيات وِرد المحلية؛ لم نعرض الصفحة.');
   }
 }
