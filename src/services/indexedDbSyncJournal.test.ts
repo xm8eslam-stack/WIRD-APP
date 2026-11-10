@@ -991,11 +991,6 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         payload: { records: [] },
         nowMs: 9612
       });
-      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
-      const localSnapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
-      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9613),
-        'The grouped conflict must be archived before a user decision');
-      const conflict = (await journal.listProjectionConflicts(10))[0];
       const localPayload = {
         transaction: {
           version: 1,
@@ -1005,6 +1000,18 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
           ]
         }
       };
+      await journal.enqueue({
+        mutationId: 'keep-local-grouped-local-transaction',
+        collection: 'syncMeta',
+        documentId: event.documentId,
+        payload: localPayload,
+        nowMs: 9613
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
+      assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9613),
+        'The grouped conflict must be archived before a user decision');
+      const conflict = (await journal.listProjectionConflicts(10))[0];
       await journal.prepareConflictResolutionIntent({
         decisionId: 'keep-local-grouped-syncmeta-decision',
         eventId: event.eventId,
