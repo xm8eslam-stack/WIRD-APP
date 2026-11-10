@@ -75,8 +75,9 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(mushafReader.includes('requestOfflineAudioCache('), 'Printed Mushaf playback must pre-cache its upcoming audio segment');
 
     assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
-    assert(swContent.includes("url.hostname !== 'everyayah.com'"), 'Only the approved recitation host may be pre-cached');
-    assert(swContent.includes("mode: 'no-cors'"), 'Cross-origin audio must support opaque CDN responses');
+    assert(swContent.includes("url.hostname === 'everyayah.com'"), 'EveryAyah audio must use an exact hostname allowlist');
+    assert(swContent.includes("url.hostname === 'cdn.islamic.network'"), 'Ruqyah CDN audio must use an exact hostname allowlist');
+    assert(swContent.includes("mode: isEveryAyah ? 'no-cors' : 'cors'"), 'Audio cache must use provider-appropriate CORS modes');
     assert(swContent.includes('name !== AUDIO_CACHE_NAME'), 'Audio cache must survive shell cache upgrades');
     assert(swContent.includes("event.waitUntil("), 'SW must handle install/activate wait');
     assert(swContent.includes("caches.delete"), 'SW must clean up old versioned caches on activate');
