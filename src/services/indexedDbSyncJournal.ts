@@ -2769,7 +2769,7 @@ export class IndexedDbSyncJournal {
             transaction.abort();
             return;
           }
-          const latestGroupedSnapshots = new Map<string, { documentId: string; payload: Record<string, unknown> }>();
+          const latestGroupedSnapshots = new Map<string, { documentId: string; payload: Record<string, unknown>; sequence: number }>();
           for (const localGroupedMutation of archivedMutations.filter(item => item.collection === 'syncMeta')) {
             const localTransaction = localGroupedMutation.payload.transaction;
             if (!isRecord(localTransaction) || localTransaction.version !== 1 ||
@@ -2789,7 +2789,8 @@ export class IndexedDbSyncJournal {
                   typeof operation.documentId === 'string' && isRecord(operation.payload)) {
                 latestGroupedSnapshots.set(operation.collection, {
                   documentId: operation.documentId,
-                  payload: operation.payload
+                  payload: operation.payload,
+                  sequence: localGroupedMutation.sequence
                 });
               }
             }
@@ -2797,8 +2798,10 @@ export class IndexedDbSyncJournal {
           for (const operation of groupedOperations) {
             const localForCollection = archivedMutations.filter(item => item.collection === operation.collection);
             const groupedSnapshot = latestGroupedSnapshots.get(operation.collection);
-            const expectedDocumentId = localForCollection[localForCollection.length - 1]?.documentId || groupedSnapshot?.documentId;
-            const expectedLocalPayload = localForCollection[localForCollection.length - 1]?.payload || groupedSnapshot?.payload;
+            const latestDirect = localForCollection[localForCollection.length - 1];
+            const groupedIsNewer = !!groupedSnapshot && (!latestDirect || groupedSnapshot.sequence > latestDirect.sequence);
+            const expectedDocumentId = groupedIsNewer ? groupedSnapshot?.documentId : (latestDirect?.documentId || groupedSnapshot?.documentId);
+            const expectedLocalPayload = groupedIsNewer ? groupedSnapshot?.payload : (latestDirect?.payload || groupedSnapshot?.payload);
             if ((expectedDocumentId && expectedDocumentId !== operation.documentId) ||
                 (expectedLocalPayload && stableStringify(expectedLocalPayload) !== stableStringify(operation.payload))) {
               failure = new Error('دليل إحدى المجموعات لا يطابق آخر لقطة محلية معتمدة؛ لم ننشئ عملية إعادة نشر.');
