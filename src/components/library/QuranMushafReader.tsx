@@ -371,7 +371,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               if (event.target.value) jumpToJuz(Number(event.target.value));
               event.currentTarget.value = '';
             }}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">انتقال إلى جزء...</option>
             {Array.from({ length: 30 }, (_, index) => index + 1).map(juz => (
@@ -386,7 +386,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               if (event.target.value) jumpToHizbQuarter(Number(event.target.value));
               event.currentTarget.value = '';
             }}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">انتقال إلى ربع حزب...</option>
             {Array.from({ length: 240 }, (_, index) => index + 1).map(quarter => (
@@ -401,7 +401,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               if (event.target.value) changePage(Number(event.target.value));
               event.currentTarget.value = '';
             }}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">العلامات المحفوظة ({bookmarks.length})</option>
             {bookmarks.map(savedPage => (
@@ -428,7 +428,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               type="button"
               disabled={page >= 604}
               onClick={() => changePage(page + 1)}
-              className="inline-flex items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
             >
               الصفحة التالية <ChevronLeft className="h-4 w-4" />
             </button>
