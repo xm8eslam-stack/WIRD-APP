@@ -145,8 +145,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Authentic Islamic geometric watermark */}
         <WirdIslamicPattern opacity={0.06} variant="gold" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl text-right">
+        <div className="relative z-10">
+          <div className="space-y-2 max-w-4xl text-right">
             <div className="flex items-center gap-2 text-[#F2EDE2] text-xs font-semibold">
               <span className="w-6 h-6 rounded-lg bg-[#C59B27]/20 border border-[#C59B27]/30 flex items-center justify-center shrink-0">
                 <WirdSymbol size={16} variant="gold" />
@@ -160,8 +160,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               «وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ» — استعن بالله وابدأ وِردك ليظل كتاب الله غضاً طرياً في صدرك.
             </p>
           </div>
-
-
         </div>
       </section>
 
