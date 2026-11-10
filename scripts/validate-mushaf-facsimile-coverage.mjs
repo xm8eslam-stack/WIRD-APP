@@ -33,10 +33,6 @@ if (totalLocalAyahs !== 6236 || localCoordinates.size !== 6236) {
   throw new Error('[WIRD Mushaf] Expected 6,236 unique local ayahs; found ' + totalLocalAyahs + '.');
 }
 
-function readAttribute(tag, name) {
-  return tag.match(new RegExp('\\\\b' + name + '=["\\']([^"\\']*)["\\']', 'i'))?.[1] ?? null;
-}
-
 async function fetchPage(page) {
   const file = String(page).padStart(3, '0') + '.svg';
   const url = 'https://raw.githubusercontent.com/quran-ws/quran-svg/' + commit + '/mushafs/hafs/kfqc/svg/' + file;
@@ -48,21 +44,21 @@ async function fetchPage(page) {
       const contentType = (response.headers.get('content-type') || '').toLowerCase();
       if (!contentType.includes('image/svg+xml')) throw new Error('Unexpected SVG content type: ' + contentType);
       const markup = await response.text();
-      if (!/<svg\\b/i.test(markup) || markup.length < 100) throw new Error('Malformed or empty SVG page.');
-      const tags = [...markup.matchAll(/<path\\b[^>]*class=["'][^"']*\\bayahPolygon\\b[^"']*["'][^>]*>/gi)].map(match => match[0]);
+      if (!/<svg\b/i.test(markup) || markup.length < 100) throw new Error('Malformed or empty SVG page.');
+      const tags = [...markup.matchAll(/<path\b[^>]*class=["'][^"']*\bayahPolygon\b[^"']*["'][^>]*>/gi)].map(match => match[0]);
       if (!tags.length || tags.length > 100) throw new Error('Page has no complete ayah hit-region layer.');
 
       const pageCoordinates = new Set();
       for (const tag of tags) {
-        const surahNumber = Number(readAttribute(tag, 'surah'));
-        const ayahNumber = Number(readAttribute(tag, 'ayah'));
+        const surahNumber = Number(tag.match(/\bsurah="([^"]*)"/i)?.[1]);
+        const ayahNumber = Number(tag.match(/\bayah="([^"]*)"/i)?.[1]);
         const key = surahNumber + ':' + ayahNumber;
-        const pathData = readAttribute(tag, 'd') || '';
+        const pathData = tag.match(/\bd="([^"]*)"/i)?.[1] ?? '';
         const commands = pathData.match(/[A-Za-z]/g) ?? [];
-        const numbers = pathData.match(/[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?/g)?.map(Number) ?? [];
+        const numbers = pathData.match(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?/g)?.map(Number) ?? [];
         const unsupported = pathData
-          .replace(/[-+]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][-+]?\\d+)?|[MLZmlz]/g, '')
-          .replace(/[\\s,]/g, '');
+          .replace(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|[MLZmlz]/g, '')
+          .replace(/[\s,]/g, '');
         if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 ||
             !Number.isInteger(ayahNumber) || ayahNumber < 1 ||
             unsupported || numbers.length < 6 || numbers.length % 2 !== 0 ||
