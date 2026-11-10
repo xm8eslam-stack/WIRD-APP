@@ -124,7 +124,7 @@ test.describe('Memorization session audio repetition', () => {
       const saved = JSON.parse(localStorage.getItem('wird:memorization-display:v1') || '{}');
       return saved.uiScale;
     })).toBe(80);
-    await scale.press('ArrowRight');
+    await scale.press('ArrowLeft'); // RTL range inputs increase toward the left.
     await expect.poll(() => page.evaluate(() => {
       const saved = JSON.parse(localStorage.getItem('wird:memorization-display:v1') || '{}');
       return saved.uiScale;
