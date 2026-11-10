@@ -237,6 +237,7 @@ test('full Mushaf page playback continues automatically into the next page', asy
   await page.getByRole('button', { name: 'فتح المصحف' }).click();
   await expect(page.locator('[id^="wird-ayah-"]').first()).toBeVisible();
   const firstPageAyahCount = await page.locator('[id^="wird-ayah-"]').count();
+  await expect(page.getByLabel('نهاية المقطع الصوتي')).toHaveValue(String(firstPageAyahCount - 1));
   await page.getByRole('button', { name: 'استماع للمقطع' }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(0);
 
