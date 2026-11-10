@@ -18,6 +18,7 @@ import { loadSurahVerses, getAyahWords, loadSimpleAyahText, loadSimpleAyahRange 
 import { QuranBasmala } from '../shared/QuranBasmala';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
+import { QuranAudioQueueController } from '../../services/audioQueueController';
 import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
 import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPreferences';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
@@ -136,7 +137,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(() => getSavedPlaybackRate());
   const [audioRepeatCount, setAudioRepeatCount] = useState<AudioRepeatCount>(() => getSavedAudioRepeatCount());
+  const [segmentStartIndex, setSegmentStartIndex] = useState(0);
+  const [segmentEndIndex, setSegmentEndIndex] = useState(Math.max(0, sessionAyahs.length - 1));
+  const [isSegmentPlaying, setIsSegmentPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const segmentAudioQueueRef = useRef<QuranAudioQueueController | null>(null);
+  const queueAdvanceRef = useRef(false);
+  const currentAyahIndexRef = useRef(currentAyahIndex);
   const playbackIterationRef = useRef(1);
   const repeatTargetRef = useRef<number | null>(audioRepeatCount === -1 ? null : audioRepeatCount);
   const completionInProgressRef = useRef(false);
@@ -145,6 +152,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     const savedRate = savePlaybackRate(rate);
     setPlaybackRate(savedRate);
     if (audioRef.current) audioRef.current.playbackRate = savedRate;
+    segmentAudioQueueRef.current?.setPlaybackRate(savedRate);
   };
 
   const handleAudioRepeatCountChange = (count: AudioRepeatCount) => {
@@ -191,14 +199,30 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   // Reset revealed words when ayah or mask changes
   useEffect(() => {
+    currentAyahIndexRef.current = currentAyahIndex;
+  }, [currentAyahIndex]);
+
+  useEffect(() => {
+    setSegmentStartIndex(0);
+    setSegmentEndIndex(Math.max(0, sessionAyahs.length - 1));
+  }, [sessionAyahs.length, surahNumber, initialStartAyah, initialEndAyah]);
+
+  useEffect(() => {
     setRevealedWordIndices(new Set());
     setRepeatCount(0);
+    if (queueAdvanceRef.current) {
+      queueAdvanceRef.current = false;
+      return;
+    }
     handleStopAudio();
   }, [currentAyahIndex, maskLevel]);
 
   // Audio Playback
   const handleToggleAudio = () => {
     if (!currentAyah) return;
+    segmentAudioQueueRef.current?.stop();
+    segmentAudioQueueRef.current = null;
+    setIsSegmentPlaying(false);
 
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
@@ -278,7 +302,65 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       setIsPlaying(false);
       setIsAudioLoading(false);
     }
+    segmentAudioQueueRef.current?.stop();
+    segmentAudioQueueRef.current = null;
+    setIsSegmentPlaying(false);
+    queueAdvanceRef.current = false;
     playbackIterationRef.current = 1;
+  };
+
+  const handleToggleSegmentAudio = () => {
+    const activeQueue = segmentAudioQueueRef.current;
+    if (activeQueue?.getState().active) {
+      if (activeQueue.getState().paused) activeQueue.resume();
+      else activeQueue.pause();
+      return;
+    }
+    if (!sessionAyahs.length || segmentStartIndex > segmentEndIndex) return;
+
+    handleStopAudio();
+    const tracks = sessionAyahs.map(ayah => ({
+      id: String(ayah.number),
+      url: formatAyahAudioUrl(surahNumber, ayah.numberInSurah, profile.preferredReciter)
+    }));
+    const controller = new QuranAudioQueueController({
+      onTrackChange: index => {
+        if (index !== currentAyahIndexRef.current) {
+          queueAdvanceRef.current = true;
+          currentAyahIndexRef.current = index;
+          setCurrentAyahIndex(index);
+        }
+      },
+      onPlaying: () => setIsSegmentPlaying(true),
+      onPaused: () => setIsSegmentPlaying(false),
+      onComplete: () => {
+        if (segmentAudioQueueRef.current !== controller) return;
+        segmentAudioQueueRef.current = null;
+        setIsSegmentPlaying(false);
+      },
+      onError: error => {
+        console.warn('[WIRD Session] Segment audio queue failed:', error);
+        if (segmentAudioQueueRef.current !== controller) return;
+        segmentAudioQueueRef.current = null;
+        setIsSegmentPlaying(false);
+      }
+    });
+    segmentAudioQueueRef.current = controller;
+    try {
+      controller.start({
+        tracks,
+        startIndex: segmentStartIndex,
+        endIndex: segmentEndIndex,
+        repeatCount: audioRepeatCount === -1 ? null : audioRepeatCount,
+        playbackRate: getSavedPlaybackRate()
+      });
+      setIsSegmentPlaying(true);
+    } catch (error) {
+      controller.stop();
+      segmentAudioQueueRef.current = null;
+      setIsSegmentPlaying(false);
+      console.warn('[WIRD Session] Could not start segment audio:', error);
+    }
   };
 
   useEffect(() => () => {
@@ -287,6 +369,8 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       audioRef.current.pause();
       audioRef.current = null;
     }
+    segmentAudioQueueRef.current?.stop();
+    segmentAudioQueueRef.current = null;
   }, []);
 
   const handleExit = () => {
