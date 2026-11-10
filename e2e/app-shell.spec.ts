@@ -93,6 +93,28 @@ test('tablet portrait keeps compact navigation and opens the full section drawer
   await expect(page.getByRole('button', { name: /معرض الهوية/ })).toHaveCount(0);
 });
 
+test('tablet section drawer traps focus, closes with Escape, and restores its trigger', async ({ page }) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+
+  const trigger = page.getByRole('button', { name: 'المزيد من الأقسام' });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'قائمة الأقسام' });
+  const close = dialog.getByRole('button', { name: 'إغلاق القائمة', exact: true });
+  const settings = dialog.getByRole('button', { name: 'الإعدادات' });
+  await expect(dialog).toBeVisible();
+  await expect(close).toBeFocused();
+  await expect(close).toHaveCSS('min-height', '44px');
+  await page.keyboard.press('Shift+Tab');
+  await expect(settings).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(close).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
+
 test('more navigation is marked active while a secondary section is open', async ({ page }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/');
@@ -101,4 +123,51 @@ test('more navigation is marked active while a secondary section is open', async
 
   const moreButton = page.getByRole('button', { name: 'المزيد من الأقسام' });
   await expect(moreButton).toHaveAttribute('aria-current', 'page');
+});
+
+test('desktop sidebar toggle is persistent, exposes state, and expands the reading viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+
+  const toggle = page.getByRole('button', { name: 'إغلاق الشريط الجانبي' }).first();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(toggle).toHaveAttribute('aria-keyshortcuts', 'Control+B Meta+B');
+  await toggle.click();
+  await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toBeFocused();
+  await expect.poll(() => page.locator('main').evaluate(element => getComputedStyle(element).maxWidth)).toBe('none');
+
+  await page.reload();
+  const reopenedState = page.getByRole('button', { name: 'فتح الشريط الجانبي' });
+  await expect(reopenedState).toHaveAttribute('aria-expanded', 'false');
+  await reopenedState.click();
+  await expect(page.getByRole('button', { name: 'إغلاق الشريط الجانبي' }).last()).toBeVisible();
+  await page.getByRole('button', { name: 'إغلاق الشريط الجانبي' }).last().click();
+  await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('physical KeyB shortcut works with Arabic keyboard layout and mobile drawer closes with Escape', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'لا',
+      code: 'KeyB',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    }));
+  });
+  await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toHaveAttribute('aria-expanded', 'false');
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'فتح الشريط الجانبي' }).click();
+  await expect(page.getByRole('navigation', { name: 'القائمة الرئيسية' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(() => page.evaluate(() => document.body.style.overflow)).toBe('');
 });

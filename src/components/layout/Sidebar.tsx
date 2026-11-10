@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { 
   Home, 
   BookOpen, 
@@ -60,6 +60,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
   profile,
   dueRevisionCount
 }) => {
+  const mobileDrawerRef = useRef<HTMLDivElement | null>(null);
+  const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const closeMobileHandlerRef = useRef(onCloseMobile);
+  const previousDesktopOpenRef = useRef(isDesktopOpen);
+  closeMobileHandlerRef.current = onCloseMobile;
+
+  useEffect(() => {
+    if (previousDesktopOpenRef.current && !isDesktopOpen) {
+      document.querySelector<HTMLButtonElement>('[data-sidebar-toggle="desktop"]')?.focus();
+    }
+    previousDesktopOpenRef.current = isDesktopOpen;
+  }, [isDesktopOpen]);
+
+  useEffect(() => {
+    if (!isOpenMobile) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    mobileCloseButtonRef.current?.focus();
+
+    const handleDrawerKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeMobileHandlerRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const drawer = mobileDrawerRef.current;
+      if (!drawer) return;
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(
+        'button:not([disabled]):not([tabindex="-1"]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )).filter(element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDrawerKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDrawerKeyDown);
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    };
+  }, [isOpenMobile]);
+
   const navGroups: { label: string; items: NavItem[] }[] = [
     {
       label: 'ابدأ',
@@ -110,9 +164,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button 
               type="button"
               onClick={onToggleDesktop}
-              className="hidden lg:flex p-1.5 text-stone-500 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-xl transition-colors"
-              title="إغلاق الشريط الجانبي (Ctrl+B)"
+              className="hidden lg:flex min-h-11 min-w-11 items-center justify-center p-1.5 text-stone-500 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
+              title="إغلاق الشريط الجانبي (Ctrl+B / Cmd+B)"
               aria-label="إغلاق الشريط الجانبي"
+              aria-expanded="true"
+              aria-keyshortcuts="Control+B Meta+B"
             >
               <X className="w-5 h-5" />
             </button>
@@ -122,8 +178,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {isOpenMobile && (
             <button 
               type="button"
+              ref={mobileCloseButtonRef}
               onClick={onCloseMobile}
-              className="lg:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
+              className="lg:hidden min-h-11 min-w-11 flex items-center justify-center p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
+              title="إغلاق القائمة"
               aria-label="إغلاق القائمة"
             >
               <X className="w-5 h-5" />
@@ -187,7 +245,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Sidebar (Collapsible with smooth transition) */}
-      <div 
+      <div
+        aria-hidden={!isDesktopOpen}
         className={`hidden lg:block shrink-0 h-screen sticky top-0 transition-all duration-300 ease-in-out ${
           isDesktopOpen 
             ? 'w-64 opacity-100' 
@@ -200,11 +259,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Mobile Drawer (Overlay) */}
       {isOpenMobile && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
-          <div 
+          <div
+            aria-hidden="true"
             className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
-          <div className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl">
+          <div
+            ref={mobileDrawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="قائمة الأقسام"
+            className="relative z-10 w-72 max-w-[85vw] h-full shadow-2xl"
+          >
             {sidebarContent}
           </div>
         </div>
