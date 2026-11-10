@@ -62,6 +62,12 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     const audioService = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
     assert(audioService.includes('requestOfflineAudioCache'), 'Quran audio service must expose opportunistic offline pre-caching');
     assert(audioService.includes("url.hostname === 'everyayah.com'"), 'Audio pre-cache client must restrict requests to the approved recitation host');
+    assert(audioService.includes("url.hostname === 'cdn.islamic.network'"), 'Audio pre-cache client must support the curated Quran CDN used by ruqyah');
+    const ruqyahView = fs.readFileSync(path.resolve('./src/components/ruqyah/RuqyahView.tsx'), 'utf8');
+    assert(ruqyahView.includes('requestOfflineAudioCache('), 'Ruqyah playback must pre-cache its upcoming audio segment');
+    assert(swContent.includes("url.hostname === 'cdn.islamic.network'"), 'Service worker must route only the approved Quran CDN audio host into the cache');
+    assert(swContent.includes("mode: isEveryAyah ? 'no-cors' : 'cors'"), 'Audio cache must use the correct cross-origin mode per approved provider');
+
     assert(audioService.includes("type: 'WIRD_CACHE_SESSION_AUDIO'"), 'Audio pre-cache client must use the worker cache contract');
     const quranLibrary = fs.readFileSync(path.resolve('./src/components/library/QuranLibraryView.tsx'), 'utf8');
     const mushafReader = fs.readFileSync(path.resolve('./src/components/library/QuranMushafReader.tsx'), 'utf8');
