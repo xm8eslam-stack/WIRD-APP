@@ -153,7 +153,7 @@ test('reading khatma supports a daily plan, actual page progress, pause, resume,
   await page.getByLabel('عدد جلسات القراءة اليومية').selectOption('3');
   await page.getByRole('button', { name: 'ابدأ ختمة القراءة' }).click();
 
-  await expect(page.getByText('الورد اليومي')).toBeVisible();
+  await expect(page.getByText('الورد اليومي', { exact: true })).toBeVisible();
   await expect(page.getByText('لكل جلسة')).toBeVisible();
   await expect(page.getByText(/قسّم وردك إلى 3 جلسات يومية/)).toBeVisible();
 
