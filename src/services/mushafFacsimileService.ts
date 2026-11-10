@@ -111,7 +111,7 @@ export function sanitizeMushafSvgMarkup(svgMarkup: string): string {
         continue;
       }
       const value = attribute.value;
-      if (/javascript:|data:|https?:|url\s*\\(/i.test(value) &&
+      if (/javascript:|data:|https?:|url\s*\(/i.test(value) &&
           attribute.name !== 'xmlns' && attribute.name !== 'xmlns:ayah') {
         throw new Error('يحتوي ملف المصحف على مرجع خارجي غير مسموح.');
       }
