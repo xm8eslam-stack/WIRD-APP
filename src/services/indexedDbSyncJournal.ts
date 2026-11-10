@@ -2772,15 +2772,19 @@ export class IndexedDbSyncJournal {
           const latestGroupedSnapshots = new Map<string, { documentId: string; payload: Record<string, unknown>; sequence: number }>();
           for (const localGroupedMutation of archivedMutations.filter(item => item.collection === 'syncMeta')) {
             const localTransaction = localGroupedMutation.payload.transaction;
+            const localCollections = new Set<string>();
             if (!isRecord(localTransaction) || localTransaction.version !== 1 ||
                 !Array.isArray(localTransaction.operations) || localTransaction.operations.length < 1 ||
                 localTransaction.operations.length > 8 ||
-                localTransaction.operations.some(operation =>
-                  !isRecord(operation) || typeof operation.collection !== 'string' ||
-                  !affectedCollections.has(operation.collection) || operation.operation !== 'upsert' ||
-                  typeof operation.documentId !== 'string' || !operation.documentId || !isRecord(operation.payload)
-                )) {
-              failure = new Error('تحتوي عملية محلية مجمعة معلقة على مجموعات إضافية أو صيغة غير مدعومة؛ أوقفنا إعادة النشر لحماية بياناتها.');
+                localTransaction.operations.some(operation => {
+                  if (!isRecord(operation) || typeof operation.collection !== 'string' ||
+                      !affectedCollections.has(operation.collection) || localCollections.has(operation.collection) ||
+                      operation.operation !== 'upsert' || typeof operation.documentId !== 'string' ||
+                      !operation.documentId || !isRecord(operation.payload)) return true;
+                  localCollections.add(operation.collection);
+                  return false;
+                })) {
+              failure = new Error('تحتوي عملية محلية مجمعة معلقة على مجموعات مكررة أو إضافية أو صيغة غير مدعومة؛ أوقفنا إعادة النشر لحماية بياناتها.');
               transaction.abort();
               return;
             }
