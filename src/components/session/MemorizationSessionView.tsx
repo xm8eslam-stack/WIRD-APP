@@ -14,7 +14,7 @@ import {
   Award
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
-import { loadSurahVerses, getAyahWords, loadSimpleAyahText } from '../../data/quranDataLoader';
+import { loadSurahVerses, getAyahWords, loadSimpleAyahText, loadSimpleAyahRange } from '../../data/quranDataLoader';
 import { QuranBasmala } from '../shared/QuranBasmala';
 import { Ayah, UserProfile } from '../../types/quran';
 import { formatAyahAudioUrl } from '../../services/audioService';
@@ -103,6 +103,33 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const updateDisplayPreferences = (updates: Partial<MemorizationDisplayPreferences>) => {
     setDisplayPreferences(previous => ({ ...previous, ...updates }));
   };
+
+  const [pageDisplayTexts, setPageDisplayTexts] = useState<string[]>([]);
+  const [pageDisplayError, setPageDisplayError] = useState(false);
+  useEffect(() => {
+    if (displayPreferences.viewMode !== 'page') {
+      setPageDisplayTexts([]);
+      setPageDisplayError(false);
+      return;
+    }
+    let cancelled = false;
+    setPageDisplayTexts([]);
+    setPageDisplayError(false);
+    loadSimpleAyahRange(surahNumber, initialStartAyah, initialEndAyah || 10)
+      .then(texts => {
+        if (cancelled) return;
+        if (texts.length !== sessionAyahs.length) {
+          throw new Error('Verified Tanzil Simple range did not match the selected memorization range.');
+        }
+        setPageDisplayTexts(texts);
+      })
+      .catch(error => {
+        if (cancelled) return;
+        console.error('[WIRD Session] Whole-session verified text unavailable:', error);
+        setPageDisplayError(true);
+      });
+    return () => { cancelled = true; };
+  }, [displayPreferences.viewMode, surahNumber, initialStartAyah, initialEndAyah, sessionAyahs.length]);
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -595,6 +622,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100">كل آيات الجلسة</h3>
             <span className="text-[11px] text-stone-500">اضغط على أي آية للانتقال إليها</span>
           </div>
+          {pageDisplayError ? (
+            <p role="alert" className="px-3 py-5 text-sm text-red-700 dark:text-red-300">
+              تعذر تحميل النص القرآني المعتمد لهذا النطاق؛ لم نعرض نصًا بديلًا. أعد المحاولة أو استخدم عرض الآية الواحدة.
+            </p>
+          ) : pageDisplayTexts.length !== sessionAyahs.length ? (
+            <p role="status" className="px-3 py-5 text-sm text-stone-500">جارٍ تحميل نص الآيات المعتمد...</p>
+          ) : (
           <div className={`max-h-[55vh] overflow-y-auto overscroll-contain ${displayPreferences.density === 'compact' ? 'space-y-1' : 'space-y-3'}`}>
             {sessionAyahs.map((ayah, index) => (
               <button
@@ -619,12 +653,13 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                       lineHeight: displayPreferences.density === 'compact' ? 1.8 : 2.25
                     }}
                   >
-                    {ayah.text}
+                    {pageDisplayTexts[index]}
                   </span>
                 </div>
               </button>
             ))}
           </div>
+          )}
         </section>
       )}
 

@@ -15,7 +15,8 @@ export function runSessionStudyUiTests(): { passed: number; failed: number } {
     assert(session.includes('aria-label="كثافة عرض العناصر"') && session.includes("density: 'compact'"), 'compact spacing control must be available');
     assert(session.includes('viewMode === \'page\'') && session.includes('كل آيات الجلسة'), 'whole-session verse view must be available');
     assert(session.includes('aria-pressed={index === currentAyahIndex}'), 'active verse must be announced to assistive technology');
-    assert(session.includes('{ayah.text}'), 'whole-session view must use the existing local Quran verse corpus');
+    assert(session.includes('loadSimpleAyahRange(') && session.includes('{pageDisplayTexts[index]}'), 'whole-session view must use the same verified Tanzil Simple source as word masking');
+    assert(session.includes('لم نعرض نصًا بديلًا'), 'Missing verified page text must fail closed instead of switching Quran text sources');
     assert(preferences.toLowerCase().includes('device-local') && preferences.includes('wird:memorization-display:v1'), 'presentation preferences must remain device-local and separate from cloud sync');
   });
   return { passed, failed };
