@@ -15,6 +15,7 @@ export interface RelatedHadith {
 
 const CACHE_PREFIX = 'wird_related_hadiths_v1:';
 const MAX_CACHED_HADITH_PAGES = 100;
+const MAX_CACHED_HADITH_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function validateHadithPayload(payload: unknown, expectedVerseKey: string): { hadiths: RelatedHadith[]; hasMore: boolean } {
   if (!payload || typeof payload !== 'object' || !('verseKey' in payload) || payload.verseKey !== expectedVerseKey ||
@@ -71,6 +72,12 @@ function readCachedHadithPage(key: string, verseKey: string): { hadiths: Related
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || !('cachedAt' in parsed) ||
+        !Number.isSafeInteger(parsed.cachedAt) ||
+        (parsed.cachedAt as number) < Date.now() - MAX_CACHED_HADITH_AGE_MS ||
+        (parsed.cachedAt as number) > Date.now() + 5 * 60 * 1000) {
+      throw new Error('Cached hadith page is stale or missing its verification timestamp.');
+    }
     return validateHadithPayload(parsed, verseKey);
   } catch {
     try { localStorage.removeItem(key); } catch { /* Storage may be unavailable. */ }
@@ -78,7 +85,7 @@ function readCachedHadithPage(key: string, verseKey: string): { hadiths: Related
   }
 }
 
-function writeCachedHadithPage(key: string, value: { verseKey: string; hadiths: RelatedHadith[]; hasMore: boolean }): void {
+function writeCachedHadithPage(key: string, value: { verseKey: string; cachedAt: number; hadiths: RelatedHadith[]; hasMore: boolean }): void {
   try {
     if (typeof localStorage === 'undefined') return;
     const keys: string[] = [];
@@ -132,6 +139,6 @@ export async function getRelatedSahihHadiths(
   try { payload = await response.json(); }
   catch { throw new Error('استجابة مصدر الأحاديث غير صالحة.'); }
   const result = validateHadithPayload(payload, verseKey);
-  writeCachedHadithPage(cacheKey, { verseKey, ...result });
+  writeCachedHadithPage(cacheKey, { verseKey, cachedAt: Date.now(), ...result });
   return result;
 }
