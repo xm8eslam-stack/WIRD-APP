@@ -1566,7 +1566,8 @@ export const StorageService = {
   applyJournalProjection(
     collection: Exclude<SyncCollection, 'syncMeta'>,
     payload: Record<string, unknown>,
-    documentId?: string
+    documentId?: string,
+    allowSnapshotReplacement: boolean = false
   ): boolean {
     if (!isPlainRecord(payload)) return false;
     switch (collection) {
@@ -1582,7 +1583,7 @@ export const StorageService = {
         if (!Array.isArray(payload.records)) return false;
         let current: WeakVerseItem[];
         try { current = this.getWeakVerses(); } catch { return false; }
-        if (!canApplySnapshotPrecondition(payload, current, payload.records)) return false;
+        if (!allowSnapshotReplacement && !canApplySnapshotPrecondition(payload, current, payload.records)) return false;
         return this.saveWeakVerses(payload.records as WeakVerseItem[]);
       }
       case 'tests': {
@@ -1711,7 +1712,7 @@ export const StorageService = {
     }
   },
 
-  applyJournalEvent(event: JournalEvent): boolean {
+  applyJournalEvent(event: JournalEvent, allowSnapshotReplacement: boolean = false): boolean {
     if (!isPlainRecord(event) || event.eventType !== 'domain-mutation' || event.schemaVersion !== 1 ||
         !Number.isSafeInteger(event.sequence) || event.sequence < 1 ||
         event.operation !== 'upsert' || !isPlainRecord(event.payload)) return false;
@@ -1724,9 +1725,9 @@ export const StorageService = {
       if (payload.transaction === undefined) return true;
       if (!isPlainRecord(payload.transaction) || payload.transaction.version !== 1 ||
           !Array.isArray(payload.transaction.operations)) return false;
-      return this.applyJournalTransaction(payload.transaction.operations);
+      return this.applyJournalTransaction(payload.transaction.operations, allowSnapshotReplacement);
     }
-    return this.applyJournalProjection(event.collection, event.payload, event.documentId);
+    return this.applyJournalProjection(event.collection, event.payload, event.documentId, allowSnapshotReplacement);
   },
 
   /**
@@ -1735,7 +1736,7 @@ export const StorageService = {
    * restores and verifies the complete pre-transaction byte set. This method
    * also supports guest/no-IndexedDB local-only operations.
    */
-  applyJournalTransaction(operations: unknown): boolean {
+  applyJournalTransaction(operations: unknown, allowSnapshotReplacement: boolean = false): boolean {
     if (!Array.isArray(operations) || operations.length < 1 || operations.length > 8) return false;
 
     const keysByCollection: Record<string, string[]> = {
@@ -1788,7 +1789,7 @@ export const StorageService = {
 
     try {
       for (const operation of operations as JournalProjectionOperation[]) {
-        if (!this.applyJournalProjection(operation.collection, operation.payload, operation.documentId)) {
+        if (!this.applyJournalProjection(operation.collection, operation.payload, operation.documentId, allowSnapshotReplacement)) {
           return rollback('A child projection rejected the grouped transaction.');
         }
       }
