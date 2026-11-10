@@ -816,16 +816,18 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setRepeatCount(c => Math.max(0, c - 1))}
-              className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs flex items-center justify-center"
+              className="min-h-11 min-w-11 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs flex items-center justify-center"
               title="إنقاص مرة واحدة"
             >
               -1
             </button>
 
             <button
+              type="button"
               onClick={() => setRepeatCount(c => c + 1)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-sm shadow-xs transition-transform active:scale-95"
+              className="min-h-11 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-sm shadow-xs transition-transform active:scale-95"
               title="زيادة التكرار (أو اضغط مسافة)"
             >
               + تكرار ({repeatCount})
