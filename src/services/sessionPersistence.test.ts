@@ -477,5 +477,53 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }
   });
 
+  test('Daily activity snapshots carry a base identity and reject concurrent device changes', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:activity-snapshot-cas');
+    const prepared = StorageService.buildSessionCompletionSnapshot(3, 0, 8, 'جلسة أساس');
+    assert(prepared.success, 'A valid activity snapshot should be prepared');
+    if (!prepared.success) return;
+    assert(typeof prepared.baseLogsFingerprint === 'string', 'Activity snapshot must include its base identity');
+    const today = getLocalDateString();
+    const concurrent = [{
+      date: today, memorizedAyahsCount: 7, reviewedPagesCount: 0,
+      minutesSpent: 18, completedTasks: ['جلسة من جهاز آخر']
+    }];
+    assert(StorageService.saveLogs(concurrent), 'Concurrent activity from another device should save');
+    const before = JSON.stringify(StorageService.getLogs());
+    assert(!StorageService.applyJournalProjection('activityEvents', {
+      records: prepared.logs,
+      baseSnapshotFingerprint: prepared.baseLogsFingerprint
+    }, 'snapshot'), 'A stale daily aggregate must not replace a divergent device snapshot');
+    assert(JSON.stringify(StorageService.getLogs()) === before,
+      'The concurrent daily activity aggregate must be preserved');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Legacy activity snapshots cannot replace non-empty divergent data but can bootstrap an empty device', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:activity-legacy-cas');
+    const today = getLocalDateString();
+    const local = [{
+      date: today, memorizedAyahsCount: 4, reviewedPagesCount: 0,
+      minutesSpent: 12, completedTasks: ['نشاط محلي']
+    }];
+    const remote = [{
+      date: today, memorizedAyahsCount: 9, reviewedPagesCount: 0,
+      minutesSpent: 25, completedTasks: ['نشاط بعيد']
+    }];
+    assert(StorageService.saveLogs(local), 'Local activity should save');
+    assert(!StorageService.applyJournalProjection('activityEvents', { records: remote }, 'snapshot'),
+      'A legacy event without a base identity must not overwrite non-empty divergent activity');
+    assert(JSON.stringify(StorageService.getLogs()) === JSON.stringify(local),
+      'The original daily aggregate must remain intact');
+    assert(StorageService.saveLogs([]), 'Activity archive should be clearable for bootstrap test');
+    assert(StorageService.applyJournalProjection('activityEvents', { records: remote }, 'snapshot'),
+      'A legacy snapshot may bootstrap an empty device');
+    assert(JSON.stringify(StorageService.getLogs()) === JSON.stringify(remote),
+      'Bootstrap should project the remote activity');
+    StorageService.__resetStorageForTests();
+  });
+
   return { passed, failed };
 }
