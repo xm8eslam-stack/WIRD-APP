@@ -93,7 +93,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     const viteConfig = fs.readFileSync(path.resolve('./vite.config.ts'), 'utf8');
     const worker = fs.readFileSync(path.resolve('./public/sw.js'), 'utf8');
     const client = fs.readFileSync(path.resolve('./src/services/offlinePreparationService.ts'), 'utf8');
-    assert(viteConfig.includes('allAssets'), 'Build must emit all lazy JS/CSS assets for explicit offline setup');
+    assert(viteConfig.includes('allAssets'), 'Build must emit all lazy code and static assets for explicit offline setup');
     assert(viteConfig.includes('item.type === \'chunk\''), 'Offline manifest must include lazy chunks');
     assert(worker.includes('wird-app-content-v1'), 'Full offline package must use a separate persistent cache');
     assert(worker.includes('name !== CONTENT_CACHE_NAME'), 'Downloaded offline package must survive service-worker upgrades');
@@ -101,7 +101,12 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(worker.includes('cache.match(request)'), 'Retry must skip assets already cached');
     assert(worker.includes('MAX_OFFLINE_PACKAGE_ASSETS = 2000'), 'Offline manifest must have a defensive asset-count limit');
     assert(worker.includes('OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000'), 'Each offline asset request must have a bounded timeout');
-    assert(worker.includes('validContentType'), 'Only valid JavaScript/CSS responses may enter the offline package cache');
+    assert(worker.includes('validContentType'), 'Only allowlisted code, image, font, and metadata responses may enter the offline package cache');
+    assert(worker.includes('isSupportedOfflineAssetPath'), 'Worker must restrict offline assets to supported static file extensions');
+    assert(worker.includes('image/svg+xml'), 'Worker must validate SVG content types before caching');
+    assert(worker.includes('font/woff2'), 'Worker must validate font content types before caching');
+    assert(viteConfig.includes('woff2?'), 'Build manifest must include local font assets');
+
     assert(worker.includes('offlinePackagePreparationInProgress'), 'Concurrent full-package downloads must be rejected safely');
     assert(worker.includes("url.pathname.startsWith('/api/')"), 'API routes must remain excluded from static offline caching');
     assert(client.includes('prepareWirdForOffline'), 'Client must expose an explicit offline preparation action');
