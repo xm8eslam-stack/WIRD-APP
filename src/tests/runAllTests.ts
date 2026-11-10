@@ -49,6 +49,7 @@ import { runHadithReferencesServiceTests } from '../services/hadithReferencesSer
 import { runHadithSanitizerTests } from '../utils/hadithSanitizer.test';
 import { runCloudSyncCoordinatorTests } from '../services/cloudSyncCoordinator.test';
 import { runSyncConflictSafetyTests } from '../services/syncConflictSafety.test';
+import { runActivityEventProjectionTests } from '../services/activityEventProjection.test';
 import { runRuqyahIntegrityTests } from './ruqyahIntegrity.test';
 import { runRuqyahContentServiceTests } from '../services/ruqyahContentService.test';
 import { runRuqyahProxyTests } from './ruqyahProxy.test';
@@ -152,6 +153,7 @@ async function main() {
     { name: 'Safe Arabic Hadith Matn Sanitization', runner: runHadithSanitizerTests },
     { name: 'Cloud Sync Coordinator & Remote Reconciliation', runner: runCloudSyncCoordinatorTests },
     { name: 'Fail-Closed Weak Verse and Activity Conflict Resolution', runner: runSyncConflictSafetyTests },
+    { name: 'Immutable Session Activity Event Projection (Pure Reducer)', runner: runActivityEventProjectionTests },
     { name: 'Ruqyah API Client & Canonical External Quran Validation', runner: runRuqyahApiServiceTests },
     { name: 'Ruqyah UID-Scoped Progress Persistence & Recovery', runner: runRuqyahProgressServiceTests },
     { name: 'Ruqyah Quran Reciter Catalog & Verse Audio URLs', runner: runRuqyahAudioServiceTests },
