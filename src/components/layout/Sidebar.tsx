@@ -64,7 +64,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const mobileCloseButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const closeMobileHandlerRef = useRef(onCloseMobile);
+  const previousDesktopOpenRef = useRef(isDesktopOpen);
   closeMobileHandlerRef.current = onCloseMobile;
+
+  useEffect(() => {
+    if (previousDesktopOpenRef.current && !isDesktopOpen) {
+      document.querySelector<HTMLButtonElement>('[data-sidebar-toggle="desktop"]')?.focus();
+    }
+    previousDesktopOpenRef.current = isDesktopOpen;
+  }, [isDesktopOpen]);
 
   useEffect(() => {
     if (!isOpenMobile) return;
@@ -237,7 +245,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* Desktop Sidebar (Collapsible with smooth transition) */}
-      <div 
+      <div
+        aria-hidden={!isDesktopOpen}
         className={`hidden lg:block shrink-0 h-screen sticky top-0 transition-all duration-300 ease-in-out ${
           isDesktopOpen 
             ? 'w-64 opacity-100' 
