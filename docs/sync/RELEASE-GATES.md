@@ -1,3 +1,27 @@
+## Current operational checkpoint — 2026-11-11 (evidence refresh)
+
+### Main, sync changes, and Production
+- Repository: `xm8eslam-stack/WIRD-APP`; verified `main` HEAD: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
+- Sync safety commit `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6` is an ancestor of this main SHA (two later commits; compare result: ahead 2 / behind 0). It adds compare-and-set preconditions to full `weakVerses` and `activityEvents` snapshots, preserving concurrent local edits and keeping legacy snapshot replay fail-closed. Its grouped transaction tests assert rollback when a stale weak-verse snapshot is rejected.
+- The first Vercel status attached to the sync commit was `failure` with the explicit `build-rate-limit` upgrade URL. This was superseded by a later Production deployment: `dpl_5DMkYCMR8LYY41ScGGzqkbeCLGit`, state `READY`, exact main SHA `50bb25eeba2f1ed4ceae228b347c67b40f60c697`, alias `https://wird-app.vercel.app`.
+- The same main line also includes continuous Quran playback / segment repetition / Mushaf display controls (`3667a8c003b79984546d48a9defc20c6f2bcd367`) and direct ayah selection in memorization navigation (`50bb25e...`).
+- No Firebase rules, schema, production secrets, Vercel environment variables, sync flags, or user data were changed in this run. The previous 2026-11-10 inventory recorded both production sync flags as `true`; that inventory was not re-read here, so preserve the existing configuration and do not toggle either flag.
+
+### Evidence boundaries and remaining sync gates
+- The owner-reported two-device bidirectional test recorded on 2026-11-10 remains a bounded PASS for the tested path only; it is not evidence for every offline/recovery/conflict case.
+- The current main commit status exposed a successful Vercel status. No PR-triggered GitHub Actions runs were returned for the inspected main/sync SHAs in this run; do not infer a full Quality Gate pass from the Vercel status.
+- Production deployment/source parity is verified, but a fresh anonymous authenticated-user smoke test was not completed in this run. A Ready deployment is not a complete user-journey proof.
+- Open sync work remains: collection-specific tombstone/delete projection and anti-resurrection; grouped `syncMeta` keep-local/merge and atomic rebase; divergent legacy Ruqyah V1 handling; cross-tab concurrency; account switch/logout/reinstall isolation; long-offline/crash/restart replay; queue stress; and broader authenticated production journeys.
+- Release decision for any new candidate: **HOLD** until the exact-SHA quality, privacy/data, live smoke, and sync gates are evidenced. Keep existing Production settings unchanged.
+
+### Next sync work
+1. Add focused tests for stale replay after reconnect and concurrent activity/weak-verse mutations across independent browser contexts.
+2. Continue tombstone semantics only with explicit per-collection delete/recovery/anti-resurrection rules; never encode delete as an empty snapshot.
+3. Complete grouped `syncMeta` keep-local/merge through atomic local rebase and durable re-publication before unblocking it.
+4. Keep the existing production configuration unchanged while the remaining gates are closed.
+
+---
+
 ## Current operational checkpoint — 2026-11-10 (verified follow-up)
 
 This checkpoint supersedes any older statement below that contradicts the current Production inventory or the owner's direct device test. It is a documentation update only; no runtime code, Firebase rules, production secrets, Vercel settings, or user data were changed.
