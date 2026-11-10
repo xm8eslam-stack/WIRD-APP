@@ -89,3 +89,11 @@ test('more navigation is marked active while a secondary section is open', async
   const moreButton = page.getByRole('button', { name: 'المزيد من الأقسام' });
   await expect(moreButton).toHaveAttribute('aria-current', 'page');
 });
+
+
+test('dashboard shows the daily session action once and no hard-coded monthly progress', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('الهدف الشهري: ختم جزء عمّ')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /ابدأ ورد اليوم|ابدأ مراجعة اليوم/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /بدء جلسة الحفظ التفاعلية|بدء جلسة المراجعة التفاعلية/ })).toBeVisible();
+});
