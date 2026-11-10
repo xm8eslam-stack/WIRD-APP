@@ -1,18 +1,21 @@
 export type MemorizationSessionViewMode = 'focused' | 'page';
 export type MemorizationSessionDensity = 'comfortable' | 'compact';
+export type MemorizationSessionPageWidth = 'comfortable' | 'wide' | 'full';
 
 export interface MemorizationDisplayPreferences {
   fontSize: number;
   uiScale: number;
   density: MemorizationSessionDensity;
   viewMode: MemorizationSessionViewMode;
+  pageWidth: MemorizationSessionPageWidth;
 }
 
 export const DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES: Readonly<MemorizationDisplayPreferences> = {
   fontSize: 32,
   uiScale: 100,
   density: 'comfortable',
-  viewMode: 'focused'
+  viewMode: 'focused',
+  pageWidth: 'comfortable'
 };
 
 const STORAGE_KEY = 'wird:memorization-display:v1';
@@ -40,7 +43,10 @@ function normalizePreferences(value: unknown): MemorizationDisplayPreferences {
       : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.density,
     viewMode: candidate.viewMode === 'page' || candidate.viewMode === 'focused'
       ? candidate.viewMode
-      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.viewMode
+      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.viewMode,
+    pageWidth: candidate.pageWidth === 'wide' || candidate.pageWidth === 'full'
+      ? candidate.pageWidth
+      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.pageWidth
   };
 }
 
