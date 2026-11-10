@@ -101,7 +101,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(worker.includes('cache.match(request)'), 'Retry must skip assets already cached');
     assert(worker.includes('MAX_OFFLINE_PACKAGE_ASSETS = 2000'), 'Offline manifest must have a defensive asset-count limit');
     assert(worker.includes('OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000'), 'Each offline asset request must have a bounded timeout');
-    assert(worker.includes('validContentType'), 'Only allowlisted code, image, font, and metadata responses may enter the offline package cache');
+    assert(worker.includes('isValidOfflineAssetResponse'), 'Only allowlisted code, image, font, and metadata responses may enter the offline package cache');
     assert(worker.includes('isSupportedOfflineAssetPath'), 'Worker must restrict offline assets to supported static file extensions');
     assert(worker.includes('image/svg+xml'), 'Worker must validate SVG content types before caching');
     assert(worker.includes('font/woff2'), 'Worker must validate font content types before caching');
