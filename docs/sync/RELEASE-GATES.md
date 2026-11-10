@@ -257,3 +257,35 @@ The desktop/mobile Playwright app-shell baseline is now merged and passing (PR #
 - Production Firestore Rules deployment and the two production sync flags remain separate release gates. Do not enable either flag as part of this PWA change.
 
 **Release decision:** the offline app-shell implementation is merged, its CI browser test passes, and the production deployment is `READY` on the production alias. Real-device authenticated offline/reconnect acceptance remains outstanding. No Firebase rules, production secrets, environment variables, production sync flags, or remote-sync activation settings were changed.
+
+
+
+## Current sync release status — 2026-11-10
+
+This section is the current status and supersedes older historical statements where they conflict.
+
+### Confirmed
+- PR #197 and PR #198 are merged.
+- PR #198 is deployed to Production at `wird-app.vercel.app`, deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J`, merge commit `c6befabbacbb5f7ad6351e9dca6c604408713285`.
+- PR #198's exact-head GitHub Quality Gate passed automated tests, Firestore Rules Emulator, TypeScript, production build, server smoke, and desktop/mobile browser smoke.
+- User manually tested the account on two devices and reported that synchronization works.
+- Revisioned sync and remote projection production flags are enabled; do not change them without explicit approval.
+
+### Still constrained / not solved generically
+- Tombstones are rejected locally and blocked by the remote projector; do not advance the cursor past a blocked tombstone.
+- `weakVerses` remains a full-list snapshot. Independent first failures may create distinct IDs for the same verse; resolution is a full-snapshot removal and can be undone by stale data without deletion semantics.
+- `activityEvents` remains a full daily aggregate snapshot. A session domain event exists, but it is not yet the source of a deterministic event-derived activity projection.
+- No blind union, counter sum, or timestamp-only conflict winner is acceptable for these collections.
+- Ruqyah V2 has a special constrained merge path; do not generalize it to other collections.
+
+### Active PRs
+- PR #199: documentation-only continuity checkpoint and refresh of sync architecture/worklog/release notes. Exact-head GitHub CI is being run; Vercel may report the Free-plan build-rate limit.
+- PR #200: grouped transaction document-ID propagation and regression test for per-result test projection/recovery. Exact-head Quality Gate is pending. Do not merge until tests, TypeScript, Rules Emulator, build, server smoke, and browser smoke pass on the exact head SHA.
+
+### Safety gates
+1. Preserve the local-first archives and backup compatibility.
+2. Keep tombstone behavior fail-closed until collection-specific delete/anti-resurrection semantics and tests exist.
+3. Do not merge daily aggregates by addition; introduce immutable session identity or an equivalent idempotent design first.
+4. Do not merge weak verses by ID-only union; define same-coordinate concurrency, notes/text conflict, and deletion behavior first.
+5. Do not change Firestore production rules/schema, secrets, environment settings, or production sync flags without explicit approval.
+6. Report GitHub CI, Vercel deployment, and real-device checks separately.
