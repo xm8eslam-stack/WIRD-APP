@@ -230,9 +230,16 @@ self.addEventListener('fetch', (event) => {
   // Cache public Google Fonts only; never cache authenticated or application API responses.
   // Cache only the pinned Hafs/KFQC printed-page artwork and ayah geometry.
   // Pages are downloaded on demand; the cache is bounded to the most recent 12 pages.
-  if (url.hostname === 'cdn.quran.ws' &&
-      url.pathname.startsWith('/svg/pages/v1.1.1/hafs-kfqc/') &&
-      url.pathname.endsWith('.svg')) {
+  const mushafPagePrefix = '/quran-ws/quran-svg/v1.1.1/mushafs/hafs/kfqc/svg/';
+  const mushafPageFile = url.pathname.startsWith(mushafPagePrefix)
+    ? url.pathname.slice(mushafPagePrefix.length)
+    : '';
+  const isPinnedMushafPage = mushafPageFile.length === 7 &&
+    /^[0-9]{3}\\.svg$/.test(mushafPageFile) &&
+    Number(mushafPageFile.slice(0, 3)) >= 1 &&
+    Number(mushafPageFile.slice(0, 3)) <= 604;
+  if (url.protocol === 'https:' && url.hostname === 'raw.githubusercontent.com' &&
+      isPinnedMushafPage && !url.search) {
     event.respondWith((async () => {
       const cache = await caches.open(MUSHAF_PAGE_CACHE_NAME);
       const cached = await cache.match(req);
