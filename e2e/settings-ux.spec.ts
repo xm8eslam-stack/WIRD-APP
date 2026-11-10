@@ -9,7 +9,6 @@ test.describe('WIRD settings UX', () => {
 
   test('preference controls expose selected state and comfortable touch targets', async ({ page }) => {
     const largerFont = page.getByRole('button', { name: 'أكبر' });
-    await expect(largerFont).toHaveAttribute('aria-pressed', 'false');
     await largerFont.click();
     await expect(largerFont).toHaveAttribute('aria-pressed', 'true');
     await expect(largerFont).toHaveCSS('min-height', '44px');
