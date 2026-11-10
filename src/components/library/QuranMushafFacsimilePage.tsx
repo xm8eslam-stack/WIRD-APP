@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import type { Ayah } from '../../types/quran';
+import { loadSurahVerses } from '../../data/quranDataLoader';
 import {
   loadMushafFacsimilePage,
   matchMushafAyahAreas
@@ -12,6 +13,7 @@ interface QuranMushafFacsimilePageProps {
   ayahs: Ayah[];
   selectedAyah: Ayah | null;
   onSelectAyah: (ayah: Ayah) => void;
+  onVerifiedAyahs: (ayahs: Ayah[]) => void;
   onFallback: () => void;
 }
 
@@ -25,6 +27,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
   ayahs,
   selectedAyah,
   onSelectAyah,
+  onVerifiedAyahs,
   onFallback
 }) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -41,11 +44,21 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
     setError(null);
 
     loadMushafFacsimilePage(page, controller.signal)
-      .then(data => {
-        const matched = matchMushafAyahAreas(data.ayahAreas, ayahs);
+      .then(async data => {
+        // The local Quran dataset's historical page metadata is not identical
+        // to every KFGQPC printed-page boundary. Resolve the exact coordinates
+        // from WIRD's own surah chunks rather than assuming the same page split.
+        const surahNumbers = [...new Set(data.ayahAreas.map(area => area.surahNumber))];
+        const surahGroups = await Promise.all(surahNumbers.map(loadSurahVerses));
+        const coordinates = new Set(data.ayahAreas.map(area => `${area.surahNumber}:${area.ayahNumber}`));
+        const localPageAyahs = surahGroups.flat()
+          .filter(ayah => coordinates.has(`${ayah.surahNumber}:${ayah.numberInSurah}`))
+          .sort((a, b) => a.number - b.number);
+        const matched = matchMushafAyahAreas(data.ayahAreas, localPageAyahs);
         if (!controller.signal.aborted) {
           setPageData(data);
           setMatchedAreas(matched);
+          onVerifiedAyahs(matched.map(item => item.ayah));
         }
       })
       .catch(reason => {
@@ -56,7 +69,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
       });
 
     return () => controller.abort();
-  }, [page, ayahs, retry]);
+  }, [page, ayahs, retry, onVerifiedAyahs]);
 
   useEffect(() => {
     const host = hostRef.current;
