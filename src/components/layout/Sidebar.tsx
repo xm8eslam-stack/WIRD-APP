@@ -213,6 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={onOpenMobileMenu}
           aria-label="المزيد من الأقسام"
           aria-expanded={isOpenMobile}
+          aria-current={currentTab !== 'dashboard' && currentTab !== 'library' && currentTab !== 'session' && currentTab !== 'revision' ? 'page' : undefined}
           className={currentTab !== 'dashboard' && currentTab !== 'library' && currentTab !== 'session' && currentTab !== 'revision'
             ? 'wird-mobile-nav__item is-active'
             : 'wird-mobile-nav__item'}
