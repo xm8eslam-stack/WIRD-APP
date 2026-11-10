@@ -904,14 +904,14 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'use-remote-grouped-plan-pending',
         collection: 'plans',
-        documentId: 'local-plan',
+        documentId: 'plans-snapshot',
         payload: { records: [{ id: 'local-plan' }] },
         nowMs: 9601
       });
       await journal.enqueue({
         mutationId: 'use-remote-grouped-test-pending',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { records: [{ id: 'local-test' }] },
         nowMs: 9602
       });
@@ -980,14 +980,14 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'keep-local-grouped-plan-pending',
         collection: 'plans',
-        documentId: 'local-plan',
+        documentId: 'plans-snapshot',
         payload: { records: [] },
         nowMs: 9611
       });
       await journal.enqueue({
         mutationId: 'keep-local-grouped-test-pending',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { records: [] },
         nowMs: 9612
       });
@@ -995,8 +995,8 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         transaction: {
           version: 1,
           operations: [
-            { collection: 'plans', documentId: 'local-plan', operation: 'upsert', payload: { records: [] } },
-            { collection: 'tests', documentId: 'local-test', operation: 'upsert', payload: { records: [] } }
+            { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+            { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
           ]
         }
       };
@@ -1073,15 +1073,15 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         serverSequence: 1
       };
       await journal.importRemotePage([event]);
-      await journal.enqueue({ mutationId: 'keep-local-grouped-stale-plan', collection: 'plans', documentId: 'local-plan', payload: { records: [] }, nowMs: 9621 });
-      await journal.enqueue({ mutationId: 'keep-local-grouped-stale-test', collection: 'tests', documentId: 'local-test', payload: { records: [] }, nowMs: 9622 });
+      await journal.enqueue({ mutationId: 'keep-local-grouped-stale-plan', collection: 'plans', documentId: 'plans-snapshot', payload: { records: [] }, nowMs: 9621 });
+      await journal.enqueue({ mutationId: 'keep-local-grouped-stale-test', collection: 'tests', documentId: 'tests-snapshot', payload: { records: [] }, nowMs: 9622 });
       const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
       const snapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
       await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', snapshot, 9623);
       const conflict = (await journal.listProjectionConflicts(10))[0];
       const localPayload = { transaction: { version: 1, operations: [
-        { collection: 'plans', documentId: 'local-plan', operation: 'upsert', payload: { records: [] } },
-        { collection: 'tests', documentId: 'local-test', operation: 'upsert', payload: { records: [] } }
+        { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+        { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
       ] } };
       await journal.prepareConflictResolutionIntent({
         decisionId: 'keep-local-grouped-stale-decision',
@@ -1094,7 +1094,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         localMutationFingerprints: (conflict.localMutations || []).map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint })),
         nowMs: 9624
       });
-      await journal.enqueue({ mutationId: 'keep-local-grouped-new-write', collection: 'plans', documentId: 'local-plan', payload: { records: [] }, nowMs: 9625 });
+      await journal.enqueue({ mutationId: 'keep-local-grouped-new-write', collection: 'plans', documentId: 'plans-snapshot', payload: { records: [] }, nowMs: 9625 });
       let rejected = false;
       try { await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9626); }
       catch { rejected = true; }
@@ -1348,7 +1348,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'other-document-local-pending',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { id: 'local-test', score: 2 },
         nowMs: 9101
       });
@@ -1401,7 +1401,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'pending-test-record',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { id: 'local-test', score: 2 },
         nowMs: 9302
       });
