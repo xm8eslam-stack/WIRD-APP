@@ -79,6 +79,18 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   } | null>(null);
 
   useEffect(() => {
+    if (!inspectedPage) return;
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setInspectedPage(null);
+      }
+    };
+    window.addEventListener('keydown', handleDialogKeyDown);
+    return () => window.removeEventListener('keydown', handleDialogKeyDown);
+  }, [inspectedPage]);
+
+  useEffect(() => {
     setPortions(RetentionService.getPortions());
   }, []);
 
