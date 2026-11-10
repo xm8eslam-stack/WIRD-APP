@@ -188,3 +188,24 @@ The historical sections below describe earlier project phases and are not the cu
 - Weak-verse snapshots still need event/tombstone semantics before safe multi-device reconciliation. No blind union, no counter addition, and no deletion resurrection.
 - Activity logs remain aggregated by date. Use immutable session-completion events to design a deduplicated materialized view, but preserve legacy baseline data and transactional rollback.
 - PR #206 is separately implementing memorization-session UI scaling and sticky ayah navigation; it must pass its exact-head Quality Gate before merge. Vercel preview builds may be blocked by the Free-plan build-rate limit.
+
+
+## 2026-11-11 — Final checkpoint after PR #325 and PR #326 merges
+
+- Current main SHA: `3667a8c003b79984546d48a9defc20c6f2bcd367`. PR #325 merged as `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`; PR #326 merged as `3667a8c003b79984546d48a9defc20c6f2bcd367`. No force-push or direct-main edits were used.
+- PR #325 adds base-snapshot compare-and-set protection for full `weakVerses` and `activityEvents` projections, including weak-verse failure/resolution, session completion/revision rating, backup import, reset, and demo fixture operations. Stale bases fail closed; grouped transaction rollback preserves earlier child projections. Exact-head run `42917981860`: 667 assertions, 31 Rules Emulator tests, 8/8 audio probes, 140 Playwright tests, TypeScript, production build, server smoke — all passed.
+- PR #326 adds a shared continuous audio queue for Mushaf and memorization/revision sessions, bounded/infinite segment repetition, cross-page continuation, flexible Mushaf text/spacing/width controls, and a 10-second timeout for opportunistic offline audio pre-cache. It also guards the next-page autoplay transition against reading stale previous-page ayahs. Exact-head run `42919276966`: 674 assertions, 604 coordinate-map checks, 31 Rules Emulator tests, 8/8 audio probes, 150 Playwright tests, TypeScript, production build, and server smoke — all passed.
+- The requested memorization page/element sizing feature was already implemented and is now explicitly documented: PR #202/#206 provide UI scale 80–110%, ayah text 20–44px, compact/comfortable density, one-ayah/all-session view, and sticky navigation. The all-session view allows tapping any ayah directly instead of stepping through every ayah. Preferences are stored locally per device and are independent of cloud sync.
+- Production remains at deployment `dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5`, commit `dac125dd8770cc4881e2c6cea6fe94623ad52144`, state `READY`. Current main `3667a8c` is not deployed; Vercel reports `build-rate-limit`. No current-main live smoke test is verified; do not call this a completed Production release.
+- No Firestore rules/schema, secrets, production environment variables, or remote-sync flags changed. The higher-level policy still blocks whole-snapshot `keep-local/use-remote` choices for `weakVerses/activityEvents`; tombstone/delete semantics and a real two-device test remain open. Do not claim cloud sync is fully released.
+- Google AI Studio sync is unverified. Next: when Vercel quota allows, verify a Production deployment matching `3667a8c` and run live smoke; then perform a controlled two-device sync test before considering any broader conflict-resolution or remote-sync activation.
+
+
+## 2026-11-11 — PR #328 merged; activity-event sync design started
+
+- Current main SHA: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
+- PR #328 adds direct ayah selection to sticky memorization/revision navigation; active single-ayah/segment playback is stopped before changing the current ayah. Existing 80–110% session scale, 20–44px ayah text, density, and focused/all-session controls remain intact.
+- Exact PR Quality Gate run `42921569974`: 152 Playwright passed, 2 skipped; dependency audit 0 vulnerabilities; Firestore Rules Emulator, TypeScript, production build, and server smoke passed.
+- Sync source review confirms `DailyLog` is still a per-day aggregate and `activityEvents/snapshot` still projects a full record array. `session.completed` domain events exist, but their current payload has no explicit local calendar date/time-zone field. The new design document defines an idempotent event ledger and a non-destructive legacy baseline/cutover; no runtime behavior changed.
+- Whole-snapshot conflict choices for `weakVerses`/`activityEvents` remain fail-closed. Tombstones remain unsupported. No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
+- Production deployment for `50bb25e` is not verified; last documented READY SHA remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`. Google AI Studio sync is unverified.
