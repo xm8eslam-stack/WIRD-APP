@@ -23,10 +23,18 @@ export function runMemorizationDisplayPreferenceTests(): { passed: number; faile
   });
   try {
     test('memorization display preferences persist on this device and restore exactly', () => {
-      const chosen = { fontSize: 40, density: 'compact' as const, viewMode: 'page' as const };
+      const chosen = { fontSize: 40, uiScale: 85, density: 'compact' as const, viewMode: 'page' as const };
       assert(saveMemorizationDisplayPreferences(chosen), 'Valid display preferences should persist');
       assert(JSON.stringify(getMemorizationDisplayPreferences()) === JSON.stringify(chosen),
         'Reloading preferences should restore the selected size, density, and page mode');
+    });
+    test('overall session interface scale is clamped to a readable range', () => {
+      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 120, density: 'comfortable', viewMode: 'focused' }),
+        'Out-of-range interface scale should be safely normalized');
+      assert(getMemorizationDisplayPreferences().uiScale === 110, 'Interface scale must not exceed 110%');
+      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 60, density: 'comfortable', viewMode: 'focused' }),
+        'Below-range interface scale should be safely normalized');
+      assert(getMemorizationDisplayPreferences().uiScale === 80, 'Interface scale must not fall below 80%');
     });
     test('invalid or corrupt display preferences safely fall back without affecting user data', () => {
       values.set('wird:memorization-display:v1', '{broken');
