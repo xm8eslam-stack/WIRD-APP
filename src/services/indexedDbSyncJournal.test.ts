@@ -1029,18 +1029,20 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
 
       const committed = await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9615);
       const after = await journal.getSnapshot();
+      const remoteProjectionCursor = await journal.getRemoteProjectionCursor();
       const openConflictCount = await journal.getProjectionConflictCount();
       const inboxAfter = await journal.listRemoteInboxAfter(0, 10);
       const ready = await journal.listReady(9700, 10);
       const groupedState = {
         pendingCount: after.pendingCount,
-        projectionCursor: after.projectionCursor,
+        lastProjectedSequence: after.projectionCursor,
+        remoteProjectionCursor,
         readyCount: ready.length,
         readyCollections: ready.map(item => item.collection),
         readyDocumentIds: ready.map(item => item.documentId)
       };
-      assert(after.pendingCount === 1 && after.projectionCursor === 1 && ready.length === 1,
-        'The grouped decision must replace all affected writes with one pending mutation and advance the cursor exactly once: ' + JSON.stringify(groupedState));
+      assert(after.pendingCount === 1 && remoteProjectionCursor === 1 && ready.length === 1,
+        'The grouped decision must replace all affected writes with one pending mutation and advance the remote cursor exactly once: ' + JSON.stringify(groupedState));
       assert(ready[0].collection === 'syncMeta' && ready[0].documentId === event.documentId &&
         ready[0].mutationId === committed.mutationId &&
         JSON.stringify(ready[0].payload) === JSON.stringify(localPayload),
