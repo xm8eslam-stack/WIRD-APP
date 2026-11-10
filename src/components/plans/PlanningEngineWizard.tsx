@@ -192,7 +192,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
     try {
       const updated = [planToSave, ...enginePlans.filter(plan => plan.id !== planToSave.id)];
-      const serializedSnapshot = JSON.stringify(updated);
+      const serializedSnapshot = JSON.stringify({ records: updated });
       const snapshotBytes = new TextEncoder().encode(serializedSnapshot).length;
       if (snapshotBytes > 450_000) {
         onToast?.('هذه الخطة أكبر من الحد الآمن للمزامنة (450 كيلوبايت). قلّل نطاق الخطة أو زد مقدار الحفظ اليومي قبل اعتمادها؛ لم نفقد أي بيانات.', 'error');
