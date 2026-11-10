@@ -48,3 +48,14 @@ Source release: https://github.com/quran-ws/quran-svg/releases/tag/v1.1.1
 - Confirm hit-region selection, tafsir opening, page audio, keyboard operation, reduced motion, and small-screen layout.
 - Test first-load CORS and offline cache behavior on Safari/iPadOS and Android Chrome.
 - Keep flexible local-text mode available as a permanent fallback.
+
+## Final visual release checklist
+
+Automated coordinate coverage proves that each local ayah is represented by a source hit region; it does not prove visual legibility or device performance. Before enabling printed mode by default, record a manual review for:
+- Opening spread (pages 1–2), including actual ink bounds and Basmala/heading alignment.
+- A dense page near the end of the Mushaf and a page with short/long ayah transitions.
+- A surah boundary and a printed page whose ayah coordinates differ from WIRD's flexible page metadata.
+- Hit target alignment, selected-ayah contrast, keyboard focus, tafsir opening, and page-audio order.
+- First-load, repeat-load, offline reload, and cache eviction behavior on iPadOS Safari and Android Chrome.
+
+Keep printed mode opt-in until this checklist is completed on real devices. The flexible local-text view remains the safe default and fallback.
