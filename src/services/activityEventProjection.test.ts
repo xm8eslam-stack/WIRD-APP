@@ -121,6 +121,7 @@ export function runActivityEventProjectionTests(): { passed: number; failed: num
     for (const event of [
       makeEvent({ localDate: '2026-02-30' }),
       makeEvent({ timezoneOffsetMinutes: 900 }),
+      makeEvent({ localDate: '2026-11-11' }),
       makeEvent({ surahNumber: 1, startAyah: 1, endAyah: 8 })
     ]) {
       const result = projectDailyActivityFromEvents(baseline, [event]);
