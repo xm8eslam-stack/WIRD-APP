@@ -6,7 +6,8 @@ This section supersedes older status summaries below where they conflict with th
 
 | Scope | Exact SHA | Quality Gate run | Result |
 |---|---|---|---|
-| Main before PR #328 | 3667a8c003b79984546d48a9defc20c6f2bcd367 | [42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) | Passed |\n| Main after PR #328 merge | 50bb25eeba2f1ed4ceae228b347c67b40f60c697 | Post-merge main-only run not independently observed | Pending evidence |
+| Main before PR #328 | 3667a8c003b79984546d48a9defc20c6f2bcd367 | [42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) | Passed |
+| Main after PR #328 merge | 50bb25eeba2f1ed4ceae228b347c67b40f60c697 | Post-merge main-only run not independently observed | Pending evidence |
 | PR #325 stale-snapshot CAS | 6d0deea025f7ca7ee6b5d1efd65e55805334e630 | [42917981860](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42917981860) | Passed |
 | PR #326 continuous audio/Mushaf controls | merged SHA 3667a8c003b79984546d48a9defc20c6f2bcd367 | [42919276966](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42919276966) | Passed |
 | PR #328 direct memorization ayah jump | merged SHA `50bb25eeba2f1ed4ceae228b347c67b40f60c697` (head `0c41126b1e018892119ced669936335326f8b1e7`) | [42921569974](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42921569974) | Passed |
