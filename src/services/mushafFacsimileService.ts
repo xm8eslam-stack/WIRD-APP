@@ -1,6 +1,6 @@
 export const MUSHAF_FACSIMILE_VERSION = 'v1.1.1';
 export const MUSHAF_FACSIMILE_EDITION = 'hafs-kfqc';
-const MUSHAF_FACSIMILE_BASE_URL = `https://cdn.quran.ws/svg/pages/${MUSHAF_FACSIMILE_VERSION}/${MUSHAF_FACSIMILE_EDITION}`;
+const MUSHAF_FACSIMILE_BASE_URL = `https://raw.githubusercontent.com/quran-ws/quran-svg/${MUSHAF_FACSIMILE_VERSION}/mushafs/hafs/kfqc/svg`;
 
 export interface MushafViewBox {
   x: number;
