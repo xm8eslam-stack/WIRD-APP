@@ -26,7 +26,8 @@
     "prebuild": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
     "pretest": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
     "prelint": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
-    "quran:validate-simple": "node scripts/validate-quran-simple.mjs"
+    "quran:validate-simple": "node scripts/validate-quran-simple.mjs",
+    "mushaf:validate-coverage": "node scripts/validate-mushaf-facsimile-coverage.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
