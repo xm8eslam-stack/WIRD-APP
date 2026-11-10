@@ -421,7 +421,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             >
               <ChevronRight className="h-4 w-4" /> الصفحة السابقة
             </button>
-            <span className="text-xs font-bold tabular-nums text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-lg">
+            <span aria-live="polite" aria-atomic="true" className="text-xs font-bold tabular-nums text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-lg">
               {page} / 604
             </span>
             <button
