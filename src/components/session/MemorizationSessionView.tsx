@@ -883,6 +883,47 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               <option value={-1}>حتى الإيقاف</option>
             </select>
           </label>
+          <div className="basis-full flex flex-wrap items-center gap-2 border-t border-stone-100 dark:border-stone-700 pt-3">
+            <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">تحديد مقطع للحفظ أو المراجعة</span>
+            <label className="inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300">
+              <span>من</span>
+              <select
+                aria-label="بداية مقطع الحفظ والمراجعة"
+                value={segmentStartIndex}
+                disabled={!sessionAyahs.length}
+                onChange={event => {
+                  const next = Number(event.target.value);
+                  setSegmentStartIndex(next);
+                  if (segmentEndIndex < next) setSegmentEndIndex(next);
+                }}
+                className="min-h-11 max-w-36 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2"
+              >
+                {sessionAyahs.map((ayah, index) => <option key={ayah.number} value={index}>{surahNumber}:{ayah.numberInSurah}</option>)}
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300">
+              <span>إلى</span>
+              <select
+                aria-label="نهاية مقطع الحفظ والمراجعة"
+                value={segmentEndIndex}
+                disabled={!sessionAyahs.length}
+                onChange={event => setSegmentEndIndex(Number(event.target.value))}
+                className="min-h-11 max-w-36 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2"
+              >
+                {sessionAyahs.slice(segmentStartIndex).map((ayah, offset) => (
+                  <option key={ayah.number} value={segmentStartIndex + offset}>{surahNumber}:{ayah.numberInSurah}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              disabled={!sessionAyahs.length}
+              onClick={handleToggleSegmentAudio}
+              className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-colors disabled:opacity-50 ${isSegmentPlaying ? 'bg-amber-500 text-white' : 'bg-emerald-800 text-white hover:bg-emerald-900'}`}
+            >
+              {isSegmentPlaying ? 'إيقاف مؤقت للمقطع' : 'تشغيل المقطع المحدد'}
+            </button>
+          </div>
           {isAudioLoading && <span role="status" className="text-xs text-stone-500">جارٍ تحميل التلاوة…</span>}
         </div>
 
