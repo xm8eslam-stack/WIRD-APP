@@ -1576,7 +1576,8 @@ export const StorageService = {
    */
   matchesJournalProjection(
     collection: SyncCollection,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    documentId?: string
   ): boolean {
     if (!isPlainRecord(payload)) return false;
     const equals = (actual: unknown, expected: unknown) =>
@@ -1594,7 +1595,8 @@ export const StorageService = {
           isPlainRecord(operation.payload) &&
           this.matchesJournalProjection(
             operation.collection as Exclude<SyncCollection, 'syncMeta'>,
-            operation.payload
+            operation.payload,
+            typeof operation.documentId === 'string' ? operation.documentId : undefined
           )
         );
       }
@@ -1637,6 +1639,11 @@ export const StorageService = {
           if (!Array.isArray(payload.records)) return false;
           const raw = getItem(STORAGE_KEYS.TESTS);
           const current: unknown = raw === null ? [] : JSON.parse(raw);
+          if (!Array.isArray(current) || current.length > 50 ||
+              !current.every(isValidTestResultRecord)) return false;
+          // A collection snapshot is authoritative; per-result documents merge
+          // by immutable result ID. Recovery must use the same document scope.
+          if (documentId === 'snapshot') return equals(current, payload.records);
           const merged = mergeTestResultSnapshots(current, payload.records);
           return merged !== null && equals(current, merged);
         }
@@ -1737,7 +1744,7 @@ export const StorageService = {
 
     try {
       for (const operation of operations as JournalProjectionOperation[]) {
-        if (!this.applyJournalProjection(operation.collection, operation.payload)) {
+        if (!this.applyJournalProjection(operation.collection, operation.payload, operation.documentId)) {
           return rollback('A child projection rejected the grouped transaction.');
         }
       }
