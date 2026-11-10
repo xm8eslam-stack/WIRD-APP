@@ -69,9 +69,9 @@ test('page does not introduce viewport-level horizontal overflow', async ({ page
 
 
 test('tablet portrait keeps compact navigation and opens the full section drawer', async ({ page }) => {
-  await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.setViewportSize({ width: 820, height: 1180 });
 
   const quickNav = page.getByRole('navigation', { name: 'التنقل السريع' });
   await expect(quickNav).toBeVisible();
@@ -84,10 +84,10 @@ test('tablet portrait keeps compact navigation and opens the full section drawer
 });
 
 test('more navigation is marked active while a secondary section is open', async ({ page }) => {
-  await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/progress');
+  await page.setViewportSize({ width: 820, height: 1180 });
 
   const moreButton = page.getByRole('button', { name: 'المزيد من الأقسام' });
   await expect(moreButton).toHaveAttribute('aria-current', 'page');
