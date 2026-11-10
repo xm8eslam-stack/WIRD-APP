@@ -7,7 +7,7 @@ const quranPath = path.join(root, 'src/data/completeQuranData.json');
 const servicePath = path.join(root, 'src/services/mushafFacsimileService.ts');
 const quran = JSON.parse(fs.readFileSync(quranPath, 'utf8'));
 const serviceSource = fs.readFileSync(servicePath, 'utf8');
-const commit = serviceSource.match(/MUSHAF_FACSIMILE_COMMIT\\s*=\\s*'([a-f0-9]{40})'/i)?.[1];
+const commit = serviceSource.match(/MUSHAF_FACSIMILE_COMMIT\s*=\s*'([a-f0-9]{40})'/i)?.[1];
 
 if (!commit) throw new Error('[WIRD Mushaf] Could not read the pinned quran-svg commit from the page service.');
 
@@ -67,7 +67,7 @@ async function fetchPage(page) {
             typeof record?.polygon !== 'string' || !record.polygon.trim()) {
           throw new Error('Invalid ayah geometry record: ' + key);
         }
-        const points = record.polygon.trim().split(/\\s+/).map(point => point.split(',').map(Number));
+        const points = record.polygon.trim().split(/\s+/).map(point => point.split(',').map(Number));
         if (points.length < 3 || points.some(point => point.length !== 2 || !point.every(Number.isFinite))) {
           throw new Error('Invalid polygon geometry for ' + key);
         }
