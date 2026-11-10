@@ -178,3 +178,13 @@ The historical sections below describe earlier project phases and are not the cu
 - The deployed source includes PR #200's grouped child document-ID forwarding/recovery semantics and PR #201's correction so revision rating writes the canonical `profile/main` document.
 - The user confirmed two-device sync before these latest fixes; a fresh physical-device round trip after this deployment is not yet claimed.
 - Remaining known integrity work is weak-verse anti-resurrection and daily activity event-based aggregation; tombstones remain fail-closed.
+
+
+
+## 2026-11-10 — Sync checkpoint after PR #207
+
+- PR #207 merged at `d45e30e521c3f20c7c6e48aa81b7bc37798952b4`; exact head `fc1c5d58a59e806f75d14649d3610858663852d4` passed the full 30-step Quality Gate.
+- New weak-verse entries use stable Quran-coordinate IDs across journal-first and legacy writers. Existing IDs are intentionally not rewritten because resolution events refer to them.
+- Weak-verse snapshots still need event/tombstone semantics before safe multi-device reconciliation. No blind union, no counter addition, and no deletion resurrection.
+- Activity logs remain aggregated by date. Use immutable session-completion events to design a deduplicated materialized view, but preserve legacy baseline data and transactional rollback.
+- PR #206 is separately implementing memorization-session UI scaling and sticky ayah navigation; it must pass its exact-head Quality Gate before merge. Vercel preview builds may be blocked by the Free-plan build-rate limit.

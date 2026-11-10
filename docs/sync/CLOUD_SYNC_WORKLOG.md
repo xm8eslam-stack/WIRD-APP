@@ -255,3 +255,13 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Revision rating now targets the canonical `profile/main` document, aligned with session completion and profile snapshot persistence.
 - Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` reached `READY` on `wird-app.vercel.app` and is built from exact SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. The deployed source includes PR #200's grouped document-ID fix and PR #201's profile-key fix.
 - Previous Vercel PR check failures were caused by the build-rate limit; the later main deployment completed successfully. No Firebase rules/schema or production sync flags were changed.
+
+
+
+## 2026-11-10 — PR #207: weak-verse coordinate identity
+
+- Merged PR #207 at `d45e30e521c3f20c7c6e48aa81b7bc37798952b4`; exact head `fc1c5d58a59e806f75d14649d3610858663852d4` passed WIRD Quality Gate run `42786910676` (30 successful steps).
+- Both journal-first and legacy weak-verse writers now assign new records the stable coordinate ID `weak-{surah}-{ayah}`. Action mutation IDs remain unique and continue to protect retry semantics.
+- Historical IDs remain unchanged because `weak_verse.resolved` events reference them.
+- Remaining risks are unchanged: concurrent writes still target a full `weakVerses/snapshot`; no safe cross-device union exists yet; mistake counters lack a deduplicated per-failure materialization; resolution has no tombstone/anti-resurrection projection. Keep these paths fail-closed.
+- `activityEvents` is still a full `DailyLog[]` snapshot, not an immutable per-session ledger. The existing `session.completed` domain event and stable session mutation ID are useful building blocks, but a new ledger plus deterministic daily aggregation and legacy migration is required.
