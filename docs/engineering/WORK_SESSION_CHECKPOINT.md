@@ -188,3 +188,14 @@ The historical sections below describe earlier project phases and are not the cu
 - Weak-verse snapshots still need event/tombstone semantics before safe multi-device reconciliation. No blind union, no counter addition, and no deletion resurrection.
 - Activity logs remain aggregated by date. Use immutable session-completion events to design a deduplicated materialized view, but preserve legacy baseline data and transactional rollback.
 - PR #206 is separately implementing memorization-session UI scaling and sticky ayah navigation; it must pass its exact-head Quality Gate before merge. Vercel preview builds may be blocked by the Free-plan build-rate limit.
+
+
+## 2026-11-11 — Operational checkpoint after snapshot-CAS merge
+
+- Current main SHA: `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`; PR #325 merged by squash. No local workspace changes were left uncommitted.
+- PR #325 files: `storageService.ts`, `indexedDbSyncJournal.ts`, weak-verse/session/backup/reset/demo persistence, revision center, and regression tests. It adds deterministic non-cryptographic base-snapshot identities and compare-and-set rejection for stale `weakVerses` and `activityEvents` projections, with atomic rollback and fail-closed legacy handling. Exact-head run `42917981860` passed 667 assertions, 31 Rules Emulator tests, 8/8 audio probes, 140 Playwright tests, TypeScript, build, and server smoke.
+- PR #326 is the active audio/Mushaf port on top of that main SHA. Head `89761a457079a7b1f9b36d8abd5566b71f4d2565`; exact-head run `42919276966` has passed automated suites, all 604 coordinate-map checks, 8/8 approved audio probes, 31 Rules Emulator tests, TypeScript, production build, and server smoke. Desktop/mobile Playwright remains in progress; hold merge until it finishes green.
+- Memorization sizing/navigation is not missing: PR #202/#206 are merged and present in the current Production ancestry. Session controls are 80–110% UI scale, 20–44px ayah text, compact/comfortable spacing, one-ayah/all-session view, and sticky previous/next navigation. Preferences are local to each device, independent of cloud sync.
+- Production: latest deployment `dac125dd8770cc4881e2c6cea6fe94623ad52144` is `READY`; current main is ahead and Vercel reports `build-rate-limit`. No current-main deployment or live smoke test for PR #325/#326 is verified. Do not manually deploy.
+- Safety limits unchanged: no Firestore rules/schema, secrets, production environment variables, or remote sync flags touched. `weakVerses/activityEvents` full-snapshot conflict decisions remain blocked; no tombstone semantics or real two-device post-merge test yet. Google AI Studio sync remains unverified.
+- Next: finish PR #326 exact-head Playwright, merge only if green, then refresh this checkpoint and handoff with the resulting main SHA; after Vercel quota recovers, verify Production SHA and run live smoke. Do not enable remote sync flags without the owner's explicit approval.
