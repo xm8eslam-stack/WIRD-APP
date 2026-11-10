@@ -70,6 +70,38 @@ async function prepareFullOfflinePackage(port) {
   if (port) port.postMessage({ type: 'complete', completed, total: safeAssets.length });
 }
 
+async function inspectFullOfflinePackage() {
+  // Prefer the already-cached manifest so this diagnostic also works offline.
+  let manifestResponse = await caches.match(PRECACHE_MANIFEST_URL);
+  if (!manifestResponse) {
+    manifestResponse = await fetchWithTimeout(
+      PRECACHE_MANIFEST_URL,
+      { cache: 'no-store' },
+      OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS
+    );
+  }
+  if (!manifestResponse || !manifestResponse.ok) throw new Error('تعذر قراءة فهرس ملفات التجهيز المحلي.');
+  const manifest = await manifestResponse.json();
+  const assets = manifest && Array.isArray(manifest.allAssets) ? manifest.allAssets : null;
+  if (!assets || assets.length === 0 || assets.length > MAX_OFFLINE_PACKAGE_ASSETS) {
+    throw new Error('فهرس التجهيز المحلي غير صالح أو يتجاوز الحد الآمن.');
+  }
+  const safeAssets = assets.filter((asset) => {
+    if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
+    const url = new URL(asset, self.location.origin);
+    return url.origin === self.location.origin &&
+      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+  });
+  if (safeAssets.length !== assets.length) throw new Error('الفهرس يحتوي على ملفات غير مسموح بها.');
+  const cache = await caches.open(CONTENT_CACHE_NAME);
+  let cached = 0;
+  for (const asset of safeAssets) {
+    const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
+    if (await cache.match(request)) cached++;
+  }
+  return { total: safeAssets.length, cached, missing: safeAssets.length - cached };
+}
+
 async function cacheSessionAudio(rawUrls) {
   if (!Array.isArray(rawUrls)) return;
   const cache = await caches.open(AUDIO_CACHE_NAME);
@@ -287,6 +319,19 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+  if (event.data && event.data.type === 'WIRD_GET_OFFLINE_PACKAGE_STATUS') {
+    const port = event.ports && event.ports[0];
+    if (!port) return;
+    event.waitUntil(
+      inspectFullOfflinePackage()
+        .then((status) => port.postMessage({ type: 'status', ...status }))
+        .catch((error) => port.postMessage({
+          type: 'error',
+          message: error instanceof Error ? error.message : 'تعذر فحص ملفات وِرد المحفوظة.'
+        }))
+    );
     return;
   }
   if (event.data && event.data.type === 'WIRD_CACHE_SESSION_AUDIO') {
