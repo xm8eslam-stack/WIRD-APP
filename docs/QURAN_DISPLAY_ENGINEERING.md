@@ -57,3 +57,44 @@ Current implementation includes the non-mutating shared text primitive, RTL/spac
 ## Verification snapshot
 
 The GitHub Actions run for the validated implementation reported 588 automated assertions passed, 31 Firestore Rules Emulator tests passed, and 46 desktop/mobile Playwright tests passed. TypeScript, dependency audit, native API smoke, approved Quran audio CDN checks, production build, and server startup smoke also passed. The Tanzil validator reported 114 surahs, 6,236 ayahs, and 6,236 unique coordinate matches with no reported discrepancies. The same gates must be rerun on the final commit before merge.
+
+
+## Printed Madinah page artwork (2026-11-10)
+
+### Selected source
+
+The paper-faithful view uses the pinned **Quran SVG v1.1.1 / Hafs / KFGQPC** page artwork:
+
+- Publisher artwork: King Fahd Glorious Qur'an Printing Complex (KFGQPC), the official Madinah Mushaf digital vector edition.
+- Distribution/ayah hit-layer: `quran-ws/quran-svg`, release `v1.1.1`, mirrored on the versioned `cdn.quran.ws` static CDN.
+- Source records: [KFGQPC developer platform](https://qurancomplex.gov.sa/quran-dev/), [Quran SVG repository](https://github.com/quran-ws/quran-svg), [page rendering guide](https://quran.ws/docs/build/display-page/), [Quran SVG license notes](https://quran.ws/docs/reference/licensing/).
+- The KFGQPC developer platform explicitly distinguishes its Unicode font for ayah-level text from a complete printed-page font. This implementation instead uses the Complex's original vector page artwork.
+- The Quran SVG documentation identifies the page files as publisher vector artwork, with a separate transparent ayah polygon layer. The polygons and per-page metadata are CC BY 4.0; the artwork remains under KFGQPC's published usage terms. KFGQPC's usage statement permits digital, web, software, and media use. WIRD links the upstream repository in the reader and does not alter or repackage the source artwork.
+
+### Rendering contract
+
+- The artwork is a visual layer only. It contains glyph outlines, not selectable Unicode text.
+- WIRD's checked-in local Quran corpus remains the sole source for searchable/copyable ayah text, tafsir coordinates, audio coordinates, bookmarks, and memorization references.
+- Before rendering a page, WIRD extracts its `path.ayahPolygon` records and requires an exact one-to-one set match against the local page's `surah:ayah` coordinates. Missing, extra, duplicate, malformed, or invalid hit regions block the printed view for that page.
+- The overlay uses those page-specific polygons for ayah selection. A selected polygon opens the existing WIRD tafsir sheet using the locally loaded ayah object; it never reads replacement text from the artwork provider.
+- A collapsed local-text panel remains available for selection, copying, and searching. The previous flexible text layout remains available as a separate mode and is the fallback if the artwork cannot be loaded or validated.
+- The opening spread (pages 1–2) has a two-page SVG coordinate canvas. The renderer measures its content groups before fitting the page into the reader viewport; pages 3–604 use their source viewBox.
+- The service worker caches only the pinned HTTPS Hafs/KFGQPC page SVG route, up to 12 pages, so a page becomes available offline after its first successful load. It does not cache API responses or user data.
+
+### Scope and explicit limitations
+
+- This is exact **printed page artwork**, not a CSS recreation of line breaks. It does not make the vector glyphs searchable or selectable; the separate local-text panel provides that function.
+- The upstream ayah layer addresses ayahs, not individual words. Word-level highlighting or word-level hit testing requires the separately licensed/decomposed Elements package and is not claimed here.
+- Only the Hafs/KFGQPC Madinah edition is selected. No other riwayah, Indo-Pak layout, or alternate print edition is implied.
+- The renderer loads one page at a time rather than mounting the full Mushaf. Real-device performance, especially iPad Safari and lower-memory phones, remains a release gate.
+- Offline availability is per page after a successful online visit; the entire 604-page archive is not bundled into the app.
+- The versioned CDN is a free static-asset distribution path, not a paid Quran API. If it is unavailable, the user can switch to the existing flexible local text view.
+
+### Verification gates before merge
+
+1. Every requested page's polygon coordinates match WIRD's local page index exactly.
+2. All 604 page URLs remain bounded to the pinned release and Hafs/KFGQPC path.
+3. SVG root, viewBox, polygon commands, coordinates, duplicates, and payload size are validated before rendering.
+4. Playwright verifies a valid page, ayah selection, and an explicit fallback when page coordinates do not match.
+5. Test keyboard activation, screen-reader labels, mobile viewport overflow, first-two-page fitting, service-worker cache behavior, and no network requirement after a page has been cached.
+6. Compare representative pages (1, 2, 3, 42, 255, 604) against the publisher's digital edition and verify the exact page-to-ayah mapping.
