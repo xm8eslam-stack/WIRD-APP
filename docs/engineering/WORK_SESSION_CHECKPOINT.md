@@ -170,3 +170,11 @@ The historical sections below describe earlier project phases and are not the cu
 - PR #200 merged to `main` at `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; its exact-head Quality Gate passed all stages. Grouped journal projections and recovery now preserve each child document ID, including the distinction between test-result snapshot and per-result semantics.
 - Vercel did not produce a deployment record for that merge SHA because the Free-plan `build-rate-limit` blocked the PR deployment check. Do not claim the latest sync fix is live until a matching deployment is verified.
 - PR #201 addresses a newly found mismatch between revision profile writes (`profile/profile`) and all other profile snapshot writers (`profile/main`). The duplicate document IDs create separate Firestore revision streams for one profile; the fix and regression test are pending exact-head CI.
+
+## 2026-11-10 — Latest production sync baseline after PR #201
+
+- PR #201 merged as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`; its exact-head Quality Gate passed.
+- Production Vercel deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` and matches the same SHA on alias `wird-app.vercel.app`.
+- The deployed source includes PR #200's grouped child document-ID forwarding/recovery semantics and PR #201's correction so revision rating writes the canonical `profile/main` document.
+- The user confirmed two-device sync before these latest fixes; a fresh physical-device round trip after this deployment is not yet claimed.
+- Remaining known integrity work is weak-verse anti-resurrection and daily activity event-based aggregation; tombstones remain fail-closed.
