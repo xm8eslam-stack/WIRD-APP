@@ -9,13 +9,23 @@ export async function runHadithReferencesServiceTests(): Promise<{ passed: numbe
   let failed = 0;
   const originalFetch = globalThis.fetch;
   const originalLocalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
-  Object.defineProperty(globalThis, 'localStorage', {
-    configurable: true,
-    value: { length: 0, key: () => null, getItem: () => null, setItem: () => {}, removeItem: () => {} }
-  });
   const test = async (name: string, callback: () => void | Promise<void>) => {
-    try { await callback(); passed++; console.log(`  ✅ ${name}`); }
-    catch (error) { failed++; console.error(`  ❌ ${name}:`, error); }
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const staleKeys: string[] = [];
+        for (let index = 0; index < localStorage.length; index++) {
+          const key = localStorage.key(index);
+          if (key?.startsWith('wird_related_hadiths_v1:')) staleKeys.push(key);
+        }
+        staleKeys.forEach(key => localStorage.removeItem(key));
+      }
+      await callback();
+      passed++;
+      console.log(`  ✅ ${name}`);
+    } catch (error) {
+      failed++;
+      console.error(`  ❌ ${name}:`, error);
+    }
   };
 
   try {
