@@ -222,16 +222,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="pt-5 mt-4 border-t border-[#102D29]/8 dark:border-[#E8DFC9]/8 flex flex-col sm:flex-row items-center gap-3">
             <button
+              type="button"
               disabled={dailyTask.source === 'blocked'}
               onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex-1 w-full flex items-center justify-center gap-2 py-3 px-4 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ring-1 ring-[#B99B62]/30"
+              className="flex-1 w-full min-h-11 flex items-center justify-center gap-2 py-3 px-4 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold text-xs md:text-sm rounded-xl shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ring-1 ring-[#B99B62]/30"
             >
               <Play className="w-4 h-4 fill-white" />
               <span>{dailyTask.source === 'blocked' ? 'اختر نطاق الخطة' : dailyTask.mode === 'review' ? 'بدء جلسة المراجعة التفاعلية' : 'بدء جلسة الحفظ التفاعلية'}</span>
             </button>
             <button
               onClick={() => onNavigate('library')}
-              className="w-full sm:w-auto px-4 py-3 bg-[#E8DFC9]/40 hover:bg-[#E8DFC9]/80 dark:bg-[#18332E] dark:hover:bg-[#20403a] text-[#29332F] dark:text-[#F6F3EA] font-semibold text-xs md:text-sm rounded-xl transition-colors border border-[#102D29]/10 dark:border-[#E8DFC9]/10"
+              className="w-full sm:w-auto min-h-11 px-4 py-3 bg-[#E8DFC9]/40 hover:bg-[#E8DFC9]/80 dark:bg-[#18332E] dark:hover:bg-[#20403a] text-[#29332F] dark:text-[#F6F3EA] font-semibold text-xs md:text-sm rounded-xl transition-colors border border-[#102D29]/10 dark:border-[#E8DFC9]/10"
               title="تصفح المصحف واختيار سورة أخرى يدوياً"
             >
               سورة أخرى
@@ -402,14 +403,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-xs text-stone-500 font-mono">آخر 7 أيام</span>
           </div>
 
-          <div className="flex items-end justify-between gap-3 h-40 pt-4 border-b border-stone-100 dark:border-stone-700">
+          <div role="list" aria-label="النشاط الأسبوعي" className="flex items-end justify-between gap-3 h-40 pt-4 border-b border-stone-100 dark:border-stone-700">
             {last7Logs.map((log, idx) => {
               const maxMinutes = 50;
               const heightPercent = Math.min(100, Math.round((log.minutesSpent / maxMinutes) * 100));
               const dayName = new Date(log.date).toLocaleDateString('ar-SA', { weekday: 'short' });
 
               return (
-                <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
+                <div key={idx} role="listitem" aria-label={`${dayName}: ${log.minutesSpent} دقيقة، ${log.memorizedAyahsCount} آية`} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
                   {/* Tooltip on Hover */}
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-8 bg-stone-900 text-white text-[10px] py-1 px-2 rounded-md whitespace-nowrap pointer-events-none z-20 font-mono">
                     {log.minutesSpent}د · {log.memorizedAyahsCount} آيات
@@ -459,8 +460,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="space-y-2.5">
               <button
+                type="button"
                 onClick={() => onNavigate('tests')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-11 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 flex items-center justify-center">
@@ -475,8 +477,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={() => onNavigate('library')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-11 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 flex items-center justify-center">
@@ -491,8 +494,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={() => onNavigate('plans')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-11 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 flex items-center justify-center">
@@ -507,8 +511,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
 
               <button
+                type="button"
                 onClick={() => onNavigate('advisor')}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right"
+                className="w-full min-h-11 flex items-center justify-between p-3 rounded-xl bg-[#faf8f5] dark:bg-stone-900/50 hover:bg-stone-100 dark:hover:bg-stone-700/60 border border-stone-200/70 dark:border-stone-700/60 transition-colors text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 flex items-center justify-center">
