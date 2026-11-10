@@ -224,6 +224,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     segmentAudioQueueRef.current?.stop();
     segmentAudioQueueRef.current = null;
     setIsSegmentPlaying(false);
+    setIsSegmentPaused(false);
 
     if (isPlaying && audioRef.current) {
       audioRef.current.pause();
