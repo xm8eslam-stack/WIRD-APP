@@ -29,6 +29,7 @@ import { TafsirSheet } from './TafsirSheet';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { QuranText } from '../shared/QuranText';
 import { QuranBasmala } from '../shared/QuranBasmala';
+import { loadMushafFacsimilePage } from '../../services/mushafFacsimileService';
 import { QuranMushafFacsimilePage } from './QuranMushafFacsimilePage';
 
 interface QuranMushafReaderProps {
@@ -263,11 +264,34 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const jumpToNavigationPoint = (point: NavigationPoint) => {
     const target = { surahNumber: point.surahNumber, ayahNumber: point.ayahNumber };
-    if (point.page === page && audioAyahs.length) {
+    if (point.page === page && audioAyahs.length &&
+        audioAyahs.some(ayah => ayah.surahNumber === target.surahNumber && ayah.numberInSurah === target.ayahNumber)) {
       document.getElementById('wird-ayah-' + point.surahNumber + '-' + point.ayahNumber)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       pendingTargetRef.current = null;
       return;
     }
+
+    if (readerLayout === 'printed') {
+      const candidatePages = [point.page, point.page - 1, point.page + 1]
+        .filter(candidate => candidate >= 1 && candidate <= 604);
+      void (async () => {
+        for (const candidate of candidatePages) {
+          try {
+            const data = await loadMushafFacsimilePage(candidate);
+            if (data.ayahAreas.some(area => area.surahNumber === target.surahNumber && area.ayahNumber === target.ayahNumber)) {
+              changePage(candidate);
+              pendingTargetRef.current = target;
+              return;
+            }
+          } catch {
+            // A neighboring page may be temporarily unavailable; try the next grounded candidate.
+          }
+        }
+        setPageJumpError('تعذر تحديد صفحة الآية في تخطيط المصحف المطبوع؛ يمكنك استخدام العرض المرن للانتقال إليها.');
+      })();
+      return;
+    }
+
     changePage(point.page);
     pendingTargetRef.current = target;
   };
