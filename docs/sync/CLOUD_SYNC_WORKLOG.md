@@ -236,3 +236,13 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - PR #199 is the documentation continuity checkpoint, including this worklog update and the collection-level findings.
 - PR PR checks may show Vercel `build-rate-limit` due to the Free plan. This does not establish a code failure, but also does not count as a successful preview deployment. Keep CI, Vercel deployment, and live verification separate.
 - No production Firestore rules/schema, secrets, environment settings, or sync flags were changed in this review.
+
+
+
+## 2026-11-10 — PR #200 merged; canonical profile key mismatch found
+
+- PR #200 merged as `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; exact PR head `7ed3af44291cf439b89625e30722750a9366e3e8` passed the full Quality Gate.
+- Grouped child `documentId` is now forwarded during local projection and grouped recovery. Test-result recovery uses authoritative replacement for `snapshot` and immutable-ID merge for per-result documents.
+- Vercel Free-plan `build-rate-limit` prevented a preview deployment; no Vercel deployment record exists for the merge SHA. Production live verification of this patch is therefore not claimed.
+- Found a second revisioned identity inconsistency: `RetentionService.buildRevisionPerformanceSnapshot` emits `profile/profile`, while session completion and profile snapshot writers use `profile/main`. This splits revision/conflict tracking for one logical profile. PR #201 changes the revision writer to the canonical `main` document and adds a regression assertion; CI pending.
+- Weak-verse and daily-activity collection merge limitations remain unchanged and fail closed where conflicts are detected.
