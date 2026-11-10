@@ -81,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       const drawer = mobileDrawerRef.current;
       if (!drawer) return;
       const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        'button:not([disabled]):not([tabindex="-1"]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
       ));
       if (focusable.length === 0) {
         event.preventDefault();
@@ -255,6 +255,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             aria-label="إغلاق القائمة بالخلفية"
+            tabIndex={-1}
             className="fixed inset-0 bg-stone-900/60 backdrop-blur-xs transition-opacity"
             onClick={onCloseMobile}
           />
