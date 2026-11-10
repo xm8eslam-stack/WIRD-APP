@@ -25,6 +25,21 @@ test.describe('WIRD progress map UX', () => {
     await expect(stableFilter).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('page-grid zoom presets expose selected state and comfortable touch targets', async ({ page }) => {
+    const zoom = page.getByRole('group', { name: 'تكبير خريطة الصفحات' });
+    const smaller = zoom.getByRole('button', { name: 'أصغر' });
+    const normal = zoom.getByRole('button', { name: 'متوسط' });
+    const larger = zoom.getByRole('button', { name: 'أكبر' });
+
+    await expect(normal).toHaveAttribute('aria-pressed', 'true');
+    for (const control of [smaller, normal, larger]) {
+      await expect(control).toHaveCSS('min-height', '44px');
+    }
+    await larger.click();
+    await expect(larger).toHaveAttribute('aria-pressed', 'true');
+    await expect(normal).toHaveAttribute('aria-pressed', 'false');
+  });
+
   test('page inspection opens the exact ayah segment and closes with Escape', async ({ page }) => {
     await page.getByRole('button', { name: /صفحة 1 - الفاتحة/ }).click();
     const dialog = page.getByRole('dialog', { name: /صفحة رقم 1/ });
