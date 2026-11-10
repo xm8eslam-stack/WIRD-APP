@@ -83,7 +83,11 @@ async function prepareFullOfflinePackage(port) {
   let completed = 0;
   for (const asset of safeAssets) {
     const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
-    if (!(await cache.match(request))) {
+    const cachedResponse = await cache.match(request);
+    const validCachedResponse = cachedResponse &&
+      isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, cachedResponse);
+    if (!validCachedResponse) {
+      if (cachedResponse) await cache.delete(request);
       const response = await fetchWithTimeout(request, {}, OFFLINE_ASSET_REQUEST_TIMEOUT_MS);
       if (!isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, response)) {
         throw new Error('تعذر التحقق من نوع أحد ملفات التطبيق قبل حفظه: ' + asset);
@@ -122,7 +126,12 @@ async function inspectFullOfflinePackage() {
   let cached = 0;
   for (const asset of safeAssets) {
     const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
-    if (await cache.match(request)) cached++;
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse && isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, cachedResponse)) {
+      cached++;
+    } else if (cachedResponse) {
+      await cache.delete(request);
+    }
   }
   return { total: safeAssets.length, cached, missing: safeAssets.length - cached };
 }
