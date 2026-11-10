@@ -37,6 +37,7 @@ import { runPlanRangeSelectionTests } from './planRangeSelection.test';
 import { runAudioPreferencesTests } from '../services/audioPreferences.test';
 import { runMemorizationDisplayPreferenceTests } from '../services/memorizationDisplayPreferences.test';
 import { runQuranMushafReaderTests } from './quranMushafReader.test';
+import { runMushafFacsimileServiceTests } from '../services/mushafFacsimileService.test';
 import { runQuranTypographyTests } from './quranTypography.test';
 import { runReadingKhatmaServiceTests } from '../services/readingKhatmaService.test';
 import { runSessionStudyUiTests } from './sessionStudyUi.test';
@@ -136,6 +137,7 @@ async function main() {
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
     { name: 'Device-local Memorization Display Preferences', runner: runMemorizationDisplayPreferenceTests },
     { name: 'Complete Mushaf Page & Navigation Index', runner: runQuranMushafReaderTests },
+    { name: 'Printed Mushaf Facsimile Source, Geometry & Local Ayah Matching', runner: runMushafFacsimileServiceTests },
     { name: 'Quran text typography and canonical hamza regression', runner: runQuranTypographyTests },
     { name: 'Reading Khatma Progress', runner: runReadingKhatmaServiceTests },
     { name: 'Session Study UI Integration', runner: runSessionStudyUiTests },
