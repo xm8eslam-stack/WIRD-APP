@@ -89,7 +89,7 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await page.getByRole('button', { name: 'الإعدادات', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'التجهيز للعمل دون إنترنت' })).toBeVisible();
     await page.getByRole('button', { name: 'تجهيز وِرد لهذا الجهاز' }).click();
-    await expect(page.getByRole('status')).toContainText(/اكتمل تنزيل ملفات تشغيل وِرد/, { timeout: 150_000 });
+    await expect(page.getByRole('status')).toContainText(/اكتمل تنزيل \d+ ملفًا/, { timeout: 150_000 });
 
     const cacheState = await page.evaluate(async () => {
       const manifestResponse = await fetch('/wird-precache-manifest.json');
