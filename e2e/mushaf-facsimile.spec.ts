@@ -69,5 +69,39 @@ test('printed Mushaf mode fails closed and offers the local flexible-text reader
 
   await expect(page.getByRole('alert')).toContainText('لم نستخدم أي نص قرآني من ملف الرسم');
   await page.getByRole('button', { name: 'متابعة القراءة بالعرض المرن' }).click();
-  await expect(page.getByText('عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع')).toBeVisible();
+  await expect(page.getByText('توزيع الآيات هنا مرن بحسب الصفحة')).toBeVisible();
+});
+
+
+test('printed page coordinates resolve local Quran text even when flexible page metadata differs', async ({ page }) => {
+  const page120Svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 341.75 547.98">
+    <path class="ayahPolygon" fill-opacity="0" id="verse-746" number="005077" ayah="77" surah="5" d="M 0 0 L 341 0 L 341 547 L 0 547 Z"/>
+  </svg>`;
+  await page.addInitScript((svg) => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : '';
+      if (url === 'https://raw.githubusercontent.com/quran-ws/quran-svg/3ff27b46cecb0c0519d77531d9c868a579d1f623/mushafs/hafs/kfqc/svg/120.svg') {
+        return new Response(svg, { status: 200, headers: { 'content-type': 'image/svg+xml' } });
+      }
+      return originalFetch(input, init);
+    };
+  }, page120Svg);
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
+  await page.getByRole('spinbutton', { name: 'رقم صفحة المصحف' }).fill('120');
+  await page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' }).click();
+  await page.getByRole('button', { name: 'الصفحة المطبوعة' }).click();
+
+  const printedPage = page.getByRole('group', { name: 'صفحة المصحف المطبوعة رقم 120' });
+  await expect(printedPage).toBeVisible();
+  const ayah77 = page.getByRole('button', { name: 'تفسير الآية 77 من سورة المائدة' });
+  await expect(ayah77).toBeVisible();
+  await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toBeEnabled();
+  await ayah77.focus();
+  await page.keyboard.press('Enter');
+  await expect(ayah77).toHaveAttribute('aria-pressed', 'true');
 });
