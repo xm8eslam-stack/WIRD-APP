@@ -178,3 +178,10 @@ The historical sections below describe earlier project phases and are not the cu
 - The deployed source includes PR #200's grouped child document-ID forwarding/recovery semantics and PR #201's correction so revision rating writes the canonical `profile/main` document.
 - The user confirmed two-device sync before these latest fixes; a fresh physical-device round trip after this deployment is not yet claimed.
 - Remaining known integrity work is weak-verse anti-resurrection and daily activity event-based aggregation; tombstones remain fail-closed.
+
+## 2026-11-10 — Latest sync data-integrity follow-up
+
+- PR #203 is in progress to prevent cross-device full-snapshot overwrites for `weakVerses` and `activityEvents`. New writes include a base-snapshot fingerprint and apply only if the local archive still matches that exact base.
+- Legacy events may initialize an empty archive or replay identical data, but may not replace a non-empty divergent archive. The remote inbox remains blocked on a mismatch; explicit verified use-remote resolution is preserved as the only override after archiving evidence.
+- Daily activity remains an aggregate by date; no automatic addition/union is safe. Weak-verse notes/counters are not auto-merged. Tombstones remain fail-closed.
+- PR #202 (memorization display controls) is merged to main at `f30f45299fca27a22a3b536aaa49c01d96a75553`; exact-head Quality Gate passed. It is not yet verified as a Production deployment.
