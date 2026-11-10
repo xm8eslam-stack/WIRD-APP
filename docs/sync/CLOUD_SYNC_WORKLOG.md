@@ -246,3 +246,12 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Vercel Free-plan `build-rate-limit` prevented a preview deployment; no Vercel deployment record exists for the merge SHA. Production live verification of this patch is therefore not claimed.
 - Found a second revisioned identity inconsistency: `RetentionService.buildRevisionPerformanceSnapshot` emits `profile/profile`, while session completion and profile snapshot writers use `profile/main`. This splits revision/conflict tracking for one logical profile. PR #201 changes the revision writer to the canonical `main` document and adds a regression assertion; CI pending.
 - Weak-verse and daily-activity collection merge limitations remain unchanged and fail closed where conflicts are detected.
+
+
+
+## 2026-11-10 — Canonical profile key fix merged and deployed
+
+- PR #201 merged as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`; exact-head Quality Gate run `42777475075` succeeded.
+- Revision rating now targets the canonical `profile/main` document, aligned with session completion and profile snapshot persistence.
+- Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` reached `READY` on `wird-app.vercel.app` and is built from exact SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. The deployed source includes PR #200's grouped document-ID fix and PR #201's profile-key fix.
+- Previous Vercel PR check failures were caused by the build-rate limit; the later main deployment completed successfully. No Firebase rules/schema or production sync flags were changed.
