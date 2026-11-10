@@ -232,7 +232,7 @@ self.addEventListener('fetch', (event) => {
   // Pages are downloaded on demand; the cache is bounded to the most recent 12 pages.
   if (url.hostname === 'cdn.quran.ws' &&
       url.pathname.startsWith('/svg/pages/v1.1.1/hafs-kfqc/') &&
-      (url.pathname.endsWith('.svg') || url.pathname.endsWith('.json'))) {
+      url.pathname.endsWith('.svg')) {
     event.respondWith((async () => {
       const cache = await caches.open(MUSHAF_PAGE_CACHE_NAME);
       const cached = await cache.match(req);
@@ -240,9 +240,7 @@ self.addEventListener('fetch', (event) => {
       try {
         const response = await fetch(req);
         const contentType = (response.headers.get('content-type') || '').toLowerCase();
-        const validType = url.pathname.endsWith('.svg')
-          ? contentType.includes('image/svg+xml')
-          : contentType.includes('application/json');
+        const validType = contentType.includes('image/svg+xml');
         if (response.status === 200 && response.type === 'cors' && validType) {
           await cache.put(req, response.clone());
           const keys = await cache.keys();
