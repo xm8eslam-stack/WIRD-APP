@@ -21,8 +21,9 @@ import { QURAN_JUZ_STARTS, QURAN_HIZB_QUARTER_STARTS } from '../../data/quranNav
 import { loadSurahVerses } from '../../data/quranDataLoader';
 import { findSurahStartPage } from '../../data/quranNavigation';
 import { RECITERS, formatAyahAudioUrl, requestOfflineAudioCache } from '../../services/audioService';
-import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
-import type { PlaybackRate } from '../../services/audioPreferences';
+import { getSavedAudioRepeatCount, getSavedPlaybackRate, saveAudioRepeatCount, savePlaybackRate } from '../../services/audioPreferences';
+import type { AudioRepeatCount, PlaybackRate } from '../../services/audioPreferences';
+import { QuranAudioQueueController } from '../../services/audioQueueController';
 import type { Ayah, ReciterId } from '../../types/quran';
 import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { TafsirSheet } from './TafsirSheet';
@@ -112,6 +113,9 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(getSavedPlaybackRate);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [segmentStartIndex, setSegmentStartIndex] = useState(0);
+  const [segmentEndIndex, setSegmentEndIndex] = useState(0);
+  const [segmentRepeatCount, setSegmentRepeatCount] = useState<AudioRepeatCount>(getSavedAudioRepeatCount);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
@@ -126,7 +130,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     : ayahs;
   useEffect(() => { setPrintedPageAyahs(null); }, [page]);
   const [pageTurnDirection, setPageTurnDirection] = useState<'next' | 'previous'>('next');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioQueueRef = useRef<QuranAudioQueueController | null>(null);
   const autoPlayNextPageRef = useRef(false);
   const pendingTargetRef = useRef<{ surahNumber: number; ayahNumber: number } | null>(null);
   const touchStartX = useRef<number | null>(null);
@@ -138,7 +142,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setIsLoading(true);
     setLoadError(null);
     setAyahs([]);
-    audioRef.current?.pause();
+    audioQueueRef.current?.stop();
+    audioQueueRef.current = null;
     setIsPlaying(false);
     setPlayingIndex(null);
 
@@ -182,56 +187,93 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     try { localStorage.setItem(MUSHAF_PAGE_WIDTH_KEY, isWidePage ? 'wide' : 'comfortable'); } catch { /* Reading controls remain usable without storage. */ }
   }, [isWidePage]);
 
+  useEffect(() => {
+    setSegmentStartIndex(0);
+    setSegmentEndIndex(Math.max(0, audioAyahs.length - 1));
+  }, [page, audioAyahs.length]);
+
   useEffect(() => () => {
-    audioRef.current?.pause();
-    audioRef.current = null;
+    audioQueueRef.current?.stop();
+    audioQueueRef.current = null;
   }, []);
 
   const stopAudio = () => {
-    audioRef.current?.pause();
+    audioQueueRef.current?.stop();
+    audioQueueRef.current = null;
     setIsPlaying(false);
     setPlayingIndex(null);
   };
 
+  const startAudioQueue = (
+    queue: Ayah[],
+    startIndex: number,
+    endIndex: number,
+    repeatCount: AudioRepeatCount,
+    continueAcrossPages: boolean
+  ) => {
+    if (!queue.length || startIndex < 0 || endIndex < startIndex || endIndex >= queue.length) return;
+    stopAudio();
+    const tracks = queue.map(ayah => ({
+      id: String(ayah.number),
+      url: formatAyahAudioUrl(ayah.surahNumber, ayah.numberInSurah, activeReciter)
+    }));
+    const cacheUpcoming = (index: number) => {
+      requestOfflineAudioCache(tracks.slice(index, Math.min(endIndex + 1, index + 20)).map(track => track.url));
+    };
+    cacheUpcoming(startIndex);
+
+    const controller = new QuranAudioQueueController({
+      onTrackChange: index => {
+        setPlayingIndex(index);
+        if ((index - startIndex) % 10 === 0) cacheUpcoming(index);
+      },
+      onPlaying: () => setIsPlaying(true),
+      onPaused: () => setIsPlaying(false),
+      onComplete: () => {
+        if (audioQueueRef.current !== controller) return;
+        audioQueueRef.current = null;
+        setIsPlaying(false);
+        setPlayingIndex(null);
+        if (continueAcrossPages && page < 604) {
+          autoPlayNextPageRef.current = true;
+          setPage(page + 1);
+        }
+      },
+      onError: error => {
+        console.warn('[WIRD Mushaf] Quran audio queue failed:', error);
+        if (audioQueueRef.current !== controller) return;
+        audioQueueRef.current = null;
+        setIsPlaying(false);
+        setPlayingIndex(null);
+      }
+    });
+    audioQueueRef.current = controller;
+    try {
+      controller.start({
+        tracks,
+        startIndex,
+        endIndex,
+        repeatCount: repeatCount === -1 ? null : repeatCount,
+        playbackRate: getSavedPlaybackRate()
+      });
+      setPlayingIndex(startIndex);
+      setIsPlaying(true);
+    } catch (error) {
+      controller.stop();
+      audioQueueRef.current = null;
+      setIsPlaying(false);
+      setPlayingIndex(null);
+      console.warn('[WIRD Mushaf] Could not start Quran audio queue:', error);
+    }
+  };
+
   const playAyahAt = (index: number, queue: Ayah[] = audioAyahs) => {
-    const ayah = queue[index];
-    if (!ayah) {
+    if (!queue[index]) {
       setIsPlaying(false);
       setPlayingIndex(null);
       return;
     }
-
-    audioRef.current?.pause();
-    requestOfflineAudioCache(
-      queue.slice(index, index + 20).map(item => formatAyahAudioUrl(item.surahNumber, item.numberInSurah, activeReciter))
-    );
-    const audio = new Audio(formatAyahAudioUrl(ayah.surahNumber, ayah.numberInSurah, activeReciter));
-    audio.playbackRate = getSavedPlaybackRate();
-    audioRef.current = audio;
-    setPlayingIndex(index);
-    setIsPlaying(true);
-
-    audio.onended = () => {
-      if (index + 1 < queue.length) playAyahAt(index + 1, queue);
-      else if (page < 604) {
-        autoPlayNextPageRef.current = true;
-        setIsPlaying(false);
-        setPlayingIndex(null);
-        setPage(page + 1);
-      } else {
-        setIsPlaying(false);
-        setPlayingIndex(null);
-      }
-    };
-    audio.onerror = () => {
-      setIsPlaying(false);
-      setPlayingIndex(null);
-    };
-    audio.play().catch(error => {
-      console.warn('[WIRD Mushaf] Audio playback failed:', error);
-      setIsPlaying(false);
-      setPlayingIndex(null);
-    });
+    startAudioQueue(queue, index, queue.length - 1, 1, true);
   };
 
   useEffect(() => {
@@ -242,17 +284,16 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   }, [audioAyahs, isLoading, page]);
 
   const togglePageAudio = () => {
-    if (isPlaying) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
+    const controller = audioQueueRef.current;
+    if (controller?.getState().active) {
+      if (controller.getState().paused) controller.resume();
+      else controller.pause();
       return;
     }
-    if (audioRef.current && playingIndex !== null) {
-      audioRef.current.playbackRate = getSavedPlaybackRate();
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-      return;
+    if (audioAyahs.length) {
+      const fullPage = segmentStartIndex === 0 && segmentEndIndex === audioAyahs.length - 1;
+      startAudioQueue(audioAyahs, segmentStartIndex, segmentEndIndex, segmentRepeatCount, fullPage);
     }
-    if (audioAyahs.length) playAyahAt(0, audioAyahs);
   };
 
   const changePage = (nextPage: number) => {
@@ -347,7 +388,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const handlePlaybackRateChange = (rate: PlaybackRate) => {
     const savedRate = savePlaybackRate(rate);
     setPlaybackRate(savedRate);
-    if (audioRef.current) audioRef.current.playbackRate = savedRate;
+    audioQueueRef.current?.setPlaybackRate(savedRate);
   };
 
   const selectReaderLayout = (layout: 'flow' | 'printed') => {
