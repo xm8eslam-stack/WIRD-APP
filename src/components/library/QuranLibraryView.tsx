@@ -577,7 +577,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={(e) => {
+                        onClick={() => {
                           handleOpenMushafPage(surah.pageStart);
                         }}
                         title="قراءة في المصحف"
@@ -589,7 +589,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
                       <button
                         type="button"
-                        onClick={(e) => {
+                        onClick={() => {
                           onStartSession(surah.number, 1, Math.min(10, surah.versesCount));
                         }}
                         title="بدء حفظ السورة"
