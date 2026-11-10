@@ -1184,10 +1184,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-weak-ayah-number" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   رقم الآية الملتبسة (اختياري، بين {ratingPortion.startAyah} و {ratingPortion.endAyah}):
                 </label>
                 <input
+                  id="revision-weak-ayah-number"
                   type="number"
                   min={ratingPortion.startAyah}
                   max={ratingPortion.endAyah}
@@ -1199,10 +1200,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-failure-notes" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   ملاحظة سبب الخطأ أو الكلمة المشكلة:
                 </label>
                 <input
+                  id="revision-failure-notes"
                   type="text"
                   value={reviewNotes}
                   onChange={e => setReviewNotes(e.target.value)}
@@ -1249,10 +1251,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
             <form onSubmit={handleAddNewPortion} className="space-y-3 text-xs">
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-new-portion-surah" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   اختر السورة:
                 </label>
                 <select
+                  id="revision-new-portion-surah"
                   value={newSurahNum}
                   onChange={e => {
                     const num = Number(e.target.value);
@@ -1275,10 +1278,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                  <label htmlFor="revision-new-portion-start" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                     من الآية:
                   </label>
                   <input
+                    id="revision-new-portion-start"
                     type="number"
                     min={1}
                     value={newStartAyah}
@@ -1288,10 +1292,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                  <label htmlFor="revision-new-portion-end" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                     إلى الآية:
                   </label>
                   <input
+                    id="revision-new-portion-end"
                     type="number"
                     min={newStartAyah}
                     value={newEndAyah}
@@ -1303,10 +1308,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-new-portion-status" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   الحالة المبدئية للمقطع:
                 </label>
                 <select
+                  id="revision-new-portion-status"
                   value={newStatus}
                   onChange={e => setNewStatus(e.target.value as PortionMemorizationStatus)}
                   className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
@@ -1354,10 +1360,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
             <form onSubmit={handleAddManualWeakVerse} className="space-y-3 text-xs">
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-surah" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   اختر السورة:
                 </label>
                 <select
+                  id="revision-manual-weak-surah"
                   value={weakSurahNum}
                   onChange={e => {
                     const num = Number(e.target.value);
@@ -1378,10 +1385,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-ayah" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   رقم الآية:
                 </label>
                 <input
+                  id="revision-manual-weak-ayah"
                   type="number"
                   min={1}
                   value={manualWeakAyahNum}
@@ -1392,10 +1400,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-text" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   نص الآية (اختياري - يتم جلبه تلقائياً إن وُجد):
                 </label>
                 <textarea
+                  id="revision-manual-weak-text"
                   value={manualWeakText}
                   onChange={e => setManualWeakText(e.target.value)}
                   placeholder="اكتب نص الآية بالرسم القرآني إن أردت..."
@@ -1405,10 +1414,11 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
+                <label htmlFor="revision-manual-weak-notes" className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">
                   سبب اللبس أو المتشابه المشكل:
                 </label>
                 <input
+                  id="revision-manual-weak-notes"
                   type="text"
                   value={manualWeakNotes}
                   onChange={e => setManualWeakNotes(e.target.value)}
