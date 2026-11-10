@@ -26,9 +26,9 @@ export interface QuranAudioElement {
   currentTime: number;
   playbackRate: number;
   preload: string;
-  onended: ((event?: Event) => void) | null;
-  onerror: ((event?: Event) => void) | null;
-  onplaying: ((event?: Event) => void) | null;
+  onended: ((event: Event) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onplaying: ((event: Event) => void) | null;
   play: () => Promise<void>;
   pause: () => void;
   load?: () => void;
