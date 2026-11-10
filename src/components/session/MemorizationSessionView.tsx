@@ -685,8 +685,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             {displayTextError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">تعذر تحميل النص الإملائي المعتمد لهذه الآية؛ أعد المحاولة قبل متابعة التسميع.</span> : words.map((word, idx) => {
               const masked = isWordMasked(idx);
 
-              return (
-                {masked ? (
+              return masked ? (
                   <button
                     type="button"
                     key={idx}
@@ -699,8 +698,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                   </button>
                 ) : (
                   <span key={idx} className="inline-block px-2.5 py-0.5 select-none">{word}</span>
-                )}
-              );
+                );
             })}
             <span className="ayah-number">{currentAyah.numberInSurah}</span>
           </p>
