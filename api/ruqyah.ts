@@ -107,7 +107,7 @@ function validPayload(payload: unknown): boolean {
   if (!isRecord(payload) || payload.status !== 'success' || !('data' in payload)) return false;
   const rawData = payload.data;
   const rawRows: unknown[] = Array.isArray(rawData) ? rawData : [rawData];
-  if (rawRows.length === 0 || rawRows.length > 500) return false;
+  if (rawRows.length > 500) return false;
   const rows = rawRows.filter(isRecord);
   if (rows.length !== rawRows.length) return false;
   return !rows.some(row =>
