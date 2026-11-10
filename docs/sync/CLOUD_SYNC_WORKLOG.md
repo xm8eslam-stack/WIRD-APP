@@ -1,3 +1,39 @@
+## Current operational checkpoint — 2026-11-10 (verified follow-up)
+
+This checkpoint supersedes any older statement below that contradicts the current Production inventory or the owner's direct device test. It is a documentation update only; no runtime code, Firebase rules, production secrets, Vercel settings, or user data were changed.
+
+### Production and user-observed operation
+
+- Current `main` source SHA: `c8f86a4a32e554cf2275dd070d5bf864896e251c`.
+- Latest Vercel Production deployment: `dpl_5YVP1Z9rgsgBdzEJsLpxdb8dp52Y`, state `READY`, deployed from the same `main` SHA. This establishes deployment/source parity, not every live feature path.
+- Vercel environment inventory was inspected by variable name/target only; secret values were not decrypted or displayed:
+  - `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` for Production.
+  - `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` for Production.
+- Owner-confirmed manual real-device test: authenticated sync was enabled and tested on two devices; the owner reports it is working. Treat the tested two-device path as **owner-reported PASS**. Do not describe the two-device test as absent or unverified. The scope and exact records/operations exercised were not independently captured in an automated trace, so do not generalize this observation to every failure/recovery scenario.
+- GitHub Quality Gate run `42762626953` completed with conclusion `success`. The run covered the repository CI suite, TypeScript, Firestore Emulator tests, production build, server smoke, and desktop/mobile browser smoke. CI success is distinct from live production verification.
+
+### Current sync status classification
+
+**Operational baseline: PASS (bounded evidence).** Production flags are on, the current deployment is Ready on current main, and the owner reports successful two-device use. Preserve this working configuration.
+
+**Implemented protections (source-level):** UID-scoped state; durable local-first outbox/journal; revision-checked Firestore writes; ordered immutable remote events; separate inbox/projection processing; auth-scope checks; retry triggers on startup/activity/reconnect; and local transaction boundaries for grouped projection. These are implementation findings, not a claim that every edge case has passed live testing.
+
+**Known limitations / follow-up gates (not evidence that ordinary sync is broken):**
+1. Collection-specific tombstone/delete semantics remain deliberately blocked. Do not convert deletes into empty upserts or bypass the guard. Safe deletion requires per-collection semantics, offline replay, stale-update rejection/anti-resurrection, recovery, and retention/compaction.
+2. Grouped `syncMeta` **use-remote** is supported through one local journal transaction; grouped `keep-local`/merge is not fully supported and must remain blocked until an atomic grouped rebase/queue path is implemented and tested.
+3. Ruqyah V2 compatible snapshots have deterministic component-wise merge/reset-watermark behavior. Divergent legacy V1 baselines remain ambiguous and must be archived/blocked rather than guessed.
+4. Cross-tab concurrency, account-switch/logout/reinstall isolation, crash/long-offline replay, queue stress, and complete authenticated production journeys need broader targeted coverage. Existing CI/Emulator tests are not substitutes for these scenarios.
+5. Historical audit/worklog statements that both flags were absent, sync was inactive, or the user's two-device test had not occurred are superseded by this checkpoint.
+
+### Safety and change boundary
+
+- Keep both Production sync flags enabled; do not toggle them during documentation or follow-up work.
+- Do not change Production secrets, Firebase rules/schema, Vercel protection/settings, or user data without explicit approval.
+- Do not claim that CI, Emulator, or a Ready deployment alone proves all live sync behavior.
+- Separate owner-reported real-device evidence, automated CI, Emulator coverage, deployment evidence, and untested edge cases in every future report.
+
+---
+
 # WIRD Cloud Sync — Persistent Engineering Worklog
 
 > **Purpose:** This is the durable continuation record for all cloud-sync investigations, decisions, bugs, tests, and release work. Update this file whenever a sync task is started, completed, blocked, or its evidence changes.
