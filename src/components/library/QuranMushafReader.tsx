@@ -128,6 +128,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [pageJumpError, setPageJumpError] = useState('');
   const [textScale, setTextScale] = useState<MushafTextScale>(readMushafTextScale);
   const [isWidePage, setIsWidePage] = useState(readMushafPageWidth);
+  const [isFullWidth, setIsFullWidth] = useState(readMushafFullWidth);
+  const [lineSpacing, setLineSpacing] = useState<MushafLineSpacing>(readMushafLineSpacing);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
@@ -207,6 +209,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   useEffect(() => {
     try { localStorage.setItem(MUSHAF_PAGE_WIDTH_KEY, isWidePage ? 'wide' : 'comfortable'); } catch { /* Reading controls remain usable without storage. */ }
   }, [isWidePage]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_FULL_WIDTH_KEY, String(isFullWidth)); } catch { /* Reading controls remain usable without storage. */ }
+  }, [isFullWidth]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_LINE_SPACING_KEY, lineSpacing); } catch { /* Reading controls remain usable without storage. */ }
+  }, [lineSpacing]);
 
   useEffect(() => {
     setSegmentStartIndex(0);
