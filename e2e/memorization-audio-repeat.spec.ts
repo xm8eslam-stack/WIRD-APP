@@ -139,7 +139,6 @@ test.describe('Memorization session audio repetition', () => {
     await expect(page.getByText(/الآية 2 من 3/)).toBeVisible();
     await expect(navigation.getByRole('button', { name: 'السابقة' })).toBeEnabled();
   });
-});
 
 
 test('session segment playback can pause and resume without losing its selected range', async ({ page }) => {
@@ -213,4 +212,5 @@ test('memorization and review share continuous segment playback with bounded rep
     '067003.mp3'
   ]);
   await expect(page.getByRole('button', { name: 'تشغيل المقطع الصوتي المحدد' })).toBeVisible();
+});
 });
