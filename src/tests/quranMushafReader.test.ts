@@ -64,6 +64,10 @@ export function runQuranMushafReaderTests(): { passed: number; failed: number } 
     assert(source.includes('QURAN_PAGE_INDEX') && source.includes('QURAN_JUZ_STARTS') && source.includes('QURAN_HIZB_QUARTER_STARTS'), 'Reader must use generated exact navigation indexes');
     assert(!source.includes('completeQuranData.json') && !source.includes('verifiedAyahs'), 'Reader must not eagerly import the full Quran dataset');
     assert(source.includes('BOOKMARKS_KEY') && source.includes('LAST_PAGE_KEY'), 'Reader must persist bookmarks and last reading position');
+    assert(source.includes('MUSHAF_TEXT_SCALE_KEY') && source.includes('MUSHAF_PAGE_WIDTH_KEY'), 'Reader must persist text size and flexible page width preferences');
+    assert(source.includes('MUSHAF_TEXT_SCALE_CLASSES') && source.includes('extraLarge'), 'Reader must offer adjustable Quran text sizes');
+    assert(source.includes('توسيع مساحة القراءة') && source.includes('تقليل عرض الصفحة'), 'Reader must offer a wider or comfortable reading surface');
+    assert(source.includes('ليس محاكاة مطابقة لأسطر المصحف المطبوع') && source.includes('بيانات تخطيط موثّقة'), 'Reader must clearly disclose the flexible non-line-matched layout');
     assert(source.includes('autoPlayNextPageRef') && source.includes('setPage(page + 1)'), 'Page recitation must continue across page boundaries');
     const audioControl = fs.readFileSync(path.resolve(process.cwd(), 'src/components/shared/AudioPlaybackRateControl.tsx'), 'utf8');
     assert(audioControl.includes('https://everyayah.com/'), 'Audio controls must provide a visible EveryAyah source link-back');

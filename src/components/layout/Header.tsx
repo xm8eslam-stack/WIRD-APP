@@ -16,6 +16,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  currentTab,
   tabTitle,
   profile,
   onToggleTheme,
@@ -138,13 +139,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        <button
-          onClick={onStartDailySession}
-          className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-[#1C4E46] hover:bg-[#28665B] dark:bg-[#1E4A47] dark:hover:bg-[#235D59] rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-[#C59B27] ring-1 ring-[#C59B27]/40 dark:ring-[#E0A96D]/30"
-        >
-          <Play className="w-3.5 h-3.5 fill-white" />
-          <span>جلسة اليوم</span>
-        </button>
+        {currentTab !== 'dashboard' && (
+          <button
+            onClick={onStartDailySession}
+            className="flex items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold text-white bg-[#1C4E46] hover:bg-[#28665B] dark:bg-[#1E4A47] dark:hover:bg-[#235D59] rounded-xl shadow-xs transition-all hover:shadow-sm active:scale-95 whitespace-nowrap focus-visible:ring-2 focus-visible:ring-[#C59B27] ring-1 ring-[#C59B27]/40 dark:ring-[#E0A96D]/30"
+          >
+            <Play className="w-3.5 h-3.5 fill-white" />
+            <span>جلسة اليوم</span>
+          </button>
+        )}
       </div>
     </header>
   );

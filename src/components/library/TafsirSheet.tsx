@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   BookOpen,
@@ -63,6 +63,10 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
   const [isCached, setIsCached] = useState(false);
   const [retry, setRetry] = useState(0);
   const [copied, setCopied] = useState(false);
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const surah = ayah ? ALL_SURAHS.find(item => item.number === ayah.surahNumber) : undefined;
 
@@ -114,6 +118,46 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
     return () => controller.abort();
   }, [ayah?.surahNumber, ayah?.numberInSurah, selectedBookId, retry]);
 
+  // Keep keyboard focus inside the modal, support Escape, and return focus to the ayah action.
+  useEffect(() => {
+    if (!ayah) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (!dialogRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
+      previousFocus?.focus();
+    };
+  }, [ayah?.surahNumber, ayah?.numberInSurah]);
+
   // Parse segments safely to prevent raw HTML code display
   const segments = useMemo(() => {
     return parseTafsirToSegments(rawText);
@@ -155,6 +199,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
       onClick={onClose}
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="wird-tafsir-dialog-title"
@@ -191,7 +236,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
                 disabled={isLoading || !rawText}
                 aria-label="نسخ الآية والتفسير"
                 title="نسخ الآية والتفسير للمشاركة"
-                className={`p-2 rounded-xl border transition-all text-xs font-semibold flex items-center gap-1.5 ${
+                className={`min-h-11 min-w-11 p-2 rounded-xl border transition-all text-xs font-semibold flex items-center gap-1.5 ${
                   copied
                     ? 'bg-emerald-100 border-emerald-400 text-emerald-800 dark:bg-emerald-950 dark:border-emerald-700 dark:text-emerald-200'
                     : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
@@ -205,8 +250,9 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
               <button
                 type="button"
                 onClick={onClose}
+                ref={closeButtonRef}
                 aria-label="إغلاق التفسير"
-                className="p-2 rounded-xl hover:bg-stone-200/70 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
+                className="min-h-11 min-w-11 p-2 rounded-xl hover:bg-stone-200/70 dark:hover:bg-stone-800 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -225,7 +271,8 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
                     key={edition.id}
                     type="button"
                     onClick={() => handleSelectBook(edition.id)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
+                    aria-pressed={isSelected}
+                    className={`min-h-11 px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
                       isSelected
                         ? 'bg-emerald-800 text-white shadow-xs font-bold'
                         : 'bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-emerald-50 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700'
@@ -245,7 +292,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
                 disabled={fontSizeIndex === 0}
                 aria-label="تصغير خط التفسير"
                 title="تصغير خط التفسير"
-                className="p-1 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-400 rounded disabled:opacity-30"
+                className="min-h-11 min-w-11 p-1 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-400 rounded disabled:opacity-30"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
@@ -258,7 +305,7 @@ export const TafsirSheet: React.FC<TafsirSheetProps> = ({ ayah, onClose }) => {
                 disabled={fontSizeIndex === FONT_SIZES.length - 1}
                 aria-label="تكبير خط التفسير"
                 title="تكبير خط التفسير"
-                className="p-1 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-400 rounded disabled:opacity-30"
+                className="min-h-11 min-w-11 p-1 hover:bg-stone-100 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-400 rounded disabled:opacity-30"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>

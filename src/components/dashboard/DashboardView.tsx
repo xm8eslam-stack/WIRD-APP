@@ -3,14 +3,12 @@ import {
   Play, 
   Repeat, 
   CheckCircle, 
-  Sparkles, 
   Flame, 
   Calendar, 
   ArrowLeft, 
   BookOpen, 
   Check, 
   Compass,
-  Trophy,
   Clock
 } from 'lucide-react';
 import { 
@@ -28,7 +26,7 @@ import { getLocalDateString } from '../../services/unifiedPortionService';
 import { getDailySessionSelection } from '../../services/dailySessionSelection';
 import { getPagesForAyahRange } from '../../services/pageProgressService';
 import { QuranText } from '../shared/QuranText';
-import { WirdIslamicPattern, WirdGeometricDivider } from '../brand/WirdPattern';
+import { WirdIslamicPattern } from '../brand/WirdPattern';
 import { WirdSymbol } from '../brand/WirdLogo';
 
 interface DashboardViewProps {
@@ -54,8 +52,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const queueDetails = RetentionService.getDailyRevisionQueueDetails(todayStr);
   const queuePortions = queueDetails.queue;
   const totalDueCount = queueDetails.totalDueCount;
-  const overdueCount = queueDetails.overdueCount;
-  const weakVerses = RetentionService.getWeakVerses();
   const minorRevisionsCount = queuePortions.filter(p => (p.revisionType || 'minor') === 'minor').length;
   const majorRevisionsCount = queuePortions.filter(p => p.revisionType === 'major').length;
 
@@ -104,6 +100,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         label: selection.messageAr
       };
 
+  // The selected review is already shown as today's primary task; avoid listing it twice.
+  const displayedQueuePortions = dailyTask.source === 'revision'
+    ? queuePortions.filter(item => !(
+        item.surahNumber === dailyTask.surahNumber &&
+        item.startAyah === dailyTask.startAyah &&
+        item.endAyah === dailyTask.endAyah
+      ))
+    : queuePortions;
+
   useEffect(() => {
     let cancelled = false;
     if (dailyTask.source === 'blocked') {
@@ -140,8 +145,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Authentic Islamic geometric watermark */}
         <WirdIslamicPattern opacity={0.06} variant="gold" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl text-right">
+        <div className="relative z-10">
+          <div className="space-y-2 max-w-4xl text-right">
             <div className="flex items-center gap-2 text-[#F2EDE2] text-xs font-semibold">
               <span className="w-6 h-6 rounded-lg bg-[#C59B27]/20 border border-[#C59B27]/30 flex items-center justify-center shrink-0">
                 <WirdSymbol size={16} variant="gold" />
@@ -154,25 +159,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-[#F2EDE2]/90 text-sm md:text-base leading-relaxed font-quran pt-1">
               «وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ» — استعن بالله وابدأ وِردك ليظل كتاب الله غضاً طرياً في صدرك.
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button
-              disabled={dailyTask.source === 'blocked'}
-              onClick={() => onStartSession(dailyTask.surahNumber, dailyTask.startAyah, dailyTask.endAyah, dailyTask.mode)}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#F3B77B] to-[#C59B27] hover:brightness-105 text-[#0B132B] font-bold text-xs md:text-sm rounded-xl shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#F2EDE2] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Play className="w-4 h-4 fill-[#0B132B]" />
-              <span>{dailyTask.source === 'blocked' ? 'افتح تفاصيل الخطة' : dailyTask.mode === 'review' ? `ابدأ مراجعة اليوم (سورة ${dailyTask.surahName})` : `ابدأ ورد اليوم (سورة ${dailyTask.surahName})`}</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate('revision')}
-              className="flex items-center gap-2 px-4 py-3 bg-[#1C4E46] hover:bg-[#28665B] text-[#F5F1E8] font-semibold text-xs md:text-sm rounded-xl border border-[#C59B27]/30 transition-colors shadow-xs"
-            >
-              <Repeat className="w-4 h-4 text-[#C59B27]" />
-              <span>المراجعة والتثبيت ({totalDueCount})</span>
-            </button>
           </div>
         </div>
       </section>
@@ -277,7 +263,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-2.5">
-              {queuePortions.slice(0, 3).map((item) => (
+              {displayedQueuePortions.slice(0, 3).map((item) => (
                 <div 
                   key={item.id}
                   className="p-3.5 bg-[#faf8f5] dark:bg-stone-900/60 rounded-xl border border-stone-200/60 dark:border-stone-700/60 flex items-center justify-between text-xs"
@@ -309,10 +295,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               ))}
 
-              {queuePortions.length === 0 && (
+              {displayedQueuePortions.length === 0 && (
                 <div className="text-center py-6 text-stone-500 text-xs space-y-1">
                   <Check className="w-6 h-6 text-emerald-600 mx-auto" />
-                  <p>أتممت جميع مهام المراجعة لليوم، بارك الله فيك!</p>
+                  <p>{totalDueCount > 0 ? 'جلسة اليوم تعرض المراجعة ذات الأولوية؛ لا توجد مهام أخرى في القائمة.' : 'أتممت جميع مهام المراجعة لليوم، بارك الله فيك!'}</p>
                 </div>
               )}
             </div>
@@ -538,13 +524,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          <div className="pt-4 mt-3 border-t border-stone-100 dark:border-stone-700 flex items-center justify-between text-xs text-stone-500">
-            <span className="flex items-center gap-1">
-              <Trophy className="w-3.5 h-3.5 text-amber-500" />
-              <span>الهدف الشهري: ختم جزء عمّ</span>
-            </span>
-            <span className="font-bold text-emerald-700 dark:text-emerald-400 font-mono">75%</span>
-          </div>
         </div>
       </div>
     </div>

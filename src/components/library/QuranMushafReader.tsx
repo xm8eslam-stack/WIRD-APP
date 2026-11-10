@@ -53,6 +53,28 @@ interface NavigationPoint {
 
 const LAST_PAGE_KEY = 'wird.quran.lastPage.v1';
 const BOOKMARKS_KEY = 'wird.quran.pageBookmarks.v1';
+const MUSHAF_TEXT_SCALE_KEY = 'wird.quran.mushafTextScale.v1';
+const MUSHAF_PAGE_WIDTH_KEY = 'wird.quran.mushafPageWidth.v1';
+
+type MushafTextScale = 'comfortable' | 'large' | 'extraLarge';
+
+const MUSHAF_TEXT_SCALE_CLASSES: Record<MushafTextScale, string> = {
+  comfortable: 'text-[1.35rem] md:text-[1.6rem] leading-[2.35] md:leading-[2.5]',
+  large: 'text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75]',
+  extraLarge: 'text-[1.8rem] md:text-[2.1rem] leading-[2.7] md:leading-[2.9]',
+};
+
+function readMushafTextScale(): MushafTextScale {
+  try {
+    const value = localStorage.getItem(MUSHAF_TEXT_SCALE_KEY);
+    return value === 'comfortable' || value === 'large' || value === 'extraLarge' ? value : 'large';
+  } catch { return 'large'; }
+}
+
+function readMushafPageWidth(): boolean {
+  try { return localStorage.getItem(MUSHAF_PAGE_WIDTH_KEY) === 'wide'; }
+  catch { return false; }
+}
 const PAGE_INDEX = QURAN_PAGE_INDEX as unknown as Record<string, PageSegment[]>;
 const JUZ_INDEX = QURAN_JUZ_STARTS as unknown as Record<string, NavigationPoint>;
 const HIZB_INDEX = QURAN_HIZB_QUARTER_STARTS as unknown as Record<string, NavigationPoint>;
@@ -79,6 +101,9 @@ function readBookmarks(): number[] {
 export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack, initialPage, readingKhatma, onMarkPageRead, readingKhatmaError }) => {
   const [page, setPage] = useState(() => Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage());
   const [pageInput, setPageInput] = useState(String(Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage()));
+  const [pageJumpError, setPageJumpError] = useState('');
+  const [textScale, setTextScale] = useState<MushafTextScale>(readMushafTextScale);
+  const [isWidePage, setIsWidePage] = useState(readMushafPageWidth);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
@@ -137,6 +162,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setPageInput(String(page));
     try { localStorage.setItem(LAST_PAGE_KEY, String(page)); } catch { /* Reading remains available without persistence. */ }
   }, [page]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_TEXT_SCALE_KEY, textScale); } catch { /* Reading controls remain usable without storage. */ }
+  }, [textScale]);
+
+  useEffect(() => {
+    try { localStorage.setItem(MUSHAF_PAGE_WIDTH_KEY, isWidePage ? 'wide' : 'comfortable'); } catch { /* Reading controls remain usable without storage. */ }
+  }, [isWidePage]);
 
   useEffect(() => () => {
     audioRef.current?.pause();
@@ -210,6 +243,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const changePage = (nextPage: number) => {
     if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > 604) return;
+    setPageJumpError('');
     setPageTurnDirection(nextPage > page ? 'next' : 'previous');
     pendingTargetRef.current = null;
     autoPlayNextPageRef.current = false;
@@ -246,7 +280,16 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     }
   };
 
-  const submitPageJump = () => changePage(Number(pageInput));
+  const submitPageJump = () => {
+    const requestedPage = Number(pageInput);
+    if (!Number.isInteger(requestedPage) || requestedPage < 1 || requestedPage > 604) {
+      setPageJumpError('أدخل رقم صفحة صحيحاً من 1 إلى 604.');
+      setPageInput(String(page));
+      return;
+    }
+    setPageJumpError('');
+    changePage(requestedPage);
+  };
 
   const toggleBookmark = () => {
     setBookmarks(current => {
@@ -275,7 +318,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const currentJuz = ayahs.length ? ayahs[0].juz : Math.ceil(page / 20);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Top Control Bar: Elegant, Floating, Responsive */}
       <header className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-[#fffdfa]/95 dark:bg-stone-900/95 backdrop-blur-md p-4 shadow-sm space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -283,13 +326,13 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             <button
               type="button"
               onClick={onBack}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
             >
               <ArrowRight className="h-4 w-4" /> العودة للفهرس
             </button>
             <div className="h-5 w-[1px] bg-stone-200 dark:bg-stone-700 mx-1 hidden sm:block" />
             <span className="font-bold text-emerald-800 dark:text-emerald-400 text-sm hidden sm:inline">
-              مصحف المدينة المنورة
+              قارئ القرآن الكريم
             </span>
           </div>
 
@@ -302,27 +345,30 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
                 min={1}
                 max={604}
                 value={pageInput}
-                onChange={event => setPageInput(event.target.value)}
+                onChange={event => { setPageInput(event.target.value); setPageJumpError(''); }}
+                aria-invalid={Boolean(pageJumpError)}
+                aria-describedby={pageJumpError ? 'mushaf-page-jump-error' : undefined}
                 onKeyDown={event => event.key === 'Enter' && submitPageJump()}
                 aria-label="رقم صفحة المصحف"
-                className="w-14 rounded-lg bg-stone-100 dark:bg-stone-700/80 px-2 py-1 text-center font-mono font-bold text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                className="min-h-11 w-14 rounded-lg bg-stone-100 dark:bg-stone-700/80 px-2 py-1 text-center font-mono font-bold text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-emerald-600"
               />
               <button
                 type="button"
                 onClick={submitPageJump}
                 aria-label="انتقال إلى رقم الصفحة"
-                className="rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition-colors"
+                className="min-h-11 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white px-2.5 py-1 text-xs font-bold transition-colors"
               >
                 انتقال
               </button>
             </div>
+            {pageJumpError && <span id="mushaf-page-jump-error" role="alert" className="text-[11px] font-semibold text-rose-700 dark:text-rose-300">{pageJumpError}</span>}
 
             <button
               type="button"
               onClick={toggleBookmark}
               aria-label={currentBookmark ? 'إزالة العلامة المحفوظة' : 'حفظ علامة مرجعية'}
               title={currentBookmark ? 'إزالة العلامة من هذه الصفحة' : 'حفظ الصفحة في العلامات المرجعية'}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors ${
                 currentBookmark
                   ? 'border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/70 dark:text-amber-200'
                   : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300'
@@ -340,7 +386,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             aria-label="الانتقال إلى سورة"
             value={primarySurah?.number || ''}
             onChange={event => event.target.value && jumpToSurah(Number(event.target.value))}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">انتقال إلى سورة...</option>
             {ALL_SURAHS.map(surah => (
@@ -357,7 +403,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               if (event.target.value) jumpToJuz(Number(event.target.value));
               event.currentTarget.value = '';
             }}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">انتقال إلى جزء...</option>
             {Array.from({ length: 30 }, (_, index) => index + 1).map(juz => (
@@ -372,7 +418,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               if (event.target.value) jumpToHizbQuarter(Number(event.target.value));
               event.currentTarget.value = '';
             }}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">انتقال إلى ربع حزب...</option>
             {Array.from({ length: 240 }, (_, index) => index + 1).map(quarter => (
@@ -387,7 +433,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               if (event.target.value) changePage(Number(event.target.value));
               event.currentTarget.value = '';
             }}
-            className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+            className="min-h-11 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2 text-xs font-medium text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
           >
             <option value="">العلامات المحفوظة ({bookmarks.length})</option>
             {bookmarks.map(savedPage => (
@@ -403,18 +449,18 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               type="button"
               disabled={page <= 1}
               onClick={() => changePage(page - 1)}
-              className="inline-flex items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
             >
               <ChevronRight className="h-4 w-4" /> الصفحة السابقة
             </button>
-            <span className="text-xs font-bold tabular-nums text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-lg">
+            <span aria-live="polite" aria-atomic="true" className="text-xs font-bold tabular-nums text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-stone-800 px-2.5 py-1 rounded-lg">
               {page} / 604
             </span>
             <button
               type="button"
               disabled={page >= 604}
               onClick={() => changePage(page + 1)}
-              className="inline-flex items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
+              className="inline-flex min-h-11 items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-40 transition-colors"
             >
               الصفحة التالية <ChevronLeft className="h-4 w-4" />
             </button>
@@ -445,7 +491,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               type="button"
               onClick={togglePageAudio}
               disabled={!ayahs.length || isLoading}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50 ${
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50 ${
                 isPlaying ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-800 hover:bg-emerald-900'
               }`}
             >
@@ -462,7 +508,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
         <div className="mb-8 flex items-center justify-between border-b-2 border-[#b99b62]/40 dark:border-[#c8ad73]/40 pb-3 text-xs font-bold text-stone-700 dark:text-stone-300">
           <span className="font-quran text-base text-[#102d29] dark:text-[#dfcaa2]">
@@ -476,8 +522,33 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
           </span>
         </div>
 
-        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400">
-          توزيع الآيات هنا مرن بحسب الصفحة، وقد يختلف عن أسطر النسخة المطبوعة.
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#b99b62]/25 bg-white/70 px-3 py-3 dark:border-[#c8ad73]/20 dark:bg-stone-900/50" role="group" aria-label="إعدادات عرض المصحف">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-stone-600 dark:text-stone-300">حجم النص</span>
+            {([{ value: 'comfortable', label: 'مريح' }, { value: 'large', label: 'كبير' }, { value: 'extraLarge', label: 'أكبر' }] as const).map(option => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={textScale === option.value}
+                onClick={() => setTextScale(option.value)}
+                className={`min-h-11 rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${textScale === option.value ? "border-emerald-800 bg-emerald-800 text-white dark:border-emerald-600 dark:bg-emerald-700" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-pressed={isWidePage}
+            onClick={() => setIsWidePage(value => !value)}
+            className="min-h-11 rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200"
+          >
+            {isWidePage ? 'تقليل عرض الصفحة' : 'توسيع مساحة القراءة'}
+          </button>
+        </div>
+
+        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400" role="note">
+          عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع. ستظل مطابقة الأسطر غير متاحة حتى تتوفر بيانات تخطيط موثّقة.
         </p>
 
         {readingKhatma && !readingKhatma.completedAt && <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs dark:bg-emerald-950/40">
@@ -512,7 +583,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Verses Flow with Authentic Typography */}
         {!isLoading && !loadError && ayahs.length > 0 && (
-          <div className="text-right font-quran text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75] text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950">
+          <div className={`text-right font-quran ${MUSHAF_TEXT_SCALE_CLASSES[textScale]} text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950`}>
             {ayahs.map((ayah, index) => {
               const surah = ALL_SURAHS.find(item => item.number === ayah.surahNumber);
               const isCurrent = playingIndex === index && isPlaying;

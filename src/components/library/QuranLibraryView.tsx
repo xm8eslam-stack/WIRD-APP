@@ -412,6 +412,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('surahs')}
+            aria-pressed={activeTab === 'surahs'}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === 'surahs'
                 ? 'bg-[#102D29] dark:bg-[#1D4940] text-white shadow-xs font-bold'
@@ -423,6 +424,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('juz')}
+            aria-pressed={activeTab === 'juz'}
             className={`px-4 py-2 rounded-xl transition-all ${
               activeTab === 'juz'
                 ? 'bg-[#102D29] dark:bg-[#1D4940] text-white shadow-xs font-bold'
@@ -434,6 +436,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('study')}
+            aria-pressed={activeTab === 'study'}
             className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
               activeTab === 'study'
                 ? 'bg-[#102D29] dark:bg-[#1D4940] text-white shadow-xs font-bold'
@@ -523,10 +526,9 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
             {filteredSurahs.map((surah) => {
               const isSelected = selectedSurah.number === surah.number;
               return (
-                <div
+                <article
                   key={surah.number}
-                  onClick={() => handleOpenStudy(surah)}
-                  className={`group relative p-4 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between ${
+                  className={`group relative p-4 rounded-2xl border transition-all flex flex-col justify-between ${
                     isSelected
                       ? 'bg-[#102D29]/5 dark:bg-[#1D4940]/25 border-[#B99B62] shadow-sm ring-1 ring-[#B99B62]/40'
                       : 'bg-white dark:bg-[#122723] border-stone-200/90 dark:border-stone-800 hover:border-[#B99B62] hover:shadow-md'
@@ -540,8 +542,16 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                       </div>
 
                       <div className="text-right">
-                        <h3 className="font-quran text-xl font-bold text-stone-900 dark:text-[#F6F3EA] group-hover:text-[#102D29] dark:group-hover:text-[#DFCAA2] transition-colors">
-                          سورة {surah.name}
+                        <h3 className="font-quran text-xl font-bold">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenStudy(surah)}
+                            aria-label={`فتح سورة ${surah.name} للدراسة`}
+                            aria-pressed={isSelected}
+                            className="text-right text-stone-900 dark:text-[#F6F3EA] hover:text-[#102D29] dark:hover:text-[#DFCAA2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B99B62] rounded-md transition-colors"
+                          >
+                            سورة {surah.name}
+                          </button>
                         </h3>
                         <p className="text-xs text-stone-400 font-sans tracking-wide">
                           {surah.englishName}
@@ -567,8 +577,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           handleOpenMushafPage(surah.pageStart);
                         }}
                         title="قراءة في المصحف"
@@ -580,8 +589,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
 
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onClick={() => {
                           onStartSession(surah.number, 1, Math.min(10, surah.versesCount));
                         }}
                         title="بدء حفظ السورة"
@@ -592,7 +600,7 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
                       </button>
                     </div>
                   </div>
-                </div>
+                </article>
               );
             })}
           </div>
