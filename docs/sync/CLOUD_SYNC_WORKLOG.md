@@ -255,3 +255,14 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Revision rating now targets the canonical `profile/main` document, aligned with session completion and profile snapshot persistence.
 - Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` reached `READY` on `wird-app.vercel.app` and is built from exact SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. The deployed source includes PR #200's grouped document-ID fix and PR #201's profile-key fix.
 - Previous Vercel PR check failures were caused by the build-rate limit; the later main deployment completed successfully. No Firebase rules/schema or production sync flags were changed.
+
+
+
+## 2026-11-10 — Guard weak-verse and daily-activity snapshot overwrites
+
+- Identified a real cross-device gap: grouped `syncMeta/{mutationId}` events have independent parent IDs, so two different grouped transactions can each carry a full `weakVerses/snapshot` or `activityEvents/snapshot` without contending on the same child Firestore revision.
+- Added a compare-and-set precondition to new weak-verse failure/resolution and daily-activity session/revision snapshots. The payload records a deterministic fingerprint of the exact base snapshot; the projector refuses to replace the local archive if it has changed since the event was prepared.
+- Legacy snapshots without the new field can still bootstrap an empty device or replay an identical state, but cannot overwrite a non-empty divergent local archive.
+- Explicit `use-remote` conflict resolution retains its intended authoritative behavior and bypasses the compare-and-set only after the conflict-resolution intent and verified remote snapshot have been committed.
+- Tests cover weak-verse concurrent counter edits, weak-verse resolution vs concurrent notes, daily activity vs another device's aggregate, legacy bootstrap, and explicit remote selection.
+- No schema/rules changes, no blind summation/union, and no tombstones. PR #203 is awaiting exact-head CI.
