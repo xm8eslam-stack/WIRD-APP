@@ -276,7 +276,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                     key={p.id}
                     type="button"
                     onClick={() => setSelectedPlanId(p.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    aria-pressed={isSelected}
+                    className={`min-h-11 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                       isSelected
                         ? 'bg-emerald-800 text-white shadow-xs'
                         : 'text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-800'
@@ -295,7 +296,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               setIsCreatingNew(!isCreatingNew);
               setPreviewPlan(null);
             }}
-            className="px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors whitespace-nowrap"
+            className="min-h-11 px-4 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors whitespace-nowrap"
           >
             {isCreatingNew ? 'إلغاء والعودة للخطة' : '+ إنشاء خطة ذكية جديدة'}
           </button>
@@ -330,7 +331,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 value={planTitle}
                 onChange={(e) => setPlanTitle(e.target.value)}
                 placeholder="مثال: خطة حفظ سورة الكهف بتثبيت أسبوعي..."
-                className="w-full px-3.5 py-2.5 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl"
+                className="w-full min-h-11 px-3.5 py-2.5 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl"
               />
             </div>
 
@@ -353,7 +354,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                           setEndAyah(Math.min(endAyah, adjustedEndSurah?.versesCount || 1));
                         }
                       }}
-                      className="w-full px-2.5 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg font-semibold"
+                      className="w-full min-h-11 px-2.5 py-2 bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg font-semibold"
                     >
                       {ALL_SURAHS.map(s => (
                         <option key={s.number} value={s.number}>{s.number}. {s.name}</option>
@@ -420,7 +421,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <select
                 value={level}
                 onChange={(e) => setLevel(e.target.value as any)}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-semibold"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-semibold"
               >
                 <option value="beginner">مبتدئ (تكرار مكثف وتأنٍ)</option>
                 <option value="intermediate">متوسط (حفظ مستمر منتظم)</option>
@@ -436,7 +437,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <select
                 value={dailyAvailableMinutes}
                 onChange={(e) => setDailyAvailableMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-semibold"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-semibold"
               >
                 <option value="15">15 دقيقة</option>
                 <option value="30">30 دقيقة (الموصى به)</option>
@@ -453,7 +454,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <select
                 value={dailyRevisionMinutes}
                 onChange={(e) => setDailyRevisionMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-semibold"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-semibold"
               >
                 <option value="10">10 دقائق (صغرى فقط)</option>
                 <option value="15">15 دقيقة (الموصى به)</option>
@@ -482,7 +483,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => setPaceType(option.id)}
-                      className={`flex items-center justify-between gap-3 text-right rounded-xl border p-3 transition-colors ${
+                      className={`flex min-h-11 items-center justify-between gap-3 text-right rounded-xl border p-3 transition-colors ${
                         selected
                           ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-600 text-emerald-900 dark:text-emerald-200'
                           : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
@@ -513,7 +514,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                     max="100"
                     value={paceQuantity}
                     onChange={(e) => setPaceQuantity(Number(e.target.value))}
-                    className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-mono font-bold"
+                    className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl font-mono font-bold"
                   />
                 </div>
               )}
@@ -554,7 +555,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                         setTargetEndDate(rec);
                         onToast?.('تم ضبط تاريخ الختم الموصى به تلقائياً بما يضمن استقرار الحفظ.', 'info');
                       }}
-                      className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold hover:underline"
+                      className="min-h-11 text-[11px] text-emerald-700 dark:text-emerald-400 font-bold hover:underline"
                     >
                       اقتراح موعد ملائم لطاقتك
                     </button>
@@ -584,7 +585,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                     key={day.id}
                     type="button"
                     onClick={() => handleToggleActiveDay(day.id)}
-                    className={`py-2 px-3 rounded-xl border font-semibold transition-all ${
+                    aria-pressed={isActive}
+                    className={`min-h-11 py-2 px-3 rounded-xl border font-semibold transition-all ${
                       isActive
                         ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs'
                         : 'bg-stone-100 dark:bg-stone-800 text-stone-400 border-stone-200 dark:border-stone-700'
@@ -610,7 +612,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 value={surahToAdd}
                 onChange={(e) => setSurahToAdd(Number(e.target.value))}
                 aria-label="اختر سورة محفوظة لإضافتها"
-                className="flex-1 min-w-0 px-3 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-sm"
+                className="flex-1 min-w-0 min-h-11 px-3 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-sm"
               >
                 {ALL_SURAHS.map(surah => (
                   <option key={surah.number} value={surah.number}>
@@ -624,7 +626,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 onClick={() => setSelectedExistingSurahs(current =>
                   current.includes(surahToAdd) ? current : [...current, surahToAdd].sort((a, b) => a - b)
                 )}
-                className="px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-sm font-bold disabled:opacity-40"
+                className="min-h-11 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-sm font-bold disabled:opacity-40"
               >
                 + إضافة السورة
               </button>
@@ -689,14 +691,14 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 setIsCreatingNew(false);
                 setPreviewPlan(null);
               }}
-              className="px-4 py-2.5 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-300 rounded-xl font-semibold"
+              className="min-h-11 px-4 py-2.5 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-300 rounded-xl font-semibold"
             >
               إلغاء
             </button>
             <button
               type="submit"
               disabled={liveTotalVerses <= 0}
-              className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xs transition-colors"
+              className="flex min-h-11 items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold shadow-xs transition-colors"
             >
               <Eye className="w-4 h-4" />
               <span>معاينة الجدول الزمني المقترح</span>
@@ -719,7 +721,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                   type="button"
                   onClick={() => handleSaveConfirmedPlan(previewPlan)}
                   disabled={isGeneratingPlan}
-                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md transition-all whitespace-nowrap self-stretch sm:self-auto"
+                  className="min-h-11 px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold text-xs shadow-md transition-all whitespace-nowrap self-stretch sm:self-auto"
                 >
                   {isGeneratingPlan ? 'جارٍ الحفظ والتفعيل...' : '✓ اعتماد وحفظ الخطة نهائياً'}
                 </button>
@@ -798,7 +800,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleTogglePause}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
+                  className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors ${
                     activePlan.isPaused
                       ? 'bg-emerald-700 hover:bg-emerald-800 text-white'
                       : 'bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-800 dark:text-stone-200'
@@ -810,7 +812,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
                 <button
                   onClick={() => setShowRecalculateConfirm(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
+                  className="flex min-h-11 items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
                   title="إعادة جدولة المهام القادمة بناءً على التقدم الفعلي"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -819,7 +821,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
                 <button
                   onClick={() => setPlanToDelete(activePlan.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl text-xs font-semibold transition-colors"
+                  aria-label={`حذف الخطة الذكية ${activePlan.title}`}
+                  className="flex min-h-11 min-w-11 items-center gap-1.5 px-3 py-2 text-stone-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl text-xs font-semibold transition-colors"
                   title="حذف هذه الخطة الذكية"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -890,13 +893,15 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <div className="flex items-center bg-white dark:bg-stone-800 p-1 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold">
                 <button
                   onClick={() => setScheduleViewMode('weekly')}
-                  className={`px-3 py-1 rounded-lg ${scheduleViewMode === 'weekly' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-400'}`}
+                  aria-pressed={scheduleViewMode === 'weekly'}
+                  className={`min-h-11 px-3 py-1 rounded-lg ${scheduleViewMode === 'weekly' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-400'}`}
                 >
                   أول أسبوعين
                 </button>
                 <button
                   onClick={() => setScheduleViewMode('all')}
-                  className={`px-3 py-1 rounded-lg ${scheduleViewMode === 'all' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-400'}`}
+                  aria-pressed={scheduleViewMode === 'all'}
+                  className={`min-h-11 px-3 py-1 rounded-lg ${scheduleViewMode === 'all' ? 'bg-emerald-800 text-white' : 'text-stone-600 dark:text-stone-400'}`}
                 >
                   الجدول كاملاً
                 </button>
