@@ -289,7 +289,8 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
             onClick={() => setSelectedTopic('ai_advisor')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={selectedTopic === 'ai_advisor'}
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               selectedTopic === 'ai_advisor'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -301,7 +302,8 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
 
           <button
             onClick={() => setSelectedTopic('methods')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={selectedTopic === 'methods'}
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               selectedTopic === 'methods'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -313,7 +315,8 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
 
           <button
             onClick={() => setSelectedTopic('mutashabihat_rules')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={selectedTopic === 'mutashabihat_rules'}
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               selectedTopic === 'mutashabihat_rules'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -325,7 +328,8 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
 
           <button
             onClick={() => setSelectedTopic('calculator')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={selectedTopic === 'calculator'}
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               selectedTopic === 'calculator'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -340,6 +344,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
       {/* VIEW 1: AI ADVISOR & CHAT WITH 8 CAPABILITIES */}
       {selectedTopic === 'ai_advisor' && (
         <div className="space-y-4">
+          <p className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 px-3 py-2 text-[11px] leading-6 text-amber-900 dark:text-amber-200">المستشار مخصص لتنظيم الحفظ والمراجعة فقط؛ لا تعتمد عليه في نقل نص القرآن أو تفسيره أو إصدار أحكام شرعية.</p>
           {/* Quick Action Capabilities Strip */}
           <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-3">
             <div className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center justify-between">
@@ -356,7 +361,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
                   key={action.id}
                   onClick={() => handleRunQuickAction(action)}
                   disabled={isLoading}
-                  className="p-3 bg-[#faf8f5] dark:bg-stone-900/80 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-right transition-all group disabled:opacity-50"
+                  className="min-h-11 p-3 bg-[#faf8f5] dark:bg-stone-900/80 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-right transition-all group disabled:opacity-50"
                 >
                   <div className="font-bold text-xs text-stone-900 dark:text-stone-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-300">
                     {action.title}
@@ -372,7 +377,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
           {/* Interactive Chat Window */}
           <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-stone-200 dark:border-stone-700/70 shadow-xs flex flex-col min-h-[420px] max-h-[580px]">
             {/* Messages Thread */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 pl-1">
+            <div role="log" aria-label="محادثة المستشار القرآني" aria-live="polite" aria-relevant="additions" className="flex-1 overflow-y-auto space-y-4 pr-1 pl-1">
               {chatMessages.map((msg, idx) => {
                 const isUser = msg.sender === 'user';
                 return (
@@ -409,7 +414,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
               })}
 
               {isLoading && (
-                <div className="flex items-center gap-2 text-xs text-stone-400 py-2">
+                <div role="status" className="flex items-center gap-2 text-xs text-stone-400 py-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-600 animate-ping" />
                   <span>المستشار يحلل بيانات الحفظ والمراجعة...</span>
                 </div>
@@ -420,16 +425,18 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
             <form onSubmit={handleSendCustomMessage} className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-700 flex items-center gap-2">
               <input
                 type="text"
+                aria-label="رسالتك إلى المستشار القرآني"
                 value={userQuery}
                 onChange={e => setUserQuery(e.target.value)}
                 placeholder="اسأل المستشار القرآني عن طرائق الحفظ، ضبط المتشابهات، أو تنظيم وقتك..."
                 disabled={isLoading}
-                className="flex-1 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-700"
+                className="flex-1 min-h-11 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-700"
               />
               <button
                 type="submit"
                 disabled={isLoading || !userQuery.trim()}
-                className="p-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white rounded-xl transition-colors shadow-xs"
+                aria-label="إرسال الرسالة"
+                className="min-h-11 min-w-11 p-2.5 bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white rounded-xl transition-colors shadow-xs"
                 title="إرسال"
               >
                 <Send className="w-4 h-4" />
@@ -473,6 +480,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
       {/* VIEW 3: MUTASHABIHAT RULES */}
       {selectedTopic === 'mutashabihat_rules' && (
         <div className="space-y-4">
+          <p className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 px-3 py-2 text-[11px] leading-6 text-amber-900 dark:text-amber-200">هذه الملاحظات وسائل تذكّر مساعدة وليست قواعد قطعية لضبط ألفاظ القرآن؛ المرجع دائماً المصحف المعتمد والمراجعة على شيخ متقن.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {mnemonicRules.map((rule, idx) => (
               <div key={idx} className="bg-white dark:bg-stone-800/90 rounded-2xl p-5 border border-amber-200/80 dark:border-amber-900/60 shadow-xs space-y-2">
@@ -510,7 +518,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
               <select
                 value={targetAjza}
                 onChange={e => setTargetAjza(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700"
               >
                 <option value={1}>جزء واحد (20 صفحة)</option>
                 <option value={3}>3 أجزاء (60 صفحة)</option>
