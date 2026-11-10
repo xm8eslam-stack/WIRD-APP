@@ -81,7 +81,7 @@ test('Mushaf primary touch controls meet the 44px minimum target on phones', asy
   await expect(page.getByRole('button', { name: 'الصفحة السابقة' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'الصفحة التالية' })).toHaveCSS('min-height', '44px');
   await expect(page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' })).toHaveCSS('min-height', '44px');
-  await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toHaveCSS('min-height', '44px');
+  await expect(page.getByRole('button', { name: 'استماع للمقطع' })).toHaveCSS('min-height', '44px');
 });
 
 
@@ -142,4 +142,43 @@ test('Mushaf reader keeps flexible layout disclosure and remembers reading displ
   const restoredControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
   await expect(restoredControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
   await expect(restoredControls.getByRole('button', { name: 'تقليل عرض الصفحة' })).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('Mushaf plays a selected ayah segment continuously and repeats the bounded range', async ({ page }) => {
+  await page.addInitScript(() => {
+    const instances: any[] = [];
+    class MockAudio {
+      url: string;
+      preload = 'auto';
+      playbackRate = 1;
+      playCalls = 0;
+      onended: ((event: Event) => void) | null = null;
+      onplaying: ((event: Event) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      constructor(url: string) { this.url = url; instances.push(this); }
+      load() {}
+      pause() {}
+      play() { this.playCalls += 1; return Promise.resolve(); }
+    }
+    (window as any).__wirdMushafAudioInstances = instances;
+    (window as any).Audio = MockAudio;
+  });
+
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: 'فتح المصحف' }).click();
+  await expect(page.getByRole('main', { name: 'صفحة المصحف 1' })).toBeVisible();
+
+  await page.getByLabel('بداية المقطع الصوتي').selectOption('1');
+  await page.getByLabel('نهاية المقطع الصوتي').selectOption('2');
+  await page.getByLabel('عدد مرات تكرار المقطع الصوتي').selectOption('2');
+  await page.getByRole('button', { name: 'استماع للمقطع' }).click();
+
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances.length)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].playCalls)).toBe(1);
+  await page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].playCalls)).toBe(1);
+  await page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].playCalls)).toBe(2);
 });
