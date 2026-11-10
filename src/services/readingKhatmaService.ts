@@ -202,12 +202,21 @@ export function pauseReadingKhatma(
 }
 
 export function resumeReadingKhatma(
-  storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage
+  storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage,
+  now = new Date()
 ): ReadingKhatma {
   const current = readReadingKhatma(storage);
   if (!current || current.completedAt) throw new Error('لا توجد ختمة نشطة لاستئنافها.');
   if (!current.isPaused) return current;
-  const next = { ...current, isPaused: false };
+
+  const pausedDate = current.pausedAt ? new Date(current.pausedAt) : now;
+  const pausedDays = Math.max(0, Math.ceil(
+    (dateFromKey(localDateKey(now)).getTime() - dateFromKey(localDateKey(pausedDate)).getTime()) / 86_400_000
+  ));
+  const plan = current.plan
+    ? { ...current.plan, targetCompletionDate: addDays(dateFromKey(current.plan.targetCompletionDate), pausedDays) }
+    : current.plan;
+  const next = { ...current, isPaused: false, plan };
   delete next.pausedAt;
   storage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
