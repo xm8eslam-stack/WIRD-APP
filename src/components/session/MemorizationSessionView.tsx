@@ -140,6 +140,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [segmentStartIndex, setSegmentStartIndex] = useState(0);
   const [segmentEndIndex, setSegmentEndIndex] = useState(Math.max(0, sessionAyahs.length - 1));
   const [isSegmentPlaying, setIsSegmentPlaying] = useState(false);
+  const [isSegmentPaused, setIsSegmentPaused] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const segmentAudioQueueRef = useRef<QuranAudioQueueController | null>(null);
   const queueAdvanceRef = useRef(false);
@@ -305,6 +306,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
     segmentAudioQueueRef.current?.stop();
     segmentAudioQueueRef.current = null;
     setIsSegmentPlaying(false);
+    setIsSegmentPaused(false);
     queueAdvanceRef.current = false;
     playbackIterationRef.current = 1;
   };
@@ -312,7 +314,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const handleToggleSegmentAudio = () => {
     const activeQueue = segmentAudioQueueRef.current;
     if (activeQueue?.getState().active) {
-      if (activeQueue.getState().paused) activeQueue.resume();
+      if (activeQueue.getState().paused) { activeQueue.resume(); setIsSegmentPaused(false); }
       else activeQueue.pause();
       return;
     }
@@ -331,18 +333,20 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           setCurrentAyahIndex(index);
         }
       },
-      onPlaying: () => setIsSegmentPlaying(true),
-      onPaused: () => setIsSegmentPlaying(false),
+      onPlaying: () => { setIsSegmentPlaying(true); setIsSegmentPaused(false); },
+      onPaused: () => { setIsSegmentPlaying(false); setIsSegmentPaused(true); },
       onComplete: () => {
         if (segmentAudioQueueRef.current !== controller) return;
         segmentAudioQueueRef.current = null;
         setIsSegmentPlaying(false);
+        setIsSegmentPaused(false);
       },
       onError: error => {
         console.warn('[WIRD Session] Segment audio queue failed:', error);
         if (segmentAudioQueueRef.current !== controller) return;
         segmentAudioQueueRef.current = null;
         setIsSegmentPlaying(false);
+        setIsSegmentPaused(false);
       }
     });
     segmentAudioQueueRef.current = controller;
@@ -355,10 +359,12 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         playbackRate: getSavedPlaybackRate()
       });
       setIsSegmentPlaying(true);
+      setIsSegmentPaused(false);
     } catch (error) {
       controller.stop();
       segmentAudioQueueRef.current = null;
       setIsSegmentPlaying(false);
+      setIsSegmentPaused(false);
       console.warn('[WIRD Session] Could not start segment audio:', error);
     }
   };
@@ -921,7 +927,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               onClick={handleToggleSegmentAudio}
               className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-colors disabled:opacity-50 ${isSegmentPlaying ? 'bg-amber-500 text-white' : 'bg-emerald-800 text-white hover:bg-emerald-900'}`}
             >
-              {isSegmentPlaying ? 'إيقاف مؤقت للمقطع الصوتي' : 'تشغيل المقطع الصوتي المحدد'}
+              {isSegmentPlaying ? 'إيقاف مؤقت للمقطع الصوتي' : isSegmentPaused ? 'استئناف المقطع الصوتي' : 'تشغيل المقطع الصوتي المحدد'}
             </button>
           </div>
           {isAudioLoading && <span role="status" className="text-xs text-stone-500">جارٍ تحميل التلاوة…</span>}
