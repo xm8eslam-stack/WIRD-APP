@@ -27,6 +27,39 @@ interface LoadedMushafArtwork {
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
+const ALLOWED_SVG_ELEMENTS = new Set(['svg', 'g', 'path']);
+const ALLOWED_SVG_ATTRIBUTES = new Set([
+  'xmlns', 'xmlns:ayah', 'version', 'viewBox', 'xml:space',
+  'transform', 'id', 'class', 'd', 'fill', 'fill-rule', 'fill-opacity',
+  'ayah:x', 'ayah:y', 'number', 'ayah', 'surah'
+]);
+
+function sanitizeMushafSvgRoot(root: SVGSVGElement): string {
+  const elements = [root, ...Array.from(root.querySelectorAll('*'))];
+  for (const element of elements) {
+    if (!ALLOWED_SVG_ELEMENTS.has(element.localName) || element.namespaceURI !== SVG_NAMESPACE) {
+      throw new Error('ملف المصحف يحتوي على عنصر رسومي غير مسموح.');
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      if (!ALLOWED_SVG_ATTRIBUTES.has(attribute.name)) {
+        if (attribute.name.toLowerCase().startsWith('on')) {
+          throw new Error('ملف المصحف يحتوي على معالج أحداث غير مسموح.');
+        }
+        element.removeAttributeNode(attribute);
+        continue;
+      }
+      if (/javascript:|data:|https?:|url\\s*\\(/i.test(attribute.value) &&
+          attribute.name !== 'xmlns' && attribute.name !== 'xmlns:ayah') {
+        throw new Error('ملف المصحف يحتوي على مرجع خارجي غير مسموح.');
+      }
+    }
+  }
+  if (root.querySelectorAll('path.ayahPolygon').length === 0) {
+    throw new Error('ملف المصحف لا يحتوي على طبقة تحديد الآيات.');
+  }
+  return new XMLSerializer().serializeToString(root);
+}
+
 async function getDisplayViewBox(
   root: SVGSVGElement,
   page: number,
@@ -137,9 +170,10 @@ export const MushafPrintedPage: React.FC<MushafPrintedPageProps> = ({
         }));
         assertMushafPageAyahCoverage(ayahs, polygons);
 
+        const safeSvgText = sanitizeMushafSvgRoot(root);
         const displayViewBox = await getDisplayViewBox(root, page, sourceViewBox);
         if (!active) return;
-        objectUrl = URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
+        objectUrl = URL.createObjectURL(new Blob([safeSvgText], { type: 'image/svg+xml' }));
         setArtwork({ imageUrl: objectUrl, sourceViewBox, displayViewBox, polygons });
       } catch (loadError) {
         if (!active || controller.signal.aborted) return;
