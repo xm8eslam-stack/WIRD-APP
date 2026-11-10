@@ -27,7 +27,7 @@ import { QURAN_DATA_SOURCE_INFO } from '../../data/quranDataInfo';
 import { loadSurahVerses, getAyahDisplayText } from '../../data/quranDataLoader';
 import { TafsirSheet } from './TafsirSheet';
 import { Ayah, SurahMeta, ReciterId } from '../../types/quran';
-import { RECITERS, formatAyahAudioUrl } from '../../services/audioService';
+import { RECITERS, formatAyahAudioUrl, requestOfflineAudioCache } from '../../services/audioService';
 import { attachAyahRepeatHandler } from '../../services/audioRepeatController';
 import { getSavedPlaybackRate, savePlaybackRate } from '../../services/audioPreferences';
 import type { PlaybackRate } from '../../services/audioPreferences';
@@ -186,6 +186,10 @@ export const QuranLibraryView: React.FC<QuranLibraryViewProps> = ({
     }
 
     const audioUrl = formatAyahAudioUrl(selectedSurah.number, ayahNumberInSurah, activeReciter);
+    requestOfflineAudioCache(
+      currentAyahs.filter(ayah => ayah.numberInSurah >= ayahNumberInSurah).slice(0, 20)
+        .map(ayah => formatAyahAudioUrl(selectedSurah.number, ayah.numberInSurah, activeReciter))
+    );
     if (audioRef.current) {
       audioRef.current.onended = null;
       audioRef.current.onerror = null;
