@@ -160,3 +160,14 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
 - No Vercel deployment record exists for that merge SHA because the PR's Vercel status was blocked by the Free-plan `build-rate-limit`. Do not claim this fix has reached Production.
 - PR #201 is open for the next verified issue: revision-rating profile projection uses document ID `profile`, while other profile writers use `main`. This splits one logical profile across separate revision/conflict streams. The fix changes it to `main` and adds a regression assertion; exact-head CI is pending.
 - Weak-verse and daily activity remain full-snapshot projections and are not safe to union or add. Tombstones remain fail-closed.
+
+
+
+## Latest production verification — after PR #201
+
+- PR #201 merged as `12468243db7707c19a1bf75823ca1dc6e09f9ad8`; exact PR head `fa6ef0ab821ea3ca9cea8ae59fd3197f75400fcf` passed GitHub Quality Gate run `42777475075`.
+- Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` reached `READY` on `wird-app.vercel.app`, with exact source SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`.
+- The deployed tree contains both PR #200 (grouped child document-ID forwarding and recovery semantics) and PR #201 (canonical `profile/main` identity for revision-rating updates).
+- The earlier Vercel PR check rate-limit did not prevent the subsequent main deployment; the verified Production deployment above supersedes those preview-check failures.
+- The last user-reported two-device test occurred before these two latest fixes. A fresh physical-device round trip after this deployment remains unverified.
+- No Firestore production rules/schema, secrets, or sync flags were changed.
