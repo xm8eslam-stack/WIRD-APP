@@ -29,6 +29,7 @@ import { TafsirSheet } from './TafsirSheet';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { QuranText } from '../shared/QuranText';
 import { QuranBasmala } from '../shared/QuranBasmala';
+import { QuranMushafFacsimilePage } from './QuranMushafFacsimilePage';
 
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
@@ -105,6 +106,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [textScale, setTextScale] = useState<MushafTextScale>(readMushafTextScale);
   const [isWidePage, setIsWidePage] = useState(readMushafPageWidth);
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
+  const [printedAyahs, setPrintedAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
   const [activeReciter, setActiveReciter] = useState<ReciterId>(preferredReciter || 'alafasy');
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(getSavedPlaybackRate);
@@ -114,6 +116,10 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [tafsirAyah, setTafsirAyah] = useState<Ayah | null>(null);
+  const [readerLayout, setReaderLayout] = useState<'flow' | 'printed'>(() => {
+    try { return localStorage.getItem('wird.quran.readerLayout.v1') === 'printed' ? 'printed' : 'flow'; }
+    catch { return 'flow'; }
+  });
   const [pageTurnDirection, setPageTurnDirection] = useState<'next' | 'previous'>('next');
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const autoPlayNextPageRef = useRef(false);
@@ -121,12 +127,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const touchStartX = useRef<number | null>(null);
 
   const pageSegments = useMemo(() => PAGE_INDEX[String(page)] || [], [page]);
+  const activeAyahs = readerLayout === 'printed' && printedAyahs.length ? printedAyahs : ayahs;
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     setLoadError(null);
     setAyahs([]);
+    setPrintedAyahs([]);
     audioRef.current?.pause();
     setIsPlaying(false);
     setPlayingIndex(null);
@@ -182,7 +190,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     setPlayingIndex(null);
   };
 
-  const playAyahAt = (index: number, queue: Ayah[] = ayahs) => {
+  const playAyahAt = (index: number, queue: Ayah[] = activeAyahs) => {
     const ayah = queue[index];
     if (!ayah) {
       setIsPlaying(false);
@@ -221,11 +229,11 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   };
 
   useEffect(() => {
-    if (!isLoading && ayahs.length > 0 && autoPlayNextPageRef.current) {
+    if (!isLoading && activeAyahs.length > 0 && autoPlayNextPageRef.current) {
       autoPlayNextPageRef.current = false;
-      playAyahAt(0, ayahs);
+      playAyahAt(0, activeAyahs);
     }
-  }, [ayahs, isLoading, page]);
+  }, [activeAyahs, isLoading, page]);
 
   const togglePageAudio = () => {
     if (isPlaying) {
@@ -238,7 +246,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
       audioRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
       return;
     }
-    if (ayahs.length) playAyahAt(0, ayahs);
+    if (activeAyahs.length) playAyahAt(0, activeAyahs);
   };
 
   const changePage = (nextPage: number) => {
@@ -313,9 +321,14 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     if (audioRef.current) audioRef.current.playbackRate = savedRate;
   };
 
+  const selectReaderLayout = (layout: 'flow' | 'printed') => {
+    setReaderLayout(layout);
+    try { localStorage.setItem('wird.quran.readerLayout.v1', layout); } catch { /* Layout preference remains available for this view. */ }
+  };
+
   const currentBookmark = bookmarks.includes(page);
-  const primarySurah = ayahs.length ? ALL_SURAHS.find(s => s.number === ayahs[0].surahNumber) : undefined;
-  const currentJuz = ayahs.length ? ayahs[0].juz : Math.ceil(page / 20);
+  const primarySurah = activeAyahs.length ? ALL_SURAHS.find(s => s.number === activeAyahs[0].surahNumber) : undefined;
+  const currentJuz = activeAyahs.length ? activeAyahs[0].juz : Math.ceil(page / 20);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -442,6 +455,28 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
           </select>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+          <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">طريقة عرض الصفحة</span>
+          <div role="group" aria-label="طريقة عرض المصحف" className="inline-flex rounded-xl border border-stone-200 bg-white p-1 dark:border-stone-700 dark:bg-stone-800">
+            <button
+              type="button"
+              aria-pressed={readerLayout === 'printed'}
+              onClick={() => selectReaderLayout('printed')}
+              className={`min-h-11 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${readerLayout === 'printed' ? 'bg-emerald-800 text-white' : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700'}`}
+            >
+              الصفحة المطبوعة
+            </button>
+            <button
+              type="button"
+              aria-pressed={readerLayout === 'flow'}
+              onClick={() => selectReaderLayout('flow')}
+              className={`min-h-11 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${readerLayout === 'flow' ? 'bg-emerald-800 text-white' : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-700'}`}
+            >
+              النص المرن
+            </button>
+          </div>
+        </div>
+
         {/* Navigation & Audio Controls Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 dark:border-stone-800 pt-3">
           <div className="flex items-center gap-2">
@@ -490,7 +525,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             <button
               type="button"
               onClick={togglePageAudio}
-              disabled={!ayahs.length || isLoading}
+              disabled={!ayahs.length || isLoading || (readerLayout === 'printed' && !printedAyahs.length)}
               className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl px-4 py-1.5 text-xs font-bold text-white transition-all shadow-xs disabled:opacity-50 ${
                 isPlaying ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-800 hover:bg-emerald-900'
               }`}
@@ -508,7 +543,19 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} aria-label={`صفحة المصحف ${page}`} className={readerLayout === 'printed' ? "mx-auto w-full max-w-4xl" : `mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+        {readerLayout === 'printed' ? (
+          <QuranMushafFacsimilePage
+            page={page}
+            ayahs={ayahs}
+            selectedAyah={tafsirAyah}
+            onSelectAyah={setTafsirAyah}
+            onVerifiedAyahs={setPrintedAyahs}
+            onFallback={() => selectReaderLayout('flow')}
+          />
+        ) : (
+          <div className="space-y-0">
+
         {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
         <div className="mb-8 flex items-center justify-between border-b-2 border-[#b99b62]/40 dark:border-[#c8ad73]/40 pb-3 text-xs font-bold text-stone-700 dark:text-stone-300">
           <span className="font-quran text-base text-[#102d29] dark:text-[#dfcaa2]">
@@ -660,9 +707,11 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             — {page} —
           </span>
           <span>
-            {ayahs.length ? `من الآية ${ayahs[0].number} إلى ${ayahs[ayahs.length - 1].number}` : '—'}
+            {activeAyahs.length ? `من الآية ${activeAyahs[0].number} إلى ${activeAyahs[activeAyahs.length - 1].number}` : '—'}
           </span>
         </div>
+                </div>
+        )}
       </main>
 
       {/* Helpful Hint */}
