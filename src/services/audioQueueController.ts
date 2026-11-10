@@ -88,10 +88,11 @@ export class QuranAudioQueueController {
     this.tracks = options.tracks.slice();
     this.startIndex = startIndex;
     this.endIndex = endIndex;
-    this.repeatCount = options.repeatCount === null
+    const requestedRepeatCount = options.repeatCount;
+    this.repeatCount = requestedRepeatCount === null
       ? null
-      : Number.isInteger(options.repeatCount) && options.repeatCount > 0
-        ? options.repeatCount
+      : typeof requestedRepeatCount === 'number' && Number.isInteger(requestedRepeatCount) && requestedRepeatCount > 0
+        ? requestedRepeatCount
         : 1;
     this.playbackRate = Number.isFinite(options.playbackRate) && options.playbackRate! > 0
       ? options.playbackRate!
