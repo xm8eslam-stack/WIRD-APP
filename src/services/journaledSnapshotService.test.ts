@@ -834,7 +834,10 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         collection: 'weakVerses' as const,
         documentId: 'snapshot',
         operation: 'upsert' as const,
-        payload: { records: prepared.records }
+        payload: {
+          records: prepared.records,
+          baseSnapshotFingerprint: prepared.baseSnapshotFingerprint
+        }
       };
       const first = await persistJournaledSnapshot(
         input, () => RetentionService.saveWeakVerses(prepared.records),
