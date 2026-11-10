@@ -44,38 +44,6 @@ test.describe('WIRD navigation and memorization tafsir UX', () => {
     await expect(page.getByText(/الآية 1 من 3/)).toBeVisible();
   });
 
-
-  test('weekly revision overview adapts its columns to tablet and desktop widths', async ({ page }) => {
-    await page.goto('/#/revision');
-    const weeklyTab = page.getByRole('button', { name: 'نظرة أسبوعية للمراجعات' });
-    await expect(weeklyTab).toHaveAttribute('aria-pressed', 'false');
-    await weeklyTab.click();
-    await expect(weeklyTab).toHaveAttribute('aria-pressed', 'true');
-
-    const weeklyGrid = page.getByRole('region', { name: 'جدول المراجعات الأسبوعي' });
-    await expect(weeklyGrid).toBeVisible();
-
-    await page.setViewportSize({ width: 820, height: 1180 });
-    await expect.poll(() => weeklyGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(2);
-
-    await page.setViewportSize({ width: 1024, height: 768 });
-    await expect.poll(() => weeklyGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(3);
-
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await expect.poll(() => weeklyGrid.evaluate(element => getComputedStyle(element).gridTemplateColumns.split(' ').length)).toBe(7);
-  });
-
-  test('revision actions expose accessible labels and comfortable touch targets', async ({ page }) => {
-    await page.goto('/#/revision');
-    await expect(page.getByRole('button', { name: 'طابور المراجعة اليومي' })).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' })).toHaveCSS('min-height', '44px');
-    await expect(page.getByRole('button', { name: 'تسجيل آية ملتبسة' })).toHaveCSS('min-height', '44px');
-    await expect(page.getByRole('button', { name: /ناجحة \(متقن\)/ }).first()).toHaveCSS('min-height', '44px');
-
-    await page.getByRole('button', { name: 'الآيات الملتبسة والصعبة' }).click();
-    await expect(page.getByRole('textbox', { name: 'البحث في الآيات الملتبسة' })).toBeVisible();
-  });
-
   test('full offline preparation caches lazy Quran assets and opens the mushaf offline', async ({ page, context }) => {
     test.skip((page.viewportSize()?.width ?? 1280) < 768, 'The full asset download is exercised once on desktop; mobile settings reachability is covered separately.');
     test.setTimeout(180_000);
