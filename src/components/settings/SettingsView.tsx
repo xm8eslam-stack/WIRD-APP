@@ -343,7 +343,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* 1.5 Firebase Authentication Status Card */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">
-        <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-700 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-700 pb-3">
           <div className="flex items-center gap-2 font-bold text-sm text-stone-900 dark:text-stone-100">
             <Shield className="w-4 h-4 text-emerald-700" />
             <span>حالة الهوية والحساب (Firebase Auth)</span>
@@ -389,7 +389,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={() => logout()}
-              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold rounded-xl border border-rose-200 dark:border-rose-800 transition-colors flex items-center gap-1.5 shrink-0"
+              className="min-h-11 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold rounded-xl border border-rose-200 dark:border-rose-800 transition-colors flex items-center gap-1.5 shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>تسجيل الخروج</span>
@@ -412,7 +412,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={() => logout()}
-              className="px-4 py-2 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 shrink-0 border border-[#B99B62]/40"
+              className="min-h-11 px-4 py-2 bg-[#102D29] hover:bg-[#1D4940] text-white font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 shrink-0 border border-[#B99B62]/40"
             >
               <KeyRound className="w-3.5 h-3.5 text-[#DFCAA2]" />
               <span>تسجيل الدخول / حساب جديد</span>
@@ -455,7 +455,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           type="button"
           onClick={handlePrepareOffline}
           disabled={isPreparingOffline || !isOnline}
-          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold inline-flex items-center justify-center gap-2"
+          className="w-full sm:w-auto min-h-11 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold inline-flex items-center justify-center gap-2"
         >
           <Download className="w-4 h-4" />
           {isPreparingOffline ? 'جارٍ تنزيل ملفات التطبيق...' : offlineProgress ? 'استكمال / التحقق من التجهيز' : 'تجهيز وِرد لهذا الجهاز'}
@@ -464,7 +464,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* 1.6 Cloud Sync & Data Protection Card */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-6 border border-stone-200 dark:border-stone-700/70 shadow-xs space-y-4 text-xs">
-        <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-700 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 dark:border-stone-700 pb-3">
           <div className="flex items-center gap-2 font-bold text-sm text-stone-900 dark:text-stone-100">
             <Cloud className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
             <span>المزامنة السحابية وحماية البيانات (Cloud Firestore Sync)</span>
@@ -772,7 +772,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             type="button"
             onClick={handleManualSync}
             disabled={isManualSyncing || syncStatus === 'syncing' || !user || isGuest || !isEmailVerified}
-            className={`px-4 py-2 font-bold rounded-xl text-xs transition-colors flex items-center gap-2 shrink-0 ${
+            className={`min-h-11 px-4 py-2 font-bold rounded-xl text-xs transition-colors flex items-center gap-2 shrink-0 ${
               !user || isGuest || !isEmailVerified
                 ? 'bg-stone-100 dark:bg-stone-800 text-stone-400 border border-stone-200 dark:border-stone-700 cursor-not-allowed'
                 : 'bg-emerald-800 hover:bg-emerald-900 text-white shadow-xs'
@@ -802,7 +802,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
               />
             </div>
 
@@ -814,7 +814,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600 font-mono"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600 font-mono"
               />
             </div>
           </div>
@@ -828,7 +828,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               value={formData.memorizationGoal}
               onChange={(e) => setFormData({ ...formData, memorizationGoal: e.target.value })}
               placeholder="مثال: حفظ القرآن كاملاً بتدبر..."
-              className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
+              className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
             />
           </div>
         </div>
@@ -846,9 +846,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 القارئ المعتمد للتسميع:
               </label>
               <select
+                aria-label="القارئ المفضل للتسميع"
                 value={formData.preferredReciter}
                 onChange={(e) => setFormData({ ...formData, preferredReciter: e.target.value as ReciterId })}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100"
               >
                 {RECITERS.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
@@ -861,9 +862,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 عدد مرات التكرار المستهدف للآية:
               </label>
               <select
+                aria-label="عدد مرات تكرار الآية المستهدف"
                 value={formData.repetitionTarget}
                 onChange={(e) => setFormData({ ...formData, repetitionTarget: Number(e.target.value) })}
-                className="w-full px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 font-mono"
+                className="w-full min-h-11 px-3 py-2 bg-[#faf8f5] dark:bg-stone-900 border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-stone-100 font-mono"
               >
                 <option value="5">5 مرات (سريع)</option>
                 <option value="10">10 مرات (موصى به للرسوخ)</option>
@@ -892,7 +894,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     key={size}
                     type="button"
                     onClick={() => setFormData({ ...formData, quranFontSize: size })}
-                    className={`py-2 rounded-xl border font-bold ${
+                    aria-pressed={formData.quranFontSize === size}
+                    className={`min-h-11 py-2 rounded-xl border font-bold ${
                       formData.quranFontSize === size
                         ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs'
                         : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'
@@ -912,7 +915,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, theme: 'light' })}
-                  className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-2 font-semibold ${
+                  aria-pressed={formData.theme === 'light'}
+                  className={`min-h-11 py-2 px-3 rounded-xl border flex items-center justify-center gap-2 font-semibold ${
                     formData.theme === 'light'
                       ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 text-amber-900 dark:text-amber-200'
                       : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'
@@ -924,6 +928,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, theme: 'dark' })}
+                  aria-pressed={formData.theme === 'dark'}
                   className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-2 font-semibold ${
                     formData.theme === 'dark'
                       ? 'bg-emerald-950 border-emerald-700 text-emerald-200'
@@ -973,7 +978,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={handleExportBackup}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold border border-stone-300 dark:border-stone-700 transition-colors shadow-2xs"
+              className="flex min-h-11 items-center gap-2 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold border border-stone-300 dark:border-stone-700 transition-colors shadow-2xs"
             >
               <Download className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
               <span>تصدير نسخة احتياطية (JSON)</span>
@@ -1018,7 +1023,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             type="button"
             onClick={() => setShowDemoConfirm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-xl font-semibold border border-amber-300 dark:border-amber-800 transition-colors"
+            className="flex min-h-11 items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-xl font-semibold border border-amber-300 dark:border-amber-800 transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
             <span>تحميل بيانات تجريبية (Demo Data)</span>
@@ -1031,7 +1036,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex items-center justify-between pt-2">
           <button
             type="submit"
-            className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+            className="flex min-h-11 items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
           >
             {isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
             <span>{isSaved ? 'تم حفظ التغييرات بنجاح!' : 'حفظ التعديلات'}</span>
@@ -1040,7 +1045,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <button
             type="button"
             onClick={() => setShowResetConfirm(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 text-stone-500 hover:text-red-600 text-xs font-medium transition-colors"
+            className="flex min-h-11 items-center gap-1.5 px-4 py-2.5 text-stone-500 hover:text-red-600 text-xs font-medium transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>إعادة ضبط المصنع للبيانات</span>
