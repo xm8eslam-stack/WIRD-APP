@@ -243,7 +243,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(MUSHAF_PAGE_CACHE_NAME);
       const cached = await cache.match(req);
-      if (cached) return cached;
+      if (cached) {
+        // Refresh insertion order so the bounded cache behaves as LRU.
+        await cache.delete(req);
+        await cache.put(req, cached.clone());
+        return cached;
+      }
       try {
         const response = await fetch(req);
         const contentType = (response.headers.get('content-type') || '').toLowerCase();
