@@ -59,6 +59,15 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes('name !== MUSHAF_PAGE_CACHE_NAME'), 'Printed page cache must survive service-worker upgrades');
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
+    const audioService = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
+    assert(audioService.includes('requestOfflineAudioCache'), 'Quran audio service must expose opportunistic offline pre-caching');
+    assert(audioService.includes("url.hostname === 'everyayah.com'"), 'Audio pre-cache client must restrict requests to the approved recitation host');
+    assert(audioService.includes("type: 'WIRD_CACHE_SESSION_AUDIO'"), 'Audio pre-cache client must use the worker cache contract');
+    const quranLibrary = fs.readFileSync(path.resolve('./src/components/library/QuranLibraryView.tsx'), 'utf8');
+    const mushafReader = fs.readFileSync(path.resolve('./src/components/library/QuranMushafReader.tsx'), 'utf8');
+    assert(quranLibrary.includes('requestOfflineAudioCache('), 'Quran library playback must pre-cache its upcoming audio segment');
+    assert(mushafReader.includes('requestOfflineAudioCache('), 'Printed Mushaf playback must pre-cache its upcoming audio segment');
+
     assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
     assert(swContent.includes("url.hostname !== 'everyayah.com'"), 'Only the approved recitation host may be pre-cached');
     assert(swContent.includes("mode: 'no-cors'"), 'Cross-origin audio must support opaque CDN responses');
