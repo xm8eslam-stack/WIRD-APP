@@ -11,6 +11,40 @@ const MAX_SESSION_AUDIO_PRELOAD = 20;
 const MAX_AUDIO_CACHE_ENTRIES = 40;
 const PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json';
 
+const OFFLINE_ASSET_CONTENT_TYPES = {
+  '.js': ['application/javascript', 'text/javascript', 'application/ecmascript', 'text/ecmascript'],
+  '.css': ['text/css'],
+  '.svg': ['image/svg+xml'],
+  '.png': ['image/png'],
+  '.jpg': ['image/jpeg'],
+  '.jpeg': ['image/jpeg'],
+  '.webp': ['image/webp'],
+  '.avif': ['image/avif'],
+  '.gif': ['image/gif'],
+  '.ico': ['image/x-icon', 'image/vnd.microsoft.icon'],
+  '.woff': ['font/woff', 'application/font-woff', 'application/octet-stream'],
+  '.woff2': ['font/woff2', 'application/font-woff2', 'application/octet-stream'],
+  '.ttf': ['font/ttf', 'application/x-font-ttf', 'application/octet-stream'],
+  '.otf': ['font/otf', 'application/x-font-opentype', 'application/octet-stream'],
+  '.json': ['application/json', 'text/json'],
+  '.webmanifest': ['application/manifest+json', 'application/json']
+};
+function offlineAssetExtension(pathname) {
+  const match = pathname.toLowerCase().match(/\.[a-z0-9]+$/);
+  return match ? match[0] : '';
+}
+function isSupportedOfflineAssetPath(pathname) {
+  return Object.prototype.hasOwnProperty.call(OFFLINE_ASSET_CONTENT_TYPES, offlineAssetExtension(pathname));
+}
+function isValidOfflineAssetResponse(pathname, response) {
+  const extension = offlineAssetExtension(pathname);
+  const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  const allowedTypes = OFFLINE_ASSET_CONTENT_TYPES[extension];
+  return response.status === 200 && response.type === 'basic' &&
+    Array.isArray(allowedTypes) && allowedTypes.includes(contentType);
+}
+
+
 async function trimAudioCache(cache) {
   const keys = await cache.keys();
   const overflow = keys.length - MAX_AUDIO_CACHE_ENTRIES;
@@ -42,8 +76,7 @@ async function prepareFullOfflinePackage(port) {
   const safeAssets = assets.filter((asset) => {
     if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
     const url = new URL(asset, self.location.origin);
-    return url.origin === self.location.origin &&
-      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+    return url.origin === self.location.origin && isSupportedOfflineAssetPath(url.pathname);
   });
   if (safeAssets.length !== assets.length) throw new Error('الفهرس يحتوي على ملفات غير مسموح بها.');
   const cache = await caches.open(CONTENT_CACHE_NAME);
@@ -52,14 +85,7 @@ async function prepareFullOfflinePackage(port) {
     const request = new Request(new URL(asset, self.location.origin).href, { credentials: 'same-origin' });
     if (!(await cache.match(request))) {
       const response = await fetchWithTimeout(request, {}, OFFLINE_ASSET_REQUEST_TIMEOUT_MS);
-      const contentType = (response.headers.get('content-type') || '')
-        .split(';')[0]
-        .trim()
-        .toLowerCase();
-      const validContentType = asset.endsWith('.js')
-        ? ['application/javascript', 'text/javascript', 'application/ecmascript', 'text/ecmascript'].includes(contentType)
-        : contentType === 'text/css';
-      if (response.status !== 200 || response.type !== 'basic' || !validContentType) {
+      if (!isValidOfflineAssetResponse(new URL(asset, self.location.origin).pathname, response)) {
         throw new Error('تعذر التحقق من نوع أحد ملفات التطبيق قبل حفظه: ' + asset);
       }
       await cache.put(request, response.clone());
@@ -89,8 +115,7 @@ async function inspectFullOfflinePackage() {
   const safeAssets = assets.filter((asset) => {
     if (typeof asset !== 'string' || !asset.startsWith('/') || asset.startsWith('//')) return false;
     const url = new URL(asset, self.location.origin);
-    return url.origin === self.location.origin &&
-      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'));
+    return url.origin === self.location.origin && isSupportedOfflineAssetPath(url.pathname);
   });
   if (safeAssets.length !== assets.length) throw new Error('الفهرس يحتوي على ملفات غير مسموح بها.');
   const cache = await caches.open(CONTENT_CACHE_NAME);
