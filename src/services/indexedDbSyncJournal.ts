@@ -2574,11 +2574,13 @@ export class IndexedDbSyncJournal {
               sequence: event.serverSequence,
               fingerprint: event.fingerprint,
               payload: JSON.parse(expectedPayloadJson)
-            });
+            }, true);
           } else {
             applied = StorageService.applyJournalProjection(
               event.collection,
-              JSON.parse(expectedPayloadJson)
+              JSON.parse(expectedPayloadJson),
+              undefined,
+              true
             );
           }
         } catch (error) {
