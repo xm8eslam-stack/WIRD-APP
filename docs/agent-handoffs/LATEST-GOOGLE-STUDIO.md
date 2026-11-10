@@ -1,5 +1,22 @@
 ### GOOGLE AI STUDIO HANDOFF
 
+## 2026-11-11 — Current verified state and continuation
+
+- Repository: `xm8eslam-stack/WIRD-APP`; source branch: `main`; verified main SHA: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
+- Vercel Production deployment `dpl_5DMkYCMR8LYY41ScGGzqkbeCLGit` is `READY` on that exact SHA and owns alias `https://wird-app.vercel.app`. This proves deployment/source parity only; no fresh anonymous authenticated-user smoke was completed in this run.
+- Sync commit `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6` is included in current main (compare: two commits behind). It adds compare-and-set protection for full weak-verse and daily-activity snapshots, preserves concurrent local edits, rejects unsafe legacy snapshot replacement, and tests grouped transaction rollback. The first Vercel status for that commit was `build-rate-limit`; a later Production deployment for descendant main SHA `50bb25e...` is Ready.
+- Main also includes the shared continuous Quran audio queue / segment repeat and flexible Mushaf display controls (`3667a8c003b79984546d48a9defc20c6f2bcd367`), plus direct ayah selection in the sticky memorization/revision navigation (`50bb25e...`).
+- The memorization screen already had local controls for UI scale, ayah font size, compact spacing, focused vs all-session view, and direct ayah jump. A separate UX branch now extends that existing capability with three page widths (comfortable / wide / full), a one-action display reset, and automatic visibility of the selected ayah inside the all-session list. Branch: `ux/memorization-page-width-follow-selection-20261111`; implementation and tests are not merged to main. Current implementation changes only device-local display preferences; no Quran text, cloud-sync payload, or Firestore schema is touched.
+- No new UI dependency was added. The enhancement uses existing React state, CSS max-width utilities, and the browser's native `scrollIntoView({block:"nearest", behavior:"auto"})`. Touch controls remain at least 44 CSS px high where authored; WCAG 2.2 AA target-size guidance sets a 24×24 CSS px minimum subject to exceptions. References: [MDN scrollIntoView](https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView) and [W3C WCAG 2.2 SC 2.5.8](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum).
+- The current main commit status returned Vercel success/Ready. The commit-workflow-run query returned no PR-triggered GitHub Actions runs for the inspected SHAs; do not claim the full test suite passed based only on deployment status. New service/E2E tests are pending on the UX branch.
+- Sync remains a bounded operational PASS for the owner-reported two-device path recorded on 2026-11-10, not a full certification. Remaining work includes tombstone/delete semantics, grouped `syncMeta` keep-local/merge, cross-tab/account lifecycle, crash/long-offline replay, stress, and complete authenticated production smoke. The previous 2026-11-10 inventory recorded production sync flags as `true`; they were not re-read or changed in this run.
+- No production secrets, Vercel/Firebase settings, Firestore rules/schema, or user data were changed. Google AI Studio synchronization is not independently observable; do not claim it synced.
+- Release decision for a new candidate: **HOLD** pending exact-SHA quality evidence and remaining release gates.
+
+Next: review the page-width branch's exact-head CI and mobile E2E; merge only after checks/protection pass. Continue sync edge-case work independently without changing the existing Production configuration.
+
+---
+
 ## 2026-11-10 — Current verified state and continuation
 
 - Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
