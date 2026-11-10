@@ -110,10 +110,15 @@ export function runAudioPreferencesTests(): { passed: number; failed: number } {
     }
     const session = fs.readFileSync(path.resolve(process.cwd(), 'src/components/session/MemorizationSessionView.tsx'), 'utf8');
     const mushaf = fs.readFileSync(path.resolve(process.cwd(), 'src/components/library/QuranMushafReader.tsx'), 'utf8');
-    for (const [name, source] of [['Quran library', library], ['Memorization session', session], ['Full Mushaf reader', mushaf]] as const) {
+    for (const [name, source] of [['Quran library', library], ['Memorization session', session]] as const) {
       if (!source.includes('getSavedPlaybackRate') || !source.includes('audio.playbackRate') || !source.includes('AudioPlaybackRateControl')) {
         throw new Error(name + ' is missing the shared playback-speed integration');
       }
+    }
+    if (!mushaf.includes('getSavedPlaybackRate') || !mushaf.includes('AudioPlaybackRateControl') ||
+        !mushaf.includes('audioQueueRef.current?.setPlaybackRate(savedRate)') ||
+        !mushaf.includes('playbackRate: getSavedPlaybackRate()')) {
+      throw new Error('Full Mushaf reader must apply saved speed to the preloaded audio queue and render the common control');
     }
     if (!session.includes('عدد مرات تكرار الصوت') || !session.includes('attachAyahRepeatHandler') || !session.includes('handleExit')) {
       throw new Error('Memorization session is missing repeat selection, safe playback wiring, or exit cleanup');
