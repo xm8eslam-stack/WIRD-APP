@@ -2606,6 +2606,7 @@ export class IndexedDbSyncJournal {
         const initialized = new Set(metadata.remoteInitializedCollections || []);
         initialized.add(event.collection);
         for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
+        for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
         const nextMetadata: DeviceMetadata = {
           ...metadata,
           remoteRevisions,
@@ -2643,8 +2644,9 @@ export class IndexedDbSyncJournal {
    * freshly verified remote revision. The chosen local projection is never
    * overwritten; old mutation evidence remains in the conflict archive.
    *
-   * Grouped syncMeta events, additive Ruqyah counter snapshots, and tombstones are intentionally rejected until
-   * their collection-wide replay semantics have a dedicated executor.
+   * Grouped syncMeta upserts use one consolidated transaction and one Outbox event.
+   * Additive Ruqyah counter snapshots and tombstones remain rejected until their
+   * collection-wide replay semantics have a dedicated executor.
    */
   async commitKeepLocalConflictResolution(
     eventId: string,
@@ -2699,7 +2701,7 @@ export class IndexedDbSyncJournal {
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
             !event || event.eventId !== eventId || event.operation !== 'upsert' ||
-            event.collection === 'syncMeta' || event.collection === 'ruqyahProgress' ||
+            event.collection === 'ruqyahProgress' ||
             !resolutionIntent || resolutionIntent.uid !== uid ||
             resolutionIntent.eventId !== eventId || resolutionIntent.status !== 'prepared' ||
             resolutionIntent.decision !== 'keep-local' ||
@@ -2724,45 +2726,130 @@ export class IndexedDbSyncJournal {
           return;
         }
         const currentSnapshot = StorageService.getLocalProjectionSnapshot(event.collection);
+        const preparedPayload = JSON.parse(expectedPayloadJson) as Record<string, unknown>;
         if (fingerprintConflictSnapshot(currentSnapshot) !== resolutionIntent.localSnapshotFingerprint ||
-            !StorageService.matchesJournalProjection(event.collection, JSON.parse(expectedPayloadJson))) {
-          failure = new Error('لم تعد النسخة المحلية الحالية مطابقة للقرار المحفوظ؛ لم نرفع لقطة قديمة أو نستبدل بيانات أحدث.');
+            !StorageService.matchesJournalProjection(event.collection, preparedPayload)) {
+          failure = new Error('لم تعد اللقطة المحلية الحالية مطابقة للقرار المحفوظ؛ لم نرفع نسخة قديمة أو نستبدل بيانات أحدث.');
           transaction.abort();
           return;
         }
 
         const archivedMutations = [...(conflict.localMutations || [])]
           .sort((a, b) => a.sequence - b.sequence || a.mutationId.localeCompare(b.mutationId));
-        if (archivedMutations.length < 1 ||
-            archivedMutations.some(item =>
-              item.collection !== event.collection ||
-              item.documentId !== event.documentId ||
-              item.operation !== 'upsert'
-            )) {
-          failure = new Error('لا توجد مجموعة عمليات محلية متجانسة وآمنة لإعادة النشر؛ تعارضات المعاملات المجمعة وعدادات الرقية والحذف تحتاج مساراً مستقلاً.');
-          transaction.abort();
-          return;
+        const affectedCollections = new Set<string>();
+        const groupedOperations: Array<{ collection: string; documentId: string; operation: 'upsert'; payload: Record<string, unknown> }> = [];
+        if (event.collection === 'syncMeta') {
+          const grouped = preparedPayload.transaction;
+          const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents']);
+          if (!isRecord(grouped) || grouped.version !== 1 || !Array.isArray(grouped.operations) ||
+              grouped.operations.length < 1 || grouped.operations.length > 8) {
+            failure = new Error('معاملة الاحتفاظ بالنسخة المحلية المجمعة غير صالحة.');
+            transaction.abort();
+            return;
+          }
+          for (const operation of grouped.operations) {
+            if (!isRecord(operation) || typeof operation.collection !== 'string' ||
+                !allowed.has(operation.collection) || affectedCollections.has(operation.collection) ||
+                typeof operation.documentId !== 'string' || !operation.documentId ||
+                operation.operation !== 'upsert' || !isRecord(operation.payload)) {
+              failure = new Error('تحتوي اللقطة المحلية المجمعة على عملية مكررة أو غير مدعومة.');
+              transaction.abort();
+              return;
+            }
+            affectedCollections.add(operation.collection);
+            groupedOperations.push(operation as { collection: string; documentId: string; operation: 'upsert'; payload: Record<string, unknown> });
+          }
+          if (archivedMutations.length < 1 || archivedMutations.some(item =>
+            item.operation !== 'upsert' ||
+            (item.collection === 'syncMeta'
+              ? item.documentId !== event.documentId
+              : !affectedCollections.has(item.collection))
+          )) {
+            failure = new Error('أرشيف التغييرات لا يطابق المجموعات المشاركة في المعاملة؛ لم ننشئ عملية إعادة نشر.');
+            transaction.abort();
+            return;
+          }
+          const latestGroupedSnapshots = new Map<string, { documentId: string; payload: Record<string, unknown>; sequence: number }>();
+          for (const localGroupedMutation of archivedMutations.filter(item => item.collection === 'syncMeta')) {
+            const localTransaction = localGroupedMutation.payload.transaction;
+            const localCollections = new Set<string>();
+            if (!isRecord(localTransaction) || localTransaction.version !== 1 ||
+                !Array.isArray(localTransaction.operations) || localTransaction.operations.length < 1 ||
+                localTransaction.operations.length > 8 ||
+                localTransaction.operations.some(operation => {
+                  if (!isRecord(operation) || typeof operation.collection !== 'string' ||
+                      !affectedCollections.has(operation.collection) || localCollections.has(operation.collection) ||
+                      operation.operation !== 'upsert' || typeof operation.documentId !== 'string' ||
+                      !operation.documentId || !isRecord(operation.payload)) return true;
+                  localCollections.add(operation.collection);
+                  return false;
+                })) {
+              failure = new Error('تحتوي عملية محلية مجمعة معلقة على مجموعات مكررة أو إضافية أو صيغة غير مدعومة؛ أوقفنا إعادة النشر لحماية بياناتها.');
+              transaction.abort();
+              return;
+            }
+            for (const operation of localTransaction.operations) {
+              if (isRecord(operation) && typeof operation.collection === 'string' &&
+                  typeof operation.documentId === 'string' && isRecord(operation.payload)) {
+                latestGroupedSnapshots.set(operation.collection, {
+                  documentId: operation.documentId,
+                  payload: operation.payload,
+                  sequence: localGroupedMutation.sequence
+                });
+              }
+            }
+          }
+          for (const operation of groupedOperations) {
+            const localForCollection = archivedMutations.filter(item => item.collection === operation.collection);
+            const groupedSnapshot = latestGroupedSnapshots.get(operation.collection);
+            const latestDirect = localForCollection[localForCollection.length - 1];
+            const groupedIsNewer = !!groupedSnapshot && (!latestDirect || groupedSnapshot.sequence > latestDirect.sequence);
+            const expectedDocumentId = latestDirect?.documentId || groupedSnapshot?.documentId;
+            const expectedLocalPayload = groupedIsNewer ? groupedSnapshot?.payload : (latestDirect?.payload || groupedSnapshot?.payload);
+            if ((latestDirect && latestDirect.documentId !== operation.documentId) ||
+                (groupedSnapshot && groupedSnapshot.documentId !== operation.documentId) ||
+                (expectedDocumentId && expectedDocumentId !== operation.documentId) ||
+                (expectedLocalPayload && stableStringify(expectedLocalPayload) !== stableStringify(operation.payload))) {
+              failure = new Error('دليل إحدى المجموعات لا يطابق آخر لقطة محلية معتمدة؛ لم ننشئ عملية إعادة نشر.');
+              transaction.abort();
+              return;
+            }
+          }
+        } else {
+          if (archivedMutations.length < 1 || archivedMutations.some(item =>
+            item.collection !== event.collection || item.documentId !== event.documentId || item.operation !== 'upsert'
+          )) {
+            failure = new Error('لا توجد مجموعة عمليات محلية متجانسة وآمنة لإعادة النشر.');
+            transaction.abort();
+            return;
+          }
+          const latestLocalMutation = archivedMutations[archivedMutations.length - 1];
+          if (stableStringify(latestLocalMutation.payload) !== stableStringify(preparedPayload) ||
+              latestLocalMutation.fingerprint !== fingerprintMutation(event.collection, event.documentId, 'upsert', preparedPayload)) {
+            failure = new Error('لم تعد آخر عملية محلية تمثل اللقطة الحالية؛ لم ننشئ عملية إعادة نشر.');
+            transaction.abort();
+            return;
+          }
+          affectedCollections.add(event.collection);
         }
-        const latestLocalMutation = archivedMutations[archivedMutations.length - 1];
+
         const archived = archivedMutations
           .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
           .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
         const intended = [...resolutionIntent.localMutationFingerprints]
           .map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint }))
           .sort((a, b) => a.mutationId.localeCompare(b.mutationId));
-        if (stableStringify(archived) !== stableStringify(intended) ||
-            stableStringify(latestLocalMutation.payload) !== stableStringify(JSON.parse(expectedPayloadJson)) ||
-            latestLocalMutation.fingerprint !== fingerprintMutation(
-              event.collection, event.documentId, 'upsert', JSON.parse(expectedPayloadJson)
-            )) {
-          failure = new Error('تغير سجل أدلة التعديلات المحلية أو لم تعد آخر عملية تمثل اللقطة المحلية؛ لم ننشئ عملية إعادة نشر.');
+        if (stableStringify(archived) !== stableStringify(intended)) {
+          failure = new Error('تغير سجل أدلة التعديلات المحلية؛ لم نعتمد قراراً قديماً.');
           transaction.abort();
           return;
         }
 
         const archivedById = new Map(archived.map(item => [item.mutationId, item.fingerprint]));
         const currentPending = pendingMutations.filter(item =>
-          item.collection === event.collection && item.documentId === event.documentId
+          event.collection === 'syncMeta'
+            ? ((item.collection === 'syncMeta' && item.documentId === event.documentId) || affectedCollections.has(item.collection))
+            : item.collection === event.collection && item.documentId === event.documentId
         );
         if (currentPending.some(item => archivedById.get(item.mutationId) !== item.fingerprint)) {
           failure = new Error('ظهرت تغييرات محلية أحدث بعد القرار؛ أعد مراجعة التعارض قبل إعادة النشر.');
@@ -2864,6 +2951,7 @@ export class IndexedDbSyncJournal {
         };
         const initialized = new Set(metadata.remoteInitializedCollections || []);
         initialized.add(event.collection);
+        for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
         const nextMetadata: DeviceMetadata = {
           ...metadata,
           nextSequence: sequence + 1,

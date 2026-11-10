@@ -904,14 +904,14 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'use-remote-grouped-plan-pending',
         collection: 'plans',
-        documentId: 'local-plan',
+        documentId: 'plans-snapshot',
         payload: { records: [{ id: 'local-plan' }] },
         nowMs: 9601
       });
       await journal.enqueue({
         mutationId: 'use-remote-grouped-test-pending',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { records: [{ id: 'local-test' }] },
         nowMs: 9602
       });
@@ -947,9 +947,11 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
-    await test('Grouped keep-local syncMeta conflict fails closed without consuming evidence or pending writes', async () => {
+    await test('Grouped keep-local syncMeta conflict atomically replaces every affected pending write with one grouped mutation', async () => {
       const uid = 'keep-local-grouped-syncmeta-owner';
       const { journal } = createJournal(uid);
+      StorageService.savePlans([]);
+      StorageService.saveTests([]);
       const event = {
         uid,
         eventId: 'keep-local-grouped-syncmeta-event',
@@ -978,23 +980,38 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'keep-local-grouped-plan-pending',
         collection: 'plans',
-        documentId: 'local-plan',
-        payload: { records: [{ id: 'local-plan' }] },
+        documentId: 'plans-snapshot',
+        payload: { records: [] },
         nowMs: 9611
       });
       await journal.enqueue({
         mutationId: 'keep-local-grouped-test-pending',
         collection: 'tests',
-        documentId: 'local-test',
-        payload: { records: [{ id: 'local-test' }] },
+        documentId: 'tests-snapshot',
+        payload: { records: [] },
         nowMs: 9612
+      });
+      const localPayload = {
+        transaction: {
+          version: 1,
+          operations: [
+            { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+            { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
+          ]
+        }
+      };
+      await journal.enqueue({
+        mutationId: 'keep-local-grouped-local-transaction',
+        collection: 'syncMeta',
+        documentId: event.documentId,
+        payload: localPayload,
+        nowMs: 9613
       });
       const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
       const localSnapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
       assert(await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9613),
         'The grouped conflict must be archived before a user decision');
       const conflict = (await journal.listProjectionConflicts(10))[0];
-      const localPayload = { transactionDecision: 'preserve-local-group' };
       await journal.prepareConflictResolutionIntent({
         decisionId: 'keep-local-grouped-syncmeta-decision',
         eventId: event.eventId,
@@ -1010,22 +1027,92 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         nowMs: 9614
       });
 
-      let rejected = false;
-      try {
-        await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9615);
-      } catch { rejected = true; }
-
+      const committed = await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9615);
       const after = await journal.getSnapshot();
-      const remainingConflict = (await journal.listProjectionConflicts(10))[0];
+      const remoteProjectionCursor = await journal.getRemoteProjectionCursor();
+      const openConflictCount = await journal.getProjectionConflictCount();
       const inboxAfter = await journal.listRemoteInboxAfter(0, 10);
-      assert(rejected, 'The journal executor must reject grouped syncMeta keep-local until its collection-wide semantics are implemented');
-      assert(after.pendingCount === 2 && after.projectionCursor === 0 &&
-        (await journal.listReady(9700, 10)).length === 2,
-        'Rejecting grouped keep-local must preserve every affected local Outbox mutation and leave the projection cursor unchanged');
-      assert(inboxAfter.length === 1 && inboxAfter[0].eventId === event.eventId &&
-        remainingConflict?.status === 'open' &&
+      const ready = await journal.listReady(9700, 10);
+      const groupedState = {
+        pendingCount: after.pendingCount,
+        lastProjectedSequence: after.projectionCursor,
+        remoteProjectionCursor,
+        readyCount: ready.length,
+        readyCollections: ready.map(item => item.collection),
+        readyDocumentIds: ready.map(item => item.documentId)
+      };
+      assert(after.pendingCount === 1 && remoteProjectionCursor === 1 && ready.length === 1,
+        'The grouped decision must replace all affected writes with one pending mutation and advance the remote cursor exactly once: ' + JSON.stringify(groupedState));
+      assert(ready[0].collection === 'syncMeta' && ready[0].documentId === event.documentId &&
+        ready[0].mutationId === committed.mutationId &&
+        JSON.stringify(ready[0].payload) === JSON.stringify(localPayload),
+        'The replacement must be one syncMeta event carrying the exact grouped local snapshots');
+      assert(inboxAfter.length === 0 && openConflictCount === 0 &&
+        !(await journal.getConflictResolutionIntent(event.eventId)),
+        'The grouped commit must close the conflict and consume the inbox event and prepared intent atomically');
+      assert(await journal.isRemoteCollectionInitialized('plans') &&
+        await journal.isRemoteCollectionInitialized('tests') &&
+        await journal.isRemoteCollectionInitialized('syncMeta'),
+        'The grouped commit must mark syncMeta and every affected collection as initialized');
+      journal.close();
+    });
+
+    await test('Grouped keep-local syncMeta rejects a post-decision local write without consuming evidence', async () => {
+      const uid = 'keep-local-grouped-syncmeta-stale-owner';
+      const { journal } = createJournal(uid);
+      StorageService.savePlans([]);
+      StorageService.saveTests([]);
+      const event = {
+        uid,
+        eventId: 'keep-local-grouped-stale-event',
+        mutationId: 'keep-local-grouped-stale-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'syncMeta' as const,
+        documentId: 'remote-grouped-stale-transaction',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9620,
+        payload: { transaction: { version: 1, operations: [
+          { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+          { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
+        ] } },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      await journal.enqueue({ mutationId: 'keep-local-grouped-stale-plan', collection: 'plans', documentId: 'plans-snapshot', payload: { records: [] }, nowMs: 9621 });
+      await journal.enqueue({ mutationId: 'keep-local-grouped-stale-test', collection: 'tests', documentId: 'tests-snapshot', payload: { records: [] }, nowMs: 9622 });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const snapshot = StorageService.getLocalProjectionSnapshot('syncMeta');
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', snapshot, 9623);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const localPayload = { transaction: { version: 1, operations: [
+        { collection: 'plans', documentId: 'plans-snapshot', operation: 'upsert', payload: { records: [] } },
+        { collection: 'tests', documentId: 'tests-snapshot', operation: 'upsert', payload: { records: [] } }
+      ] } };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'keep-local-grouped-stale-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(snapshot),
+        decision: 'keep-local',
+        baseRevision: 1,
+        payload: localPayload,
+        localMutationFingerprints: (conflict.localMutations || []).map(item => ({ mutationId: item.mutationId, fingerprint: item.fingerprint })),
+        nowMs: 9624
+      });
+      await journal.enqueue({ mutationId: 'keep-local-grouped-new-write', collection: 'plans', documentId: 'plans-snapshot', payload: { records: [] }, nowMs: 9625 });
+      let rejected = false;
+      try { await journal.commitKeepLocalConflictResolution(event.eventId, 1, localPayload, 9626); }
+      catch { rejected = true; }
+      const after = await journal.getSnapshot();
+      assert(rejected && after.pendingCount === 3 && after.projectionCursor === 0 &&
+        (await journal.listRemoteInboxAfter(0, 10)).length === 1 &&
+        (await journal.listProjectionConflicts(10))[0]?.status === 'open' &&
         !!await journal.getConflictResolutionIntent(event.eventId),
-        'Rejecting grouped keep-local must preserve the remote inbox event, open conflict archive, and prepared user intent');
+        'A post-decision local write must block the whole grouped rebase without deleting evidence or advancing the cursor');
       journal.close();
     });
 
@@ -1270,7 +1357,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'other-document-local-pending',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { id: 'local-test', score: 2 },
         nowMs: 9101
       });
@@ -1323,7 +1410,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       await journal.enqueue({
         mutationId: 'pending-test-record',
         collection: 'tests',
-        documentId: 'local-test',
+        documentId: 'tests-snapshot',
         payload: { id: 'local-test', score: 2 },
         nowMs: 9302
       });
