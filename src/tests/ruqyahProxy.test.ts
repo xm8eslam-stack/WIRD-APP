@@ -98,6 +98,40 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
     });
 
+    await test('Ruqyah proxy retries a transient 502 once and then returns validated locator data', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      let calls = 0;
+      globalThis.fetch = (async () => {
+        calls += 1;
+        if (calls === 1) return new Response('temporary gateway error', { status: 502 });
+        return new Response(JSON.stringify({ status: 'success', data: [{ id: 8, title: '2:255' }] }), {
+          status: 200, headers: { 'Content-Type': 'application/json' }
+        });
+      }) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.230' } }, res);
+      assert(calls === 2, 'A transient 502 should trigger exactly one retry');
+      assert(res.statusCode === 200 && res.body?.data?.[0]?.title === '2:255', 'A successful retry should return sanitized coordinates');
+    });
+
+    await test('Ruqyah proxy classifies rejected keys and provider rate limits', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(JSON.stringify({ code: 401, status: 'error', message: 'Unauthorized' }), {
+        status: 401, headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      const rejected = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.231' } }, rejected);
+      assert(rejected.statusCode === 502 && rejected.body?.error === 'RUQYAH_API_KEY_REJECTED', 'Provider 401 must be distinguishable from a transient outage');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({ code: 429, status: 'error' }), {
+        status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '45' }
+      })) as typeof fetch;
+      const limited = new MockResponse();
+      await ruqyahHandler({ method: 'GET', query: { type: 'instant', program: 'brief-ruqya', source: 'from-quran' }, headers: { 'x-real-ip': '198.51.100.232' } }, limited);
+      assert(limited.statusCode === 503 && limited.body?.error === 'RUQYAH_SOURCE_RATE_LIMITED', 'Provider 429 must be reported as a temporary source limit');
+      assert(limited.headers['Retry-After'] === '45', 'Provider retry guidance should be preserved');
+    });
+
     await test('Ruqyah proxy normalizes mixed Arabic-Indic and ASCII digits', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       globalThis.fetch = (async () => new Response(JSON.stringify({
