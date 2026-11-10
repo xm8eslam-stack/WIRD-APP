@@ -39,6 +39,24 @@ test.describe('WIRD memorization plans UX', () => {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
+  test('delete confirmation traps focus, closes on Escape, and restores its trigger', async ({ page }) => {
+    await page.getByRole('button', { name: /النماذج والخطط المعتمدة/ }).click();
+    const trigger = page.getByRole('button', { name: /حذف الخطة/ }).first();
+    await trigger.click();
+
+    const dialog = page.getByRole('dialog', { name: 'تأكيد حذف الخطة' });
+    const cancel = dialog.getByRole('button', { name: 'إلغاء' });
+    const confirm = dialog.getByRole('button', { name: 'تأكيد الحذف' });
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(confirm).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
   test('planning wizard pacing and rest-day controls are keyboard and touch accessible', async ({ page }) => {
     await page.getByRole('button', { name: /إنشاء خطة ذكية جديدة/ }).click();
 
