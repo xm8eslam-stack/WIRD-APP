@@ -1825,9 +1825,10 @@ export const StorageService = {
 
     let logs: DailyLog[];
     let profile: UserProfile;
+    let baseLogsFingerprint = '';
     try {
       logs = this.getLogs().map(log => ({ ...log, completedTasks: [...log.completedTasks] }));
-      const baseLogsFingerprint = createJournalSnapshotFingerprint(logs);
+      baseLogsFingerprint = createJournalSnapshotFingerprint(logs);
       if (profileRaw === null) {
         profile = { ...CLEAN_INITIAL_PROFILE };
       } else {
