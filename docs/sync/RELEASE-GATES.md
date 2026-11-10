@@ -317,3 +317,5 @@ This section is the current status and supersedes older historical statements wh
 - Confirm legacy snapshots can bootstrap an empty device or replay identical state but cannot replace a non-empty divergent archive.
 - Confirm explicit `use-remote` resolution still applies the verified authoritative snapshot after preserving conflict evidence.
 - No Firestore rules/schema or production sync flags are part of this change.
+
+- Include backup import, ordered reset, and demo-fixture grouped transactions in regression coverage; each must capture the local base before enqueue and must not clear a later concurrent archive update.
