@@ -79,7 +79,7 @@ async function cacheSessionAudio(rawUrls) {
       const url = new URL(rawUrl);
       const isEveryAyah = url.protocol === 'https:' &&
         url.hostname === 'everyayah.com' &&
-        /^\/data\/[A-Za-z0-9_-]+\/[0-9]{6}\.mp3$/.test(url.pathname);
+        /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname);
       const isApprovedQuranCdn = url.protocol === 'https:' &&
         url.hostname === 'cdn.islamic.network' &&
         /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname);
@@ -227,7 +227,7 @@ self.addEventListener('fetch', (event) => {
 
   // Session audio cache: only explicitly selected EveryAyah recitations are stored.
   const isEveryAyahAudio = url.hostname === 'everyayah.com' &&
-    /^\/data\/[A-Za-z0-9_-]+\/[0-9]{6}\.mp3$/.test(url.pathname);
+    /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname);
   const isApprovedQuranCdnAudio = url.hostname === 'cdn.islamic.network' &&
     /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname);
   if (url.protocol === 'https:' && (isEveryAyahAudio || isApprovedQuranCdnAudio)) {
