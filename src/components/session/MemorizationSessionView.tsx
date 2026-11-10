@@ -888,7 +888,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             <label className="inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300">
               <span>من</span>
               <select
-                aria-label="بداية مقطع الحفظ والمراجعة"
+                aria-label="بداية المقطع الصوتي في الجلسة"
                 value={segmentStartIndex}
                 disabled={!sessionAyahs.length}
                 onChange={event => {
@@ -904,7 +904,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             <label className="inline-flex items-center gap-1.5 text-xs text-stone-600 dark:text-stone-300">
               <span>إلى</span>
               <select
-                aria-label="نهاية مقطع الحفظ والمراجعة"
+                aria-label="نهاية المقطع الصوتي في الجلسة"
                 value={segmentEndIndex}
                 disabled={!sessionAyahs.length}
                 onChange={event => setSegmentEndIndex(Number(event.target.value))}
@@ -921,7 +921,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               onClick={handleToggleSegmentAudio}
               className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-colors disabled:opacity-50 ${isSegmentPlaying ? 'bg-amber-500 text-white' : 'bg-emerald-800 text-white hover:bg-emerald-900'}`}
             >
-              {isSegmentPlaying ? 'إيقاف مؤقت للمقطع' : 'تشغيل المقطع المحدد'}
+              {isSegmentPlaying ? 'إيقاف مؤقت للمقطع الصوتي' : 'تشغيل المقطع الصوتي المحدد'}
             </button>
           </div>
           {isAudioLoading && <span role="status" className="text-xs text-stone-500">جارٍ تحميل التلاوة…</span>}
