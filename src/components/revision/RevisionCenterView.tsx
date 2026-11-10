@@ -93,6 +93,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   const [newStartAyah, setNewStartAyah] = useState(1);
   const [newEndAyah, setNewEndAyah] = useState(15);
   const [newStatus, setNewStatus] = useState<PortionMemorizationStatus>('recently_memorized');
+  const [isSavingPortion, setIsSavingPortion] = useState(false);
 
   // Add manual weak verse modal
   const [isAddWeakVerseModalOpen, setIsAddWeakVerseModalOpen] = useState(false);
@@ -104,6 +105,73 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
   // Search in weak verses
   const [weakSearchQuery, setWeakSearchQuery] = useState('');
   const [weakSimpleTexts, setWeakSimpleTexts] = useState<Record<string, string>>({});
+  const modalDialogRef = useRef<HTMLDivElement | null>(null);
+  const previousModalFocusRef = useRef<HTMLElement | null>(null);
+  const activeModalRef = useRef<string | null>(null);
+  const modalSavingRef = useRef(false);
+  modalSavingRef.current = isSavingRating || isSavingWeakVerse || isSavingPortion;
+  const activeModal = ratingPortion
+    ? 'rating'
+    : isAddPortionModalOpen
+      ? 'add-portion'
+      : isAddWeakVerseModalOpen
+        ? 'add-weak-verse'
+        : null;
+
+  useEffect(() => {
+    if (!activeModal) {
+      if (activeModalRef.current) {
+        activeModalRef.current = null;
+        if (previousModalFocusRef.current?.isConnected) previousModalFocusRef.current.focus();
+        previousModalFocusRef.current = null;
+      }
+      return;
+    }
+
+    if (!activeModalRef.current) {
+      previousModalFocusRef.current = document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    }
+    activeModalRef.current = activeModal;
+    const dialog = modalDialogRef.current;
+    const focusable = dialog
+      ? Array.from(dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        ))
+      : [];
+    const preferred = dialog?.querySelector<HTMLElement>('[data-dialog-autofocus]');
+    (preferred || focusable[0] || dialog)?.focus();
+
+    const handleModalKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (modalSavingRef.current) return;
+        if (activeModal === 'rating') {
+          setRatingPortion(null);
+          setReviewNotes('');
+          setWeakAyahNum('');
+        } else if (activeModal === 'add-portion') {
+          setIsAddPortionModalOpen(false);
+        } else {
+          setIsAddWeakVerseModalOpen(false);
+        }
+        return;
+      }
+      if (event.key !== 'Tab' || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', handleModalKeyDown);
+    return () => document.removeEventListener('keydown', handleModalKeyDown);
+  }, [activeModal]);
 
   useEffect(() => {
     let active = true;
