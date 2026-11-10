@@ -14,7 +14,7 @@ export const AudioPlaybackRateControl: React.FC<AudioPlaybackRateControlProps> =
         aria-label="سرعة تشغيل الصوت"
         value={value}
         onChange={event => onChange(Number(event.target.value) as PlaybackRate)}
-        className="rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2.5 py-1.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
+        className="min-h-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-2.5 py-1.5 text-xs font-semibold text-stone-800 dark:text-stone-100 focus:outline-none focus:border-emerald-600"
       >
         {PLAYBACK_RATES.map(rate => <option key={rate} value={rate}>{rate}×</option>)}
       </select>
