@@ -271,6 +271,9 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         setPlayingIndex(null);
         if (continueAcrossPages && page < 604) {
           autoPlayNextPageRef.current = true;
+          // Keep the next-page effect from seeing the previous page's ayahs
+          // before the page loader has started and replaced them.
+          setIsLoading(true);
           setPage(page + 1);
         }
       },
