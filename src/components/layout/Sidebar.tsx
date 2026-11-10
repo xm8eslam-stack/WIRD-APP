@@ -111,8 +111,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               onClick={onToggleDesktop}
               className="hidden lg:flex p-1.5 text-stone-500 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-xl transition-colors"
-              title="إغلاق الشريط الجانبي (Ctrl+B)"
+              title="إغلاق الشريط الجانبي (Ctrl+B / Cmd+B)"
               aria-label="إغلاق الشريط الجانبي"
+              aria-keyshortcuts="Control+B Meta+B"
             >
               <X className="w-5 h-5" />
             </button>
@@ -124,6 +125,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               type="button"
               onClick={onCloseMobile}
               className="lg:hidden p-1.5 text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 rounded-xl transition-colors"
+              title="إغلاق القائمة"
               aria-label="إغلاق القائمة"
             >
               <X className="w-5 h-5" />
