@@ -144,7 +144,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // Keep the selected verse visible when the user jumps from the sticky selector or the page list.
   useEffect(() => {
     if (displayPreferences.viewMode !== 'page' || pageDisplayTexts.length !== sessionAyahs.length) return;
-    activePageAyahRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    activePageAyahRef.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
   }, [currentAyahIndex, displayPreferences.viewMode, pageDisplayTexts.length, sessionAyahs.length]);
 
   // 1. Audio recitation state
