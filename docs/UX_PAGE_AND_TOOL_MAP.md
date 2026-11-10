@@ -65,11 +65,11 @@ The current navigation has no dedicated destination for daily adhkar, prayer tra
 
 ## Checkpoints
 - Navigation shell, settings UX, and session UX improvements are present in current `main`.
-- Printed Mushaf mode: PR #280, pending exact-head CI and real-device/visual review; remains opt-in.
+- Printed Mushaf mode: PR #285, exact-head CI pending; remains opt-in pending visual and real-device review.
 - Memorization test accessibility: PR #233 merged after exact-head CI success.
 - Dashboard weekly activity and quick-action accessibility: PR #236 merged after exact-head CI success.
 - Revision failed-rating dialog keyboard accessibility: PR #266 merged after CI success.
-- Plan selector, empty state, and delete-dialog accessibility: PR #279 pending exact-head CI.
-- Ruqyah audio queue progress and touch controls: PR #276 merged after exact-head CI success.
-- Page/tool inventory: this document is tracked in PR #278.
+- Plan selector, empty state, and delete-dialog accessibility: PR #279 merged after exact-head CI success.
+- Ruqyah audio queue progress and touch controls: PR #276 merged after exact-head CI success; redundant empty-wrapper cleanup is in PR #284.
+- Page/tool inventory: this document is tracked in PR #283.
 - Green CI is not proof of deployment. Report Vercel status and live verification separately.
