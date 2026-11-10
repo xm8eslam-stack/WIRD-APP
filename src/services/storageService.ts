@@ -568,6 +568,25 @@ function isValidLegacyRevisionItem(value: unknown): boolean {
     (value.repetitionCount === undefined || isIntegerBetween(value.repetitionCount, 0, 100000)) &&
     (value.strength === undefined || ['strong', 'medium', 'weak'].includes(value.strength));
 }
+function mergeTestResultSnapshots(existing: unknown, incoming: unknown): TestResult[] | null {
+  if (!Array.isArray(existing) || !Array.isArray(incoming) ||
+      existing.length > 50 || incoming.length > 50 ||
+      !existing.every(isValidTestResultRecord) ||
+      !incoming.every(isValidTestResultRecord)) return null;
+
+  const byId = new Map<string, TestResult>();
+  for (const item of existing as TestResult[]) byId.set(item.id, item);
+  for (const item of incoming as TestResult[]) {
+    const prior = byId.get(item.id);
+    if (prior && stableSerialize(prior) !== stableSerialize(item)) return null;
+    byId.set(item.id, item);
+  }
+
+  return [...byId.values()]
+    .sort((left, right) => right.date.localeCompare(left.date) || left.id.localeCompare(right.id))
+    .slice(0, 50);
+}
+
 function isValidTestResultRecord(value: unknown): value is TestResult {
   if (!isPlainRecord(value)) return false;
   return typeof value.id === 'string' && value.id.trim().length > 0 && value.id.length <= 160 &&
@@ -1512,7 +1531,8 @@ export const StorageService = {
    */
   applyJournalProjection(
     collection: Exclude<SyncCollection, 'syncMeta'>,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    documentId?: string
   ): boolean {
     if (!isPlainRecord(payload)) return false;
     switch (collection) {
@@ -1526,8 +1546,19 @@ export const StorageService = {
         return Array.isArray(payload.records) && this.saveUnifiedPortions(payload.records as WirdPortion[], payload.recoveryFromLegacy === true, payload.migration === true || payload.validatedImport === true);
       case 'weakVerses':
         return Array.isArray(payload.records) && this.saveWeakVerses(payload.records as WeakVerseItem[]);
-      case 'tests':
-        return Array.isArray(payload.records) && this.saveTests(payload.records as TestResult[]);
+      case 'tests': {
+        if (!Array.isArray(payload.records) || payload.records.length > 50 ||
+            !payload.records.every(isValidTestResultRecord)) return false;
+        // Legacy per-result documents carry a rolling archive and must merge by
+        // immutable result ID. The explicit collection snapshot document remains
+        // authoritative and supports whole-archive replacement for revisioned
+        // snapshot writers and existing snapshot events.
+        if (documentId === 'snapshot') {
+          return this.saveTests(payload.records as TestResult[]);
+        }
+        const merged = mergeTestResultSnapshots(this.getTests(), payload.records);
+        return merged !== null && this.saveTests(merged);
+      }
       case 'activityEvents':
         return Array.isArray(payload.records) && this.saveLogs(payload.records as DailyLog[]);
       case 'ruqyahProgress':
@@ -1606,8 +1637,8 @@ export const StorageService = {
           if (!Array.isArray(payload.records)) return false;
           const raw = getItem(STORAGE_KEYS.TESTS);
           const current: unknown = raw === null ? [] : JSON.parse(raw);
-          return Array.isArray(current) && current.length <= 10000 &&
-            current.every(isValidTestResultRecord) && equals(current, payload.records);
+          const merged = mergeTestResultSnapshots(current, payload.records);
+          return merged !== null && equals(current, merged);
         }
         case 'activityEvents': {
           if (!Array.isArray(payload.records)) return false;
@@ -1644,7 +1675,7 @@ export const StorageService = {
           !Array.isArray(payload.transaction.operations)) return false;
       return this.applyJournalTransaction(payload.transaction.operations);
     }
-    return this.applyJournalProjection(event.collection, event.payload);
+    return this.applyJournalProjection(event.collection, event.payload, event.documentId);
   },
 
   /**
