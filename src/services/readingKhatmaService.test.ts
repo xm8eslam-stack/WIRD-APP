@@ -21,6 +21,7 @@ export function runReadingKhatmaServiceTests(): { passed: number; failed: number
   test('requires an active khatma and clear resets only reading state', () => { clearReadingKhatma(storage); let rejected = false; try { markReadingPage(1, storage); } catch { rejected = true; } assert(rejected, 'page mark without active khatma must fail'); startReadingKhatma(storage); clearReadingKhatma(storage); assert(readReadingKhatma(storage) === null, 'clear must remove the reading record'); });
   test('corrupt persisted progress is ignored safely', () => { data.set('wird.reading.khatma.v1', JSON.stringify({ id: 'bad', startedAt: 'bad-date', completedPages: [1] })); assert(readReadingKhatma(storage) === null, 'invalid record must not be used'); });
   test('daily reading plan calculates targets and tracks unique pages per local day', () => {
+    clearReadingKhatma(storage);
     const started = startReadingKhatma(storage, new Date(2026, 4, 1, 8), { durationDays: 60, sessionsPerDay: 3 });
     assert(started.plan?.targetCompletionDate === '2026-06-30', 'target date should follow the selected 60-day duration');
     markReadingPage(1, storage, new Date(2026, 4, 1, 9));
@@ -32,6 +33,7 @@ export function runReadingKhatmaServiceTests(): { passed: number; failed: number
     assert(progress.remainingPages === 602 && progress.percent === 0, 'progress must reflect unique completed pages');
   });
   test('pause blocks progress, resume restores it, and plan can be changed safely', () => {
+    clearReadingKhatma(storage);
     startReadingKhatma(storage, new Date(2026, 4, 1, 8), { durationDays: 30, sessionsPerDay: 2 });
     const paused = pauseReadingKhatma(storage, new Date(2026, 4, 1, 12));
     assert(paused.isPaused === true, 'pause state should persist');
@@ -46,6 +48,7 @@ export function runReadingKhatmaServiceTests(): { passed: number; failed: number
     assert(updated.plan.targetCompletionDate === '2026-07-31', 'updated target date should be recalculated from the update date');
   });
   test('plan validation rejects impossible durations and session counts without corrupting saved data', () => {
+    clearReadingKhatma(storage);
     const started = startReadingKhatma(storage, new Date(2026, 4, 1, 8));
     const rawBefore = data.get('wird.reading.khatma.v1');
     let rejected = false;
