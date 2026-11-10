@@ -2605,7 +2605,7 @@ export class IndexedDbSyncJournal {
         remoteRevisions[revisionKey] = { revision: expectedRevision, localSequence };
         const initialized = new Set(metadata.remoteInitializedCollections || []);
         initialized.add(event.collection);
-        for (const collection of affectedCollections) initialized.add(collection);
+        for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
         for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
         const nextMetadata: DeviceMetadata = {
           ...metadata,
@@ -2951,7 +2951,7 @@ export class IndexedDbSyncJournal {
         };
         const initialized = new Set(metadata.remoteInitializedCollections || []);
         initialized.add(event.collection);
-        for (const collection of affectedCollections) initialized.add(collection);
+        for (const collection of affectedCollections) initialized.add(collection as SyncCollection);
         const nextMetadata: DeviceMetadata = {
           ...metadata,
           nextSequence: sequence + 1,
