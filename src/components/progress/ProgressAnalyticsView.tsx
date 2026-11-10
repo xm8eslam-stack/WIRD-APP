@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   BarChart3, 
   BookOpen, 
@@ -77,17 +77,46 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
     portionId?: string;
     portionIds?: string[];
   } | null>(null);
+  const inspectedPageDialogRef = useRef<HTMLDivElement>(null);
+  const closeInspectedPageRef = useRef<HTMLButtonElement>(null);
+  const inspectedPageTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (!inspectedPage) return;
+    const trigger = inspectedPageTriggerRef.current;
+    closeInspectedPageRef.current?.focus();
+
     const handleDialogKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         setInspectedPage(null);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const dialog = inspectedPageDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
     window.addEventListener('keydown', handleDialogKeyDown);
-    return () => window.removeEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleDialogKeyDown);
+      (inspectedPageTriggerRef.current ?? trigger)?.focus();
+    };
   }, [inspectedPage]);
 
   useEffect(() => {
@@ -385,7 +414,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                 return (
                   <button
                     key={pageNum}
-                    onClick={() => setInspectedPage({ pageNumber: pageNum, surah, surahs, segments: pageSegments, status, portionId, portionIds })}
+                    type="button"
+                    onClick={(event) => { inspectedPageTriggerRef.current = event.currentTarget; setInspectedPage({ pageNumber: pageNum, surah, surahs, segments: pageSegments, status, portionId, portionIds }); }}
                     className={`aspect-square ${pageGridZoom === 'large' ? 'min-h-14 min-w-14' : 'min-h-12 min-w-12'} rounded-lg p-1.5 border text-center transition-all flex flex-col items-center justify-center relative group touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 ${
                       matchesFilter ? 'opacity-100 hover:scale-110 z-10' : 'opacity-20 hover:opacity-100'
                     } ${cfg.bg} ${cfg.border} shadow-2xs cursor-pointer`}
@@ -485,7 +515,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
       {/* MODAL: INSPECT & EDIT PAGE STATUS */}
       {inspectedPage && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div role="dialog" aria-modal="true" aria-labelledby="wird-progress-page-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-5">
+          <div ref={inspectedPageDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-progress-page-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-stone-200 bg-white p-6 shadow-xl space-y-5 dark:border-stone-700 dark:bg-stone-800">
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold">
@@ -495,10 +525,12 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                   صفحة رقم {inspectedPage.pageNumber} • {inspectedPage.surahs.map(item => item.name).join('، ')}
                 </h3>
               </div>
-              <button 
-                onClick={() => setInspectedPage(null)} 
+              <button
+                ref={closeInspectedPageRef}
+                type="button"
+                onClick={() => setInspectedPage(null)}
                 aria-label="إغلاق تفاصيل الصفحة"
-                className="min-h-11 min-w-11 text-stone-400 hover:text-stone-600 p-1"
+                className="min-h-11 min-w-11 p-1 text-stone-400 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <X className="w-5 h-5" />
               </button>
