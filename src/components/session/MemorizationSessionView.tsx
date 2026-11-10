@@ -555,10 +555,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             max={110}
             step={5}
             value={displayPreferences.uiScale}
+            aria-valuetext={`${displayPreferences.uiScale}%`}
             onChange={event => updateDisplayPreferences({ uiScale: Number(event.target.value) })}
-            className="w-full accent-emerald-700"
+            className="min-h-11 w-full accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
-          <output htmlFor="session-ui-scale" className="text-xs font-mono tabular-nums text-stone-600 dark:text-stone-300 min-w-12 text-center">
+          <output htmlFor="session-ui-scale" aria-live="polite" className="text-xs font-mono tabular-nums text-stone-600 dark:text-stone-300 min-w-12 text-center">
             {displayPreferences.uiScale}%
           </output>
         </div>
@@ -575,10 +576,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             max={44}
             step={2}
             value={displayPreferences.fontSize}
+            aria-valuetext={`${displayPreferences.fontSize} بكسل`}
             onChange={event => updateDisplayPreferences({ fontSize: Number(event.target.value) })}
-            className="w-full accent-emerald-700"
+            className="min-h-11 w-full accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
-          <output htmlFor="session-ayah-font-size" className="text-xs font-mono tabular-nums text-stone-600 dark:text-stone-300 min-w-12 text-center">
+          <output htmlFor="session-ayah-font-size" aria-live="polite" className="text-xs font-mono tabular-nums text-stone-600 dark:text-stone-300 min-w-12 text-center">
             {displayPreferences.fontSize}px
           </output>
         </div>
@@ -590,7 +592,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.density === 'comfortable'}
               onClick={() => updateDisplayPreferences({ density: 'comfortable' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'comfortable' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.density === 'comfortable' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               مريحة
             </button>
@@ -598,7 +600,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.density === 'compact'}
               onClick={() => updateDisplayPreferences({ density: 'compact' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'compact' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.density === 'compact' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               مضغوطة
             </button>
@@ -610,7 +612,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.viewMode === 'focused'}
               onClick={() => updateDisplayPreferences({ viewMode: 'focused' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'focused' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.viewMode === 'focused' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               آية واحدة
             </button>
@@ -618,7 +620,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.viewMode === 'page'}
               onClick={() => updateDisplayPreferences({ viewMode: 'page' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'page' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.viewMode === 'page' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               كل آيات الجلسة
             </button>
