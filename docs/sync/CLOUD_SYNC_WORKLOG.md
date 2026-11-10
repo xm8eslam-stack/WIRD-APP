@@ -403,3 +403,13 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - Current-main Vercel status is rate-limited. Do not confuse this with the READY Production deployment or a code failure.
 - Exact application-code SHA `2405067...` has completed Quality Gate run `42865304625` successfully. Newer docs-only main run `42876158628` was still in progress at last poll; no failed step had appeared.
 - This supersedes the prior interim note that Production was exactly on `9a508d...`; the latest READY deployment is now `dac125...`.
+
+## 2026-11-11 — PR #325 merged: stale full-snapshot compare-and-set guard
+
+- Main merge commit: `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6` (PR #325, squash). Original stale PR #203 was closed as superseded; no force-push was used.
+- Exact-head Quality Gate: run `42917981860` on `6d0deea025f7ca7ee6b5d1efd65e55805334e630` passed 667 automated assertions, 31 Firestore Rules Emulator tests, 8/8 approved Quran audio CDN probes, 140 Playwright desktop/mobile tests, TypeScript, production build, and server smoke.
+- New full-snapshot mutations carry `baseSnapshotFingerprint` for `weakVerses` and `activityEvents`: weak-verse failure/resolution, session completion/revision rating, backup import, reset, and demo fixture projection. A stale base is rejected; grouped transactions roll back earlier child projections. Legacy events may bootstrap empty archives or replay identical data, but cannot replace divergent non-empty data.
+- Fingerprints are deterministic and non-cryptographic; they are compare-and-set identities, not authentication. No automatic counter summation, timestamp winner, array-union, tombstone, or delete semantics were introduced.
+- Higher-level `syncConflictSafety` continues to block whole-snapshot `keep-local/use-remote` decisions for `weakVerses` and `activityEvents`; PR #325 does not enable those unsafe decisions. This is a data-loss guard, not proof of complete bidirectional sync.
+- No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed. Latest Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`; newer Vercel preview/deployments are blocked by `build-rate-limit`, so the merge is not claimed as deployed.
+- Follow-up: finish active PR #326 audio/Mushaf Quality Gate; later run a real two-device sync test and design explicit event/tombstone semantics before any broader conflict-resolution change.
