@@ -286,11 +286,11 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
+        <div role="group" aria-label="أقسام المستشار القرآني" className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
             onClick={() => setSelectedTopic('ai_advisor')}
             aria-pressed={selectedTopic === 'ai_advisor'}
-            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTopic === 'ai_advisor'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -303,7 +303,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
           <button
             onClick={() => setSelectedTopic('methods')}
             aria-pressed={selectedTopic === 'methods'}
-            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTopic === 'methods'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -316,7 +316,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
           <button
             onClick={() => setSelectedTopic('mutashabihat_rules')}
             aria-pressed={selectedTopic === 'mutashabihat_rules'}
-            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTopic === 'mutashabihat_rules'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -329,7 +329,7 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
           <button
             onClick={() => setSelectedTopic('calculator')}
             aria-pressed={selectedTopic === 'calculator'}
-            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            className={`flex min-h-11 items-center gap-1.5 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTopic === 'calculator'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -359,9 +359,10 @@ export const QuranAdvisorView: React.FC<QuranAdvisorViewProps> = ({
               {quickActions.map(action => (
                 <button
                   key={action.id}
+                  type="button"
                   onClick={() => handleRunQuickAction(action)}
                   disabled={isLoading}
-                  className="min-h-11 p-3 bg-[#faf8f5] dark:bg-stone-900/80 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-right transition-all group disabled:opacity-50"
+                  className="min-h-11 p-3 bg-[#faf8f5] dark:bg-stone-900/80 hover:bg-emerald-50/80 dark:hover:bg-emerald-950/40 rounded-xl border border-stone-200/70 dark:border-stone-700/60 text-right transition-all group disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                 >
                   <div className="font-bold text-xs text-stone-900 dark:text-stone-100 group-hover:text-emerald-800 dark:group-hover:text-emerald-300">
                     {action.title}
