@@ -40,8 +40,8 @@ export function getMushafFacsimilePageUrls(page: number): { svgUrl: string; json
   }
   const filename = String(page).padStart(3, '0');
   return {
-    svgUrl: `${MUSHAF_FACSIMILE_BASE_URL}/svg/${filename}.svg`,
-    jsonUrl: `${MUSHAF_FACSIMILE_BASE_URL}/json/${filename}.json`
+    svgUrl: `${MUSHAF_FACSIMILE_BASE_URL}/${filename}.svg`,
+    jsonUrl: `${MUSHAF_FACSIMILE_BASE_URL}/${filename}.json`
   };
 }
 
@@ -80,7 +80,7 @@ export function parseMushafAyahAreas(
   raw: unknown,
   viewBox: MushafViewBox
 ): MushafAyahArea[] {
-  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 30) {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 100) {
     throw new Error('فهرس مواضع الآيات في الصفحة غير مكتمل.');
   }
   const seen = new Set<string>();
