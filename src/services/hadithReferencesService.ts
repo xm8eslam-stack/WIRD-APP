@@ -14,7 +14,7 @@ export interface RelatedHadith {
 }
 
 const CACHE_PREFIX = 'wird_related_hadiths_v1:';
-const MAX_CACHED_HADITH_PAGES = 100;
+const MAX_CACHED_HADITH_PAGES = 30;
 const MAX_CACHED_HADITH_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function validateHadithPayload(payload: unknown, expectedVerseKey: string): { hadiths: RelatedHadith[]; hasMore: boolean } {
