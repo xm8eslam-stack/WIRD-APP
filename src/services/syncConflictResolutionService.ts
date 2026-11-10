@@ -220,7 +220,7 @@ export async function resolveProjectionConflictUsingLocal(
         item.operation !== 'upsert' || !isRecord(item.payload) ||
         (item.collection !== conflict.event.collection &&
           !(conflict.event.collection === 'syncMeta' &&
-            ['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress'].includes(item.collection)))
+            ['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents'].includes(item.collection)))
       )) {
     throw new Error('لا توجد مجموعة تغييرات محلية كاملة ومتجانسة في سجل التعارض لإعادة نشرها بأمان.');
   }
@@ -251,7 +251,7 @@ export async function resolveProjectionConflictUsingLocal(
       const latestLocal = localForCollection[localForCollection.length - 1];
       const documentId = latestLocal?.documentId || remoteOperation.documentId;
       const payload = JSON.parse(JSON.stringify(latestLocal?.payload || remoteOperation.payload)) as Record<string, unknown>;
-      if (!StorageService.matchesJournalProjection(remoteOperation.collection as SyncCollection, payload)) {
+      if (!StorageService.matchesJournalProjection(remoteOperation.collection as Parameters<typeof StorageService.matchesJournalProjection>[0], payload)) {
         throw new Error('لقطة إحدى المجموعات المحلية لا تطابق بياناتها الدائمة؛ لم نرفع نسخة قديمة.');
       }
       operations.push({ collection: remoteOperation.collection, documentId, operation: 'upsert', payload });
