@@ -561,7 +561,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setIsAddWeakVerseModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800/60 transition-colors"
+              className="flex min-h-11 items-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800/60 transition-colors"
             >
               <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
               <span>تسجيل آية ملتبسة</span>
@@ -569,7 +569,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
             <button
               onClick={() => setIsAddPortionModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+              className="flex min-h-11 items-center gap-1.5 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
             >
               <Plus className="w-4 h-4" />
               <span>إضافة مقطع متابعة جديد</span>
@@ -579,7 +579,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
         {/* Global Action Feedback Alert */}
         {actionFeedback && (
-          <div className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-fade-in ${
+          <div role="status" aria-live="polite" className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-3 animate-fade-in ${
             actionFeedback.type === 'success' 
               ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900 dark:text-emerald-200' 
               : actionFeedback.type === 'warn'
@@ -590,7 +590,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{actionFeedback.message}</span>
             </div>
-            <button onClick={() => setActionFeedback(null)} className="opacity-70 hover:opacity-100">
+            <button type="button" aria-label="إغلاق التنبيه" onClick={() => setActionFeedback(null)} className="min-h-11 min-w-11 opacity-70 hover:opacity-100">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -600,7 +600,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-stone-200 dark:border-stone-700/60 text-xs font-semibold">
           <button
             onClick={() => setActiveTab('daily_queue')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={activeTab === 'daily_queue'}
+            className={`flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'daily_queue'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -619,7 +620,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
           <button
             onClick={() => setActiveTab('weekly_overview')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={activeTab === 'weekly_overview'}
+            className={`flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'weekly_overview'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -631,7 +633,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
           <button
             onClick={() => setActiveTab('weak_verses')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={activeTab === 'weak_verses'}
+            className={`flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'weak_verses'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -646,7 +649,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={activeTab === 'history'}
+            className={`flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'history'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -661,7 +665,8 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
           <button
             onClick={() => setActiveTab('retention_dashboard')}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
+            aria-pressed={activeTab === 'retention_dashboard'}
+            className={`flex min-h-11 items-center gap-2 px-3.5 py-2 rounded-t-xl transition-colors border-b-2 whitespace-nowrap ${
               activeTab === 'retention_dashboard'
                 ? 'border-emerald-700 text-emerald-800 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30 font-bold'
                 : 'border-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -761,7 +766,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         <button
                           disabled={isSavingRating}
                           onClick={() => handleRatePortion('successful', item)}
-                          className="py-2 px-1 text-center bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-all flex flex-col items-center gap-1"
+                          className="min-h-11 py-2 px-1 text-center bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
                           <span>ناجحة (متقن)</span>
@@ -770,7 +775,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         <button
                           disabled={isSavingRating}
                           onClick={() => handleRatePortion('difficult', item)}
-                          className="py-2 px-1 text-center bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold border border-amber-200 dark:border-amber-800/60 transition-all flex flex-col items-center gap-1"
+                          className="min-h-11 py-2 px-1 text-center bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 rounded-xl text-xs font-bold border border-amber-200 dark:border-amber-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <Clock className="w-3.5 h-3.5 text-amber-600" />
                           <span>صعبة (بتردد)</span>
@@ -779,7 +784,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                         <button
                           disabled={isSavingRating}
                           onClick={() => { setRatingPortion(item); setReviewNotes(''); setWeakAyahNum(''); }}
-                          className="py-2 px-1 text-center bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800/60 transition-all flex flex-col items-center gap-1"
+                          className="min-h-11 py-2 px-1 text-center bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-800 dark:text-rose-300 rounded-xl text-xs font-bold border border-rose-200 dark:border-rose-800/60 transition-all flex flex-col items-center gap-1"
                         >
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                           <span>غير متقنة (يتفلت)</span>
@@ -790,7 +795,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                       {onStartSession && (
                         <button
                           onClick={() => onStartSession(item.surahNumber, item.startAyah, item.endAyah, 'review')}
-                          className="w-full mt-2 py-1.5 px-3 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-[11px] font-semibold border border-stone-200 dark:border-stone-700 transition-colors flex items-center justify-center gap-1.5"
+                          className="w-full mt-2 min-h-11 py-1.5 px-3 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-[11px] font-semibold border border-stone-200 dark:border-stone-700 transition-colors flex items-center justify-center gap-1.5"
                         >
                           <Play className="w-3 h-3 text-emerald-700" />
                           <span>فتح المقطع في جلسة التسميع التفاعلية</span>
@@ -812,7 +817,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             توزيع المقاطع المجدولة للأيام السبعة القادمة حسب خوارزمية التكرار المتباعد:
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+          <div role="region" aria-label="جدول المراجعات الأسبوعي" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-3">
             {weeklyOverview.map((day, idx) => (
               <div 
                 key={day.date}
@@ -887,6 +892,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <Search className="w-4 h-4 absolute right-3 top-3 text-stone-400" />
               <input
                 type="text"
+                aria-label="البحث في الآيات الملتبسة"
                 placeholder="ابحث في الآيات الملتبسة أو السور..."
                 value={weakSearchQuery}
                 onChange={e => setWeakSearchQuery(e.target.value)}
