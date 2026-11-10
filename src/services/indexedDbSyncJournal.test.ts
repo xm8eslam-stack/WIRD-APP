@@ -74,6 +74,26 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       });
       assert(queued.status === 'queued', 'A 140 KB engine-plan snapshot must fit the dedicated plan budget');
 
+      const grouped = await journal.enqueue({
+        mutationId: 'grouped-engine-plan-large-payload',
+        collection: 'syncMeta',
+        documentId: 'group-large-plan',
+        payload: {
+          transaction: {
+            version: 1,
+            operations: [{
+              collection: 'enginePlans',
+              documentId: 'snapshot',
+              operation: 'upsert',
+              payload: { records: [{ id: 'grouped-plan', data: 'x'.repeat(140_000) }] }
+            }]
+          }
+        },
+        nowMs: 1502
+      });
+      assert(grouped.status === 'queued',
+        'A grouped syncMeta transaction containing an engine-plan snapshot must use the plan-specific budget');
+
       let ordinaryRejected = false;
       try {
         await journal.enqueue({
@@ -81,7 +101,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
           collection: 'plans',
           documentId: 'snapshot',
           payload: { records: [{ data: 'x'.repeat(140_000) }] },
-          nowMs: 1502
+          nowMs: 1504
         });
       } catch { ordinaryRejected = true; }
       assert(ordinaryRejected, 'Other collections must retain the smaller 128 KB safety limit');
@@ -97,7 +117,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         });
       } catch { overBudgetRejected = true; }
       const events = await journal.listEvents();
-      assert(overBudgetRejected && events.length === 1,
+      assert(overBudgetRejected && events.length === 2,
         'An engine-plan payload above 450 KB must be rejected without appending a partial event');
       journal.close();
     });
