@@ -159,6 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="hidden lg:flex min-h-11 min-w-11 items-center justify-center p-1.5 text-stone-500 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-stone-200/50 dark:hover:bg-stone-800/50 rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27]"
               title="إغلاق الشريط الجانبي (Ctrl+B / Cmd+B)"
               aria-label="إغلاق الشريط الجانبي"
+              aria-expanded="true"
               aria-keyshortcuts="Control+B Meta+B"
             >
               <X className="w-5 h-5" />
