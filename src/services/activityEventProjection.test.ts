@@ -130,6 +130,58 @@ export function runActivityEventProjectionTests(): { passed: number; failed: num
     }
   });
 
+  test('captured local dates survive DST transitions and travel between time zones', () => {
+    const events = [
+      makeEvent({
+        eventId: 'dst-before',
+        occurredAtMs: Date.parse('2026-03-08T06:30:00.000Z'),
+        localDate: '2026-03-08',
+        timezoneOffsetMinutes: -300,
+        memorizedAyahs: 1,
+        minutes: 5
+      }),
+      makeEvent({
+        eventId: 'dst-after',
+        occurredAtMs: Date.parse('2026-03-08T07:30:00.000Z'),
+        localDate: '2026-03-08',
+        timezoneOffsetMinutes: -240,
+        memorizedAyahs: 1,
+        minutes: 5
+      }),
+      makeEvent({
+        eventId: 'travel-east',
+        occurredAtMs: Date.parse('2026-11-11T22:30:00.000Z'),
+        localDate: '2026-11-12',
+        timezoneOffsetMinutes: 120,
+        memorizedAyahs: 2,
+        minutes: 10
+      }),
+      makeEvent({
+        eventId: 'travel-west',
+        occurredAtMs: Date.parse('2026-11-12T02:00:00.000Z'),
+        localDate: '2026-11-11',
+        timezoneOffsetMinutes: -180,
+        memorizedAyahs: 3,
+        minutes: 15
+      })
+    ];
+    const result = projectDailyActivityFromEvents(baseline, events);
+    assert(result.success, 'Valid captured dates across offset changes should project');
+    if (!result.success) return;
+    const byDate = new Map(result.logs.map(log => [log.date, log]));
+    assert(byDate.get('2026-03-08')?.memorizedAyahsCount === 2 &&
+      byDate.get('2026-03-08')?.minutesSpent === 10,
+      'Both sides of the spring DST offset change must remain on the captured local date');
+    assert(byDate.get('2026-11-12')?.memorizedAyahsCount === 2 &&
+      byDate.get('2026-11-12')?.minutesSpent === 10,
+      'Travel to UTC+02:00 must use the event-captured local date');
+    assert(byDate.get('2026-11-11')?.memorizedAyahsCount === 3 &&
+      byDate.get('2026-11-11')?.minutesSpent === 15,
+      'Travel back to UTC−03:00 must not recalculate the earlier event date');
+    assert(byDate.get('2026-11-10')?.memorizedAyahsCount === 2,
+      'The legacy baseline date and totals must remain unchanged');
+  });
+
   test('invalid baseline dates and duplicate daily records are rejected', () => {
     const invalidBaseline = {
       schemaVersion: 1,
