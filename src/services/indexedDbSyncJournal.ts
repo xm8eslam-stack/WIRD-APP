@@ -2726,9 +2726,9 @@ export class IndexedDbSyncJournal {
           return;
         }
         const currentSnapshot = StorageService.getLocalProjectionSnapshot(event.collection);
-        const payload = JSON.parse(expectedPayloadJson) as Record<string, unknown>;
+        const preparedPayload = JSON.parse(expectedPayloadJson) as Record<string, unknown>;
         if (fingerprintConflictSnapshot(currentSnapshot) !== resolutionIntent.localSnapshotFingerprint ||
-            !StorageService.matchesJournalProjection(event.collection, payload)) {
+            !StorageService.matchesJournalProjection(event.collection, preparedPayload)) {
           failure = new Error('لم تعد اللقطة المحلية الحالية مطابقة للقرار المحفوظ؛ لم نرفع نسخة قديمة أو نستبدل بيانات أحدث.');
           transaction.abort();
           return;
@@ -2739,7 +2739,7 @@ export class IndexedDbSyncJournal {
         const affectedCollections = new Set<string>();
         const groupedOperations: Array<{ collection: string; documentId: string; operation: 'upsert'; payload: Record<string, unknown> }> = [];
         if (event.collection === 'syncMeta') {
-          const grouped = payload.transaction;
+          const grouped = preparedPayload.transaction;
           const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents']);
           if (!isRecord(grouped) || grouped.version !== 1 || !Array.isArray(grouped.operations) ||
               grouped.operations.length < 1 || grouped.operations.length > 8) {
@@ -2815,8 +2815,8 @@ export class IndexedDbSyncJournal {
             return;
           }
           const latestLocalMutation = archivedMutations[archivedMutations.length - 1];
-          if (stableStringify(latestLocalMutation.payload) !== stableStringify(payload) ||
-              latestLocalMutation.fingerprint !== fingerprintMutation(event.collection, event.documentId, 'upsert', payload)) {
+          if (stableStringify(latestLocalMutation.payload) !== stableStringify(preparedPayload) ||
+              latestLocalMutation.fingerprint !== fingerprintMutation(event.collection, event.documentId, 'upsert', preparedPayload)) {
             failure = new Error('لم تعد آخر عملية محلية تمثل اللقطة الحالية؛ لم ننشئ عملية إعادة نشر.');
             transaction.abort();
             return;
