@@ -28,7 +28,7 @@ export function getMushafPageArtworkUrl(page: number): string {
 
 export function parseMushafViewBox(value: string | null): MushafViewBox {
   if (!value) throw new Error('Printed Mushaf page is missing its viewBox.');
-  const values = value.trim().split(/[\\s,]+/).map(Number);
+  const values = value.trim().split(/[ ,]+/).map(Number);
   if (values.length !== 4 || values.some(number => !Number.isFinite(number)) ||
       values[2] <= 0 || values[3] <= 0) {
     throw new Error('Printed Mushaf page has an invalid viewBox.');
@@ -65,7 +65,7 @@ export function assertMushafPageAyahCoverage(
         !Number.isInteger(polygon.ayahNumber) || polygon.ayahNumber < 1 ||
         typeof polygon.path !== 'string' || !polygon.path.trim() ||
         polygon.path.length > 120_000 ||
-        !/^[MmLlHhVvCcSsQqTtAaZz0-9.,\\s+\\-eE]+$/.test(polygon.path)) {
+        !/^[MmLlHhVvCcSsQqTtAaZz0-9., +eE-]+$.test(polygon.path)) {
       throw new Error('Printed Mushaf page contains an invalid ayah hit region.');
     }
     const key = `${polygon.surahNumber}:${polygon.ayahNumber}`;
