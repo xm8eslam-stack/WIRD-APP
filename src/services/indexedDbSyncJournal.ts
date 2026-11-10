@@ -2161,7 +2161,7 @@ export class IndexedDbSyncJournal {
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تسلسل حمولة قرار حل التعارض؛ لم يتم حفظ القرار.'); }
-    if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!payloadJson || byteLength(payloadJson) > MAX_CONFLICT_SNAPSHOT_BYTES) {
       throw new Error('حمولة قرار حل التعارض تتجاوز الحد الآمن أو غير قابلة للتسلسل.');
     }
     const seenMutationIds = new Set<string>();
@@ -2432,7 +2432,7 @@ export class IndexedDbSyncJournal {
     let expectedPayloadJson: string;
     try { expectedPayloadJson = JSON.stringify(expectedPayload); }
     catch { throw new Error('حمولة النسخة السحابية غير قابلة للتسلسل؛ لم يتم تغيير البيانات المحلية.'); }
-    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_CONFLICT_SNAPSHOT_BYTES) {
       throw new Error('حمولة النسخة السحابية تتجاوز الحد الآمن.');
     }
 
@@ -2668,7 +2668,7 @@ export class IndexedDbSyncJournal {
     let expectedPayloadJson: string;
     try { expectedPayloadJson = JSON.stringify(expectedPayload); }
     catch { throw new Error('حمولة النسخة المحلية غير قابلة للتسلسل؛ لم يتم تغيير البيانات.'); }
-    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_CONFLICT_SNAPSHOT_BYTES) {
       throw new Error('حمولة النسخة المحلية تتجاوز الحد الآمن.');
     }
 
