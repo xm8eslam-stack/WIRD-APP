@@ -26,9 +26,10 @@ export function requestOfflineAudioCache(urls: string[]): void {
     try {
       const url = new URL(rawUrl);
       return url.protocol === 'https:' &&
-        url.hostname === 'everyayah.com' &&
-        url.pathname.startsWith('/data/') &&
-        /^\/data\/[A-Za-z0-9_-]+\/[0-9]{6}\.mp3$/.test(url.pathname);
+        ((url.hostname === 'everyayah.com' &&
+          /^\/data\/[A-Za-z0-9_-]+\/[0-9]{6}\.mp3$/.test(url.pathname)) ||
+         (url.hostname === 'cdn.islamic.network' &&
+          /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname)));
     } catch {
       return false;
     }
