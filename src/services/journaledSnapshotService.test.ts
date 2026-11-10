@@ -886,6 +886,9 @@ export async function runJournaledSnapshotServiceTests(): Promise<{ passed: numb
         seeded.record.id, 'successful', 'اختبار المراجعة', 3, mutationId
       );
       if (!prepared.success) throw new Error(prepared.messageAr);
+      const profileOperation = prepared.operations.find(operation => operation.collection === 'profile');
+      assert(profileOperation?.documentId === 'main',
+        'Revision activity must update the same canonical profile document used by session completion and profile settings');
       assert(StorageService.getRawItem(STORAGE_KEYS.UNIFIED_PORTIONS) === beforePortions &&
         StorageService.getRawItem(STORAGE_KEYS.LOGS) === beforeLogs &&
         StorageService.getRawItem(STORAGE_KEYS.PROFILE) === beforeProfile,
