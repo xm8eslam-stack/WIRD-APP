@@ -501,7 +501,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto" style={{ zoom: displayPreferences.uiScale / 100 }}>
       {/* 1. Session Navigation & Progress Bar */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
         <button
@@ -547,6 +547,26 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         aria-label="إعدادات عرض جلسة الحفظ"
         className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-4"
       >
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
+          <label htmlFor="session-ui-scale" className="text-xs font-bold text-stone-700 dark:text-stone-200 whitespace-nowrap">
+            حجم واجهة الجلسة
+          </label>
+          <input
+            id="session-ui-scale"
+            aria-label="حجم واجهة جلسة الحفظ"
+            type="range"
+            min={80}
+            max={110}
+            step={5}
+            value={displayPreferences.uiScale}
+            onChange={event => updateDisplayPreferences({ uiScale: Number(event.target.value) })}
+            className="w-full accent-emerald-700"
+          />
+          <output htmlFor="session-ui-scale" className="text-xs font-mono tabular-nums text-stone-600 dark:text-stone-300 min-w-12 text-center">
+            {displayPreferences.uiScale}%
+          </output>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
           <label htmlFor="session-ayah-font-size" className="text-xs font-bold text-stone-700 dark:text-stone-200 whitespace-nowrap">
             حجم خط الآيات
@@ -817,25 +837,34 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         </div>
       </div>
 
-      {/* 4. Bottom Session Controls (Semantic RTL: Next is on Left, Previous is on Right) */}
-      <div className="flex items-center justify-between pt-2">
+      {/* 4. Sticky session navigation — always reachable while reading */}
+      <div
+        role="group"
+        aria-label="التنقل بين آيات جلسة الحفظ"
+        className="sticky bottom-2 z-30 flex items-center justify-between gap-2 rounded-2xl border border-stone-200/90 dark:border-stone-700 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md p-2 sm:p-3 shadow-lg"
+        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+      >
         <button
           onClick={handlePrevAyah}
           disabled={currentAyahIndex === 0}
-          className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="min-h-14 flex flex-1 items-center justify-center gap-2 px-3 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs sm:text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          <ChevronRight className="w-4 h-4" />
-          <span>الآية السابقة</span>
+          <ChevronRight className="w-4 h-4 shrink-0" />
+          <span>السابقة</span>
         </button>
+
+        <span className="shrink-0 px-2 text-[11px] sm:text-xs font-bold text-stone-500 tabular-nums" aria-live="polite">
+          {currentAyahIndex + 1} / {sessionAyahs.length}
+        </span>
 
         <button
           onClick={handleNextAyah}
-          className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="min-h-14 flex flex-[1.4] items-center justify-center gap-2 px-3 sm:px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs sm:text-sm font-bold shadow-xs transition-colors active:scale-[0.98]"
         >
           <span>
-            {currentAyahIndex === sessionAyahs.length - 1 ? 'إتمام الجلسة وحفظ الورد' : 'أتقنت الآية — التالية'}
+            {currentAyahIndex === sessionAyahs.length - 1 ? 'إتمام الجلسة' : 'الآية التالية'}
           </span>
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4 shrink-0" />
         </button>
       </div>
     </div>
