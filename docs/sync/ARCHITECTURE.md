@@ -187,3 +187,14 @@ This addendum supersedes older release-state statements above where they conflic
 - Vercel Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` on alias `wird-app.vercel.app`, with exact Git SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. This deployed tree includes PR #200 and PR #201.
 - The earlier Vercel PR checks were rate-limited, but the subsequent main production deployment succeeded. Use the deployment record above as the current deployment evidence.
 - Remaining unresolved collection-level work is weak-verse deletion/anti-resurrection and daily activity event-derived aggregation. Keep tombstones fail-closed.
+
+
+
+## 2026-11-10 — Stable weak-verse identity merged; reconciliation remains gated
+
+- PR #207 merged to `main` as `d45e30e521c3f20c7c6e48aa81b7bc37798952b4`. Exact PR head `fc1c5d58a59e806f75d14649d3610858663852d4` passed the full 30-step WIRD Quality Gate (run `42786910676`).
+- New weak-verse records now use a coordinate-derived ID `weak-{surahNumber}-{ayahNumber}` in both journal-first and legacy local writers. The journal mutation ID remains device/action-specific for retry idempotency.
+- Existing historical weak-verse IDs are deliberately preserved. Resolution events reference those IDs, so rewriting existing IDs would break their references.
+- This is identity normalization only. It does not merge concurrent `weakVerses/snapshot` full-snapshot writes, does not make `mistakeCount` additive across devices, and does not prevent a stale active snapshot from resurrecting a resolved verse.
+- Weak-verse remote projection and conflict resolution must therefore remain fail-closed until a durable event/tombstone model exists. Do not union arrays blindly or sum counters.
+- Activity remains a per-day `DailyLog` aggregate snapshot. Session completion already has a stable mutation ID and `session.completed` domain event, but the local activity projection still adds into one date bucket. A safe multi-device design needs immutable per-session event identity, deduplicated materialization, legacy baseline migration, and rollback/recovery coverage before changing the projection.
