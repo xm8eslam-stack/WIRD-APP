@@ -11,8 +11,7 @@ const commit = serviceSource.match(/MUSHAF_FACSIMILE_COMMIT\s*=\s*'([a-f0-9]{40}
 
 if (!commit) throw new Error('[WIRD Mushaf] Could not read the pinned quran-svg commit from the page service.');
 
-const expectedCoordinates = new Set();
-const verifiedCoordinates = new Set();
+const localCoordinates = new Set();
 let totalLocalAyahs = 0;
 
 for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
@@ -26,13 +25,11 @@ for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
     if (!ayah || ayah.surahNumber !== surahNumber || ayah.numberInSurah !== ayahNumber) {
       throw new Error('[WIRD Mushaf] Invalid local Quran coordinate at ' + surahNumber + ':' + ayahNumber + '.');
     }
-    const page = ayah.page;
-    if (!Number.isInteger(page) || page < 1 || page > 604) {
-      throw new Error('[WIRD Mushaf] Invalid local page coordinate at ' + surahNumber + ':' + ayahNumber + '.');
+    const key = surahNumber + ':' + ayahNumber;
+    if (localCoordinates.has(key)) {
+      throw new Error('[WIRD Mushaf] Duplicate ayah coordinate in WIRD local corpus: ' + key);
     }
-    const coordinate = surahNumber + ':' + ayahNumber;
-    if (expectedCoordinates.has(coordinate)) throw new Error('[WIRD Mushaf] Duplicate local Quran coordinate ' + coordinate + '.');
-    expectedCoordinates.add(coordinate);
+    localCoordinates.add(key);
     totalLocalAyahs++;
   }
 }
@@ -40,6 +37,10 @@ for (let surahNumber = 1; surahNumber <= 114; surahNumber++) {
 if (totalLocalAyahs !== 6236) {
   throw new Error('[WIRD Mushaf] Expected 6,236 local ayahs; found ' + totalLocalAyahs + '.');
 }
+
+const seenSourceCoordinates = new Set();
+let nextPage = 1;
+let validatedAyahPolygons = 0;
 
 async function fetchPage(page) {
   const file = String(page).padStart(3, '0') + '.json';
@@ -50,8 +51,8 @@ async function fetchPage(page) {
       const response = await fetch(url, { signal: AbortSignal.timeout(20000), headers: { Accept: 'application/json' } });
       if (!response.ok) throw new Error('HTTP ' + response.status);
       const records = await response.json();
-      if (!Array.isArray(records) || records.length === 0) {
-        throw new Error('The source page JSON is empty or not an array.');
+      if (!Array.isArray(records) || records.length === 0 || records.length > 100) {
+        throw new Error('The source page JSON is empty or has an invalid number of ayah polygons.');
       }
       const actual = new Set();
       for (const record of records) {
@@ -63,6 +64,9 @@ async function fetchPage(page) {
             !Number.isFinite(record?.x) || !Number.isFinite(record?.y) ||
             typeof record?.polygon !== 'string' || !record.polygon.trim()) {
           throw new Error('Invalid ayah geometry record: ' + key);
+        }
+        if (!localCoordinates.has(key)) {
+          throw new Error('Page ' + page + ' contains a coordinate missing from WIRD local Quran data: ' + key);
         }
         const pathData = record.polygon.trim();
         const commands = pathData.match(/[A-Za-z]/g) ?? [];
@@ -78,19 +82,11 @@ async function fetchPage(page) {
               commands.some(command => !'MLZmlz'.includes(command))))) {
           throw new Error('Invalid SVG polygon geometry for ' + key);
         }
-        if (actual.has(key)) throw new Error('Duplicate source coordinate ' + key);
+        if (actual.has(key)) throw new Error('Duplicate source coordinate within page ' + page + ': ' + key);
         actual.add(key);
       }
 
-      for (const key of actual) {
-        if (!expectedCoordinates.has(key)) {
-          throw new Error('Page ' + page + ' contains a Quran coordinate absent from WIRD local data: ' + key);
-        }
-        if (verifiedCoordinates.has(key)) {
-          throw new Error('Quran coordinate appears in more than one printed page: ' + key);
-        }
-        verifiedCoordinates.add(key);
-      }
+      for (const key of actual) seenSourceCoordinates.add(key);
       return records.length;
     } catch (error) {
       lastError = error;
@@ -100,9 +96,6 @@ async function fetchPage(page) {
   throw new Error('[WIRD Mushaf] Page ' + page + ' failed validation after 4 attempts: ' + String(lastError));
 }
 
-let nextPage = 1;
-let validatedAyahPolygons = 0;
-const workerCount = 16;
 async function worker() {
   while (true) {
     const page = nextPage++;
@@ -111,12 +104,18 @@ async function worker() {
   }
 }
 
-await Promise.all(Array.from({ length: workerCount }, () => worker()));
-const missingCoordinates = [...expectedCoordinates].filter(key => !verifiedCoordinates.has(key));
-if (missingCoordinates.length || verifiedCoordinates.size !== expectedCoordinates.size) {
-  throw new Error('[WIRD Mushaf] The 604 printed pages do not cover the complete WIRD Quran coordinate set. Missing: ' + missingCoordinates.slice(0, 12).join(', '));
+await Promise.all(Array.from({ length: 16 }, () => worker()));
+
+const missingCoordinates = [...localCoordinates].filter(key => !seenSourceCoordinates.has(key));
+if (missingCoordinates.length > 0 || seenSourceCoordinates.size !== totalLocalAyahs) {
+  throw new Error(
+    '[WIRD Mushaf] The 604 printed pages do not cover the complete local Quran. ' +
+    'Missing: ' + missingCoordinates.slice(0, 12).join(', ') + '.'
+  );
 }
+
 console.log(
-  '[WIRD Mushaf] Verified all 604 Hafs/KFGQPC page coordinate maps against WIRD local data without assuming identical page boundaries: ' +
-  totalLocalAyahs + ' ayahs, ' + validatedAyahPolygons + ' page polygons, source commit ' + commit + '.'
+  '[WIRD Mushaf] Verified all 604 Hafs/KFGQPC page maps against WIRD local data: ' +
+  totalLocalAyahs + ' unique ayahs covered by ' + validatedAyahPolygons +
+  ' page polygons, source commit ' + commit + '. Page breaks are validated independently from WIRD flexible-layout metadata.'
 );
