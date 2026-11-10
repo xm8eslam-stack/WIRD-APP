@@ -163,8 +163,12 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
 
   // Cache only the pinned, public KFGQPC Hafs page-artwork release. No API or user data is stored.
-  if (url.protocol === 'https:' && url.hostname === 'cdn.quran.ws' &&
-      /^\\/svg\\/pages\\/v1\\.1\\.1\\/hafs-kfqc\\/\\d{3}\\.svg$/.test(url.pathname) && !url.search) {
+  const quranPagePrefix = '/svg/pages/v1.1.1/hafs-kfqc/';
+  const quranPageName = url.pathname.startsWith(quranPagePrefix) ? url.pathname.slice(quranPagePrefix.length) : '';
+  const isPinnedQuranPage = quranPageName.length === 7 && quranPageName.endsWith('.svg') &&
+    quranPageName.slice(0, 3).split('').every(char => char >= '0' && char <= '9') &&
+    Number(quranPageName.slice(0, 3)) >= 1 && Number(quranPageName.slice(0, 3)) <= 604;
+  if (url.protocol === 'https:' && url.hostname === 'cdn.quran.ws' && isPinnedQuranPage && !url.search) {
     event.respondWith((async () => {
       const cache = await caches.open(QURAN_PAGE_CACHE_NAME);
       const cached = await cache.match(req);
