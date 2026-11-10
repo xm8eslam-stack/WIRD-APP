@@ -221,6 +221,9 @@ test('full Mushaf page playback continues automatically into the next page', asy
 
   await expect(page.getByRole('main', { name: 'صفحة المصحف 2' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).__wirdFullPageAudioInstances.length)).toBeGreaterThan(firstPageAyahCount);
+  await expect.poll(() => page.evaluate(firstPageAyahCount =>
+    (window as any).__wirdFullPageAudioInstances[firstPageAyahCount]?.url || '', firstPageAyahCount
+  )).toMatch(/002001\.mp3$/);
 });
 
 test('Mushaf reader keeps flexible layout disclosure and remembers reading display preferences', async ({ page }) => {
