@@ -432,7 +432,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
   const currentJuz = audioAyahs.length ? audioAyahs[0].juz : Math.ceil(page / 20);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className={`space-y-6 ${isFullWidth ? 'max-w-none' : 'max-w-7xl'} mx-auto pb-12`}>
       {/* Top Control Bar: Elegant, Floating, Responsive */}
       <header className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-[#fffdfa]/95 dark:bg-stone-900/95 backdrop-blur-md p-4 shadow-sm space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -696,7 +696,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         if (startX === null || event.changedTouches.length === 0) return;
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
-      }} aria-label={`صفحة المصحف ${page}`} className={readerLayout === 'printed' ? "mx-auto w-full max-w-4xl" : `mushaf-page-frame mx-auto ${isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
+      }} aria-label={`صفحة المصحف ${page}`} data-mushaf-page-width={isFullWidth ? 'full' : isWidePage ? 'wide' : 'comfortable'} className={readerLayout === 'printed' ? `mx-auto w-full ${isFullWidth ? 'max-w-none' : isWidePage ? 'max-w-6xl' : 'max-w-4xl'}` : `mushaf-page-frame mx-auto ${isFullWidth ? 'max-w-none' : isWidePage ? 'max-w-6xl' : 'max-w-4xl'} rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
         {readerLayout === 'printed' ? (
           <QuranMushafFacsimilePage page={page} onAyahsResolved={setPrintedPageAyahs} selectedAyah={tafsirAyah} onSelectAyah={setTafsirAyah} onFallback={() => selectReaderLayout('flow')} />
         ) : (
@@ -775,7 +775,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Verses Flow with Authentic Typography */}
         {!isLoading && !loadError && ayahs.length > 0 && (
-          <div className={`text-right font-quran ${MUSHAF_TEXT_SCALE_CLASSES[textScale]} text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950`}>
+          <div data-mushaf-line-spacing={lineSpacing} className={`text-right font-quran ${MUSHAF_TEXT_SCALE_CLASSES[textScale]} ${MUSHAF_LINE_SPACING_CLASSES[lineSpacing]} text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950`}>
             {ayahs.map((ayah, index) => {
               const surah = ALL_SURAHS.find(item => item.number === ayah.surahNumber);
               const isCurrent = playingIndex === index && isPlaying;
