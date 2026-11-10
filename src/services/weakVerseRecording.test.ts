@@ -277,6 +277,10 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
       'A stale full snapshot must be rejected when the local base has changed');
     assert(JSON.stringify(RetentionService.getWeakVerses()) === before,
       'The divergent local weak-verse archive must remain byte-for-byte equivalent at the record level');
+    assert(StorageService.applyJournalProjection('weakVerses', operation!.payload, 'snapshot', true),
+      'An explicit, user-confirmed use-remote decision may replace the local weak-verse snapshot');
+    assert(JSON.stringify(RetentionService.getWeakVerses()) === JSON.stringify(operation!.payload.records),
+      'Explicit remote resolution must apply the selected remote snapshot');
     StorageService.__resetStorageForTests();
   });
 
