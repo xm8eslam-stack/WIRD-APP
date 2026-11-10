@@ -29,6 +29,7 @@ import { TafsirSheet } from './TafsirSheet';
 import type { ReadingKhatma } from '../../services/readingKhatmaService';
 import { QuranText } from '../shared/QuranText';
 import { QuranBasmala } from '../shared/QuranBasmala';
+import { MushafPrintedPage } from './MushafPrintedPage';
 
 interface QuranMushafReaderProps {
   preferredReciter: ReciterId;
@@ -53,6 +54,13 @@ interface NavigationPoint {
 
 const LAST_PAGE_KEY = 'wird.quran.lastPage.v1';
 const BOOKMARKS_KEY = 'wird.quran.pageBookmarks.v1';
+const PAGE_VIEW_MODE_KEY = 'wird.quran.pageViewMode.v1';
+type PageViewMode = 'printed' | 'reflow';
+
+function readPageViewMode(): PageViewMode {
+  try { return localStorage.getItem(PAGE_VIEW_MODE_KEY) === 'reflow' ? 'reflow' : 'printed'; }
+  catch { return 'printed'; }
+}
 const PAGE_INDEX = QURAN_PAGE_INDEX as unknown as Record<string, PageSegment[]>;
 const JUZ_INDEX = QURAN_JUZ_STARTS as unknown as Record<string, NavigationPoint>;
 const HIZB_INDEX = QURAN_HIZB_QUARTER_STARTS as unknown as Record<string, NavigationPoint>;
@@ -78,6 +86,7 @@ function readBookmarks(): number[] {
 
 export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredReciter, onBack, initialPage, readingKhatma, onMarkPageRead, readingKhatmaError }) => {
   const [page, setPage] = useState(() => Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage());
+  const [pageViewMode, setPageViewMode] = useState<PageViewMode>(readPageViewMode);
   const [pageInput, setPageInput] = useState(String(Number.isInteger(initialPage) && initialPage! >= 1 && initialPage! <= 604 ? initialPage! : readLastPage()));
   const [ayahs, setAyahs] = useState<Ayah[]>([]);
   const [bookmarks, setBookmarks] = useState<number[]>(readBookmarks);
@@ -132,6 +141,10 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
     return () => { cancelled = true; };
   }, [page, retry, pageSegments]);
+
+  useEffect(() => {
+    try { localStorage.setItem(PAGE_VIEW_MODE_KEY, pageViewMode); } catch { /* The selected view remains available for this session. */ }
+  }, [pageViewMode]);
 
   useEffect(() => {
     setPageInput(String(page));
@@ -463,7 +476,19 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
         const delta = event.changedTouches[0].clientX - startX;
         if (Math.abs(delta) > 65) changePage(page + (delta > 0 ? -1 : 1));
       }} aria-label={`صفحة المصحف ${page}`} className={`mushaf-page-frame mx-auto max-w-4xl rounded-3xl bg-[#f6f3ea] dark:bg-[#0d1c19] px-6 py-8 md:px-14 md:py-12 shadow-xl transition-colors animate-mushaf-page-${pageTurnDirection}`}>
-        {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
+        {/* Switch between the verified printed page and the selectable local text layout. */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs text-stone-600 dark:text-stone-300">طريقة عرض الصفحة</div>
+        <div role="group" aria-label="طريقة عرض صفحة المصحف" className="inline-flex flex-wrap rounded-xl border border-stone-200 bg-white p-1 dark:border-stone-700 dark:bg-stone-900">
+          <button type="button" aria-pressed={pageViewMode === 'printed'} onClick={() => setPageViewMode('printed')} className={`min-h-11 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${pageViewMode === 'printed' ? 'bg-emerald-800 text-white' : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800'}`}>
+            المصحف المطبوع
+          </button>
+          <button type="button" aria-pressed={pageViewMode === 'reflow'} onClick={() => setPageViewMode('reflow')} className={`min-h-11 rounded-lg px-3 py-2 text-xs font-bold transition-colors ${pageViewMode === 'reflow' ? 'bg-emerald-800 text-white' : 'text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800'}`}>
+            العرض النصي المرن
+          </button>
+        </div>
+      </div>
+      {/* Top Margins of the Sacred Page: Surah on Right, Page in Center, Juz on Left */}
         <div className="mb-8 flex items-center justify-between border-b-2 border-[#b99b62]/40 dark:border-[#c8ad73]/40 pb-3 text-xs font-bold text-stone-700 dark:text-stone-300">
           <span className="font-quran text-base text-[#102d29] dark:text-[#dfcaa2]">
             {primarySurah?.name ? `سورة ${primarySurah.name}` : 'القرآن الكريم'}
@@ -476,9 +501,9 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
           </span>
         </div>
 
-        <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400">
-          توزيع الآيات هنا مرن بحسب الصفحة، وقد يختلف عن أسطر النسخة المطبوعة.
-        </p>
+        {pageViewMode === 'reflow' && <p className="mb-5 text-center text-xs text-stone-500 dark:text-stone-400">
+          هذا عرض نصي مرن قابل للتحديد والنسخ؛ توزيع الأسطر قد يختلف عن المصحف المطبوع.
+        </p>}
 
         {readingKhatma && !readingKhatma.completedAt && <div className="mb-5 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs dark:bg-emerald-950/40">
           <span className="text-stone-700 dark:text-stone-200">ختمة القراءة · {readingKhatma.completedPages.length} / 604 صفحة</span>
@@ -510,8 +535,33 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
           </div>
         )}
 
-        {/* Verses Flow with Authentic Typography */}
-        {!isLoading && !loadError && ayahs.length > 0 && (
+        {pageViewMode === 'printed' && !isLoading && !loadError && ayahs.length > 0 && (
+          <>
+            <MushafPrintedPage
+              page={page}
+              ayahs={ayahs}
+              selectedAyah={tafsirAyah}
+              onSelectAyah={setTafsirAyah}
+              onUseFlexibleView={() => setPageViewMode('reflow')}
+            />
+            <details className="mx-auto mt-5 max-w-3xl rounded-2xl border border-stone-200 bg-white/80 p-4 text-right dark:border-stone-700 dark:bg-stone-900/60">
+              <summary className="min-h-11 cursor-pointer py-2 text-sm font-bold text-stone-700 dark:text-stone-200">عرض نص الآيات المعتمد للنسخ والبحث</summary>
+              <div className="mt-3 space-y-4">
+                {ayahs.map(ayah => (
+                  <div key={ayah.number} className="flex items-start gap-3 border-b border-stone-100 pb-3 last:border-0 dark:border-stone-800">
+                    <button type="button" onClick={() => setTafsirAyah(ayah)} className="min-h-11 min-w-11 shrink-0 rounded-full border border-stone-200 bg-stone-50 px-2 text-xs font-bold text-stone-700 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-200" aria-label={`تفسير الآية ${ayah.numberInSurah} من سورة ${ALL_SURAHS.find(item => item.number === ayah.surahNumber)?.name || ayah.surahNumber}`}>
+                      {ayah.numberInSurah}
+                    </button>
+                    <p className="flex-1 font-quran text-xl leading-[2.1] text-stone-900 dark:text-stone-100"><QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText></p>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </>
+        )}
+
+        {/* Flexible, selectable text remains available alongside the printed page. */}
+        {pageViewMode === 'reflow' && !isLoading && !loadError && ayahs.length > 0 && (
           <div className="text-right font-quran text-[1.55rem] md:text-[1.85rem] leading-[2.55] md:leading-[2.75] text-stone-950 dark:text-stone-100 selection:bg-amber-200 selection:text-stone-950">
             {ayahs.map((ayah, index) => {
               const surah = ALL_SURAHS.find(item => item.number === ayah.surahNumber);
@@ -583,8 +633,8 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
         {/* Bottom Margins of the Sacred Page */}
         <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t-2 border-[#d4af37]/40 dark:border-[#785310]/60 pt-4 text-[11px] text-stone-500 dark:text-stone-400">
-          <span className="max-w-[72%]">{QURAN_DATA_SOURCE_INFO.displayEdition} {QURAN_DATA_SOURCE_INFO.displayVersion} · {QURAN_DATA_SOURCE_INFO.displayScript} · CC BY 3.0</span>
-          <a href={QURAN_DATA_SOURCE_INFO.displaySourceUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-800 dark:text-emerald-300 underline underline-offset-2">Tanzil Project</a>
+          {pageViewMode === 'printed' ? <span className="max-w-[72%]">رسم الصفحة: مجمع الملك فهد لطباعة المصحف الشريف · طبقة تحديد الآيات: Quran SVG</span> : <span className="max-w-[72%]">{QURAN_DATA_SOURCE_INFO.displayEdition} {QURAN_DATA_SOURCE_INFO.displayVersion} · {QURAN_DATA_SOURCE_INFO.displayScript} · CC BY 3.0</span>}
+          {pageViewMode === 'printed' ? <a href="https://github.com/quran-ws/quran-svg" target="_blank" rel="noopener noreferrer" className="text-emerald-800 dark:text-emerald-300 underline underline-offset-2">مصدر تخطيط الصفحة</a> : <a href={QURAN_DATA_SOURCE_INFO.displaySourceUrl} target="_blank" rel="noopener noreferrer" className="text-emerald-800 dark:text-emerald-300 underline underline-offset-2">Tanzil Project</a>}
           <span className="font-quran text-sm text-stone-600 dark:text-stone-300 font-bold">
             — {page} —
           </span>
