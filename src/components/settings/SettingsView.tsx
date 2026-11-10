@@ -39,6 +39,7 @@ import { getLocalDateString } from '../../services/unifiedPortionService';
 import { importBackupFile } from '../../services/backupPersistence';
 import { loadDemoDataJournaled } from '../../services/demoDataPersistence';
 import { getWirdOfflinePackageStatus, prepareWirdForOffline, type OfflinePackageStatus, type OfflinePreparationProgress } from '../../services/offlinePreparationService';
+import { getOfflineStorageStatus, requestOfflineStoragePersistence, type OfflineStorageStatus } from '../../services/offlineStorageService';
 import { WirdAvatar } from '../brand/WirdAvatar';
 import { WirdIslamicPattern } from '../brand/WirdPattern';
 
@@ -280,16 +281,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [offlineProgress, setOfflineProgress] = useState<OfflinePreparationProgress | null>(null);
   const [offlinePackageStatus, setOfflinePackageStatus] = useState<OfflinePackageStatus | null>(null);
   const [isCheckingOfflineStatus, setIsCheckingOfflineStatus] = useState(false);
+  const [offlineStorageStatus, setOfflineStorageStatus] = useState<OfflineStorageStatus | null>(null);
 
   const handlePrepareOffline = async () => {
     if (isPreparingOffline) return;
     setIsPreparingOffline(true);
     setOfflineProgress(null);
     try {
+      const storageStatus = await requestOfflineStoragePersistence();
+      setOfflineStorageStatus(storageStatus);
       const result = await prepareWirdForOffline(setOfflineProgress);
       const status = await getWirdOfflinePackageStatus();
       setOfflinePackageStatus(status);
-      onToast?.(`اكتمل تنزيل ${result.completed} ملفًا. تم التحقق من حفظ ${status.cached} من أصل ${status.total} ملفًا برمجيًا؛ المحتوى الخارجي والصوت يحتاج تنزيلًا منفصلًا.`, status.missing === 0 ? 'success' : 'info');
+      onToast?.(`اكتمل تنزيل ${result.completed} ملفًا. تم التحقق من حفظ ${status.cached} من أصل ${status.total} ملفًا برمجيًا. ${storageStatus.persisted ? 'حماية التخزين الدائم مفعّلة.' : 'قد يحذف المتصفح بعض الملفات عند ضغط المساحة؛ احتفظ بنسخة احتياطية من بياناتك.'}`, status.missing === 0 ? 'success' : 'info');
     } catch (error) {
       onToast?.(error instanceof Error ? error.message : 'تعذر إكمال التجهيز المحلي؛ يمكنك إعادة المحاولة وسيُستكمل ما تم تنزيله.', 'error');
     } finally {
@@ -301,7 +305,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     if (isCheckingOfflineStatus) return;
     setIsCheckingOfflineStatus(true);
     try {
-      const status = await getWirdOfflinePackageStatus();
+      const [status, storageStatus] = await Promise.all([getWirdOfflinePackageStatus(), getOfflineStorageStatus()]);
+      setOfflineStorageStatus(storageStatus);
       setOfflinePackageStatus(status);
       onToast?.(
         status.missing === 0
@@ -454,8 +459,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           نزّل ملفات الشاشات والبيانات البرمجية المؤجلة إلى هذا الجهاز لتعمل الأقسام التي لم تفتحها من قبل دون اتصال. التنزيل اختياري ويُحفظ تدريجيًا؛ إذا انقطع الاتصال يمكنك إعادة المحاولة لاستكمال الملفات المتبقية.
         </p>
         <p className="text-stone-500 dark:text-stone-400 leading-6">
-          هذا التجهيز لا ينزّل التلاوات الصوتية أو التفاسير والبيانات التي يوفرها خادم خارجي، ولا يضمن وحده أن كل ميزة أصبحت متاحة دون إنترنت. قد يستهلك مساحة من الجهاز، وقد يحذف المتصفح الملفات المخزنة عند ضغط المساحة؛ لذلك لا يُعد نسخة احتياطية.
+          هذا التجهيز لا ينزّل كامل مكتبة التلاوات أو التفاسير والبيانات التي يوفرها خادم خارجي. عند تشغيل التلاوة متصلًا، يحفظ وِرد تلقائيًا مقطعًا قصيرًا من الآيات التالية على هذا الجهاز، وليس السورة كاملة. قد يستهلك التخزين مساحة، وقد يحذف المتصفح الملفات إذا لم يمنح التخزين الدائم؛ لذلك لا يُعد نسخة احتياطية.
         </p>
+        {offlineStorageStatus && (
+          <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/50 p-3 space-y-1" aria-live="polite">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-bold text-stone-800 dark:text-stone-100">حماية التخزين المحلي</span>
+              <span className={offlineStorageStatus.persisted ? 'text-emerald-700 dark:text-emerald-400 font-bold' : 'text-amber-700 dark:text-amber-400 font-bold'}>
+                {offlineStorageStatus.persisted === true ? 'حفظ دائم مفعّل' : offlineStorageStatus.supported ? 'قد يخضع التخزين للإزالة' : 'غير مدعوم في هذا المتصفح'}
+              </span>
+            </div>
+            {offlineStorageStatus.usageBytes !== null && offlineStorageStatus.quotaBytes !== null && (
+              <div className="text-stone-600 dark:text-stone-300 tabular-nums">
+                المستخدم: {(offlineStorageStatus.usageBytes / (1024 * 1024)).toFixed(1)} MB من {(offlineStorageStatus.quotaBytes / (1024 * 1024)).toFixed(1)} MB
+              </div>
+            )}
+          </div>
+        )}
         {offlinePackageStatus && (
           <div className="rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900/50 p-3 space-y-2" aria-live="polite">
             <div className="flex items-center justify-between gap-2">
