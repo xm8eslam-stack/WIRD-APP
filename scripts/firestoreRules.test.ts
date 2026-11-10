@@ -16,7 +16,7 @@ import type { Firestore } from 'firebase/firestore';
 import { writeImmutableRemoteEvent } from '../src/services/immutableRemoteEvent';
 import { writeRevisionedRemoteMutation } from '../src/services/revisionedRemoteMutation';
 import { IndexedDbSyncJournal, type JournalEvent, type JournalOutboxEntry, type RemoteInboxEventInput } from '../src/services/indexedDbSyncJournal';
-import { CLEAN_INITIAL_PROFILE, StorageService, STORAGE_KEYS } from '../src/services/storageService';
+import { CLEAN_INITIAL_PROFILE, StorageService, STORAGE_KEYS, createJournalSnapshotFingerprint } from '../src/services/storageService';
 import { projectRemoteInboxBatch, type RemoteProjectionDependencies } from '../src/services/remoteInboxProjector';
 import { PlanningEngine } from '../src/services/planningEngine';
 import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot } from '../src/services/ruqyahProgressSchema';
@@ -1316,9 +1316,9 @@ try {
         { collection: 'plans', payload: { records: [planA, planA2] }, reversePayload: { records: [planB, planA2] }, expected: [planA, planA2], reverseExpected: [planB, planA2], key: STORAGE_KEYS.PLANS, kind: 'array' },
         { collection: 'enginePlans', payload: { records: [enginePlanA, enginePlanA2] }, reversePayload: { records: [enginePlanB, enginePlanA2] }, expected: [enginePlanA, enginePlanA2], reverseExpected: [enginePlanB, enginePlanA2], key: STORAGE_KEYS.ENGINE_PLANS, kind: 'array' },
         { collection: 'portions', payload: { records: [portionA, portionA2], recoveryFromLegacy: true }, reversePayload: { records: [portionB, portionA2], recoveryFromLegacy: true }, expected: [portionA, portionA2], reverseExpected: [portionB, portionA2], key: STORAGE_KEYS.UNIFIED_PORTIONS, kind: 'array' },
-        { collection: 'weakVerses', payload: { records: [weakVerseA, weakVerseA2] }, reversePayload: { records: [weakVerseB, weakVerseA2] }, expected: [weakVerseA, weakVerseA2], reverseExpected: [weakVerseB, weakVerseA2], key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
+        { collection: 'weakVerses', payload: { records: [weakVerseA, weakVerseA2] }, reversePayload: { records: [weakVerseB, weakVerseA2], baseSnapshotFingerprint: createJournalSnapshotFingerprint([weakVerseA, weakVerseA2]) }, expected: [weakVerseA, weakVerseA2], reverseExpected: [weakVerseB, weakVerseA2], key: STORAGE_KEYS.WEAK_VERSES, kind: 'array' },
         { collection: 'tests', payload: { records: [testA, testA2] }, reversePayload: { records: [testB, testA2] }, expected: [testA, testA2], reverseExpected: [testB, testA2], key: STORAGE_KEYS.TESTS, kind: 'array' },
-        { collection: 'activityEvents', payload: { records: [activityA, activityA2] }, reversePayload: { records: [activityB, activityA2] }, expected: [activityA, activityA2], reverseExpected: [activityB, activityA2], key: STORAGE_KEYS.LOGS, kind: 'array' },
+        { collection: 'activityEvents', payload: { records: [activityA, activityA2] }, reversePayload: { records: [activityB, activityA2], baseSnapshotFingerprint: createJournalSnapshotFingerprint([activityA, activityA2]) }, expected: [activityA, activityA2], reverseExpected: [activityB, activityA2], key: STORAGE_KEYS.LOGS, kind: 'array' },
         { collection: 'ruqyahProgress', payload: { snapshot: ruqyahA }, reversePayload: { snapshot: ruqyahB }, expected: ruqyahA, reverseExpected: ruqyahB, key: STORAGE_KEYS.RUQYAH_PROGRESS, kind: 'ruqyah' }
       ] as const;
 
