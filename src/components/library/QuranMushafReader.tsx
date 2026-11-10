@@ -211,6 +211,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
   const changePage = (nextPage: number) => {
     if (!Number.isInteger(nextPage) || nextPage < 1 || nextPage > 604) return;
+    setPageJumpError('');
     setPageTurnDirection(nextPage > page ? 'next' : 'previous');
     pendingTargetRef.current = null;
     autoPlayNextPageRef.current = false;
