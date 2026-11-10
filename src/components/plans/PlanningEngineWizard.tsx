@@ -77,7 +77,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const [schedulePref, setSchedulePref] = useState<'single_session' | 'morning_evening'>('single_session');
   
   // Selected existing memorized portions for major revision
-  const [selectedExistingSurahs, setSelectedExistingSurahs] = useState<number[]>([1, 78]);
+  const [selectedExistingSurahs, setSelectedExistingSurahs] = useState<number[]>([]);
+  const [surahToAdd, setSurahToAdd] = useState<number>(1);
 
   // Max verses for current start & end surah
   const startSurahMeta = ALL_SURAHS.find(s => s.number === startSurah);
@@ -451,40 +452,35 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
                 طريقة تحديد وتيرة الحفظ:
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaceType('verses_per_day')}
-                  className={`py-2 px-2 rounded-lg border font-bold ${
-                    paceType === 'verses_per_day'
-                      ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 text-emerald-800 dark:text-emerald-300'
-                      : 'border-stone-200 dark:border-stone-700 text-stone-600'
-                  }`}
-                >
-                  بالآيات اليومية
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaceType('pages_per_day')}
-                  className={`py-2 px-2 rounded-lg border font-bold ${
-                    paceType === 'pages_per_day'
-                      ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 text-emerald-800 dark:text-emerald-300'
-                      : 'border-stone-200 dark:border-stone-700 text-stone-600'
-                  }`}
-                >
-                  بالصفحات
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaceType('by_target_date')}
-                  className={`py-2 px-2 rounded-lg border font-bold ${
-                    paceType === 'by_target_date'
-                      ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-600 text-emerald-800 dark:text-emerald-300'
-                      : 'border-stone-200 dark:border-stone-700 text-stone-600'
-                  }`}
-                >
-                  بتاريخ الختم
-                </button>
+              <div className="grid grid-cols-1 gap-2">
+                {([
+                  { id: 'verses_per_day' as const, title: 'عدد آيات ثابت', detail: 'تحدد مقداراً واضحاً في كل يوم حفظ' },
+                  { id: 'pages_per_day' as const, title: 'عدد صفحات ثابت', detail: 'مناسب لمن يضبط ورده بمصحف المدينة' },
+                  { id: 'by_target_date' as const, title: 'موعد ختم مستهدف', detail: 'يوزع المقدار تلقائياً على أيامك النشطة' }
+                ]).map(option => {
+                  const selected = paceType === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setPaceType(option.id)}
+                      className={`flex items-center justify-between gap-3 text-right rounded-xl border p-3 transition-colors ${
+                        selected
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-600 text-emerald-900 dark:text-emerald-200'
+                          : 'bg-white dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300'
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-bold">{option.title}</span>
+                        <span className="block text-[11px] opacity-75 mt-0.5">{option.detail}</span>
+                      </span>
+                      <span className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${selected ? 'border-emerald-700' : 'border-stone-400'}`}>
+                        {selected && <span className="w-2 h-2 rounded-full bg-emerald-700" />}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -589,32 +585,56 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
             <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
               أجزاء وسور محفوظة مسبقاً (لتضمينها تلقائياً في دورة المراجعة الكبرى):
             </label>
-            <div className="flex flex-wrap gap-2">
-              {[1, 67, 78, 18, 36, 55, 56].map(sNum => {
-                const s = ALL_SURAHS.find(item => item.number === sNum);
-                const isSelected = selectedExistingSurahs.includes(sNum);
-                return (
-                  <button
-                    key={sNum}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedExistingSurahs(selectedExistingSurahs.filter(x => x !== sNum));
-                      } else {
-                        setSelectedExistingSurahs([...selectedExistingSurahs, sNum]);
-                      }
-                    }}
-                    className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
-                      isSelected
-                        ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 text-amber-900 dark:text-amber-200'
-                        : 'bg-[#faf8f5] dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-600'
-                    }`}
-                  >
-                    سورة {s?.name} {isSelected ? '✓' : '+'}
-                  </button>
-                );
-              })}
+            <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+              أضف كل سورة حفظتها بالفعل؛ يمكنك اختيار أي سورة من القرآن، وإزالتها لاحقاً. لن نفترض سوراً محفوظة نيابةً عنك.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2 mb-3">
+              <select
+                value={surahToAdd}
+                onChange={(e) => setSurahToAdd(Number(e.target.value))}
+                aria-label="اختر سورة محفوظة لإضافتها"
+                className="flex-1 min-w-0 px-3 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-sm"
+              >
+                {ALL_SURAHS.map(surah => (
+                  <option key={surah.number} value={surah.number}>
+                    {surah.number}. سورة {surah.name} ({surah.versesCount} آية)
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={selectedExistingSurahs.includes(surahToAdd)}
+                onClick={() => setSelectedExistingSurahs(current =>
+                  current.includes(surahToAdd) ? current : [...current, surahToAdd].sort((a, b) => a - b)
+                )}
+                className="px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-sm font-bold disabled:opacity-40"
+              >
+                + إضافة السورة
+              </button>
             </div>
+            {selectedExistingSurahs.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {selectedExistingSurahs.map(sNum => {
+                  const surah = ALL_SURAHS.find(item => item.number === sNum);
+                  return (
+                    <button
+                      key={sNum}
+                      type="button"
+                      aria-label={`إزالة سورة ${surah?.name || sNum} من المحفوظ`}
+                      onClick={() => setSelectedExistingSurahs(current => current.filter(x => x !== sNum))}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 text-xs font-semibold"
+                    >
+                      سورة {surah?.name || sNum}
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 text-xs text-stone-500">
+                لم تضف سوراً محفوظة بعد. أضف السور التي تريد إدراجها في المراجعة الكبرى.
+              </div>
+            )}
           </div>
 
           {/* Feasibility & Advisory Gauge */}
