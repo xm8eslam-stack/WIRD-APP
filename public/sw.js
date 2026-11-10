@@ -235,7 +235,7 @@ self.addEventListener('fetch', (event) => {
     ? url.pathname.slice(mushafPagePrefix.length)
     : '';
   const isPinnedMushafPage = mushafPageFile.length === 7 &&
-    /^[0-9]{3}\\.svg$/.test(mushafPageFile) &&
+    /^[0-9]{3}\.svg$/.test(mushafPageFile) &&
     Number(mushafPageFile.slice(0, 3)) >= 1 &&
     Number(mushafPageFile.slice(0, 3)) <= 604;
   if (url.protocol === 'https:' && url.hostname === 'raw.githubusercontent.com' &&
