@@ -47,7 +47,21 @@ export const ReadingKhatmaPanel: React.FC<Props> = ({
   }, [khatma?.plan?.durationDays, khatma?.plan?.sessionsPerDay]);
 
   const planOptions: ReadingKhatmaPlanOptions = { durationDays, sessionsPerDay };
-  const historyCount = (khatma?.completedCycles.length || 0) + (khatma?.completedAt ? 1 : 0);
+  const history = khatma ? [
+    ...khatma.completedCycles,
+    ...(khatma.completedAt ? [{
+      id: khatma.id,
+      startedAt: khatma.startedAt,
+      completedAt: khatma.completedAt,
+      durationDays: khatma.plan?.durationDays,
+      pagesRead: khatma.completedPages.length
+    }] : [])
+  ].sort((a, b) => b.completedAt.localeCompare(a.completedAt)) : [];
+  const historyCount = history.length;
+  const sessionTargets = progress
+    ? Array.from({ length: progress.sessionsPerDay }, (_, index) =>
+        Math.max(0, Math.min(progress.pagesPerSession, progress.pagesPerDay - index * progress.pagesPerSession)))
+    : [];
 
   return (
     <section aria-labelledby="reading-khatma-title" className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/20">
@@ -151,8 +165,15 @@ export const ReadingKhatmaPanel: React.FC<Props> = ({
           <div className="rounded-xl border border-emerald-200/80 bg-white/70 p-3 text-xs leading-6 dark:border-emerald-900 dark:bg-stone-900/50">
             <p className="font-semibold text-stone-800 dark:text-stone-100">موعد الإتمام المستهدف: {formatDate(progress.targetCompletionDate)}</p>
             <p className="text-stone-600 dark:text-stone-300">
-              قسّم وردك إلى {progress.sessionsPerDay} جلسات يومية. يُعاد حساب المقدار المطلوب تلقائياً من الصفحات المتبقية والأيام المتاحة.
+              قسّم وردك إلى {progress.sessionsPerDay} جلسات يومية. المتبقي من ورد اليوم: {Math.max(0, progress.pagesPerDay - progress.pagesReadToday)} صفحة.
             </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {sessionTargets.map((pages, index) => (
+                <span key={index} className="rounded-lg bg-emerald-100/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100">
+                  الجلسة {index + 1}: {pages} صفحة
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -232,6 +253,20 @@ export const ReadingKhatmaPanel: React.FC<Props> = ({
         <div className="mt-4 rounded-xl border border-emerald-200 bg-white/70 p-4 text-sm font-semibold text-emerald-900 dark:border-emerald-900 dark:bg-stone-900/60 dark:text-emerald-200">
           اكتملت الختمة الحالية، تقبل الله منك. يمكنك بدء ختمة جديدة مع الاحتفاظ بسجل الختمات السابقة.
         </div>
+      )}
+
+      {history.length > 0 && (
+        <section aria-label="سجل الختمات المكتملة" className="mt-4 rounded-xl border border-stone-200/80 bg-white/60 p-3 dark:border-stone-800 dark:bg-stone-900/40">
+          <h3 className="text-xs font-bold text-stone-800 dark:text-stone-100">سجل الختمات المكتملة</h3>
+          <ul className="mt-2 space-y-2">
+            {history.slice(0, 5).map(cycle => (
+              <li key={cycle.id} className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-600 dark:text-stone-300">
+                <span>بدأت {formatDate(cycle.startedAt.slice(0, 10))} · اكتملت {formatDate(cycle.completedAt.slice(0, 10))}</span>
+                <span className="font-semibold">{cycle.pagesRead ?? 604} صفحة</span>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {error && <p role="alert" className="mt-3 rounded-lg bg-rose-50 p-3 text-xs leading-6 text-rose-800 dark:bg-rose-950/40 dark:text-rose-200">{error}</p>}
