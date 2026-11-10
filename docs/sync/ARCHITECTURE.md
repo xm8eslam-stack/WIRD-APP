@@ -187,3 +187,15 @@ This addendum supersedes older release-state statements above where they conflic
 - Vercel Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` on alias `wird-app.vercel.app`, with exact Git SHA `12468243db7707c19a1bf75823ca1dc6e09f9ad8`. This deployed tree includes PR #200 and PR #201.
 - The earlier Vercel PR checks were rate-limited, but the subsequent main production deployment succeeded. Use the deployment record above as the current deployment evidence.
 - Remaining unresolved collection-level work is weak-verse deletion/anti-resurrection and daily activity event-derived aggregation. Keep tombstones fail-closed.
+
+
+
+## 2026-11-10 — Compare-and-set protection for full-snapshot projections
+
+- Weak-verse and daily-activity snapshots are still whole-archive projections; they are not safely mergeable by summing counters or unioning arrays.
+- New weak-verse failure and resolution events now carry `baseSnapshotFingerprint`, calculated from the exact validated local archive used to prepare the new snapshot.
+- New session-completion and revision-rating activity snapshots carry the exact pre-mutation daily-log fingerprint.
+- Projection applies only if the current local archive still matches the prepared base. This is a compare-and-set guard, not an authentication or cryptographic integrity primitive.
+- Backward compatibility: a legacy event without a base fingerprint may initialize an empty archive or replay an identical projection; it may not replace a non-empty divergent archive.
+- A failed precondition rejects the projection. The remote inbox cursor must remain blocked and the local snapshot must be preserved; the conflict archive captures local evidence. An explicit, verified `use-remote` conflict decision is the only path that bypasses the guard after the decision intent and evidence have been committed.
+- No automatic weak-verse counter summation, note merge, daily minutes addition, or tombstone behavior is introduced. Firestore schema/rules are unchanged.
