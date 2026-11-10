@@ -88,7 +88,7 @@ test('printed page refuses an ayah map that differs from WIRD and offers the fle
   await page.goto('/#/library');
   await page.getByRole('button', { name: /فتح المصحف بالصفحات/ }).click();
 
-  await expect(page.getByRole('alert')).toContainText('لا يتطابق');
+  await expect(page.getByRole('alert')).toContainText('لا تطابق إحداثيات وِرد المحلية');
   await page.getByRole('button', { name: 'استخدام العرض النصي المرن' }).click();
   await expect(page.getByText('هذا عرض نصي مرن قابل للتحديد والنسخ؛ توزيع الأسطر قد يختلف عن المصحف المطبوع.')).toBeVisible();
   await expect(page.getByRole('button', { name: /تفسير سورة الفاتحة، الآية 1/ })).toBeVisible();
