@@ -3,6 +3,7 @@ import { BookMarked, ChevronDown, Loader2, RotateCw } from 'lucide-react';
 import type { Ayah } from '../../types/quran';
 import { getRelatedSahihHadiths, RelatedHadith } from '../../services/hadithReferencesService';
 import { sanitizeHadithHtmlToPlainText } from '../../utils/hadithSanitizer';
+import { HadithMatn } from './HadithMatn';
 
 const getHadithIdentity = (item: RelatedHadith) => item.referenceUrn
   ? `${item.collection}:reference:${item.referenceUrn}`
@@ -57,16 +58,18 @@ export const RelatedHadithPanel: React.FC<{ ayah: Ayah }> = ({ ayah }) => {
       {!loading && error && error !== 'HADITH_REFERENCES_NOT_CONFIGURED' && <div role="alert" className="flex flex-wrap items-center justify-between gap-2 text-xs text-rose-700 dark:text-rose-300"><span>{error}</span><button type="button" onClick={() => setRetry(value => value + 1)} className="inline-flex min-h-10 items-center gap-1 rounded-lg border px-3"><RotateCw className="h-4 w-4" /> إعادة المحاولة</button></div>}
       {!loading && !error && items.length === 0 && !hasMore && <p role="status" className="text-xs text-stone-500">لا توجد في هذه الصفحة أحاديث مستوفية لمعيار الصحة المعتمد ومرتبطة بهذه الآية.</p>}
       {!loading && !error && items.length === 0 && hasMore && <p role="status" className="text-xs text-stone-500">لا توجد في هذه الصفحة أحاديث مستوفية لمعيار الصحة المعتمد؛ توجد مراجع أخرى.</p>}
-      {!loading && items.map(item => <article key={getHadithIdentity(item)} className="rounded-xl border border-stone-200 bg-white p-3 dark:border-stone-700 dark:bg-stone-900">
-        <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100">{item.name} · رقم الحديث {item.hadithNumber}</h3>
-        {(item.chapterTitle || item.bookNumber || item.chapterNumber) && <p className="mt-1 text-[11px] leading-6 text-stone-500 dark:text-stone-400">{item.chapterTitle ? `الباب: ${item.chapterTitle}` : ''}{item.chapterNumber ? ` · رقم الباب: ${item.chapterNumber}` : ''}{item.bookNumber ? ` · رقم الكتاب: ${item.bookNumber}` : ''}</p>}
-        <p dir="rtl" lang="ar" className="my-3 whitespace-pre-wrap break-words text-justify font-sans-ui text-[15px] leading-[2.4] text-stone-800 dark:text-stone-200">{sanitizeHadithHtmlToPlainText(item.body)}</p>
-        <div className="rounded-lg bg-emerald-50/80 px-3 py-2 text-[11px] leading-6 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+      {!loading && items.map(item => <article key={getHadithIdentity(item)} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:border-stone-700 dark:bg-stone-900 sm:p-5">
+        <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">{item.name} · رقم الحديث {item.hadithNumber}</h3>
+        {(item.chapterTitle || item.bookNumber || item.chapterNumber) && <p className="mt-1 text-xs leading-6 text-stone-500 dark:text-stone-400">{item.chapterTitle ? `الباب: ${item.chapterTitle}` : ''}{item.chapterNumber ? ` · رقم الباب: ${item.chapterNumber}` : ''}{item.bookNumber ? ` · رقم الكتاب: ${item.bookNumber}` : ''}</p>}
+        <p dir="rtl" lang="ar" className="hadith-matn my-4 whitespace-pre-wrap break-words text-justify text-stone-800 dark:text-stone-100">
+          <HadithMatn text={sanitizeHadithHtmlToPlainText(item.body)} />
+        </p>
+        <div className="rounded-xl bg-emerald-50/80 px-4 py-3 text-xs leading-7 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-100">
           {item.authenticityBasis === 'explicit_grade'
             ? <><span className="font-bold">أحكام المحدثين في المصدر: </span>{item.grades.map(grade => `${grade.grade} — ${grade.graded_by}`).join('؛ ')}</>
             : <><span className="font-bold">أساس الإدراج: </span>الحديث من صحيح {item.collection === 'bukhari' ? 'البخاري' : 'مسلم'}؛ ولم يورد المصدر حكمًا فرديًا إضافيًا لهذا الحديث.</>}
         </div>
-        <p className="mt-2 text-[10px] leading-5 text-stone-500 dark:text-stone-400">المصدر: Quran Foundation{item.referenceUrn ? ` · معرّف إحالة المصدر: ${item.referenceUrn}` : ''}{item.urn ? ` · معرّف نص الحديث: ${item.urn}` : ''} · مرجع الآية: {ayah.surahNumber}:{ayah.numberInSurah}. {item.authenticityBasis === 'explicit_grade' ? 'الأحكام المعروضة هي أحكام المصدر المسجلة للحديث، وقد تختلف باختلاف أهل العلم.' : 'أُدرج الحديث لانتمائه إلى أحد الصحيحين، دون نسبة حكم فردي إلى محدّث بعينه.'} اسم الراوي لا يُفصل عن المتن لأن واجهة المصدر لا توفره كحقل مستقل.</p>
+        <p className="mt-3 text-xs leading-6 text-stone-500 dark:text-stone-400">المصدر: Quran Foundation{item.referenceUrn ? ` · معرّف إحالة المصدر: ${item.referenceUrn}` : ''}{item.urn ? ` · معرّف نص الحديث: ${item.urn}` : ''} · مرجع الآية: {ayah.surahNumber}:{ayah.numberInSurah}. {item.authenticityBasis === 'explicit_grade' ? 'الأحكام المعروضة هي أحكام المصدر المسجلة للحديث، وقد تختلف باختلاف أهل العلم.' : 'أُدرج الحديث لانتمائه إلى أحد الصحيحين، دون نسبة حكم فردي إلى محدّث بعينه.'} اسم الراوي لا يُفصل عن المتن لأن واجهة المصدر لا توفره كحقل مستقل.</p>
       </article>)}
       {hasMore && !loading && !error && <button type="button" disabled={page >= 100} onClick={() => setPage(value => Math.min(100, value + 1))} className="min-h-11 w-full rounded-lg border border-emerald-700 px-3 text-xs font-bold text-emerald-900 hover:bg-emerald-50 disabled:opacity-50 dark:text-emerald-200 dark:hover:bg-emerald-950/40">{page >= 100 ? 'اكتمل حد الصفحات' : 'تحميل مراجع إضافية'}</button>}
     </div>}
