@@ -2769,6 +2769,21 @@ export class IndexedDbSyncJournal {
             transaction.abort();
             return;
           }
+          for (const localGroupedMutation of archivedMutations.filter(item => item.collection === 'syncMeta')) {
+            const localTransaction = localGroupedMutation.payload.transaction;
+            if (!isRecord(localTransaction) || localTransaction.version !== 1 ||
+                !Array.isArray(localTransaction.operations) || localTransaction.operations.length < 1 ||
+                localTransaction.operations.length > 8 ||
+                localTransaction.operations.some(operation =>
+                  !isRecord(operation) || typeof operation.collection !== 'string' ||
+                  !affectedCollections.has(operation.collection) || operation.operation !== 'upsert' ||
+                  typeof operation.documentId !== 'string' || !operation.documentId || !isRecord(operation.payload)
+                )) {
+              failure = new Error('تحتوي عملية محلية مجمعة معلقة على مجموعات إضافية أو صيغة غير مدعومة؛ أوقفنا إعادة النشر لحماية بياناتها.');
+              transaction.abort();
+              return;
+            }
+          }
           for (const operation of groupedOperations) {
             const localForCollection = archivedMutations.filter(item => item.collection === operation.collection);
             if (localForCollection.some(item => item.documentId !== operation.documentId) ||
