@@ -507,7 +507,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex items-center justify-between gap-4">
         <button
           onClick={handleExit}
-          className="flex items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
+          className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition-colors"
         >
           <ArrowRight className="w-4 h-4" />
           <span>خروج من الجلسة</span>
@@ -575,7 +575,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.density === 'comfortable'}
               onClick={() => updateDisplayPreferences({ density: 'comfortable' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'comfortable' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'comfortable' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               مريحة
             </button>
@@ -583,7 +583,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.density === 'compact'}
               onClick={() => updateDisplayPreferences({ density: 'compact' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'compact' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.density === 'compact' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               مضغوطة
             </button>
@@ -595,7 +595,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.viewMode === 'focused'}
               onClick={() => updateDisplayPreferences({ viewMode: 'focused' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'focused' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'focused' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               آية واحدة
             </button>
@@ -603,7 +603,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               type="button"
               aria-pressed={displayPreferences.viewMode === 'page'}
               onClick={() => updateDisplayPreferences({ viewMode: 'page' })}
-              className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'page' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors ${displayPreferences.viewMode === 'page' ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
             >
               كل آيات الجلسة
             </button>
@@ -721,7 +721,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               <button
                 key={m.level}
                 onClick={() => setMaskLevel(m.level)}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`min-h-11 px-3 py-1.5 rounded-lg font-medium transition-colors ${
                   maskLevel === m.level
                     ? 'bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100 font-bold shadow-xs'
                     : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
@@ -801,7 +801,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setRepeatCount(c => Math.max(0, c - 1))}
-              className="w-8 h-8 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs flex items-center justify-center"
+              className="min-h-11 min-w-11 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-700 text-stone-600 dark:text-stone-300 font-bold text-xs flex items-center justify-center"
               title="إنقاص مرة واحدة"
             >
               -1
@@ -809,7 +809,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
             <button
               onClick={() => setRepeatCount(c => c + 1)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-sm shadow-xs transition-transform active:scale-95"
+              className="min-h-11 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold rounded-xl text-sm shadow-xs transition-transform active:scale-95"
               title="زيادة التكرار (أو اضغط مسافة)"
             >
               + تكرار ({repeatCount})
@@ -823,7 +823,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
         <button
           onClick={handlePrevAyah}
           disabled={currentAyahIndex === 0}
-          className="flex items-center gap-2 px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="flex min-h-11 items-center gap-2 px-4 py-2.5 bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <ChevronRight className="w-4 h-4" />
           <span>الآية السابقة</span>
@@ -831,7 +831,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
         <button
           onClick={handleNextAyah}
-          className="flex items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="flex min-h-11 items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
           <span>
             {currentAyahIndex === sessionAyahs.length - 1 ? 'إتمام الجلسة وحفظ الورد' : 'أتقنت الآية — التالية'}
