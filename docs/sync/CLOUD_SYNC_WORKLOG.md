@@ -6,7 +6,7 @@
 - PR #325's compare-and-set guard prevents stale full-snapshot overwrites; it does not provide a merge for independent devices. Keep whole-snapshot keep-local/use-remote blocked for `weakVerses` and `activityEvents`.
 - A staged, non-destructive ledger design is in `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. It preserves the legacy DailyLog baseline, deduplicates immutable per-session events by stable identity, captures the local activity date, and blocks unresolved legacy/offline-device conflicts rather than silently merging or discarding them.
 - No sync runtime code, Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
-- Last documented READY Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`; the post-merge GitHub Vercel status for `50bb25e` was pending at last check. No exact-SHA Production deployment or live smoke is claimed. Vercel team API access was denied in this run.
+- Last documented READY Production remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`; the post-merge GitHub Vercel status for `50bb25e` now reports `success`, but the Vercel deployment detail endpoint returned team-scope 403. Exact Production SHA/state and live smoke remain unverified.
 - Real-device A↔B round trip, long-offline replay, cross-tab/account lifecycle stress, tombstone/delete semantics, and activity-event migration remain unverified. Production sync release remains HOLD.
 
 Next safe sync step: implement a pure event reducer with deterministic local-date aggregation and idempotent deduplication, then test baseline preservation, out-of-order delivery, duplicate replay, collision rejection, timezone/DST boundaries, and crash recovery before wiring it into IndexedDB or Firestore.
