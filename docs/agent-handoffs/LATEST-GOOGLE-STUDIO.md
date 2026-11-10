@@ -74,3 +74,17 @@ Next: owner decision on Production sync flags and public Vercel access; add the 
 - Production's latest verified deployment remains `dpl_5w3rMw5GphfGTUyoCj45kMmqo4nN` on SHA `f620d9ed5241245147baa66753a3e7f7e421ed7e`. The merged commit changes only E2E tests and handoff documentation, so it does not alter runtime behavior; no production deployment for `faf1ead` was present at verification time, and no new production release is claimed.
 - Owner review needed: Vercel reports SSO protection enabled for all non-custom domains, while the only listed domain is `wird-app.vercel.app`. This may prevent public users without team SSO from opening the app. Do not change this production access setting without explicit owner approval; confirm whether public access is intended and configure a custom domain/protection policy accordingly.
 - Next: confirm main push run #3205 completes; obtain a safe stack trace for the Node `DEP0169` deprecation warning if possible; verify Ruqyah and related-hadith API paths with an authenticated, non-secret-leaking smoke test; review the Vercel SSO/public-access setting with the owner; keep production Firebase sync flags and all production secrets/settings unchanged.
+
+
+## 2026-11-11 — Follow-up after direct memorization navigation work
+
+- Current main: 3667a8c003b79984546d48a9defc20c6f2bcd367. Exact-main Quality Gate run [42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) completed successfully on that exact SHA.
+- The user's page/element sizing request was already implemented by PR #202/#206 and is in the current Production ancestry: session UI scale 80–110%, ayah text 20–44px, compact/comfortable density, focused/all-session ayah display, and sticky previous/next navigation. Preferences are device-local and excluded from cloud sync/backups.
+- To remove the remaining need to advance one ayah at a time, Draft PR #328 adds a direct ayah selector to the sticky navigation. Branch ux/session-direct-ayah-jump-20261111, current head 0c41126b1e018892119ced669936335326f8b1e7; exact-head Quality Gate run [42921569974](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42921569974) was in progress at this checkpoint. Do not merge until it completes successfully and the exact head is reviewed.
+- Latest verified Production remains deployment dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5, READY, on SHA dac125dd8770cc4881e2c6cea6fe94623ad52144. It predates current main. Current-main/PR Vercel checks report build-rate-limit; Vercel's PR comment identifies api-deployments-free-per-day. No manual deploy or quota bypass was attempted.
+- PR #325/#326 remain merged and their exact-head Quality Gates passed. Sync still is not fully certified: weak-verse and daily-activity full-snapshot conflict choices remain blocked; tombstones remain unsupported; a fresh post-merge physical A↔B round trip is not verified.
+- Vercel project metadata still reports SSO protection for all non-custom domains, with only wird-app.vercel.app listed. Do not change this production access setting without owner approval.
+- Google AI Studio synchronization remains independently unverified. Do not claim it is synced.
+- No Firebase rules/schema, production secrets/settings, or remote-sync flags were changed in this follow-up.
+
+Next: finish PR #328's exact-head CI and code review; then continue collection-specific activity-event/tombstone design and controlled two-device verification without unblocking unsafe full-snapshot conflict choices.
