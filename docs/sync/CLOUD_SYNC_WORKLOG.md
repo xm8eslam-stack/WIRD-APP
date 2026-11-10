@@ -1,50 +1,50 @@
-## Current operational checkpoint — 2026-11-10 (engineering review)
+## Current operational checkpoint — 2026-11-10 (engineering review, post-deployment)
 
-This checkpoint supersedes earlier operational statements below where they conflict with the evidence in this review. The reviewed application-code baseline was `2405067b60969ef431e3e9473ca446f9bd225a37`; this review changes documentation only. No application code, Firestore rules, production data, secrets, Vercel settings, or environment variables were changed.
+This checkpoint supersedes earlier operational statements below where they conflict with the evidence in this review. The application-code baseline reviewed was `2405067b60969ef431e3e9473ca446f9bd225a37`; the subsequent commits in this audit are documentation-only. No application code, Firestore Rules, production data, secrets, Vercel settings, or environment variables were changed.
 
 ### Repository, CI, and Production
 
-- Reviewed `main` at application-code SHA `2405067b60969ef431e3e9473ca446f9bd225a37`.
-- Exact-main WIRD Quality Gate [run 42865304625](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42865304625) completed successfully on that SHA: **662 automated assertions passed, 0 failed; 31 Firestore Rules Emulator tests passed; 8/8 approved Quran audio CDN probes passed; 140 desktop/mobile Playwright smoke tests passed with 2 skipped; TypeScript, dependency-audit step, production build, and server smoke passed**.
-- Latest Vercel Production deployment is [`dpl_54yw4eh25j8fWqNU5iXeLqtq2VSR`](https://vercel.com/xm8eslam-9174s-projects/wird-app/54yw4eh25j8fWqNU5iXeLqtq2VSR), state `READY`, created 2026-11-10 15:39:32 UTC from SHA `f287670a28c8ed96b734044f96b3e3a4036c7f09`.
-- Production is **13 commits behind** current `main`. The current-main Vercel status is failure with `build-rate-limit` / “Deployment rate limited — retry in 24 hours.” A compare of Production SHA `f287670...` to reviewed `main` found 13 later commits and 51 changed paths, but **no sync, Firestore, Firebase, auth, journal, outbox, writer, or projector paths changed**. Thus the inspected sync implementation remains source-identical between Production and reviewed `main`; the whole application deployment is not current.
-- Vercel Production contains both sync feature-gate keys, `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`; the prior checkpoint records them as enabled. Their values are not reproduced here and were not changed.
-- Owner-reported authenticated two-device success remains valid historical evidence from the earlier checkpoint. This review did not repeat a physical-device round trip after the later sync changes; do not label it a fresh test.
+- Reviewed application-code `main` SHA `2405067b60969ef431e3e9473ca446f9bd225a37`; documentation checkpoint before this follow-up was `9a508d05a3f44f2f24ab4f85d38f329ad7b57a31`.
+- Exact application-code Quality Gate [run 42865304625](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42865304625) passed: **662 automated assertions, 0 failures; 31 Firestore Rules Emulator tests; 8/8 approved Quran audio probes; 140 desktop/mobile Playwright smoke passes with 2 skipped; TypeScript, dependency-audit step, production build, and server smoke passed**.
+- The documentation checkpoint was automatically deployed to Vercel Production as [`dpl_HHoXRwWTftWHeBXbST3bq9qVMvuS`](https://vercel.com/xm8eslam-9174s-projects/wird-app/HHoXRwWTftWHeBXbST3bq9qVMvuS), state `READY`, exact source SHA `9a508d05a3f44f2f24ab4f85d38f329ad7b57a31`. Current-main Vercel status is success. This supersedes the earlier `f287670...` deployment/13-commit lag note.
+- The 13 commits between `f287670...` and application-code SHA `2405067...` changed 51 paths but no sync, Firestore, Firebase, auth, journal, Outbox, writer, or projector paths. Production therefore now matches current main exactly at the documentation checkpoint, and the deployed sync implementation is source-identical to the reviewed code.
+- Main Quality Gate [run 42875369360](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42875369360) for documentation checkpoint SHA `9a508d05...` was still running at the last poll, with no failed steps; desktop/mobile browser smoke was in progress. Do not describe that run as completed. The completed exact application-code run above remains the test evidence for the unchanged runtime source.
+- Vercel Production contains both sync feature-gate keys, `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`; the previous checkpoint records them as enabled. Their values are not reproduced and were not changed.
+- Owner-reported authenticated two-device success remains historical evidence from the earlier checkpoint. This review did not repeat a physical-device round trip after the later sync changes.
 
 ### Firebase Auth and Firestore Rules
 
-- The client pins Firebase project `wird-quran-app` and the default Firestore database `(default)`; it rejects a non-canonical project. Authenticated sync requires a verified email and the local storage scope to match the active UID.
-- Production Rules deployment **is verified** by manual workflow [run 42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063), completed successfully on 2026-11-09 20:31 UTC from main SHA `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`. The workflow validated project `wird-quran-app`, the explicit deployment confirmation, credentials, emulator tests, and the active default-database ruleset. It recognized the exact deny-all bootstrap policy (deployed SHA-256 `ecf30f940747dcc3c5ba4993093e9a11ac9fc5df7e14b2a1512d2446923d84eb`), then successfully ran the Firestore-Rules-only deployment and logged “Deploy complete!”.
-- Current `main` `firestore.rules` blob SHA is `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`, identical to the file at deployment SHA `5de1c2cd...`; no later Rules-file change was found. This provides deployment/source-parity evidence. This review did not make another Firebase production call or deploy.
-- Rules enforce verified-email UID ownership, the explicit collection allowlist, revision envelopes, matching event/state/server-sequence writes, immutable event documents, upsert-only revisioned events, denied physical deletes, and default-deny unknown paths.
+- The client pins project `wird-quran-app` and default database `(default)`; it rejects a non-canonical project. Authenticated sync requires verified email and exact active-UID/local-storage-scope agreement.
+- Production Rules deployment is verified by manual workflow [run 42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063), successful on 2026-11-09 from main SHA `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`. Preflight queried the active default-database ruleset, recognized the exact deny-all bootstrap policy (SHA-256 `ecf30f940747dcc3c5ba4993093e9a11ac9fc5df7e14b2a1512d2446923d84eb`), and successfully deployed only `firestore.rules`.
+- Current main `firestore.rules` blob SHA `6c9cbf1e7a1ebe4325240d751d40aec9efabc760` is identical to the file at the deployment commit; no later Rules-file change was found. This is deployment/source-parity evidence; no new Firebase production call or Rules deployment was made in this review.
+- Rules enforce verified-email UID ownership, allowlisted collections, revision envelopes, matching state/event/server-sequence writes, immutable events, upsert-only routed mutations, denied physical deletes, and default-deny unknown paths.
 
 ### Current sync assessment
 
-**Operational baseline: PASS with bounded evidence.** Production feature gates are present, reviewed sync source is unchanged since the latest Production deployment, the reviewed Rules source was successfully deployed, current-main CI passed, and the owner previously reported a successful two-device test. A fresh device round trip after the latest changes is still outstanding.
+**Operational baseline: PASS with bounded evidence.** Production feature gates are present, current Production and main carry identical reviewed sync source, production Rules were successfully deployed from the same source file, CI passed on the application-code SHA, and the owner previously reported a successful two-device test. Fresh physical-device verification after the latest changes remains outstanding.
 
-- IndexedDB journal schema version 9 contains append-only events, Outbox, acknowledgements, metadata, remote Inbox, projection-conflict archives, and conflict-resolution intents. Event and Outbox enqueue are atomic. Bounds include 1,000 pending mutations, 1,000 Inbox events, 100 archived projection conflicts, and a one-hour capped retry backoff.
-- Legacy outbox migration rejects tombstones before committing the IndexedDB migration and preserves the original localStorage source. New local tombstone enqueue is rejected.
-- Revisioned writer transactionally updates the state document, immutable event, and per-user server sequence with revision checks and retry idempotency. The writer still models a tombstone branch, but current Rules permit only upserts; this is not a supported delete path.
-- Remote projector consumes server-ordered events through a durable Inbox and advances its cursor only after safe local application/finalization. Pending local mutations, base-revision conflicts, tombstones, and projection failures remain fail-closed. Compatible Ruqyah V2 snapshots have a dedicated merge/reset-watermark path; divergent legacy V1 baselines remain blocked.
-- Grouped `syncMeta` use-remote and supported keep-local upsert decisions use local journal transaction boundaries. PR #209 adds a guard that blocks both choices for `weakVerses` and `activityEvents`, including grouped transactions containing either collection.
-- New weak-verse records use coordinate IDs `weak-{surah}-{ayah}`, but `weakVerses` is still a full snapshot without a safe cross-device merge or resolution anti-resurrection model. `activityEvents` remains a full daily aggregate snapshot, not an immutable session ledger.
-- Engine-plan payloads now have a dedicated 450 KB cap (ordinary mutations remain 128 KB); grouped `syncMeta` receives the larger cap only when it contains an engine-plan operation.
+- IndexedDB journal schema v9 stores append-only events, Outbox, acknowledgements, metadata, remote Inbox, projection-conflict archives, and conflict-resolution intents. Enqueue commits event and Outbox atomically. Bounds include 1,000 pending mutations, 1,000 Inbox events, 100 archived projection conflicts, and capped one-hour retry backoff.
+- Legacy migration and new local enqueue reject tombstones; the legacy localStorage source is preserved on rejection.
+- Revisioned writer transactionally writes state, immutable event, and per-user server sequence with revision checks and retry idempotency. A tombstone-shaped writer branch remains, but Rules accept only upserts; this is not a supported delete path.
+- Remote projector processes server-ordered events through a durable Inbox and advances its cursor only after safe local application/finalization. Pending local writes, base-revision conflicts, tombstones, and projection failures remain fail-closed. Compatible Ruqyah V2 snapshots use a dedicated merge/reset-watermark path; divergent V1 baselines remain blocked.
+- Grouped `syncMeta` use-remote and supported keep-local upsert decisions preserve local transaction boundaries. PR #209 blocks both decisions for `weakVerses` and `activityEvents`, including grouped transactions containing either.
+- Weak-verse coordinate IDs `weak-{surah}-{ayah}` do not yet solve full-snapshot concurrency or resolution anti-resurrection. `activityEvents` remains a full daily aggregate snapshot rather than an immutable session ledger.
+- Engine-plan payloads use a dedicated 450 KB cap (ordinary mutations remain 128 KB); grouped `syncMeta` receives the larger cap only when it contains an engine-plan operation.
 
 ### Pull requests and environment inventory
 
-- PR #208 (documentation continuity) merged as `c05476bc7e20f7f2f89881d93a6a0e49ff394beb`.
-- PR #209 (weak-verse/activity conflict safety) merged as `f6fc58f017034f2c92e2a89067065fcb4dc29d8b`; exact-head Quality Gate [run 42788810615](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42788810615) succeeded. Its PR Vercel status was rate-limited, but the later Production deployment SHA `f287670...` is a descendant and includes it.
-- PR #203 remains open but is stale/diverged: its head is 29 commits ahead and 35 behind current `main`, and GitHub reports `mergeable=false`. Its exact-head Quality Gate passed, but do not merge it without a fresh rebase/review.
-- Vercel names observed for sync/Firebase configuration: `VITE_WIRD_REVISIONED_SYNC_ENABLED`, `VITE_WIRD_REMOTE_PROJECTION_ENABLED`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, and `VITE_FIREBASE_APP_ID`. The manual Rules workflow uses GitHub variable `FIREBASE_PROJECT_ID` and secret `FIREBASE_SERVICE_ACCOUNT_JSON`. Values were not decrypted or included.
+- PR #208 merged as `c05476bc7e20f7f2f89881d93a6a0e49ff394beb`; PR #209 merged as `f6fc58f017034f2c92e2a89067065fcb4dc29d8`. PR #209 exact-head Quality Gate run `42788810615` passed, and current Production includes it.
+- PR #203 remains open and stale/diverged: 29 commits ahead and 35 behind current main, with `mergeable=false`; its exact-head Quality Gate passed, but it must not be merged without rebase and fresh review.
+- Vercel keys: `VITE_WIRD_REVISIONED_SYNC_ENABLED`, `VITE_WIRD_REMOTE_PROJECTION_ENABLED`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`. The manual Rules workflow uses GitHub variable `FIREBASE_PROJECT_ID` and secret `FIREBASE_SERVICE_ACCOUNT_JSON`. No secret values were decrypted or included.
 
 ### Remaining risks and next action
 
 1. Keep tombstones blocked until collection-specific delete, offline replay, stale-update rejection, recovery, and anti-resurrection semantics are designed and tested.
-2. Build a weak-verse model that handles concurrent same-coordinate failures and resolution without stale resurrection; replace daily activity snapshots with an idempotent immutable session ledger and deterministic aggregation.
-3. Keep divergent Ruqyah V1 baselines preserved and blocked; do not infer a merge.
-4. Expand cross-tab, account-switch/logout/reinstall, crash, long-offline replay, queue-stress, and IndexedDB-quota/failure-injection coverage.
-5. Obtain a fresh authenticated production A↔B device round trip after the latest deployed sync code, recording the exact records and operations exercised.
-6. Retry/verify the application Production deployment after the Vercel rate-limit window; the current 13-commit app-wide lag is unrelated to sync source files but remains a release-status discrepancy.
+2. Design safe weak-verse concurrency/resolution and an immutable session-event ledger for deterministic activity aggregation.
+3. Preserve and block divergent Ruqyah V1 baselines; do not infer a merge.
+4. Expand cross-tab, account-switch/logout/reinstall, crash, long-offline replay, queue-stress, and IndexedDB quota/failure-injection coverage.
+5. Obtain a fresh authenticated production A↔B device round trip after the latest sync changes, recording exact records and operations.
+6. The whole application is now deployed on the reviewed main checkpoint; keep monitoring subsequent Vercel deploys and do not toggle feature gates or change production settings as part of review.
 
 No production flags, secrets, Firebase Rules, schemas, or user data were changed in this review.
 
@@ -296,3 +296,10 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - PR #203 remains open and stale/diverged (29 commits ahead, 35 behind main; `mergeable=false`) despite its exact-head Quality Gate success. Do not merge without rebase and a fresh review.
 - Remaining gates: weak-verse merge/anti-resurrection, immutable activity ledger, tombstone lifecycle, divergent Ruqyah V1 recovery, lifecycle/offline/crash/quota stress, and fresh A↔B verification after the latest sync changes.
 - Review was documentation-only. No application code, production Rules, Vercel configuration, secrets, or user data were changed.
+
+## 2026-11-10 — Post-review Vercel deployment follow-up
+
+- After the worklog and audit documentation commits, Vercel Production automatically deployed exact main checkpoint `9a508d05a3f44f2f24ab4f85d38f329ad7b57a31` as `dpl_HHoXRwWTftWHeBXbST3bq9qVMvuS`; state `READY`, created 2026-11-10 18:27:24 UTC. GitHub Vercel status for this SHA is success.
+- This supersedes the earlier observation that Production was 13 commits behind. The intervening 13 commits from `f287670...` to application-code SHA `2405067...` did not modify any reviewed sync/Firebase/Rules/auth/journal/Outbox/writer/projector file.
+- Exact-main Quality Gate run `42875369360` on `9a508d05...` was still in progress at the last poll; all completed steps were successful and desktop/mobile browser smoke was active. The unchanged application-code SHA `2405067...` has its own completed successful Quality Gate run `42865304625`.
+- No runtime code or production configuration was changed by this follow-up; it records an automatic deployment resulting from documentation-only commits.
