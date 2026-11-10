@@ -20,6 +20,11 @@ const MAX_PROJECTION_CONFLICTS = 100;
 const MAX_CONFLICT_RESOLUTION_INTENTS = 500;
 const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
 const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
+// Engine plans contain a generated day-by-day schedule. Give that one collection
+// a larger, still Firestore-safe budget while keeping ordinary mutations small.
+const MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES = 450_000;
+const maxMutationPayloadBytes = (collection: string) =>
+  collection === 'enginePlans' ? MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES : MAX_MUTATION_PAYLOAD_BYTES;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
 
@@ -564,7 +569,7 @@ export class IndexedDbSyncJournal {
           !item.documentId || item.documentId.includes('/') || byteLength(item.documentId) > 1500 ||
           item.operation !== 'upsert' || item.schemaVersion !== 1 ||
           item.deviceId !== state.deviceId || !isRecord(item.payload) ||
-          byteLength(JSON.stringify(item.payload)) > MAX_MUTATION_PAYLOAD_BYTES ||
+          byteLength(JSON.stringify(item.payload)) > maxMutationPayloadBytes(item.collection) ||
           !Number.isSafeInteger(item.clientUpdatedAtMs) || item.clientUpdatedAtMs < 0 ||
           !Number.isSafeInteger(item.queuedAtMs) || item.queuedAtMs < 0 ||
           !Number.isSafeInteger(item.attemptCount) || item.attemptCount < 0 ||
@@ -776,7 +781,7 @@ export class IndexedDbSyncJournal {
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تحويل بيانات العملية إلى صيغة قابلة للحفظ.'); }
-    if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!payloadJson || byteLength(payloadJson) > maxMutationPayloadBytes(input.collection)) {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
 
@@ -3054,7 +3059,7 @@ export class IndexedDbSyncJournal {
           !Number.isSafeInteger(event.revision) || event.revision !== event.baseRevision + 1 ||
           !Number.isSafeInteger(event.serverSequence) || event.serverSequence < 1 ||
           !isRecord(event.payload) ||
-          byteLength(JSON.stringify(event.payload) || '') > MAX_MUTATION_PAYLOAD_BYTES) {
+          byteLength(JSON.stringify(event.payload) || '') > maxMutationPayloadBytes(event.collection)) {
         throw new Error('REMOTE_INBOX_EVENT_INVALID');
       }
       if (event.serverSequence <= previousSequence) {
