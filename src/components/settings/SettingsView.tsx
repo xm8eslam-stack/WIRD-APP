@@ -987,7 +987,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold border border-stone-300 dark:border-stone-700 transition-colors shadow-2xs"
+              className="flex min-h-11 items-center gap-2 px-4 py-2.5 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-800 dark:text-stone-200 rounded-xl font-bold border border-stone-300 dark:border-stone-700 transition-colors shadow-2xs"
             >
               <Upload className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
               <span>استيراد نسخة احتياطية</span>
