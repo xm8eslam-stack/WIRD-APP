@@ -332,7 +332,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
             </button>
             <div className="h-5 w-[1px] bg-stone-200 dark:bg-stone-700 mx-1 hidden sm:block" />
             <span className="font-bold text-emerald-800 dark:text-emerald-400 text-sm hidden sm:inline">
-              مصحف المدينة المنورة
+              قارئ القرآن الكريم
             </span>
           </div>
 
