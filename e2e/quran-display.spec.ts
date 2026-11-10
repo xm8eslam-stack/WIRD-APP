@@ -101,11 +101,11 @@ test('Tafsir dialog supports Escape, traps keyboard focus, and restores the ayah
   const copyButton = dialog.getByRole('button', { name: 'نسخ الآية والتفسير' });
   const developerLink = dialog.getByRole('link', { name: 'منصة مطوري Quran.com' });
   await expect(closeButton).toBeFocused();
+  // The copy action is intentionally disabled until the verified tafsir text is ready.
+  await expect(copyButton).toBeEnabled({ timeout: 15000 });
   await page.keyboard.press('Shift+Tab');
-  if (await copyButton.isEnabled()) {
-    await expect(copyButton).toBeFocused();
-    await page.keyboard.press('Shift+Tab');
-  }
+  await expect(copyButton).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
   await expect(developerLink).toBeFocused();
 
   await page.keyboard.press('Escape');
