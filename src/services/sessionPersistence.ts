@@ -74,7 +74,7 @@ export async function persistJournaledSessionCompletion(
   }
 
   operations.push(
-    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs } },
+    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs, baseSnapshotFingerprint: activity.baseLogsFingerprint } },
     { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: activity.profile } }
   );
   if (input.enginePlansSnapshot !== undefined) {
