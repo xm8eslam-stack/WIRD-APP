@@ -51,7 +51,9 @@ export default function App() {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsDesktop(window.innerWidth >= 1024);
+      const desktop = window.matchMedia('(min-width: 1024px)').matches;
+      setIsDesktop(desktop);
+      if (desktop) setIsMobileMenuOpen(false);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -71,21 +73,44 @@ export default function App() {
     }
   };
 
-  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar from any page
+  // Global Ctrl+B / Cmd+B shortcut. KeyboardEvent.code keeps the physical
+  // KeyB binding stable when the user switches to an Arabic keyboard layout.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B' || e.key === 'لا')) {
-        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-        if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable) {
-          return;
-        }
-        e.preventDefault();
-        handleToggleSidebar();
+      const isToggleShortcut = (e.ctrlKey || e.metaKey) &&
+        !e.altKey && !e.shiftKey &&
+        (e.code === 'KeyB' || e.key === 'b' || e.key === 'B' || e.key === 'لا');
+      if (!isToggleShortcut || e.repeat || e.defaultPrevented) return;
+
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"], [role="textbox"]')) {
+        return;
       }
+
+      e.preventDefault();
+      handleToggleSidebar();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isDesktop]);
+
+  // Treat the mobile/tablet sidebar as a true drawer: lock background scroll
+  // while open and provide a global Escape dismissal from every route.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setIsMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [isMobileMenuOpen]);
 
   // App persistent state
   const [profile, setProfile] = useState<UserProfile>(() => StorageService.getProfile());
@@ -580,7 +605,7 @@ export default function App() {
         )}
 
         {/* Content Viewport with Code Splitting Suspense */}
-        <main className={`flex-1 min-w-0 w-full p-4 sm:p-5 md:p-6 xl:p-8 ${currentTab === 'session' ? 'pb-6 md:pb-8' : 'pb-28 md:pb-8'} max-w-[1440px] mx-auto`}>
+        <main className={`flex-1 min-w-0 w-full p-4 sm:p-5 md:p-6 xl:p-8 ${currentTab === 'session' ? 'pb-6 md:pb-8' : 'pb-28 md:pb-8'} ${isDesktop && !isDesktopSidebarOpen ? 'max-w-none' : 'max-w-[1440px]'} mx-auto`}>
           <React.Suspense fallback={
             <div className="flex flex-col items-center justify-center py-28 space-y-3 text-stone-400">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-700 dark:text-emerald-400" />
