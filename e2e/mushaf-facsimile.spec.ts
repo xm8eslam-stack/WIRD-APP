@@ -69,7 +69,7 @@ test('printed Mushaf mode fails closed and offers the local flexible-text reader
 
   await expect(page.getByRole('alert')).toContainText('لم نستخدم أي نص قرآني من ملف الرسم');
   await page.getByRole('button', { name: 'متابعة القراءة بالعرض المرن' }).click();
-  await expect(page.getByText('توزيع الآيات هنا مرن بحسب الصفحة')).toBeVisible();
+  await expect(page.getByText('عرض الآيات موزّع داخل صفحة مرنة، وليس محاكاة مطابقة لأسطر المصحف المطبوع. ستظل مطابقة الأسطر غير متاحة حتى تتوفر بيانات تخطيط موثّقة.')).toBeVisible();
 });
 
 
