@@ -117,8 +117,12 @@ test('Tafsir dialog supports Escape, traps keyboard focus, and restores the ayah
 test('Mushaf reader keeps flexible layout disclosure and remembers reading display preferences', async ({ page }) => {
   await page.goto('/');
   const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
-  if (await guestEntry.isVisible().catch(() => false)) await guestEntry.click();
+  const appNavigation = page.getByRole('navigation', { name: 'القائمة الرئيسية' })
+    .or(page.getByRole('navigation', { name: 'التنقل السريع' }));
+  await expect(guestEntry.or(appNavigation)).toBeVisible({ timeout: 15000 });
+  if (await guestEntry.isVisible()) await guestEntry.click();
   await page.goto('/#/library');
+  await expect(page.getByRole('heading', { name: 'القرآن الكريم' })).toBeVisible();
   await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
 
   await expect(page.getByRole('main', { name: /صفحة المصحف/ })).toBeVisible();
@@ -133,6 +137,7 @@ test('Mushaf reader keeps flexible layout disclosure and remembers reading displ
 
   await page.reload();
   await page.goto('/#/library');
+  await expect(page.getByRole('heading', { name: 'القرآن الكريم' })).toBeVisible();
   await page.getByRole('button', { name: 'فتح المصحف بالصفحات (604)' }).click();
   const restoredControls = page.getByRole('group', { name: 'إعدادات عرض المصحف' });
   await expect(restoredControls.getByRole('button', { name: 'أكبر' })).toHaveAttribute('aria-pressed', 'true');
