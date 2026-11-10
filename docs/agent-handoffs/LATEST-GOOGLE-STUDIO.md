@@ -1,5 +1,16 @@
 ### GOOGLE AI STUDIO HANDOFF
 
+
+## 2026-11-11 — Latest verified state after PR #326 merge
+
+- Repository: `xm8eslam-stack/WIRD-APP`; current `main` SHA is `3667a8c003b79984546d48a9defc20c6f2bcd367`.
+- PR #325 (stale full-snapshot compare-and-set guard) merged as `966d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`.
+- PR #326 (continuous Quran audio queue, Mushaf display controls, and 10-second opportunistic offline pre-cache timeout) merged as `3667a8c003b79984546d48a9defc20c6f2bcd367`. Exact-head Quality Gate run `42919276966` passed: 674 automated assertions, 604-page coordinate-map validation, 31 Firestore Rules Emulator tests, 8/8 approved audio probes, 150 desktop/mobile Playwright tests, TypeScript, production build, and server smoke.
+- Memorization display sizing/navigation is already present: PR #202/#206 merged; PR #206 merge `391be261e32f4d3634b0bf0010972c0297077d67` is an ancestor of Production. Session controls: UI scale 80–110%, ayah font 20–44px, compact/comfortable spacing, focused/all-session ayah view, and sticky navigation. Preferences are device-local and excluded from cloud sync/backups.
+- Latest verified Production deployment remains `dac125dd8770cc4881e2c6cea6fe94623ad52144` (`READY`, alias `wird-app.vercel.app`). It predates PR #325/#326. Vercel status for the newer main commits is `build-rate-limit`; no matching Production deployment or live smoke for `3667a8c` is verified. No manual deployment or Vercel/Firebase settings change was made.
+- No Firestore rules/schema, secrets, environment variables, or remote-sync flags changed. Google AI Studio synchronization has not been independently verified; do not claim it is synced until the owner verifies the connected `main` source.
+- Sync limitations remain: whole-snapshot `keep-local/use-remote` decisions for `weakVerses` and `activityEvents` stay blocked by `syncConflictSafety`; tombstone/delete semantics and a real two-device post-merge test remain outstanding. PR #325 adds a stale-snapshot safety guard, not proof that bidirectional sync is fully released.
+
 ## 2026-11-10 — Current verified state and continuation
 
 - Application-code `main` SHA at this checkpoint (before this documentation-only PR): `182aae6a757668eb4c54782601682ba91c3d1251`. Main Quality Gate run `42716625092` passed.
