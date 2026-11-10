@@ -44,7 +44,7 @@ export const RuqyahApiLibrary: React.FC = () => {
     }, controller.signal)
       .then(data => {
         const normalized = Array.isArray(data) ? data : data ? [data as unknown as RuqyahApiEntry] : [];
-        if (normalized.length === 0 || normalized.length > 300 || normalized.some(entry =>
+        if (normalized.length > 300 || normalized.some(entry =>
           !entry ||
           (typeof entry.id !== 'number' && typeof entry.id !== 'string') ||
           typeof entry.title !== 'string' ||
