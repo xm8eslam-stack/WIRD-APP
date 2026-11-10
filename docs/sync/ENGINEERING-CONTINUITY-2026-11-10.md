@@ -171,3 +171,12 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
 - The earlier Vercel PR check rate-limit did not prevent the subsequent main deployment; the verified Production deployment above supersedes those preview-check failures.
 - The last user-reported two-device test occurred before these two latest fixes. A fresh physical-device round trip after this deployment remains unverified.
 - No Firestore production rules/schema, secrets, or sync flags were changed.
+
+
+
+## Latest continuation — snapshot compare-and-set protection
+
+- PR #203 adds compare-and-set base fingerprints for weak-verse and daily-activity snapshots to prevent grouped transactions from silently replacing a divergent archive on another device.
+- A mismatch fails closed and leaves the remote inbox cursor blocked with local evidence archived. Legacy events can bootstrap empty archives or replay identical state only. Explicit verified use-remote conflict resolution retains its override path.
+- No automatic addition/union or tombstone behavior is introduced; Firestore rules/schema remain unchanged. Exact-head CI is pending.
+- PR #202 for adjustable memorization display and whole-session verse view merged to main as `f30f45299fca27a22a3b536aaa49c01d96a75553`; exact-head CI passed. Production deployment remains unverified.
