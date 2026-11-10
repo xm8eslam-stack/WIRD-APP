@@ -368,9 +368,9 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[11px]">مصحف المدينة المنورة (604 صفحة)</span>
                 <div role="group" aria-label="تكبير خريطة الصفحات" className="inline-flex items-center gap-1 p-1 rounded-xl bg-stone-100 dark:bg-stone-800">
-                  <button type="button" aria-pressed={pageGridZoom === 'compact'} onClick={() => setPageGridZoom('compact')} className="min-h-11 px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أصغر</button>
-                  <button type="button" aria-pressed={pageGridZoom === 'normal'} onClick={() => setPageGridZoom('normal')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">متوسط</button>
-                  <button type="button" aria-pressed={pageGridZoom === 'large'} onClick={() => setPageGridZoom('large')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أكبر</button>
+                  <button type="button" aria-pressed={pageGridZoom === 'compact'} onClick={() => setPageGridZoom('compact')} className="min-h-11 px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">أصغر</button>
+                  <button type="button" aria-pressed={pageGridZoom === 'normal'} onClick={() => setPageGridZoom('normal')} className="min-h-11 px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">متوسط</button>
+                  <button type="button" aria-pressed={pageGridZoom === 'large'} onClick={() => setPageGridZoom('large')} className="min-h-11 px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">أكبر</button>
                 </div>
               </div>
             </div>
