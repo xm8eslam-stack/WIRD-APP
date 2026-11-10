@@ -2951,6 +2951,7 @@ export class IndexedDbSyncJournal {
         };
         const initialized = new Set(metadata.remoteInitializedCollections || []);
         initialized.add(event.collection);
+        for (const collection of affectedCollections) initialized.add(collection);
         const nextMetadata: DeviceMetadata = {
           ...metadata,
           nextSequence: sequence + 1,
