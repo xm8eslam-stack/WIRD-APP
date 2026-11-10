@@ -44,6 +44,8 @@ test('reading position can be restored directly to its Surah and ayah', async ({
 
 
 test('Surah directory cards expose a keyboard-operable study action', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
   await page.goto('/#/library');
   await expect(page.getByRole('button', { name: 'فتح سورة الفاتحة للدراسة' })).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'فتح سورة البقرة للدراسة' }).focus();
