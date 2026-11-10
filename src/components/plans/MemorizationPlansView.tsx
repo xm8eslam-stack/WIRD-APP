@@ -169,6 +169,23 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
             </span>
           </div>
 
+          {plans.length === 0 ? (
+            <div role="status" className="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-5 py-10 text-center dark:border-stone-700 dark:bg-stone-900/50">
+              <Calendar className="mx-auto mb-3 h-8 w-8 text-emerald-700 dark:text-emerald-400" aria-hidden="true" />
+              <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100">لا توجد خطط جاهزة محفوظة حالياً</h4>
+              <p className="mx-auto mt-2 max-w-lg text-xs leading-6 text-stone-500 dark:text-stone-400">
+                يمكنك إنشاء خطة شخصية من محرك التخطيط الذكي، أو استيراد نسخة احتياطية تحتوي على خططك السابقة.
+              </p>
+              <button
+                type="button"
+                onClick={() => setActiveTab('engine')}
+                className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                إنشاء خطة ذكية
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {plans.map((plan) => {
               const percent = plan.totalUnits > 0
@@ -289,6 +306,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
               );
             })}
           </div>
+          )}
         </div>
       )}
 
