@@ -169,6 +169,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
     audioQueueRef.current?.stop();
     audioQueueRef.current = null;
     setIsPlaying(false);
+    setIsAudioPaused(false);
     setPlayingIndex(null);
 
     if (!pageSegments.length) {
