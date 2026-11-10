@@ -261,9 +261,11 @@ export async function resolveProjectionConflictUsingLocal(
       const latestLocal = localForCollection[localForCollection.length - 1];
       const groupedIsNewer = !!latestGrouped && (!latestLocal || latestGrouped.sequence > latestLocal.sequence);
       const selectedGrouped = groupedIsNewer ? latestGrouped?.operation : undefined;
-      const documentId = groupedIsNewer && typeof selectedGrouped?.documentId === 'string'
-        ? selectedGrouped.documentId
-        : (latestLocal?.documentId || remoteOperation.documentId);
+      if (localForCollection.some(item => item.documentId !== remoteOperation.documentId) ||
+          (selectedGrouped && selectedGrouped.documentId !== remoteOperation.documentId)) {
+        throw new Error('تغيّرت هوية مستند إحدى المجموعات بين النسخة السحابية والمحلية؛ لم نغيّر هوية المستند أثناء إعادة النشر.');
+      }
+      const documentId = remoteOperation.documentId;
       const sourcePayload = groupedIsNewer
         ? selectedGrouped?.payload
         : (latestLocal?.payload || remoteOperation.payload);
