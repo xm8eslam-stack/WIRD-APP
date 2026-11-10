@@ -10,19 +10,17 @@ export interface MushafViewBox {
   raw: string;
 }
 
-export interface MushafAyahArea {
+export interface MushafAyahCoordinate {
   surahNumber: number;
   ayahNumber: number;
-  x: number;
-  y: number;
-  polygon: string;
 }
 
 export interface MushafFacsimilePageData {
   page: number;
   svgUrl: string;
+  svgMarkup: string;
   viewBox: MushafViewBox;
-  ayahAreas: MushafAyahArea[];
+  ayahAreas: MushafAyahCoordinate[];
 }
 
 export interface MushafLocalAyahCoordinate {
@@ -30,19 +28,23 @@ export interface MushafLocalAyahCoordinate {
   numberInSurah: number;
 }
 
+const ALLOWED_SVG_ELEMENTS = new Set(['svg', 'g', 'path']);
+const ALLOWED_SVG_ATTRIBUTES = new Set([
+  'xmlns', 'xmlns:ayah', 'version', 'viewBox', 'xml:space',
+  'transform', 'id', 'class', 'd', 'fill', 'fill-rule', 'fill-opacity',
+  'ayah:x', 'ayah:y', 'number', 'ayah', 'surah'
+]);
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
-export function getMushafFacsimilePageUrls(page: number): { svgUrl: string; jsonUrl: string } {
+export function getMushafFacsimilePageUrls(page: number): { svgUrl: string } {
   if (!Number.isInteger(page) || page < 1 || page > 604) {
     throw new Error('رقم صفحة المصحف غير صالح.');
   }
   const filename = String(page).padStart(3, '0');
-  return {
-    svgUrl: `${MUSHAF_FACSIMILE_BASE_URL}/${filename}.svg`,
-    jsonUrl: `${MUSHAF_FACSIMILE_BASE_URL}/${filename}.json`
-  };
+  return { svgUrl: `${MUSHAF_FACSIMILE_BASE_URL}/${filename}.svg` };
 }
 
 export function parseMushafViewBox(svgMarkup: string): MushafViewBox {
@@ -62,56 +64,78 @@ export function parseMushafViewBox(svgMarkup: string): MushafViewBox {
   return { x: values[0], y: values[1], width: values[2], height: values[3], raw: raw.trim() };
 }
 
-function validatePolygon(polygon: string, viewBox: MushafViewBox): boolean {
-  if (typeof polygon !== 'string' || polygon.length > 20000) return false;
-  const values = polygon.trim().split(/[\\s,]+/).map(Number);
-  if (values.length < 6 || values.length % 2 !== 0 || !values.every(Number.isFinite)) return false;
-  const tolerance = Math.max(viewBox.width, viewBox.height) * 0.02;
-  for (let i = 0; i < values.length; i += 2) {
-    const x = values[i];
-    const y = values[i + 1];
-    if (x < viewBox.x - tolerance || x > viewBox.x + viewBox.width + tolerance ||
-        y < viewBox.y - tolerance || y > viewBox.y + viewBox.height + tolerance) return false;
-  }
-  return true;
+function readSvgAttribute(tag: string, attribute: string): string | null {
+  const escaped = attribute.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return tag.match(new RegExp('\\\\b' + escaped + '=["\\\\']([^"\\\\']*)["\\\\']', 'i'))?.[1] ?? null;
 }
 
-export function parseMushafAyahAreas(
-  raw: unknown,
-  viewBox: MushafViewBox
-): MushafAyahArea[] {
-  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 100) {
-    throw new Error('فهرس مواضع الآيات في الصفحة غير مكتمل.');
+export function parseMushafAyahCoordinates(svgMarkup: string): MushafAyahCoordinate[] {
+  const tags = [...svgMarkup.matchAll(/<path\\b[^>]*class=["'][^"']*\\bayahPolygon\\b[^"']*["'][^>]*>/gi)].map(match => match[0]);
+  if (tags.length === 0 || tags.length > 100) {
+    throw new Error('لم يتم العثور على طبقة مواضع الآيات الكاملة في صفحة المصحف.');
   }
   const seen = new Set<string>();
-  return raw.map((item: any) => {
-    if (!item || !Number.isInteger(item.surahNumber) || item.surahNumber < 1 || item.surahNumber > 114 ||
-        !Number.isInteger(item.ayahNumber) || item.ayahNumber < 1 ||
-        !isFiniteNumber(item.x) || !isFiniteNumber(item.y) ||
-        !validatePolygon(item.polygon, viewBox)) {
-      throw new Error('تحتوي صفحة المصحف على موضع آية غير صالح.');
+  return tags.map(tag => {
+    const surahNumber = Number(readSvgAttribute(tag, 'surah'));
+    const ayahNumber = Number(readSvgAttribute(tag, 'ayah'));
+    if (!Number.isInteger(surahNumber) || surahNumber < 1 || surahNumber > 114 ||
+        !Number.isInteger(ayahNumber) || ayahNumber < 1) {
+      throw new Error('تحتوي طبقة مواضع الآيات على إحداثيات غير صالحة.');
     }
-    const key = `${item.surahNumber}:${item.ayahNumber}`;
-    if (seen.has(key)) throw new Error('تكرر موضع الآية داخل فهرس الصفحة.');
+    const key = `${surahNumber}:${ayahNumber}`;
+    if (seen.has(key)) throw new Error('تكرر موضع الآية داخل صفحة المصحف.');
     seen.add(key);
-    return {
-      surahNumber: item.surahNumber,
-      ayahNumber: item.ayahNumber,
-      x: item.x,
-      y: item.y,
-      polygon: item.polygon
-    };
+    return { surahNumber, ayahNumber };
   });
 }
 
 /**
- * Page artwork and ayah polygons are display geometry only. This exact-coordinate
- * join keeps all Quran text, audio, tafsir, and progress bound to WIRD's local corpus.
+ * The upstream files contain only vector paths. Keep a strict element/attribute
+ * allowlist before inserting them into the DOM; reject text, scripts and links.
+ */
+export function sanitizeMushafSvgMarkup(svgMarkup: string): string {
+  if (typeof DOMParser === 'undefined' || typeof XMLSerializer === 'undefined') {
+    throw new Error('هذا المتصفح لا يدعم عرض صفحة المصحف المتجهية.');
+  }
+  const document = new DOMParser().parseFromString(svgMarkup, 'image/svg+xml');
+  if (document.querySelector('parsererror')) throw new Error('تعذر تحليل ملف صفحة المصحف.');
+  const root = document.documentElement;
+  if (root.localName !== 'svg' || root.namespaceURI !== 'http://www.w3.org/2000/svg') {
+    throw new Error('جذر ملف المصحف ليس عنصر SVG موثوقًا.');
+  }
+
+  const elements = [root, ...Array.from(root.querySelectorAll('*'))];
+  for (const element of elements) {
+    if (!ALLOWED_SVG_ELEMENTS.has(element.localName) ||
+        element.namespaceURI !== 'http://www.w3.org/2000/svg') {
+      throw new Error('يحتوي ملف المصحف على عنصر رسومي غير مسموح.');
+    }
+    for (const attribute of Array.from(element.attributes)) {
+      if (!ALLOWED_SVG_ATTRIBUTES.has(attribute.name)) {
+        element.removeAttributeNode(attribute);
+        continue;
+      }
+      const value = attribute.value;
+      if (/javascript:|data:|https?:|url\\s*\\(/i.test(value) &&
+          attribute.name !== 'xmlns' && attribute.name !== 'xmlns:ayah') {
+        throw new Error('يحتوي ملف المصحف على مرجع خارجي غير مسموح.');
+      }
+    }
+  }
+
+  const paths = root.querySelectorAll('path.ayahPolygon');
+  if (paths.length === 0) throw new Error('ملف الصفحة لا يحتوي على طبقة تفاعلية للآيات.');
+  return new XMLSerializer().serializeToString(root);
+}
+
+/**
+ * The vector artwork supplies geometry only. Quran text, audio, tafsir and
+ * progress always resolve through WIRD's own local ayah records.
  */
 export function matchMushafAyahAreas<T extends MushafLocalAyahCoordinate>(
-  areas: MushafAyahArea[],
+  areas: MushafAyahCoordinate[],
   localAyahs: T[]
-): Array<{ area: MushafAyahArea; ayah: T }> {
+): Array<{ area: MushafAyahCoordinate; ayah: T }> {
   const local = new Map(localAyahs.map(ayah => [`${ayah.surahNumber}:${ayah.numberInSurah}`, ayah]));
   if (local.size !== localAyahs.length || local.size !== areas.length) {
     throw new Error('عدد الآيات في تخطيط الصفحة لا يطابق نص وِرد المحلي.');
@@ -131,21 +155,18 @@ export async function loadMushafFacsimilePage(
   page: number,
   signal?: AbortSignal
 ): Promise<MushafFacsimilePageData> {
-  const { svgUrl, jsonUrl } = getMushafFacsimilePageUrls(page);
-  const [svgResponse, jsonResponse] = await Promise.all([
-    fetch(svgUrl, { signal, mode: 'cors', credentials: 'omit' }),
-    fetch(jsonUrl, { signal, mode: 'cors', credentials: 'omit', headers: { Accept: 'application/json' } })
-  ]);
-  if (!svgResponse.ok || !jsonResponse.ok) {
-    throw new Error('تعذر تحميل بيانات الصفحة المطبوعة؛ يمكنك متابعة القراءة بالعرض المرن.');
+  const { svgUrl } = getMushafFacsimilePageUrls(page);
+  const response = await fetch(svgUrl, { signal, mode: 'cors', credentials: 'omit', headers: { Accept: 'image/svg+xml' } });
+  if (!response.ok) {
+    throw new Error('تعذر تحميل الصفحة المطبوعة؛ يمكنك متابعة القراءة بالعرض المرن.');
   }
-  const svgType = (svgResponse.headers.get('content-type') || '').toLowerCase();
-  const jsonType = (jsonResponse.headers.get('content-type') || '').toLowerCase();
-  if (!svgType.includes('image/svg+xml') || !jsonType.includes('application/json')) {
-    throw new Error('نوع ملفات صفحة المصحف لا يطابق الصيغة المتوقعة.');
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.includes('image/svg+xml')) {
+    throw new Error('نوع ملف صفحة المصحف لا يطابق صيغة SVG المتوقعة.');
   }
-  const [svgMarkup, rawAreas] = await Promise.all([svgResponse.text(), jsonResponse.json()]);
+  const svgMarkup = await response.text();
   const viewBox = parseMushafViewBox(svgMarkup);
-  const ayahAreas = parseMushafAyahAreas(rawAreas, viewBox);
-  return { page, svgUrl, viewBox, ayahAreas };
+  const ayahAreas = parseMushafAyahCoordinates(svgMarkup);
+  const safeSvgMarkup = sanitizeMushafSvgMarkup(svgMarkup);
+  return { page, svgUrl, svgMarkup: safeSvgMarkup, viewBox, ayahAreas };
 }
