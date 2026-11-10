@@ -10,6 +10,7 @@ let offlinePackagePreparationInProgress = false;
 const MAX_SESSION_AUDIO_PRELOAD = 20;
 const MAX_AUDIO_CACHE_ENTRIES = 40;
 const PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json';
+const QURAN_FONT_URL = 'https://verses.quran.foundation/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2';
 
 const OFFLINE_ASSET_CONTENT_TYPES = {
   '.js': ['application/javascript', 'text/javascript', 'application/ecmascript', 'text/ecmascript'],
@@ -58,6 +59,26 @@ async function fetchWithTimeout(input, init, timeoutMs) {
     return await fetch(input, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timeoutId);
+  }
+}
+
+function isValidQuranFontResponse(response) {
+  const contentType = (response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  return response.status === 200 && response.type === 'cors' &&
+    ['font/woff2', 'application/font-woff2', 'application/octet-stream'].includes(contentType);
+}
+
+async function precacheQuranFont(cache) {
+  const request = new Request(QURAN_FONT_URL, { mode: 'cors', credentials: 'omit' });
+  try {
+    const cached = await cache.match(request);
+    if (cached && isValidQuranFontResponse(cached)) return;
+    if (cached) await cache.delete(request);
+    const response = await fetchWithTimeout(request, {}, 8000);
+    if (isValidQuranFontResponse(response)) await cache.put(request, response.clone());
+  } catch (error) {
+    // The official Quran font is an enhancement; its failure must not block the app shell.
+    console.warn('[WIRD SW] Official Uthmanic font could not be pre-cached:', error);
   }
 }
 
@@ -176,11 +197,13 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/favicon.svg'
 ];
 
 async function precacheApplicationShell(cache) {
   await cache.addAll(STATIC_ASSETS);
+  await precacheQuranFont(cache);
 
   const response = await fetch(PRECACHE_MANIFEST_URL, { cache: 'no-store' });
   if (!response.ok) {
@@ -351,7 +374,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
+  if (url.href === QURAN_FONT_URL) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      if (cached && isValidQuranFontResponse(cached)) return cached;
+      if (cached) await cache.delete(req);
+      try {
+        const response = await fetchWithTimeout(req, {}, 8000);
+        if (isValidQuranFontResponse(response)) await cache.put(req, response.clone());
+        return response;
+      } catch {
+        const fallback = await cache.match(req);
+        return fallback && isValidQuranFontResponse(fallback) ? fallback : Response.error();
+      }
+    })());
+    return;
+  }
+
+  if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     event.respondWith(
       caches.match(req).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
