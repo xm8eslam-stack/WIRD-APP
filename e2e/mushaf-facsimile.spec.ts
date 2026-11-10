@@ -98,6 +98,7 @@ test('printed page coordinates resolve local Quran text even when flexible page 
 
   const printedPage = page.getByRole('group', { name: 'صفحة المصحف المطبوعة رقم 120' });
   await expect(printedPage).toBeVisible();
+  await expect(printedPage.locator('svg')).toHaveAttribute('viewBox', '0 0 341.75 547.98');
   const ayah77 = page.getByRole('button', { name: 'تفسير الآية 77 من سورة المائدة' });
   await expect(ayah77).toBeVisible();
   await expect(page.getByRole('button', { name: 'استماع للصفحة' })).toBeEnabled();
