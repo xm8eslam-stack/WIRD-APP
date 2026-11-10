@@ -133,7 +133,7 @@ export async function runQuranAudioQueueControllerTests(): Promise<{ passed: num
     let rejectPlay: ((error: Error) => void) | null = null;
     const queue = new QuranAudioQueueController({}, url => {
       const audio = new MockQuranAudio(url);
-      audio.playOverride = new Promise<void>((_resolve, reject) => { rejectPlay = reject; });
+      audio.playOverride = new Promise<void>((_resolve, reject) => { if (!rejectPlay) rejectPlay = reject; });
       audios.push(audio);
       return audio;
     });
