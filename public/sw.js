@@ -77,11 +77,24 @@ async function cacheSessionAudio(rawUrls) {
   for (const rawUrl of urls) {
     try {
       const url = new URL(rawUrl);
-      if (url.protocol !== 'https:' || url.hostname !== 'everyayah.com' || !url.pathname.startsWith('/data/') || !url.pathname.endsWith('.mp3')) continue;
-      const request = new Request(url.href, { mode: 'no-cors', credentials: 'omit' });
+      const isEveryAyah = url.protocol === 'https:' && !url.search && !url.hash &&
+        url.hostname === 'everyayah.com' &&
+        /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname);
+      const isApprovedQuranCdn = url.protocol === 'https:' && !url.search && !url.hash &&
+        url.hostname === 'cdn.islamic.network' &&
+        /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname);
+      if (!isEveryAyah && !isApprovedQuranCdn) continue;
+      const request = new Request(url.href, {
+        mode: isEveryAyah ? 'no-cors' : 'cors',
+        credentials: 'omit'
+      });
       if (await cache.match(request)) continue;
       const response = await fetch(request);
-      if (response && (response.type === 'opaque' || response.status === 200)) {
+      const contentType = (response.headers.get('content-type') || '').toLowerCase();
+      const validResponse = isEveryAyah
+        ? response.type === 'opaque' || (response.status === 200 && contentType.startsWith('audio/'))
+        : response.status === 200 && response.type === 'cors' && contentType.startsWith('audio/');
+      if (validResponse) {
         await cache.put(request, response.clone());
         await trimAudioCache(cache);
       }
@@ -213,7 +226,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Session audio cache: only explicitly selected EveryAyah recitations are stored.
-  if (url.hostname === 'everyayah.com' && url.pathname.startsWith('/data/') && url.pathname.endsWith('.mp3')) {
+  const isEveryAyahAudio = url.protocol === 'https:' && !url.search && !url.hash && url.hostname === 'everyayah.com' &&
+    /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname);
+  const isApprovedQuranCdnAudio = url.protocol === 'https:' && !url.search && !url.hash && url.hostname === 'cdn.islamic.network' &&
+    /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname);
+  if (url.protocol === 'https:' && (isEveryAyahAudio || isApprovedQuranCdnAudio)) {
     event.respondWith((async () => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
       const cached = await cache.match(req);

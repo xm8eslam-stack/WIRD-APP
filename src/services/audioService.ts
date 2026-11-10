@@ -14,3 +14,31 @@ export function formatAyahAudioUrl(surahNumber: number, ayahNumberInSurah: numbe
   const a = String(ayahNumberInSurah).padStart(3, '0');
   return `https://everyayah.com/data/${reciter.subfolder}/${s}${a}.mp3`;
 }
+
+/**
+ * Ask the active service worker to persist the next short recitation segment.
+ * This is opportunistic: playback never waits for caching, and the worker
+ * applies its own strict host/path allowlist and bounded cache policy.
+ */
+export function requestOfflineAudioCache(urls: string[]): void {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  const safeUrls = urls.slice(0, 20).filter(rawUrl => {
+    try {
+      const url = new URL(rawUrl);
+      return url.protocol === 'https:' && !url.search && !url.hash &&
+        ((url.hostname === 'everyayah.com' &&
+          /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname)) ||
+         (url.hostname === 'cdn.islamic.network' &&
+          /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname)));
+    } catch {
+      return false;
+    }
+  });
+  if (!safeUrls.length) return;
+  navigator.serviceWorker.ready
+    .then(registration => {
+      const worker = navigator.serviceWorker.controller || registration.active || registration.waiting;
+      worker?.postMessage({ type: 'WIRD_CACHE_SESSION_AUDIO', urls: safeUrls });
+    })
+    .catch(error => console.warn('[WIRD Audio] Offline audio pre-cache unavailable:', error));
+}

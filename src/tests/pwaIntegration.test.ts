@@ -60,8 +60,21 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
     assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
-    assert(swContent.includes("url.hostname !== 'everyayah.com'"), 'Only the approved recitation host may be pre-cached');
-    assert(swContent.includes("mode: 'no-cors'"), 'Cross-origin audio must support opaque CDN responses');
+    const audioService = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
+    assert(audioService.includes('requestOfflineAudioCache'), 'Quran audio service must expose opportunistic offline pre-caching');
+    assert(audioService.includes("url.hostname === 'everyayah.com'"), 'Audio client must restrict EveryAyah URLs to the reviewed host');
+    assert(audioService.includes('Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps'), 'EveryAyah audio client must restrict reciter folders to the bundled catalogue');
+    assert(audioService.includes("url.hostname === 'cdn.islamic.network'"), 'Audio client must support the curated Quran CDN used by ruqyah');
+    const quranLibrary = fs.readFileSync(path.resolve('./src/components/library/QuranLibraryView.tsx'), 'utf8');
+    const mushafReader = fs.readFileSync(path.resolve('./src/components/library/QuranMushafReader.tsx'), 'utf8');
+    const ruqyahView = fs.readFileSync(path.resolve('./src/components/ruqyah/RuqyahView.tsx'), 'utf8');
+    assert(quranLibrary.includes('requestOfflineAudioCache('), 'Quran library playback must pre-cache its upcoming audio segment');
+    assert(mushafReader.includes('requestOfflineAudioCache('), 'Printed Mushaf playback must pre-cache its upcoming audio segment');
+    assert(ruqyahView.includes('requestOfflineAudioCache('), 'Ruqyah playback must pre-cache its upcoming audio segment');
+
+    assert(swContent.includes("url.hostname === 'everyayah.com'"), 'EveryAyah audio must use an exact hostname allowlist');
+    assert(swContent.includes("url.hostname === 'cdn.islamic.network'"), 'Ruqyah CDN audio must use an exact hostname allowlist');
+    assert(swContent.includes("mode: isEveryAyah ? 'no-cors' : 'cors'"), 'Audio cache must use provider-appropriate CORS modes');
     assert(swContent.includes('name !== AUDIO_CACHE_NAME'), 'Audio cache must survive shell cache upgrades');
     assert(swContent.includes("event.waitUntil("), 'SW must handle install/activate wait');
     assert(swContent.includes("caches.delete"), 'SW must clean up old versioned caches on activate');
