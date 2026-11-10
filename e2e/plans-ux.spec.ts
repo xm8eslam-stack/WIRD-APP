@@ -38,4 +38,20 @@ test.describe('WIRD memorization plans UX', () => {
 
     await expect(page.getByRole('button', { name: /معاينة الجدول الزمني المقترح/ })).toHaveCSS('min-height', '44px');
   });
+
+  test('empty preset state explains the next step and returns to the planning engine', async ({ page }) => {
+    const tabs = page.getByRole('group', { name: 'أقسام الخطط' });
+    const presets = tabs.getByRole('button', { name: /النماذج والخطط المعتمدة/ });
+    await expect(presets).toHaveAttribute('aria-pressed', 'false');
+    await presets.click();
+    await expect(presets).toHaveAttribute('aria-pressed', 'true');
+
+    const emptyState = page.getByRole('status').filter({ hasText: 'لا توجد خطط جاهزة محفوظة حالياً' });
+    await expect(emptyState).toBeVisible();
+    const openEngine = emptyState.getByRole('button', { name: 'فتح محرك التخطيط الذكي' });
+    await expect(openEngine).toHaveCSS('min-height', '44px');
+    await openEngine.click();
+    await expect(tabs.getByRole('button', { name: /محرك التخطيط الذكي/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
 });
