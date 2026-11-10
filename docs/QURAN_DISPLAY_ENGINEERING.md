@@ -57,3 +57,23 @@ Current implementation includes the non-mutating shared text primitive, RTL/spac
 ## Verification snapshot
 
 The GitHub Actions run for the validated implementation reported 588 automated assertions passed, 31 Firestore Rules Emulator tests passed, and 46 desktop/mobile Playwright tests passed. TypeScript, dependency audit, native API smoke, approved Quran audio CDN checks, production build, and server startup smoke also passed. The Tanzil validator reported 114 surahs, 6,236 ayahs, and 6,236 unique coordinate matches with no reported discrepancies. The same gates must be rerun on the final commit before merge.
+
+
+## Printed Mushaf facsimile implementation (2026-11-10)
+
+The first implementation of a true printed-page mode is now isolated behind an explicit reader choice:
+
+- **Printed page:** one pinned Hafs/KFGQPC SVG page from Quran.ws release v1.1.1, with its native ayah hit regions.
+- **Flexible text:** the existing WIRD-local Quran text renderer remains available as the offline-safe fallback.
+
+Important correction to the earlier source comparison: the QUL 1421H layout and QPC V2 font resources remain excluded because their resource-specific license details were not clear enough to vendor. The selected vector archive uses KFGQPC's official 1441H digital artwork and its own CC BY 4.0 ayah geometry layer. KFGQPC's published rights permit free digital publishing and software/web use. See `docs/THIRD_PARTY_QURAN_FACSIMILE.md` for exact provenance and boundaries.
+
+Implementation rules:
+- SVG vector paths are not a Quran text source. They contain no selectable Unicode Quran text.
+- WIRD's existing local corpus remains authoritative for all ayah text and application behavior.
+- The reader sanitizes the fetched SVG with a strict element/attribute allowlist, then checks that every embedded ayah coordinate matches exactly one local ayah for the selected page. Any mismatch or source failure returns the user to the flexible local text view.
+- The native SVG `.ayahPolygon` path is used for hit-testing; this avoids trying to convert the sidecar's two geometry encodings (path commands on pages 3–604 and point lists on the opening spread) into a single invented geometry format.
+- The original per-file `viewBox` is retained, and the opening spread is fitted to its actual rendered ink after layout.
+- A separate service-worker cache stores only recently viewed pinned Hafs/KFGQPC SVG pages, with a strict 24-file bound.
+
+The feature is not yet approved as the default reader mode. Required remaining gates: exact local coordinate coverage across all 604 pages, opening-spread and dense-page visual review, actual device testing on iPadOS/Android, and first-load/offline cache verification. Until those gates pass, the flexible local-text mode remains the default and permanent fallback.
