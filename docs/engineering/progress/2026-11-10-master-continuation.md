@@ -16,7 +16,7 @@ This checkpoint supplements older sync-focused resume notes. Always re-fetch the
 
 ## Active feature work
 
-### PR #298 — Global sidebar controls
+### PR #304 — Global sidebar controls
 
 Branch: `feat/sidebar-global-controls-20261110`
 
@@ -29,7 +29,7 @@ Branch: `feat/sidebar-global-controls-20261110`
 - First exact-head run failed because the E2E locator matched both header and sidebar close buttons. The test now targets the header toggle explicitly.
 - Latest exact-head run status must be checked before merge.
 
-PR #292 is closed as superseded by PR #298. PR #294 is closed as superseded by PR #303. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
+PR #292, #298, and #291 are closed as superseded by PR #304. PR #294 is closed as superseded by PR #303. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
 
 ### PR #303 — Continuous Quran audio and segment repetition
 
@@ -67,6 +67,14 @@ Branch: `fix/ruqyah-index-resilience-20261110`
 - No third-party Arabic text, translation, tafsir, or religious wording is cached or displayed.
 - No external dataset was bundled because the reviewed public repository did not expose explicit license metadata.
 - Exact-head Quality Gate must be checked on the latest branch SHA.
+
+
+## Related existing work to coordinate before merge
+
+- PR #290 (memorization session display controls) passed its observed exact-head Quality Gate on SHA `8f1f2ab52b5cf6f729591c01763a79e401965a9c`; it changes a separate section of the shared session component and should be reviewed/merged without dropping the new audio queue work.
+- PR #300 (offline Quran and Ruqyah audio cache/storage protection) is still running its Quality Gate. It changes `QuranMushafReader.tsx`, `QuranLibraryView.tsx`, the service worker, and settings; coordinate it with PRs #302 and #303 because the same reader/library files are being extended.
+- PR #293 (verified offline package readiness) is still in progress and also touches service-worker/settings code. Reconcile it with PR #300 rather than merging conflicting settings imports blindly.
+- PR #291's focus-trap implementation was incorporated into PR #304; its failing Playwright selector was corrected to use an exact accessible name.
 
 ## Validation and merge policy
 
