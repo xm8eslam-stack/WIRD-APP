@@ -929,7 +929,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="button"
                   onClick={() => setFormData({ ...formData, theme: 'dark' })}
                   aria-pressed={formData.theme === 'dark'}
-                  className={`py-2 px-3 rounded-xl border flex items-center justify-center gap-2 font-semibold ${
+                  className={`min-h-11 py-2 px-3 rounded-xl border flex items-center justify-center gap-2 font-semibold ${
                     formData.theme === 'dark'
                       ? 'bg-emerald-950 border-emerald-700 text-emerald-200'
                       : 'border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-400'
