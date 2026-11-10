@@ -1,5 +1,5 @@
 import type { BackupPayload, JournalProjectionOperation } from './storageService';
-import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService, validateBackupPayload } from './storageService';
+import { CLEAN_INITIAL_PROFILE, STORAGE_KEYS, StorageService, createJournalSnapshotFingerprint, validateBackupPayload } from './storageService';
 import { migrateLegacyDataLosslessly, type MigrationReport } from './unifiedPortionService';
 import { createSecureId } from './secureId';
 import { persistJournaledTransaction, type JournaledSnapshotOptions, type JournaledSnapshotWriteResult } from './journaledSnapshotService';
@@ -121,6 +121,21 @@ export function buildBackupImportOperations(
   }
 
   const operations: JournalProjectionOperation[] = [];
+  let baseLogsFingerprint: string | undefined;
+  let baseWeakVersesFingerprint: string | undefined;
+  try {
+    if (parsed.logs !== undefined) {
+      baseLogsFingerprint = createJournalSnapshotFingerprint(StorageService.getLogs());
+    }
+    if (parsed.weakVerses !== undefined) {
+      baseWeakVersesFingerprint = createJournalSnapshotFingerprint(StorageService.getWeakVerses());
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'تعذر التحقق من السجلات المحلية قبل الاستيراد؛ لم يتم تغيير البيانات.'
+    };
+  }
   if (parsed.profile !== undefined) {
     operations.push({ collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: parsed.profile } });
   }
@@ -131,13 +146,13 @@ export function buildBackupImportOperations(
     operations.push({ collection: 'enginePlans', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.enginePlans } });
   }
   if (parsed.logs !== undefined) {
-    operations.push({ collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.logs } });
+    operations.push({ collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.logs, baseSnapshotFingerprint: baseLogsFingerprint } });
   }
   if (parsed.tests !== undefined) {
     operations.push({ collection: 'tests', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.tests } });
   }
   if (parsed.weakVerses !== undefined) {
-    operations.push({ collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.weakVerses } });
+    operations.push({ collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: parsed.weakVerses, baseSnapshotFingerprint: baseWeakVersesFingerprint } });
   }
   if (parsed.ruqyahProgress !== undefined) {
     operations.push({
@@ -234,14 +249,25 @@ export async function importBackupFile(
 export async function resetAllDataJournaled(
   options: JournaledSnapshotOptions = {}
 ): Promise<BackupPersistenceResult> {
+  let baseWeakVersesFingerprint: string;
+  let baseLogsFingerprint: string;
+  try {
+    baseWeakVersesFingerprint = createJournalSnapshotFingerprint(StorageService.getWeakVerses());
+    baseLogsFingerprint = createJournalSnapshotFingerprint(StorageService.getLogs());
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'تعذر التحقق من السجلات المحلية قبل إعادة الضبط؛ لم يتم تغيير البيانات.'
+    };
+  }
   const operations: JournalProjectionOperation[] = [
     { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: { ...CLEAN_INITIAL_PROFILE } } },
     { collection: 'plans', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
     { collection: 'enginePlans', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
     { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
-    { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'weakVerses', documentId: 'snapshot', operation: 'upsert', payload: { records: [], baseSnapshotFingerprint: baseWeakVersesFingerprint } },
     { collection: 'tests', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
-    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: [] } },
+    { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: [], baseSnapshotFingerprint: baseLogsFingerprint } },
     { collection: 'ruqyahProgress', documentId: 'snapshot', operation: 'upsert', payload: { snapshot: { schemaVersion: 1, updatedAtMs: Date.now(), counts: {} } } }
   ];
   try {
