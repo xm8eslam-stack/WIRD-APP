@@ -22,6 +22,22 @@ test.describe('WIRD settings UX', () => {
     await expect(page.getByRole('combobox', { name: 'عدد مرات تكرار الآية المستهدف' })).toHaveCSS('min-height', '44px');
   });
 
+  test('reset confirmation traps focus, closes on Escape, and restores its trigger', async ({ page }) => {
+    const trigger = page.getByRole('button', { name: 'إعادة ضبط المصنع للبيانات' });
+    await trigger.click();
+    const dialog = page.getByRole('dialog', { name: 'تأكيد إعادة الضبط الافتراضي' });
+    const cancel = dialog.getByRole('button', { name: 'إلغاء التراجع' });
+    const confirm = dialog.getByRole('button', { name: 'تأكيد إعادة الضبط' });
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(confirm).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(cancel).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
   test('offline, backup, save, and reset actions remain easy to reach on a phone', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 

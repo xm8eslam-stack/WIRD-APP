@@ -79,6 +79,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [isResetting, setIsResetting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const resetDialogRef = useRef<HTMLDivElement | null>(null);
+  const demoDialogRef = useRef<HTMLDivElement | null>(null);
+  const resetCancelRef = useRef<HTMLButtonElement | null>(null);
+  const demoCancelRef = useRef<HTMLButtonElement | null>(null);
+  const resetTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const demoTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const isResettingRef = useRef(false);
+
+  useEffect(() => {
+    const activeDialog = showResetConfirm ? 'reset' : showDemoConfirm ? 'demo' : null;
+    if (!activeDialog) return;
+
+    const dialog = activeDialog === 'reset' ? resetDialogRef.current : demoDialogRef.current;
+    const initialFocus = activeDialog === 'reset' ? resetCancelRef.current : demoCancelRef.current;
+    const trigger = activeDialog === 'reset' ? resetTriggerRef.current : demoTriggerRef.current;
+    initialFocus?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (activeDialog === 'reset') {
+          if (!isResettingRef.current) setShowResetConfirm(false);
+        } else {
+          setShowDemoConfirm(false);
+        }
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
+      trigger?.focus();
+    };
+  }, [showResetConfirm, showDemoConfirm]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,7 +143,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   const handleConfirmReset = async () => {
-    if (isResetting) return;
+    if (isResettingRef.current) return;
+    isResettingRef.current = true;
     setIsResetting(true);
     try {
       const resetSucceeded = await onResetAllData();
@@ -103,6 +156,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       setShowResetConfirm(false);
       onToast?.("تمت إعادة ضبط البيانات وحفظها في سجل الاستعادة بنجاح", "info");
     } finally {
+      isResettingRef.current = false;
       setIsResetting(false);
     }
   };
@@ -1022,7 +1076,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowDemoConfirm(true)}
+            onClick={(event) => { demoTriggerRef.current = event.currentTarget; setShowDemoConfirm(true); }}
             className="flex min-h-11 items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-xl font-semibold border border-amber-300 dark:border-amber-800 transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -1044,7 +1098,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowResetConfirm(true)}
+            onClick={(event) => { resetTriggerRef.current = event.currentTarget; setShowResetConfirm(true); }}
             className="flex min-h-11 items-center gap-1.5 px-4 py-2.5 text-stone-500 hover:text-red-600 text-xs font-medium transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -1056,7 +1110,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* In-app Reset Confirmation Dialog */}
       {showResetConfirm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="wird-reset-confirm-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+          <div ref={resetDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-reset-confirm-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl space-y-4 text-right dark:border-stone-700 dark:bg-stone-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                 <ShieldAlert className="w-6 h-6" />
@@ -1077,6 +1131,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
+                ref={resetCancelRef}
                 type="button"
                 onClick={() => setShowResetConfirm(false)}
                 disabled={isResetting}
@@ -1100,7 +1155,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {/* In-app Demo Mode Confirmation Dialog */}
       {import.meta.env.DEV && showDemoConfirm && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="wird-demo-confirm-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+          <div ref={demoDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-demo-confirm-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl space-y-4 text-right dark:border-stone-700 dark:bg-stone-800">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <Sparkles className="w-6 h-6" />
@@ -1121,6 +1176,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
             <div className="flex items-center justify-end gap-3 pt-2">
               <button
+                ref={demoCancelRef}
                 type="button"
                 onClick={() => setShowDemoConfirm(false)}
                 className="min-h-11 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
