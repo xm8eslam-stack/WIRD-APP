@@ -25,7 +25,7 @@ export function requestOfflineAudioCache(urls: string[]): void {
   const safeUrls = urls.slice(0, 20).filter(rawUrl => {
     try {
       const url = new URL(rawUrl);
-      return url.protocol === 'https:' &&
+      return url.protocol === 'https:' && !url.search && !url.hash &&
         ((url.hostname === 'everyayah.com' &&
           /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname)) ||
          (url.hostname === 'cdn.islamic.network' &&
