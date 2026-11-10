@@ -135,9 +135,9 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
     host.addEventListener('click', handleClick);
     host.addEventListener('keydown', handleKeyDown);
 
-    // The opening spread (pages 1–2) has a deliberately oversized viewBox.
-    // Fit the rendered ink, as prescribed by the source renderer documentation.
-    const frame = requestAnimationFrame(() => {
+    // Only the opening spread (pages 1–2) has a deliberately oversized viewBox.
+    // Preserve the publisher's exact page bounds for all ordinary pages.
+    const frame = page <= 2 ? requestAnimationFrame(() => {
       try {
         const bounds = root.getBBox();
         if (bounds.width > 0 && bounds.height > 0) {
@@ -147,7 +147,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
       } catch {
         // Keep the publisher's original viewBox if the browser cannot measure SVG ink.
       }
-    });
+    }) : 0;
 
     return () => {
       cancelAnimationFrame(frame);
