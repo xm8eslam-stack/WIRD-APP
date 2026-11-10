@@ -179,10 +179,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   // Keyboard shortcut: Spacebar to repeat
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') {
-        e.preventDefault();
-        setRepeatCount(c => c + 1);
-      }
+      if (e.code !== 'Space' || e.repeat) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('button, a, input, select, textarea, [contenteditable="true"], [role="button"], [role="link"]')) return;
+      e.preventDefault();
+      setRepeatCount(count => count + 1);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
@@ -685,18 +686,20 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               const masked = isWordMasked(idx);
 
               return (
-                <span
-                  key={idx}
-                  onClick={() => masked ? handleToggleWordReveal(idx) : null}
-                  className={`inline-block px-2.5 py-0.5 rounded-lg transition-all select-none ${
-                    masked
-                      ? 'bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500'
-                      : 'cursor-default'
-                  }`}
-                  title={masked ? "اضغط لإظهار الكلمة للتسميع" : undefined}
-                >
-                  {word}
-                </span>
+                {masked ? (
+                  <button
+                    type="button"
+                    key={idx}
+                    onClick={() => handleToggleWordReveal(idx)}
+                    aria-label={`إظهار الكلمة رقم ${idx + 1}`}
+                    className="inline-flex min-h-11 items-center justify-center px-2.5 py-0.5 rounded-lg transition-all select-none bg-stone-200 dark:bg-stone-700 text-stone-200 dark:text-stone-700 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-stone-900 dark:hover:text-stone-100 active:scale-95 border border-dashed border-stone-400/80 dark:border-stone-500"
+                    title="اضغط لإظهار الكلمة للتسميع"
+                  >
+                    {word}
+                  </button>
+                ) : (
+                  <span key={idx} className="inline-block px-2.5 py-0.5 select-none">{word}</span>
+                )}
               );
             })}
             <span className="ayah-number">{currentAyah.numberInSurah}</span>
