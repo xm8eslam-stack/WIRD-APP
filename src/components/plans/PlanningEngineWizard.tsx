@@ -472,7 +472,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               <div className="grid grid-cols-1 gap-2">
                 {([
                   { id: 'verses_per_day' as const, title: 'عدد آيات ثابت', detail: 'تحدد مقداراً واضحاً في كل يوم حفظ' },
-                  { id: 'pages_per_day' as const, title: 'عدد صفحات ثابت', detail: 'مناسب لمن يضبط ورده بمصحف المدينة' },
+                  { id: 'pages_per_day' as const, title: 'عدد صفحات ثابت', detail: 'تقدير تقريبي؛ يعتمد حالياً متوسط 15 آية للصفحة' },
                   { id: 'by_target_date' as const, title: 'موعد ختم مستهدف', detail: 'يوزع المقدار تلقائياً على أيامك النشطة' }
                 ]).map(option => {
                   const selected = paceType === option.id;
@@ -521,7 +521,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
               {paceType === 'pages_per_day' && (
                 <div>
                   <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    عدد الصفحات يومياً:
+                    عدد الصفحات يومياً (تقديري):
                   </label>
                   <input
                     type="number"
