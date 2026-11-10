@@ -987,9 +987,24 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           <span>السابقة</span>
         </button>
 
-        <span className="shrink-0 px-2 text-[11px] sm:text-xs font-bold text-stone-500 tabular-nums" aria-live="polite">
-          {currentAyahIndex + 1} / {sessionAyahs.length}
-        </span>
+        <label className="sr-only" htmlFor="session-ayah-jump">الانتقال المباشر إلى آية في الجلسة</label>
+        <select
+          id="session-ayah-jump"
+          aria-label="الانتقال المباشر إلى آية في الجلسة"
+          title="انتقل مباشرة إلى آية"
+          value={currentAyahIndex}
+          onChange={event => {
+            const nextIndex = Number(event.target.value);
+            if (!Number.isInteger(nextIndex) || nextIndex < 0 || nextIndex >= sessionAyahs.length || nextIndex === currentAyahIndex) return;
+            handleStopAudio();
+            setCurrentAyahIndex(nextIndex);
+          }}
+          className="min-h-14 w-20 sm:w-28 shrink-0 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-1 text-center text-xs font-semibold text-stone-700 dark:text-stone-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        >
+          {sessionAyahs.map((ayah, index) => (
+            <option key={ayah.number} value={index}>آية {ayah.numberInSurah}</option>
+          ))}
+        </select>
 
         <button
           onClick={handleNextAyah}
