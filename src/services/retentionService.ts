@@ -584,7 +584,7 @@ export const RetentionService = {
         operations: [
           { collection: 'portions', documentId: 'snapshot', operation: 'upsert', payload: { records: updatedList } },
           { collection: 'activityEvents', documentId: 'snapshot', operation: 'upsert', payload: { records: activity.logs } },
-          { collection: 'profile', documentId: 'profile', operation: 'upsert', payload: { profile: activity.profile } }
+          { collection: 'profile', documentId: 'main', operation: 'upsert', payload: { profile: activity.profile } }
         ]
       };
     } catch (error) {
