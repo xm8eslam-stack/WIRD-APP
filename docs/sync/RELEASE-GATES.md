@@ -297,3 +297,13 @@ This section is the current status and supersedes older historical statements wh
 - PR #200 is merged to `main` at `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; exact-head Quality Gate passed. It fixes grouped child document-ID forwarding and test snapshot-vs-per-result recovery semantics.
 - No Vercel deployment record was found for that merge SHA because the Vercel status check was blocked by `build-rate-limit`. Do not claim this patch is deployed until a matching Production deployment is verified.
 - PR #201 is open for a profile revision-key inconsistency: revision rating currently targets `profile/profile`, while other profile writers target `profile/main`. This must be unified to one revision stream before merge.
+
+
+
+## Current production deployment — 2026-11-10
+
+- PR #201 is merged to `main` at `12468243db7707c19a1bf75823ca1dc6e09f9ad8`; exact-head GitHub Quality Gate passed.
+- Production deployment `dpl_d4u8eFLiZoxAwnd6UW5tQk8GPTKt` is `READY` on `wird-app.vercel.app` and matches the merge SHA exactly.
+- This production deployment includes PR #200's grouped child document-ID propagation/recovery fix and PR #201's canonical profile document identity fix.
+- Remaining data-integrity work: weak-verse cross-device reconciliation including resolution anti-resurrection, and activity aggregation from immutable session events. No blind union or addition; tombstones remain blocked.
+- The user-reported two-device sync test predates these two latest code fixes; do not imply a fresh physical-device round trip was performed after this deployment.
