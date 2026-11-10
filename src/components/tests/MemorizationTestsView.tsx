@@ -230,7 +230,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
         </div>
 
         {/* Test Type 4 Tabs */}
-        <div role="group" aria-label="أنواع اختبارات الحفظ" className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-semibold">
+        <div role="group" aria-label="نوع الاختبار" className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-semibold">
           <button
             type="button"
             aria-pressed={selectedTestType === 'complete_verse'}
@@ -239,7 +239,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               setSelectedTestType('complete_verse');
               handleResetTest();
             }}
-            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTestType === 'complete_verse'
                 ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs'
                 : 'bg-[#faf8f5] dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-emerald-500'
@@ -260,7 +260,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               setSelectedTestType('bidirectional_recall');
               handleResetTest();
             }}
-            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTestType === 'bidirectional_recall'
                 ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs'
                 : 'bg-[#faf8f5] dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-emerald-500'
@@ -281,7 +281,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               setSelectedTestType('random_recall');
               handleResetTest();
             }}
-            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTestType === 'random_recall'
                 ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs'
                 : 'bg-[#faf8f5] dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-emerald-500'
@@ -302,7 +302,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               setSelectedTestType('mutashabihat');
               handleResetTest();
             }}
-            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+            className={`min-h-11 p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
               selectedTestType === 'mutashabihat'
                 ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs'
                 : 'bg-[#faf8f5] dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:border-emerald-500'
@@ -354,7 +354,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={handleResetTest}
-              className="flex min-h-11 items-center gap-2 px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+              className="flex min-h-11 items-center gap-2 px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               <RotateCcw className="w-4 h-4" />
               <span>إعادة الاختبار</span>
@@ -362,7 +362,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
           </div>
         </div>
       ) : isGenerating ? (
-        <div className="bg-white dark:bg-stone-800/90 rounded-3xl p-8 border border-stone-200/80 dark:border-stone-700/80 text-center text-sm text-stone-500">
+        <div role="status" aria-live="polite" className="bg-white dark:bg-stone-800/90 rounded-3xl p-8 border border-stone-200/80 dark:border-stone-700/80 text-center text-sm text-stone-500">
           جارٍ تجهيز أسئلة الاختبار من السور المحفوظة فقط...
         </div>
       ) : currentQuestions.length === 0 ? (
@@ -392,6 +392,21 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
             </span>
           </div>
 
+          <div
+            role="progressbar"
+            aria-label="تقدم الاختبار"
+            aria-valuemin={0}
+            aria-valuemax={currentQuestions.length}
+            aria-valuenow={currentQuestionIndex + 1}
+            aria-valuetext={`السؤال ${currentQuestionIndex + 1} من ${currentQuestions.length}`}
+            className="h-2 overflow-hidden rounded-full bg-stone-100 dark:bg-stone-700"
+          >
+            <div
+              className="h-full rounded-full bg-emerald-700 transition-[width]"
+              style={{ width: `${((currentQuestionIndex + 1) / currentQuestions.length) * 100}%` }}
+            />
+          </div>
+
           {/* Insufficient data notification banner */}
           {(!generationResult.hasSufficientData || generationResult.messageAr) && (
             <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
@@ -402,13 +417,13 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
           {/* Prompt */}
           <div className="space-y-3">
-            <h3 className="font-quran text-xl md:text-2xl text-stone-900 dark:text-stone-100 leading-relaxed text-right bg-[#fdfbf7] dark:bg-stone-900/60 p-5 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
+            <h3 aria-live="polite" aria-atomic="true" className="font-quran text-xl md:text-2xl text-stone-900 dark:text-stone-100 leading-relaxed text-right bg-[#fdfbf7] dark:bg-stone-900/60 p-5 rounded-2xl border border-stone-200/60 dark:border-stone-700/60">
               {displayPrompt || 'جارٍ تحميل النص الإملائي المعتمد...'}
             </h3>
           </div>
 
           {/* Options with Arabic letter marks (أ، ب، ج، د) */}
-          <div className="space-y-3">
+          <div role="group" aria-label="خيارات الإجابة" className="space-y-3">
             {displayOptions.map((opt, idx) => {
               const isSelected = selectedOption === idx;
               const isCorrect = idx === currentQ.correctIndex;
@@ -429,10 +444,10 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
                 <button
                   key={idx}
                   type="button"
-                  aria-pressed={selectedOption === idx}
+                  aria-pressed={isSelected}
                   onClick={() => handleSelectOption(idx)}
                   disabled={isAnswered}
-                  className={`w-full min-h-11 p-4 rounded-xl border text-right transition-all flex items-start gap-3 ${style}`}
+                  className={`w-full min-h-11 p-4 rounded-xl border text-right transition-all flex items-start gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${style}`}
                 >
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold font-quran ${
                     isAnswered && isCorrect
@@ -466,7 +481,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
 
           {/* Weak verse persistence feedback */}
           {weakVerseFeedback && (
-            <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
+            <div role="status" aria-live="polite" className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
               weakVerseFeedback.success
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-900 dark:text-emerald-200'
                 : 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 text-rose-900 dark:text-rose-200'
@@ -491,7 +506,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
                 <button
                   onClick={handleAddCurrentToWeakVerses}
                   disabled={isSavingWeakVerse}
-                  className="min-h-11 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 transition-colors"
+                  className="min-h-11 text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
                 >
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                   <span>{isSavingWeakVerse ? 'جارٍ حفظ الآية...' : 'تسجيل هذه الآية في قائمة الآيات الملتبسة'}</span>
@@ -501,7 +516,7 @@ export const MemorizationTestsView: React.FC<MemorizationTestsViewProps> = ({
               <button
                 onClick={handleNext}
                 disabled={isSavingTestResult}
-                className="flex min-h-11 items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+                className="flex min-h-11 items-center gap-2 px-6 py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               >
                 <span>{currentQuestionIndex === currentQuestions.length - 1 && testSaveError ? 'إعادة محاولة حفظ النتيجة' : 'السؤال التالي'}</span>
                 <ArrowLeft className="w-4 h-4" />
