@@ -497,6 +497,12 @@ export function runSessionPersistenceTests(): { passed: number; failed: number }
     }, 'snapshot'), 'A stale daily aggregate must not replace a divergent device snapshot');
     assert(JSON.stringify(StorageService.getLogs()) === before,
       'The concurrent daily activity aggregate must be preserved');
+    assert(StorageService.applyJournalProjection('activityEvents', {
+      records: prepared.logs,
+      baseSnapshotFingerprint: prepared.baseLogsFingerprint
+    }, 'snapshot', true), 'An explicit, user-confirmed use-remote decision may replace the local activity snapshot');
+    assert(JSON.stringify(StorageService.getLogs()) === JSON.stringify(prepared.logs),
+      'Explicit remote resolution must apply the selected activity snapshot');
     StorageService.__resetStorageForTests();
   });
 
