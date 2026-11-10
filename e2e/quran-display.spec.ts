@@ -177,6 +177,9 @@ test('Mushaf plays a selected ayah segment continuously and repeats the bounded 
 
   await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances.length)).toBe(2);
   await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].playCalls)).toBe(1);
+  await page.getByRole('button', { name: 'إيقاف مؤقت' }).click();
+  await expect(page.getByRole('button', { name: 'استئناف التلاوة' })).toBeVisible();
+  await page.getByRole('button', { name: 'استئناف التلاوة' }).click();
   await page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].onended?.(new Event('ended')));
   await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].playCalls)).toBe(1);
   await page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].onended?.(new Event('ended')));
