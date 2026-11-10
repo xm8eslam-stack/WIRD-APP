@@ -43,9 +43,13 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'bg-[#F2EDE2] dark:bg-[#111F36] text-[#1C4E46] dark:text-[#E0A96D] ring-1 ring-[#C59B27]/40 shadow-2xs'
                 : 'text-stone-700 dark:text-stone-300 hover:text-[#1C4E46] dark:hover:text-[#E0A96D] hover:bg-[#F2EDE2] dark:hover:bg-[#111F36]'
             }`}
-            title={isSidebarOpen ? "إغلاق الشريط الجانبي (Ctrl+B)" : "فتح الشريط الجانبي (Ctrl+B)"}
+            title={isSidebarOpen
+              ? "إغلاق الشريط الجانبي (Ctrl+B / Cmd+B)"
+              : "فتح الشريط الجانبي (Ctrl+B / Cmd+B)"}
             aria-label={isSidebarOpen ? "إغلاق الشريط الجانبي" : "فتح الشريط الجانبي"}
+            aria-keyshortcuts="Control+B Meta+B"
             aria-expanded={isSidebarOpen}
+            data-sidebar-state={isSidebarOpen ? "open" : "closed"}
           >
             <Menu className="w-5 h-5" />
           </button>
