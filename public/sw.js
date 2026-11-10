@@ -176,7 +176,7 @@ async function cacheSessionAudio(rawUrls) {
         credentials: 'omit'
       });
       if (await cache.match(request)) continue;
-      const response = await fetch(request);
+      const response = await fetchWithTimeout(request, {}, 10000);
       const contentType = (response.headers.get('content-type') || '').toLowerCase();
       const validResponse = isEveryAyah
         ? response.type === 'opaque' || (response.status === 200 && contentType.startsWith('audio/'))
