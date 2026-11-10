@@ -128,6 +128,24 @@ export async function runQuranAudioQueueControllerTests(): Promise<{ passed: num
     queue.stop();
   });
 
+  await test('repeat count can be changed safely while the queue is active', () => {
+    const audios: MockQuranAudio[] = [];
+    let completed = 0;
+    const queue = new QuranAudioQueueController({ onComplete: () => { completed += 1; } }, url => {
+      const audio = new MockQuranAudio(url);
+      audios.push(audio);
+      return audio;
+    });
+    queue.start({ tracks, startIndex: 0, endIndex: 1, repeatCount: 1 });
+    queue.setRepeatCount(2);
+    audios[0].onended?.(new Event('ended'));
+    audios[1].onended?.(new Event('ended'));
+    audios[2].onended?.(new Event('ended'));
+    audios[3].onended?.(new Event('ended'));
+    assert(completed === 1 && !queue.getState().active, 'updated repeat count should be honored through the final cycle');
+    queue.stop();
+  });
+
   await test('a play promise aborted by pause does not destroy the paused queue', async () => {
     const audios: MockQuranAudio[] = [];
     const rejectPlayRef: { current?: (error: Error) => void } = {};
