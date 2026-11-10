@@ -52,3 +52,20 @@ test('Surah directory cards expose a keyboard-operable study action', async ({ p
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: /تلاوة ودراسة: سورة البقرة/ })).toBeVisible();
 });
+
+
+test('Mushaf page jump rejects invalid pages and accepts a valid page', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/library');
+  await page.getByRole('button', { name: /فتح المصحف بالصفحات/ }).click();
+
+  const pageInput = page.getByRole('spinbutton', { name: 'رقم صفحة المصحف' });
+  await pageInput.fill('605');
+  await page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' }).click();
+  await expect(page.getByRole('alert')).toHaveText('أدخل رقم صفحة صحيحاً من 1 إلى 604.');
+
+  await pageInput.fill('2');
+  await page.getByRole('button', { name: 'انتقال إلى رقم الصفحة' }).click();
+  await expect(page.getByText('2 / 604')).toBeVisible();
+});
