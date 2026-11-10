@@ -55,7 +55,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes("url.protocol === 'https:'"), 'Mushaf page cache must reject insecure HTTP');
     assert(swContent.includes('await cache.delete(req);') && swContent.includes('await cache.put(req, cached.clone());'), 'Mushaf page cache must refresh recency on cache hits');
     assert(swContent.includes("const mushafPagePrefix = '/3ff27b46cecb0c0519d77531d9c868a579d1f623/mushafs/hafs/kfqc/svg/'"), 'Mushaf cache path must match the actual raw.githubusercontent.com URL pathname');
-    assert(swContent.includes("url.hostname === 'raw.githubusercontent.com' &&\\n      isPinnedMushafPage"), 'Only exact pinned raw Mushaf pages may enter the cache');
+    assert(swContent.includes("url.hostname === 'raw.githubusercontent.com'") && swContent.includes('isPinnedMushafPage && !url.search'), 'Only exact pinned raw Mushaf pages may enter the cache');
     assert(swContent.includes('MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24'), 'Printed page cache must remain bounded');
     assert(swContent.includes('name !== MUSHAF_PAGE_CACHE_NAME'), 'Printed page cache must survive service-worker upgrades');
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
