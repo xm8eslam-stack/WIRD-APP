@@ -90,9 +90,20 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
     { surahNumber: endSurah, ayahNumber: endAyah }
   );
 
-  // Live feasibility preview
+  // Keep the feasibility indicator aligned with the selected pacing strategy.
+  const liveDailyPaceVerses = paceType === 'pages_per_day'
+    ? Math.max(1, Math.round(paceQuantity * 15))
+    : paceType === 'by_target_date'
+      ? Math.max(1, Math.ceil(
+          liveTotalVerses / Math.max(1, PlanningEngine.countActiveDaysBetween(
+            startDate, targetEndDate && targetEndDate > startDate ? targetEndDate : startDate,
+            activeDays, restDays
+          ))
+        ))
+      : paceQuantity;
+
   const liveFeasibility = PlanningEngine.assessFeasibility(
-    paceQuantity,
+    liveDailyPaceVerses,
     level,
     dailyAvailableMinutes,
     dailyRevisionMinutes
@@ -181,6 +192,12 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
     try {
       const updated = [planToSave, ...enginePlans.filter(plan => plan.id !== planToSave.id)];
+      const serializedSnapshot = JSON.stringify(updated);
+      const snapshotBytes = new TextEncoder().encode(serializedSnapshot).length;
+      if (snapshotBytes > 450_000) {
+        onToast?.('هذه الخطة أكبر من الحد الآمن للمزامنة (450 كيلوبايت). قلّل نطاق الخطة أو زد مقدار الحفظ اليومي قبل اعتمادها؛ لم نفقد أي بيانات.', 'error');
+        return;
+      }
       if (!await onUpdateEnginePlans(updated)) return;
       setSelectedPlanId(planToSave.id);
       setIsCreatingNew(false);
