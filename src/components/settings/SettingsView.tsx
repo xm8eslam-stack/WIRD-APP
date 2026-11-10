@@ -287,7 +287,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setOfflineProgress(null);
     try {
       const result = await prepareWirdForOffline(setOfflineProgress);
-      onToast?.(`اكتمل تنزيل ملفات تشغيل وِرد (${result.completed} ملفًا). المحتوى الخارجي والصوت يحتاج تنزيلًا منفصلًا.`, 'success');
+      const status = await getWirdOfflinePackageStatus();
+      setOfflinePackageStatus(status);
+      onToast?.(`اكتمل تنزيل ${result.completed} ملفًا. تم التحقق من حفظ ${status.cached} من أصل ${status.total} ملفًا برمجيًا؛ المحتوى الخارجي والصوت يحتاج تنزيلًا منفصلًا.`, status.missing === 0 ? 'success' : 'info');
     } catch (error) {
       onToast?.(error instanceof Error ? error.message : 'تعذر إكمال التجهيز المحلي؛ يمكنك إعادة المحاولة وسيُستكمل ما تم تنزيله.', 'error');
     } finally {
@@ -499,7 +501,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
         <button
           type="button"
-          onClick={handlePrepareOffline
+          onClick={handlePrepareOffline}
           disabled={isPreparingOffline || !isOnline}
           className="w-full sm:w-auto min-h-11 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:opacity-50 text-white font-bold inline-flex items-center justify-center gap-2"
         >
