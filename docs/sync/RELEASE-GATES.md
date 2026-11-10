@@ -289,3 +289,11 @@ This section is the current status and supersedes older historical statements wh
 4. Do not merge weak verses by ID-only union; define same-coordinate concurrency, notes/text conflict, and deletion behavior first.
 5. Do not change Firestore production rules/schema, secrets, environment settings, or production sync flags without explicit approval.
 6. Report GitHub CI, Vercel deployment, and real-device checks separately.
+
+
+
+## Follow-up after grouped projection fix — 2026-11-10
+
+- PR #200 is merged to `main` at `5a866f22c254fd35b9c487f7d69546e6b691a9d3`; exact-head Quality Gate passed. It fixes grouped child document-ID forwarding and test snapshot-vs-per-result recovery semantics.
+- No Vercel deployment record was found for that merge SHA because the Vercel status check was blocked by `build-rate-limit`. Do not claim this patch is deployed until a matching Production deployment is verified.
+- PR #201 is open for a profile revision-key inconsistency: revision rating currently targets `profile/profile`, while other profile writers target `profile/main`. This must be unified to one revision stream before merge.
