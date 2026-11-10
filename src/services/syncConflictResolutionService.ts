@@ -233,7 +233,7 @@ export async function resolveProjectionConflictUsingLocal(
         remoteTransaction.operations.length < 1 || remoteTransaction.operations.length > 8) {
       throw new Error('المعاملة السحابية المجمعة غير صالحة؛ بقي التعارض محفوظاً دون تغيير.');
     }
-    const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress']);
+    const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents']);
     const seen = new Set<string>();
     const operations: Array<{ collection: string; documentId: string; operation: 'upsert'; payload: Record<string, unknown> }> = [];
     for (const remoteOperation of remoteTransaction.operations) {
