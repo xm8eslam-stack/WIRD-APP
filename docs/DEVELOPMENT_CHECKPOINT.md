@@ -8,7 +8,7 @@
 - Current main SHA: `50bb25eeba2f1ed4ceae228b347c67b40f60c697` (PR #328 merge).
 - Last exact-main Quality Gate before PR #328: [run 42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) — success on `3667a8c003b79984546d48a9defc20c6f2bcd367`. PR #328's separate merge-ref Quality Gate passed on run `42921569974`; a post-merge main-only run for `50bb25e` was not independently observed.
 - Last documented READY Production deployment: `dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5`, source SHA `dac125dd8770cc4881e2c6cea6fe94623ad52144`. It predates current main; no matching deployment is verified.
-- Post-merge combined status for `50bb25e` showed Vercel pending at the last GitHub check. The latest documented READY Production deployment remains `dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5` on `dac125dd8770cc4881e2c6cea6fe94623ad52144`; no deployment matching `50bb25e` or live smoke is verified. Vercel team API access was denied in this run, so re-check through the normal integration later; no manual deploy or quota bypass.
+- Post-merge GitHub Vercel status for `50bb25e` is now `success`. The Vercel deployment detail endpoint returned team-scope 403, so its exact deployment state/source SHA and live smoke could not be independently confirmed. The last documented READY deployment record remains `dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5` on `dac125dd8770cc4881e2c6cea6fe94623ad52144`; do not assume it is the new deployment. No manual deploy or quota bypass.
 - Google AI Studio sync is not independently verified.
 
 ## Memorization session UX
