@@ -2804,9 +2804,11 @@ export class IndexedDbSyncJournal {
             const groupedSnapshot = latestGroupedSnapshots.get(operation.collection);
             const latestDirect = localForCollection[localForCollection.length - 1];
             const groupedIsNewer = !!groupedSnapshot && (!latestDirect || groupedSnapshot.sequence > latestDirect.sequence);
-            const expectedDocumentId = groupedIsNewer ? groupedSnapshot?.documentId : (latestDirect?.documentId || groupedSnapshot?.documentId);
+            const expectedDocumentId = latestDirect?.documentId || groupedSnapshot?.documentId;
             const expectedLocalPayload = groupedIsNewer ? groupedSnapshot?.payload : (latestDirect?.payload || groupedSnapshot?.payload);
-            if ((expectedDocumentId && expectedDocumentId !== operation.documentId) ||
+            if ((latestDirect && latestDirect.documentId !== operation.documentId) ||
+                (groupedSnapshot && groupedSnapshot.documentId !== operation.documentId) ||
+                (expectedDocumentId && expectedDocumentId !== operation.documentId) ||
                 (expectedLocalPayload && stableStringify(expectedLocalPayload) !== stableStringify(operation.payload))) {
               failure = new Error('دليل إحدى المجموعات لا يطابق آخر لقطة محلية معتمدة؛ لم ننشئ عملية إعادة نشر.');
               transaction.abort();
