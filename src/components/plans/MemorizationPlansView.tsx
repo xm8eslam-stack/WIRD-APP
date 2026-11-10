@@ -67,7 +67,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('engine')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+            aria-pressed={activeTab === 'engine'}
+            className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'engine'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
@@ -79,7 +80,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 
           <button
             onClick={() => setActiveTab('presets')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+            aria-pressed={activeTab === 'presets'}
+            className={`flex min-h-11 items-center gap-2 px-4 py-2 rounded-xl transition-all ${
               activeTab === 'presets'
                 ? 'bg-emerald-800 text-white shadow-xs'
                 : 'text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700'
@@ -150,7 +152,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 
                       <button
                         onClick={() => setPlanToDelete(plan.id)}
-                        className="text-stone-400 hover:text-red-500 p-1 transition-colors"
+                        aria-label={`حذف الخطة ${plan.title}`}
+                        className="min-h-11 min-w-11 text-stone-400 hover:text-red-500 p-1 transition-colors"
                         title="حذف الخطة"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -202,7 +205,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                         title={!quickStartSupported
                           ? 'البدء السريع غير متاح لخطط الصفحات والأجزاء حتى يتوفر تحديد آيات دقيق.'
                           : !nextRange ? 'اكتملت نطاقات الحفظ المحددة في هذه الخطة.' : 'ابدأ من أول آية غير مسجلة في نطاق الخطة'}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 flex min-h-11 items-center justify-center gap-2 py-2 px-4 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Play className="w-3.5 h-3.5 fill-white" />
                         <span>{nextRange ? 'متابعة جلسة اليوم' : quickStartSupported ? 'اكتملت نطاقات الخطة' : 'البدء السريع غير متاح'}</span>
@@ -210,7 +213,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                     ) : (
                       <button
                         onClick={() => handleToggleActive(plan.id)}
-                        className="flex-1 py-2 px-4 bg-stone-100 hover:bg-emerald-100 dark:bg-stone-700 dark:hover:bg-emerald-950 text-stone-800 hover:text-emerald-900 dark:text-stone-200 dark:hover:text-emerald-300 rounded-xl text-xs font-semibold transition-colors"
+                        className="flex-1 min-h-11 py-2 px-4 bg-stone-100 hover:bg-emerald-100 dark:bg-stone-700 dark:hover:bg-emerald-950 text-stone-800 hover:text-emerald-900 dark:text-stone-200 dark:hover:text-emerald-300 rounded-xl text-xs font-semibold transition-colors"
                       >
                         تفعيل هذه الخطة كورد رئيسي
                       </button>
@@ -226,13 +229,13 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
       {/* In-app Plan Delete Confirmation Modal */}
       {planToDelete && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
+          <div role="dialog" aria-modal="true" aria-labelledby="wird-plan-delete-title" className="bg-white dark:bg-stone-800 rounded-3xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-2xl space-y-4 text-right">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="font-bold text-stone-900 dark:text-stone-100 text-base">
+                <h3 id="wird-plan-delete-title" className="font-bold text-stone-900 dark:text-stone-100 text-base">
                   تأكيد حذف الخطة
                 </h3>
                 <p className="text-xs text-stone-500">
@@ -249,14 +252,14 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
               <button
                 type="button"
                 onClick={() => setPlanToDelete(null)}
-                className="px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+                className="min-h-11 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
               >
                 إلغاء
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
+                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
               >
                 تأكيد الحذف
               </button>
