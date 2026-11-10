@@ -69,8 +69,10 @@ async function fetchPage(page) {
         }
         const pathData = record.polygon.trim();
         const commands = pathData.match(/[A-Za-z]/g) ?? [];
-        const numbers = pathData.match(/[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][-+]?\\d+)?/g)?.map(Number) ?? [];
-        const unsupportedCharacters = pathData.replace(/[MLZmlz\\d+.,\\-\\sEe]/g, '');
+        const numbers = pathData.match(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?/g)?.map(Number) ?? [];
+        const unsupportedCharacters = pathData
+          .replace(/[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?|[MLZmlz]/g, '')
+          .replace(/[\s,]/g, '');
         const isSvgPath = commands.length > 0;
         if (unsupportedCharacters.length > 0 || numbers.length < 6 ||
             numbers.length % 2 !== 0 || numbers.some(number => !Number.isFinite(number)) ||
