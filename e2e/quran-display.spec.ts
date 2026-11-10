@@ -19,7 +19,7 @@ test('connected reading displays official Tanzil Simple text by coordinate and f
   expect(layout.content).toBeLessThanOrEqual(layout.viewport + 1);
 
   await page.getByRole('button', { name: /السور \(/ }).click();
-  await page.getByRole('heading', { name: 'سورة فصلت' }).click();
+  await page.getByRole('button', { name: 'فتح سورة فصلت للدراسة' }).click();
   await page.getByRole('button', { name: /تلاوة ودراسة: سورة فصلت/ }).click();
   await page.getByRole('button', { name: 'قراءة متصلة' }).click();
 
@@ -40,4 +40,13 @@ test('reading position can be restored directly to its Surah and ayah', async ({
   await page.goto('/#/library');
   await page.getByRole('button', { name: /متابعة آخر موضع قراءة.*سورة فصلت.*الآية 7/ }).click();
   await expect(page.getByRole('button', { name: 'تفسير سورة فصلت، الآية 7' })).toBeInViewport();
+});
+
+
+test('Surah directory cards expose a keyboard-operable study action', async ({ page }) => {
+  await page.goto('/#/library');
+  await expect(page.getByRole('button', { name: 'فتح سورة الفاتحة للدراسة' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'فتح سورة البقرة للدراسة' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: /تلاوة ودراسة: سورة البقرة/ })).toBeVisible();
 });
