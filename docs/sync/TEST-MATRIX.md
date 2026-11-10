@@ -1,3 +1,35 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11
+
+This section supersedes older status summaries below where they conflict with the exact SHA/run evidence listed here.
+
+## Exact-head results
+
+| Scope | Exact SHA | Quality Gate run | Result |
+|---|---|---|---|
+| Current main after PR #326 | 3667a8c003b79984546d48a9defc20c6f2bcd367 | [42920401307](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42920401307) | Passed |
+| PR #325 stale-snapshot CAS | 6d0deea025f7ca7ee6b5d1efd65e55805334e630 | [42917981860](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42917981860) | Passed |
+| PR #326 continuous audio/Mushaf controls | merged SHA 3667a8c003b79984546d48a9defc20c6f2bcd367 | [42919276966](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42919276966) | Passed |
+| PR #328 direct memorization ayah jump | merged SHA `50bb25eeba2f1ed4ceae228b347c67b40f60c697` (head `0c41126b1e018892119ced669936335326f8b1e7`) | [42921569974](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42921569974) | Passed |
+
+PR #325 passed 667 assertions, 31 Firestore Rules Emulator tests, 8/8 approved audio probes, 140 desktop/mobile Playwright tests, TypeScript, production build, and server smoke. PR #326 passed 674 assertions, 604 Mushaf coordinate-map checks, 31 Rules Emulator tests, 8/8 audio probes, 150 Playwright tests, TypeScript, production build, and server smoke. Current-main run #42920401307 completed successfully on the exact main SHA; consult its job steps for sub-suite counts.
+
+## Current sync coverage and explicit gaps
+
+- PR #325 verifies compare-and-set protection for full weakVerses and activityEvents snapshots using a deterministic base fingerprint; stale/divergent projections fail closed and grouped rollback preserves prior child projections.
+- This is a stale-write guard, not general conflict convergence. Whole-snapshot keep-local/use-remote choices for these two collections remain blocked.
+- Tombstone/delete projection, anti-resurrection, retention, and restore semantics remain unsupported; blocked events must not be skipped by advancing the projection cursor.
+- A fresh real-device A↔B round trip after PR #325 is not verified. Existing Emulator route coverage and historical user-reported two-device success are distinct evidence.
+- Still needed: immutable session-activity event projection with exact legacy daily-log baseline preservation; populated-record concurrency/replay tests; account lifecycle and cross-tab isolation; long-offline replay; crash/quota injection; tombstone replay/restore tests.
+
+## Release/deployment distinction
+
+- Latest verified Production remains deployment dpl_DGbABxoSjMdnDgZn5UwxZvj7AcX5 on SHA dac125dd8770cc4881e2c6cea6fe94623ad52144, state READY.
+- Current main SHA `50bb25e` is not confirmed deployed. Its post-merge GitHub Vercel status was pending at the last check; the last documented READY Production SHA remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`. No live smoke is verified.
+- PR #328's GitHub Quality Gate passed; Vercel Production deployment remains a separate, unverified gate.
+- No production Firestore rules/schema, secrets, sync flags, or user data were changed.
+
+---
+
 # CURRENT VERIFIED TEST COVERAGE — 2026-11-07 (through PR #158)
 
 This section supersedes older "not implemented" summaries below where the listed PRs have since landed.
@@ -132,3 +164,11 @@ Each run's complete job finished with conclusion `success`. The Quality Gate cov
 - PR #126 verifies durable conflict evidence: pending local mutation payloads are archived, repeat observations append without replacing the original snapshot, and oversized evidence fails closed while inbox/outbox remain intact.
 - PR #129 verifies document-scoped projection at both projector and atomic finalization layers: same-document pending writes block; a different test-result document in the same collection does not. Grouped syncMeta remains collection-scoped.
 - Still not covered: concurrent edits to the same collection snapshot from multiple real devices, long-offline replay, out-of-order multi-event stress, cross-tab races, full browser auth/sync workflows, tombstone replay, and live Firebase verification.
+
+
+## 2026-11-11 — Activity-event design checkpoint
+
+- Current main: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`.
+- `activityEvents` is still a daily aggregate snapshot. PR #325's base fingerprint blocks stale replacement but does not merge independent activity histories.
+- New design: `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code or Firestore Rules changed. Required before implementation: exact legacy baseline/cutover semantics, local calendar date/time-zone capture, idempotent event IDs, offline-device conflict preservation, and backup/restore compatibility.
+- Keep tombstones and whole-snapshot conflict choices fail-closed until collection-specific semantics and anti-resurrection tests pass.
