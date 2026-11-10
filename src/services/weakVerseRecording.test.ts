@@ -1,6 +1,6 @@
 import { RetentionService } from './retentionService';
 import { StorageService, STORAGE_KEYS } from './storageService';
-import { buildWeakVerseFailureTransaction, recordWeakVerseFailure } from './weakVerseRecording';
+import { buildWeakVerseFailureTransaction, buildWeakVerseResolutionSnapshot, recordWeakVerseFailure } from './weakVerseRecording';
 import { getLocalDateString } from './unifiedPortionService';
 
 export function runWeakVerseRecordingTests(): { passed: number; failed: number } {
@@ -269,6 +269,89 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
       else delete (globalThis as any).localStorage;
       StorageService.__resetStorageForTests();
     }
+  });
+
+  test('Journaled weak-verse snapshots refuse to overwrite a concurrently changed archive', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-snapshot-cas');
+    const today = getLocalDateString();
+    const existing = {
+      id: 'weak-existing-67-7', surahNumber: 67, surahName: 'الملك', ayahNumber: 7,
+      text: 'نص محلي موثوق', mistakeCount: 1, lastFailedDate: today
+    };
+    assert(StorageService.saveWeakVerses([existing]), 'Initial weak-verse archive should save');
+    const prepared = buildWeakVerseFailureTransaction({
+      surahNumber: 67, surahName: 'الملك', ayahNumber: 8, text: 'نص آية محلي موثوق'
+    }, 'weak-failure-snapshot-cas');
+    assert(prepared.success, 'A valid weak-verse event should be prepared');
+    if (!prepared.success) return;
+    const operation = prepared.operations.find(item => item.collection === 'weakVerses');
+    assert(Boolean(operation), 'The grouped transaction must include the weak-verse projection');
+    assert(typeof operation?.payload.baseSnapshotFingerprint === 'string',
+      'New weak-verse snapshots must carry the exact base snapshot identity');
+
+    const concurrent = [{ ...existing, mistakeCount: 2 }];
+    assert(StorageService.saveWeakVerses(concurrent), 'Concurrent local change should save');
+    const before = JSON.stringify(RetentionService.getWeakVerses());
+    const beforePortions = JSON.stringify(RetentionService.getPortions());
+    assert(!StorageService.applyJournalTransaction(prepared.operations),
+      'A stale grouped transaction must be rejected when its weak-verse base has changed');
+    assert(JSON.stringify(RetentionService.getWeakVerses()) === before,
+      'The divergent local weak-verse archive must remain byte-for-byte equivalent at the record level');
+    assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+      'The earlier canonical-portion projection must roll back atomically when weak-verse compare-and-set fails');
+    assert(StorageService.applyJournalProjection('weakVerses', operation!.payload, 'snapshot', true),
+      'An explicit, user-confirmed use-remote decision may replace the local weak-verse snapshot');
+    assert(JSON.stringify(RetentionService.getWeakVerses()) === JSON.stringify(operation!.payload.records),
+      'Explicit remote resolution must apply the selected remote snapshot');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Weak-verse resolution carries a base identity and cannot resurrect or erase concurrent edits', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-resolution-cas');
+    const today = getLocalDateString();
+    const first = {
+      id: 'weak-resolution-first', surahNumber: 67, surahName: 'الملك', ayahNumber: 8,
+      text: 'نص محلي', mistakeCount: 2, lastFailedDate: today
+    };
+    const second = {
+      id: 'weak-resolution-second', surahNumber: 67, surahName: 'الملك', ayahNumber: 9,
+      text: 'نص محلي آخر', mistakeCount: 1, lastFailedDate: today
+    };
+    assert(StorageService.saveWeakVerses([first, second]), 'Initial resolution archive should save');
+    const prepared = buildWeakVerseResolutionSnapshot(first.id);
+    assert(prepared.success && prepared.changed, 'Resolution should prepare a changed snapshot');
+    if (!prepared.success) return;
+    assert(typeof prepared.baseSnapshotFingerprint === 'string', 'Resolution must retain its base snapshot identity');
+    assert(StorageService.saveWeakVerses([{ ...first, notes: 'تعديل متزامن' }, second]),
+      'Concurrent note edit should save');
+    const before = JSON.stringify(RetentionService.getWeakVerses());
+    assert(!StorageService.applyJournalProjection('weakVerses', {
+      records: prepared.records,
+      baseSnapshotFingerprint: prepared.baseSnapshotFingerprint
+    }, 'snapshot'), 'Resolution must not delete a verse after a concurrent edit');
+    assert(JSON.stringify(RetentionService.getWeakVerses()) === before,
+      'Concurrent weak-verse edits must be preserved');
+    StorageService.__resetStorageForTests();
+  });
+
+  test('Legacy weak-verse snapshots bootstrap empty archives but cannot replace divergent non-empty archives', () => {
+    StorageService.__resetStorageForTests();
+    StorageService.setStorageScope('user:weak-verse-legacy-cas');
+    const today = getLocalDateString();
+    const verse = {
+      id: 'weak-legacy', surahNumber: 67, surahName: 'الملك', ayahNumber: 10,
+      text: 'نص محلي', mistakeCount: 1, lastFailedDate: today
+    };
+    assert(StorageService.saveWeakVerses([verse]), 'Initial archive should save');
+    assert(!StorageService.applyJournalProjection('weakVerses', { records: [] }, 'snapshot'),
+      'A legacy event without a base identity must not erase non-empty local data');
+    assert(StorageService.saveWeakVerses([]), 'Archive should be clearable for bootstrap test');
+    assert(StorageService.applyJournalProjection('weakVerses', { records: [verse] }, 'snapshot'),
+      'A legacy snapshot may still bootstrap an empty device');
+    assert(RetentionService.getWeakVerses().length === 1, 'Legacy bootstrap should restore the verse');
+    StorageService.__resetStorageForTests();
   });
 
   return { passed, failed };
