@@ -5,7 +5,7 @@
 - Publisher artwork: King Fahd Glorious Qur'an Printing Complex (KFGQPC), Hafs ʿan ʿAsim, Madinah Mushaf.
 - Digitized edition represented by the vector archive: 1441H, as documented by the source archive.
 - Vector and ayah hit-region archive: [quran-ws/quran-svg](https://github.com/quran-ws/quran-svg).
-- Pinned release: `v1.1.1`; page files are fetched from the documented, CORS-enabled GitHub raw path: `https://raw.githubusercontent.com/quran-ws/quran-svg/v1.1.1/mushafs/hafs/kfqc/svg/NNN.svg`.
+- Pinned release: `v1.1.1` (immutable source commit `3ff27b46cecb0c0519d77531d9c868a579d1f623`); page files are fetched from the documented, CORS-enabled GitHub raw path: `https://raw.githubusercontent.com/quran-ws/quran-svg/3ff27b46cecb0c0519d77531d9c868a579d1f623/mushafs/hafs/kfqc/svg/NNN.svg`.
 - One page is fetched on demand. The application does not download or bundle all 604 SVGs.
 - The release contains 604 Hafs/KFQPC pages and one transparent `.ayahPolygon` hit region per ayah on each page. The SVG is vector outlines, not selectable Quran text.
 
