@@ -111,3 +111,33 @@ test.describe('Memorization session audio repetition', () => {
     await expect(audioStatus).toHaveCount(0);
   });
 });
+
+
+test('session progress is announced and masked words can be revealed with the keyboard', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
+
+  const progress = page.getByRole('progressbar', { name: 'تقدم جلسة الحفظ' });
+  await expect(progress).toHaveAttribute('aria-valuemax', '3');
+  await expect(progress).toHaveAttribute('aria-valuenow', '1');
+
+  await page.getByRole('button', { name: 'إخفاء تام' }).click();
+  const hiddenWords = page.getByRole('button', { name: /إظهار الكلمة المخفية/ });
+  await expect(hiddenWords.first()).toBeVisible();
+  const hiddenCount = await hiddenWords.count();
+  await hiddenWords.first().focus();
+  await page.keyboard.press('Enter');
+  await expect.poll(() => hiddenWords.count()).toBe(hiddenCount - 1);
+
+  await page.getByRole('button', { name: 'أتقنت الآية — التالية' }).click();
+  await expect(progress).toHaveAttribute('aria-valuenow', '2');
+  await expect(progress).toHaveAttribute('aria-valuetext', 'الآية 2 من 3');
+
+  const layout = await page.evaluate(() => ({
+    viewport: document.documentElement.clientWidth,
+    content: document.documentElement.scrollWidth
+  }));
+  expect(layout.content).toBeLessThanOrEqual(layout.viewport + 1);
+});
