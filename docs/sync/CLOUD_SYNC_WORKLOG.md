@@ -220,3 +220,19 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - PR #183 CI is pending at this checkpoint; do not merge until its exact-head Quality Gate succeeds.
 - Attempted to provision a Vercel sandbox for a fresh post-merge checkout, but the Vercel Sandbox API returned 403 Forbidden. No CLI fallback is available in the current execution environment. No sandbox was created and no production state was changed.
 - Firebase production rules have still not been inspected or deployed. The manual setup of `FIREBASE_PROJECT_ID=wird-quran-app` and `FIREBASE_SERVICE_ACCOUNT_JSON` remains deferred until the workflow preflight is merged and reviewed.
+
+
+
+## 2026-11-10 — Latest sync continuity and grouped projection follow-up
+
+- PR #197 merged: grouped `syncMeta` keep-local is atomic; unsupported tombstones/operations fail closed.
+- PR #198 merged and deployed to Production. Tested head `0709b25663b0b52d151bff8de7508823dad89eee`; merge commit `c6befabbacbb5f7ad6351e9dca6c604408713285`; Vercel deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J` is `READY` on `wird-app.vercel.app`.
+- PR #198 test-result behavior: `tests/snapshot` remains authoritative; per-result documents merge by immutable result ID and fail closed on same-ID/different-content collisions. Exact-head Quality Gate passed.
+- The user manually confirmed successful account sync across two devices. Record this as user-reported live verification; do not relabel it as an automated test.
+- New code review found weak-verse first-failure IDs are `weak-{surah}-{ayah}-{mutationId}`; subsequent local failures update by coordinate and increment the counter. Resolution persists a replacement snapshot after filtering by ID. Cross-device first failures can create separate IDs for one coordinate, and stale snapshots can reintroduce a resolved verse. No safe generic merge exists while tombstones are unsupported.
+- Activity events are currently daily `DailyLog` aggregates. Session completion emits a stable mutation ID and a typed `session.completed` event, but its local activity projection still replaces the aggregate array. Two distinct device sessions can compete as full snapshots; summing snapshots can double-count.
+- The remote inbox projector blocks pending local mutations, base-revision conflicts, and tombstones without advancing past unresolved events. It has a dedicated constrained V2 Ruqyah counter merge, but no weak-verse/activity merge.
+- PR #200 is open for a narrow bug fix: grouped transaction application was dropping each child's `documentId`, and grouped recovery matching also ignored it. The patch forwards the ID and makes `tests` recovery distinguish authoritative snapshot from per-result merge. Regression coverage is added; exact-head CI is pending.
+- PR #199 is the documentation continuity checkpoint, including this worklog update and the collection-level findings.
+- PR PR checks may show Vercel `build-rate-limit` due to the Free plan. This does not establish a code failure, but also does not count as a successful preview deployment. Keep CI, Vercel deployment, and live verification separate.
+- No production Firestore rules/schema, secrets, environment settings, or sync flags were changed in this review.
