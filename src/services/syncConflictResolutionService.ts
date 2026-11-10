@@ -253,15 +253,20 @@ export async function resolveProjectionConflictUsingLocal(
         .flatMap(item => {
           const transaction = item.payload.transaction;
           return isRecord(transaction) && Array.isArray(transaction.operations)
-            ? transaction.operations.filter(isRecord)
+            ? transaction.operations.filter(isRecord).map(operation => ({ operation, sequence: item.sequence }))
             : [];
         });
       const latestGrouped = [...localGroupedOperations].reverse()
-        .find(operation => operation.collection === remoteOperation.collection);
+        .find(entry => entry.operation.collection === remoteOperation.collection);
       const latestLocal = localForCollection[localForCollection.length - 1];
-      const documentId = latestLocal?.documentId ||
-        (typeof latestGrouped?.documentId === 'string' ? latestGrouped.documentId : remoteOperation.documentId);
-      const sourcePayload = latestLocal?.payload || latestGrouped?.payload || remoteOperation.payload;
+      const groupedIsNewer = !!latestGrouped && (!latestLocal || latestGrouped.sequence > latestLocal.sequence);
+      const selectedGrouped = groupedIsNewer ? latestGrouped?.operation : undefined;
+      const documentId = groupedIsNewer && typeof selectedGrouped?.documentId === 'string'
+        ? selectedGrouped.documentId
+        : (latestLocal?.documentId || remoteOperation.documentId);
+      const sourcePayload = groupedIsNewer
+        ? selectedGrouped?.payload
+        : (latestLocal?.payload || remoteOperation.payload);
       if (!isRecord(sourcePayload)) {
         throw new Error('تعذر تحديد لقطة موثوقة لإحدى مجموعات المعاملة؛ لم نعد نشر أي بيانات.');
       }
