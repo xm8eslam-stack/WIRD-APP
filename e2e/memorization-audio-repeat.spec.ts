@@ -17,7 +17,8 @@ test.describe('Memorization session audio repetition', () => {
         onended: ((event: Event) => void) | null = null;
         onplaying: (() => void) | null = null;
         onerror: (() => void) | null = null;
-        constructor() { audios.push(this); }
+        url: string;
+        constructor(url: string) { this.url = url; audios.push(this); }
         play() {
           (window as any).__wirdAudioPlayCalls++;
           if ((window as any).__wirdRejectAudioPlay) {
@@ -168,4 +169,32 @@ test('session header and progress adapt to mobile, and masked words remain keybo
     content: document.documentElement.scrollWidth
   }));
   expect(layout.content).toBeLessThanOrEqual(layout.viewport + 1);
+});
+
+test('memorization and review share continuous segment playback with bounded repetition', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
+  await page.goto('/#/session?surah=67&start=1&end=3&mode=memorize');
+
+  await page.getByLabel('بداية المقطع الصوتي في الجلسة').selectOption('1');
+  await page.getByLabel('نهاية المقطع الصوتي في الجلسة').selectOption('2');
+  await page.getByLabel('عدد مرات تكرار الصوت').selectOption('2');
+  await page.getByRole('button', { name: 'تشغيل المقطع الصوتي المحدد' }).click();
+
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.length)).toBe(2);
+  await page.evaluate(() => (window as any).__wirdMockAudios[0].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdAudioPlayCalls)).toBe(2);
+  await page.evaluate(() => (window as any).__wirdMockAudios[1].onended?.(new Event('ended')));
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMockAudios.length)).toBe(4);
+  await page.evaluate(() => (window as any).__wirdMockAudios[2].onended?.(new Event('ended')));
+  await page.evaluate(() => (window as any).__wirdMockAudios[3].onended?.(new Event('ended')));
+
+  const urls = await page.evaluate(() => (window as any).__wirdMockAudios.map((audio: { url: string }) => audio.url));
+  expect(urls.map((url: string) => url.split('/').pop())).toEqual([
+    '067002.mp3',
+    '067003.mp3',
+    '067002.mp3',
+    '067003.mp3'
+  ]);
+  await expect(page.getByRole('button', { name: 'تشغيل المقطع الصوتي المحدد' })).toBeVisible();
 });
