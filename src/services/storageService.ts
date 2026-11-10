@@ -1582,7 +1582,13 @@ export const StorageService = {
       case 'weakVerses': {
         if (!Array.isArray(payload.records)) return false;
         let current: WeakVerseItem[];
-        try { current = this.getWeakVerses(); } catch { return false; }
+        try {
+          current = readStrictJsonArrayArchive<WeakVerseItem>(
+            STORAGE_KEYS.WEAK_VERSES,
+            'Weak verses',
+            isValidWeakVerseRecord
+          );
+        } catch { return false; }
         if (!allowSnapshotReplacement && !canApplySnapshotPrecondition(payload, current, payload.records)) return false;
         return this.saveWeakVerses(payload.records as WeakVerseItem[]);
       }
