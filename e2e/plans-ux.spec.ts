@@ -26,6 +26,19 @@ test.describe('WIRD memorization plans UX', () => {
     }
   });
 
+  test('plan mode selector fits narrow phones without horizontal overflow', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    const selector = page.getByRole('group', { name: 'طرق إدارة خطط الحفظ' });
+    const engineTab = selector.getByRole('button', { name: /محرك التخطيط الذكي/ });
+    const presetsTab = selector.getByRole('button', { name: /النماذج والخطط المعتمدة/ });
+    await expect(engineTab).toHaveCSS('width', /\d+px/);
+    await expect(presetsTab).toHaveCSS('width', /\d+px/);
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await presetsTab.click();
+    await expect(presetsTab).toHaveAttribute('aria-pressed', 'true');
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
   test('planning wizard pacing and rest-day controls are keyboard and touch accessible', async ({ page }) => {
     await page.getByRole('button', { name: /إنشاء خطة ذكية جديدة/ }).click();
 
