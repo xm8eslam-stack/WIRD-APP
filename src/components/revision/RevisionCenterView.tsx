@@ -1314,7 +1314,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <h3 id="revision-add-portion-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
               </h3>
-              <button type="button" aria-label="إغلاق نافذة إضافة المقطع" onClick={() => setIsAddPortionModalOpen(false)} className="min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+              <button type="button" aria-label="إغلاق نافذة إضافة المقطع" disabled={isSavingPortion} onClick={() => setIsAddPortionModalOpen(false)} className="min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1395,6 +1395,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <div className="flex items-center justify-end gap-2 pt-3">
                 <button
                   type="button"
+                  disabled={isSavingPortion}
                   onClick={() => setIsAddPortionModalOpen(false)}
                   className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl font-semibold"
                 >
@@ -1402,9 +1403,10 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
                 </button>
                 <button
                   type="submit"
+                  disabled={isSavingPortion}
                   className="min-h-11 px-5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl font-bold"
                 >
-                  إضافة المقطع
+                  {isSavingPortion ? 'جارٍ حفظ المقطع...' : 'إضافة المقطع'}
                 </button>
               </div>
             </form>
@@ -1420,7 +1422,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <h3 id="revision-add-weak-verse-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
               </h3>
-              <button type="button" aria-label="إغلاق نافذة تسجيل الآية الملتبسة" onClick={() => setIsAddWeakVerseModalOpen(false)} className="min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+              <button type="button" aria-label="إغلاق نافذة تسجيل الآية الملتبسة" disabled={isSavingWeakVerse} onClick={() => setIsAddWeakVerseModalOpen(false)} className="min-h-11 min-w-11 rounded-lg text-stone-400 hover:text-stone-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1494,6 +1496,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
               <div className="flex items-center justify-end gap-2 pt-3">
                 <button
                   type="button"
+                  disabled={isSavingWeakVerse}
                   onClick={() => setIsAddWeakVerseModalOpen(false)}
                   className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl font-semibold"
                 >
