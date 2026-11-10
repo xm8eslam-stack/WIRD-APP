@@ -307,3 +307,13 @@ This section is the current status and supersedes older historical statements wh
 - This production deployment includes PR #200's grouped child document-ID propagation/recovery fix and PR #201's canonical profile document identity fix.
 - Remaining data-integrity work: weak-verse cross-device reconciliation including resolution anti-resurrection, and activity aggregation from immutable session events. No blind union or addition; tombstones remain blocked.
 - The user-reported two-device sync test predates these two latest code fixes; do not imply a fresh physical-device round trip was performed after this deployment.
+
+
+
+## Follow-up release gate — weak-verse identity and remaining data integrity
+
+- PR #207 is merged at `d45e30e521c3f20c7c6e48aa81b7bc37798952b4`; exact head passed all 30 Quality Gate steps.
+- New weak-verse records use stable coordinate IDs. Historical IDs are preserved to keep resolution-event references valid.
+- This change is not a weak-verse reconciliation release. Do not enable automatic merge of weak-verse snapshots or automatic keep-local/keep-remote resolution until tests prove preservation of independent verse additions, same-verse concurrent failures, retries, and resolution anti-resurrection.
+- Activity-event reconciliation remains gated until immutable session events can rebuild daily aggregates exactly once, including legacy daily-log baselines and account/device recovery.
+- No Firestore rules/schema, production settings, secrets, or sync flags changed in PR #207.
