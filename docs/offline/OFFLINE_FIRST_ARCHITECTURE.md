@@ -14,7 +14,7 @@ The offline package is resumable. A separate content cache keeps downloaded asse
 - User activity continues to use the existing local storage and durable journal/outbox architecture.
 - Cloud synchronization remains a separate layer. Offline changes stay local and are retried when the browser reports connectivity and the authenticated scope is valid.
 - Tafsir pages are cached locally when viewed; an uncached tafsir edition/ayah still requires its configured source.
-- Related hadith pages are eligible for local caching only after the existing source, ayah-coordinate, matn, and Sahih validation checks pass. A missing offline cache must never be replaced by generated hadith content.
+- Related hadith pages are cached locally only after the existing source, ayah-coordinate, matn, and Sahih validation checks pass. The cache is bounded to 30 pages and expires after 30 days. A missing offline cache must never be replaced by generated hadith content.
 - Ruqyah text is resolved from WIRD's bundled verified Quran text and local ruqyah data. The optional external library remains network-dependent.
 
 ## Audio behavior
