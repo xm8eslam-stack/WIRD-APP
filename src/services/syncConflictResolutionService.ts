@@ -208,25 +208,74 @@ export async function resolveProjectionConflictUsingLocal(
   if (!conflict || conflict.status !== 'open') {
     throw new Error('لم يعد التعارض مفتوحاً؛ حدّث قائمة التعارضات.');
   }
-  if (conflict.event.operation !== 'upsert' || (conflict.event.collection === 'syncMeta' || conflict.event.collection === 'ruqyahProgress')) {
-    throw new Error('إعادة نشر أحداث الحذف أو المعاملات المجمعة أو عدادات الرقية غير مفعّلة حتى تكتمل اختبارات سلامة البيانات والدمج الإضافي الخاصة بها.');
+  if (conflict.event.operation !== 'upsert' ||
+      conflict.event.collection === 'ruqyahProgress') {
+    throw new Error('إعادة نشر أحداث الحذف وعدادات الرقية غير مفعّلة حتى تكتمل دلالات الحذف والدمج الإضافي واختباراتها.');
   }
 
   const archivedMutations = [...(conflict.localMutations || [])]
     .sort((a, b) => a.sequence - b.sequence || a.mutationId.localeCompare(b.mutationId));
   if (archivedMutations.length === 0 ||
       archivedMutations.some(item =>
-        item.collection !== conflict.event.collection ||
-        item.documentId !== conflict.event.documentId ||
-        item.operation !== 'upsert' ||
-        !isRecord(item.payload)
+        item.operation !== 'upsert' || !isRecord(item.payload) ||
+        (item.collection !== conflict.event.collection &&
+          !(conflict.event.collection === 'syncMeta' &&
+            ['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress'].includes(item.collection)))
       )) {
-    throw new Error('لا توجد لقطة محلية كاملة ومتجانسة في سجل التعارض لإعادة نشرها بأمان.');
+    throw new Error('لا توجد مجموعة تغييرات محلية كاملة ومتجانسة في سجل التعارض لإعادة نشرها بأمان.');
   }
-  const latestLocalMutation = archivedMutations[archivedMutations.length - 1];
-  const localPayload = JSON.parse(JSON.stringify(latestLocalMutation.payload)) as Record<string, unknown>;
-  if (!StorageService.matchesJournalProjection(conflict.event.collection, localPayload)) {
-    throw new Error('اللقطة المحلية الحالية لا تطابق آخر عملية محفوظة في الأرشيف؛ لم نرفع نسخة قديمة.');
+
+  let localPayload: Record<string, unknown>;
+  if (conflict.event.collection === 'syncMeta') {
+    const remoteTransaction = conflict.event.payload.transaction;
+    if (!isRecord(remoteTransaction) || remoteTransaction.version !== 1 ||
+        !Array.isArray(remoteTransaction.operations) ||
+        remoteTransaction.operations.length < 1 || remoteTransaction.operations.length > 8) {
+      throw new Error('المعاملة السحابية المجمعة غير صالحة؛ بقي التعارض محفوظاً دون تغيير.');
+    }
+    const allowed = new Set(['profile', 'plans', 'enginePlans', 'portions', 'weakVerses', 'tests', 'activityEvents', 'ruqyahProgress']);
+    const seen = new Set<string>();
+    const operations: Array<{ collection: string; documentId: string; operation: 'upsert'; payload: Record<string, unknown> }> = [];
+    for (const remoteOperation of remoteTransaction.operations) {
+      if (!isRecord(remoteOperation) || typeof remoteOperation.collection !== 'string' ||
+          !allowed.has(remoteOperation.collection) || seen.has(remoteOperation.collection) ||
+          typeof remoteOperation.documentId !== 'string' || !remoteOperation.documentId ||
+          remoteOperation.operation !== 'upsert' || !isRecord(remoteOperation.payload)) {
+        throw new Error('تحتوي المعاملة المجمعة على مجموعة مكررة أو عملية غير مدعومة؛ لم نعد نشر أي بيانات.');
+      }
+      seen.add(remoteOperation.collection);
+      const localForCollection = archivedMutations.filter(item => item.collection === remoteOperation.collection);
+      if (localForCollection.some(item => item.documentId !== localForCollection[0]?.documentId)) {
+        throw new Error('توجد عدة هويات مستندات محلية للمجموعة نفسها؛ يلزم حل يدوي قبل إعادة النشر.');
+      }
+      const latestLocal = localForCollection[localForCollection.length - 1];
+      const documentId = latestLocal?.documentId || remoteOperation.documentId;
+      const payload = JSON.parse(JSON.stringify(latestLocal?.payload || remoteOperation.payload)) as Record<string, unknown>;
+      if (!StorageService.matchesJournalProjection(remoteOperation.collection as SyncCollection, payload)) {
+        throw new Error('لقطة إحدى المجموعات المحلية لا تطابق بياناتها الدائمة؛ لم نرفع نسخة قديمة.');
+      }
+      operations.push({ collection: remoteOperation.collection, documentId, operation: 'upsert', payload });
+    }
+    if (archivedMutations.some(item =>
+      item.collection !== 'syncMeta' && !seen.has(item.collection)
+    )) {
+      throw new Error('يتضمن الأرشيف تغييرات لم تشملها المعاملة المجمعة؛ أوقفنا إعادة النشر لحماية البيانات.');
+    }
+    localPayload = { transaction: { version: 1, operations } };
+    if (!StorageService.matchesJournalProjection('syncMeta', localPayload)) {
+      throw new Error('اللقطة المحلية المجمعة لا تطابق الحالة الدائمة الحالية؛ لم نعد نشرها.');
+    }
+  } else {
+    if (archivedMutations.some(item =>
+      item.collection !== conflict.event.collection || item.documentId !== conflict.event.documentId
+    )) {
+      throw new Error('لا توجد لقطة محلية كاملة ومتجانسة في سجل التعارض لإعادة نشرها بأمان.');
+    }
+    const latestLocalMutation = archivedMutations[archivedMutations.length - 1];
+    localPayload = JSON.parse(JSON.stringify(latestLocalMutation.payload)) as Record<string, unknown>;
+    if (!StorageService.matchesJournalProjection(conflict.event.collection, localPayload)) {
+      throw new Error('اللقطة المحلية الحالية لا تطابق آخر عملية محفوظة في الأرشيف؛ لم نرفع نسخة قديمة.');
+    }
   }
 
   const stateRef = doc(db, 'users', uid, conflict.event.collection, conflict.event.documentId);
