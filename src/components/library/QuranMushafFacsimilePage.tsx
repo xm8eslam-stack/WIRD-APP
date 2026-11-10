@@ -41,7 +41,7 @@ export const QuranMushafFacsimilePage: React.FC<QuranMushafFacsimilePageProps> =
     setError(null);
 
     loadMushafFacsimilePage(page, controller.signal)
-      .then(data => {
+      .then(async data => {
         const resolvedAyahs = await Promise.all(data.ayahAreas.map(area =>
           loadAyahByCoordinate(area.surahNumber, area.ayahNumber)
         ));
