@@ -98,6 +98,22 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
     });
 
+    await test('Ruqyah proxy accepts a valid empty Quran locator index as an empty result', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: []
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({
+        method: 'GET',
+        query: { type: 'instant', program: 'a-long-ruqya', source: 'from-quran' },
+        headers: { 'x-real-ip': '198.51.100.211' }
+      }, res);
+      assert(res.statusCode === 200 && Array.isArray(res.body?.data) && res.body.data.length === 0,
+        'A valid empty index should be returned as an empty list so the UI can show its distinct empty state');
+    });
+
     await test('Ruqyah proxy retries a transient 502 once and then returns validated locator data', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       let calls = 0;
