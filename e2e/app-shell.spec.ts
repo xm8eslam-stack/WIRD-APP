@@ -108,7 +108,7 @@ test('desktop sidebar toggle is persistent, exposes state, and expands the readi
   await page.goto('/');
   await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
 
-  const toggle = page.getByRole('button', { name: 'إغلاق الشريط الجانبي' });
+  const toggle = page.getByRole('button', { name: 'إغلاق الشريط الجانبي' }).first();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
   await toggle.click();
   await expect(page.getByRole('button', { name: 'فتح الشريط الجانبي' })).toHaveAttribute('aria-expanded', 'false');
