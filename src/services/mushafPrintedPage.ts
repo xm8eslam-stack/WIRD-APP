@@ -1,5 +1,6 @@
 export const MUSHAF_PAGE_ARTWORK_RELEASE = 'v1.1.1';
 export const MUSHAF_PAGE_ARTWORK_BASE_URL = `https://cdn.quran.ws/svg/pages/${MUSHAF_PAGE_ARTWORK_RELEASE}/hafs-kfqc`;
+export const MUSHAF_PAGE_MANIFEST_URL = `https://cdn.quran.ws/svg/pages/${MUSHAF_PAGE_ARTWORK_RELEASE}/manifest.json`;
 
 export interface MushafAyahCoordinate {
   surahNumber: number;
@@ -24,6 +25,35 @@ export function getMushafPageArtworkUrl(page: number): string {
     throw new RangeError('Mushaf page must be an integer from 1 to 604.');
   }
   return `${MUSHAF_PAGE_ARTWORK_BASE_URL}/${String(page).padStart(3, '0')}.svg`;
+}
+
+export interface MushafManifestFile {
+  sha256: string;
+  size: number;
+}
+
+export function getMushafManifestFileEntry(manifest: unknown, relativePath: string): MushafManifestFile {
+  if (!manifest || typeof manifest !== 'object') throw new Error('بيان سلامة ملفات المصحف غير صالح.');
+  const sourceFiles = (manifest as { files?: unknown }).files;
+  let files: unknown[] = [];
+  if (Array.isArray(sourceFiles)) files = sourceFiles;
+  else if (sourceFiles && typeof sourceFiles === 'object') {
+    files = Object.entries(sourceFiles as Record<string, unknown>).map(([path, entry]) => ({ path, ...(entry as object) }));
+  }
+  const entry = files.find(item => {
+    if (!item || typeof item !== 'object') return false;
+    const path = String((item as { path?: unknown; file?: unknown; name?: unknown }).path ??
+      (item as { file?: unknown }).file ?? (item as { name?: unknown }).name ?? '');
+    return path === relativePath || path.endsWith(`/${relativePath}`);
+  }) as { sha256?: unknown; digest?: unknown; size?: unknown } | undefined;
+  if (!entry) throw new Error('لم نجد بصمة الصفحة المطبوعة في بيان الإصدار المثبّت.');
+  const digest = String(entry.sha256 ?? entry.digest ?? '').replace('sha256:', '').toLowerCase();
+  const isHex = [...digest].every(character => '0123456789abcdef'.includes(character));
+  const size = Number(entry.size);
+  if (digest.length !== 64 || !isHex || !Number.isInteger(size) || size < 1 || size > 5 * 1024 * 1024) {
+    throw new Error('بيان سلامة الصفحة المطبوعة لا يحتوي على حجم أو بصمة SHA-256 صالحة.');
+  }
+  return { sha256: digest, size };
 }
 
 export function parseMushafViewBox(value: string | null): MushafViewBox {
