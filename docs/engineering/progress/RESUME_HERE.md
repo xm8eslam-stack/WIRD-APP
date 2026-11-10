@@ -178,3 +178,14 @@
 - Documentation merge PR #132 produced main SHA `3eeb1eb2da419536a1e2fc9db6911961d3bfafcc`.
 - Post-merge main Quality Gate run `42361756445` completed successfully.
 - The full Playwright suite in that run executed 16 tests total: 6 app-shell checks (3 desktop + 3 mobile) and 10 Ruqyah locator-library checks (5 desktop + 5 mobile). The earlier phrase “16 Ruqyah locator-library checks” was inaccurate and has been corrected.
+
+## Live master continuation checkpoint — 2026-11-10
+
+Read `docs/engineering/progress/2026-11-10-master-continuation.md` for the current page-by-page, audio, Khatma, Ruqyah, and sidebar workstreams.
+
+- Main SHA observed: `0c462cab03ef3792a1241d20b36132684f6f173a`; exact main Quality Gate run `42850126184` passed.
+- Latest production deployment observed is still on `f287670a28c8ed96b734044f96b3e3a4036c7f09`, behind current main. Vercel is blocked by the Free-plan daily deployment limit `api-deployments-free-per-day`; do not claim current main is live.
+- Active work: PR #294 continuous Quran audio and segment repeat; PR #296 daily Reading Khatma plan; PR #297 Ruqyah index resilience; PR #298 global sidebar controls. PR #292 is closed as superseded.
+- The first audio and sidebar test runs exposed test-only assertions/locators that were corrected. Only exact-head runs on the final branch SHA count as validation.
+- `ISLAMICAPI_API_KEY` is configured as a sensitive variable in both Preview and Production, but its value was not read and provider acceptance remains unverified.
+- No production secrets, Firebase rules, or sync feature flags were changed. Keep revisioned sync and remote projection disabled until the existing release gates pass.
