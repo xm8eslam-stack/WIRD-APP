@@ -180,5 +180,6 @@ test('Mushaf plays a selected ayah segment continuously and repeats the bounded 
   await page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].onended?.(new Event('ended')));
   await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].playCalls)).toBe(1);
   await page.evaluate(() => (window as any).__wirdMushafAudioInstances[1].onended?.(new Event('ended')));
-  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[0].playCalls)).toBe(2);
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances.length)).toBe(3);
+  await expect.poll(() => page.evaluate(() => (window as any).__wirdMushafAudioInstances[2].playCalls)).toBe(1);
 });
