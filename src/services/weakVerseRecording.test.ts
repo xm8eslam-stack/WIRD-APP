@@ -273,10 +273,13 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     const concurrent = [{ ...existing, mistakeCount: 2 }];
     assert(StorageService.saveWeakVerses(concurrent), 'Concurrent local change should save');
     const before = JSON.stringify(RetentionService.getWeakVerses());
-    assert(!StorageService.applyJournalProjection('weakVerses', operation!.payload, 'snapshot'),
-      'A stale full snapshot must be rejected when the local base has changed');
+    const beforePortions = JSON.stringify(RetentionService.getPortions());
+    assert(!StorageService.applyJournalTransaction(prepared.operations),
+      'A stale grouped transaction must be rejected when its weak-verse base has changed');
     assert(JSON.stringify(RetentionService.getWeakVerses()) === before,
       'The divergent local weak-verse archive must remain byte-for-byte equivalent at the record level');
+    assert(JSON.stringify(RetentionService.getPortions()) === beforePortions,
+      'The earlier canonical-portion projection must roll back atomically when weak-verse compare-and-set fails');
     assert(StorageService.applyJournalProjection('weakVerses', operation!.payload, 'snapshot', true),
       'An explicit, user-confirmed use-remote decision may replace the local weak-verse snapshot');
     assert(JSON.stringify(RetentionService.getWeakVerses()) === JSON.stringify(operation!.payload.records),
