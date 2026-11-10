@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText, getRuqyahAyahs } from '../../services/ruqyahContentService';
 import { QuranText } from '../shared/QuranText';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
+import { requestOfflineAudioCache } from '../../services/audioService';
 import { getRuqyahProgressDeviceId, loadRuqyahProgress } from '../../services/ruqyahProgressService';
 import { adjustRuqyahProgressCounter, createEmptyRuqyahProgressSnapshot, migrateRuqyahProgressSnapshot, resetRuqyahProgressCounter } from '../../services/ruqyahProgressSchema';
 import type { RuqyahProgressSnapshotV2 } from '../../services/ruqyahProgressSchema';
@@ -100,6 +101,11 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     setAudioStatusMessage('');
 
     try {
+      requestOfflineAudioCache(
+        audioQueueRef.current.slice(index, index + 20).map(item =>
+          buildQuranAyahAudioUrl(selectedReciterIdRef.current, item.globalAyahNumber)
+        )
+      );
       audio.src = buildQuranAyahAudioUrl(selectedReciterIdRef.current, entry.globalAyahNumber);
       audio.load();
       await audio.play();
