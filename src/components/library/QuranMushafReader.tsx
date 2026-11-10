@@ -583,6 +583,58 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
 
             <AudioPlaybackRateControl value={playbackRate} onChange={handlePlaybackRateChange} />
 
+            <label className="inline-flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+              <span>من</span>
+              <select
+                aria-label="بداية المقطع الصوتي"
+                value={segmentStartIndex}
+                disabled={!audioAyahs.length}
+                onChange={event => {
+                  const next = Number(event.target.value);
+                  setSegmentStartIndex(next);
+                  if (segmentEndIndex < next) setSegmentEndIndex(next);
+                }}
+                className="min-h-11 max-w-32 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
+              >
+                {audioAyahs.map((ayah, index) => (
+                  <option key={ayah.number} value={index}>{ayah.surahNumber}:{ayah.numberInSurah}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+              <span>إلى</span>
+              <select
+                aria-label="نهاية المقطع الصوتي"
+                value={segmentEndIndex}
+                disabled={!audioAyahs.length}
+                onChange={event => setSegmentEndIndex(Number(event.target.value))}
+                className="min-h-11 max-w-32 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
+              >
+                {audioAyahs.slice(segmentStartIndex).map((ayah, offset) => {
+                  const index = segmentStartIndex + offset;
+                  return <option key={ayah.number} value={index}>{ayah.surahNumber}:{ayah.numberInSurah}</option>;
+                })}
+              </select>
+            </label>
+
+            <label className="inline-flex items-center gap-1.5 text-stone-600 dark:text-stone-400">
+              <span>التكرار</span>
+              <select
+                aria-label="عدد مرات تكرار المقطع الصوتي"
+                value={segmentRepeatCount}
+                onChange={event => setSegmentRepeatCount(saveAudioRepeatCount(Number(event.target.value)))}
+                className="min-h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 px-2 text-xs"
+              >
+                <option value={1}>مرة</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={-1}>مستمر</option>
+              </select>
+            </label>
+
             <button
               type="button"
               onClick={togglePageAudio}
@@ -592,7 +644,7 @@ export const QuranMushafReader: React.FC<QuranMushafReaderProps> = ({ preferredR
               }`}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              <span>{isPlaying ? 'إيقاف مؤقت' : 'استماع للصفحة'}</span>
+              <span>{isPlaying ? 'إيقاف مؤقت' : 'استماع للمقطع'}</span>
             </button>
           </div>
         </div>
