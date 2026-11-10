@@ -152,3 +152,19 @@ Never enable upload or projection against production until the deployed Firestor
 Normal remote events now use the `uid + collection + documentId` outbox index both before projection and inside the atomic IndexedDB cursor/revision commit. This prevents a pending write to one test-result/activity document from blocking an unrelated document in the same collection. Grouped `syncMeta` operations intentionally retain collection-wide checks to preserve transaction atomicity. Same-document conflicts remain blocking.
 
 Conflict records now preserve the raw local snapshot plus the exact pending local outbox entries for the conflicting document. Evidence is deduplicated by mutation ID and fingerprint and shares a 500 KB cap. This is an evidence-preservation layer only; it does not yet authorize or execute a conflict decision.
+
+
+
+## 2026-11-10 — Current revisioned-sync release and collection review
+
+This addendum supersedes older release-state statements above where they conflict with the current checkpoint.
+
+- PR #197 is merged: grouped `syncMeta` keep-local operations use an atomic local transaction; unsupported tombstones and unsupported grouped operations fail closed.
+- PR #198 is merged and deployed. Tested head: `0709b25663b0b52d151bff8de7508823dad89eee`; merge commit: `c6befabbacbb5f7ad6351e9dca6c604408713285`; Vercel deployment `dpl_DcQBhZU4QVrtZm1qoV8CwUryez9J` reached `READY` on `wird-app.vercel.app`.
+- PR #198 fixed test-result projection: legacy `tests/snapshot` is authoritative; immutable per-result documents merge by result ID and reject conflicting reuse. Exact-head Quality Gate passed tests, Rules Emulator, TypeScript, build, server smoke, and desktop/mobile browser smoke.
+- The user has since manually verified account synchronization across two devices and confirmed it works. This is user-reported live verification, separate from CI.
+- Current collection review confirms `weakVerses` and `activityEvents` still use full snapshots. Weak-verse first-failure IDs are mutation-scoped; resolution removes a record from a replacement snapshot. Daily activity remains per-date aggregates even though session completion also emits a stable-ID `session.completed` domain event. Neither collection may be reconciled with blind union or numeric addition.
+- Tombstones remain unsupported end-to-end. Remote projector blocks them without advancing its cursor. Do not bypass this guard or infer deletion semantics from snapshot writers.
+- PR #200 is open for a narrow grouped-projection correctness fix: forward child `documentId` into both projection and recovery matching, preserving authoritative test snapshots versus immutable per-result merge. Its exact-head regression test and Quality Gate are pending; no merge or deployment is claimed.
+- PR #199 contains the durable continuity checkpoint and documentation refresh. It remains separate from runtime changes.
+- Vercel PR checks currently report the Free-plan `build-rate-limit`; this is not a successful preview deployment. Do not conflate it with GitHub Actions CI or the existing production deployment.
