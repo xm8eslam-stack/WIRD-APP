@@ -113,6 +113,7 @@ export function runWeakVerseRecordingTests(): { passed: number; failed: number }
     assert(rejected, 'The service boundary must reject invalid Quran coordinates even when bypassing the UI wrapper');
     const added = RetentionService.addOrIncrementWeakVerse(114, 6, 'wrong label', 'نص اختبار');
     assert(added[0].surahName === 'الناس', 'Stored Surah name must be canonical');
+    assert(added[0].id === 'weak-114-6', 'Direct local compatibility writes must use the same coordinate-stable identity');
     const resolved = RetentionService.resolveWeakVerse(added[0].id);
     const repeatedResolve = RetentionService.resolveWeakVerse(added[0].id);
     assert(resolved.length === 0 && repeatedResolve.length === 0,
