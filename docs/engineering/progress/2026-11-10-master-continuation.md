@@ -29,9 +29,9 @@ Branch: `feat/sidebar-global-controls-20261110`
 - First exact-head run failed because the E2E locator matched both header and sidebar close buttons. The test now targets the header toggle explicitly.
 - Latest exact-head run status must be checked before merge.
 
-PR #292 is closed as superseded by PR #298. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
+PR #292 is closed as superseded by PR #298. PR #294 is closed as superseded by PR #303. PR #296 is closed as superseded by PR #302. PR #297 is closed as superseded by PR #301.
 
-### PR #294 — Continuous Quran audio and segment repetition
+### PR #303 — Continuous Quran audio and segment repetition
 
 Branch: `feat/quran-continuous-audio-queue-20261110`
 
