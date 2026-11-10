@@ -50,6 +50,13 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     const swContent = fs.readFileSync(swPath, 'utf8');
     assert(swContent.includes("CACHE_NAME = 'wird-app-v3'"), 'SW must declare the upgraded shell cache version');
     assert(swContent.includes("AUDIO_CACHE_NAME = 'wird-app-audio-v1'"), 'Session audio must use a separate persistent cache');
+    assert(swContent.includes("MUSHAF_PAGE_CACHE_NAME = 'wird-app-mushaf-v1'"), 'Printed Mushaf pages must use a dedicated cache');
+    assert(swContent.includes("url.hostname === 'raw.githubusercontent.com'"), 'Only the pinned Quran.ws Mushaf asset host may enter the page cache');
+    assert(swContent.includes("url.protocol === 'https:'"), 'Mushaf page cache must reject insecure HTTP');
+    assert(swContent.includes('await cache.delete(req);') && swContent.includes('await cache.put(req, cached.clone());'), 'Mushaf page cache must refresh recency on cache hits');
+    assert(swContent.includes("/quran-ws/quran-svg/3ff27b46cecb0c0519d77531d9c868a579d1f623/mushafs/hafs/kfqc/svg/"), 'Mushaf caching must be pinned to a reviewed release and edition');
+    assert(swContent.includes('MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24'), 'Printed page cache must remain bounded');
+    assert(swContent.includes('name !== MUSHAF_PAGE_CACHE_NAME'), 'Printed page cache must survive service-worker upgrades');
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
     assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
