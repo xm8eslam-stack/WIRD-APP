@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       if (!drawer) return;
       const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(
         'button:not([disabled]):not([tabindex="-1"]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-      ));
+      )).filter(element => element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
       if (focusable.length === 0) {
         event.preventDefault();
         return;
