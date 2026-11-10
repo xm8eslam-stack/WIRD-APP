@@ -1,7 +1,26 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('WIRD memorization plans UX', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    if (testInfo.title.includes('delete confirmation')) {
+      await page.addInitScript(() => {
+        localStorage.setItem('wird_plans', JSON.stringify([{
+          id: 'e2e-plan-delete',
+          title: 'خطة اختبار الحذف',
+          description: 'خطة ثابتة لاختبار إمكانية الوصول فقط',
+          type: 'custom',
+          totalUnits: 20,
+          completedUnits: 0,
+          unitType: 'ayah',
+          dailyTarget: 2,
+          memorizationDaysPerWeek: 5,
+          revisionDaysPerWeek: 2,
+          startDate: '2026-11-10',
+          targetEndDate: '2026-12-10',
+          isActive: true
+        }]));
+      });
+    }
     await page.goto('/');
     await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
     await page.goto('/#/plans');
@@ -49,25 +68,6 @@ test.describe('WIRD memorization plans UX', () => {
   });
 
   test('delete confirmation traps focus, closes on Escape, and restores its trigger', async ({ page }) => {
-    await page.evaluate(() => {
-      localStorage.setItem('wird_plans', JSON.stringify([{
-        id: 'e2e-plan-delete',
-        title: 'خطة اختبار الحذف',
-        description: 'خطة ثابتة لاختبار إمكانية الوصول فقط',
-        type: 'custom',
-        totalUnits: 20,
-        completedUnits: 0,
-        unitType: 'ayah',
-        dailyTarget: 2,
-        memorizationDaysPerWeek: 5,
-        revisionDaysPerWeek: 2,
-        startDate: '2026-11-10',
-        targetEndDate: '2026-12-10',
-        isActive: true
-      }]));
-    });
-    await page.reload();
-    await expect(page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' })).toHaveCount(0);
     await page.getByRole('button', { name: /النماذج والخطط المعتمدة/ }).click();
     const trigger = page.getByRole('button', { name: /حذف الخطة/ }).first();
     await trigger.click();
