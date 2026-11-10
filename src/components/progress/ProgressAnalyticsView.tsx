@@ -79,6 +79,18 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
   } | null>(null);
 
   useEffect(() => {
+    if (!inspectedPage) return;
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setInspectedPage(null);
+      }
+    };
+    window.addEventListener('keydown', handleDialogKeyDown);
+    return () => window.removeEventListener('keydown', handleDialogKeyDown);
+  }, [inspectedPage]);
+
+  useEffect(() => {
     setPortions(RetentionService.getPortions());
   }, []);
 
@@ -204,13 +216,13 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={handleExportBackup}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
+            className="flex min-h-11 items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             <span>{isExportSuccess ? 'تم التصدير!' : 'تصدير نسخة احتياطية'}</span>
           </button>
 
-          <label className="flex items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer">
+          <label className="flex min-h-11 items-center gap-1.5 px-3.5 py-2 bg-[#faf8f5] dark:bg-stone-900 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 rounded-xl text-xs font-semibold border border-stone-200 dark:border-stone-700 transition-colors cursor-pointer">
             <Upload className="w-3.5 h-3.5" />
             <span>{isImporting ? 'جارٍ الاستيراد...' : 'استيراد بيانات'}</span>
             <input 
@@ -285,7 +297,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
             <div className="flex bg-[#faf8f5] dark:bg-stone-900 p-1 rounded-xl border border-stone-200 dark:border-stone-700 text-xs font-semibold">
               <button
                 onClick={() => setMapMode('pages')}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${
+                aria-pressed={mapMode === 'pages'}
+                className={`min-h-11 px-3 py-1.5 rounded-lg transition-colors ${
                   mapMode === 'pages'
                     ? 'bg-emerald-800 text-white font-bold shadow-xs'
                     : 'text-stone-600 dark:text-stone-400'
@@ -295,6 +308,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               </button>
               <button
                 onClick={() => setMapMode('juz')}
+                aria-pressed={mapMode === 'juz'}
                 className={`px-3 py-1.5 rounded-lg transition-colors ${
                   mapMode === 'juz'
                     ? 'bg-emerald-800 text-white font-bold shadow-xs'
@@ -313,7 +327,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
           
           <button
             onClick={() => setStatusFilter('all')}
-            className={`px-2.5 py-1 rounded-lg transition-all ${
+            aria-pressed={statusFilter === 'all'}
+            className={`min-h-11 px-2.5 py-1 rounded-lg transition-all ${
               statusFilter === 'all'
                 ? 'bg-stone-800 text-white dark:bg-stone-200 dark:text-stone-900 font-bold'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
@@ -330,7 +345,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               <button
                 key={statusKey}
                 onClick={() => setStatusFilter(statusKey)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${
+                aria-pressed={isSelected}
+                className={`flex min-h-11 items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all ${
                   isSelected 
                     ? 'ring-2 ring-emerald-600 font-bold' 
                     : ''
@@ -352,7 +368,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-mono text-[11px]">مصحف المدينة المنورة (604 صفحة)</span>
                 <div role="group" aria-label="تكبير خريطة الصفحات" className="inline-flex items-center gap-1 p-1 rounded-xl bg-stone-100 dark:bg-stone-800">
-                  <button type="button" aria-pressed={pageGridZoom === 'compact'} onClick={() => setPageGridZoom('compact')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أصغر</button>
+                  <button type="button" aria-pressed={pageGridZoom === 'compact'} onClick={() => setPageGridZoom('compact')} className="min-h-11 px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أصغر</button>
                   <button type="button" aria-pressed={pageGridZoom === 'normal'} onClick={() => setPageGridZoom('normal')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">متوسط</button>
                   <button type="button" aria-pressed={pageGridZoom === 'large'} onClick={() => setPageGridZoom('large')} className="px-2.5 py-1.5 rounded-lg hover:bg-white dark:hover:bg-stone-700">أكبر</button>
                 </div>
@@ -410,6 +426,7 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                   <button
                     key={juzNum}
                     onClick={() => setSelectedJuz(juzNum)}
+                    aria-pressed={isSelected}
                     className={`p-3.5 rounded-2xl border text-right transition-all flex flex-col justify-between min-h-[100px] ${
                       isSelected
                         ? 'border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/40 ring-2 ring-emerald-600/30'
@@ -468,19 +485,20 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
       {/* MODAL: INSPECT & EDIT PAGE STATUS */}
       {inspectedPage && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-5">
+          <div role="dialog" aria-modal="true" aria-labelledby="wird-progress-page-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-5">
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-xs font-mono text-emerald-700 dark:text-emerald-400 font-semibold">
                   مصحف المدينة المنورة
                 </span>
-                <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 font-quran">
+                <h3 id="wird-progress-page-title" className="text-lg font-bold text-stone-900 dark:text-stone-100 font-quran">
                   صفحة رقم {inspectedPage.pageNumber} • {inspectedPage.surahs.map(item => item.name).join('، ')}
                 </h3>
               </div>
               <button 
                 onClick={() => setInspectedPage(null)} 
-                className="text-stone-400 hover:text-stone-600 p-1"
+                aria-label="إغلاق تفاصيل الصفحة"
+                className="min-h-11 min-w-11 text-stone-400 hover:text-stone-600 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -524,7 +542,8 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
                     <button
                       key={key}
                       onClick={() => handleUpdatePageStatus(inspectedPage.pageNumber, key)}
-                      className={`p-2.5 rounded-xl border text-right transition-all flex items-center gap-2 ${
+                      aria-pressed={isCurrent}
+                      className={`min-h-11 p-2.5 rounded-xl border text-right transition-all flex items-center gap-2 ${
                         isCurrent 
                           ? 'ring-2 ring-emerald-600 font-bold shadow-xs' 
                           : 'hover:border-stone-400'
@@ -538,24 +557,34 @@ export const ProgressAnalyticsView: React.FC<ProgressAnalyticsViewProps> = ({
               </div>
             </div>
 
+            {inspectedPage.segments.length > 1 && (
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-5">
+                تحتوي هذه الصفحة على {inspectedPage.segments.length} مقاطع من مواضع قرآنية مختلفة؛ يفتح زر الجلسة المقطع الأول فقط حتى لا ندمج نطاقات غير متصلة.
+              </p>
+            )}
+
             {/* Action buttons */}
             <div className="flex items-center justify-between pt-2 border-t border-stone-100 dark:border-stone-700">
               {onStartSession && (
                 <button
+                  type="button"
+                  disabled={!inspectedPage.segments[0]}
                   onClick={() => {
-                    onStartSession(inspectedPage.surah.number, 1, Math.min(10, inspectedPage.surah.versesCount));
+                    const firstSegment = inspectedPage.segments[0];
+                    if (!firstSegment) return;
+                    onStartSession(firstSegment.surahNumber, firstSegment.startAyah, firstSegment.endAyah);
                     setInspectedPage(null);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors"
+                  className="flex min-h-11 items-center gap-1.5 px-3 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50"
                 >
                   <Play className="w-3.5 h-3.5" />
-                  <span>فتح جلسة تسميع وتكرار</span>
+                  <span>{inspectedPage.segments.length > 1 ? 'فتح أول مقطع من الصفحة' : 'فتح الصفحة في جلسة التسميع'}</span>
                 </button>
               )}
 
               <button
                 onClick={() => setInspectedPage(null)}
-                className="px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold mr-auto"
+                className="min-h-11 px-4 py-2 bg-stone-100 dark:bg-stone-700 hover:bg-stone-200 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold mr-auto"
               >
                 إغلاق
               </button>
