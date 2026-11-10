@@ -130,10 +130,10 @@ export async function runQuranAudioQueueControllerTests(): Promise<{ passed: num
 
   await test('a play promise aborted by pause does not destroy the paused queue', async () => {
     const audios: MockQuranAudio[] = [];
-    let rejectPlay: ((error: Error) => void) | null = null;
+    const rejectPlayRef: { current?: (error: Error) => void } = {};
     const queue = new QuranAudioQueueController({}, url => {
       const audio = new MockQuranAudio(url);
-      audio.playOverride = new Promise<void>((_resolve, reject) => { if (!rejectPlay) rejectPlay = reject; });
+      audio.playOverride = new Promise<void>((_resolve, reject) => { if (!rejectPlayRef.current) rejectPlayRef.current = reject; });
       audios.push(audio);
       return audio;
     });
@@ -141,7 +141,7 @@ export async function runQuranAudioQueueControllerTests(): Promise<{ passed: num
     queue.pause();
     const abort = new Error('play interrupted by pause');
     abort.name = 'AbortError';
-    rejectPlay?.(abort);
+    rejectPlayRef.current?.(abort);
     await Promise.resolve();
     assert(queue.getState().active && queue.getState().paused, 'AbortError caused by pause must preserve the queue position');
     queue.stop();
