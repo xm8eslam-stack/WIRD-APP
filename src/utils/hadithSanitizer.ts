@@ -53,12 +53,16 @@ export function parseHadithMatn(raw: string): HadithMatnSegment[] {
 
     const attributes = normalizeDigits(raw.slice(marker.index + marker[0].length, headerEnd));
     let citationEnd = headerEnd + 1;
+    let malformedCitation = false;
     while (citationEnd < raw.length && /[\s\u200e\u200f\u200b]/.test(raw[citationEnd])) citationEnd += 1;
     if (raw[citationEnd] === '{') {
       const closingBrace = raw.indexOf('}', citationEnd + 1);
-      // An unterminated quote consumes the remainder rather than exposing
-      // any unverified provider-supplied Quran text.
-      citationEnd = closingBrace === -1 ? raw.length : closingBrace + 1;
+      if (closingBrace === -1) {
+        malformedCitation = true;
+        citationEnd = raw.length;
+      } else {
+        citationEnd = closingBrace + 1;
+      }
     }
 
     const surahMatch = attributes.match(/\bsura\s*=\s*["']([0-9]{1,3})["']/i);
@@ -69,7 +73,7 @@ export function parseHadithMatn(raw: string): HadithMatnSegment[] {
     const endAyah = endMatch ? Number(endMatch[1]) : startAyah;
     const surah = ALL_SURAHS.find(item => item.number === surahNumber);
 
-    if (surah && Number.isSafeInteger(startAyah) && Number.isSafeInteger(endAyah) &&
+    if (!malformedCitation && surah && Number.isSafeInteger(startAyah) && Number.isSafeInteger(endAyah) &&
         startAyah >= 1 && endAyah >= startAyah && endAyah <= surah.versesCount) {
       segments.push({ type: 'quran', surahNumber, startAyah, endAyah });
     } else {
