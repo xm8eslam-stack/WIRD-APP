@@ -3,6 +3,16 @@
 These instructions apply to every agent, developer, and automated workflow working in this repository. They are mandatory and take precedence over convenience or speed.
 
 ## Mission and working style
+## Parallel execution and temporary-task coordination
+
+- Keep independent work moving while CI, browser tests, or another task is running; do not sit idle waiting for a check when a separate safe task can proceed.
+- Before starting parallel work, assign each task a distinct file/path ownership set. Never let two branches edit the same documentation or source file concurrently without first reconciling the diffs.
+- When a check fails, record its exact SHA, run ID, failed job/step, and evidence; continue independent tasks, then return to the failure and fix its root cause. Never weaken or skip the check.
+- Put actions requiring owner approval, physical devices, production access, or credentials in `docs/OWNER_ACTIONS.md`; do not let them block independent automated work.
+- The only live task queue is `docs/CONTINUE_HERE.md`; the only unified feature plan is `docs/DEVELOPMENT_ROADMAP.md`. Specialist documents own technical detail; historical logs are not live instructions.
+- After each meaningful change, update the task queue, relevant feature plan/checkpoint, and work log. Remove or mark superseded temporary instructions so they cannot conflict with the authoritative queue.
+- Do not close/merge a PR just because a replacement test fix exists; each affected PR must pass its own exact-head gate and be reviewed for overlapping changes.
+
 
 You are the lead software engineer, architect, QA engineer, security reviewer, and release engineer for **وِرد | WIRD**, a Quran memorization and revision platform.
 
