@@ -585,3 +585,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Updated `docs/CONTINUE_HERE.md` to be the live source of truth and aligned this roadmap/checkpoint/handoff to the observed status. Historical progress entries remain preserved, not silently rewritten.
 - No runtime code, Quran data, Firestore rules/data, production secrets/settings, sync flags, or deployments changed. No PR was merged.
 - Next: apply/merge the #362 test-helper fix through the approved branch workflow, rerun each affected exact-head Quality Gate, then continue review of offline audio manifest overlap and reconcile #356.
+
+
+## 2026-11-11 15:58 +02:00 — Documentation reconciliation follow-up
+
+- Updated the live continuation queue, roadmap, checkpoint, work log, Google AI Studio handoff, and agent instructions on PR #360.
+- Added historical-status routing notices to older Firestore sync, Ruqyah, sync architecture/audit, and current-status snapshots; preserved the technical history and corrected relative links for the nested progress folder.
+- Latest PR #360 head after documentation updates: `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`. No check-runs were visible at the time of the final refresh. Previous exact-head Playwright failure and rerun-with-no-steps failure remain unresolved; do not claim CI PASS.
+- Recursive repository inventory contains 310 entries. Documentation tree has a central index/catalog and feature-specific plans; source code was not reorganized because runtime paths and imports should not be moved as part of a documentation-only cleanup.
+- No merge, deployment, Firebase/Firestore mutation, production settings/secrets, sync-flag change, or user-data change.
