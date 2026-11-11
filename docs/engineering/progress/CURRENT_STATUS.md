@@ -1,6 +1,6 @@
-> **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md) (اضبط مسار الرابط النسبي حسب مكان الملف)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
+> **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md) (اضبط مسار الرابط النسبي حسب مكان الملف)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
 
-> **Historical status file — updated 2026-11-11:** This document preserves earlier engineering snapshots; its old status tables and SHAs are not current. Current operational state: [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md). Unified roadmap: [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md). Detailed history: [`WORK_LOG.md`](./WORK_LOG.md). Re-fetch GitHub before using any old “next action”.
+> **Historical status file — updated 2026-11-11:** This document preserves earlier engineering snapshots; its old status tables and SHAs are not current. Current operational state: [`docs/CONTINUE_HERE.md`](../../../CONTINUE_HERE.md). Unified roadmap: [`docs/DEVELOPMENT_ROADMAP.md`](../../../DEVELOPMENT_ROADMAP.md). Detailed history: [`WORK_LOG.md`](./WORK_LOG.md). Re-fetch GitHub before using any old “next action”.
 
 ---
 
