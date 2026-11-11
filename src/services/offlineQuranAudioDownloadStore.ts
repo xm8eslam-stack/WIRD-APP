@@ -227,7 +227,12 @@ export class OfflineQuranAudioDownloadStore {
     await transactionResult(transaction);
     const job = await this.getJob(jobId);
     if (!job && result.length > 0) throw new Error('توجد ملفات تلاوة بلا عملية تنزيل صالحة.');
-    if (job) result.forEach(item => validateItemForJob(job, item));
+    if (job) {
+      if (result.length !== job.completedAyahs) {
+        throw new Error('عدد ملفات التلاوة لا يطابق تقدم عملية التنزيل المحفوظة.');
+      }
+      result.forEach(item => validateItemForJob(job, item));
+    }
     return result.sort((a, b) => a.globalAyahNumber - b.globalAyahNumber);
   }
 
