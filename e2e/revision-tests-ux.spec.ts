@@ -5,7 +5,8 @@ async function enterGuestApp(page: import('@playwright/test').Page) {
   const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
   if (await guestEntry.isVisible().catch(() => false)) {
     await guestEntry.click();
-    await expect(page.getByRole('button', { name: 'المراجعة' })).toBeVisible();\n  }
+    await expect(page.getByRole('button', { name: 'المراجعة' })).toBeVisible();
+  }
 }
 
 test.describe('WIRD revision and memorization-test UX', () => {
