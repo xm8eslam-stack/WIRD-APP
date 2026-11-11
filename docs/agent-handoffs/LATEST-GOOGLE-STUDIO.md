@@ -1,3 +1,18 @@
+# Follow-up handoff — 2026-11-11 (Seerah learning roadmap)
+
+> This section supersedes earlier status snapshots only for the new Seerah feature direction. Re-fetch live repository/PR/CI/deployment state before acting.
+
+- New specialist plan: `docs/SEERAH_LEARNING_PLAN_AR.md`.
+- Product priority: Quran memorization/revision remains first; Seerah of the Prophet ﷺ and Companions is the second core learning feature.
+- The planned experience includes staged lessons, people/events/places, a sourced timeline, verified maps, lesson and stage quizzes, cumulative tests, mistake review, and local-first/offline progress.
+- API research is preliminary: SeerahBook (read-only people/events/place graph, based on a specific lecture series), Dorar Historical Encyclopedia API (manual approval and bearer token), and Islamic Network People/Events (Early Access). No provider is approved or integrated.
+- Do not ingest/publish API data automatically. Every claim and quiz item needs source references and editorial review; no AI-authored historical/religious content, no unlicensed book reproduction, and no depictions of the Prophet ﷺ or Companions.
+- Read `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/SEERAH_LEARNING_PLAN_AR.md` before planning this feature.
+- Documentation-only changes are on PR #363 branch `docs/wird-docs-roadmap-reconciled-20261111`; exact current head and CI must be fetched before any merge decision. Production and Google AI Studio sync are not proven by these commits.
+- No runtime code, Firebase/Firestore, production data/settings, secrets, sync flags, or deployment configuration changed.
+
+---
+
 # GOOGLE AI STUDIO — Latest handoff (2026-11-11 16:30 +02:00)
 
 Repository: `xm8eslam-stack/WIRD-APP`; source branch expected: `main`.
