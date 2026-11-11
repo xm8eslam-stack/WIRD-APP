@@ -1,20 +1,34 @@
 # WIRD — نقطة الاستكمال الحالية (مصدر الحقيقة)
 
-**آخر مراجعة توثيقية:** 2026-11-11  
+**آخر مراجعة توثيقية:** 2026-11-12 00:55 +02:00  
 **المستودع:** `xm8eslam-stack/WIRD-APP`  
 **الفرع المرجعي للتطبيق:** `main`  
 **فرع مركز الوثائق الجاري:** `docs/wird-docs-roadmap-reconciled-20261111`  
-**حالة فرع الوثائق:** أعد جلب أحدث head من PR #363 قبل أي فحص أو قرار؛ لا تثبّت SHA للفرع داخل هذه اللقطة لأن التوثيق نفسه يتغير.
+**حالة فرع الوثائق:** يجري تحديث PR #363 ليتضمن main الحالي دون فقد تاريخ الفرع؛ أعد جلب exact head بعد هذا checkpoint.
 
 > لا تعتمد على أي SHA أو PR أو CI أو Production status في هذه اللقطة قبل إعادة جلبه من GitHub. فرع PR #363 هو مكان تعديلات الوثائق؛ لم يتم الدمج إلى main.
 
+## أحدث حالة حية — 2026-11-12 00:55 +02:00
+
+- **main:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- **Production:** Vercel deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` هو `READY` على SHA نفسه، والـ alias `wird-app.vercel.app`. هذا لا يثبت live smoke أو عمل Firebase/المزامنة.
+- **main Quality Gate:** run `43079260528` انتهى بفشل job `130727161970` قبل تسجيل أي steps؛ تنزيل السجل أعاد `BlobNotFound`. لا يوجد دليل على فشل اختبار فعلي ولا على نجاح Quality Gate.
+- **PR #363:** OPEN / DRAFT / HOLD. الرأس المرصود قبل إعادة التوفيق `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` مبني على base قديم `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`، وGitHub يعرض `mergeable_state=dirty`. Exact-head run `43057118522` / job `130649449663` فشل قبل steps؛ logs غير متاحة (`BlobNotFound`). Vercel status للـ PR أحمر بسبب حد النشر اليومي، وليس اختبار تطبيق. لا دمج قبل إزالة التعارض ومراجعة diff ونجاح كل بوابات exact head.
+- **PR #361/#362:** مدمجان، وmain الحالي descendant من merge commits لكليهما. لا تكرر أعمال EveryAyah stream-only أو إصلاح guest-entry hydration.
+- **PR #358/#359:** ما زالا OPEN / DRAFT وغير مدمجين، وقاعدتهما القديمة `4b299042...`. فشل Playwright كان لأن اختبار المراجعة لم يدخل وضع الضيف وبقي ينتظر زر إضافة المقطع؛ بقية الاختبارات/TypeScript/Emulator/build نجحت في الرؤوس المرصودة. إصلاح helper في #362 مدمج؛ أعد بناء تنفيذ موحد على main، ولا تدمج أيًا منهما منفردًا.
+- **PR #354:** مدمج وmain يحتويه؛ hardening للـ proxy فقط، ولا يثبت زوال سبب 500 الأصلي.
+- **PR #2:** OPEN / DRAFT، متباعد 115 commit ahead و469 behind؛ لا دمج مباشر. تم تحديد تحسينات فريدة محتملة لمسار Advisor security/chat فقط، بينما التغييرات المرئية الأخرى تحتاج إعادة تصميم على مكونات main الحالية.
+- **بوابتا المزامنة في Production:** متغيرا `VITE_WIRD_REVISIONED_SYNC_ENABLED` و`VITE_WIRD_REMOTE_PROJECTION_ENABLED` ظاهران بقيمة `true` في Production عند قراءة أسماء/حالة المتغيرات دون فك أسرار. لم يتم تغييرهما؛ يلزم قرار المالك بشأن تعطيلهما حتى اجتياز بوابات الإطلاق.
+- **Google AI Studio / live smoke / اختبار جهازين فعليين:** NOT VERIFIED.
+
+---
 ## 1. الحالة التشغيلية والبوابات
 
-- **PR #363:** OPEN / DRAFT حسب آخر مراجعة؛ يوحد مركز الوثائق وخطة التطوير. CI شوهد يفشل في job قبل تسجيل خطوات/سجلات، ولذلك الحالة BLOCKED/UNRESOLVED وليست فشل اختبار معروفًا ولا نجاحًا. أعد جلب head وcheck-runs، ولا تدمج قبل نجاح Quality Gate كامل على exact head.
+- **PR #363:** OPEN / DRAFT / HOLD حتى إزالة تعارض main الحالي ونجاح exact-head Quality Gate؛ فشل التشغيل السابق قبل steps/logs ولا يثبت فشل اختبار.
 - **PR #361 و#362:** MERGED حسب السجل السابق؛ لا تكرر أعمالهما. تحقق من الحالة الحية قبل أي عمل مرتبط.
-- **PR #358 و#359:** تنفيذان متداخلان لتخزين صوت القرآن offline؛ لا تدمجهما كما هما. اتبع `offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md` واجمع jobs/files/jobItems في عقد موحد مع Cache Storage للبايتات.
-- **PR #2:** فرع Phase 5 قديم جدًا؛ لا دمج مباشر. استخرج الفروقات الفريدة فقط عند عودة الأولوية.
-- **Production source SHA / live smoke / Google AI Studio sync:** NOT VERIFIED في آخر دليل موثق. فشل Vercel بسبب حد النشر اليومي سُجل سابقًا؛ لا تكرر محاولات مكلفة بلا داعٍ.
+- **PR #358 و#359:** مقترحان متداخلان، وفشل Playwright المرصود كان بسبب عدم الوصول لصفحة المراجعة في الاختبار. #362 أصلح helper؛ لا تدمج أيًا منهما كما هو، وابنِ عقد jobs/files/jobItems موحدًا فوق main.
+- **PR #2:** فرع Phase 5 قديم جدًا (115 ahead / 469 behind)؛ لا دمج مباشر. استخراج محدود لتحسين Advisor security/chat فقط بعد مراجعة مستقلة.
+- **Production:** READY على main SHA الحالي؛ **live smoke وGoogle AI Studio sync:** NOT VERIFIED. PR preview status قد يتأثر بحد النشر اليومي.
 
 ## 2. ترتيب التنفيذ العملي
 

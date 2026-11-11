@@ -4,6 +4,8 @@
 **Status:** Discovery/design only — no runtime code or production configuration changed.  
 **Priority:** P1 for reliable multi-device activity history; implementation is blocked on a safe legacy/offline-device cutover contract.
 
+**Latest main review:** 2026-11-12 against `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. The latest changes since the prior reviewed code baseline are documentation-only; the event ledger/reducer and safe cutover described below remain design-only and are not implemented.
+**Production guard:** both revisioned-sync and remote-projection Production flags were observed as `true` via read-only Vercel inventory. Do not toggle them in this workstream; owner approval and real-device A↔B/cutover evidence are required first.
 ## Problem
 
 WIRD currently stores daily activity as one aggregate record per local date. That is efficient for display, but two devices can independently update the same daily record. A compare-and-set fingerprint prevents an older full snapshot from overwriting a newer divergent snapshot; it does not merge two valid sessions completed independently on different devices. The current safety policy correctly blocks whole-snapshot `keep-local` / `use-remote` decisions for `activityEvents`.

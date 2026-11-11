@@ -1,3 +1,22 @@
+## 2026-11-12 — Live repository audit and PR reconciliation
+
+- Re-fetched GitHub/Vercel state. Current main is `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on that exact SHA.
+- Main Quality Gate run `43079260528` ended with job `130727161970` failed and `steps: null`; log retrieval returned `BlobNotFound`. This is unresolved job-start/runner evidence, not a test-level failure or pass.
+- PR #363 observed head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was based on `2c9aa972...`, with `mergeable_state=dirty`. Exact-head run `43057118522` failed before steps; logs unavailable. Vercel status failed because of the daily deployment rate limit. The branch is being reconciled with current main; keep Draft/HOLD until the final exact-head gate passes.
+- PR #361/#362/#354 are merged and current main descends from their merge commits. PR #358/#359 remain Draft and unmerged; both observed Playwright failures waited for a revision-page button that was never reached because the guest-entry helper had not navigated. #362 fixes the helper; the storage implementations still overlap and must be replaced by one unified implementation.
+- Read-only Vercel inventory confirmed both Production sync flags are `true`. No environment values, secrets, Firebase Rules/data, sync flags, or deployment settings were changed. Owner decision to disable the two flags remains outstanding.
+- Reviewed old PR #2 (115 ahead / 469 behind; 37 files). Do not merge it wholesale. The unique Advisor chat route/history validation/prompt-injection protections are candidates for a separate narrow PR; much of its session/retention logic already exists in a newer form on main, and its design-token/mobile-dock work is coupled to divergent UI markup.
+- Checked the PR #363 documentation tree's relative links in the entry docs; the initial reviewed subset had no broken relative links. Re-run full changed-file link validation after the main reconciliation.
+- Seerah plan's older lesson-oriented wording now needs explicit supersession by §§16–17 and UX §§6–7: continuous book reading is the product, optional aids only.
+- No runtime application code, Quran corpus, Firestore data/rules, production settings, or Google AI Studio sync changed in this documentation checkpoint.
+
+### Next
+1. Finish the documentation merge/reconciliation on latest main and run the exact-head Quality Gate.
+2. Port only the unique Advisor chat security/route changes from PR #2 into a separate branch.
+3. Implement the unified offline-audio storage contract only after reviewing the latest main APIs.
+4. Continue Ruqyah root-cause verification, sync cutover work, and Seerah claim-level research without production changes.
+
+---
 ## 2026-11-11 — PR #356 CI result and latest documentation run
 
 - PR #356 sync documentation Quality Gate run `43029328133` completed successfully on its exact PR head. The PR remains open; reconcile its older main/Production checkpoint text before merge.

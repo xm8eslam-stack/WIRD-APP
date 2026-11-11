@@ -1,3 +1,28 @@
+# WIRD — Current checkpoint (2026-11-12 00:55 +02:00)
+
+## Exact repository / release evidence
+- Current `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`: `READY`, source SHA exactly matches main; alias `wird-app.vercel.app`. No live browser smoke was performed.
+- Main Quality Gate run `43079260528`, job `130727161970`: failed with `steps: null`; log retrieval returned `BlobNotFound`. This is unresolved job-start/runner evidence, not a diagnosed test failure.
+- PR #363 observed head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6`, base `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`, GitHub `mergeable_state=dirty`. Exact-head run `43057118522`, job `130649449663`, failed before steps; logs unavailable. PR Vercel status: rate-limited. Keep Draft/HOLD until current-main reconciliation, complete diff review, and successful exact-head gate.
+- PR #361 merged at `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; PR #362 merged at `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`. Current main is a descendant of both.
+- PR #354 merged at `8c49f716726e329189a1141c28a69059543ea5ba`; current main is a descendant. Its proxy hardening does not diagnose the original Ruqyah 500.
+- PR #358/#359 remain Draft/unmerged. Their observed Playwright failure waited for the revision-page add-portion button while the guest-entry flow had not navigated; #362 fixes the helper. Both old branches need replacement by one combined implementation on latest main.
+- PR #2 remains Draft/open, 115 ahead / 469 behind. Do not merge wholesale; only isolated Advisor chat/security changes appear worth porting.
+
+## Production and owner boundary
+- Read-only Vercel inventory confirms `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` in Production. No values/settings were changed. Owner decision to disable both until release gates pass is outstanding.
+- No Firebase Rules/data, production secrets/settings, sync flags, manual deployment, or Google AI Studio sync action was performed.
+- Google AI Studio synchronization, live browser smoke, authenticated production A↔B, and real-device offline audio remain NOT VERIFIED.
+
+## Next safe work
+1. Reconcile PR #363 on current main; review every changed file and relative link; run the full exact-head gate. Do not merge on a failed/unresolved gate.
+2. Extract only the Advisor API chat route/history validation/prompt-injection boundary from PR #2 into a new isolated PR; keep main's newer retention/session logic.
+3. Build one offline audio store from the contract (`jobs`, canonical `files`, `jobItems`, Cache Storage bytes) with cross-job sharing and crash/quota/reconciliation tests.
+4. Re-test Ruqyah index/API in Production only through permitted read-only diagnostics; do not change keys/settings.
+5. Continue sync tombstone/cutover and Seerah claim-level content research without activating production sync or publishing unreviewed history.
+
+---
 ## Latest exact-head CI observation — 2026-11-11 16:45 +02:00
 
 - PR #363 head tested: `a8ba43209315acfabecdc4883e6c2f6823c8afed`.

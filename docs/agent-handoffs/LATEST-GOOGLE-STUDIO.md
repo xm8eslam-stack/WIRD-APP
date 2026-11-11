@@ -1,3 +1,15 @@
+# WIRD — Google AI Studio handoff (live checkpoint 2026-11-12)
+
+- Canonical source remains GitHub `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production is `READY` on the exact same SHA; deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`. This is deployment evidence only, not a live browser smoke.
+- Main Quality Gate run `43079260528` failed before recording steps; logs are unavailable (`BlobNotFound`). No test-level failure or successful gate is evidenced.
+- Documentation PR #363 is OPEN / DRAFT / HOLD. Its observed old head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was based on old main `2c9aa972...`; exact-head run `43057118522` failed before steps and Vercel was rate-limited. The branch is being reconciled with current main; re-fetch the new exact head before any review.
+- PR #361/#362/#354 are merged and included in current main. PR #358/#359 remain overlapping unmerged proposals; build one unified offline-audio store, never merge them separately.
+- Production sync flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are currently `true`. Do not change them; obtain owner decision before altering production settings.
+- Google AI Studio synchronization itself is NOT VERIFIED. Do not claim that Studio has pulled this SHA unless separately confirmed in the Studio UI.
+- Seerah product direction is a continuous historical book (parts → linked chapters → narrative scenes); optional maps, character/place cards, timeline, comprehension pauses, and quizzes must not interrupt reading. See `SEERAH_LEARNING_PLAN_AR.md` §§16–17 and `UX_PRODUCT_ROADMAP_AR.md` §§6–7.
+
+---
 ## Seerah API research — follow-up 2026-11-11
 
 - Read the actual Islamic Network People/Events OpenAPI JSON. People records support language-keyed biographies, dates, person type, linked event/quote/story aggregates and related people; Arabic may be absent per record. Events is calendar-oriented and uses Hijri month/day anniversaries distinct from the optional historical year; do not treat it as a complete chronological Seerah source.
@@ -16,7 +28,7 @@
 
 - New specialist plan: `docs/SEERAH_LEARNING_PLAN_AR.md`.
 - Product priority: Quran memorization/revision remains first; Seerah of the Prophet ﷺ and Companions is the second core learning feature.
-- The planned experience includes staged lessons, people/events/places, a sourced timeline, verified maps, lesson and stage quizzes, cumulative tests, mistake review, and local-first/offline progress.
+- The planned experience is a connected historical book (parts → linked chapters → narrative scenes); optional learning aids never interrupt continuous reading.nts/places, a sourced timeline, verified maps, lesson and stage quizzes, cumulative tests, mistake review, and local-first/offline progress.
 - API research is preliminary: SeerahBook (read-only people/events/place graph, based on a specific lecture series), Dorar Historical Encyclopedia API (manual approval and bearer token), and Islamic Network People/Events (Early Access). No provider is approved or integrated.
 - Do not ingest/publish API data automatically. Every claim and quiz item needs source references and editorial review; no AI-authored historical/religious content, no unlicensed book reproduction, and no depictions of the Prophet ﷺ or Companions.
 - Read `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/SEERAH_LEARNING_PLAN_AR.md` before planning this feature.

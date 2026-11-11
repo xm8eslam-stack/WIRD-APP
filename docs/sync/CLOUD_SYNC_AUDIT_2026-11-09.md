@@ -1,4 +1,73 @@
-> **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md) (اضبط مسار الرابط النسبي حسب مكان الملف)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
+# Latest live sync / release checkpoint — 2026-11-12
+
+- Current main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY and built from the exact current main SHA. This is not a live sync or browser smoke test.
+- Main Quality Gate run `43079260528` and PR #363 exact-head run `43057118522` both ended before any job steps were recorded; job log downloads returned `BlobNotFound`. Neither is evidence of an actual test failure or a successful Quality Gate.
+- PR #363 remains Draft/HOLD pending reconciliation with current main, complete diff review, and a successful exact-head gate.
+- Read-only Vercel environment inventory confirms Production values `true` for `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. No setting was changed. Owner decision is required before disabling/enabling either flag.
+- PR #361/#362/#354 are merged and included in main. No new sync runtime code was merged in this checkpoint; event-ledger/cutover remains design-only.
+- Google AI Studio sync, authenticated two-device sync, conflict/cutover production smoke, and live browser smoke are NOT VERIFIED.
+
+> This live checkpoint supersedes all older main SHA and deployment references in the historical audit below.
+
+---
+## Current operational checkpoint — 2026-11-11 (daily engineering review)
+
+This checkpoint supersedes the 2026-11-10 checkpoint and older statements below wherever they conflict. The older audit remains as historical evidence. Review performed against the current `main` pointer, current source blobs, PR metadata, GitHub checks, and the Vercel Production deployment/environment inventory. No application code, production data, secrets, environment settings, or Firestore Rules were changed.
+
+### Repository, current main, and Production
+
+- Current `main`: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe` ([commit](https://github.com/xm8eslam-stack/WIRD-APP/commit/2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe)); GitHub compare against `main` is `identical`.
+- Since the previous worklog checkpoint `50bb25eeba2f1ed4ceae228b347c67b40f60c697`, main advanced 14 commits. Sync-relevant additions include the pure activity reducer/tests in PR #330 and IndexedDB quota/recovery regression coverage in PR #351. PR #361 is the latest merge and changes offline audio storage policy, not cloud-sync behavior.
+- Latest Production is [`dpl_GoKscgfr9hVhkjAc96QtmoBFqUmg`](https://vercel.com/xm8eslam-9174s-projects/wird-app/GoKscgfr9hVhkjAc96QtmoBFqUmg), `READY`, target `production`, created 2026-11-11 14:26:00 UTC. It is built from branch `main` at the exact same SHA `2c9aa972...`; alias `wird-app.vercel.app`.
+- Current main combined status reports Vercel `success`. This replaces the older `build-rate-limit` Production status in the historical checkpoint. A separate main-triggered GitHub Quality Gate was not independently retrieved by the PR-only workflow-run endpoint.
+
+### Material sync changes since the previous checkpoint
+
+- PR #325 merged as `9669d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`: deterministic base-snapshot fingerprint compare-and-set for full `weakVerses` and `activityEvents` projections. This is a stale-write guard, not a multi-device merge.
+- PR #330 merged as `4669db79b535b13acc4b683d7052e7df5d4c9eca`: pure deterministic `projectDailyActivityFromEvents` helper plus 12 tests. It preserves the legacy baseline, deduplicates identical event IDs, rejects ID collisions and baseline mismatches, captures local-date/timezone semantics in the event contract, and rejects invalid/overflowing input without partial projection.
+- PR #351 merged as `5c1ecbaa77bc5a3aa13aba35a45b4ee63d366129`: test-only IndexedDB `QuotaExceededError` open-boundary regression; verifies the legacy localStorage Outbox recovery bytes are preserved.
+- PR #361 merged as current main/Production SHA `2c9aa972...`: EveryAyah remains stream-only pending documented offline-storage rights; no cloud-sync code change.
+- PR #203 is closed without merge and superseded by #325. PR #363 remains an open Draft documentation PR touching this audit and the activity-event design; its server-visible per-device cutover proposal is not merged. PRs #358/#359 are open Draft offline-audio manifest proposals, not cloud-sync PRs.
+
+### Firebase Auth, Firestore Rules, and sync architecture
+
+- Firebase source still pins `wird-quran-app` / `(default)`; Auth/coordinator requires a current verified user and exact `user:<uid>` storage scope.
+- Current Rules blob `6c9cbf1e7a1ebe4325240d751d40aec9efabc760` is byte-identical to the Rules blob at deployment commit `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`. Manual Firestore Rules deployment [run 42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) completed successfully. Rules preserve verified UID ownership, allowlisted collections, revision/state/event/server-sequence coupling, immutable events, denied physical deletes, and default deny. No Rules deploy was run in this review.
+- Coordinator, Outbox, revisioned writer, remote Inbox/projector, and conflict-resolution service blobs match the previously reviewed implementations. IndexedDB remains schema v9 with durable Outbox/Inbox, acknowledgements, conflict archives/intents, and separate remote/projection cursors.
+- PR #325's CAS precondition now protects divergent `weakVerses` and `activityEvents` snapshots. Destructive whole-snapshot `keep-local` / `use-remote` choices remain blocked for both collections.
+- The new activity reducer is **pure only**. It is not connected to session completion, journal, Outbox/Inbox, remote projector, or Firestore. `sessionPersistence.ts` still publishes `activityEvents/snapshot` with a base fingerprint, and its `session.completed` event does not yet carry the reducer's captured `localDate` and timezone offset. Thus concurrent independent device sessions still cannot be safely merged.
+- Tombstone-shaped writes remain unsupported: Firestore Rules deny physical deletes and the remote projector blocks tombstones. No delete/restore/anti-resurrection guarantee is claimed.
+
+### Production environment inventory
+
+Relevant Production variable names include the two sync gates and the six `VITE_FIREBASE_*` keys: `VITE_WIRD_REVISIONED_SYNC_ENABLED`, `VITE_WIRD_REMOTE_PROJECTION_ENABLED`, `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, and `VITE_FIREBASE_APP_ID`.
+
+**Critical operational finding:** Vercel's non-decrypted Production inventory shows both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` configured as `true`. They were last updated 2026-11-09 20:57:24 UTC, before the latest Production build on 2026-11-11 14:26:00 UTC. The coordinator evaluates them as build-time `import.meta.env` gates, so the current build should be treated as having both gates enabled unless a separate artifact check proves otherwise. This is a discovered pre-existing configuration, not a change made by this review. No secret values were decrypted or displayed.
+
+The older audit section below that states the two gates were absent is historical and superseded by this checkpoint.
+
+### Quality gates and evidence limits
+
+- PR #325 exact-head Quality Gate [42917981860](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42917981860): success.
+- PR #330 exact-head Quality Gate [42926607299](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42926607299): success.
+- PR #351 exact-head Quality Gate [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443): success.
+- PR #361 exact-head Quality Gate [43030824673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43030824673): success.
+- Rules deployment run [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063): success.
+- These checks prove the corresponding exact-head automated suites/build/browser/Emulator steps, not a fresh authenticated production A↔B round trip. No real-device test, production data write, live sync telemetry check, or destructive recovery test was performed in this review.
+
+### Release assessment and next action
+
+**Engineering implementation: advanced, with new deterministic reducer groundwork. Production synchronization safety: HOLD / elevated risk.** The main operational concern is that both Production build-time gates are already configured `true` while real-device verification and the server-visible per-device legacy cutover protocol remain outstanding.
+
+1. Obtain an explicit owner decision on whether to authorize disabling the two Production sync gates. They were not changed here because this review forbids Production settings changes.
+2. Review and reconcile the per-device cutover proposal in Draft PR #363; no event-ledger cloud wiring should occur until server-validated device/baseline acknowledgement and old-client schema gating are designed and tested.
+3. Keep weak-verse/activity whole-snapshot resolution and tombstones blocked until safe merge/delete semantics exist.
+4. After release gates are resolved, document an authenticated physical-device A→B→A round trip. Emulator and CI are not substitutes.
+
+No application code, Production settings, secrets, Firestore Rules, or user data were changed in this review.
+
+---
 
 ## Current operational checkpoint — 2026-11-10 (final engineering review)
 

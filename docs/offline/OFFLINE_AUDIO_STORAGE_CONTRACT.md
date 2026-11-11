@@ -1,8 +1,12 @@
 # WIRD — Offline Quran Audio Storage Contract
 
 **Status:** Proposed engineering contract; not implemented or released.
-**Reviewed:** 2026-11-11.
+**Reviewed:** 2026-11-12.
 **Related PRs:** #355 (range planner, merged), #356 (planner work superseded by #355), #358 (job + item store proposal), #359 (verified-file manifest proposal), #361 (EveryAyah rights boundary, merged).
+
+> **Implementation status — 2026-11-12:** This is the canonical design contract, not an implementation claim. PR #358 and #359 remain Draft/unmerged and must not be merged separately. Their observed exact-head Playwright failure was the shared guest-entry test setup race; #362 fixed the helper, so the combined implementation must be based on current main and rerun the complete exact-head gate. Current main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+>
+> **Required unified ownership:** one IndexedDB database for `jobs`, canonical `files` keyed by `(reciterId, globalAyah)`, and `jobItems` relations. Audio bytes live only in a dedicated Cache Storage namespace. A file referenced by multiple jobs must not be deleted while another live relation/pin still references it.
 
 ## 1. Decision summary
 
