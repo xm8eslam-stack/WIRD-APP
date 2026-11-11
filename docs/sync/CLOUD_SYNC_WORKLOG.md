@@ -1,3 +1,89 @@
+## Daily engineering review — 2026-11-11 (current main / Production)
+
+This entry supersedes earlier operational statements in this worklog where they conflict. Review was performed against GitHub main and the Vercel Production deployment. No application code, Firestore Rules, production data, environment variables, secrets, or Vercel settings were changed by this review.
+
+### Repository and deployment state
+
+- Exact current `main` SHA: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe` ([commit](https://github.com/xm8eslam-stack/WIRD-APP/commit/2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe)). GitHub compare `main...2c9aa972` returned `identical`, confirming the branch pointer.
+- The previous worklog checkpoint named `50bb25eeba2f1ed4ceae228b347c67b40f60c697`; current main is 14 commits ahead of that checkpoint.
+- Latest Production deployment: [`dpl_GoKscgfr9hVhkjAc96QtmoBFqUmg`](https://vercel.com/xm8eslam-9174s-projects/wird-app/GoKscgfr9hVhkjAc96QtmoBFqUmg), state `READY`, target `production`, created 2026-11-11 14:26:00 UTC and ready 14:26:15 UTC. Its Git source is branch `main`, exact SHA `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; the production alias is `wird-app.vercel.app`.
+- Therefore current main and latest READY Production are on the same exact SHA. The combined GitHub status for this SHA reports Vercel `success`.
+- The project metadata's `latestDeployment` pointed to a non-Production preview; the deployment above was selected from the explicit `target=production` deployment list and independently fetched by deployment ID.
+
+### Changes since the previous worklog checkpoint
+
+- PR [#330](https://github.com/xm8eslam-stack/WIRD-APP/pull/330) merged as `4669db79b535b13acc4b683d7052e7df5d4c9eca`. It adds a pure, deterministic session-activity reducer and 12 focused tests. Exact-head Quality Gate [run 42926607299](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42926607299) completed successfully.
+- PR [#351](https://github.com/xm8eslam-stack/WIRD-APP/pull/351) merged as `5c1ecbaa77bc5a3aa13aba35a45b4ee63d366129`. It adds an IndexedDB open-boundary `QuotaExceededError` regression test and verifies that legacy localStorage Outbox recovery bytes remain unchanged after the failure. Exact-head Quality Gate [run 43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) completed successfully. This is not a browser-level full-storage quota exhaustion test.
+- PR [#361](https://github.com/xm8eslam-stack/WIRD-APP/pull/361) merged as current main/Production SHA `2c9aa972...`. It keeps EveryAyah audio stream-only until offline-storage rights are documented; this is an offline-audio policy change, not a cloud-sync change. Exact-head Quality Gate [run 43030824673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43030824673) completed successfully.
+- PR [#325](https://github.com/xm8eslam-stack/WIRD-APP/pull/325) remains merged (merge SHA `9669d5fecae0dbd6c27b2a83ef300b0dde3dbd5a6`; exact-head Quality Gate [run 42917981860](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42917981860) succeeded). Its compare-and-set snapshot guard is now part of main.
+- PR [#203](https://github.com/xm8eslam-stack/WIRD-APP/pull/203) is **closed without merge**, superseded by #325; it is no longer an open merge candidate.
+- PR [#363](https://github.com/xm8eslam-stack/WIRD-APP/pull/363) is an open Draft documentation-consolidation PR. It touches this audit and the activity-event design document, but is not merged and its documentation must be reconciled against this current review before any later merge. Open Draft PRs #358 and #359 concern overlapping device-local offline-audio manifests, not cloud sync.
+
+### Current source review
+
+The canonical Firebase project remains `wird-quran-app` and database `(default)` (`src/lib/firebase.ts` blob `f9a41ebe1c949030f3f6438a3dd142e830788e1a`). Auth/coordinator checks still require a current user, verified email, and exact `user:<uid>` storage scope; the two sync gates are evaluated as exact build-time `import.meta.env...` values.
+
+Current reviewed source blob SHAs:
+- `firestore.rules`: `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`
+- `src/services/cloudSyncCoordinator.ts`: `6452db6e80f154c79e555db295b0898a95b99992`
+- `src/services/indexedDbSyncJournal.ts`: `e7a2108a89cb91032ed0257198ccf5e96af0b61e`
+- `src/services/localSyncOutbox.ts`: `500135c9029eb9e25fb39ea8deddcc37831366d3`
+- `src/services/revisionedRemoteMutation.ts`: `98f82e7e3f705f8e8d4caafae9154187ca5eaf86`
+- `src/services/remoteInboxProjector.ts`: `532a9a86a059d2c196f687e2f0d9b6829a5f08eb`
+- `src/services/syncConflictResolutionService.ts`: `79754df18f292f99c0e554d53f31a983750c10f9`
+- `src/services/syncConflictSafety.ts`: `09245a613c35cad063e6d6da01c7117e7a33a122`
+- `src/services/activityEventProjection.ts`: `93f05a83bbf08538bb3bafad7ce4489c5de31ead`
+- `src/services/activityEventProjection.test.ts`: `a21edd93da621e02f1deede4af13d795ff1e42ae`
+- `src/services/storageService.ts`: `6db81d223871a1f15cf75a88cff665cdccce5a22`
+- `src/services/sessionPersistence.ts`: `893953d3062051a750dc18b9c7ae43da46cdfd1a`
+- `src/services/weakVerseRecording.ts`: `22d5ae234b8411967d5b18b06dc0f49cfd96083a`
+
+Findings:
+- **Auth / coordinator:** canonical project pinning, verified-email requirement, UID-scope assertion, bounded Outbox drain, durable Inbox, and separate remote/projection cursors remain in place.
+- **Firestore Rules:** current Rules blob `6c9cbf...` is byte-identical to the Rules blob fetched at the successful deployment commit `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`. Manual Rules deployment [run 42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) completed successfully. Rules enforce verified UID ownership, collection allowlisting, revision envelopes, matching event/state/server-sequence writes, immutable event documents, and default-deny unknown paths. Physical deletes remain denied. No Rules deployment was performed in this review.
+- **IndexedDB journal / Outbox / Inbox:** journal schema remains v9. The durable journal retains append-only events, Outbox, acknowledgements, remote Inbox, projection conflicts, resolution intents, and cursor metadata. Event plus Outbox enqueue remains atomic; legacy Outbox bytes are preserved during migration/recovery. Current Outbox and Inbox/projector paths remain unchanged from the previously reviewed implementations.
+- **Revisioned writer / remote projector:** the writer still transactionally writes the state envelope, immutable event, and per-user server sequence with base-revision checks. The projector imports ordered events through durable Inbox and advances the projection cursor only after safe application/finalization. Pending local mutations, revision mismatch, tombstones, and failed projection remain fail-closed.
+- **Snapshot conflict protection:** PR #325 adds a deterministic base-snapshot fingerprint compare-and-set precondition for `weakVerses` and `activityEvents`. It prevents a stale divergent full snapshot from replacing current local data, but it is not a multi-device merge. Whole-snapshot `keep-local` / `use-remote` choices remain blocked for these collections by `syncConflictSafety`.
+- **Activity reducer:** PR #330 adds `projectDailyActivityFromEvents`, a pure helper that preserves a legacy baseline, groups unique events by captured local date, deduplicates identical event IDs, rejects ID collisions and baseline mismatches, validates timezone offsets/Quran coordinates, and fails without partial output on aggregate overflow. Its 12 tests cover duplicate replay, collisions, old-baseline conflicts, order independence, local-date/DST/travel cases, and baseline preservation.
+- **Important integration boundary:** the reducer is **not wired** into session completion, IndexedDB, Outbox/Inbox, the remote projector, or Firestore. `sessionPersistence.ts` still writes a full `activityEvents/snapshot` daily aggregate with the PR #325 fingerprint; `session.completed` still records UTC `occurredAt` without the reducer's captured `localDate` and timezone offset. The current activity sync therefore remains snapshot/CAS-based, not an immutable cross-device session ledger.
+- **Deletion:** `revisionedRemoteMutation.ts` still contains a tombstone-shaped writer branch, but Firestore Rules deny deletes and `remoteInboxProjector.ts` blocks tombstones. Delete propagation, retention, restore, and anti-resurrection are not supported.
+
+### Vercel environment inventory — names and non-secret gate status only
+
+Relevant Vercel Production keys observed:
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED`
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED`
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+
+**Critical finding:** the two sync-gate entries are already configured as `true` for Production in Vercel. Their configuration was last updated 2026-11-09 20:57:24 UTC; the latest Production deployment was created later, on 2026-11-11 14:26:00 UTC. Since the coordinator reads these as build-time environment values, treat both gates as enabled in the current Production build unless a separate build-artifact check proves otherwise. This review did not enable them and did not change either setting. No secret values were decrypted or included.
+
+### CI, deployment, and evidence boundaries
+
+- Exact-head Quality Gate runs succeeded for PR #325 (`42917981860`), PR #330 (`42926607299`), PR #351 (`43024968443`), and PR #361 (`43030824673`). Their test, Emulator, TypeScript, build, server-smoke, and desktop/mobile browser steps completed successfully; PR #325's optional 604-map check was skipped by its workflow condition.
+- Current main's combined status reports Vercel `success`; the connector's commit-workflow-runs endpoint returned no main-triggered run because that endpoint only exposes PR-triggered runs. Do not infer that a separate post-merge main Quality Gate was independently observed from this result.
+- The successful Rules deployment run is separate from application CI and proves Rules deployment/source parity, not real-device behavior.
+
+### Proven vs. not proven
+
+**Proven:** current main pointer and latest Production SHA match; latest Production is READY; relevant exact-head PR Quality Gates passed; current Rules source matches the Rules blob at the successful deployment commit; source-level Auth/journal/Outbox/Inbox/writer/projector/conflict guards are present; the pure activity reducer and its 12 tests are merged.
+
+**Not proven:** a fresh authenticated production A↔B round trip after these changes; simultaneous independent session aggregation; server-visible per-device legacy cutover acknowledgement; long-offline replay; cross-tab/account-switch/logout/reinstall stress; full browser quota exhaustion; tombstone deletion/restore/anti-resurrection; live Production sync telemetry or a real authenticated write/read. CI and Emulator results are not substitutes for two physical devices.
+
+### Open risks and next safe action
+
+1. Production sync gates are configured `true` despite the outstanding real-device and cutover evidence. This is the highest-priority operational risk. Do not silently change Production settings in this review; obtain an explicit owner decision on whether to authorize disabling them.
+2. Review the server-visible per-device cutover protocol proposed in Draft PR #363. Local device IDs/outbox watermarks alone do not prove all offline legacy devices drained their mutations. Do not wire the reducer into cloud sync until a server-validated UID/device/baseline acknowledgement and old-client schema gate are designed and Emulator-tested.
+3. Keep `weakVerses` and `activityEvents` whole-snapshot conflict choices blocked until a true deterministic merge/ledger exists.
+4. Keep tombstones blocked until collection-specific delete, restore, retention, stale-update, and anti-resurrection semantics are tested.
+5. After the above gates are resolved, perform a documented authenticated real-device A→B→A round trip and record exact records/operations. Do not label Emulator/CI as device evidence.
+
+No application code, production environment setting, secret, Firestore Rules, or user data was changed in this review.
+
 ## Current follow-up — 2026-11-11 after PR #328
 
 - Current `main`: `50bb25eeba2f1ed4ceae228b347c67b40f60c697`; PR #328 merged successfully with direct ayah selection in the sticky memorization/revision navigation.
