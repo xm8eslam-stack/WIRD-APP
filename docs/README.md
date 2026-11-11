@@ -19,10 +19,14 @@
 | `docs/engineering/progress/` | الحالة ونقاط الاستكمال وسجل العمل وبوابات الإصدار |
 | `docs/sync/` | تصميم المزامنة والتعارضات والاسترداد والاختبارات |
 | `docs/ruqyah/` | مصادر الرقية والتكامل والاختبارات |
-| `docs/offline/` | العمل دون اتصال وتنزيل الصوت |
+| `docs/offline/` | العمل دون اتصال وتنزيل الصوت وعقد التخزين |
 | `docs/agent-handoffs/` | تسليمات الوكلاء وGoogle AI Studio |
 | `docs/UX_*.md` | خريطة الصفحات وتجربة الاستخدام |
 | `docs/DEVELOPMENT_*.md` | نقطة التوقف والخطة الموحدة |
+
+## وثائق العمل دون اتصال
+- [offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md](./offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md) — خطة تنزيل الصوت.
+- [offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md](./offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md) — العقد الموحد المقترح للتخزين والاسترداد.
 
 ## مصدر الحقيقة
 - الحالة: `docs/CONTINUE_HERE.md`.
