@@ -195,6 +195,10 @@ export class OfflineQuranAudioDownloadStore {
       throw new Error('لم يتم العثور على عملية تنزيل التلاوة.');
     }
     validateJob(job);
+    if ((job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') && status !== job.status) {
+      transaction.abort();
+      throw new Error('لا يمكن إعادة فتح عملية تنزيل منتهية أو ملغاة؛ أنشئ عملية جديدة للنطاق المطلوب.');
+    }
     if ((job.status === 'completed' && status !== 'completed') ||
         (status === 'completed' && job.completedAyahs !== job.totalAyahs) ||
         (status === 'partial' && (job.completedAyahs < 1 || job.completedAyahs >= job.totalAyahs)) ||
