@@ -1,7 +1,7 @@
 # WIRD — Optional Offline Quran Audio Downloads
 
 ## Status
-Phased implementation in progress. PR #355 introduces only the pure, tested range planner; downloads, persistent manifest storage, worker protocol, UI, and offline playback are not implemented yet. Keep this feature separate from the existing opt-in application-shell preparation and opportunistic next-ayah cache.
+Phased implementation in progress. PR #355 merged the pure, tested range planner. PR #359 adds the versioned device-local verified-file manifest and its tests, pending review. Actual downloads, Cache Storage integration, worker protocol, UI, and offline playback are not implemented yet. Keep this feature separate from the existing opt-in application-shell preparation and opportunistic next-ayah cache.
 
 ## Source terms re-check — 2026-11-11
 - Official Al Quran Cloud terms explicitly permit streaming, embedding, and downloading recitations for personal and educational use at the published bitrates; copyright remains with the reciters or their estates: https://alquran.cloud/terms-and-conditions
@@ -40,7 +40,7 @@ Let a user explicitly download a chosen Quran reciter's surah or ayah range to t
 
 ## Architecture work items
 1. Add a pure URL builder that derives global ayah IDs from canonical local Quran metadata and approved reciter configuration.
-2. Add a download manifest repository with schema version, idempotent keys, atomic updates, and tests for malformed/stale records.
+2. Add a download manifest repository with schema version, idempotent keys, atomic updates, and tests for malformed/stale records. Implementation is proposed in PR #359; do not count it complete until exact-head CI passes and it is merged.
 3. Add a worker message protocol for DOWNLOAD_AUDIO_RANGE, CANCEL_AUDIO_DOWNLOAD, GET_AUDIO_DOWNLOADS, and DELETE_AUDIO_DOWNLOAD; validate every message and payload in the worker.
 4. Implement bounded, resumable downloads with progress messages and storage checks. Keep the current 40-entry opportunistic session cache independent from pinned downloads.
 5. Add local-first playback lookup for approved audio only; preserve current online fallback and continuous queue behavior.
