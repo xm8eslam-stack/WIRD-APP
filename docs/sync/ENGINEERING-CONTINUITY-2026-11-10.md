@@ -200,3 +200,12 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
 - PR #353's updated head cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b and PR #355's updated head 0f0cc611c5f610f6135db5760fbba8401ca8214d each have fresh Quality Gate runs in progress (43027225508 and 43027223673). Earlier failed runs were on superseded heads; evaluate only the latest exact heads.
 - PR #355 currently adds only a pure, bounded audio-range planner from canonical Quran metadata and the reviewed Al Quran Cloud allowlist. It does not yet download, store, or play audio offline.
 - No Production environment variables, sync flags, Firestore Rules/schema, or user data were changed by these changes.
+
+
+## 2026-11-11 — Latest main advance after PR #355
+
+- Current main SHA: 4b2990423f7f003b80982e99c76c7768f7fb5be0. PR #355 merged the verified Quran audio range planner at this SHA; exact PR head 0f0cc611c5f610f6135db5760fbba8401ca8214d passed Quality Gate run 43027223673.
+- The merged planner is pure and bounded: it derives global ayah numbers from local canonical Quran metadata and uses the approved Al Quran Cloud reciter allowlist. It performs no fetch, cache write, persistent manifest write, worker protocol, UI, or offline playback. Do not describe full audio downloads as implemented.
+- Main Quality Gate run 43028383367 is in progress at this checkpoint. No Vercel Production deployment record exists for SHA 4b2990423f7f003b80982e99c76c7768f7fb5be0; the last READY Production runtime SHA remains 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 (deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m). Vercel's earlier build-rate-limit status remains the deployment blocker.
+- PR #354's Ruqyah proxy hardening is in current main and passed exact-head CI, but is not yet verified in Production. PR #353's accessible revision dialogs are still under exact-head browser validation.
+- No Production environment variables, sync flags, Firestore Rules/schema, or user data changed in PR #355.
