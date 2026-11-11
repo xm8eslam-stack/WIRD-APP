@@ -1,3 +1,42 @@
+## Current operational checkpoint — 2026-11-11 (parallel work; exact evidence)
+
+This section supersedes older statements below where they conflict with these exact refs and deployment records.
+
+### Source, rules, CI, and Production
+
+- Current `main` SHA observed: `8c49f716726e329189a1141c28a69059543ea5ba` (latest merged change: PR #354 Ruqyah proxy failure handling).
+- Main Quality Gate [43026982133](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026982133) is still in progress at this checkpoint; browser smoke was active. Do not mark it passed until completion.
+- Latest confirmed Vercel **Production** deployment remains `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m`, READY, on earlier main SHA `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`. No Production deployment record for current main SHA `8c49f716...` was found in this check. Preview deployments are not Production. This is a pending deployment gate, not evidence of a broken app.
+- Both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are confirmed `true` in Production (names/targets inspected only; no secret values read). Keep them unchanged.
+- Firestore Rules deployment [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) completed successfully. Its steps included verified Quran data generation, 31 Firestore Emulator tests, project/credential checks, authentication, deployed-rules verification, and rules-only deploy. Current main `firestore.rules` blob SHA `6c9cbf1e7a1ebe4325240d751d40aec9efabc760` matches the reviewed deployed source blob.
+- Preserve the bounded owner-reported PASS for authenticated two-device sync; do not generalize it to untested crash/recovery paths.
+
+### Parallel PR / CI queue
+
+- PR #351 quota-recovery test is merged. Exact head `f259e084e381383168b1f1075064fe108d2c2cad`, Quality Gate [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) succeeded. It verifies IndexedDB `QuotaExceededError` normalization and exact legacy localStorage outbox byte preservation after the failure. This is open-boundary fault injection, not active transaction quota exhaustion.
+- PR #353 revision/progress accessibility work: latest exact head `cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b`; Quality Gate [43027225508](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027225508) in progress. An earlier run exposed a strict Playwright locator ambiguity (two matching review buttons); the test selector was narrowed to the first matching visible navigation control and rerun. Do not merge until exact-head run succeeds.
+- PR #355 offline Quran audio range planner: exact head `0f0cc611c5f610f6135db5760fbba8401ca8214d`; Quality Gate [43027223673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027223673) in progress. An earlier TypeScript failure exposed duplicate import/test registration; both duplicates were removed and the exact-head run restarted. Scope is pure planning only, not downloads or offline playback.
+- PR #349 documentation checkpoint [43026558541](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026558541) remained in browser smoke at this checkpoint; this newer checkpoint should be preferred.
+- PR #354 Ruqyah unexpected-proxy-failure handling is merged into the current main SHA.
+
+### Remaining engineering gates
+
+- Tombstone/delete semantics and anti-resurrection remain deliberately blocked; never convert deletes into empty upserts.
+- Grouped `syncMeta` use-remote is atomic; unsupported grouped keep-local/merge remains blocked.
+- Divergent legacy Ruqyah V1 baselines remain blocked/preserved.
+- Additional targeted work: full browser-level simultaneous cross-tab account lifecycle, true long-offline replay under browser suspension, active-write transaction quota injection, IndexedDB blocked/versionchange recovery, queue stress, and end-to-end production journey automation.
+- Existing tests already cover two-tab duplicate enqueue serialization, concurrent monotonic sequences, UID isolation, stale-account aborts, offline/online/foreground retry, close/reopen durability, and transaction rollback.
+
+### Deferred owner-only checks (collect and do last)
+
+1. After a current-main Production deployment exists, perform one authenticated sync smoke on the user's actual devices (create/update on device A, confirm on device B, then reverse direction). The earlier owner-reported pass remains valid bounded evidence; this is a post-deployment confirmation only.
+2. When optional offline audio downloads are fully implemented and merged, choose a short surah/range and verify playback after disabling the network on a real target device.
+3. If a browser denies persistent storage or the device is near quota, the owner may need to free device storage before attempting a large optional offline download. No action is needed now.
+
+No production settings, flags, rules, secrets, or user data were changed during this documentation work.
+
+---
+
 ## Current operational checkpoint — 2026-11-10 (verified follow-up)
 
 This checkpoint supersedes any older statement below that contradicts the current Production inventory or the owner's direct device test. It is a documentation update only; no runtime code, Firebase rules, production secrets, Vercel settings, or user data were changed.
