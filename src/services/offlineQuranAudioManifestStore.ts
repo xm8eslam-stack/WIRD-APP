@@ -110,6 +110,7 @@ export class OfflineQuranAudioManifestStore {
     if (this.databasePromise) return this.databasePromise;
     this.databasePromise = new Promise((resolve, reject) => {
       let request: IDBOpenDBRequest;
+      let wasBlocked = false;
       try { request = this.factory.open(this.databaseName, DB_VERSION); }
       catch (error) { reject(normalizeStorageError(error, 'تعذر فتح سجل تنزيلات التلاوة.')); return; }
       request.onupgradeneeded = () => {
@@ -117,11 +118,15 @@ export class OfflineQuranAudioManifestStore {
       };
       request.onsuccess = () => {
         const db = request.result;
+        if (wasBlocked) { db.close(); return; }
         db.onversionchange = () => { db.close(); this.databasePromise = null; };
         resolve(db);
       };
       request.onerror = () => reject(normalizeStorageError(request.error, 'تعذر فتح سجل تنزيلات التلاوة.'));
-      request.onblocked = () => reject(new Error('أغلق نسخة وِرد الأخرى التي تستخدم سجل التنزيلات ثم أعد المحاولة.'));
+      request.onblocked = () => {
+        wasBlocked = true;
+        reject(new Error('أغلق نسخة وِرد الأخرى التي تستخدم سجل التنزيلات ثم أعد المحاولة.'));
+      };
     }).catch(error => { this.databasePromise = null; throw error; });
     return this.databasePromise;
   }
