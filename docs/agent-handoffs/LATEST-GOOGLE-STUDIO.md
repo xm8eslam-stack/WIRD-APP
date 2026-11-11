@@ -1,3 +1,17 @@
+# WIRD — أحدث حالة موثقة
+
+آخر تحقق من GitHub: 2026-11-11 16:15 +02:00
+آخر main: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+PR #362 مدمج: `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd` — إصلاح انتظار guest-entry hydration، Quality Gate PASS.
+PR #361 مدمج: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe` — EveryAyah stream-only مع تنظيف cache قديم، Quality Gate PASS.
+PR #360 القديم فشل في check واحد، وإعادة التشغيل فشلت دون تسجيل خطوات. أُعيد بناء فرع الوثائق فوق main الحالي مع الاحتفاظ بتعديل حقوق EveryAyah؛ هذه النسخة الجديدة تحتاج Quality Gate على رأسها النهائي.
+PR #358 و#359 ما زالا متداخلين في ملكية manifest لتخزين الصوت؛ لا تدمجهما قبل عقد تخزين موحد.
+PR #356 يحتاج مراجعة diff مقابل مركز الوثائق الحالي.
+Production source SHA وlive smoke ومزامنة Google AI Studio: NOT VERIFIED.
+
+هذه الحالة تتقدم على أي لقطة تاريخية أدناه. المصدر الحي للمهام هو هذا الملف؛ لا تعتمد حالات PR قديمة دون إعادة جلب GitHub.
+
+---
 # GOOGLE AI STUDIO — Latest handoff (2026-11-11 15:52 +02:00)
 
 > Read `AGENTS.md`, then [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md), and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). This is a documentation handoff, not proof that Google AI Studio has synchronized.
