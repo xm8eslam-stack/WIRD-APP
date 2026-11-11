@@ -34,6 +34,8 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'engine' | 'presets'>('engine');
   const [planToDelete, setPlanToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const isDeletingRef = useRef(false);
   const deleteDialogRef = useRef<HTMLDivElement>(null);
   const cancelDeleteRef = useRef<HTMLButtonElement>(null);
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -46,7 +48,7 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
     const handleDialogKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        setPlanToDelete(null);
+        if (!isDeletingRef.current) setPlanToDelete(null);
         return;
       }
       if (event.key !== 'Tab') return;
@@ -91,15 +93,22 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
   };
 
   const handleConfirmDelete = async () => {
-    if (!planToDelete) return;
-    const updated = plans.filter(p => p.id !== planToDelete);
-    if (updated.length > 0 && !updated.some(p => p.isActive)) {
-      updated[0].isActive = true;
-    }
-    if (!await onUpdatePlans(updated)) return;
-    setPlanToDelete(null);
-    if (onToast) {
-      onToast("تم حذف الخطة من قائمتك بنجاح", "info");
+    if (!planToDelete || isDeletingRef.current) return;
+    isDeletingRef.current = true;
+    setIsDeleting(true);
+    try {
+      const updated = plans.filter(p => p.id !== planToDelete);
+      if (updated.length > 0 && !updated.some(p => p.isActive)) {
+        updated[0].isActive = true;
+      }
+      if (!await onUpdatePlans(updated)) return;
+      setPlanToDelete(null);
+      if (onToast) onToast("تم حذف الخطة من قائمتك بنجاح", "info");
+    } catch {
+      if (onToast) onToast("تعذر حذف الخطة. لم يتم تأكيد حفظ التغيير.", "error");
+    } finally {
+      isDeletingRef.current = false;
+      setIsDeleting(false);
     }
   };
 
@@ -309,16 +318,18 @@ export const MemorizationPlansView: React.FC<MemorizationPlansViewProps> = ({
                 type="button"
                 ref={cancelDeleteRef}
                 onClick={() => setPlanToDelete(null)}
-                className="min-h-11 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
+                disabled={isDeleting}
+                className="min-h-11 disabled:opacity-50 px-4 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-xl transition-colors"
               >
                 إلغاء
               </button>
               <button
                 type="button"
                 onClick={handleConfirmDelete}
-                className="min-h-11 px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
+                disabled={isDeleting}
+                className="min-h-11 disabled:opacity-50 px-5 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-xs transition-colors"
               >
-                تأكيد الحذف
+                {isDeleting ? 'جارٍ الحذف...' : 'تأكيد الحذف'}
               </button>
             </div>
           </div>
