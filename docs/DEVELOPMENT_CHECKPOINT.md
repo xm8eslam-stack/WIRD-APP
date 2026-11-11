@@ -1,3 +1,71 @@
+# WIRD — أحدث ملحق تحقق (2026-11-11 16:02 +02:00)
+
+- `main` الحالي: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- PR #360: آخر SHA موثق قبل آخر مزامنة للـ work log هو `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`؛ تلاه تحديثات توثيقية. لا توجد نتيجة exact-head موثقة للرأس النهائي؛ أعد جلب PR head وcheck-runs قبل الدمج. آخر فشل معروف كان Desktop/Mobile Playwright، وrerun attempt 2 لم يقدم job-step evidence.
+- PR #362 head `e2079734a0d150c1046307611a2b28346fdcdb1d`: Quality Gate PASS؛ إصلاح guest-entry hydration لم يدمج بعد.
+- PR #361 head `3008c4788caba61930be008e3cb40dcf52cfd78f`: Quality Gate PASS؛ PR مفتوح.
+- PR #358/#359/#356: Draft، فشل Playwright smoke على الرؤوس المرصودة؛ لا تدمج نماذج manifest المتداخلة.
+- Production source SHA وlive smoke وGoogle AI Studio sync: NOT VERIFIED.
+- هذه الدفعة توثيقية فقط؛ لا runtime/Quran data/Firestore/Production settings/secrets/flags.
+
+> هذا الملحق أحدث من كل نقاط التوقف التاريخية التالية.
+
+---
+
+# WIRD — أحدث ملحق تحقق (2026-11-11 15:58 +02:00)
+
+- `main` الحالي: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- PR #360 آخر head: `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`; لا توجد check-runs ظاهرة لهذا الرأس وقت هذه المراجعة. آخر run على الرأس السابق فشل في Playwright؛ rerun attempt 2 فشل قبل تسجيل أي job steps.
+- PR #362 head `e2079734a0d150c1046307611a2b28346fdcdb1d`: Quality Gate PASS؛ إصلاح guest-entry hydration لم يدمج بعد.
+- PR #361 head `3008c4788caba61930be008e3cb40dcf52cfd78f`: Quality Gate PASS؛ PR مفتوح.
+- PR #358/#359/#356: Draft، فشل Playwright smoke على الرؤوس المرصودة؛ لا تدمج نماذج manifest المتداخلة.
+- Production source SHA وlive smoke وGoogle AI Studio sync: NOT VERIFIED.
+- تغييرات هذه الدفعة توثيقية فقط؛ لا runtime/Quran data/Firestore/Production settings/secrets/flags.
+
+> هذا الملحق أحدث من كل نقاط التوقف التاريخية التالية.
+
+---
+
+# WIRD — أحدث ملحق تحقق (2026-11-11 15:52 +02:00)
+
+- `main` الحالي: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- #360 head `6e3c3c4be799c77a39dab539e3161c3d9f98958d`, run `43030878508`: Desktop/Mobile Playwright smoke FAIL؛ الاختبارات وRules Emulator وTypeScript وbuild وAPI/audio smoke PASS. Vercel build-rate-limit وليس نشرًا.
+- #362 head `e2079734a0d150c1046307611a2b28346fdcdb1d`: Quality Gate PASS؛ إصلاح guest-entry hydration race لم يدمج بعد.
+- #361 head `3008c4788caba61930be008e3cb40dcf52cfd78f`: Quality Gate PASS؛ PR مفتوح.
+- #358/#359/#356: Draft، وQuality Gate فشل في Desktop/Mobile Playwright smoke على الرؤوس المرصودة؛ لا تدمج #358 و#359 قبل توحيد تصميم manifest.
+- Production source SHA وlive smoke وGoogle AI Studio sync: NOT VERIFIED.
+- لا تغييرات على runtime أو Quran corpus أو Firestore أو Production settings/secrets/flags في تحديث التوثيق.
+
+> هذا الملحق أحدث من كل نقاط التوقف التاريخية التالية؛ لا تستخدم أرقامها أو تعليماتها كحالة حية.
+
+---
+
+# CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11 (latest repository review)
+
+> Current continuation: [`CONTINUE_HERE.md`](./CONTINUE_HERE.md). Unified roadmap: [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md). Detailed documentation inventory: [`DOCUMENTATION_CATALOG.md`](./DOCUMENTATION_CATALOG.md).
+
+- Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
+- Latest main SHA observed in this review: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
+- PR #353 Quality Gate run `43028294037` completed successfully on its exact PR head. Do not mislabel this as an independently observed post-merge main-only run.
+- GitHub Vercel status on main SHA `8dd2152`: success. Exact Production deployment source SHA and live smoke were not independently verified.
+- PR #360 documentation hub/roadmap: updated head `2ad93b0225a6ab22877b99a8f95128cf8963d091`; Quality Gate run `43030765045` was pending at last observation.
+- PR #358 offline download job/item store: Quality Gate run `43028986222` completed successfully; PR remains open/unmerged pending architecture review.
+- PR #359 offline audio manifest metadata store: Quality Gate run `43029617572` remained in progress at last observation.
+- PR #356 sync documentation update: Quality Gate run `43029328133` completed successfully; PR remains open and its older checkpoint text must be reconciled with current main.
+- PR #358 and #359 overlap in IndexedDB manifest responsibilities. Review their architecture together; do not merge both without an explicit compatible design.
+- No application runtime code, Quran corpus, Firestore Rules/data, production secrets, environment variables, or deployment settings were changed by this documentation work.
+
+## Immediate continuation
+1. Observe exact-head Quality Gate for #360/#359; #358 and #356 passed their recorded exact-head runs but still need content/overlap review.
+2. Consolidate the competing offline-audio manifest models before downloader/UI implementation.
+3. Reconcile #356 sync documentation with the new documentation hub and current main SHA.
+4. Re-test Ruqyah 500/502 and the ayah index before marking resolved.
+5. Keep production deployment verification and owner-only settings separate from CI.
+6. Record any owner action in [`OWNER_ACTIONS.md`](./OWNER_ACTIONS.md).
+
+---
+
+
 # CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11
 
 > This is the latest verified checkpoint. Older checkpoints below are historical and must not override this section.

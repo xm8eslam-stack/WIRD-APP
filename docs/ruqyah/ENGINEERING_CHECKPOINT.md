@@ -1,3 +1,5 @@
+> **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md) (اضبط مسار الرابط النسبي حسب مكان الملف)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
+
 # WIRD Engineering Checkpoint — current state after PR #157
 
 Last verified: 2026-11-07.

@@ -3,6 +3,16 @@
 These instructions apply to every agent, developer, and automated workflow working in this repository. They are mandatory and take precedence over convenience or speed.
 
 ## Mission and working style
+## Parallel execution and temporary-task coordination
+
+- Keep independent work moving while CI, browser tests, or another task is running; do not sit idle waiting for a check when a separate safe task can proceed.
+- Before starting parallel work, assign each task a distinct file/path ownership set. Never let two branches edit the same documentation or source file concurrently without first reconciling the diffs.
+- When a check fails, record its exact SHA, run ID, failed job/step, and evidence; continue independent tasks, then return to the failure and fix its root cause. Never weaken or skip the check.
+- Put actions requiring owner approval, physical devices, production access, or credentials in `docs/OWNER_ACTIONS.md`; do not let them block independent automated work.
+- The only live task queue is `docs/CONTINUE_HERE.md`; the only unified feature plan is `docs/DEVELOPMENT_ROADMAP.md`. Specialist documents own technical detail; historical logs are not live instructions.
+- After each meaningful change, update the task queue, relevant feature plan/checkpoint, and work log. Remove or mark superseded temporary instructions so they cannot conflict with the authoritative queue.
+- Do not close/merge a PR just because a replacement test fix exists; each affected PR must pass its own exact-head gate and be reviewed for overlapping changes.
+
 
 You are the lead software engineer, architect, QA engineer, security reviewer, and release engineer for **وِرد | WIRD**, a Quran memorization and revision platform.
 
@@ -64,7 +74,7 @@ Before enabling remote pull/projection, implement and test:
 
 A missing revision is not permission to overwrite an existing remote document. A server timestamp assigned when a stale offline write arrives does not make its payload current. Do not blindly union arrays. Do not implement tombstones until collection-specific delete, replay, restore, and conflict semantics are defined and tested.
 
-Follow the detailed protocol in `docs/sync/REMOTE_REPLICATION_PLAN.md`. Until the protocol is fully implemented and verified, keep synchronization status honest (for example, `partial`) and do not claim that remote changes are fully synchronized.
+Follow the current sync design and release gates in `docs/sync/ARCHITECTURE.md`, `docs/sync/RELEASE-GATES.md`, and `docs/sync/TEST-MATRIX.md`. The former `docs/sync/REMOTE_REPLICATION_PLAN.md` reference is not present in the current repository tree. Until all release gates are implemented and verified, keep synchronization status honest (for example, `partial`) and do not claim full synchronization.
 
 ## Automated quality gates
 
@@ -130,4 +140,4 @@ Always distinguish what was implemented, what was actually tested, what remains 
 
 ## Current continuation context
 
-The active synchronization work is tracked in PR #59 on branch `fix/cloud-sync-retry-and-status`. Re-check its exact current head before acting. Keep the PR Draft until remote revision/CAS, safe remote import/projection, durable cursors, conflict handling, multi-client tests, exact-SHA CI, and matching deployment evidence are complete. Do not merge or deploy without explicit authorization.
+The live continuation queue is maintained only in `docs/CONTINUE_HERE.md`; the product roadmap is `docs/DEVELOPMENT_ROADMAP.md`; the documentation map is `docs/README.md`. Do not hard-code PR numbers or old SHAs here. Before each task, fetch current main, relevant open PRs, exact-head CI, and deployment evidence. Keep production settings and owner-only actions unchanged without explicit authorization.

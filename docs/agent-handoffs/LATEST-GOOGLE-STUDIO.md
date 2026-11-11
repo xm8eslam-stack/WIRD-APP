@@ -1,3 +1,39 @@
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11 15:52 +02:00)
+
+> Read `AGENTS.md`, then [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md), and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). This is a documentation handoff, not proof that Google AI Studio has synchronized.
+
+- Repository: `xm8eslam-stack/WIRD-APP`; expected source branch: `main`.
+- Latest main SHA observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- #362 exact-head Quality Gate PASS (`e2079734a0d150c1046307611a2b28346fdcdb1d)); #361 PASS (`3008c4788caba61930be008e3cb40dcf52cfd78f`).
+- #360 exact-head run `43030878508` failed only at Desktop/Mobile Playwright smoke; #358/#359/#356 also have Playwright smoke failures and remain Draft. Check [CONTINUE_HERE](../CONTINUE_HERE.md) before action.
+- #358/#359 are competing/overlapping offline audio manifest designs; do not combine blindly.
+- Vercel status on main is not Production proof. Production source SHA, live smoke, and AI Studio synchronization are NOT VERIFIED.
+- Do not alter secrets, Production settings, Firebase rules/data, or sync flags.
+
+---
+
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11)
+
+> Start with [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), then [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). Older notes below are historical snapshots.
+
+- Repository: `xm8eslam-stack/WIRD-APP`; Google AI Studio is expected to use branch `main`.
+- Latest main SHA directly observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
+- PR #353 exact-head Quality Gate run `43028294037` passed; a separate post-merge main-only run was not observed in this review.
+- GitHub Vercel status on main SHA reports success; Production source SHA and live smoke remain unverified.
+- Active PRs at review: #360 documentation consolidation (latest run `43030765045` pending), #359 offline audio manifest (run `43029617572` in progress), #358 offline download job/item store (run `43028986222` passed), and #356 sync documentation update (run `43029328133` passed). Re-fetch exact checks before continuing.
+- #358 models persistent download jobs and verified ayah items; #359 models verified-file metadata alongside Cache Storage. Do not merge both implementations without a unified storage contract.
+- No secrets, production variables, Firestore data/rules, sync flags, or deployment settings were changed.
+
+## Instructions for the next session
+1. Read root `AGENTS.md`, then `docs/CONTINUE_HERE.md`.
+2. Fetch the latest main SHA, PRs, exact-head Quality Gates, and deployment evidence.
+3. Continue the highest-priority unblocked work; do not repeat merged work.
+4. Keep implementation on feature branches and record exact test evidence.
+5. Leave owner-only production/device steps until the end.
+
+---
+
+
 ### GOOGLE AI STUDIO HANDOFF
 
 

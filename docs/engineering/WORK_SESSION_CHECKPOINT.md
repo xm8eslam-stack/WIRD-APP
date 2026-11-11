@@ -1,3 +1,7 @@
+> **Documentation routing update — 2026-11-11:** This file is retained for detailed history. The authoritative current state is [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), the unified product plan is [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md), and the documentation index is [`docs/README.md`](../README.md). Re-fetch GitHub before using any old SHA, PR state, or deployment statement below.
+
+---
+
 # WIRD Work Session Checkpoint
 
 **Last updated:** 2026-11-06 — active Quran/Tafsir PR #49 checkpoint  

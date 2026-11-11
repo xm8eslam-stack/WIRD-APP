@@ -1,3 +1,43 @@
+## 2026-11-11 — PR #356 CI result and latest documentation run
+
+- PR #356 sync documentation Quality Gate run `43029328133` completed successfully on its exact PR head. The PR remains open; reconcile its older main/Production checkpoint text before merge.
+- PR #358 Quality Gate run `43028986222` passed. Its IndexedDB jobs/items implementation remains open/unmerged pending review against #359.
+- PR #359 Quality Gate run `43029617572` remained in progress at this observation.
+- PR #360 latest head: `2ad93b0225a6ab22877b99a8f95128cf8963d091`; latest Quality Gate run `43030765045` was pending at last observation. The preceding run `43030365657` was cancelled after the branch was updated.
+- No application runtime code or production settings changed.
+
+---
+
+## 2026-11-11 — PR #358 exact-head CI result
+
+- PR #358 Quality Gate run `43028986222` completed successfully on the observed PR head.
+- The PR remains open and unmerged. CI success does not decide whether its jobs/items schema or PR #359's metadata-only schema should be the canonical manifest.
+- PR #359 run `43029617572`, PR #356 run `43029328133`, and the updated PR #360 run `43030365657` were still pending/in progress at this observation.
+- Next: compare the complete #358/#359 APIs and storage lifecycle; choose one coherent IndexedDB + Cache Storage contract before merging or implementing download UI.
+
+---
+
+## 2026-11-11 — Documentation hub and continuation refresh
+
+- Repository: `xm8eslam-stack/WIRD-APP`; latest main SHA observed: `8dd21522430cc014db4eb5da8437f89c42f190f9` after PR #353 merge.
+- Documentation work is tracked in PR #360, branch `docs/wird-documentation-hub-roadmap-20261111`.
+- Added `docs/README.md`, `docs/DOCUMENTATION_CATALOG.md`, `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/OWNER_ACTIONS.md`.
+- Refreshed the checkpoint, Google AI Studio handoff, historical-file routing notices, AGENTS.md, GEMINI.md, and offline-audio planning notes.
+- Catalogued the 36 documentation paths in the main tree and checked relative links in the 10 main documentation entry files; no broken relative links were found.
+- Latest documentation branch commit at this log entry: `d2fe780a8b66b80fcb6745109fa2fcbffcab53f8` (subsequent log/plan additions are in the same PR branch).
+- Quality Gate run `43030122376` for the updated documentation PR head was pending/in progress at last observation. Do not report it as passed until completed.
+- PR #358's Quality Gate run `43028986222` completed successfully; PR #359 run `43029617572` and PR #356 run `43029328133` were still running at last observation.
+- PR #358 and #359 overlap in IndexedDB manifest responsibilities. This was documented as a design conflict; neither was merged in this review.
+- No runtime code, Quran data, Firebase/Firestore, production data, secrets, environment variables, or deployment settings changed.
+
+### Next
+- Observe exact-head CI for #360/#359/#356.
+- Resolve the offline-audio store contract before merging either overlapping manifest implementation.
+- Reconcile #356's sync documentation with the current centralized checkpoint.
+- Keep production source SHA and Google AI Studio synchronization unverified until directly confirmed.
+
+---
+
 # WIRD — Engineering Work Log
 
 ## 2026-11-06 — Repository resumption and engineering checkpoint
@@ -534,3 +574,23 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Read-only production probing found metadata-backed serverless endpoints returned `FUNCTION_INVOCATION_FAILED`. Native Node loading isolated extensionless TypeScript imports in the Quran metadata dependency. Corrected metadata/API imports to explicit `.ts` paths and made the metadata type-only import explicit. Added `smoke:api-imports` to verify native Node imports and invalid-input responses, and wired it into CI.
 - Local after hotfix edits: `npm test` (584 passed), `npm run lint`, `npm run build`, and `npm run smoke:api-imports` passed. The API smoke exercises invalid inputs only and does not call external providers. The fix is not deployed yet; create a hotfix PR from current main, run exact-head CI, verify Vercel preview API responses, then merge only if green.
 - No production credentials/settings or cloud sync configuration changed. Hadith live upstream still requires server-side Quran Foundation credentials and remains untested.
+
+
+## 2026-11-11 15:52 +02:00 — Reconciliation of documentation and PR queue
+
+- Re-fetched repository tree (310 entries; recursive tree not truncated), latest main SHA `8dd21522430cc014db4eb5da8437f89c42f190f9`, all open PRs, and exact-head check runs.
+- PR #360 exact head `6e3c3c4be799c77a39dab539e3161c3d9f98958d`, run `43030878508`: automated tests, dependency audit, API import smoke, approved audio probes, Rules Emulator, TypeScript, build, and server smoke passed; Desktop/Mobile Playwright smoke failed. Vercel reported build-rate-limit.
+- PR #362 exact head `e2079734a0d150c1046307611a2b28346fdcdb1d` passed Quality Gate; its guest-entry hydration helper fix is not merged. PR #361 exact head `3008c4788caba61930be008e3cb40dcf52cfd78f` passed Quality Gate and remains open.
+- PRs #358, #359, and #356 have failed exact-head Quality Gates in Desktop/Mobile Playwright smoke and remain Draft. #358 and #359 are overlapping offline-audio storage models; do not merge both without one agreed contract.
+- Updated `docs/CONTINUE_HERE.md` to be the live source of truth and aligned this roadmap/checkpoint/handoff to the observed status. Historical progress entries remain preserved, not silently rewritten.
+- No runtime code, Quran data, Firestore rules/data, production secrets/settings, sync flags, or deployments changed. No PR was merged.
+- Next: apply/merge the #362 test-helper fix through the approved branch workflow, rerun each affected exact-head Quality Gate, then continue review of offline audio manifest overlap and reconcile #356.
+
+
+## 2026-11-11 15:58 +02:00 — Documentation reconciliation follow-up
+
+- Updated the live continuation queue, roadmap, checkpoint, work log, Google AI Studio handoff, and agent instructions on PR #360.
+- Added historical-status routing notices to older Firestore sync, Ruqyah, sync architecture/audit, and current-status snapshots; preserved the technical history and corrected relative links for the nested progress folder.
+- Latest PR #360 head after documentation updates: `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`. No check-runs were visible at the time of the final refresh. Previous exact-head Playwright failure and rerun-with-no-steps failure remain unresolved; do not claim CI PASS.
+- Recursive repository inventory contains 310 entries. Documentation tree has a central index/catalog and feature-specific plans; source code was not reorganized because runtime paths and imports should not be moved as part of a documentation-only cleanup.
+- No merge, deployment, Firebase/Firestore mutation, production settings/secrets, sync-flag change, or user-data change.
