@@ -31,6 +31,19 @@ This checkpoint supersedes older status statements below when they conflict with
 - Grouped `syncMeta` decisions must remain atomic; unsupported conflict choices and divergent legacy Ruqyah V1 baselines must continue to fail closed.
 - Keep the existing Production sync flags unchanged unless the owner explicitly requests a change. Do not claim that CI or a READY deployment proves every live sync scenario.
 
+### Owner-only actions — intentionally deferred until engineering checks finish
+
+No owner action is required to deploy Firestore Rules; that deployment is already confirmed.
+
+At final release verification, ask the owner to do only the following if not already verified against the latest production build:
+1. Open the Production app on the primary device, sign in to the existing verified account, and confirm expected account data is present.
+2. On a second device/browser, sign in to the same account. Create a harmless test progress change on device A, confirm it appears on B, then make a separate harmless change on B and confirm it returns to A. Do not use destructive deletes as test data.
+3. With the test account still active, go offline, make a harmless local progress change, reconnect, and confirm the pending count drains and the change appears on the second device.
+4. Confirm the latest `main` has synchronized to Google AI Studio if that integration is part of the owner's workflow; this external sync is not observable from GitHub CI.
+5. Report any visible mismatch or permission error; never share passwords, service-account JSON, or API keys.
+
+If these checks were already completed successfully after the latest Production runtime deployment, record the existing evidence instead of repeating them. These are the only owner-dependent steps currently identified; continue all repository-side work without waiting for them.
+
 ---
 
 ## Current operational checkpoint — 2026-11-10 (verified follow-up)
