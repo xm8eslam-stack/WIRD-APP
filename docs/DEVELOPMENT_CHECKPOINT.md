@@ -310,3 +310,15 @@ On resumption:
 - Existing memorization display controls remain: session scale 80–110%, ayah text 20–44px, compact/comfortable spacing, focused/all-session display, and device-local preferences. The new sticky selector jumps directly to any ayah in the selected session and stops active playback before switching.
 - Sync design discovery is recorded in `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code, Firestore Rules/schema, production flags, secrets, or user data changed in this documentation follow-up.
 - Production release remains HOLD: current main deployment and live smoke are not verified; the last documented READY deployment predates this merge. Google AI Studio synchronization is also unverified.
+
+
+## 2026-11-11 — Seerah learning plan established
+
+- New specialist plan: `docs/SEERAH_LEARNING_PLAN_AR.md`.
+- WIRD product priority is explicit: memorization/revision first; Seerah of the Prophet ﷺ and Companions second.
+- Scope includes structured stages and short lessons, person/event/place relationships, source-linked timeline, optional verified maps, post-lesson quizzes, stage and cumulative tests, error review, spaced retrieval, local-first progress, and optional offline content packs.
+- Source/API research is preliminary only: SeerahBook (read-only graph, source provenance, based on a specific lecture series), Dorar Historical Encyclopedia API (manual access approval and bearer token), and Islamic Network People/Events APIs (Early Access). Seerah Library and Sirah Atlas are UX references only.
+- No API provider has been approved; no runtime integration or content ingestion occurred. Licensing, Arabic coverage, claim-level references, privacy, rate limits, availability, and offline rights remain gates.
+- Safety decisions: no AI-authored religious/historical claims or published quiz answers; every claim/question must have references and review status; disputed/approximate material is labelled; no depictions of the Prophet ﷺ or Companions; no unlicensed reproduction of modern books/translations.
+- Documentation changes are confined to the existing docs PR branch. No runtime code, Quran corpus, Firebase/Firestore, user data, production settings, secrets, sync flags, or deployments changed.
+- Application tests: NOT RUN (documentation-only). PR #363 exact-head CI must be re-fetched and pass before merge; the previously observed CI run was unresolved due to a job with no recorded steps/logs.
