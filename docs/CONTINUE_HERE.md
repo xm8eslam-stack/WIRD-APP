@@ -1,36 +1,31 @@
 # WIRD — نقطة الاستكمال الحالية (مصدر الحقيقة)
 
-**آخر تحقق حي:** 2026-11-12 01:23 +02:00  
-**المستودع:** `xm8eslam-stack/WIRD-APP`  
-**الفرع المرجعي للتطبيق:** `main`  
+**آخر تحقق حي:** 2026-11-12 01:31 +02:00  
+**المستودع:** `xm8eslam-stack/WIRD-APP` — الفرع الأساسي `main`  
 **فرع الوثائق:** `docs/wird-docs-roadmap-reconciled-20261111`
 
-> هذه لقطة تشغيلية وليست بديلًا عن إعادة جلب GitHub/Vercel قبل كل قرار. لا تعتمد SHAs أو الحالات القديمة أدناه بعد تغيرها.
+> هذه اللقطة توثق آخر رأس فُحص قبل تحديث الوثائق الحالي. هذا التحديث نفسه سينشئ head جديدًا؛ أعد جلب head وchecks بعده قبل أي قرار.
 
-## أحدث حالة حية — 2026-11-12 01:23 +02:00
+## أحدث حالة حية — 2026-11-12 01:31 +02:00
 
 - **main:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
-- **Production:** Vercel deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` هو `READY` على SHA نفسه، والـ alias `wird-app.vercel.app`. هذا دليل نشر فقط؛ live browser smoke وFirebase sync غير متحققين.
-- **main Quality Gate:** run `43079260528` انتهى بفشل job قبل تسجيل أي steps؛ سجل التشغيل غير متاح (`BlobNotFound`). لا يوجد تشخيص لفشل اختبار فعلي، ولا يوجد Quality Gate ناجح مثبت لهذا الرأس.
-- **PR #363:** OPEN / DRAFT / HOLD، base `main` على `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`، head الحالي `484fc70e9b4fbcb7f938be944122b931bfcdd3ee`، وGitHub reports `mergeable=true`. التغيير 28 ملفًا توثيقيًا فقط (1,871 إضافة و8 حذف)، بلا runtime code. Exact-head Quality Gate run `43118098080` انتهى `failure` بعد نحو ثانيتين؛ job `130851207499` يعيد `steps=null`، وتنزيل السجل يعيد `BlobNotFound`. توجد annotation واحدة لكن endpoint الخاص بها لم يكن متاحًا؛ لا يوجد تشخيص step/test ولا يجوز وصفه بفشل اختبار. `Vercel Preview Comments` = success، وظهر Preview Ready في تعليق Vercel؛ هذا لا يعوض Quality Gate ولا يثبت Production.
-- **PR #361:** MERGED كـ `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`، وmain descendant منه؛ EveryAyah يظل stream-only لحين إثبات حقوق التخزين.
-- **PR #362:** MERGED كـ `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`، وmain descendant منه؛ أصلح انتظار guest-entry في Playwright. لا تكرر إصلاح helper.
-- **PR #354:** MERGED كـ `8c49f716726e329189a1141c28a69059543ea5ba`، وmain descendant منه؛ proxy hardening يعيد JSON آمنًا، لكنه لا يثبت زوال السبب الأصلي لخطأ 500 في الرقية.
-- **PR #358:** OPEN / DRAFT وغير مدمج، head `4970b87d6ba712d3899093f4e8dd297bef17985e`، run `43030195498`. الاختبارات الآلية وEmulator وTypeScript والبناء نجحت؛ Playwright فشل في desktop لأن helper لم يصل إلى شاشة المراجعة ولم يظهر زر `إضافة مقطع متابعة جديد`؛ 159 passed و1 failed و2 skipped.
-- **PR #359:** OPEN / DRAFT وغير مدمج، head `7d31af20fe9cdc69aee4855acaf02e278fbf8b70`، run `43029617572`. الاختبارات الآلية وEmulator وTypeScript والبناء نجحت؛ Playwright فشل في desktop/mobile لنفس غياب زر المراجعة بعد عدم اكتمال guest-entry؛ 158 passed و2 failed و2 skipped. هذه إخفاقات browser setup موثقة، وليست دليلًا على فساد manifest.
-- **#358/#359:** كلاهما مبني على main قديم ويتداخلان في ملكية manifest. #362 أصلح helper لكن الرأسيْن القديميْن لم يعيدا الفحص بعده. لا تدمج أيًا منهما منفردًا؛ التنفيذ الموحد ما زال غير منفذ.
-- **PR #364:** OPEN / DRAFT، head `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`. run `43117641418` فشل قبل steps؛ logs `BlobNotFound`، فلا يوجد test-level diagnosis. Vercel Preview نجح؛ لا دمج قبل Quality Gate كامل على exact head.
-- **PR #2:** OPEN / DRAFT وغير قابل للدمج حاليًا؛ مقارنة head `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` مع main: 115 ahead و469 behind. لا دمج wholesale؛ استخرج التغييرات الفريدة فقط عبر PR ضيق مثل #364.
-- **بوابتا المزامنة في Production:** `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` و`VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` بحسب الجرد غير المفكوك السابق. لم يتم تغييرهما؛ قرار المالك مطلوب. لا تُفعّل أو تُعطّل أي إعداد إنتاجي هنا.
-- **Google AI Studio / live smoke / اختبار A↔B على جهازين / offline audio فعلي:** NOT VERIFIED.
+- **Production:** Vercel deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` هو `READY` على SHA نفسه، والـ alias `wird-app.vercel.app`. لا live browser smoke أو A↔B sync smoke.
+- **main Quality Gate:** run `43079260528` انتهى قبل تسجيل steps؛ logs `BlobNotFound`. لا تشخيص test-level ولا pass مثبت.
+- **PR #363:** OPEN / DRAFT / HOLD، base `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`، آخر head تم فحصه `acdfeef4e4baf99251e4768bbbc808fabab4f130`، و`mergeable=true`. 28 ملفًا توثيقيًا فقط (1,892 إضافة و8 حذف). Exact-head run `43120106137`, job `130858118105`, انتهى failure بعد نحو ثانيتين مع `steps=null`؛ logs `BlobNotFound`، وannotation واحدة غير متاحة. لا يوجد فشل اختبار مُشخّص ولا نجاح Quality Gate. Vercel Preview deployment `dpl_CcBtjR4TRcqJd9pNwSZTvkgS2LHA` هو `READY` على هذا الرأس؛ هذا لا يثبت Production ولا يعوض CI.
+- **PR #361/#362/#354:** MERGED، وGitHub compare يؤكد أن main descendant من commits الثلاثة. #361 أبقى EveryAyah stream-only؛ #362 أصلح guest-entry helper؛ #354 أضاف hardening آمنًا للـ Ruqyah proxy دون إثبات زوال 500 الأصلي.
+- **PR #358:** OPEN / DRAFT؛ run `43030195498`: 159 Playwright passed و1 failed و2 skipped؛ فشل desktop لأن helper لم يصل إلى شاشة المراجعة، فلم يظهر زر إضافة المقطع. باقي suites/Emulator/TypeScript/build نجحت.
+- **PR #359:** OPEN / DRAFT؛ run `43029617572`: 158 Playwright passed و2 failed و2 skipped؛ نفس مشكلة guest-entry على desktop/mobile. #362 أصلح helper لكن هذين الرأسين القديمين لم يعادا الفحص بعده. لا تدمج أيًا منهما منفردًا؛ manifest responsibilities متداخلة.
+- **PR #364:** OPEN / DRAFT؛ run `43117641418` فشل قبل steps/logs (`BlobNotFound`)، وPreview نجح. لا Quality Gate pass مثبت.
+- **PR #2:** OPEN / DRAFT وغير قابل للدمج حاليًا؛ 115 ahead / 469 behind. لا دمج wholesale.
+- **Production sync flags:** `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` و`VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` بحسب الجرد غير المفكوك. لم يتم تغييرهما؛ قرار المالك مطلوب.
+- **Google AI Studio / live browser smoke / جهازان حقيقيان / offline audio playback:** NOT VERIFIED.
 
 ## التنفيذ التالي
 
-1. إبقاء #363 Draft/HOLD؛ مراجعة التناقضات الوثائقية المصححة في هذا التحديث، ثم انتظار Quality Gate قابل للفحص وناجح على exact head جديد. لا rerun عشوائيًا؛ فشل التشغيل السابق كان قبل steps والسجلات غير متاحة.
-2. إبقاء #358/#359 منفصلين كمرجعين فقط، وتصميم تنفيذ موحد على main وفق عقد `jobs/files/jobItems` قبل أي كود تنزيل.
-3. متابعة تشخيص فهرس الرقية و500/502 عبر أدلة آمنة، دون كشف أسرار أو اعتبار JSON 502 وحده حلًا للسبب.
-4. مواصلة اختبارات مزامنة tombstones/cutover دون تغيير Rules أو flags أو بيانات الإنتاج.
-5. بدء أي تنفيذ للسيرة بعد فحص المكونات الحالية؛ المطلوب قارئ كتاب متصل متعدد المشاهد، وليس قائمة دروس.
+1. بعد هذا التحديث، أعد جلب head الجديد وcheck runs على exact SHA؛ أبقِ #363 Draft/HOLD حتى تنجح جميع خطوات Quality Gate المسجلة.
+2. نفّذ offline audio كمسار موحد فقط على أحدث main؛ لا تدمج #358/#359 منفصلين.
+3. واصل تشخيص Ruqyah index/500 وsync cutover دون تغيير إعدادات الإنتاج أو البيانات.
+4. قبل بناء السيرة، افحص مكونات القارئ والتوجيه والتخزين القابلة لإعادة الاستخدام؛ المنتج كتاب متصل متعدد المشاهد، وليس قائمة دروس.
 
 ---
 

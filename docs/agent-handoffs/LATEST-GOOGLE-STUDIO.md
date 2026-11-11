@@ -1,16 +1,13 @@
-# WIRD — Google AI Studio handoff (live checkpoint 2026-11-12 01:23 +02:00)
+# WIRD — Google AI Studio handoff (live checkpoint 2026-11-12 01:31 +02:00)
 
-- Canonical source remains GitHub `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
-- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA. This is deployment evidence only, not live browser or sync smoke.
-- Main Quality Gate run `43079260528` failed before steps/logs (`BlobNotFound`); no test-level diagnosis or successful gate is evidenced.
-- PR #363 is OPEN / DRAFT / HOLD, base `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, exact head `484fc70e9b4fbcb7f938be944122b931bfcdd3ee`, 28 documentation-only files. Exact-head run `43118098080` failed before steps (`steps=null`); logs unavailable (`BlobNotFound`); no test-level diagnosis. Vercel Preview Comments succeeded and a Ready Preview comment exists, but neither replaces the gate.
-- PR #361/#362/#354 are merged and main is a descendant of their merge commits.
-- PR #358/#359 remain Draft/unmerged and overlap in IndexedDB manifest ownership. Their last runs passed unit/Emulator/TypeScript/build but failed in the revision browser flow because the guest-entry helper did not reach the revision page. #362 fixed the shared helper; the old heads still need a unified replacement on current main. Do not merge either alone.
-- PR #364 is OPEN / DRAFT; its Quality Gate failed before steps/logs (`BlobNotFound`), while Vercel Preview succeeded. Keep Draft.
-- PR #2 is 115 commits ahead and 469 behind main; do not merge wholesale. PR #364 is a bounded Advisor security extraction candidate.
-- Production sync flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` were observed as `true` in read-only inventory. Do not change them without explicit owner approval.
-- Google AI Studio synchronization itself is NOT VERIFIED. Do not claim Studio has pulled this SHA without separate confirmation in the Studio UI.
-- Seerah direction remains a continuous book (parts → linked chapters → narrative scenes), with claim-level sources, content versions, saved reading anchors, and optional context aids. See `SEERAH_LEARNING_PLAN_AR.md` §§16–17 and `UX_PRODUCT_ROADMAP_AR.md` §§6–7.
+- GitHub `main` remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA. This is deployment evidence only.
+- Main Quality Gate run `43079260528` failed before steps/logs (`BlobNotFound`); no test-level diagnosis or pass.
+- PR #363 last checked head `acdfeef4e4baf99251e4768bbbc808fabab4f130`, base `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, OPEN / DRAFT / HOLD. Exact-head run `43120106137` / job `130858118105` failed before steps (`steps=null`); logs `BlobNotFound`; one annotation could not be retrieved. No test-level diagnosis.
+- Vercel Preview deployment `dpl_CcBtjR4TRcqJd9pNwSZTvkgS2LHA` is READY on that exact PR head. The current documentation update creates a new head; re-fetch its checks. Preview does not replace CI or Production.
+- PR #361/#362/#354 are merged. #358/#359 remain overlapping unmerged Drafts; #362 fixes their guest-entry test helper, but unified storage implementation is still not built. #364 remains Draft with unresolved no-steps CI; PR #2 is 115 ahead / 469 behind and must not merge wholesale.
+- Production sync flags were observed true; do not change them without explicit owner approval.
+- Google AI Studio synchronization itself is NOT VERIFIED.
+- Seerah remains a planned continuous book (parts → chapters → narrative scenes), with claim-level sources and optional contextual aids. See Seerah §§16–17 and UX §§6–7.
 
 
 ---

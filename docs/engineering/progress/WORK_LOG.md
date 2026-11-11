@@ -1,3 +1,13 @@
+## 2026-11-12 01:31 +02:00 — Exact-head runner diagnosis and preview verification
+
+- Rechecked PR #363 head `acdfeef4e4baf99251e4768bbbc808fabab4f130` and run `43120106137` / job `130858118105`. GitHub reports completed failure after about two seconds, `steps=null`; log download returns `BlobNotFound`; one annotation is counted but not retrievable. This is unresolved job/runner evidence, not a test-level failure or a pass.
+- Vercel deployment `dpl_CcBtjR4TRcqJd9pNwSZTvkgS2LHA` is READY on the exact PR head `acdfeef4e4baf99251e4768bbbc808fabab4f130`; current main Production remains READY on `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. Preview is not Production and no live browser smoke was run.
+- Updated PR #363 description to the exact checked head, run, Preview deployment, and HOLD decision.
+- The changed-file relative-link check covered all 28 PR files and found 0 broken relative Markdown links; repository listing confirmed 43 Markdown files under `docs/`.
+- This checkpoint update creates another PR head. Re-fetch that new head and checks before any merge decision; no rerun was forced because the preceding workflow repeatedly failed before steps and exposed no actionable test failure.
+- No runtime code, Production settings, Firebase Rules/data, secrets, sync flags, manual deployment, or Google AI Studio sync changed.
+
+---
 ## 2026-11-12 01:23 +02:00 — PR #363 exact-head review and documentation consistency
 
 - Re-fetched main as `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on that exact SHA. No live browser smoke or authenticated A↔B sync test was performed.

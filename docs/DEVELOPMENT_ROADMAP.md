@@ -1,16 +1,14 @@
 # خارطة تطوير وِرد — الخطة الرئيسية الموحدة
 
-**آخر مراجعة:** 2026-11-12 01:23 +02:00؛ هذه خطة مستقبلية وليست ادعاءً بأن كل البنود منفذة. الحالة الحية في `CONTINUE_HERE.md` وتُعاد مطابقتها مع GitHub/Vercel قبل كل قرار.
+**آخر مراجعة:** 2026-11-12 01:31 +02:00؛ هذه خطة مستقبلية وليست ادعاءً بأن كل البنود منفذة. الحالة الحية في `CONTINUE_HERE.md` وتُعاد مطابقتها مع GitHub/Vercel قبل كل قرار.
 
-## Live repository checkpoint — 2026-11-12 01:23 +02:00
+## Live repository checkpoint — 2026-11-12 01:31 +02:00
 
-- main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production `READY` on the exact same SHA (deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`). No live browser or sync smoke is claimed.
-- Main Quality Gate run `43079260528` failed before steps/logs; `BlobNotFound`. No test-level diagnosis and no pass.
-- PR #363 exact head `484fc70e9b4fbcb7f938be944122b931bfcdd3ee`, base `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, OPEN / DRAFT / mergeable. Exact-head run `43118098080` failed before steps (`steps=null`); logs `BlobNotFound`; no test-level diagnosis. Vercel Preview Comments passed, but this does not satisfy the gate.
-- PR #361/#362/#354 are merged and current main is a descendant of their merge commits.
-- PR #358/#359 remain Draft/unmerged and overlap in manifest ownership; their last runs failed only in the revision browser flow before the expected button appeared. #362 fixes the shared guest-entry helper, but the old heads still need a new unified implementation on current main.
-- PR #364 is open Draft; its exact-head workflow failed before steps/logs (`BlobNotFound`); Preview success is not a Quality Gate.
-- Both Production sync flags were observed `true`; owner decision is required before any setting change.
+- main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production READY on the exact same SHA. No live browser or sync smoke is claimed.
+- Main Quality Gate run `43079260528` failed before steps/logs (`BlobNotFound`); no test-level diagnosis or pass.
+- PR #363 last checked head `acdfeef4e4baf99251e4768bbbc808fabab4f130`, exact-head run `43120106137` failed before steps/logs (`BlobNotFound`); Preview deployment `dpl_CcBtjR4TRcqJd9pNwSZTvkgS2LHA` READY on that SHA. This documentation update creates a new head; re-fetch its checks.
+- PR #361/#362/#354 are merged and included in main. PR #358/#359 remain overlapping Draft proposals; #362 fixed their shared guest-entry helper. PR #364 is Draft/HOLD with unresolved no-steps run.
+- Both Production sync flags were observed true; owner approval is required before changing either.
 
 ## الرؤية
 وِرد تطبيق قرآن كريم يساعد على القراءة والاستماع والحفظ والمراجعة، مع الورد اليومي وأدوات عبادة مساندة. لا يتحول إلى بوابة إسلامية عامة. مسار السيرة النبوية والصحابة إضافة تعليمية متخصصة تخدم معرفة المستخدم بالرسول ﷺ والجيل الأول، دون تشتيت جوهر التطبيق.
@@ -29,7 +27,7 @@
 ## ترتيب الأولويات
 | الأولوية | المسار | الهدف | الحالة |
 |---|---|---|---|
-| P0 | PR queue | إغلاق الفروع الحالية باختبارات exact SHA | #361/#362/#354 merged؛ #363 Draft/HOLD على head `484fc70e`، run `43118098080` فشل قبل steps/logs (`BlobNotFound`)؛ #364 Draft/HOLD بلا تشخيص اختبار؛ #358/#359 overlapping Drafts؛ #2 diverged 115 ahead / 469 behind ولا يدمج wholesale |
+| P0 | PR queue | إغلاق الفروع الحالية باختبارات exact SHA | #361/#362/#354 merged؛ #363 Draft/HOLD على آخر head مفحوص `acdfeef4`، run `43120106137` بلا steps/logs؛ #364 Draft/HOLD بلا تشخيص اختبار؛ #358/#359 overlapping Drafts؛ #2 diverged 115 ahead / 469 behind |
 | P0 | صوت القرآن offline | تنزيل اختياري محدود وتخزين محلي وتشغيل offline | planner #355 وحقوق EveryAyah في #361 مدمجان؛ لا manifest/downloader/UI؛ #358/#359 لم يدمجا، والعقد الموحد مرجع التنفيذ |
 | P0 | الرقية | إصلاح فهرس الآيات و500/502 والتحقق من الصوت | #354 أضاف JSON 502 آمنًا؛ سبب 500 الأصلي وفهرس الآيات يحتاجان تحققًا حيًا مستقلًا |
 | P1-1 | الحفظ والمراجعة | جلسات دقيقة وتكرار وتسميع وتقدم موثوق | أساس واسع موجود؛ أولوية المنتج الأولى |
