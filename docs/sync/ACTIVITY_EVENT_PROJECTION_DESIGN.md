@@ -116,3 +116,14 @@ Proceed first with the pure reducer and deterministic tests after the cutover co
 - Phase 1 is implemented in code, but exact-head CI for this commit was not surfaced by the PR-only workflow lookup. The main commit's Vercel status reports success; this is not a Quality Gate or production deployment proof.
 - Phase 2 remains blocked: do not wire local journal/outbox or change the displayed daily log until the per-device legacy/offline cutover watermark is proven. Specifically, an offline device can hold pre-cutover activity not represented in the baseline; timestamp-only inclusion/exclusion risks double counting or data loss.
 - Next safe work: review the journal mutation metadata and backup/import contracts to prove (or reject) a per-device watermark; add a design decision with exact evidence before any runtime wiring. Keep production sync flags, Firestore Rules/schema, and remote projection behavior unchanged.
+
+
+### Cutover watermark audit — 2026-11-11
+
+Reviewed `src/services/indexedDbSyncJournal.ts`, `src/services/localSyncOutbox.ts`, `src/services/domainEvents.ts`, and the session-completion methods in `src/services/storageService.ts` on current main.
+
+- The local journal already has per-install `deviceId`, monotonically increasing `sequence`, `nextSequence`, `lastProjectedSequence`, durable Outbox entries, acknowledgement records, and a local snapshot summary.
+- Session completion still writes a date-keyed `DailyLog[]` snapshot. The existing `session.completed` domain event contains a UTC timestamp and metrics, but does not carry the immutable v2 event contract's captured `localDate` and `timezoneOffsetMinutes`.
+- Legacy outbox import preserves the old localStorage value as a recovery copy and fingerprints it, but this is a per-device local migration marker, not a server-visible acknowledgement that every device has drained pre-cutover session mutations.
+- The local `getSnapshot()` summary exposes counts/cursor, not a durable server registry of every device's cutover watermark. No cross-device acknowledgement protocol was found in the reviewed call paths.
+- Conclusion: the current journal provides useful ingredients for a future watermark, but does **not** prove a global safe cutover for offline devices. A client-only timestamp or local `legacyOutboxMigrated` flag is insufficient. Phase 2 remains blocked until a server-visible, UID-scoped device registry/acknowledgement protocol and old-client write gate are designed, emulator-tested, and explicitly approved for production rules/schema changes.
