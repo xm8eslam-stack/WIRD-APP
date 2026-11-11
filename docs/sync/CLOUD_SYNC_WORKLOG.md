@@ -443,3 +443,32 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - No Firestore Rules/schema, production data, secrets, environment values, or sync feature flags were changed.
 
 Next safe sync work: design an immutable, idempotent session-activity event projection that preserves legacy DailyLog baselines, and separately specify collection-specific tombstone/replay/restore semantics. Do not wire a migration or unblock conflict choices until populated-record, replay, concurrency, crash, and rollback tests pass.
+
+
+## 2026-11-11 — Verified current main and Production after PR #344
+
+- Current main: 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- PR #344 (fix(plans): prevent duplicate plan deletion) merged at that SHA. Exact PR head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate run 42965801925; post-merge main run 43023291577 succeeded.
+- Vercel Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and built from exact SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- The activity reducer in src/services/activityEventProjection.ts is pure/tested only. No production event-ledger persistence or cloud event projection exists yet; DailyLog[] remains the current storage format.
+- Weak-verse and activity snapshot CAS protects against stale replacement but does not merge concurrent independent events. syncConflictSafety continues to block whole-snapshot keep-local/use-remote for these two collections.
+- Do not implement a destructive migration or enable conflict choices until a server-visible per-device cutover protocol covers offline legacy sessions. Tombstones remain blocked.
+- No Firestore Rules/schema, secrets, production settings, or sync flags changed.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
+
+
+## 2026-11-11 — Latest main advance after PR #354
+
+- Current main SHA: 8c49f716726e329189a1141c28a69059543ea5ba. It includes PR #351's quota-recovery test and PR #354's defensive Ruqyah proxy failure handling.
+- PR #354 exact head 086dbb0cb7a675bd502ea0f918b41d5b145b19f9 passed Quality Gate run 43025838426 and merged as the current main SHA. The change maps unexpected proxy failures to a controlled JSON 502 and uses only allowlisted diagnostic metadata; it does not prove the earlier HTTP 500 root cause is fixed.
+- Main Quality Gate run 43026982133 is still in progress at this checkpoint. Vercel has no deployment record for SHA 8c49f716726e329189a1141c28a69059543ea5ba; the last READY Production runtime deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Do not claim the Ruqyah proxy fix is live in Production yet.
+- PR #353's updated head cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b and PR #355's updated head 0f0cc611c5f610f6135db5760fbba8401ca8214d each have fresh Quality Gate runs in progress (43027225508 and 43027223673). Earlier failed runs were on superseded heads; evaluate only the latest exact heads.
+- PR #355 currently adds only a pure, bounded audio-range planner from canonical Quran metadata and the reviewed Al Quran Cloud allowlist. It does not yet download, store, or play audio offline.
+- No Production environment variables, sync flags, Firestore Rules/schema, or user data were changed by these changes.

@@ -1,3 +1,19 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (latest observed main)
+
+| Scope | Exact SHA | Run / deployment | Result at checkpoint |
+|---|---|---|---|
+| Main after PR #354 | `8c49f716726e329189a1141c28a69059543ea5ba` | [43026982133](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026982133) | Success; 30/30 executed steps passed |
+| Last verified Production runtime | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY; current main SHA not yet observed in Production |
+| Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; rules-only deploy confirmed |
+| PR #353 revision dialog accessibility | `1d85c1a789666175123f05dda197de30bef694cd` | [43028213401](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43028213401) | Pending |
+| PR #355 offline audio range planner | `0f0cc611c5f610f6135db5760fbba8401ca8214d` | [43027223673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027223673) | In progress; browser smoke active |
+| PR #354 Ruqyah proxy failure handling | `8c49f716726e329189a1141c28a69059543ea5ba` | [43025838426](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025838426) | Success; merged |
+| PR #351 IndexedDB quota boundary test | `f259e084e381383168b1f1075064fe108d2c2cad` | [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) | Success; merged |
+
+The current main gate includes the merged quota-boundary test and the Ruqyah proxy error-handling changes. The owner-reported two-device PASS remains bounded evidence. Full offline Quran audio downloads remain a phased implementation, not a live feature.
+
+---
+
 # CURRENT VERIFIED TEST COVERAGE — 2026-11-11
 
 This section supersedes older status summaries below where they conflict with the exact SHA/run evidence listed here.

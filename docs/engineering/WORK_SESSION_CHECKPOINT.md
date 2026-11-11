@@ -209,3 +209,33 @@ The historical sections below describe earlier project phases and are not the cu
 - Sync source review confirms `DailyLog` is still a per-day aggregate and `activityEvents/snapshot` still projects a full record array. `session.completed` domain events exist, but their current payload has no explicit local calendar date/time-zone field. The new design document defines an idempotent event ledger and a non-destructive legacy baseline/cutover; no runtime behavior changed.
 - Whole-snapshot conflict choices for `weakVerses`/`activityEvents` remain fail-closed. Tombstones remain unsupported. No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
 - The GitHub Vercel status for `50bb25e` now reports `success`, but exact deployment SHA/Production state and live smoke remain unverified because Vercel team access returned 403. Last documented READY SHA remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`. Google AI Studio sync is unverified.
+
+
+## 2026-11-11 — Current WIRD continuation baseline (supersedes older release notes)
+
+- Verified current main: 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 (PR #344).
+- PR #344 exact head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate 42965801925; post-merge main run 43023291577 passed.
+- Vercel Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and matches the exact current main SHA.
+- PR #199 documentation continuity update is merged (merge commit b0b0ce8f4d80fed65ab9d097a0d5341efe3a880a); subsequent main updates supersede its older SHA/deployment checkpoint statements.
+- Activity event reducer (activityEventProjection.ts) exists with pure unit tests but remains disconnected from production storage/cloud sync. Current persisted DailyLog[] still aggregates by date.
+- Weak-verse coordinate identity and base-snapshot CAS guards are in main; they prevent stale snapshot overwrites, but not automatic convergence of independent concurrent changes. Keep weakVerses and activityEvents whole-snapshot conflict choices blocked.
+- No server-visible per-device legacy activity cutover watermark exists. Do not wire the event reducer into production, rewrite historical logs, change Firestore Rules/schema, alter secrets/settings, or change sync flags until offline-client cutover, backup/restore, crash recovery, and Emulator tests are complete and explicitly approved.
+- Tombstones remain fail-closed. No new physical-device A↔B round trip is claimed after the latest deployment.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
+
+
+## 2026-11-11 — Latest main advance after PR #354
+
+- Current main SHA: 8c49f716726e329189a1141c28a69059543ea5ba. It includes PR #351's quota-recovery test and PR #354's defensive Ruqyah proxy failure handling.
+- PR #354 exact head 086dbb0cb7a675bd502ea0f918b41d5b145b19f9 passed Quality Gate run 43025838426 and merged as the current main SHA. The change maps unexpected proxy failures to a controlled JSON 502 and uses only allowlisted diagnostic metadata; it does not prove the earlier HTTP 500 root cause is fixed.
+- Main Quality Gate run 43026982133 is still in progress at this checkpoint. Vercel has no deployment record for SHA 8c49f716726e329189a1141c28a69059543ea5ba; the last READY Production runtime deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Do not claim the Ruqyah proxy fix is live in Production yet.
+- PR #353's updated head cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b and PR #355's updated head 0f0cc611c5f610f6135db5760fbba8401ca8214d each have fresh Quality Gate runs in progress (43027225508 and 43027223673). Earlier failed runs were on superseded heads; evaluate only the latest exact heads.
+- PR #355 currently adds only a pure, bounded audio-range planner from canonical Quran metadata and the reviewed Al Quran Cloud allowlist. It does not yet download, store, or play audio offline.
+- No Production environment variables, sync flags, Firestore Rules/schema, or user data were changed by these changes.
