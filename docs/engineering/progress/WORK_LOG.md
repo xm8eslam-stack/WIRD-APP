@@ -623,3 +623,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Compared PR #356 against current main. Its pure Quran audio range planner is already present on main from PR #355; the remaining changes are documentation additions, many containing stale main/Production status snapshots.
 - Preserved the unique server-visible per-device legacy activity cutover protocol from `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md` in the current docs branch, explicitly marking embedded SHA/deployment statements historical.
 - PR #356 can be closed as superseded after this unique design note is carried forward; do not merge its stale status snapshots wholesale.
+
+
+## 2026-11-11 16:35 +02:00 — CI startup failures and PR coordination
+
+- PR #363 latest head `5e33453bd076f32ebad9053f3e6d8bc4de8070fc`; runs `43039009676`, `43039794349`, and `43039853668` ended failed before the single job recorded any steps. Job logs return BlobNotFound. Exact-head CI is unresolved; no merge.
+- PR #358 run `43030195498` and #359 run `43029617572` failed on their prior exact heads. Their descriptions now point to the single IndexedDB/Cache Storage contract and explicitly block merging either unchanged.
+- PR #356 closed as superseded; planner already merged through #355. Salvaged its unique server-visible activity cutover protocol into the current sync design.
+- Added the offline audio storage contract and indexed it from README/catalog/roadmap. It is a proposal, not an implemented downloader.
+- No runtime/Production/Firebase/secrets/sync flag changes.
