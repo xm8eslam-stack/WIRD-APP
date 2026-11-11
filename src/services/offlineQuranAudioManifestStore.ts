@@ -163,7 +163,7 @@ export class OfflineQuranAudioManifestStore {
     });
   }
 
-  async remove(reciterId: string, globalAyahNumber: number): Promise<void> {
+  async removeManifestEntry(reciterId: string, globalAyahNumber: number): Promise<void> {
     buildQuranAyahAudioUrl(reciterId, globalAyahNumber);
     const db = await this.open();
     return new Promise((resolve, reject) => {
