@@ -120,6 +120,14 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); }
       catch (error) { unavailableMessage = error instanceof Error ? error.message : String(error); }
       assert(unavailableMessage.includes('غير متاح مؤقتًا'), 'provider outage should be explained as temporary');
+
+      globalThis.fetch = (async () => new Response(JSON.stringify({ error: 'RUQYAH_INTERNAL_ERROR' }), {
+        status: 502, headers: { 'Content-Type': 'application/json' }
+      })) as typeof fetch;
+      let internalMessage = '';
+      try { await fetchRuqyahApiData({ type: 'instant', program: 'brief-ruqya', source: 'from-quran' }); }
+      catch (error) { internalMessage = error instanceof Error ? error.message : String(error); }
+      assert(internalMessage.includes('خطأ داخلي مؤقت'), 'unexpected proxy failures should have a safe retry-oriented message');
     });
 
     await test('API client reports missing server key without exposing any client-side key option', async () => {
