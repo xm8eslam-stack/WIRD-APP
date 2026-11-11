@@ -1,3 +1,21 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (latest observed release)
+
+This checkpoint supersedes older status summaries below where they conflict with the exact evidence here.
+
+| Scope | Exact SHA / source | Run / deployment | Result |
+|---|---|---|---|
+| Current main | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Quality Gate [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) | In progress at checkpoint; desktop/mobile browser smoke active |
+| Current main Production | Same SHA | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY |
+| Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | Manual run [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; all steps including rules-only deploy |
+| PR #346 | `66119fe9837911f7b74df4fe80d946bd4f57d518` | [43023399225](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023399225) | In progress at checkpoint |
+| PR #347 | `8958011feb2213ae6e76742bead9367e091b42f3` | [43023520608](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023520608) | In progress at checkpoint |
+
+The currently deployed `firestore.rules` source is verified by blob SHA: current main and the successfully deployed reviewed rules both have `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. A successful rules deployment is distinct from a successful application sync journey.
+
+Production environment inventory (without decrypting secrets) confirmed both revisioned-sync and remote-projection flags are `true` for Production. The prior owner-reported two-device PASS remains bounded evidence; cross-tab/account lifecycle, long-offline replay, crash/quota, stress, and destructive-delete semantics still need their own evidence.
+
+---
+
 # CURRENT VERIFIED TEST COVERAGE — 2026-11-11
 
 This section supersedes older status summaries below where they conflict with the exact SHA/run evidence listed here.
