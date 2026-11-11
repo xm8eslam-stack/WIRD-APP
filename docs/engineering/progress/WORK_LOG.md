@@ -609,3 +609,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Replacement docs PR #363 is based on latest main `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
 - Quality Gate run `43039009676` and rerun attempt 2 failed on the single job before any job steps were recorded; job logs are unavailable. Treat exact-head CI as unresolved, not as a test failure diagnosis or pass.
 - PR #360 was closed as superseded; all 22 documentation changes are carried in #363.
+
+
+## 2026-11-11 16:22 +02:00 — Offline audio storage architecture decision
+
+- Reviewed #358 and #359 store implementations. #358 owns jobs and job-scoped items; #359 owns a unique reciter/ayah metadata manifest without job lifecycle. Their current database contracts overlap and should not ship side by side.
+- Added `docs/offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md`: one IndexedDB model (`jobs`, canonical `files`, `jobItems` relation), Cache Storage for complete audio bytes only, explicit cross-store recovery, shared-file reuse, deletion, quota, and required tests.
+- This is a design contract only; no downloader, cache adapter, IndexedDB runtime, or UI was implemented. #358/#359 remain unmerged pending a combined implementation and exact-head Quality Gate.
