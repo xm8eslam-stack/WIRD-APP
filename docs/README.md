@@ -1,0 +1,35 @@
+# وِرد | WIRD — دليل المستودع والوثائق
+
+> نقطة الدخول الوحيدة لفهم المشروع واستكماله. آخر مراجعة: 2026-11-11. المصدر البرمجي: `xm8eslam-stack/WIRD-APP` / `main`.
+
+## ابدأ من هنا
+1. [CONTINUE_HERE.md](./CONTINUE_HERE.md) — الحالة الدقيقة الحالية والخطوة التالية.
+2. [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) — خارطة المنتج والميزات.
+3. [DEVELOPMENT_CHECKPOINT.md](./DEVELOPMENT_CHECKPOINT.md) — سجل نقاط التوقف والأدلة.
+4. [agent-handoffs/LATEST-GOOGLE-STUDIO.md](./agent-handoffs/LATEST-GOOGLE-STUDIO.md) — تسليم Google AI Studio.
+5. [engineering/progress/WORK_LOG.md](./engineering/progress/WORK_LOG.md) — سجل العمل التاريخي.
+
+## خريطة المجلدات
+| المسار | المحتوى |
+|---|---|
+| `docs/engineering/` | الهندسة والأمان والبحث والتنفيذ |
+| `docs/engineering/progress/` | الحالة ونقاط الاستكمال وسجل العمل وبوابات الإصدار |
+| `docs/sync/` | تصميم المزامنة والتعارضات والاسترداد والاختبارات |
+| `docs/ruqyah/` | مصادر الرقية والتكامل والاختبارات |
+| `docs/offline/` | العمل دون اتصال وتنزيل الصوت |
+| `docs/agent-handoffs/` | تسليمات الوكلاء وGoogle AI Studio |
+| `docs/UX_*.md` | خريطة الصفحات وتجربة الاستخدام |
+| `docs/DEVELOPMENT_*.md` | نقطة التوقف والخطة الموحدة |
+
+## مصدر الحقيقة
+- الحالة: `docs/CONTINUE_HERE.md`.
+- الخطة: `docs/DEVELOPMENT_ROADMAP.md`.
+- التاريخ: `docs/DEVELOPMENT_CHECKPOINT.md` و`docs/engineering/progress/WORK_LOG.md`.
+- قواعد العمل: `AGENTS.md` ثم `GEMINI.md`.
+- لا تحذف أو تنقل الملفات القديمة عشوائيًا؛ حافظ على الروابط والتاريخ وأضف إشعارًا يوجّه للمرجع الموحد.
+
+## اصطلاحات الحالة
+`DONE` مكتمل بدليل؛ `MERGED` مدمج وليس بالضرورة منشورًا؛ `IN PROGRESS` جارٍ؛ `VERIFY` يحتاج تحققًا؛ `BLOCKED` متعطل؛ `NOT STARTED` لم يبدأ؛ `OWNER ACTION` يحتاج المالك.
+
+## قبل كل جلسة
+اقرأ `AGENTS.md` ثم `CONTINUE_HERE.md)، وأعد جلب SHA وPRs وCI والنشر. لا تعتمد على أرقام قديمة. نفّذ على فرع مستقل وسجّل نتيجة SHA الدقيقة.

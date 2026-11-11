@@ -1,3 +1,29 @@
+# CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11 (documentation consolidation)
+
+> Read [`CONTINUE_HERE.md`](./CONTINUE_HERE.md) for the current queue and [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md) for the single roadmap. This section supersedes older conflicting SHA/status notes below.
+
+- Repository: `xm8eslam-stack/WIRD-APP`; canonical branch: `main`.
+- Latest main SHA directly observed: `4b2990423f7f003b80982e99c76c7768f7fb5be0`.
+- Latest commit: offline Quran audio range planner; PR #355 merged.
+- Main Quality Gate for this exact post-merge SHA: NOT VERIFIED in this review.
+- Vercel status for this SHA: BLOCKED by deployment rate limit on 2026-11-11; no Production deployment matching this SHA is verified.
+- Latest previously documented READY Production source is older than current main; do not claim current main is live.
+- Firestore Rules deployment success is recorded in PR #356 evidence (run `42691610063`, source `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`, rules blob parity documented). This is separate from app deployment.
+- Last recorded Production sync flags were TRUE; this review did not read or change them. Do not change them.
+- PR #357 is open and based on the now-merged planner branch; rebase/retarget it to current main before judging final CI.
+- PR #353 and #356 were open at the time of review; re-fetch their exact heads and checks.
+- No application code, production settings, Firestore data/rules, secrets, or environment variables changed in this documentation consolidation.
+
+## Immediate continuation
+1. Re-fetch current main and PR heads; confirm PR #357 dependency is resolved by rebasing onto main.
+2. Review exact-head CI for #357 and #353; resolve documentation overlap with #356.
+3. Continue offline Quran audio implementation only in bounded, user-initiated phases.
+4. Re-test Ruqyah index and HTTP 500/502 behavior before claiming resolved.
+5. Continue sync event/tombstone/grouped-meta work only with fail-closed tests.
+6. Keep owner-only steps in [`OWNER_ACTIONS.md`](./OWNER_ACTIONS.md).
+
+---
+
 # CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11
 
 > This is the latest verified checkpoint. Older checkpoints below are historical and must not override this section.

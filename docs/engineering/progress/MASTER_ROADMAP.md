@@ -1,3 +1,7 @@
+> **Historical roadmap — updated 2026-11-11:** The active product roadmap is now [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md); current execution queue: [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md). This file remains as historical engineering planning (M0–M7); its dates, SHAs, and statuses are not authoritative today.
+
+---
+
 # WIRD — Master Engineering Roadmap
 
 **Updated:** 2026-11-06 after PR #57 merge and PR #58 scope-isolation hardening  

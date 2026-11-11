@@ -1,3 +1,7 @@
+> **Documentation routing update — 2026-11-11:** This file is retained for detailed historical/specialist context. Current state: [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md). Unified roadmap: [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). Documentation map: [`docs/README.md`](../README.md). Re-fetch GitHub before using any old SHA, PR state, or deployment statement below.
+
+---
+
 # WIRD Engineering Roadmap
 
 **Updated:** 2026-11-06  

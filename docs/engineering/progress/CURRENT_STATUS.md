@@ -1,3 +1,7 @@
+> **Historical status file — updated 2026-11-11:** This document preserves earlier engineering snapshots; its old status tables and SHAs are not current. Current operational state: [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md). Unified roadmap: [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md). Detailed history: [`WORK_LOG.md`](./WORK_LOG.md). Re-fetch GitHub before using any old “next action”.
+
+---
+
 # WIRD — Current Engineering Status
 
 **Updated:** 2026-11-07 after PR #129 and PR #130 merges  

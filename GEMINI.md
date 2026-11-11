@@ -11,4 +11,4 @@ In particular:
 - Keep work on the feature branch and preserve checkpoints.
 - Do not merge, deploy manually, change production Firestore rules/data, or modify secrets/environment variables without explicit authorization.
 
-For synchronization architecture, also read `docs/sync/REMOTE_REPLICATION_PLAN.md` before changing cloud sync, journal, outbox, storage projection, or Firestore rules.
+For synchronization architecture, read `docs/sync/ARCHITECTURE.md`, `docs/sync/RELEASE-GATES.md`, and `docs/sync/TEST-MATRIX.md` before changing cloud sync, journal, outbox, storage projection, or Firestore rules. The old `REMOTE_REPLICATION_PLAN.md` path is not present in the current repository tree. Always begin from `docs/CONTINUE_HERE.md` and `docs/DEVELOPMENT_ROADMAP.md`.
