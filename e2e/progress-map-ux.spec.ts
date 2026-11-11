@@ -20,7 +20,7 @@ test.describe('WIRD Quran progress map dialog accessibility', () => {
     await expect(close).toBeFocused();
 
     await page.keyboard.press('Shift+Tab');
-    await expect(dialog.getByRole('button', { name: 'إغلاق' })).toBeFocused();
+    await expect(dialog.getByRole('button', { name: 'إغلاق', exact: true })).toBeFocused();
 
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
