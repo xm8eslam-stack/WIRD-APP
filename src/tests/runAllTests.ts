@@ -13,6 +13,7 @@ import { runIndependentTanzilComparison, runNegativeComparisonTests } from './in
 import { runPwaIntegrationTests } from './pwaIntegration.test';
 import { runOfflinePreparationServiceTests } from '../services/offlinePreparationService.test';
 import { runOfflineQuranAudioDownloadTests } from '../services/offlineQuranAudioDownload.test';
+import { runOfflineQuranAudioDownloadStoreTests } from '../services/offlineQuranAudioDownloadStore.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
 import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
@@ -118,6 +119,7 @@ async function main() {
     { name: 'PWA Compliance & Service Worker Infrastructure', runner: runPwaIntegrationTests },
     { name: 'Offline Preparation Service Messaging, Progress, and Timeout', runner: runOfflinePreparationServiceTests },
     { name: 'Offline Quran Audio Download Range and Source Safety', runner: runOfflineQuranAudioDownloadTests },
+    { name: 'Offline Quran Audio Download Manifest Persistence', runner: runOfflineQuranAudioDownloadStoreTests },
     { name: 'Firebase Authentication Foundation & Data Preservation', runner: runFirebaseAuthTests },
     { name: 'Phase 3 Core Remediation (Unified Portions, SM-2, Tests & Router)', runner: runPhase3CoreRemediationTests },
     { name: 'Quran Lazy Loading & Chunk Integrity', runner: runQuranLazyLoadingTests },
