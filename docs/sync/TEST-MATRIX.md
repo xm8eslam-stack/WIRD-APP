@@ -1,3 +1,20 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (latest observed main)
+
+| Scope | Exact SHA | Run / deployment | Result at checkpoint |
+|---|---|---|---|
+| Main after PR #348 | `d1d33384609bdc4a3c99120956901c92289d5f26` | [43025089584](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025089584) | In progress; Firestore Emulator passed, browser smoke active |
+| Last verified Production runtime | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY; PR #348 is docs-only |
+| Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; rules-only deploy confirmed |
+| PR #353 revision dialog accessibility | `91f4ac7c9c5bc5590d70393d7b29f672fa95b3e1` | [43025536416](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025536416) | In progress |
+| PR #354 Ruqyah proxy failure handling | `cc2e83b67b1fbc08b8bb52f1e424f07998ae04cc` | [43025241467](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025241467) | In progress |
+| PR #351 quota-boundary recovery test | `f259e084e381383168b1f1075064fe108d2c2cad` | [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) | In progress |
+
+Automated sync coverage already includes multi-tab duplicate enqueue serialization, concurrent monotonic event sequences, UID isolation, stale-account aborts, offline/online/foreground retries, database reopen durability, and atomic transaction rollback. PR #351 adds open-boundary quota error normalization and legacy-source preservation; active-write browser quota fault injection remains untested.
+
+Firestore rules and Production flags are verified separately from end-to-end sync. The owner-reported two-device PASS remains bounded evidence. Full offline Quran audio downloads remain a documented plan, not an implemented feature.
+
+---
+
 # CURRENT VERIFIED TEST COVERAGE — 2026-11-11
 
 This section supersedes older status summaries below where they conflict with the exact SHA/run evidence listed here.

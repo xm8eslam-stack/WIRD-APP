@@ -171,3 +171,22 @@ Validation requires unique dates, non-negative counts, and minutes no greater th
 - The earlier Vercel PR check rate-limit did not prevent the subsequent main deployment; the verified Production deployment above supersedes those preview-check failures.
 - The last user-reported two-device test occurred before these two latest fixes. A fresh physical-device round trip after this deployment remains unverified.
 - No Firestore production rules/schema, secrets, or sync flags were changed.
+
+
+## 2026-11-11 — Current main and Production verified after PR #344
+
+- Current main SHA is 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- PR #344 exact head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate run 42965801925; post-merge main run 43023291577 passed.
+- Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY with the exact same Git SHA.
+- The weak-verse protections include coordinate-stable IDs and compare-and-set fingerprints for full snapshots/resolution; they reject stale replacement but do not make concurrent independent snapshots mergeable. Keep conflict choices fail-closed.
+- activityEventProjection.ts is a pure deterministic reducer with tests only. DailyLog[] is still the active persisted aggregate and the reducer is not connected to production storage/cloud sync.
+- The offline cutover blocker remains: no server-visible per-device watermark/acknowledgement proves that every old offline device drained pre-cutover aggregate writes. Do not switch to v2 events, rewrite logs, change Firestore Rules/schema, or activate new production flags without a reviewed protocol and explicit approval.
+- No new physical-device A↔B test is claimed after this deployment.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.

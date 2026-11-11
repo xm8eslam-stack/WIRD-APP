@@ -115,3 +115,21 @@ Proceed first with the pure reducer and deterministic tests after the cutover co
 - Decision unchanged: no phase-2 runtime projection, Firestore Rules/schema change, tombstone/delete behavior, production flag change, or legacy log rewrite until an approved server-visible UID-scoped device cutover protocol is designed and Emulator-tested.
 - Main also now contains the offline-package implementation from the earlier PR #318 work. The current `public/sw.js` adds a bounded timeout for audio pre-cache requests compared with the old branch; `pwaIntegration.test.ts` includes the corresponding timeout assertion. PR #318 is therefore superseded by current main rather than a candidate for merging.
 - Latest Production deployment is READY and its Git source SHA matches main `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`; see deployment record `dpl_dow5x6vXqdxHEp92pyyv9kRBkagh`. This is deployment evidence, not a completed live interactive smoke test.
+
+
+## 2026-11-11 — Main and Production verification after PR #344
+
+- Current main is 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 (PR #344, duplicate plan-delete protection).
+- PR #344 exact head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate run 42965801925; post-merge main run 43023291577 also completed successfully.
+- Vercel Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and its githubCommitSha exactly matches current main 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- The pure reducer in src/services/activityEventProjection.ts remains a tested design primitive only. It does not replace DailyLog[], is not wired to the production activity storage projection, and does not establish a server-visible offline-device cutover watermark.
+- No phase-2 activity event store, Firestore Rules/schema change, tombstone behavior, production sync setting, or legacy-log rewrite was performed. Existing snapshot CAS remains protection against stale replacement, not convergence of independent sessions.
+- The current main includes the latest UX, accessibility, plan deletion, and sync safety changes. Treat older SHA/deployment statements above as historical where superseded by this addendum.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
