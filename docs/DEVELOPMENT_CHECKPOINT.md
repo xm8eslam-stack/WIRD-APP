@@ -1,3 +1,17 @@
+# WIRD — أحدث ملحق تحقق (2026-11-11 15:52 +02:00)
+
+- `main` الحالي: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- #360 head `6e3c3c4be799c77a39dab539e3161c3d9f98958d`, run `43030878508`: Desktop/Mobile Playwright smoke FAIL؛ الاختبارات وRules Emulator وTypeScript وbuild وAPI/audio smoke PASS. Vercel build-rate-limit وليس نشرًا.
+- #362 head `e2079734a0d150c1046307611a2b28346fdcdb1d`: Quality Gate PASS؛ إصلاح guest-entry hydration race لم يدمج بعد.
+- #361 head `3008c4788caba61930be008e3cb40dcf52cfd78f`: Quality Gate PASS؛ PR مفتوح.
+- #358/#359/#356: Draft، وQuality Gate فشل في Desktop/Mobile Playwright smoke على الرؤوس المرصودة؛ لا تدمج #358 و#359 قبل توحيد تصميم manifest.
+- Production source SHA وlive smoke وGoogle AI Studio sync: NOT VERIFIED.
+- لا تغييرات على runtime أو Quran corpus أو Firestore أو Production settings/secrets/flags في تحديث التوثيق.
+
+> هذا الملحق أحدث من كل نقاط التوقف التاريخية التالية؛ لا تستخدم أرقامها أو تعليماتها كحالة حية.
+
+---
+
 # CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11 (latest repository review)
 
 > Current continuation: [`CONTINUE_HERE.md`](./CONTINUE_HERE.md). Unified roadmap: [`DEVELOPMENT_ROADMAP.md`](./DEVELOPMENT_ROADMAP.md). Detailed documentation inventory: [`DOCUMENTATION_CATALOG.md`](./DOCUMENTATION_CATALOG.md).
