@@ -335,3 +335,12 @@ On resumption:
 - PR #363 head at check: `fc20a4f485f47f5ae7b94567bf521885a67ed284`. Quality Gate run `43051925917` failed with job `130631077198`, no steps and no downloadable logs (BlobNotFound). Retried failed job; new job `130632989788` failed identically before steps/logs. CI remains BLOCKED/UNRESOLVED, not a known test failure and not a pass.
 - Vercel status is blocked by free deployment rate limit; PR timeline separately reports Preview READY `DaCNAppQni39XbMag8PkLxGbNQ9k`. This is not Production/live smoke evidence.
 - No runtime code, production data/settings, Firebase Rules, secrets, API tokens, user content, or deployments were changed. No API records were fetched or ingested.
+
+
+## 2026-11-11 17:55 +02:00 — latest exact-head gate
+
+- PR #363 latest head before this checkpoint update: `835881de9d6f9719e2afe3acd4bd737bd73d2cf1`, OPEN / DRAFT.
+- Quality Gate run `43052636315` failed; job `130633602897` returned no recorded steps. This does not establish that TypeScript, tests, or build ran. No downloadable logs are available from the related attempts.
+- A retry of the preceding run reproduced the same pre-step failure. Stop repeated retries until runner conditions change or usable logs appear.
+- Vercel status is still the free deployment-rate limit failure. Earlier READY preview is not evidence for this exact head or Production.
+- Merge remains blocked pending an inspectable, successful exact-head Quality Gate.
