@@ -1,3 +1,12 @@
+## 2026-11-11 — PR #358 exact-head CI result
+
+- PR #358 Quality Gate run `43028986222` completed successfully on the observed PR head.
+- The PR remains open and unmerged. CI success does not decide whether its jobs/items schema or PR #359's metadata-only schema should be the canonical manifest.
+- PR #359 run `43029617572`, PR #356 run `43029328133`, and the updated PR #360 run `43030365657` were still pending/in progress at this observation.
+- Next: compare the complete #358/#359 APIs and storage lifecycle; choose one coherent IndexedDB + Cache Storage contract before merging or implementing download UI.
+
+---
+
 ## 2026-11-11 — Documentation hub and continuation refresh
 
 - Repository: `xm8eslam-stack/WIRD-APP`; latest main SHA observed: `8dd21522430cc014db4eb5da8437f89c42f190f9` after PR #353 merge.
