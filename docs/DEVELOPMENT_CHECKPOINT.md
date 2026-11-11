@@ -6,15 +6,15 @@
 - Latest main SHA observed in this review: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
 - PR #353 Quality Gate run `43028294037` completed successfully on its exact PR head. Do not mislabel this as an independently observed post-merge main-only run.
 - GitHub Vercel status on main SHA `8dd2152`: success. Exact Production deployment source SHA and live smoke were not independently verified.
-- PR #360 documentation hub/roadmap: Quality Gate run `43029173230` was still in progress at last observation.
-- PR #358 offline download job/item store: run `43028986222` was still in progress.
-- PR #359 offline audio manifest metadata store: run `43029617572` was still in progress.
-- PR #356 sync documentation update: run `43029328133` was still in progress.
+- PR #360 documentation hub/roadmap: updated head `024020da6310088560a6e5bca3c8ee3ec7b6a6b5`; Quality Gate run `43030365657` was in progress at last observation.
+- PR #358 offline download job/item store: Quality Gate run `43028986222` completed successfully; PR remains open/unmerged pending architecture review.
+- PR #359 offline audio manifest metadata store: Quality Gate run `43029617572` remained in progress at last observation.
+- PR #356 sync documentation update: Quality Gate run `43029328133` completed successfully; PR remains open and its older checkpoint text must be reconciled with current main.
 - PR #358 and #359 overlap in IndexedDB manifest responsibilities. Review their architecture together; do not merge both without an explicit compatible design.
 - No application runtime code, Quran corpus, Firestore Rules/data, production secrets, environment variables, or deployment settings were changed by this documentation work.
 
 ## Immediate continuation
-1. Observe the exact-head Quality Gate results for #360/#358/#359/#356; continue independent review while jobs run.
+1. Observe exact-head Quality Gate for #360/#359; #358 and #356 passed their recorded exact-head runs but still need content/overlap review.
 2. Consolidate the competing offline-audio manifest models before downloader/UI implementation.
 3. Reconcile #356 sync documentation with the new documentation hub and current main SHA.
 4. Re-test Ruqyah 500/502 and the ayah index before marking resolved.

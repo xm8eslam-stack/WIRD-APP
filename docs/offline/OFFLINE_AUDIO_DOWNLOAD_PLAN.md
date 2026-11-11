@@ -2,7 +2,7 @@
 
 - Current `main` observed during this review: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
 - PR #355 merged the pure range planner; it does not download or persist audio.
-- PR #358 adds IndexedDB download jobs and per-ayah verified-item metadata. Its Quality Gate run `43028986222` completed successfully on the observed PR head. It is not merged.
+- PR #358 adds IndexedDB download jobs and per-ayah verified-item metadata. Its Quality Gate run `43028986222` completed successfully on the observed PR head. It is not merged. The CI result does not resolve the overlapping schema/design decision with #359.
 - PR #359 adds a separate metadata-only IndexedDB store intended to accompany Cache Storage. Its Quality Gate run `43029617572` was still in progress at last observation. It is not merged.
 - These PRs overlap in persistent manifest responsibility. #358 stores job state and verified ayah items; #359 stores verified-file metadata. Do not merge both unchanged or start the downloader/UI until one canonical schema and lifecycle contract is selected.
 - PR #360 records the cross-PR design conflict in `docs/CONTINUE_HERE.md` and the roadmap. The documentation PR Quality Gate is separate from these implementation checks.

@@ -6,7 +6,7 @@
 - Latest main SHA directly observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
 - PR #353 exact-head Quality Gate run `43028294037` passed; a separate post-merge main-only run was not observed in this review.
 - GitHub Vercel status on main SHA reports success; Production source SHA and live smoke remain unverified.
-- Active PRs at review: #360 documentation consolidation, #358 and #359 overlapping offline audio manifest work, #356 sync documentation update. Re-fetch their state and exact checks before continuing.
+- Active PRs at review: #360 documentation consolidation (run `43030365657` pending), #359 offline audio manifest (run `43029617572` in progress), #358 offline download job/item store (run `43028986222` passed), and #356 sync documentation update (run `43029328133` passed). Re-fetch exact checks before continuing.
 - #358 models persistent download jobs and verified ayah items; #359 models verified-file metadata alongside Cache Storage. Do not merge both implementations without a unified storage contract.
 - No secrets, production variables, Firestore data/rules, sync flags, or deployment settings were changed.
 
