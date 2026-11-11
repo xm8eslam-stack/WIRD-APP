@@ -4,7 +4,7 @@
 - Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the same SHA; no live A↔B sync smoke was performed.
 - Read-only Vercel inventory confirms `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` for Production. No settings or values were changed; owner decision is required before any toggle.
 - Main Quality Gate run `43079260528` failed before steps/logs were recorded (`BlobNotFound`); this is not a diagnosed test failure.
-- PR #363 remains Draft/HOLD; exact-head run `43057118522` also failed before steps/logs. No merge or sync cutover was performed.
+- PR #363 was reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. A follow-up link fix changes the head; exact-head Quality Gate is still pending. No PR merge or sync cutover was performed.
 - Existing safe boundary remains: local-first behavior, fail-closed conflict handling, no activation of new remote projection behavior without complete evidence and owner approval.
 
 ---

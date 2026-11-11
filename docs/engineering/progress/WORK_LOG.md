@@ -1,3 +1,11 @@
+## 2026-11-12 — PR #363 current-main reconciliation and link QA
+
+- Merged current main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` into the documentation branch without rewriting its history. Reconciliation commit: `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub now reports PR #363 `mergeable=true`, base SHA current main, 28 documentation-only files.
+- The reconciled head initially showed `Vercel Preview Comments` success and Vercel deployment pending; no GitHub Quality Gate check was visible at that observation. The prior failure run `43057118522` belongs to the obsolete pre-reconciliation head.
+- Full changed-doc relative-link QA found two broken links in `docs/engineering/progress/CURRENT_STATUS.md`; correcting `../../../CONTINUE_HERE.md` and `../../../DEVELOPMENT_ROADMAP.md` to `../../...` before the final exact-head gate.
+- No runtime code, Quran corpus, Firebase/Firestore data or rules, production settings, secrets, or sync flags changed.
+
+---
 ## 2026-11-12 — Live repository audit and PR reconciliation
 
 - Re-fetched GitHub/Vercel state. Current main is `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on that exact SHA.

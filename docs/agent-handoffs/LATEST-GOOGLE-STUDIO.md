@@ -3,7 +3,7 @@
 - Canonical source remains GitHub `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 - Vercel Production is `READY` on the exact same SHA; deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`. This is deployment evidence only, not a live browser smoke.
 - Main Quality Gate run `43079260528` failed before recording steps; logs are unavailable (`BlobNotFound`). No test-level failure or successful gate is evidenced.
-- Documentation PR #363 is OPEN / DRAFT / HOLD. Its observed old head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was based on old main `2c9aa972...`; exact-head run `43057118522` failed before steps and Vercel was rate-limited. The branch is being reconciled with current main; re-fetch the new exact head before any review.
+- Documentation PR #363 is OPEN / DRAFT / HOLD. Its observed old head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was based on old main `2c9aa972...`; exact-head run `43057118522` failed before steps and Vercel was rate-limited. The branch was reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. A link-fix follow-up changes the head; re-fetch it before review.
 - PR #361/#362/#354 are merged and included in current main. PR #358/#359 remain overlapping unmerged proposals; build one unified offline-audio store, never merge them separately.
 - Production sync flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are currently `true`. Do not change them; obtain owner decision before altering production settings.
 - Google AI Studio synchronization itself is NOT VERIFIED. Do not claim that Studio has pulled this SHA unless separately confirmed in the Studio UI.

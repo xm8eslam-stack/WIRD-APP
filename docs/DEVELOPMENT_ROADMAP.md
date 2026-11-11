@@ -6,7 +6,7 @@
 
 - main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production READY on the same SHA.
 - Main Quality Gate run `43079260528` failed before recording job steps/logs; do not classify it as a test failure or pass.
-- PR #363 must be reconciled with the two documentation-only commits now on main before any merge decision.
+- PR #363 has now been reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; the branch is mergeable. A follow-up link correction changes the head, so the final exact-head gate is still pending.
 - Both Production sync flags are currently `true`; this is a read-only observation. Owner approval is required before any setting change.
 ## الرؤية
 وِرد تطبيق قرآن كريم يساعد على القراءة والاستماع والحفظ والمراجعة، مع الورد اليومي وأدوات عبادة مساندة. لا يتحول إلى بوابة إسلامية عامة. مسار السيرة النبوية والصحابة إضافة تعليمية متخصصة تخدم معرفة المستخدم بالرسول ﷺ والجيل الأول، دون تشتيت جوهر التطبيق.
@@ -25,7 +25,7 @@
 ## ترتيب الأولويات
 | الأولوية | المسار | الهدف | الحالة |
 |---|---|---|---|
-| P0 | PR queue | إغلاق الفروع الحالية باختبارات exact SHA | #361/#362/#354 merged؛ #363 يحتاج توفيقًا مع main ثم exact-head gate؛ #358/#359 blocked as overlapping proposals؛ #2 لا يُدمج wholesale |
+| P0 | PR queue | إغلاق الفروع الحالية باختبارات exact SHA | #361/#362/#354 merged؛ #363 تمت مصالحة فرعه مع main؛ exact-head gate ما زال مطلوبًا؛ #358/#359 blocked as overlapping proposals؛ #2 لا يُدمج wholesale |
 | P0 | صوت القرآن offline | تنزيل اختياري محدود وتخزين محلي وتشغيل offline | planner #355 وحقوق EveryAyah في #361 مدمجان؛ لا manifest/downloader/UI؛ #358/#359 لم يدمجا، والعقد الموحد مرجع التنفيذ |
 | P0 | الرقية | إصلاح فهرس الآيات و500/502 والتحقق من الصوت | #354 أضاف JSON 502 آمنًا؛ سبب 500 الأصلي وفهرس الآيات يحتاجان تحققًا حيًا مستقلًا |
 | P1-1 | الحفظ والمراجعة | جلسات دقيقة وتكرار وتسميع وتقدم موثوق | أساس واسع موجود؛ أولوية المنتج الأولى |

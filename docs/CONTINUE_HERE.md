@@ -4,7 +4,7 @@
 **المستودع:** `xm8eslam-stack/WIRD-APP`  
 **الفرع المرجعي للتطبيق:** `main`  
 **فرع مركز الوثائق الجاري:** `docs/wird-docs-roadmap-reconciled-20261111`  
-**حالة فرع الوثائق:** يجري تحديث PR #363 ليتضمن main الحالي دون فقد تاريخ الفرع؛ أعد جلب exact head بعد هذا checkpoint.
+**حالة فرع الوثائق:** تمت مصالحة PR #363 مع main في merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`؛ أُضيف main كأب ثانٍ وحالة GitHub أصبحت mergeable=true. تعديل إصلاح الروابط سيغيّر head مرة أخرى؛ أعد جلب exact head قبل أي قرار.
 
 > لا تعتمد على أي SHA أو PR أو CI أو Production status في هذه اللقطة قبل إعادة جلبه من GitHub. فرع PR #363 هو مكان تعديلات الوثائق؛ لم يتم الدمج إلى main.
 
@@ -13,7 +13,7 @@
 - **main:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 - **Production:** Vercel deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` هو `READY` على SHA نفسه، والـ alias `wird-app.vercel.app`. هذا لا يثبت live smoke أو عمل Firebase/المزامنة.
 - **main Quality Gate:** run `43079260528` انتهى بفشل job `130727161970` قبل تسجيل أي steps؛ تنزيل السجل أعاد `BlobNotFound`. لا يوجد دليل على فشل اختبار فعلي ولا على نجاح Quality Gate.
-- **PR #363:** OPEN / DRAFT / HOLD. الرأس المرصود قبل إعادة التوفيق `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` مبني على base قديم `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`، وGitHub يعرض `mergeable_state=dirty`. Exact-head run `43057118522` / job `130649449663` فشل قبل steps؛ logs غير متاحة (`BlobNotFound`). Vercel status للـ PR أحمر بسبب حد النشر اليومي، وليس اختبار تطبيق. لا دمج قبل إزالة التعارض ومراجعة diff ونجاح كل بوابات exact head.
+- **PR #363:** OPEN / DRAFT / HOLD. الرأس السابق `7e1f3e4b...` كان مبنيًا على base قديم؛ تمت مصالحة الفرع مع main في merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`، وأصبحت حالة PR `mergeable=true` وbase SHA هو main الحالي. على هذا الرأس ظهرت Vercel Preview Comments = success وVercel deployment = pending، ولم يظهر بعد GitHub Quality Gate. إصلاح رابطين نسبيين سيُنشئ head جديدًا؛ أعد جلبه ثم راقب كل checks. التشغيل القديم `43057118522` على الرأس السابق فشل قبل steps ولا يمثل فشل اختبار.
 - **PR #361/#362:** مدمجان، وmain الحالي descendant من merge commits لكليهما. لا تكرر أعمال EveryAyah stream-only أو إصلاح guest-entry hydration.
 - **PR #358/#359:** ما زالا OPEN / DRAFT وغير مدمجين، وقاعدتهما القديمة `4b299042...`. فشل Playwright كان لأن اختبار المراجعة لم يدخل وضع الضيف وبقي ينتظر زر إضافة المقطع؛ بقية الاختبارات/TypeScript/Emulator/build نجحت في الرؤوس المرصودة. إصلاح helper في #362 مدمج؛ أعد بناء تنفيذ موحد على main، ولا تدمج أيًا منهما منفردًا.
 - **PR #354:** مدمج وmain يحتويه؛ hardening للـ proxy فقط، ولا يثبت زوال سبب 500 الأصلي.
@@ -24,7 +24,7 @@
 ---
 ## 1. الحالة التشغيلية والبوابات
 
-- **PR #363:** OPEN / DRAFT / HOLD حتى إزالة تعارض main الحالي ونجاح exact-head Quality Gate؛ فشل التشغيل السابق قبل steps/logs ولا يثبت فشل اختبار.
+- **PR #363:** OPEN / DRAFT / HOLD؛ تمت المصالحة مع main وأصبحت mergeable، لكن Quality Gate للرأس النهائي ما زال غير محسوم.
 - **PR #361 و#362:** MERGED حسب السجل السابق؛ لا تكرر أعمالهما. تحقق من الحالة الحية قبل أي عمل مرتبط.
 - **PR #358 و#359:** مقترحان متداخلان، وفشل Playwright المرصود كان بسبب عدم الوصول لصفحة المراجعة في الاختبار. #362 أصلح helper؛ لا تدمج أيًا منهما كما هو، وابنِ عقد jobs/files/jobItems موحدًا فوق main.
 - **PR #2:** فرع Phase 5 قديم جدًا (115 ahead / 469 behind)؛ لا دمج مباشر. استخراج محدود لتحسين Advisor security/chat فقط بعد مراجعة مستقلة.

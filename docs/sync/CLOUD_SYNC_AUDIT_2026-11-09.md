@@ -3,7 +3,7 @@
 - Current main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 - Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY and built from the exact current main SHA. This is not a live sync or browser smoke test.
 - Main Quality Gate run `43079260528` and PR #363 exact-head run `43057118522` both ended before any job steps were recorded; job log downloads returned `BlobNotFound`. Neither is evidence of an actual test failure or a successful Quality Gate.
-- PR #363 remains Draft/HOLD pending reconciliation with current main, complete diff review, and a successful exact-head gate.
+- PR #363 has been reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. A follow-up relative-link correction changes the head; complete diff review and a successful exact-head gate are still required.
 - Read-only Vercel environment inventory confirms Production values `true` for `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. No setting was changed. Owner decision is required before disabling/enabling either flag.
 - PR #361/#362/#354 are merged and included in main. No new sync runtime code was merged in this checkpoint; event-ledger/cutover remains design-only.
 - Google AI Studio sync, authenticated two-device sync, conflict/cutover production smoke, and live browser smoke are NOT VERIFIED.
