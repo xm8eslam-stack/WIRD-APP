@@ -3,10 +3,11 @@ import { expect, test } from '@playwright/test';
 async function enterGuestApp(page: import('@playwright/test').Page) {
   await page.goto('/');
   const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
-  if (await guestEntry.isVisible().catch(() => false)) {
-    await guestEntry.click();
-    await expect(page.getByRole('button', { name: 'المراجعة' }).first()).toBeVisible();
-  }
+  // Wait for the initial auth screen to hydrate before deciding whether guest entry exists.
+  // A one-shot isVisible() can return false during startup and leave the test on the login screen.
+  await expect(guestEntry).toBeVisible({ timeout: 15000 });
+  await guestEntry.click();
+  await expect(page.getByRole('button', { name: 'المراجعة' }).first()).toBeVisible();
 }
 
 test.describe('WIRD revision and memorization-test UX', () => {
