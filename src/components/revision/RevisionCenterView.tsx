@@ -135,6 +135,9 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Add new portion modal
   const [isAddPortionModalOpen, setIsAddPortionModalOpen] = useState(false);
+  const addPortionDialogRef = useRef<HTMLDivElement>(null);
+  const addPortionCloseRef = useRef<HTMLButtonElement>(null);
+  const addPortionTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [newSurahNum, setNewSurahNum] = useState(67);
   const [newStartAyah, setNewStartAyah] = useState(1);
   const [newEndAyah, setNewEndAyah] = useState(15);
@@ -142,10 +145,55 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
   // Add manual weak verse modal
   const [isAddWeakVerseModalOpen, setIsAddWeakVerseModalOpen] = useState(false);
+  const addWeakVerseDialogRef = useRef<HTMLDivElement>(null);
+  const addWeakVerseCloseRef = useRef<HTMLButtonElement>(null);
+  const addWeakVerseTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [weakSurahNum, setWeakSurahNum] = useState(67);
   const [manualWeakAyahNum, setManualWeakAyahNum] = useState(1);
   const [manualWeakText, setManualWeakText] = useState('');
   const [manualWeakNotes, setManualWeakNotes] = useState('');
+
+  useEffect(() => {
+    const activeDialog = isAddPortionModalOpen ? 'portion' : isAddWeakVerseModalOpen ? 'weakVerse' : null;
+    if (!activeDialog) return;
+
+    const dialog = activeDialog === 'portion' ? addPortionDialogRef.current : addWeakVerseDialogRef.current;
+    const initialFocus = activeDialog === 'portion' ? addPortionCloseRef.current : addWeakVerseCloseRef.current;
+    const trigger = activeDialog === 'portion' ? addPortionTriggerRef.current : addWeakVerseTriggerRef.current;
+    initialFocus?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (activeDialog === 'portion') setIsAddPortionModalOpen(false);
+        else setIsAddWeakVerseModalOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab' || !dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      ));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleDialogKeyDown);
+      trigger?.focus();
+    };
+  }, [isAddPortionModalOpen, isAddWeakVerseModalOpen]);
 
   // Search in weak verses
   const [weakSearchQuery, setWeakSearchQuery] = useState('');
@@ -607,6 +655,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
 
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              ref={addWeakVerseTriggerRef}
               onClick={() => setIsAddWeakVerseModalOpen(true)}
               className="flex min-h-11 items-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 hover:bg-amber-100 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800/60 transition-colors"
             >
@@ -615,6 +664,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
             </button>
 
             <button
+              ref={addPortionTriggerRef}
               onClick={() => setIsAddPortionModalOpen(true)}
               className="flex min-h-11 items-center gap-1.5 px-3.5 py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
             >
@@ -1284,12 +1334,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD NEW PORTION */}
       {isAddPortionModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div role="dialog" aria-modal="true" aria-labelledby="wird-add-portion-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div ref={addPortionDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-add-portion-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 id="wird-add-portion-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
               </h3>
-              <button type="button" aria-label="إغلاق نافذة إضافة مقطع" onClick={() => setIsAddPortionModalOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600">
+              <button ref={addPortionCloseRef} type="button" aria-label="إغلاق نافذة إضافة مقطع" onClick={() => setIsAddPortionModalOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1389,12 +1439,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD MANUAL WEAK VERSE */}
       {isAddWeakVerseModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div role="dialog" aria-modal="true" aria-labelledby="wird-add-weak-verse-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div ref={addWeakVerseDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-add-weak-verse-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 id="wird-add-weak-verse-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
               </h3>
-              <button type="button" aria-label="إغلاق نافذة تسجيل آية ملتبسة" onClick={() => setIsAddWeakVerseModalOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600">
+              <button ref={addWeakVerseCloseRef} type="button" aria-label="إغلاق نافذة تسجيل آية ملتبسة" onClick={() => setIsAddWeakVerseModalOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
