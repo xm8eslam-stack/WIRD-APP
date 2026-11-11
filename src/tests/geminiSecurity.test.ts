@@ -89,6 +89,30 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
     assert(serverContent.includes('rateLimitMap.size > 1000') && serverContent.includes('rateLimitMap.entries()'), 'Express advisor limiter must prune expired records');
   });
 
+
+  test('Advisor chat API validates a bounded typed history before prompt construction', () => {
+    const handler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    assert(handler.includes('history.length > 6'), 'Advisor history must be limited to six messages');
+    assert(handler.includes('item.text.length > 400'), 'Each history message must be limited to 400 characters');
+    assert(handler.includes('INVALID_HISTORY'), 'Malformed history must be rejected');
+    assert(handler.includes('safeHistory.map'), 'Only normalized history may reach the model prompt');
+  });
+
+  test('Advisor system prompt treats user content as untrusted and declines religious rulings', () => {
+    const handler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    assert(handler.includes('لا تصدر فتوى شرعية'), 'Advisor must not issue fatwas or doctrinal rulings');
+    assert(handler.includes('بيانات غير موثوقة'), 'User text and history must be treated as untrusted input');
+  });
+
+  test('Advisor client bounds message history and Vercel rewrites nested advisor routes', () => {
+    const service = fs.readFileSync(path.resolve('./src/services/advisorService.ts'), 'utf8');
+    const config = fs.readFileSync(path.resolve('./vercel.json'), 'utf8');
+    assert(service.includes('message.slice(0, 500)'), 'Client message must be capped at 500 characters');
+    assert(service.includes('history.slice(-6)'), 'Client must send only the latest six history messages');
+    assert(service.includes('item.text.slice(0, 400)'), 'Client must cap each history message at 400 characters');
+    assert(config.includes('/api/advisor/(.*)'), 'Nested advisor routes must be rewritten to the shared handler');
+  });
+
   return { passed, failed };
 }
 
