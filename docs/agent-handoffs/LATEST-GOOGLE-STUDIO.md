@@ -100,3 +100,12 @@ Next: implement the pure activity-event reducer and its migration/replay tests o
 - Phase 2 local journal/outbox integration remains blocked by the migration contract: prove a per-device outbox watermark that distinguishes pre-cutover offline legacy activity from events already represented in the baseline. Do not use a timestamp-only cutover, merge daily aggregates by addition, alter Firestore rules/schema, enable production sync flags, or rewrite/delete legacy logs.
 - Next: audit existing IndexedDB journal mutation IDs/sequences, backup/export/import compatibility, and account-scope lifecycle to determine whether a provable watermark exists. If not, document the blocking invariant and redesign before runtime changes.
 - No production settings, secrets, sync flags, Firestore rules/schema, or user data changed in this continuation.
+
+
+### 2026-11-11 — journal/cutover evidence review
+
+- Audited `indexedDbSyncJournal.ts`, `localSyncOutbox.ts`, `domainEvents.ts`, and `storageService.ts` on main.
+- Confirmed local device metadata includes `deviceId`, `nextSequence`, `lastProjectedSequence`; journal stores event/outbox/acknowledgement records and `getSnapshot()` reports counts/cursor.
+- Confirmed session completion still produces date-keyed legacy `DailyLog[]` snapshots; current `session.completed` domain events do not capture immutable localDate + timezone offset.
+- Legacy outbox migration/fingerprint is local per-install evidence only; no server-visible registry proving every device has drained pre-cutover session mutations was found in the reviewed paths.
+- Decision: no runtime wiring. A safe global cutover needs a server-visible UID-scoped per-device acknowledgement and minimum-client/write gate; that would involve Firestore schema/rules/production compatibility and requires explicit owner approval. Timestamp-only or local-flag cutover is rejected.
