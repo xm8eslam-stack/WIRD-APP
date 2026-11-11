@@ -1,3 +1,15 @@
+## Seerah API research — follow-up 2026-11-11
+
+- Read the actual Islamic Network People/Events OpenAPI JSON. People records support language-keyed biographies, dates, person type, linked event/quote/story aggregates and related people; Arabic may be absent per record. Events is calendar-oriented and uses Hijri month/day anniversaries distinct from the optional historical year; do not treat it as a complete chronological Seerah source.
+- SeerahBook is a read-only graph with per-IP limits and provenance, but its content is based on a specific lecture series; its own About page labels approximate/disputed/weak reports and possible dramatized wording. Never present reconstructed wording as verbatim quotation.
+- Dorar's official API terms prohibit bulk download/republication, require attribution + clickable source URL and server-side token, limit cache to 24–48h, 60 req/min, and require approval/preview review. It cannot be used as a permanent offline corpus.
+- WIRD should publish from its own reviewed/versioned Seerah Content Registry; APIs are discovery/verification adapters only until rights for offline/republication are confirmed.
+- Read `docs/SEERAH_LEARNING_PLAN_AR.md` section 14 and `docs/DEVELOPMENT_ROADMAP.md` before implementing.
+- CI retry evidence for previous PR #363 head: run `43051925917` failed with no recorded steps/logs; rerun job `130632989788` failed the same way. Do not treat as test-level failure or pass. Re-fetch the new PR head and exact-head gate.
+- No runtime integration, API content ingestion, secrets, Firebase changes, production changes or deployment was performed.
+
+---
+
 # Follow-up handoff — 2026-11-11 (Seerah learning roadmap)
 
 > This section supersedes earlier status snapshots only for the new Seerah feature direction. Re-fetch live repository/PR/CI/deployment state before acting.
