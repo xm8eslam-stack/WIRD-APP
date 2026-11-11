@@ -114,6 +114,25 @@ export async function runOfflineQuranAudioDownloadStoreTests(): Promise<{ passed
     } finally { store.close(); }
   });
 
+  await test('keeps failed and cancelled jobs terminal', async () => {
+    const { store } = createStore();
+    try {
+      const cancelledJob = await store.createJob(request, 100);
+      await store.setJobStatus(cancelledJob.id, 'cancelled', 110);
+      let cancelledRejected = false;
+      try { await store.setJobStatus(cancelledJob.id, 'downloading', 120); } catch { cancelledRejected = true; }
+      assert(cancelledRejected, 'A cancelled job must not be reopened by changing its status.');
+      assert((await store.getJob(cancelledJob.id))?.status === 'cancelled', 'A cancelled job must remain cancelled.');
+
+      const failedJob = await store.createJob(request, 200);
+      await store.setJobStatus(failedJob.id, 'failed', 210);
+      let failedRejected = false;
+      try { await store.setJobStatus(failedJob.id, 'downloading', 220); } catch { failedRejected = true; }
+      assert(failedRejected, 'A failed job must not be reopened implicitly.');
+      assert((await store.getJob(failedJob.id))?.status === 'failed', 'A failed job must remain failed.');
+    } finally { store.close(); }
+  });
+
   await test('persists job and ayah metadata after closing and reopening IndexedDB', async () => {
     const { factory, databaseName, store } = createStore();
     const job = await store.createJob(request, 100);
