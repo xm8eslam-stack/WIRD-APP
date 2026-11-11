@@ -7,7 +7,7 @@ Phased implementation in progress. PR #355 introduces only the pure, tested rang
 - Official Al Quran Cloud terms explicitly permit streaming, embedding, and downloading recitations for personal and educational use at the published bitrates; copyright remains with the reciters or their estates: https://alquran.cloud/terms-and-conditions
 - The official CDN documentation defines the ayah audio URL pattern and canonical global ayah range 1–6236: https://alquran.cloud/cdn
 - This permission is limited to the provider's approved recitations and stated use; it is not a blanket license for other providers or for WIRD to rehost the audio.
-- EveryAyah bulk/offline storage rights remain unverified and are excluded from this download feature.
+- EveryAyah has no confirmed provider-wide offline-storage permission in the reviewed sources. Existing app behavior is therefore stream-only: the service worker no longer caches these files and prunes any legacy EveryAyah entries on activation. Do not restore offline caching for this provider without a documented rights basis.
 
 ## Goal
 Let a user explicitly download a chosen Quran reciter's surah or ayah range to the current device, verify the saved files, play them without a network connection, inspect storage use, cancel an active download, and remove selected downloads. Never download the full Quran automatically.

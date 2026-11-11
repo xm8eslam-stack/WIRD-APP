@@ -164,23 +164,15 @@ async function cacheSessionAudio(rawUrls) {
   for (const rawUrl of urls) {
     try {
       const url = new URL(rawUrl);
-      const isEveryAyah = url.protocol === 'https:' && !url.search && !url.hash &&
-        url.hostname === 'everyayah.com' &&
-        /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname);
       const isApprovedQuranCdn = url.protocol === 'https:' && !url.search && !url.hash &&
         url.hostname === 'cdn.islamic.network' &&
         /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname);
-      if (!isEveryAyah && !isApprovedQuranCdn) continue;
-      const request = new Request(url.href, {
-        mode: isEveryAyah ? 'no-cors' : 'cors',
-        credentials: 'omit'
-      });
+      if (!isApprovedQuranCdn) continue;
+      const request = new Request(url.href, { mode: 'cors', credentials: 'omit' });
       if (await cache.match(request)) continue;
       const response = await fetchWithTimeout(request, {}, 10000);
       const contentType = (response.headers.get('content-type') || '').toLowerCase();
-      const validResponse = isEveryAyah
-        ? response.type === 'opaque' || (response.status === 200 && contentType.startsWith('audio/'))
-        : response.status === 200 && response.type === 'cors' && contentType.startsWith('audio/');
+      const validResponse = response.status === 200 && response.type === 'cors' && contentType.startsWith('audio/');
       if (validResponse) {
         await cache.put(request, response.clone());
         await trimAudioCache(cache);
@@ -242,13 +234,27 @@ self.addEventListener('install', (event) => {
 });
 
 // Service Worker Activate: clean old shell versions while preserving session audio.
+async function pruneUnlicensedEveryAyahAudioCache() {
+  try {
+    const cache = await caches.open(AUDIO_CACHE_NAME);
+    const requests = await cache.keys();
+    await Promise.all(requests.filter(request => {
+      try { return new URL(request.url).hostname === 'everyayah.com'; }
+      catch { return false; }
+    }).map(request => cache.delete(request)));
+  } catch (error) {
+    console.warn('[WIRD SW] Unlicensed-provider audio cache cleanup skipped:', error);
+  }
+}
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => Promise.all(
       cacheNames
         .filter((name) => name.startsWith('wird-app-') && name !== CACHE_NAME && name !== AUDIO_CACHE_NAME && name !== CONTENT_CACHE_NAME && name !== MUSHAF_PAGE_CACHE_NAME)
         .map((name) => caches.delete(name))
-    )).then(() => self.clients.claim())
+    )).then(() => pruneUnlicensedEveryAyahAudioCache())
+      .then(() => self.clients.claim())
   );
 });
 
@@ -314,19 +320,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Session audio cache: only explicitly selected EveryAyah recitations are stored.
+  // EveryAyah remains stream-only until a provider-wide offline-storage license is documented.
   const isEveryAyahAudio = url.protocol === 'https:' && !url.search && !url.hash && url.hostname === 'everyayah.com' &&
     /^\/data\/(Alafasy_128kbps|Husary_128kbps|Minshawy_Murattal_128kbps|Abdul_Basit_Murattal_192kbps|Ghamadi_40kbps)\/[0-9]{6}\.mp3$/.test(url.pathname);
+  if (isEveryAyahAudio) {
+    event.respondWith(fetch(req).catch((error) => {
+      console.warn('[WIRD SW] Stream-only EveryAyah audio unavailable:', req.url, error);
+      return Response.error();
+    }));
+    return;
+  }
+
+  // Only the reviewed Al Quran Cloud CDN recitations are eligible for offline cache.
   const isApprovedQuranCdnAudio = url.protocol === 'https:' && !url.search && !url.hash && url.hostname === 'cdn.islamic.network' &&
     /^\/quran\/audio\/(64|128|192)\/(ar\.husary|ar\.minshawi|ar\.abdulbasitmurattal|ar\.abdurrahmaansudais|ar\.saoodshuraym|ar\.ahmedajamy|ar\.alafasy)\/[1-6][0-9]{0,3}\.mp3$/.test(url.pathname);
-  if (url.protocol === 'https:' && (isEveryAyahAudio || isApprovedQuranCdnAudio)) {
+  if (isApprovedQuranCdnAudio) {
     event.respondWith((async () => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
       const cached = await cache.match(req);
       if (cached) return cached;
       try { return await fetch(req); }
       catch (error) {
-        console.warn('[WIRD SW] Session audio unavailable offline:', req.url, error);
+        console.warn('[WIRD SW] Approved Quran CDN audio unavailable offline:', req.url, error);
         return Response.error();
       }
     })());
