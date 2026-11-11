@@ -209,3 +209,11 @@ This addendum supersedes older release-state statements above where they conflic
 - src/services/activityEventProjection.ts and its tests implement a pure deterministic reducer (stable event IDs, baseline identity, captured local date/offset, duplicate detection, and overflow checks). This is not wired into StorageService/the production cloud projection; DailyLog[] remains the persisted aggregate.
 - Activity-event migration remains blocked until a server-visible per-device legacy cutover/watermark and old-client schema gate can prove pre-cutover offline sessions are neither omitted nor double-counted.
 - Tombstones remain fail-closed. No Firestore Rules/schema, production flags, secrets, or user data were changed in this checkpoint.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
