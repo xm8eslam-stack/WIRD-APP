@@ -1,7 +1,13 @@
 # WIRD — Optional Offline Quran Audio Downloads
 
 ## Status
-Research-backed implementation plan; not yet implemented. Keep this feature separate from the existing opt-in application-shell preparation and opportunistic next-ayah cache.
+Phased implementation in progress. PR #355 introduces only the pure, tested range planner; downloads, persistent manifest storage, worker protocol, UI, and offline playback are not implemented yet. Keep this feature separate from the existing opt-in application-shell preparation and opportunistic next-ayah cache.
+
+## Source terms re-check — 2026-11-11
+- Official Al Quran Cloud terms explicitly permit streaming, embedding, and downloading recitations for personal and educational use at the published bitrates; copyright remains with the reciters or their estates: https://alquran.cloud/terms-and-conditions
+- The official CDN documentation defines the ayah audio URL pattern and canonical global ayah range 1–6236: https://alquran.cloud/cdn
+- This permission is limited to the provider's approved recitations and stated use; it is not a blanket license for other providers or for WIRD to rehost the audio.
+- EveryAyah bulk/offline storage rights remain unverified and are excluded from this download feature.
 
 ## Goal
 Let a user explicitly download a chosen Quran reciter's surah or ayah range to the current device, verify the saved files, play them without a network connection, inspect storage use, cancel an active download, and remove selected downloads. Never download the full Quran automatically.
