@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+// Exact accessible names avoid ambiguity between the dialog header and footer close controls.
+
 test.describe('WIRD Quran progress map dialog accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
