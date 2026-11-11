@@ -317,3 +317,13 @@ This section is the current status and supersedes older historical statements wh
 - This change is not a weak-verse reconciliation release. Do not enable automatic merge of weak-verse snapshots or automatic keep-local/keep-remote resolution until tests prove preservation of independent verse additions, same-verse concurrent failures, retries, and resolution anti-resurrection.
 - Activity-event reconciliation remains gated until immutable session events can rebuild daily aggregates exactly once, including legacy daily-log baselines and account/device recovery.
 - No Firestore rules/schema, production settings, secrets, or sync flags changed in PR #207.
+
+
+## Latest verified main/Production gate — 2026-11-11
+
+- Main SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 includes PR #344.
+- Exact PR head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed run 42965801925; post-merge main Quality Gate 43023291577 passed.
+- Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and matches the exact main SHA.
+- Activity event reducer is still pure/tested, not integrated into the live persistence/cloud path. No production event-ledger migration has occurred.
+- Weak-verse/activity snapshot CAS is not a merge algorithm. Keep both conflict-resolution choices blocked; keep tombstones fail-closed until a per-device offline cutover protocol and collection-specific delete semantics are implemented and tested.
+- This is CI + exact Production deployment evidence, not a fresh physical-device A↔B round-trip test.
