@@ -70,6 +70,9 @@ function validateJob(job: OfflineQuranAudioJob): void {
       job.completedAyahs > job.totalAyahs ||
       !Number.isSafeInteger(job.createdAtMs) || job.createdAtMs < 0 ||
       !Number.isSafeInteger(job.updatedAtMs) || job.updatedAtMs < job.createdAtMs ||
+      (job.status === 'queued' && job.completedAyahs !== 0) ||
+      (job.status === 'downloading' && job.completedAyahs >= job.totalAyahs) ||
+      (job.status === 'partial' && (job.completedAyahs < 1 || job.completedAyahs >= job.totalAyahs)) ||
       (job.status === 'completed' && job.completedAyahs !== job.totalAyahs)) {
     throw new Error('حالة تنزيل التلاوة المحفوظة لا تطابق نطاقها.');
   }
