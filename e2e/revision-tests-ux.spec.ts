@@ -3,7 +3,9 @@ import { expect, test } from '@playwright/test';
 async function enterGuestApp(page: import('@playwright/test').Page) {
   await page.goto('/');
   const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
-  if (await guestEntry.isVisible().catch(() => false)) {\n    await guestEntry.click();\n    await expect(page.getByRole('button', { name: 'المراجعة' })).toBeVisible();\n  }
+  if (await guestEntry.isVisible().catch(() => false)) {
+    await guestEntry.click();
+    await expect(page.getByRole('button', { name: 'المراجعة' })).toBeVisible();\n  }
 }
 
 test.describe('WIRD revision and memorization-test UX', () => {
