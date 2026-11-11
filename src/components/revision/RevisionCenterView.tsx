@@ -1284,12 +1284,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD NEW PORTION */}
       {isAddPortionModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="wird-add-portion-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="wird-add-portion-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
               </h3>
-              <button onClick={() => setIsAddPortionModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+              <button type="button" aria-label="إغلاق نافذة إضافة مقطع" onClick={() => setIsAddPortionModalOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -1389,12 +1389,12 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD MANUAL WEAK VERSE */}
       {isAddWeakVerseModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div role="dialog" aria-modal="true" aria-labelledby="wird-add-weak-verse-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
+              <h3 id="wird-add-weak-verse-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
               </h3>
-              <button onClick={() => setIsAddWeakVerseModalOpen(false)} className="text-stone-400 hover:text-stone-600">
+              <button type="button" aria-label="إغلاق نافذة تسجيل آية ملتبسة" onClick={() => setIsAddWeakVerseModalOpen(false)} className="min-h-11 min-w-11 flex items-center justify-center text-stone-400 hover:text-stone-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
