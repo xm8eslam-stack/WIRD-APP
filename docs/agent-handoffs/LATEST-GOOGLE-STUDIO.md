@@ -1,3 +1,17 @@
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11 15:52 +02:00)
+
+> Read `AGENTS.md`, then [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md), and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). This is a documentation handoff, not proof that Google AI Studio has synchronized.
+
+- Repository: `xm8eslam-stack/WIRD-APP`; expected source branch: `main`.
+- Latest main SHA observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- #362 exact-head Quality Gate PASS (`e2079734a0d150c1046307611a2b28346fdcdb1d)); #361 PASS (`3008c4788caba61930be008e3cb40dcf52cfd78f`).
+- #360 exact-head run `43030878508` failed only at Desktop/Mobile Playwright smoke; #358/#359/#356 also have Playwright smoke failures and remain Draft. Check [CONTINUE_HERE](../CONTINUE_HERE.md) before action.
+- #358/#359 are competing/overlapping offline audio manifest designs; do not combine blindly.
+- Vercel status on main is not Production proof. Production source SHA, live smoke, and AI Studio synchronization are NOT VERIFIED.
+- Do not alter secrets, Production settings, Firebase rules/data, or sync flags.
+
+---
+
 # GOOGLE AI STUDIO — Latest handoff (2026-11-11)
 
 > Start with [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), then [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). Older notes below are historical snapshots.
