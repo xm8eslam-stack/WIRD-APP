@@ -1,3 +1,10 @@
+
+## آخر محاولة Quality Gate لـ PR #363
+
+- run `43040357411` على SHA `5f613c3754b4d0aabc6aa09741a6d9914a0720ca` انتهى بفشل job واحد قبل تسجيل أي steps أو logs.
+- لا يوجد تشخيص اختبار؛ لا تعتبره فشل Playwright أو TypeScript. CI غير محسوم حتى تظهر خطوات قابلة للفحص.
+
+---
 # WIRD — نقطة الاستكمال الحالية (مصدر الحقيقة)
 
 آخر تحقق من GitHub: 2026-11-11 16:30 +02:00
@@ -11,7 +18,7 @@
 | #362 | MERGED | إصلاح guest-entry hydration؛ merge SHA `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`؛ Quality Gate PASS |
 | #361 | MERGED | EveryAyah stream-only وتنظيف cache قديم؛ merge SHA `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`؛ Quality Gate PASS |
 | #360 | CLOSED / SUPERSEDED | استبدل بـ #363 بعد فشل CI غير المشخّص |
-| #363 | OPEN / DRAFT | مركز الوثائق وخطة التطوير؛ آخر SHA `1ed5d3a80b2342f3aeb1a6cf468e51d91e426af4`؛ runs `43039009676` و`43039794349` و`43039853668` انتهت كلها بفشل job واحد دون تسجيل أي job steps أو logs؛ CI غير محسوم ولا تدمج قبل exact-head Quality Gate ناجح |
+| #363 | OPEN / DRAFT | مركز الوثائق وخطة التطوير؛ آخر SHA وقت المراجعة `5f613c3754b4d0aabc6aa09741a6d9914a0720ca`؛ بعد أي تحديث جديد أعد جلب head من PR #363.؛ runs `43039009676` و`43039794349` و`43039853668` انتهت كلها بفشل job واحد دون تسجيل أي job steps أو logs؛ CI غير محسوم ولا تدمج قبل exact-head Quality Gate ناجح |
 | #356 | CLOSED / SUPERSEDED | planner موجود في main من #355؛ أُخذت منه ملاحظة cutover الفريدة إلى `sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md` |
 | #2 | OPEN / VERY STALE | فرع Phase 5 قديم، 115 ahead / 467 behind في آخر compare؛ لا دمج مباشر. يحتاج جردًا للميزات الفريدة فقط إذا عادت الأولوية |\n| #358 | OPEN / DRAFT | store للمهام والعناصر؛ تداخل manifest مع #359؛ Quality Gate على الرأس المرصود فشل في Playwright |
 | #359 | OPEN / DRAFT | manifest metadata فقط؛ لا job lifecycle؛ Quality Gate على الرأس المرصود فشل في Playwright |
