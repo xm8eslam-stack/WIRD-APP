@@ -175,7 +175,7 @@ async function readBoundedUpstreamText(response: Response): Promise<string | nul
  * sent to the browser. Provider-authored text is stripped; only validated
  * numeric Quran coordinates and item IDs are returned.
  */
-export default async function handler(req: any, res: any) {
+async function handleRuqyahRequest(req: any, res: any) {
   // The proxy is consumed by WIRD through same-origin requests; do not grant cross-origin access.
   res.setHeader('X-Content-Type-Options', 'nosniff');
 
@@ -274,5 +274,20 @@ export default async function handler(req: any, res: any) {
       error: 'RUQYAH_SOURCE_ERROR',
       message: error?.name === 'TimeoutError' ? 'SOURCE_TIMEOUT' : 'SOURCE_ERROR'
     });
+  }
+}
+
+
+/** Catch unexpected failures outside the upstream request block as a sanitized JSON response. */
+export default async function handler(req: any, res: any) {
+  try {
+    return await handleRuqyahRequest(req, res);
+  } catch (error) {
+    // Never log the error message or URL: upstream fetch errors may contain the API key query parameter.
+    const errorName = error instanceof Error ? error.name : 'UnknownError';
+    const method = typeof req?.method === 'string' ? req.method : 'unknown';
+    console.error('[WIRD Ruqyah] Unhandled proxy failure', { method, errorName });
+    try { res.setHeader('Cache-Control', 'no-store'); } catch { /* response may already be unusable */ }
+    return send(res, 502, { error: 'RUQYAH_INTERNAL_ERROR' });
   }
 }
