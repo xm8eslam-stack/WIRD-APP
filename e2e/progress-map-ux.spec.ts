@@ -4,7 +4,7 @@ test.describe('WIRD Quran progress map dialog accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
-    await expect(page.getByRole('button', { name: 'المراجعة' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'المراجعة' }).first()).toBeVisible();
     await page.goto('/#/progress');
     await expect(page.getByRole('heading', { name: 'المصحف البصري التفاعلي وخريطة الحفظ' })).toBeVisible();
   });
