@@ -65,6 +65,35 @@ export async function runOfflineQuranAudioDownloadStoreTests(): Promise<{ passed
     } finally { store.close(); }
   });
 
+  await test('rejects a tampered stored URL when reading the local manifest', async () => {
+    const { factory, databaseName, store } = createStore();
+    try {
+      const job = await store.createJob(request, 100);
+      const plan = buildQuranAudioDownloadPlan(request);
+      await store.recordDownloadedAyah(job.id, {
+        ...plan.items[0], reciterId: request.reciterId, byteLength: 1000, downloadedAtMs: 110, verified: true
+      }, 111);
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const open = factory.open(databaseName, 1);
+        open.onsuccess = () => resolve(open.result);
+        open.onerror = () => reject(open.error);
+      });
+      await new Promise<void>((resolve, reject) => {
+        const transaction = db.transaction('items', 'readwrite');
+        const objectStore = transaction.objectStore('items');
+        const get = objectStore.get(job.id + ':1');
+        get.onsuccess = () => objectStore.put({ ...get.result, url: 'https://untrusted.example/changed.mp3' });
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(transaction.error);
+        transaction.onerror = () => reject(transaction.error);
+      });
+      db.close();
+      let rejected = false;
+      try { await store.listItems(job.id); } catch { rejected = true; }
+      assert(rejected, 'A tampered manifest URL must be rejected when read back.');
+    } finally { store.close(); }
+  });
+
   await test('supports explicit status changes and refuses writes after cancellation', async () => {
     const { store } = createStore();
     try {
