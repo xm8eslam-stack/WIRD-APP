@@ -4,13 +4,12 @@ This section supersedes earlier status notes below where they conflict with exac
 
 ### Current source, CI, and deployment
 
-- Current `main` SHA: `d1d33384609bdc4a3c99120956901c92289d5f26` (PR #348 documentation-only merge).
-- Main Quality Gate [43025089584](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025089584) was still in progress at checkpoint; Firestore Emulator tests had passed and desktop/mobile browser smoke was active.
-- The last independently verified Vercel Production deployment remains READY on runtime SHA `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`. PR #348 changed documentation only; no runtime code changed in that merge. A separate Vercel deployment for docs-only SHA `d1d33384609bdc4a3c99120956901c92289d5f26` was not observed.
-- PR #353 keyboard-accessible revision dialogs: exact head `91f4ac7c9c5bc5590d70393d7b29f672fa95b3e1`, Quality Gate [43025536416](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025536416) in progress.
-- PR #354 Ruqyah proxy unexpected-failure handling: exact head `cc2e83b67b1fbc08b8bb52f1e424f07998ae04cc`, Quality Gate [43025241467](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025241467) in progress.
-- PR #351 IndexedDB quota-boundary recovery test: exact head `f259e084e381383168b1f1075064fe108d2c2cad`, Quality Gate [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) in progress.
-- PR #349 is this documentation update; rerun its exact latest head before merge.
+- Current `main` SHA: `5c1ecbaa77bc5a3aa13aba35a45b4ee63d366129` (PR #351 test-only merge).
+- Main Quality Gate [43026085937](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026085937) was in progress at checkpoint; setup had just started. The preceding main-only run for docs-only SHA `d1d33384609bdc4a3c99120956901c92289d5f26` was superseded/cancelled after the newer main commit.
+- Last independently verified Vercel Production deployment remains READY on runtime SHA `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`. PR #348 was documentation-only and PR #351 test-only; neither changed runtime code. No new Production deployment for the docs/test-only commits was observed.
+- PR #353 keyboard-accessible revision dialogs: exact head `91f4ac7c9c5bc5590d70393d7b29f672fa95b3e1`, Quality Gate [43025536416](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025536416) in progress; prior checks passed and desktop/mobile browser smoke was active.
+- PR #354 Ruqyah proxy unexpected-failure handling: exact head `086dbb0cb7a675bd502ea0f918b41d5b145b19f9`, Quality Gate [43025838426](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025838426) in progress; Firestore Emulator tests were active.
+- PR #349 is this documentation update; its exact-head Quality Gate [43025956565](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025956565) was in progress at checkpoint.
 
 ### Firestore Rules deployment — confirmed
 
@@ -21,8 +20,8 @@ This section supersedes earlier status notes below where they conflict with exac
 ### Sync evidence and remaining engineering gates
 
 - Preserve the owner-reported PASS for the authenticated two-device sync path; it is bounded to the tested journey.
-- Automated tests already cover two-tab duplicate enqueue serialization, concurrent cross-tab monotonic event sequences, UID-scoped outbox isolation, stale-account operations aborting after scope changes, offline/online/foreground retry, IndexedDB close/reopen durability, and transaction-abort rollback.
-- PR #351 adds a focused simulated `QuotaExceededError` at the IndexedDB open boundary and verifies normalized messaging plus exact legacy recovery-source preservation. It does not yet simulate quota exhaustion during an active browser write transaction.
+- Automated tests cover two-tab duplicate enqueue serialization, concurrent cross-tab monotonic event sequences, UID-scoped outbox isolation, stale-account operations aborting after scope changes, offline/online/foreground retry, IndexedDB close/reopen durability, and transaction-abort rollback.
+- PR #351 merged a focused simulated `QuotaExceededError` at the IndexedDB open boundary and verifies normalized messaging plus exact legacy recovery-source preservation. Main post-merge CI is running. This does not yet simulate quota exhaustion during an active browser write transaction.
 - Still gated: tombstone/delete semantics and anti-resurrection, full browser-level simultaneous cross-tab sign-out/account-switch lifecycle, long-offline replay under real browser suspension, active-write quota exhaustion and recovery, IndexedDB blocked/versionchange recovery, queue stress, and full authenticated production journey automation.
 - Grouped `syncMeta` conflict choices remain atomic; unsupported choices and divergent legacy Ruqyah V1 baselines must continue to fail closed.
 
