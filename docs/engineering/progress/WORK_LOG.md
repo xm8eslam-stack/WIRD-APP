@@ -594,3 +594,11 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Latest PR #360 head after documentation updates: `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`. No check-runs were visible at the time of the final refresh. Previous exact-head Playwright failure and rerun-with-no-steps failure remain unresolved; do not claim CI PASS.
 - Recursive repository inventory contains 310 entries. Documentation tree has a central index/catalog and feature-specific plans; source code was not reorganized because runtime paths and imports should not be moved as part of a documentation-only cleanup.
 - No merge, deployment, Firebase/Firestore mutation, production settings/secrets, sync-flag change, or user-data change.
+
+
+## 2026-11-11 16:15 +02:00 — Reconcile docs branch with latest main
+
+- PR #362 merged at `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`; exact-head Quality Gate passed.
+- PR #361 merged at `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; EveryAyah is stream-only and legacy cached files are pruned; exact-head Quality Gate passed.
+- The original #360 head had a failed check; its retry failed without job-step evidence. A replacement documentation branch was reconstructed from latest main, preserving the doc changes and main's updated offline-audio rights note.
+- Run full exact-head Quality Gate on the replacement docs PR before merge. No Production settings, secrets, Firebase/Firestore data/rules, sync flags, or user data changed.
