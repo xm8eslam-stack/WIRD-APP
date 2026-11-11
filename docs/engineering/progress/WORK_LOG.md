@@ -602,3 +602,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #361 merged at `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; EveryAyah is stream-only and legacy cached files are pruned; exact-head Quality Gate passed.
 - The original #360 head had a failed check; its retry failed without job-step evidence. A replacement documentation branch was reconstructed from latest main, preserving the doc changes and main's updated offline-audio rights note.
 - Run full exact-head Quality Gate on the replacement docs PR before merge. No Production settings, secrets, Firebase/Firestore data/rules, sync flags, or user data changed.
+
+
+## 2026-11-11 16:18 +02:00 — PR #363 CI observation
+
+- Replacement docs PR #363 is based on latest main `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+- Quality Gate run `43039009676` and rerun attempt 2 failed on the single job before any job steps were recorded; job logs are unavailable. Treat exact-head CI as unresolved, not as a test failure diagnosis or pass.
+- PR #360 was closed as superseded; all 22 documentation changes are carried in #363.
