@@ -44,6 +44,7 @@
 |---|---|
 | `offline/OFFLINE_FIRST_ARCHITECTURE.md` | ضمانات العمل دون إنترنت وحدود التخزين المحلي |
 | `offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md` | مراحل تنزيل صوت القرآن وتخزينه وتشغيله دون اتصال |
+| `offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md` | العقد الموحد المقترح للـ IndexedDB وCache Storage والمهام والملفات والاسترداد |
 
 ## الرقية
 | الملف | الغرض |
