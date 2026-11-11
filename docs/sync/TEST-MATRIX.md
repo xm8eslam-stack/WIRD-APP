@@ -1,3 +1,33 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (parallel work checkpoint)
+
+This section supersedes older status summaries below where they conflict with exact evidence here.
+
+| Scope | Exact SHA | Run | Result |
+|---|---|---|---|
+| Main | `8c49f716726e329189a1141c28a69059543ea5ba` | [43026982133](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026982133) | In progress at checkpoint; browser smoke active |
+| Firestore Rules deploy | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; rules-only deploy |
+| PR #351 quota recovery | `f259e084e381383168b1f1075064fe108d2c2cad` | [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) | Success; merged |
+| PR #353 accessibility | `cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b` | [43027225508](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027225508) | In progress after Playwright selector correction |
+| PR #355 offline audio range planner | `0f0cc611c5f610f6135db5760fbba8401ca8214d` | [43027223673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027223673) | In progress after duplicate TypeScript registration correction |
+
+## Newly verified coverage
+
+- PR #351 adds a regression test proving that an IndexedDB open-boundary `QuotaExceededError` is normalized to the explicit Arabic storage-capacity error and the exact legacy localStorage outbox bytes remain available. Its Quality Gate passed. Active write-transaction quota exhaustion and browser-level recovery remain separate gates.
+- Existing sync tests cover two-tab duplicate enqueue serialization, concurrent cross-tab monotonic event sequences, UID-scoped outbox isolation, stale-account operations aborting after scope changes, offline/online/foreground retry, IndexedDB close/reopen durability, and transaction-abort rollback.
+- PR #353 earlier failed only in desktop/mobile browser smoke because a Playwright role locator matched two navigation buttons. The selector now uses a disambiguated first match; the rerun is pending.
+- PR #355 earlier failed TypeScript validation because the same offline audio test runner/import had been registered twice. Both duplicate registrations have been removed; the rerun is pending.
+- Offline audio PR #355 only adds a pure bounded ayah-range planner using canonical local surah metadata and the pre-existing approved reciter URL allowlist. It does not yet download, store, expose UI, or provide offline playback.
+
+## Distinguish evidence types
+
+- Rules deployment success is not a production app deployment.
+- Main CI success is not a Production deployment.
+- A Vercel Preview READY state is not Production READY.
+- A unit/Emulator pass is not proof of real browser offline behavior.
+- The owner-reported two-device sync pass remains bounded evidence; do not erase it or overgeneralize it.
+
+---
+
 # CURRENT VERIFIED TEST COVERAGE — 2026-11-11
 
 This section supersedes older status summaries below where they conflict with the exact SHA/run evidence listed here.
