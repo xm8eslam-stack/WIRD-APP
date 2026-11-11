@@ -443,3 +443,22 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - No Firestore Rules/schema, production data, secrets, environment values, or sync feature flags were changed.
 
 Next safe sync work: design an immutable, idempotent session-activity event projection that preserves legacy DailyLog baselines, and separately specify collection-specific tombstone/replay/restore semantics. Do not wire a migration or unblock conflict choices until populated-record, replay, concurrency, crash, and rollback tests pass.
+
+
+## 2026-11-11 — Verified current main and Production after PR #344
+
+- Current main: 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- PR #344 (fix(plans): prevent duplicate plan deletion) merged at that SHA. Exact PR head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate run 42965801925; post-merge main run 43023291577 succeeded.
+- Vercel Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and built from exact SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- The activity reducer in src/services/activityEventProjection.ts is pure/tested only. No production event-ledger persistence or cloud event projection exists yet; DailyLog[] remains the current storage format.
+- Weak-verse and activity snapshot CAS protects against stale replacement but does not merge concurrent independent events. syncConflictSafety continues to block whole-snapshot keep-local/use-remote for these two collections.
+- Do not implement a destructive migration or enable conflict choices until a server-visible per-device cutover protocol covers offline legacy sessions. Tombstones remain blocked.
+- No Firestore Rules/schema, secrets, production settings, or sync flags changed.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
