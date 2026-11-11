@@ -103,3 +103,17 @@ Next: implement the pure activity-event reducer and its migration/replay tests o
 - Google AI Studio synchronization remains independently unverified.
 - No Production secrets/settings, Firebase rules/schema, remote-sync flags, or user data were changed in this cycle.
 - Next parallel work: finish PRs #338–#341 exact-head checks; keep the sync cutover design read-only until the owner-approved protocol exists; continue Ruqyah root-cause verification without reading secrets or weakening content safeguards; continue review of remaining feature branches and port only changes demonstrably missing from current main.
+
+
+## 2026-11-11 — Verified continuation after PRs #342 and #344
+
+- Current `main` SHA at this checkpoint: `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`.
+- PR #342 (settings dialog focus management and keyboard handling) merged as `52b0165da0421c6b44ff14914544ad8b4953e2eb`.
+- PR #344 (prevent duplicate memorization-plan deletion; keep failure state honest) merged as `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`.
+- PR #343's original test-only branch was closed after exact-head Playwright smoke failures showed incorrect assumptions about rendered labels/dialog roles. A corrected test-only PR #346 was opened on current main; exact head `66119fe9837911f7b74df4fe80d946bd4f57d518`, base `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`, run `43023399225` was still in progress at checkpoint. Do not merge until the exact-head gate completes and failures are reviewed.
+- Vercel Production deployment `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` is `READY` on the exact `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` SHA. No live interactive smoke was verified.
+- Production environment metadata (decrypt=false) confirms `ISLAMICAPI_API_KEY` exists for both Preview and Production; no value was read. Both `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` remain enabled in Production. No setting or secret was changed.
+- Vercel runtime error aggregation for `/api/ruqyah` over 7 days showed only 7 Node `DEP0169` url.parse deprecation warnings across 4 users; it did not expose an HTTP 500 stack trace. Production function logs for the last 30 minutes returned no matching ruqyah error records. Wider 24-hour log queries are unavailable on the current Hobby retention window. The cause of the reported HTTP 500 remains unconfirmed.
+- Offline package currently downloads same-origin app JS/CSS and related approved static assets only after explicit user action. Audio caching is opportunistic and bounded (20 URLs per message; 40 entries retained); no full-Quran audio download manager or complete offline tafsir/API/Firebase availability is claimed.
+- Ruqyah proxy `api/ruqyah.ts` uses `process.env.ISLAMICAPI_API_KEY`, accepts only the allowlisted `instant` + `from-quran` programs, and returns sanitized numeric Quran coordinates. Quran text must continue to come from WIRD's verified local corpus. Full Brief/Medium/Long recordings remain disabled pending exact-content and redistribution-rights verification.
+- Release and live-verification status remains bounded: GitHub CI, Vercel READY, owner-reported sync experience, and live smoke are separate evidence categories. Do not change production sync flags, Vercel protection, secrets, Firebase rules/schema, or user data without explicit owner approval.
