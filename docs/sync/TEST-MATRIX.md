@@ -4,7 +4,7 @@ This checkpoint supersedes older status summaries below where they conflict with
 
 | Scope | Exact SHA / source | Run / deployment | Result |
 |---|---|---|---|
-| Current main | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Quality Gate [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) | In progress at checkpoint; desktop/mobile browser smoke active |
+| Current main | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Quality Gate [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) | Success; desktop/mobile browser smoke passed |
 | Current main Production | Same SHA | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY |
 | Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | Manual run [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; all steps including rules-only deploy |
 | PR #346 | `66119fe9837911f7b74df4fe80d946bd4f57d518` | [43023399225](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023399225) | In progress at checkpoint |
@@ -12,7 +12,7 @@ This checkpoint supersedes older status summaries below where they conflict with
 
 The currently deployed `firestore.rules` source is verified by blob SHA: current main and the successfully deployed reviewed rules both have `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. A successful rules deployment is distinct from a successful application sync journey.
 
-Production environment inventory (without decrypting secrets) confirmed both revisioned-sync and remote-projection flags are `true` for Production. The prior owner-reported two-device PASS remains bounded evidence; cross-tab/account lifecycle, long-offline replay, crash/quota, stress, and destructive-delete semantics still need their own evidence.
+Production environment inventory (without decrypting secrets) confirmed both revisioned-sync and remote-projection flags are `true` for Production. Automated tests already cover two-tab duplicate enqueue serialization, concurrent monotonic sequences, UID isolation, stale-account aborts, offline/online/foreground retry, close/reopen durability, and atomic rollback. Still pending: browser-level simultaneous cross-tab auth lifecycle, real long-offline replay, explicit quota and blocked/versionchange recovery, stress, and destructive-delete anti-resurrection semantics. The prior owner-reported two-device PASS remains bounded evidence.
 
 ---
 
