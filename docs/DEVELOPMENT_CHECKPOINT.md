@@ -1,3 +1,17 @@
+# WIRD — أحدث ملحق تحقق (2026-11-11 16:02 +02:00)
+
+- `main` الحالي: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- PR #360: آخر SHA موثق قبل آخر مزامنة للـ work log هو `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`؛ تلاه تحديثات توثيقية. لا توجد نتيجة exact-head موثقة للرأس النهائي؛ أعد جلب PR head وcheck-runs قبل الدمج. آخر فشل معروف كان Desktop/Mobile Playwright، وrerun attempt 2 لم يقدم job-step evidence.
+- PR #362 head `e2079734a0d150c1046307611a2b28346fdcdb1d`: Quality Gate PASS؛ إصلاح guest-entry hydration لم يدمج بعد.
+- PR #361 head `3008c4788caba61930be008e3cb40dcf52cfd78f`: Quality Gate PASS؛ PR مفتوح.
+- PR #358/#359/#356: Draft، فشل Playwright smoke على الرؤوس المرصودة؛ لا تدمج نماذج manifest المتداخلة.
+- Production source SHA وlive smoke وGoogle AI Studio sync: NOT VERIFIED.
+- هذه الدفعة توثيقية فقط؛ لا runtime/Quran data/Firestore/Production settings/secrets/flags.
+
+> هذا الملحق أحدث من كل نقاط التوقف التاريخية التالية.
+
+---
+
 # WIRD — أحدث ملحق تحقق (2026-11-11 15:58 +02:00)
 
 - `main` الحالي: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
