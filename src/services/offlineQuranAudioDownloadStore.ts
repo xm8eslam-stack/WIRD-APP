@@ -36,18 +36,26 @@ export interface OfflineQuranAudioDownloadStoreOptions {
   databaseName?: string;
 }
 
+function normalizeStorageError(error: unknown, fallback: string): Error {
+  if (error && typeof error === 'object' && 'name' in error &&
+      (error as { name?: string }).name === 'QuotaExceededError') {
+    return new Error('مساحة التخزين المحلية ممتلئة؛ أُلغيت معاملة تنزيل التلاوة بالكامل دون تسجيل تقدم جزئي.');
+  }
+  return error instanceof Error ? error : new Error(fallback);
+}
+
 function requestResult<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error('تعذر قراءة فهرس التلاوات المحفوظة.'));
+    request.onerror = () => reject(normalizeStorageError(request.error, 'تعذر قراءة فهرس التلاوات المحفوظة.'));
   });
 }
 
 function transactionResult(transaction: IDBTransaction): Promise<void> {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onabort = () => reject(transaction.error || new Error('تم إلغاء تحديث فهرس التلاوات المحفوظة.'));
-    transaction.onerror = () => reject(transaction.error || new Error('تعذر تحديث فهرس التلاوات المحفوظة.'));
+    transaction.onabort = () => reject(normalizeStorageError(transaction.error, 'تم إلغاء تحديث فهرس التلاوات المحفوظة.'));
+    transaction.onerror = () => reject(normalizeStorageError(transaction.error, 'تعذر تحديث فهرس التلاوات المحفوظة.'));
   });
 }
 
@@ -283,7 +291,11 @@ export class OfflineQuranAudioDownloadStore {
         transaction.abort();
         throw new Error('لا يمكن إضافة ملف إلى عملية تنزيل منتهية أو ملغاة.');
       }
-      items.add({ ...item, key, jobId });
+      try { items.add({ ...item, key, jobId }); }
+      catch (error) {
+        transaction.abort();
+        throw normalizeStorageError(error, 'تعذر تسجيل ملف التلاوة المحفوظ.');
+      }
     }
     const keys = await requestResult(items.index('jobId').getAllKeys(jobId));
     job.completedAyahs = keys.length;
