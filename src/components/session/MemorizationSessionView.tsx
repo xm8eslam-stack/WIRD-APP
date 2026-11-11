@@ -25,10 +25,18 @@ import { AudioPlaybackRateControl } from '../shared/AudioPlaybackRateControl';
 import { attachAyahRepeatHandler } from '../../services/audioRepeatController';
 import { SessionTafsirPanel } from './SessionTafsirPanel';
 import {
+  DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES,
   getMemorizationDisplayPreferences,
   saveMemorizationDisplayPreferences,
-  type MemorizationDisplayPreferences
+  type MemorizationDisplayPreferences,
+  type MemorizationSessionPageWidth
 } from '../../services/memorizationDisplayPreferences';
+
+const SESSION_PAGE_WIDTH_CLASSES: Record<MemorizationSessionPageWidth, string> = {
+  comfortable: 'max-w-4xl',
+  wide: 'max-w-6xl',
+  full: 'max-w-none'
+};
 
 interface MemorizationSessionViewProps {
   initialSurahNumber?: number;
@@ -107,6 +115,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
 
   const [pageDisplayTexts, setPageDisplayTexts] = useState<string[]>([]);
   const [pageDisplayError, setPageDisplayError] = useState(false);
+  const activePageAyahRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (displayPreferences.viewMode !== 'page') {
       setPageDisplayTexts([]);
@@ -131,6 +140,12 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       });
     return () => { cancelled = true; };
   }, [displayPreferences.viewMode, surahNumber, initialStartAyah, initialEndAyah, sessionAyahs.length]);
+
+  // Keep the selected verse visible when the user jumps from the sticky selector or the page list.
+  useEffect(() => {
+    if (displayPreferences.viewMode !== 'page' || pageDisplayTexts.length !== sessionAyahs.length) return;
+    activePageAyahRef.current?.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+  }, [currentAyahIndex, displayPreferences.viewMode, pageDisplayTexts.length, sessionAyahs.length]);
 
   // 1. Audio recitation state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -594,7 +609,11 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   }
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto" style={{ zoom: displayPreferences.uiScale / 100 }}>
+    <div
+      data-session-page-width={displayPreferences.pageWidth}
+      className={`w-full mx-auto space-y-6 ${SESSION_PAGE_WIDTH_CLASSES[displayPreferences.pageWidth]}`}
+      style={{ zoom: displayPreferences.uiScale / 100 }}
+    >
       {/* 1. Session Navigation & Progress Bar */}
       <div className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <button
@@ -718,8 +737,36 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
             </button>
           </div>
         </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div role="group" aria-label="عرض مساحة صفحة الحفظ" className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-stone-500">عرض الصفحة:</span>
+            {([
+              { value: 'comfortable', label: 'مريحة' },
+              { value: 'wide', label: 'واسعة' },
+              { value: 'full', label: 'ملء العرض' }
+            ] as const).map(option => (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={displayPreferences.pageWidth === option.value}
+                onClick={() => updateDisplayPreferences({ pageWidth: option.value })}
+                className={`min-h-11 px-3 py-2 rounded-lg text-xs font-semibold border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.pageWidth === option.value ? 'bg-emerald-800 text-white border-emerald-800' : 'bg-stone-50 dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setDisplayPreferences({ ...DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES })}
+            className="min-h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            إعادة ضبط العرض
+          </button>
+        </div>
         <p className="text-[11px] text-stone-500 dark:text-stone-400">
-          تُحفظ هذه الاختيارات على هذا الجهاز فقط، ولا تدخل ضمن مزامنة بيانات الحفظ.
+          يمكنك توسيع مساحة الصفحة أو تصغير العناصر وزيادة كثافة الآيات. تُحفظ الاختيارات على هذا الجهاز فقط، ولا تدخل ضمن مزامنة بيانات الحفظ.
         </p>
       </section>
 
@@ -742,6 +789,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
           <div className={`max-h-[55vh] overflow-y-auto overscroll-contain ${displayPreferences.density === 'compact' ? 'space-y-1' : 'space-y-3'}`}>
             {sessionAyahs.map((ayah, index) => (
               <button
+                ref={index === currentAyahIndex ? activePageAyahRef : undefined}
                 type="button"
                 key={ayah.numberInSurah}
                 aria-pressed={index === currentAyahIndex}
