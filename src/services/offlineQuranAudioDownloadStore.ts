@@ -105,8 +105,10 @@ export class OfflineQuranAudioDownloadStore {
           items.createIndex('globalAyahNumber', 'globalAyahNumber', { unique: false });
         }
       };
+      let wasBlocked = false;
       request.onsuccess = () => {
         const db = request.result;
+        if (wasBlocked) { db.close(); return; }
         db.onversionchange = () => {
           db.close();
           this.databasePromise = null;
@@ -118,6 +120,7 @@ export class OfflineQuranAudioDownloadStore {
         reject(request.error || new Error('تعذر فتح فهرس تنزيلات التلاوة.'));
       };
       request.onblocked = () => {
+        wasBlocked = true;
         this.databasePromise = null;
         reject(new Error('فهرس تنزيلات التلاوة مشغول في نافذة أخرى؛ أغلق النوافذ القديمة ثم أعد المحاولة.'));
       };
@@ -142,7 +145,7 @@ export class OfflineQuranAudioDownloadStore {
     return job;
   }
 
-  async saveJob(job: OfflineQuranAudioJob): Promise<void> {
+  private async saveJob(job: OfflineQuranAudioJob): Promise<void> {
     validateJob(job);
     const db = await this.openDatabase();
     const transaction = db.transaction(JOBS_STORE, 'readwrite');
@@ -159,6 +162,34 @@ export class OfflineQuranAudioDownloadStore {
     if (!result) return null;
     validateJob(result);
     return result;
+  }
+
+  async setJobStatus(jobId: string, status: OfflineQuranAudioJobStatus, nowMs = Date.now()): Promise<OfflineQuranAudioJob> {
+    if (!isValidId(jobId) || !isValidStatus(status) || !Number.isSafeInteger(nowMs) || nowMs < 0) {
+      throw new Error('تحديث حالة تنزيل التلاوة غير صالح.');
+    }
+    const db = await this.openDatabase();
+    const transaction = db.transaction(JOBS_STORE, 'readwrite');
+    const store = transaction.objectStore(JOBS_STORE);
+    const job = await requestResult(store.get(jobId)) as OfflineQuranAudioJob | undefined;
+    if (!job) {
+      transaction.abort();
+      throw new Error('لم يتم العثور على عملية تنزيل التلاوة.');
+    }
+    validateJob(job);
+    if ((job.status === 'completed' && status !== 'completed') ||
+        (status === 'completed' && job.completedAyahs !== job.totalAyahs) ||
+        (status === 'partial' && (job.completedAyahs < 1 || job.completedAyahs >= job.totalAyahs)) ||
+        (status === 'queued' && job.completedAyahs !== 0) ||
+        (status === 'downloading' && job.completedAyahs >= job.totalAyahs)) {
+      transaction.abort();
+      throw new Error('انتقال حالة تنزيل التلاوة غير مسموح.');
+    }
+    job.status = status;
+    job.updatedAtMs = Math.max(nowMs, job.createdAtMs);
+    store.put(job);
+    await transactionResult(transaction);
+    return job;
   }
 
   async listJobs(): Promise<OfflineQuranAudioJob[]> {
@@ -212,7 +243,15 @@ export class OfflineQuranAudioDownloadStore {
         transaction.abort();
         throw new Error('يوجد ملف محفوظ مختلف لنفس موضع الآية؛ تم إيقاف تحديث الفهرس.');
       }
+      if (job.status === 'failed' || job.status === 'cancelled') {
+        await transactionResult(transaction);
+        return job;
+      }
     } else {
+      if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+        transaction.abort();
+        throw new Error('لا يمكن إضافة ملف إلى عملية تنزيل منتهية أو ملغاة.');
+      }
       items.add({ ...item, key, jobId });
     }
     const keys = await requestResult(items.index('jobId').getAllKeys(jobId));
