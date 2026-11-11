@@ -51,4 +51,41 @@ test.describe('WIRD memorization session display controls', () => {
     await expect(jump).toBeInViewport();
   });
 
+  test('page width persists, reset restores defaults, and direct jumps keep the selected ayah visible', async ({ page }) => {
+    const controls = page.getByRole('region', { name: 'إعدادات عرض جلسة الحفظ' });
+    await controls.getByRole('button', { name: 'كل آيات الجلسة' }).click();
+
+    const widthControls = controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' });
+    const session = page.locator('[data-session-page-width]');
+    await widthControls.getByRole('button', { name: 'واسعة' }).click();
+    await expect(session).toHaveAttribute('data-session-page-width', 'wide');
+    const wideMaxWidth = await session.evaluate(element => getComputedStyle(element).maxWidth);
+
+    await widthControls.getByRole('button', { name: 'ملء العرض' }).click();
+    await expect(session).toHaveAttribute('data-session-page-width', 'full');
+    const fullMaxWidth = await session.evaluate(element => getComputedStyle(element).maxWidth);
+    expect(fullMaxWidth).not.toBe(wideMaxWidth);
+
+    await page.reload();
+    await expect(controls).toBeVisible();
+    await expect(controls.getByRole('button', { name: 'كل آيات الجلسة' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'ملء العرض' })).toHaveAttribute('aria-pressed', 'true');
+
+    const pageList = page.getByRole('region', { name: 'كل آيات الجلسة' });
+    const jump = page.getByRole('combobox', { name: 'الانتقال المباشر إلى آية في الجلسة' });
+    await jump.selectOption('8');
+    await expect(page.getByRole('progressbar', { name: 'تقدم جلسة الحفظ' })).toHaveAttribute('aria-valuenow', '9');
+    const activeAyah = pageList.getByRole('button', { pressed: true });
+    await expect(activeAyah).toBeVisible();
+    await expect(activeAyah).toBeInViewport();
+
+    await controls.getByRole('button', { name: 'إعادة ضبط العرض' }).click();
+    await expect(session).toHaveAttribute('data-session-page-width', 'comfortable');
+    await expect(controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'مريحة' })).toHaveAttribute('aria-pressed', 'true');
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'ملء العرض' }).click();
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
 });
