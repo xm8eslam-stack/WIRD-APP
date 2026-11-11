@@ -632,3 +632,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #356 closed as superseded; planner already merged through #355. Salvaged its unique server-visible activity cutover protocol into the current sync design.
 - Added the offline audio storage contract and indexed it from README/catalog/roadmap. It is a proposal, not an implemented downloader.
 - No runtime/Production/Firebase/secrets/sync flag changes.
+
+
+## 2026-11-11 16:40 +02:00 — Close stale documentation PRs
+
+- Closed #299 (old master continuation snapshot) and duplicate UX page-map PRs #272/#273; their state notes were superseded by current main/docs hub.
+- #2 remains open but very stale (last compare: 115 commits ahead / 467 behind main, 37 changed files); do not merge directly. Audit unique feature value only if that workstream becomes a priority.
+- #358/#359 remain open drafts blocked by the unified offline audio storage contract.
