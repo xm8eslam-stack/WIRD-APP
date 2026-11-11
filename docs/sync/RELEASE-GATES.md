@@ -317,3 +317,14 @@ This section is the current status and supersedes older historical statements wh
 - This change is not a weak-verse reconciliation release. Do not enable automatic merge of weak-verse snapshots or automatic keep-local/keep-remote resolution until tests prove preservation of independent verse additions, same-verse concurrent failures, retries, and resolution anti-resurrection.
 - Activity-event reconciliation remains gated until immutable session events can rebuild daily aggregates exactly once, including legacy daily-log baselines and account/device recovery.
 - No Firestore rules/schema, production settings, secrets, or sync flags changed in PR #207.
+
+
+## 2026-11-11 — Latest deployment and runtime evidence
+
+- `main` at this checkpoint: `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`; Vercel Production deployment `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` is `READY` on that exact SHA.
+- PR #342 and #344 are merged. PR #346 is a corrected test-only follow-up for the original #343 browser-test failures; its exact-head workflow run `43023399225` was still running at this checkpoint. Do not infer pass/fail until it completes.
+- Environment metadata was read with decryption disabled. `ISLAMICAPI_API_KEY` is configured for both Preview and Production; its value was not accessed. The two production sync flags remain `true`; no production settings were changed.
+- Runtime error aggregation for `/api/ruqyah` over seven days showed only the Node `DEP0169` deprecation warning (7 occurrences, 4 users). A 30-minute Production function-log query found no matching ruqyah errors. The Hobby retention limit blocked the requested 24-hour function-log window. This does not prove the reported HTTP 500 is fixed or explain its cause.
+- Current offline behavior: opt-in same-origin application asset package; audio remains opportunistic and bounded, not a user-managed full-Quran offline library. Tafsir/API/Firebase/auth are not certified offline.
+- Ruqyah integration remains numeric Quran locators only; render Quran text from the verified local corpus. Full-program recordings remain disabled pending content and redistribution-rights verification.
+- Distinguish CI success, deployment READY, owner-reported device tests, and live interactive smoke in release decisions. No live interactive smoke is claimed here.
