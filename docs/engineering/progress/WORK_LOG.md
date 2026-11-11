@@ -616,3 +616,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Reviewed #358 and #359 store implementations. #358 owns jobs and job-scoped items; #359 owns a unique reciter/ayah metadata manifest without job lifecycle. Their current database contracts overlap and should not ship side by side.
 - Added `docs/offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md`: one IndexedDB model (`jobs`, canonical `files`, `jobItems` relation), Cache Storage for complete audio bytes only, explicit cross-store recovery, shared-file reuse, deletion, quota, and required tests.
 - This is a design contract only; no downloader, cache adapter, IndexedDB runtime, or UI was implemented. #358/#359 remain unmerged pending a combined implementation and exact-head Quality Gate.
+
+
+## 2026-11-11 16:26 +02:00 — Salvage sync cutover design from stale PR #356
+
+- Compared PR #356 against current main. Its pure Quran audio range planner is already present on main from PR #355; the remaining changes are documentation additions, many containing stale main/Production status snapshots.
+- Preserved the unique server-visible per-device legacy activity cutover protocol from `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md` in the current docs branch, explicitly marking embedded SHA/deployment statements historical.
+- PR #356 can be closed as superseded after this unique design note is carried forward; do not merge its stale status snapshots wholesale.
