@@ -23,6 +23,14 @@ const DB_VERSION = 1;
 const DEFAULT_DB = 'wird-offline-quran-audio-v1';
 const STORE = 'verifiedAudioFiles';
 
+function normalizeStorageError(error: unknown, fallback: string): Error {
+  if (error && typeof error === 'object' && 'name' in error &&
+      (error as { name?: string }).name === 'QuotaExceededError') {
+    return new Error('مساحة التخزين المحلية لا تكفي لحفظ سجل التلاوة؛ لم نؤكد حفظًا جزئيًا.');
+  }
+  return error instanceof Error ? error : new Error(fallback);
+}
+
 function getFactory(explicit?: IDBFactory): IDBFactory {
   if (explicit) return explicit;
   if (typeof indexedDB !== 'undefined') return indexedDB;
@@ -103,7 +111,7 @@ export class OfflineQuranAudioManifestStore {
     this.databasePromise = new Promise((resolve, reject) => {
       let request: IDBOpenDBRequest;
       try { request = this.factory.open(this.databaseName, DB_VERSION); }
-      catch (error) { reject(error instanceof Error ? error : new Error('تعذر فتح سجل تنزيلات التلاوة.')); return; }
+      catch (error) { reject(normalizeStorageError(error, 'تعذر فتح سجل تنزيلات التلاوة.')); return; }
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: 'key' });
       };
@@ -112,7 +120,7 @@ export class OfflineQuranAudioManifestStore {
         db.onversionchange = () => { db.close(); this.databasePromise = null; };
         resolve(db);
       };
-      request.onerror = () => reject(request.error || new Error('تعذر فتح سجل تنزيلات التلاوة.'));
+      request.onerror = () => reject(normalizeStorageError(request.error, 'تعذر فتح سجل تنزيلات التلاوة.'));
       request.onblocked = () => reject(new Error('أغلق نسخة وِرد الأخرى التي تستخدم سجل التنزيلات ثم أعد المحاولة.'));
     }).catch(error => { this.databasePromise = null; throw error; });
     return this.databasePromise;
@@ -124,9 +132,9 @@ export class OfflineQuranAudioManifestStore {
     return new Promise((resolve, reject) => {
       let tx: IDBTransaction;
       try { tx = db.transaction([STORE], 'readwrite'); tx.objectStore(STORE).put(entry); }
-      catch (error) { reject(error instanceof Error ? error : new Error('تعذر حفظ سجل ملف التلاوة.')); return; }
+      catch (error) { reject(normalizeStorageError(error, 'تعذر حفظ سجل ملف التلاوة.')); return; }
       tx.oncomplete = () => resolve(entry);
-      tx.onabort = () => reject(tx.error || new Error('أُلغيت معاملة سجل تنزيلات التلاوة بالكامل.'));
+      tx.onabort = () => reject(normalizeStorageError(tx.error, 'أُلغيت معاملة سجل تنزيلات التلاوة بالكامل.'));
       tx.onerror = () => { /* onabort is authoritative */ };
     });
   }
@@ -157,7 +165,7 @@ export class OfflineQuranAudioManifestStore {
       const tx = db.transaction([STORE], 'readwrite');
       tx.objectStore(STORE).delete(reciterId + ':' + String(globalAyahNumber));
       tx.oncomplete = () => resolve();
-      tx.onabort = () => reject(tx.error || new Error('تعذر حذف سجل ملف التلاوة.'));
+      tx.onabort = () => reject(normalizeStorageError(tx.error, 'تعذر حذف سجل ملف التلاوة.'));
       tx.onerror = () => { /* onabort is authoritative */ };
     });
   }
