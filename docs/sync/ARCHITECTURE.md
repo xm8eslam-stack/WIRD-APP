@@ -198,3 +198,14 @@ This addendum supersedes older release-state statements above where they conflic
 - This is identity normalization only. It does not merge concurrent `weakVerses/snapshot` full-snapshot writes, does not make `mistakeCount` additive across devices, and does not prevent a stale active snapshot from resurrecting a resolved verse.
 - Weak-verse remote projection and conflict resolution must therefore remain fail-closed until a durable event/tombstone model exists. Do not union arrays blindly or sum counters.
 - Activity remains a per-day `DailyLog` aggregate snapshot. Session completion already has a stable mutation ID and `session.completed` domain event, but the local activity projection still adds into one date bucket. A safe multi-device design needs immutable per-session event identity, deduplicated materialization, legacy baseline migration, and rollback/recovery coverage before changing the projection.
+
+
+## 2026-11-11 — Current main/Production checkpoint after PR #344
+
+- Current main SHA: 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 (PR #344).
+- PR #344 exact head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate run 42965801925; post-merge main Quality Gate run 43023291577 completed successfully.
+- Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and matches the exact main SHA above.
+- PR #325's weak-verse/activity snapshot compare-and-set is present in current main. Weak-verse coordinate identity is stable; base-snapshot fingerprints reject stale writes and stale resolutions when the archive changed. This protects against stale overwrite/resurrection in the CAS path; it does not merge two independent valid concurrent changes or authorize blind union/addition.
+- src/services/activityEventProjection.ts and its tests implement a pure deterministic reducer (stable event IDs, baseline identity, captured local date/offset, duplicate detection, and overflow checks). This is not wired into StorageService/the production cloud projection; DailyLog[] remains the persisted aggregate.
+- Activity-event migration remains blocked until a server-visible per-device legacy cutover/watermark and old-client schema gate can prove pre-cutover offline sessions are neither omitted nor double-counted.
+- Tombstones remain fail-closed. No Firestore Rules/schema, production flags, secrets, or user data were changed in this checkpoint.
