@@ -91,21 +91,14 @@ Next: owner decision on Production sync flags and public Vercel access; add the 
 Next: implement the pure activity-event reducer and its migration/replay tests only after the baseline cutover contract is accepted; keep production sync flags, Firestore Rules, and tombstone behavior unchanged.
 
 
-## 2026-11-11 — Continuation checkpoint (after pure activity reducer)
+## 2026-11-11 — Authoritative continuation checkpoint (supersedes earlier stale entries)
 
-- Current main at inspection: `4669db79b535b13acc4b683d7052e7df5d4c9eca`.
-- PR #331 was closed as superseded; PR #332 is the current-main port for memorization display width/reset/selected-ayah-follow. PR #332 is open; its exact-head checks were not available in this inspection, so do not merge or claim validation.
-- Main includes `4669db79`: pure immutable activity-event projection reducer and focused tests registered in the central test runner. It validates captured local dates/offsets, Quran coordinates, event IDs/collisions, baseline identity, idempotency, deterministic ordering, and overflow. It intentionally has no storage or sync wiring.
-- Main's Vercel commit status for `4669db79` reports `success`; this alone does not establish a matching Production deployment or live smoke. Latest handoff's documented Production SHA predates these main commits; verify the exact current deployment separately before any release claim.
-- Phase 2 local journal/outbox integration remains blocked by the migration contract: prove a per-device outbox watermark that distinguishes pre-cutover offline legacy activity from events already represented in the baseline. Do not use a timestamp-only cutover, merge daily aggregates by addition, alter Firestore rules/schema, enable production sync flags, or rewrite/delete legacy logs.
-- Next: audit existing IndexedDB journal mutation IDs/sequences, backup/export/import compatibility, and account-scope lifecycle to determine whether a provable watermark exists. If not, document the blocking invariant and redesign before runtime changes.
-- No production settings, secrets, sync flags, Firestore rules/schema, or user data changed in this continuation.
-
-
-### 2026-11-11 — journal/cutover evidence review
-
-- Audited `indexedDbSyncJournal.ts`, `localSyncOutbox.ts`, `domainEvents.ts`, and `storageService.ts` on main.
-- Confirmed local device metadata includes `deviceId`, `nextSequence`, `lastProjectedSequence`; journal stores event/outbox/acknowledgement records and `getSnapshot()` reports counts/cursor.
-- Confirmed session completion still produces date-keyed legacy `DailyLog[]` snapshots; current `session.completed` domain events do not capture immutable localDate + timezone offset.
-- Legacy outbox migration/fingerprint is local per-install evidence only; no server-visible registry proving every device has drained pre-cutover session mutations was found in the reviewed paths.
-- Decision: no runtime wiring. A safe global cutover needs a server-visible UID-scoped per-device acknowledgement and minimum-client/write gate; that would involve Firestore schema/rules/production compatibility and requires explicit owner approval. Timestamp-only or local-flag cutover is rejected.
+- Repository: `xm8eslam-stack/WIRD-APP`; current `main` SHA: `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`.
+- PR #332 merged as `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`. It adds device-local memorization page width modes, one-action reset, and automatic visibility of the selected ayah. Exact-head GitHub Quality Gate run #3801 succeeded: automated tests, dependency audit, TypeScript, Firestore Emulator, production build/server smoke, and desktop/mobile browser smoke all passed. Vercel Preview for PR #332 failed only with the free-plan `api-deployments-free-per-day` limit.
+- Vercel Production deployment `dpl_dow5x6vXqdxHEp92pyyv9kRBkagh` is `READY`, alias `wird-app.vercel.app`, Git SHA exactly `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`. Live interactive smoke remains unverified; web fetch of the public URL was inaccessible from this inspection. Do not claim user-facing live smoke.
+- PR #333 contains the sync design and cutover evidence update; its previous run #3803 had tests, dependency audit, TypeScript, Emulator, build and server smoke completed successfully, while the desktop/mobile browser job was still in progress at the last observation. Re-check after this doc refresh because pushing changes starts a new exact-head gate.
+- PR #334 is a current-main test-only port adding 44px Playwright assertions for ruqyah seek and volume sliders. Runtime controls already have `min-h-11`; exact-head Quality Gate required before merge.
+- PR #265 is superseded by #334. PR #318's offline-package implementation is already present in current main, including stricter audio pre-cache timeout and its test; close #318 as superseded, do not merge the stale branch.
+- Sync safety decision: local journal has deviceId, sequence, nextSequence, lastProjectedSequence, outbox and acknowledgement records; this is not a server-visible per-device cutover registry. Existing session completion remains date-keyed DailyLog and the domain event lacks captured localDate/timezoneOffsetMinutes. Phase-2 projection remains blocked; do not change Firestore schema/rules, enable production sync flags, or rewrite/delete legacy data without explicit owner approval.
+- No Production secrets/settings, Firebase rules/schema, remote sync flags, or user data changed in this cycle.
+- Next parallel work: finish PR #333 exact-head checks and correct docs; finish PR #334 exact-head tests; continue read-only design of the server-visible device cutover protocol and regression matrix; review outstanding offline/ruqyah work against current main before porting only missing changes.
