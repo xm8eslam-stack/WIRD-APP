@@ -722,3 +722,6 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - The proposed book structure, narrative/editorial constraints, reader modes, and optional embedded learning interactions are documented in SEERAH_LEARNING_PLAN_AR.md §16.
 - CI recheck: run 43052961502 on earlier SHA b7ca97f6fa93c715d408adc88ba9b180c7800017 ended failure; job 130634757053 had no recorded steps/logs (steps=null). No PR-triggered run was returned for the latest docs commit 7a5e6a9bb17b47404e9e0d4153b7a594d8bfce95. Treat as unresolved runner evidence, not a diagnosed code/test failure. Do not merge until exact-head Quality Gate is verifiably green.
 - No runtime, API ingestion, Firebase, production settings, secrets, sync flags, or deployment changes.
+
+## 2026-11-11 — توحيد مصطلحات خطة السيرة
+تمت مراجعة مواضع المصطلحات القديمة في خطة السيرة، وتعديل نموذج التقدم والاختبارات والبنية التقنية ومعايير التحقق لتكون مبنية على الأجزاء والفصول والمشاهد بدل افتراض «دروس» منفصلة. تظل وقفات الفهم والأسئلة أدوات اختيارية داخل رحلة القراءة، وليست بديلًا عن السرد.
