@@ -11,7 +11,7 @@
 | #362 | MERGED | إصلاح guest-entry hydration؛ merge SHA `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`؛ Quality Gate PASS |
 | #361 | MERGED | EveryAyah stream-only وتنظيف cache قديم؛ merge SHA `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`؛ Quality Gate PASS |
 | #360 | CLOSED / SUPERSEDED | استبدل بـ #363 بعد فشل CI غير المشخّص |
-| #363 | OPEN / DRAFT | مركز الوثائق وخطة التطوير؛ آخر SHA `204c6738f5fb14845efbcf580d051e97405e3257`؛ أول run `43039009676` وrerun attempt 2 فشلا قبل تسجيل أي job steps؛ لا تدمج قبل exact-head Quality Gate ناجح |
+| #363 | OPEN / DRAFT | مركز الوثائق وخطة التطوير؛ آخر SHA `5e33453bd076f32ebad9053f3e6d8bc4de8070fc`؛ runs `43039009676` و`43039794349` و`43039853668` انتهت كلها بفشل job واحد دون تسجيل أي job steps أو logs؛ CI غير محسوم ولا تدمج قبل exact-head Quality Gate ناجح |
 | #356 | CLOSED / SUPERSEDED | planner موجود في main من #355؛ أُخذت منه ملاحظة cutover الفريدة إلى `sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md` |
 | #358 | OPEN / DRAFT | store للمهام والعناصر؛ تداخل manifest مع #359؛ Quality Gate على الرأس المرصود فشل في Playwright |
 | #359 | OPEN / DRAFT | manifest metadata فقط؛ لا job lifecycle؛ Quality Gate على الرأس المرصود فشل في Playwright |
