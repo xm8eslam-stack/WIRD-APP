@@ -639,3 +639,13 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Closed #299 (old master continuation snapshot) and duplicate UX page-map PRs #272/#273; their state notes were superseded by current main/docs hub.
 - #2 remains open but very stale (last compare: 115 commits ahead / 467 behind main, 37 changed files); do not merge directly. Audit unique feature value only if that workstream becomes a priority.
 - #358/#359 remain open drafts blocked by the unified offline audio storage contract.
+
+
+## Latest exact-head CI observation — 2026-11-11 16:45 +02:00
+
+- PR #363 head tested: `a8ba43209315acfabecdc4883e6c2f6823c8afed`.
+- Quality Gate run `43040464893` ended failed on the only job before any step was recorded. Job logs are unavailable (`BlobNotFound`); there is no test-level failure diagnosis.
+- Treat CI as BLOCKED/UNRESOLVED. Do not merge and do not weaken checks. Re-fetch the PR's current head and rerun only when GitHub Actions can provide a job with recorded steps/logs.
+- The following documentation-only status commit changes the PR head; re-fetch it before any future gate or merge decision.
+
+---
