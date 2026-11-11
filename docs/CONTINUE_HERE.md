@@ -11,11 +11,11 @@
 | #362 | MERGED | إصلاح guest-entry hydration؛ merge SHA `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`؛ Quality Gate PASS |
 | #361 | MERGED | EveryAyah stream-only وتنظيف cache قديم؛ merge SHA `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`؛ Quality Gate PASS |
 | #360 | CLOSED / SUPERSEDED | استبدل بـ #363 بعد فشل CI غير المشخّص |
-| #363 | OPEN / DRAFT | مركز الوثائق وخطة التطوير؛ آخر SHA `5e33453bd076f32ebad9053f3e6d8bc4de8070fc`؛ runs `43039009676` و`43039794349` و`43039853668` انتهت كلها بفشل job واحد دون تسجيل أي job steps أو logs؛ CI غير محسوم ولا تدمج قبل exact-head Quality Gate ناجح |
+| #363 | OPEN / DRAFT | مركز الوثائق وخطة التطوير؛ آخر SHA `1ed5d3a80b2342f3aeb1a6cf468e51d91e426af4`؛ runs `43039009676` و`43039794349` و`43039853668` انتهت كلها بفشل job واحد دون تسجيل أي job steps أو logs؛ CI غير محسوم ولا تدمج قبل exact-head Quality Gate ناجح |
 | #356 | CLOSED / SUPERSEDED | planner موجود في main من #355؛ أُخذت منه ملاحظة cutover الفريدة إلى `sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md` |
-| #358 | OPEN / DRAFT | store للمهام والعناصر؛ تداخل manifest مع #359؛ Quality Gate على الرأس المرصود فشل في Playwright |
+| #2 | OPEN / VERY STALE | فرع Phase 5 قديم، 115 ahead / 467 behind في آخر compare؛ لا دمج مباشر. يحتاج جردًا للميزات الفريدة فقط إذا عادت الأولوية |\n| #358 | OPEN / DRAFT | store للمهام والعناصر؛ تداخل manifest مع #359؛ Quality Gate على الرأس المرصود فشل في Playwright |
 | #359 | OPEN / DRAFT | manifest metadata فقط؛ لا job lifecycle؛ Quality Gate على الرأس المرصود فشل في Playwright |
-| #299/#273/#272/#2 | STALE | لا دمج مباشر؛ افحص التغييرات الفريدة فقط |
+| #299/#273/#272 | CLOSED / SUPERSEDED | لقطات حالة قديمة وخريطة UX مكررة؛ المحتوى الحالي محفوظ في مركز الوثائق والملفات المرجعية |
 
 Production source SHA وlive smoke وGoogle AI Studio sync: **NOT VERIFIED**. نجاح GitHub status أو CI لا يثبت النشر الفعلي.
 
