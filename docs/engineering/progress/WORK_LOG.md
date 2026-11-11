@@ -711,3 +711,7 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Decision: Islamic Network People is currently a discovery/navigation registry only, not a publishable Seerah source by itself. Events is a calendar/event discovery source only; each date and event must be checked against a source. Every WIRD claim requires independent claim-level source metadata.
 - SeerahBook's stated provenance is stronger, but every source must still be opened and checked; dramatized/reconstructed wording cannot be turned into verbatim quotations.
 - Updated Seerah plan section 15 and unified roadmap with the stricter provenance gate. No API records were fetched or imported.
+
+
+## 2026-11-11 — توجيه «حكاية السيرة»
+تم تثبيت متطلب أن تكون السيرة كتابًا تفاعليًا متصلًا بأجزاء وفصول ومشاهد، لا دروسًا منفصلة. خطة المنتج التفصيلية في SEERAH_LEARNING_PLAN_AR.md §16. معيار القبول يتطلب قارئًا متصلًا، حفظ موضع القراءة، سردًا موثقًا claim-level، سياقًا زمنيًا ومكانيًا وشخصيات مترابطة، وتفاعلات/اختبارات اختيارية لا تقطع القراءة. لا حوار مختلق أو اقتباس غير محقق أو دمج روايات متعارضة. لم تتغير ملفات runtime أو إعدادات الإنتاج.
