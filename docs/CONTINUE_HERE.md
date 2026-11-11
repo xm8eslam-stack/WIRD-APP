@@ -1,3 +1,11 @@
+## Latest exact-head CI observation — 2026-11-11 16:45 +02:00
+
+- PR #363 head tested: `a8ba43209315acfabecdc4883e6c2f6823c8afed`.
+- Quality Gate run `43040464893` ended failed on the only job before any step was recorded. Job logs are unavailable (`BlobNotFound`); there is no test-level failure diagnosis.
+- Treat CI as BLOCKED/UNRESOLVED. Do not merge and do not weaken checks. Re-fetch the PR's current head and rerun only when GitHub Actions can provide a job with recorded steps/logs.
+- The following documentation-only status commit changes the PR head; re-fetch it before any future gate or merge decision.
+
+---
 
 ## آخر محاولة Quality Gate لـ PR #363
 
