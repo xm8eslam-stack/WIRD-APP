@@ -189,3 +189,12 @@ Each run's complete job finished with conclusion `success`. The Quality Gate cov
 - `activityEvents` is still a daily aggregate snapshot. PR #325's base fingerprint blocks stale replacement but does not merge independent activity histories.
 - New design: `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code or Firestore Rules changed. Required before implementation: exact legacy baseline/cutover semantics, local calendar date/time-zone capture, idempotent event IDs, offline-device conflict preservation, and backup/restore compatibility.
 - Keep tombstones and whole-snapshot conflict choices fail-closed until collection-specific semantics and anti-resurrection tests pass.
+
+
+## 2026-11-11 — Latest main advance after PR #355
+
+- Current main SHA: 4b2990423f7f003b80982e99c76c7768f7fb5be0. PR #355 merged the verified Quran audio range planner at this SHA; exact PR head 0f0cc611c5f610f6135db5760fbba8401ca8214d passed Quality Gate run 43027223673.
+- The merged planner is pure and bounded: it derives global ayah numbers from local canonical Quran metadata and uses the approved Al Quran Cloud reciter allowlist. It performs no fetch, cache write, persistent manifest write, worker protocol, UI, or offline playback. Do not describe full audio downloads as implemented.
+- Main Quality Gate run 43028383367 is in progress at this checkpoint. No Vercel Production deployment record exists for SHA 4b2990423f7f003b80982e99c76c7768f7fb5be0; the last READY Production runtime SHA remains 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 (deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m). Vercel's earlier build-rate-limit status remains the deployment blocker.
+- PR #354's Ruqyah proxy hardening is in current main and passed exact-head CI, but is not yet verified in Production. PR #353's accessible revision dialogs are still under exact-head browser validation.
+- No Production environment variables, sync flags, Firestore Rules/schema, or user data changed in PR #355.
