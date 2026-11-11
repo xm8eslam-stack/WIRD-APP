@@ -209,3 +209,15 @@ The historical sections below describe earlier project phases and are not the cu
 - Sync source review confirms `DailyLog` is still a per-day aggregate and `activityEvents/snapshot` still projects a full record array. `session.completed` domain events exist, but their current payload has no explicit local calendar date/time-zone field. The new design document defines an idempotent event ledger and a non-destructive legacy baseline/cutover; no runtime behavior changed.
 - Whole-snapshot conflict choices for `weakVerses`/`activityEvents` remain fail-closed. Tombstones remain unsupported. No Firestore Rules/schema, production data, secrets, environment variables, or remote-sync flags changed.
 - The GitHub Vercel status for `50bb25e` now reports `success`, but exact deployment SHA/Production state and live smoke remain unverified because Vercel team access returned 403. Last documented READY SHA remains `dac125dd8770cc4881e2c6cea6fe94623ad52144`. Google AI Studio sync is unverified.
+
+
+## 2026-11-11 — Current WIRD continuation baseline (supersedes older release notes)
+
+- Verified current main: 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188 (PR #344).
+- PR #344 exact head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate 42965801925; post-merge main run 43023291577 passed.
+- Vercel Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and matches the exact current main SHA.
+- PR #199 documentation continuity update is merged (merge commit b0b0ce8f4d80fed65ab9d097a0d5341efe3a880a); subsequent main updates supersede its older SHA/deployment checkpoint statements.
+- Activity event reducer (activityEventProjection.ts) exists with pure unit tests but remains disconnected from production storage/cloud sync. Current persisted DailyLog[] still aggregates by date.
+- Weak-verse coordinate identity and base-snapshot CAS guards are in main; they prevent stale snapshot overwrites, but not automatic convergence of independent concurrent changes. Keep weakVerses and activityEvents whole-snapshot conflict choices blocked.
+- No server-visible per-device legacy activity cutover watermark exists. Do not wire the event reducer into production, rewrite historical logs, change Firestore Rules/schema, alter secrets/settings, or change sync flags until offline-client cutover, backup/restore, crash recovery, and Emulator tests are complete and explicitly approved.
+- Tombstones remain fail-closed. No new physical-device A↔B round trip is claimed after the latest deployment.
