@@ -664,3 +664,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Documentation updates: unified roadmap, continuation queue, docs entry point, documentation catalog, and UX page/tool map now link to the Seerah plan.
 - Validation: documentation content and links were reviewed by readback. Application tests were NOT RUN because this change is documentation-only. PR #363's previously observed CI state was BLOCKED/UNRESOLVED due to a job failing before recorded steps/logs; re-fetch the new exact PR head and gate.
 - Next: complete the current docs PR gate first; then perform a limited, read-only API coverage/licensing POC and prepare a reviewed Arabic content sample before production implementation.
+
+
+## 2026-11-11 — Seerah roadmap cross-link and handoff alignment
+
+- Added the Seerah learning destination to `docs/UX_PAGE_AND_TOOL_MAP.md` as planned/not yet implemented, with its lesson, profile, timeline, map, quiz, mistake-review, progress, and offline surfaces.
+- Added the Seerah direction to `docs/UX_PRODUCT_ROADMAP_AR.md` and the Google AI Studio handoff; updated the docs index and catalog.
+- Refreshed `docs/CONTINUE_HERE.md` to avoid embedding a stale branch SHA. Always re-fetch PR #363's exact current head.
+- Latest verification attempt: no PR-triggered workflow run was returned for the latest docs commit at the time of inspection. Combined status showed Vercel `failure` with the known `build-rate-limit` target. This is not a code-test result. PR #363 remains Draft; exact-head Quality Gate is still required.
+- Documentation readback was performed for the new Seerah plan and updated roadmap/index files. Application tests remain NOT RUN because no application code changed.
