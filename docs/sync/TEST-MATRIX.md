@@ -190,3 +190,13 @@ Each run's complete job finished with conclusion `success`. The Quality Gate cov
 - `activityEvents` is still a daily aggregate snapshot. PR #325's base fingerprint blocks stale replacement but does not merge independent activity histories.
 - New design: `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code or Firestore Rules changed. Required before implementation: exact legacy baseline/cutover semantics, local calendar date/time-zone capture, idempotent event IDs, offline-device conflict preservation, and backup/restore compatibility.
 - Keep tombstones and whole-snapshot conflict choices fail-closed until collection-specific semantics and anti-resurrection tests pass.
+
+
+## 2026-11-11 — Latest main advance after PR #354
+
+- Current main SHA: 8c49f716726e329189a1141c28a69059543ea5ba. It includes PR #351's quota-recovery test and PR #354's defensive Ruqyah proxy failure handling.
+- PR #354 exact head 086dbb0cb7a675bd502ea0f918b41d5b145b19f9 passed Quality Gate run 43025838426 and merged as the current main SHA. The change maps unexpected proxy failures to a controlled JSON 502 and uses only allowlisted diagnostic metadata; it does not prove the earlier HTTP 500 root cause is fixed.
+- Main Quality Gate run 43026982133 is still in progress at this checkpoint. Vercel has no deployment record for SHA 8c49f716726e329189a1141c28a69059543ea5ba; the last READY Production runtime deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Do not claim the Ruqyah proxy fix is live in Production yet.
+- PR #353's updated head cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b and PR #355's updated head 0f0cc611c5f610f6135db5760fbba8401ca8214d each have fresh Quality Gate runs in progress (43027225508 and 43027223673). Earlier failed runs were on superseded heads; evaluate only the latest exact heads.
+- PR #355 currently adds only a pure, bounded audio-range planner from canonical Quran metadata and the reviewed Al Quran Cloud allowlist. It does not yet download, store, or play audio offline.
+- No Production environment variables, sync flags, Firestore Rules/schema, or user data were changed by these changes.
