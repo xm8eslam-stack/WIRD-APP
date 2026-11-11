@@ -443,3 +443,14 @@ The GitHub Actions run `42671987530` for PR #181 completed with failure but expo
 - No Firestore Rules/schema, production data, secrets, environment values, or sync feature flags were changed.
 
 Next safe sync work: design an immutable, idempotent session-activity event projection that preserves legacy DailyLog baselines, and separately specify collection-specific tombstone/replay/restore semantics. Do not wire a migration or unblock conflict choices until populated-record, replay, concurrency, crash, and rollback tests pass.
+
+
+## 2026-11-11 — Verified current main and Production after PR #344
+
+- Current main: 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- PR #344 (fix(plans): prevent duplicate plan deletion) merged at that SHA. Exact PR head 36b5f34a5faea009e60454dd248ce3dabee130d5 passed Quality Gate run 42965801925; post-merge main run 43023291577 succeeded.
+- Vercel Production deployment dpl_AU9ATDJEsm99z4CWir3WLvvdn32m is READY and built from exact SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188.
+- The activity reducer in src/services/activityEventProjection.ts is pure/tested only. No production event-ledger persistence or cloud event projection exists yet; DailyLog[] remains the current storage format.
+- Weak-verse and activity snapshot CAS protects against stale replacement but does not merge concurrent independent events. syncConflictSafety continues to block whole-snapshot keep-local/use-remote for these two collections.
+- Do not implement a destructive migration or enable conflict choices until a server-visible per-device cutover protocol covers offline legacy sessions. Tombstones remain blocked.
+- No Firestore Rules/schema, secrets, production settings, or sync flags changed.
