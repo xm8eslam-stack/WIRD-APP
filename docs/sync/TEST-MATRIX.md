@@ -2,16 +2,15 @@
 
 | Scope | Exact SHA | Run / deployment | Result at checkpoint |
 |---|---|---|---|
-| Main after PR #351 | `5c1ecbaa77bc5a3aa13aba35a45b4ee63d366129` | [43026085937](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026085937) | In progress; post-merge checks started |
-| Last verified Production runtime | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY; later merges are docs/test-only |
+| Main after PR #354 | `8c49f716726e329189a1141c28a69059543ea5ba` | [43026982133](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43026982133) | Success; 30/30 executed steps passed |
+| Last verified Production runtime | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY; current main SHA not yet observed in Production |
 | Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; rules-only deploy confirmed |
-| PR #353 revision dialog accessibility | `91f4ac7c9c5bc5590d70393d7b29f672fa95b3e1` | [43025536416](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025536416) | In progress; browser smoke active |
-| PR #354 Ruqyah proxy failure handling | `086dbb0cb7a675bd502ea0f918b41d5b145b19f9` | [43025838426](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025838426) | In progress; emulator tests active |
-| PR #349 release documentation | Exact latest PR head | [43025956565](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025956565) | In progress |
+| PR #353 revision dialog accessibility | `1d85c1a789666175123f05dda197de30bef694cd` | [43028213401](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43028213401) | Pending |
+| PR #355 offline audio range planner | `0f0cc611c5f610f6135db5760fbba8401ca8214d` | [43027223673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027223673) | In progress; browser smoke active |
+| PR #354 Ruqyah proxy failure handling | `8c49f716726e329189a1141c28a69059543ea5ba` | [43025838426](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025838426) | Success; merged |
+| PR #351 IndexedDB quota boundary test | `f259e084e381383168b1f1075064fe108d2c2cad` | [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) | Success; merged |
 
-PR #351 merged as `5c1ecbaa77bc5a3aa13aba35a45b4ee63d366129`. Its exact-head gate passed all 30 steps, including automated suites, TypeScript, production build, Firestore Emulator, and desktop/mobile browser smoke. It adds open-boundary QuotaExceededError normalization and legacy-source preservation; active-write browser quota fault injection remains untested.
-
-Automated sync coverage already includes multi-tab duplicate enqueue serialization, concurrent monotonic sequences, UID isolation, stale-account aborts, offline/online/foreground retries, database reopen durability, and atomic transaction rollback. The owner-reported two-device PASS remains bounded evidence. Full offline Quran audio downloads remain a documented plan, not an implemented feature.
+The current main gate includes the merged quota-boundary test and the Ruqyah proxy error-handling changes. The owner-reported two-device PASS remains bounded evidence. Full offline Quran audio downloads remain a phased implementation, not a live feature.
 
 ---
 
@@ -190,13 +189,3 @@ Each run's complete job finished with conclusion `success`. The Quality Gate cov
 - `activityEvents` is still a daily aggregate snapshot. PR #325's base fingerprint blocks stale replacement but does not merge independent activity histories.
 - New design: `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code or Firestore Rules changed. Required before implementation: exact legacy baseline/cutover semantics, local calendar date/time-zone capture, idempotent event IDs, offline-device conflict preservation, and backup/restore compatibility.
 - Keep tombstones and whole-snapshot conflict choices fail-closed until collection-specific semantics and anti-resurrection tests pass.
-
-
-## 2026-11-11 — Latest main advance after PR #354
-
-- Current main SHA: 8c49f716726e329189a1141c28a69059543ea5ba. It includes PR #351's quota-recovery test and PR #354's defensive Ruqyah proxy failure handling.
-- PR #354 exact head 086dbb0cb7a675bd502ea0f918b41d5b145b19f9 passed Quality Gate run 43025838426 and merged as the current main SHA. The change maps unexpected proxy failures to a controlled JSON 502 and uses only allowlisted diagnostic metadata; it does not prove the earlier HTTP 500 root cause is fixed.
-- Main Quality Gate run 43026982133 is still in progress at this checkpoint. Vercel has no deployment record for SHA 8c49f716726e329189a1141c28a69059543ea5ba; the last READY Production runtime deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Do not claim the Ruqyah proxy fix is live in Production yet.
-- PR #353's updated head cc40ca4c16dbe6e7cab0091859d5f4ac39d6be7b and PR #355's updated head 0f0cc611c5f610f6135db5760fbba8401ca8214d each have fresh Quality Gate runs in progress (43027225508 and 43027223673). Earlier failed runs were on superseded heads; evaluate only the latest exact heads.
-- PR #355 currently adds only a pure, bounded audio-range planner from canonical Quran metadata and the reviewed Al Quran Cloud allowlist. It does not yet download, store, or play audio offline.
-- No Production environment variables, sync flags, Firestore Rules/schema, or user data were changed by these changes.
