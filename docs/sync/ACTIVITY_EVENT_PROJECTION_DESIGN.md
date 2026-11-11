@@ -105,3 +105,14 @@ If a safe per-device watermark cannot be proven with the existing journal metada
 ## Decision
 
 Proceed first with the pure reducer and deterministic tests after the cutover contract is reviewed. Do not yet wire event projection into production sync: the existing aggregate format cannot distinguish historical sessions from independently completed offline sessions without a proven per-device migration watermark.
+
+
+## 2026-11-11 — Phase 1 pure reducer completed
+
+- Main commit: `4669db79b535b13acc4b683d7052e7df5d4c9eca`.
+- Added `src/services/activityEventProjection.ts` and its focused test suite, registered in `src/tests/runAllTests.ts`.
+- The reducer validates versioned baseline/event shapes, safe IDs, captured local date + UTC offset consistency, Quran coordinate bounds, duplicate delivery, event-ID payload collisions, baseline identity, daily/archive limits, and returns no partial projection on failure.
+- It is deterministic, preserves the legacy baseline order and values, sorts appended dates/task labels deterministically, and performs no storage/network/migration writes.
+- Phase 1 is implemented in code, but exact-head CI for this commit was not surfaced by the PR-only workflow lookup. The main commit's Vercel status reports success; this is not a Quality Gate or production deployment proof.
+- Phase 2 remains blocked: do not wire local journal/outbox or change the displayed daily log until the per-device legacy/offline cutover watermark is proven. Specifically, an offline device can hold pre-cutover activity not represented in the baseline; timestamp-only inclusion/exclusion risks double counting or data loss.
+- Next safe work: review the journal mutation metadata and backup/import contracts to prove (or reject) a per-device watermark; add a design decision with exact evidence before any runtime wiring. Keep production sync flags, Firestore Rules/schema, and remote projection behavior unchanged.
