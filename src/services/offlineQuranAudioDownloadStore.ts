@@ -78,6 +78,21 @@ function validateJob(job: OfflineQuranAudioJob): void {
   }
 }
 
+function validateItemForJob(job: OfflineQuranAudioJob, item: OfflineQuranAudioItem): void {
+  if (!item || item.jobId !== job.id || item.key !== job.id + ':' + item.globalAyahNumber ||
+      item.reciterId !== job.reciterId || item.verified !== true ||
+      (item.byteLength !== null && (!Number.isSafeInteger(item.byteLength) || item.byteLength < 1)) ||
+      !Number.isSafeInteger(item.downloadedAtMs) || item.downloadedAtMs < 0) {
+    throw new Error('بيانات ملف التلاوة المحفوظ غير صالحة.');
+  }
+  const plan = buildQuranAudioDownloadPlan(job);
+  const expected = plan.items.find(candidate => candidate.globalAyahNumber === item.globalAyahNumber);
+  if (!expected || expected.surahNumber !== item.surahNumber ||
+      expected.ayahNumber !== item.ayahNumber || expected.url !== item.url) {
+    throw new Error('ملف التلاوة المحفوظ لا يطابق نطاق التنزيل المعتمد.');
+  }
+}
+
 export class OfflineQuranAudioDownloadStore {
   private readonly factory: IDBFactory;
   private readonly databaseName: string;
@@ -152,7 +167,7 @@ export class OfflineQuranAudioDownloadStore {
     validateJob(job);
     const db = await this.openDatabase();
     const transaction = db.transaction(JOBS_STORE, 'readwrite');
-    transaction.objectStore(JOBS_STORE).put({ ...job });
+    transaction.objectStore(JOBS_STORE).add({ ...job });
     await transactionResult(transaction);
   }
 
@@ -210,6 +225,9 @@ export class OfflineQuranAudioDownloadStore {
     const transaction = db.transaction(ITEMS_STORE, 'readonly');
     const result = await requestResult(transaction.objectStore(ITEMS_STORE).index('jobId').getAll(jobId)) as OfflineQuranAudioItem[];
     await transactionResult(transaction);
+    const job = await this.getJob(jobId);
+    if (!job && result.length > 0) throw new Error('توجد ملفات تلاوة بلا عملية تنزيل صالحة.');
+    if (job) result.forEach(item => validateItemForJob(job, item));
     return result.sort((a, b) => a.globalAyahNumber - b.globalAyahNumber);
   }
 
@@ -241,6 +259,7 @@ export class OfflineQuranAudioDownloadStore {
     const key = jobId + ':' + item.globalAyahNumber;
     const existing = await requestResult(items.get(key)) as OfflineQuranAudioItem | undefined;
     if (existing) {
+      validateItemForJob(job, existing);
       const identical = existing.url === item.url && existing.byteLength === item.byteLength && existing.verified === true;
       if (!identical) {
         transaction.abort();
