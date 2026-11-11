@@ -89,3 +89,16 @@ Next: owner decision on Production sync flags and public Vercel access; add the 
 - Google AI Studio synchronization remains unverified.
 
 Next: implement the pure activity-event reducer and its migration/replay tests only after the baseline cutover contract is accepted; keep production sync flags, Firestore Rules, and tombstone behavior unchanged.
+
+
+## 2026-11-11 — Authoritative continuation checkpoint (supersedes earlier stale entries)
+
+- Repository: `xm8eslam-stack/WIRD-APP`; current `main` SHA: `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`.
+- PR #332 merged as `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`. It adds device-local memorization page width modes, one-action reset, and automatic visibility of the selected ayah. Exact-head GitHub Quality Gate run #3801 succeeded: automated tests, dependency audit, TypeScript, Firestore Emulator, production build/server smoke, and desktop/mobile browser smoke all passed. Vercel Preview for PR #332 failed only with the free-plan `api-deployments-free-per-day` limit.
+- Vercel Production deployment `dpl_dow5x6vXqdxHEp92pyyv9kRBkagh` is `READY`, alias `wird-app.vercel.app`, Git SHA exactly `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`. Live interactive smoke remains unverified; web fetch of the public URL was inaccessible from this inspection. Do not claim user-facing live smoke.
+- PR #333 contains the sync design and cutover evidence update; its previous run #3803 had tests, dependency audit, TypeScript, Emulator, build and server smoke completed successfully, while the desktop/mobile browser job was still in progress at the last observation. Re-check after this doc refresh because pushing changes starts a new exact-head gate.
+- PR #334 is a current-main test-only port adding 44px Playwright assertions for ruqyah seek and volume sliders. Runtime controls already have `min-h-11`; exact-head Quality Gate required before merge.
+- PR #265 is superseded by #334. PR #318's offline-package implementation is already present in current main, including stricter audio pre-cache timeout and its test; close #318 as superseded, do not merge the stale branch.
+- Sync safety decision: local journal has deviceId, sequence, nextSequence, lastProjectedSequence, outbox and acknowledgement records; this is not a server-visible per-device cutover registry. Existing session completion remains date-keyed DailyLog and the domain event lacks captured localDate/timezoneOffsetMinutes. Phase-2 projection remains blocked; do not change Firestore schema/rules, enable production sync flags, or rewrite/delete legacy data without explicit owner approval.
+- No Production secrets/settings, Firebase rules/schema, remote sync flags, or user data changed in this cycle.
+- Next parallel work: finish PR #333 exact-head checks and correct docs; finish PR #334 exact-head tests; continue read-only design of the server-visible device cutover protocol and regression matrix; review outstanding offline/ruqyah work against current main before porting only missing changes.
