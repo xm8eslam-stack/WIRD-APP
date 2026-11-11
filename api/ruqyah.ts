@@ -284,9 +284,11 @@ export default async function handler(req: any, res: any) {
     return await handleRuqyahRequest(req, res);
   } catch (error) {
     // Never log the error message or URL: upstream fetch errors may contain the API key query parameter.
-    const errorName = error instanceof Error ? error.name : 'UnknownError';
-    const method = typeof req?.method === 'string' ? req.method : 'unknown';
-    console.error('[WIRD Ruqyah] Unhandled proxy failure', { method, errorName });
+    const errorType = error instanceof Error ? 'Error' : 'UnknownError';
+    const method = req?.method === 'GET' || req?.method === 'POST' || req?.method === 'OPTIONS'
+      ? req.method
+      : 'OTHER';
+    console.error('[WIRD Ruqyah] Unhandled proxy failure', { method, errorType });
     try { res.setHeader('Cache-Control', 'no-store'); } catch { /* response may already be unusable */ }
     return send(res, 502, { error: 'RUQYAH_INTERNAL_ERROR' });
   }
