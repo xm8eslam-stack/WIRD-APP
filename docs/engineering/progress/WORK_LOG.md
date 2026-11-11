@@ -715,3 +715,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 
 ## 2026-11-11 — توجيه «حكاية السيرة»
 تم تثبيت متطلب أن تكون السيرة كتابًا تفاعليًا متصلًا بأجزاء وفصول ومشاهد، لا دروسًا منفصلة. خطة المنتج التفصيلية في SEERAH_LEARNING_PLAN_AR.md §16. معيار القبول يتطلب قارئًا متصلًا، حفظ موضع القراءة، سردًا موثقًا claim-level، سياقًا زمنيًا ومكانيًا وشخصيات مترابطة، وتفاعلات/اختبارات اختيارية لا تقطع القراءة. لا حوار مختلق أو اقتباس غير محقق أو دمج روايات متعارضة. لم تتغير ملفات runtime أو إعدادات الإنتاج.
+
+## 2026-11-11 — Seerah as a continuous narrative book
+- Added the owner’s product clarification to the Seerah plan, development roadmap, continuation source of truth, and Google AI Studio handoff.
+- Revised S1/S2 acceptance: the MVP must include a connected multi-scene narrative chapter in a continuous reader with saved position and claim-level sources. A lesson list or quiz interface alone does not satisfy acceptance.
+- The proposed book structure, narrative/editorial constraints, reader modes, and optional embedded learning interactions are documented in SEERAH_LEARNING_PLAN_AR.md §16.
+- CI recheck: run 43052961502 on earlier SHA b7ca97f6fa93c715d408adc88ba9b180c7800017 ended failure; job 130634757053 had no recorded steps/logs (steps=null). No PR-triggered run was returned for the latest docs commit 7a5e6a9bb17b47404e9e0d4153b7a594d8bfce95. Treat as unresolved runner evidence, not a diagnosed code/test failure. Do not merge until exact-head Quality Gate is verifiably green.
+- No runtime, API ingestion, Firebase, production settings, secrets, sync flags, or deployment changes.
