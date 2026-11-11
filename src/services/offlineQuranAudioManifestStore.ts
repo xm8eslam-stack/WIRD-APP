@@ -108,7 +108,7 @@ export class OfflineQuranAudioManifestStore {
 
   private open(): Promise<IDBDatabase> {
     if (this.databasePromise) return this.databasePromise;
-    this.databasePromise = new Promise((resolve, reject) => {
+    const pending: Promise<IDBDatabase> = new Promise<IDBDatabase>((resolve, reject) => {
       let request: IDBOpenDBRequest;
       let wasBlocked = false;
       try { request = this.factory.open(this.databaseName, DB_VERSION); }
@@ -127,8 +127,12 @@ export class OfflineQuranAudioManifestStore {
         wasBlocked = true;
         reject(new Error('أغلق نسخة وِرد الأخرى التي تستخدم سجل التنزيلات ثم أعد المحاولة.'));
       };
-    }).catch(error => { this.databasePromise = null; throw error; });
-    return this.databasePromise;
+    }).catch(error => {
+      this.databasePromise = null;
+      throw error;
+    });
+    this.databasePromise = pending;
+    return pending;
   }
 
   async putVerified(input: OfflineQuranAudioManifestInput): Promise<OfflineQuranAudioManifestEntry> {
