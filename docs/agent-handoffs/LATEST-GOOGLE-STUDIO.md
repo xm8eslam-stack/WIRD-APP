@@ -1,3 +1,17 @@
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11 16:30 +02:00)
+
+Repository: `xm8eslam-stack/WIRD-APP`; source branch expected: `main`.
+Latest main SHA: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+PR #362 merged (`cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`): guest-entry hydration test helper.
+PR #361 merged (`2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`): EveryAyah stays stream-only; legacy cached entries pruned.
+PR #360 closed as superseded; replacement docs PR #363 remains Draft. Its first Quality Gate run and rerun failed before job steps/logs appeared; do not treat as passed.
+PR #356 closed as superseded; pure range planner is already in main from #355; unique activity cutover protocol was preserved in the sync design document.
+PR #358/#359 remain unmerged and overlap in manifest responsibilities. Follow `docs/offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md`; do not merge either unchanged.
+Production source SHA/live smoke and Google AI Studio sync remain NOT VERIFIED.
+
+> Read `AGENTS.md`, then `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/DOCUMENTATION_CATALOG.md` before making changes.
+
+---
 ## PR #363 — الحالة الحية
 
 - PR #363 مفتوح كـ Draft على الفرع `docs/wird-docs-roadmap-reconciled-20261111`، مبني على main الحالي `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
