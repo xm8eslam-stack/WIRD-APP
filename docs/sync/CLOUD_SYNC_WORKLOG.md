@@ -454,3 +454,11 @@ Next safe sync work: design an immutable, idempotent session-activity event proj
 - Weak-verse and activity snapshot CAS protects against stale replacement but does not merge concurrent independent events. syncConflictSafety continues to block whole-snapshot keep-local/use-remote for these two collections.
 - Do not implement a destructive migration or enable conflict choices until a server-visible per-device cutover protocol covers offline legacy sessions. Tombstones remain blocked.
 - No Firestore Rules/schema, secrets, production settings, or sync flags changed.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
