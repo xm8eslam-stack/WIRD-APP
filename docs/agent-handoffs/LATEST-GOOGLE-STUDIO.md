@@ -1,23 +1,24 @@
 # GOOGLE AI STUDIO — Latest handoff (2026-11-11)
 
-> Start with [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), then [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). Older entries below are historical; never let them override a freshly fetched main SHA or PR state.
+> Start with [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), then [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). Older notes below are historical snapshots.
 
-- Repository: `xm8eslam-stack/WIRD-APP`
-- Google AI Studio source branch: `main`
-- Last main SHA observed: `4b2990423f7f003b80982e99c76c7768f7fb5be0` (PR #355 merged).
-- Main CI for that exact SHA: not verified in this review.
-- Vercel Production for that exact SHA: not verified; Vercel status reported deployment rate limit.
-- Firestore Rules deployment: separately recorded as successful in run `42691610063`; do not confuse this with Vercel.
-- No secret, Production variable, Firestore data, rules, or sync setting was changed.
+- Repository: `xm8eslam-stack/WIRD-APP`; Google AI Studio is expected to use branch `main`.
+- Latest main SHA directly observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
+- PR #353 exact-head Quality Gate run `43028294037` passed; a separate post-merge main-only run was not observed in this review.
+- GitHub Vercel status on main SHA reports success; Production source SHA and live smoke remain unverified.
+- Active PRs at review: #360 documentation consolidation, #358 and #359 overlapping offline audio manifest work, #356 sync documentation update. Re-fetch their state and exact checks before continuing.
+- #358 models persistent download jobs and verified ayah items; #359 models verified-file metadata alongside Cache Storage. Do not merge both implementations without a unified storage contract.
+- No secrets, production variables, Firestore data/rules, sync flags, or deployment settings were changed.
 
-## Instructions for the next AI Studio session
+## Instructions for the next session
 1. Read root `AGENTS.md`, then `docs/CONTINUE_HERE.md`.
-2. Re-fetch main SHA and open PRs; this handoff SHA is only a dated reference.
-3. Continue the top unblocked roadmap item without repeating merged PRs.
-4. Keep work on a feature branch and preserve exact-SHA test evidence.
-5. Leave owner-only Production/device actions until the end.
+2. Fetch the latest main SHA, PRs, exact-head Quality Gates, and deployment evidence.
+3. Continue the highest-priority unblocked work; do not repeat merged work.
+4. Keep implementation on feature branches and record exact test evidence.
+5. Leave owner-only production/device steps until the end.
 
 ---
+
 
 ### GOOGLE AI STUDIO HANDOFF
 
