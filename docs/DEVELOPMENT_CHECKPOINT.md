@@ -1,3 +1,16 @@
+# WIRD — أحدث ملحق تحقق (2026-11-11 16:30 +02:00)
+
+- main: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+- #362 merged `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`, exact-head Quality Gate PASS.
+- #361 merged `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`, exact-head Quality Gate PASS; EveryAyah remains stream-only.
+- #363 latest head before this checkpoint update: `204c6738f5fb14845efbcf580d051e97405e3257`; run `43039009676` and attempt 2 failed before recording any job steps. Exact-head CI remains unresolved.
+- #358/#359 remain overlapping unmerged proposals; #356 closed as superseded after salvaging its unique activity cutover protocol.
+- Added proposed offline audio storage contract. No downloader implementation or UI is claimed.
+- Production source SHA/live smoke and Google AI Studio sync: NOT VERIFIED.
+
+> This note supersedes older status snapshots below.
+
+---
 # WIRD — أحدث حالة موثقة
 
 آخر تحقق من GitHub: 2026-11-11 16:15 +02:00
