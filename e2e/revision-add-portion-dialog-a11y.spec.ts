@@ -4,8 +4,12 @@ test.describe('WIRD revision add-portion dialog accessibility', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     const guestEntry = page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' });
-    if (await guestEntry.isVisible().catch(() => false)) await guestEntry.click();
+    if (await guestEntry.isVisible().catch(() => false)) {
+      await guestEntry.click();
+      await expect(page.getByRole('button', { name: 'المراجعة' })).toBeVisible();
+    }
     await page.goto('/#/revision');
+    await expect(page.getByRole('button', { name: 'إضافة مقطع متابعة جديد' })).toBeVisible();
   });
 
   test('add-portion dialog has an accessible name and a phone-sized close control', async ({ page }) => {
