@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { buildQuranAudioDownloadPlan } from './offlineQuranAudioDownload';
 import { OfflineQuranAudioDownloadStore } from './offlineQuranAudioDownloadStore';
 
@@ -146,6 +146,33 @@ export async function runOfflineQuranAudioDownloadStoreTests(): Promise<{ passed
       assert((await reopened.getJob(job.id))?.completedAyahs === 1, 'Job progress must survive a database reopen.');
       assert((await reopened.listItems(job.id))[0]?.globalAyahNumber === 1, 'Verified ayah metadata must survive a database reopen.');
     } finally { reopened.close(); }
+  });
+
+  await test('rolls back progress and normalizes quota failures while recording an ayah', async () => {
+    const { store } = createStore();
+    try {
+      const job = await store.createJob(request, 100);
+      const plan = buildQuranAudioDownloadPlan(request);
+      const originalAdd = IDBObjectStore.prototype.add;
+      IDBObjectStore.prototype.add = function (value: any, key?: IDBValidKey) {
+        if (this.name === 'items') throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+        return originalAdd.call(this, value, key);
+      };
+      let message = '';
+      try {
+        await store.recordDownloadedAyah(job.id, {
+          ...plan.items[0], reciterId: request.reciterId,
+          byteLength: 1000, downloadedAtMs: 110, verified: true
+        }, 111);
+      } catch (error) { message = error instanceof Error ? error.message : String(error); }
+      finally { IDBObjectStore.prototype.add = originalAdd; }
+      assert(message.includes('مساحة التخزين المحلية ممتلئة'),
+        'QuotaExceededError must be converted into a clear local storage message.');
+      assert((await store.getJob(job.id))?.completedAyahs === 0,
+        'A failed manifest write must not advance the persisted job progress.');
+      assert((await store.listItems(job.id)).length === 0,
+        'A failed manifest write must not leave a partial item.');
+    } finally { store.close(); }
   });
 
   await test('deletes a job and its manifest entries in one transaction', async () => {
