@@ -1265,7 +1265,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: RATE FAILED REVISION DETAILS */}
       {ratingPortion && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div ref={ratingDialogRef} role="dialog" aria-modal="true" aria-labelledby="revision-rating-dialog-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div ref={ratingDialogRef} role="dialog" aria-modal="true" aria-labelledby="revision-rating-dialog-title" className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 id="revision-rating-dialog-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل تعثر في سورة {ratingPortion.surahName}
@@ -1334,7 +1334,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD NEW PORTION */}
       {isAddPortionModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div ref={addPortionDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-add-portion-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div ref={addPortionDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-add-portion-title" className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 id="wird-add-portion-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 إضافة مقطع حفظ ومراجعة جديد
@@ -1439,7 +1439,7 @@ export const RevisionCenterView: React.FC<RevisionCenterViewProps> = ({
       {/* MODAL: ADD MANUAL WEAK VERSE */}
       {isAddWeakVerseModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div ref={addWeakVerseDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-add-weak-verse-title" className="bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
+          <div ref={addWeakVerseDialogRef} role="dialog" aria-modal="true" aria-labelledby="wird-add-weak-verse-title" className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white dark:bg-stone-800 rounded-2xl p-6 max-w-md w-full border border-stone-200 dark:border-stone-700 shadow-xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 id="wird-add-weak-verse-title" className="text-base font-bold text-stone-900 dark:text-stone-100 font-quran">
                 تسجيل آية ملتبسة أو متعثرة يدوياً
