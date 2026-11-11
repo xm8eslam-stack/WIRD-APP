@@ -1,3 +1,23 @@
+# Current implementation checkpoint — 2026-11-11 (after PR #355)
+
+- Current `main` observed during this review: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- PR #355 merged the pure range planner; it does not download or persist audio.
+- PR #358 adds IndexedDB download jobs and per-ayah verified-item metadata. Its Quality Gate run `43028986222` completed successfully on the observed PR head. It is not merged.
+- PR #359 adds a separate metadata-only IndexedDB store intended to accompany Cache Storage. Its Quality Gate run `43029617572` was still in progress at last observation. It is not merged.
+- These PRs overlap in persistent manifest responsibility. #358 stores job state and verified ayah items; #359 stores verified-file metadata. Do not merge both unchanged or start the downloader/UI until one canonical schema and lifecycle contract is selected.
+- PR #360 records the cross-PR design conflict in `docs/CONTINUE_HERE.md` and the roadmap. The documentation PR Quality Gate is separate from these implementation checks.
+- No audio bytes are downloaded by the planner or manifest-store PRs; no offline playback or downloader UI is yet verified.
+
+## Required design decision before next phase
+1. One IndexedDB database/schema contract owns jobs, per-ayah file metadata, and schema migration/versioning.
+2. Cache Storage owns audio bytes only; the manifest points to a file only after the response has been fully fetched and validated.
+3. Define atomic ordering/rollback between Cache Storage and IndexedDB; do not claim a complete item if either side failed.
+4. Define reciter allowlist, exact URL validation, response content type/size checks, canonical Quran coordinates, and file integrity policy.
+5. Define pause/resume/cancel/retry, duplicate jobs, stale partial cleanup, quota handling, and cross-tab/versionchange behavior.
+6. Add restart/reopen, cache eviction, quota, partial response, offline playback, and storage deletion tests.
+
+---
+
 # WIRD — Optional Offline Quran Audio Downloads
 
 ## Status
