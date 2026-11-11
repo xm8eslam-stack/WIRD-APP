@@ -23,7 +23,19 @@ test.describe('WIRD revision and memorization-test UX', () => {
     await expect(portionDialog).toBeVisible();
     const closePortion = portionDialog.getByRole('button', { name: 'إغلاق نافذة إضافة مقطع' });
     await expect(closePortion).toHaveCSS('min-height', '44px');
-    await closePortion.click();
+    await expect(closePortion).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    const submitPortion = portionDialog.getByRole('button', { name: 'إضافة المقطع' });
+    await expect(submitPortion).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(closePortion).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(portionDialog).toHaveCount(0);
+    await expect(addPortion).toBeFocused();
+
+    await addPortion.click();
+    await expect(portionDialog).toBeVisible();
+    await portionDialog.getByRole('button', { name: 'إلغاء' }).click();
     await expect(portionDialog).toHaveCount(0);
 
     const addWeakVerse = page.getByRole('button', { name: 'تسجيل آية ملتبسة' });
@@ -34,8 +46,10 @@ test.describe('WIRD revision and memorization-test UX', () => {
     await expect(weakDialog).toBeVisible();
     const closeWeakVerse = weakDialog.getByRole('button', { name: 'إغلاق نافذة تسجيل آية ملتبسة' });
     await expect(closeWeakVerse).toHaveCSS('min-height', '44px');
-    await closeWeakVerse.click();
+    await expect(closeWeakVerse).toBeFocused();
+    await page.keyboard.press('Escape');
     await expect(weakDialog).toHaveCount(0);
+    await expect(addWeakVerse).toBeFocused();
   });
 
 });
