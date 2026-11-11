@@ -87,6 +87,9 @@ export async function fetchRuqyahApiData<T = unknown>(
     if (code === 'RUQYAH_SOURCE_UNAVAILABLE') {
       throw new Error('مصدر الرقية الخارجي غير متاح مؤقتًا (HTTP ' + response.status + '). يمكنك إعادة المحاولة أو استخدام آخر فهرس محفوظ.');
     }
+    if (code === 'RUQYAH_INTERNAL_ERROR') {
+      throw new Error('حدث خطأ داخلي مؤقت أثناء تجهيز فهرس الرقية. أعد المحاولة بعد قليل؛ لم يتم عرض محتوى غير موثوق.');
+    }
     if (code === 'INVALID_RUQYAH_SOURCE_RESPONSE') {
       throw new Error('أعاد مصدر الرقية استجابة غير صالحة؛ لم يتم عرض أي محتوى منها.');
     }
