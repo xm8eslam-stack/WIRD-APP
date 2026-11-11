@@ -1,3 +1,19 @@
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (parallel work checkpoint)
+
+| Scope | Exact SHA | Run | Result at checkpoint |
+|---|---|---|---|
+| Main | `4b2990423f7f003b80982e99c76c7768f7fb5be0` | [43028383367](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43028383367) | In progress; Chromium installation active |
+| Firestore Rules deploy | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; rules-only deploy |
+| PR #351 quota recovery | `f259e084e381383168b1f1075064fe108d2c2cad` | [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) | Success; merged |
+| PR #354 Ruqyah proxy safety | `8c49f716726e329189a1141c28a69059543ea5ba` | [43025838426](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025838426) | Success; merged |
+| PR #355 audio range planner | `0f0cc611c5f610f6135db5760fbba8401ca8214d` | [43027223673](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43027223673) | Success; merged |
+| PR #353 accessibility | `bc21221f047783f5ef1237fae397ddffa1372bf2` | [43028294037](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43028294037) | In progress; browser smoke active |
+| PR #358 audio manifest store | `d7847374db7c955b855eb1e6bc64bbeeb17decde` | [43028567842](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43028567842) | In progress; emulator tests active |
+
+PR #351 adds an open-boundary quota regression test; active-write browser quota fault injection remains separate. PR #355 adds a bounded pure planner only; PR #358 is the local manifest persistence phase. Neither introduces automatic or full-Quran downloads.
+
+---
+
 # CURRENT VERIFIED TEST COVERAGE — 2026-11-11
 
 This section supersedes older status summaries below where they conflict with the exact SHA/run evidence listed here.
