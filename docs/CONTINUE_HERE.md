@@ -16,7 +16,7 @@
 | main Vercel status | SUCCESS STATUS ONLY | حالة GitHub الخضراء ليست إثباتًا أن Production يعمل على هذا SHA |
 | Vercel Production source SHA + live smoke | NOT VERIFIED | لا يوجد دليل حالي كافٍ يطابق النشر الفعلي مع SHA الحالي |
 | Google AI Studio sync | NOT VERIFIED | يجب ألا نفترض المزامنة لمجرد تحديث GitHub |
-| PR #360 | DRAFT / CHECK PENDING | آخر رأس بعد تحديثات التوثيق `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`؛ لا توجد check-runs ظاهرة لهذا الرأس وقت المراجعة. الرأس السابق فشل في Desktop/Mobile Playwright smoke؛ إعادة تشغيل run `43033552203` انتهت بالفشل دون تسجيل أي job steps. Vercel status السابق: build-rate-limit. |
+| PR #360 | DRAFT / CI NOT VERIFIED | آخر SHA موثق قبل آخر تحديثات السجل `8873b135bcfd5a3a6d7bddf7f6081cc08015df5f`؛ تحرك الرأس لاحقًا بتحديثات توثيقية فقط. أعد جلب head وcheck-runs من GitHub قبل المتابعة؛ لا توجد نتيجة exact-head موثقة بعد آخر تحديث. الرأس السابق فشل في Playwright، وrerun `43033552203` انتهى دون job-step evidence. |
 | PR #362 | DRAFT / CI PASS | رأسه `e2079734a0d150c1046307611a2b28346fdcdb1d`; Quality Gate مكتمل بنجاح. إصلاح انتظار guest-entry hydration مرشح لإعادة تطبيقه على الفروع المتأثرة؛ لم يدمج بعد. |
 | PR #361 | OPEN / CI PASS | رأسه `3008c4788caba61930be008e3cb40dcf52cfd78f`; Quality Gate مكتمل بنجاح. يبقى قرار المراجعة والدمج منفصلًا. |
 | PR #358 | DRAFT / CI FAIL | رأسه `4970b87d6ba712d3899093f4e8dd297bef17985e`; الفشل المرصود في Desktop/Mobile Playwright smoke. تصميم jobs/items يحتاج مقارنة مع #359. |
