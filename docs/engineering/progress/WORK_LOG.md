@@ -694,3 +694,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PR #363 exact head at start of check: `fc20a4f485f47f5ae7b94567bf521885a67ed284`; Quality Gate run `43051925917` job `130631077198` failed with zero recorded steps and no downloadable logs (BlobNotFound). Retried only failed job; retry job `130632989788` again failed with zero steps/no logs. No test-level cause is available; CI remains BLOCKED/UNRESOLVED.
 - Vercel combined status failed on free deployment rate limit. PR timeline also contains a READY Preview deployment `DaCNAppQni39XbMag8PkLxGbNQ9k`; no Production/live smoke claim is made.
 - No runtime changes, external API data fetch/ingestion, Firebase/Firestore changes, secrets, production flags, or deployment actions were performed.
+
+
+## 2026-11-11 — PR #363 latest exact-head gate
+
+- Latest PR #363 head at this check: `835881de9d6f9719e2afe3acd4bd737bd73d2cf1`.
+- Quality Gate run `43052636315` failed; job `130633602897` has no recorded steps. No evidence that TypeScript, tests, or production build started.
+- A retry on the previous run reproduced the same pre-step failure with no logs. Do not keep retrying absent a changed runner condition or usable diagnostic evidence.
+- Combined Vercel status remains blocked by the free deployment rate limit. An earlier Preview READY event is not proof for this exact head or Production.
+- PR remains OPEN / DRAFT; merge blocked pending inspectable passing exact-head CI.
