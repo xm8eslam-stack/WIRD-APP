@@ -322,3 +322,16 @@ On resumption:
 - Safety decisions: no AI-authored religious/historical claims or published quiz answers; every claim/question must have references and review status; disputed/approximate material is labelled; no depictions of the Prophet ﷺ or Companions; no unlicensed reproduction of modern books/translations.
 - Documentation changes are confined to the existing docs PR branch. No runtime code, Quran corpus, Firebase/Firestore, user data, production settings, secrets, sync flags, or deployments changed.
 - Application tests: NOT RUN (documentation-only). PR #363 exact-head CI must be re-fetched and pass before merge; the previously observed CI run was unresolved due to a job with no recorded steps/logs.
+
+
+## 2026-11-11 17:52 +02:00 — Seerah API schema research and CI retry
+
+- Expanded the Seerah plan with the actual Islamic Network People/Events OpenAPI specs, not just landing-page descriptions.
+- People API includes multilingual biography, birth/death year, person kind, event/quote/story aggregations and related-person links. Language keys are optional per record; no guarantee every biography has Arabic. It is Early Access.
+- Events API is calendar-oriented: the Hijri month/day field is an annual observance date, distinct from optional historical year. It is useful as a calendar enrichment source, not a complete chronological Seerah syllabus.
+- SeerahBook is read-only with per-IP limits and provenance claims; its About page distinguishes approximate/disputed/weak reports and dramatized reconstructions. Never present reconstructed wording as a verbatim quote, especially for the Prophet ﷺ or Companions.
+- Dorar API requires manual approval, server-side bearer token, attribution and clickable source URL; bulk download/republication is prohibited, cache limited to 24–48 hours, 60 req/min, and preview review required. Not an offline corpus provider.
+- Architectural decision: WIRD Seerah Content Registry (reviewed, versioned local content) remains the publication source; APIs are discovery/verification adapters only until content reuse/offline rights are explicitly clarified.
+- PR #363 head at check: `fc20a4f485f47f5ae7b94567bf521885a67ed284`. Quality Gate run `43051925917` failed with job `130631077198`, no steps and no downloadable logs (BlobNotFound). Retried failed job; new job `130632989788` failed identically before steps/logs. CI remains BLOCKED/UNRESOLVED, not a known test failure and not a pass.
+- Vercel status is blocked by free deployment rate limit; PR timeline separately reports Preview READY `DaCNAppQni39XbMag8PkLxGbNQ9k`. This is not Production/live smoke evidence.
+- No runtime code, production data/settings, Firebase Rules, secrets, API tokens, user content, or deployments were changed. No API records were fetched or ingested.
