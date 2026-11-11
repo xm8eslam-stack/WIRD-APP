@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 import { formatAyahAudioUrl, RECITERS } from './audioService';
 
 export function runAudioServiceTests(): { passed: number; failed: number } {
@@ -25,8 +28,7 @@ export function runAudioServiceTests(): { passed: number; failed: number } {
   });
 
   test('offline session-cache helper is restricted to the reviewed Quran CDN', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync('./src/services/audioService.ts', 'utf8');
+    const source = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
     const helper = source.split('export function requestOfflineAudioCache')[1] || '';
     if (!helper.includes("url.hostname === 'cdn.islamic.network'")) throw new Error('Reviewed Quran CDN allowlist is missing');
     if (helper.includes("url.hostname === 'everyayah.com'")) throw new Error('EveryAyah must remain stream-only');
