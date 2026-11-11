@@ -36,6 +36,28 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(!post.headers['Access-Control-Allow-Origin'], 'Rejected methods must not expose wildcard CORS');
     });
 
+    await test('Ruqyah proxy catches unexpected handler failures without logging secrets', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      const originalConsoleError = console.error;
+      const capturedLogs: unknown[][] = [];
+      console.error = ((...args: unknown[]) => { capturedLogs.push(args); }) as typeof console.error;
+      try {
+        const request = Object.defineProperty({ method: 'GET', headers: {} }, 'query', {
+          get() { throw new Error('sensitive test-secret detail'); }
+        });
+        const res = new MockResponse();
+        await ruqyahHandler(request, res);
+        assert(res.statusCode === 502 && res.body?.error === 'RUQYAH_INTERNAL_ERROR',
+          'Unexpected failures must return a controlled JSON error instead of an unhandled 500');
+        const logText = JSON.stringify(capturedLogs);
+        assert(logText.includes('Unhandled proxy failure'), 'Unexpected failures must leave a diagnostic log marker');
+        assert(!logText.includes('test-secret') && !logText.includes('sensitive'),
+          'Diagnostic logs must not expose the API key or raw exception message');
+      } finally {
+        console.error = originalConsoleError;
+      }
+    });
+
     await test('Ruqyah proxy rejects unreviewed category indexes before upstream access', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       let called = false;
