@@ -44,6 +44,8 @@ test.describe('Ruqyah verified Quran audio playback', () => {
     await expect(queueProgress).toHaveAttribute('aria-valuemin', '0');
     await expect(queueProgress).toHaveAttribute('aria-valuenow', '1');
     await expect(player.getByRole('button', { name: 'إيقاف', exact: true })).toHaveCSS('min-height', '44px');
+    await expect(player.getByRole('slider', { name: 'موضع التلاوة الصوتية' })).toHaveCSS('min-height', '44px');
+    await expect(player.getByRole('slider', { name: 'مستوى صوت التلاوة' })).toHaveCSS('min-height', '44px');
     const fatihahCard = page.locator('article').filter({ hasText: 'سورة الفاتحة' }).first();
     await expect(fatihahCard.getByRole('button', { name: 'إيقاف تلاوة سورة الفاتحة' })).toBeVisible();
     await expect(fatihahCard.getByText('0 قراءة')).toBeVisible();
