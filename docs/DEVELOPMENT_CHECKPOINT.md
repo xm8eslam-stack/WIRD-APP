@@ -4,11 +4,11 @@
 - Current `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 - Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`: `READY`, source SHA exactly matches main; alias `wird-app.vercel.app`. No live browser smoke was performed.
 - Main Quality Gate run `43079260528`, job `130727161970`: failed with `steps: null`; log retrieval returned `BlobNotFound`. This is unresolved job-start/runner evidence, not a diagnosed test failure.
-- PR #363's previous head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was reconciled with current main by merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628` (main `8e98aa...` is now a parent); GitHub reports `mergeable=true`, base SHA `8e98aa...`, 28 documentation-only changed files. The merge commit showed Vercel Preview Comments success and Vercel deployment pending; no GitHub Quality Gate check was yet visible. Two broken relative links were found in `docs/engineering/progress/CURRENT_STATUS.md` and are being corrected in the follow-up commit. Previous run `43057118522` belongs to the obsolete head and failed before steps; it is not a test-level failure. Keep Draft/HOLD until the final link-fix head passes the complete exact-head gate.
+- PR #363's previous head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was reconciled with current main by merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628` (main `8e98aa...` is now a parent); GitHub reports `mergeable=true`, base SHA `8e98aa...`, 28 documentation-only changed files. The merge commit showed Vercel Preview Comments success and Vercel deployment pending. The reconciled head `d79805b44b26f4ea73e77ffac21503255983b9c1` then received Quality Gate run `43117295374`, job `130848449010`, which failed before steps; logs returned `BlobNotFound`, so there is no test-level diagnosis. Two relative links in `CURRENT_STATUS.md` were corrected, and the 28 changed docs now pass a second relative-link check. This documentation follow-up creates a new head; re-fetch it before any gate/merge decision. Keep Draft/HOLD.
 - PR #361 merged at `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; PR #362 merged at `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`. Current main is a descendant of both.
 - PR #354 merged at `8c49f716726e329189a1141c28a69059543ea5ba`; current main is a descendant. Its proxy hardening does not diagnose the original Ruqyah 500.
 - PR #358/#359 remain Draft/unmerged. Their observed Playwright failure waited for the revision-page add-portion button while the guest-entry flow had not navigated; #362 fixes the helper. Both old branches need replacement by one combined implementation on latest main.
-- PR #2 remains Draft/open, 115 ahead / 469 behind. Do not merge wholesale; only isolated Advisor chat/security changes appear worth porting.
+- PR #2 remains Draft/open, 115 ahead / 469 behind. Do not merge wholesale; its isolated Advisor chat/security extraction is now PR #364.
 
 ## Production and owner boundary
 - Read-only Vercel inventory confirms `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` in Production. No values/settings were changed. Owner decision to disable both until release gates pass is outstanding.
@@ -16,8 +16,8 @@
 - Google AI Studio synchronization, live browser smoke, authenticated production A↔B, and real-device offline audio remain NOT VERIFIED.
 
 ## Next safe work
-1. Reconcile PR #363 on current main; review every changed file and relative link; run the full exact-head gate. Do not merge on a failed/unresolved gate.
-2. Extract only the Advisor API chat route/history validation/prompt-injection boundary from PR #2 into a new isolated PR; keep main's newer retention/session logic.
+1. Re-fetch the new PR #363 head after this documentation update; review all 28 changed files and run the full exact-head gate. Do not merge on a failed/unresolved gate.
+2. Review PR #364's bounded history/prompt safety diff and exact-head Quality Gate; keep main's newer retention/session logic.
 3. Build one offline audio store from the contract (`jobs`, canonical `files`, `jobItems`, Cache Storage bytes) with cross-job sharing and crash/quota/reconciliation tests.
 4. Re-test Ruqyah index/API in Production only through permitted read-only diagnostics; do not change keys/settings.
 5. Continue sync tombstone/cutover and Seerah claim-level content research without activating production sync or publishing unreviewed history.

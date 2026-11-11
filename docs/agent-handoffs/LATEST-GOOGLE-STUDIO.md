@@ -4,7 +4,8 @@
 - Vercel Production is `READY` on the exact same SHA; deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`. This is deployment evidence only, not a live browser smoke.
 - Main Quality Gate run `43079260528` failed before recording steps; logs are unavailable (`BlobNotFound`). No test-level failure or successful gate is evidenced.
 - Documentation PR #363 is OPEN / DRAFT / HOLD. Its observed old head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was based on old main `2c9aa972...`; exact-head run `43057118522` failed before steps and Vercel was rate-limited. The branch was reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. A link-fix follow-up changes the head; re-fetch it before review.
-- PR #361/#362/#354 are merged and included in current main. PR #358/#359 remain overlapping unmerged proposals; build one unified offline-audio store, never merge them separately.
+- PR #361/#362/#354 are merged and included in current main.
+- PR #364 extracts Advisor chat safety from PR #2 without copying the old UI/retention branch. Head `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; run `43117641418` failed before steps/logs (`BlobNotFound`), so no test-level result exists. Vercel Preview deployment succeeded; keep Draft. PR #358/#359 remain overlapping unmerged proposals; build one unified offline-audio store, never merge them separately.
 - Production sync flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are currently `true`. Do not change them; obtain owner decision before altering production settings.
 - Google AI Studio synchronization itself is NOT VERIFIED. Do not claim that Studio has pulled this SHA unless separately confirmed in the Studio UI.
 - Seerah product direction is a continuous historical book (parts → linked chapters → narrative scenes); optional maps, character/place cards, timeline, comprehension pauses, and quizzes must not interrupt reading. See `SEERAH_LEARNING_PLAN_AR.md` §§16–17 and `UX_PRODUCT_ROADMAP_AR.md` §§6–7.
@@ -28,7 +29,7 @@
 
 - New specialist plan: `docs/SEERAH_LEARNING_PLAN_AR.md`.
 - Product priority: Quran memorization/revision remains first; Seerah of the Prophet ﷺ and Companions is the second core learning feature.
-- The planned experience is a connected historical book (parts → linked chapters → narrative scenes); optional learning aids never interrupt continuous reading.nts/places, a sourced timeline, verified maps, lesson and stage quizzes, cumulative tests, mistake review, and local-first/offline progress.
+- The planned experience is a connected historical book (parts → linked chapters → narrative scenes). Optional people/place cards, sourced maps and timeline, reflection prompts, and chapter/part comprehension checks support the story without interrupting continuous reading. Save reading position and content version locally; offline access applies only to approved content.
 - API research is preliminary: SeerahBook (read-only people/events/place graph, based on a specific lecture series), Dorar Historical Encyclopedia API (manual approval and bearer token), and Islamic Network People/Events (Early Access). No provider is approved or integrated.
 - Do not ingest/publish API data automatically. Every claim and quiz item needs source references and editorial review; no AI-authored historical/religious content, no unlicensed book reproduction, and no depictions of the Prophet ﷺ or Companions.
 - Read `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/SEERAH_LEARNING_PLAN_AR.md` before planning this feature.

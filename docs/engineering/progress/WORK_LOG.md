@@ -1,3 +1,21 @@
+## 2026-11-12 — Final documentation QA and Advisor security extraction
+
+- Current main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production is READY on the exact same SHA. Main Quality Gate run `43079260528` failed before steps; logs unavailable (`BlobNotFound`).
+- PR #363 was reconciled with main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. The last checked head `d79805b44b26f4ea73e77ffac21503255983b9c1` received run `43117295374`, job `130848449010`, which failed before steps; logs unavailable (`BlobNotFound`). This is unresolved workflow evidence, not a test-level failure. Vercel Preview Comments passed; Vercel deployment remained pending.
+- Full relative-link validation across all 28 changed documentation files initially found two broken links in `docs/engineering/progress/CURRENT_STATUS.md`; both were corrected to `../../CONTINUE_HERE.md` and `../../DEVELOPMENT_ROADMAP.md`. The second scan returned zero broken relative links.
+- The catalog now covers all 43 Markdown files under `docs/`, including itself and the Google AI Studio handoff. Seerah direction is explicitly continuous book reading (parts → chapters → scenes), with optional aids only.
+- PR #364 extracts only bounded Advisor chat history, server-side history validation, numeric metric bounds, and prompt safety from old PR #2. Current head `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; run `43117641418`, job `130849645262`, failed before steps; logs unavailable (`BlobNotFound`). Vercel Preview deployment succeeded. No test-level result is available; keep Draft.
+- PR #2 remains too divergent for wholesale merge (115 ahead / 469 behind). Existing Vercel rewrites already route nested `/api/advisor/*` paths to `/api/advisor`; no redundant chat alias was added.
+- Read-only Vercel inventory still shows both Production sync flags `true`; no environment settings, secrets, Firebase Rules/data, sync behavior, or production deployment were changed. Owner decision remains outstanding.
+- PR #358/#359 remain unmerged and overlapping; #362's guest-entry helper fix is merged. Unified offline storage is still design-only.
+
+### Next
+1. Re-fetch PR #363's new head after this docs update; wait for full exact-head Quality Gate and Vercel result. Keep Draft until all required gates pass.
+2. Inspect PR #364's exact-head gate after a runner with recorded steps is available; do not merge based on Vercel Preview alone.
+3. Build one offline audio store from the contract, with cross-job file sharing and recovery/quota/orphan/conflict tests.
+4. Continue Ruqyah 500 root-cause verification, sync cutover review, and claim-level Seerah research without production changes.
+
+---
 ## 2026-11-12 — PR #363 current-main reconciliation and link QA
 
 - Merged current main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` into the documentation branch without rewriting its history. Reconciliation commit: `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub now reports PR #363 `mergeable=true`, base SHA current main, 28 documentation-only files.
