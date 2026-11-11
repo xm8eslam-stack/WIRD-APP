@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { IDBFactory } from 'fake-indexeddb';
+import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { buildQuranAyahAudioUrl } from './ruqyahAudioService';
 import { OfflineQuranAudioManifestStore } from './offlineQuranAudioManifestStore';
 
@@ -103,6 +103,27 @@ export async function runOfflineQuranAudioManifestStoreTests(): Promise<{ passed
     const records = await store.listVerified();
     assert(records.length === 1 && records[0].reciterId === 'ar.husary',
       'Deleting one reciter entry must preserve the other reciter entry for the same ayah.');
+    await store.close();
+  });
+
+  await test('normalizes quota failures without claiming that a manifest write succeeded', async () => {
+    const store = createStore();
+    const originalPut = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function () {
+      throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+    };
+    let message = '';
+    try {
+      await store.putVerified({
+        reciterId: 'ar.alafasy', surahNumber: 1, ayahNumber: 1, globalAyahNumber: 1,
+        url: buildQuranAyahAudioUrl('ar.alafasy', 1), byteLength: 10000,
+        savedAtMs: 1700000000000, verified: true
+      });
+    } catch (error) { message = error instanceof Error ? error.message : String(error); }
+    finally { IDBObjectStore.prototype.put = originalPut; }
+    assert(message.includes('مساحة التخزين المحلية لا تكفي'),
+      'QuotaExceededError must produce a clear local storage error.');
+    assert((await store.listVerified()).length === 0, 'A rejected write must not appear as a saved manifest record.');
     await store.close();
   });
 
