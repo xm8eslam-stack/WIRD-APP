@@ -6,8 +6,8 @@ This checkpoint supersedes older status statements below when they conflict with
 
 - Current `main` SHA observed: `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` (PR #344 merge).
 - Vercel Production deployment for that exact SHA: `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m`, state `READY`, production target. This confirms deployment/source parity, not every live feature path.
-- Main Quality Gate run [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) was still `in_progress` when this checkpoint was written; the desktop/mobile browser smoke step was active. Do not mark it passed until its completed conclusion is checked.
-- PR #346 exact head `66119fe9837911f7b74df4fe80d946bd4f57d518` and PR #347 exact head `8958011feb2213ae6e76742bead9367e091b42f3` each had a WIRD Quality Gate run in progress (runs `43023399225` and `43023520608` respectively). Neither PR is merged at this checkpoint.
+- Main Quality Gate run [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) completed `success` on the exact main SHA above, including desktop/mobile browser smoke.
+- PR #346 exact head `66119fe9837911f7b74df4fe80d946bd4f57d518` and PR #347 exact head `8958011feb2213ae6e76742bead9367e091b42f3` each had all preceding TypeScript/build/server checks passing while desktop/mobile browser smoke remained in progress (runs `43023399225` and `43023520608`). Neither PR is merged at this checkpoint.
 
 ### Firestore Rules deployment — confirmed
 
@@ -26,7 +26,8 @@ This checkpoint supersedes older status statements below when they conflict with
 ### Bounded live-sync evidence and remaining gates
 
 - Preserve the prior owner-reported PASS for the tested authenticated two-device sync path. Do not overgeneralize that result to every failure/recovery path.
-- Remaining engineering coverage includes tombstone/delete semantics and anti-resurrection (intentionally blocked), broader cross-tab/account lifecycle isolation, long-offline replay, crash/quota injection, queue stress, and automated end-to-end coverage of authenticated production journeys.
+- Existing automated coverage already includes two-tab duplicate enqueue serialization, concurrent cross-tab monotonic event sequences, UID-scoped outbox isolation, stale-account operations aborting after scope change, offline/online/foreground retry behavior, IndexedDB close/reopen durability, and transaction-abort rollback.
+- Remaining engineering coverage includes tombstone/delete semantics and anti-resurrection (intentionally blocked), full browser-level simultaneous cross-tab sign-out/account-switch lifecycle, long-offline replay under real browser suspension, explicit QuotaExceededError injection and recovery, IndexedDB blocked/versionchange recovery, queue stress, and automated end-to-end coverage of authenticated production journeys.
 - Grouped `syncMeta` decisions must remain atomic; unsupported conflict choices and divergent legacy Ruqyah V1 baselines must continue to fail closed.
 - Keep the existing Production sync flags unchanged unless the owner explicitly requests a change. Do not claim that CI or a READY deployment proves every live sync scenario.
 
