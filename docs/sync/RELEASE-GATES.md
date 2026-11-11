@@ -1,3 +1,37 @@
+## Verified operational checkpoint — 2026-11-11 (latest observed main)
+
+This checkpoint supersedes older status statements below when they conflict with the exact evidence here.
+
+### Current source, deployment, and CI
+
+- Current `main` SHA observed: `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` (PR #344 merge).
+- Vercel Production deployment for that exact SHA: `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m`, state `READY`, production target. This confirms deployment/source parity, not every live feature path.
+- Main Quality Gate run [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) was still `in_progress` when this checkpoint was written; the desktop/mobile browser smoke step was active. Do not mark it passed until its completed conclusion is checked.
+- PR #346 exact head `66119fe9837911f7b74df4fe80d946bd4f57d518` and PR #347 exact head `8958011feb2213ae6e76742bead9367e091b42f3` each had a WIRD Quality Gate run in progress (runs `43023399225` and `43023520608` respectively). Neither PR is merged at this checkpoint.
+
+### Firestore Rules deployment — confirmed
+
+- Manual workflow run [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) completed with `success` on source SHA `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`.
+- Every step succeeded, including verified Quran data generation, Firestore Emulator tests, deployment target/credential validation, Firebase authentication, gcloud setup, deployed-rules parity/bootstrap verification, and **Deploy Firestore Security Rules only**.
+- Current `main` `firestore.rules` blob SHA is `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`, identical to the rules blob recorded for the successful deployment source. Therefore the currently reviewed rules file has not drifted from the successfully deployed rules.
+- This proves rules deployment, not all application-level sync scenarios.
+
+### Production environment inventory (names/targets only)
+
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` — Production.
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — Production.
+- `ISLAMICAPI_API_KEY` exists for both Preview and Production. Secret values were not decrypted or displayed.
+- No Production flags, secrets, Firebase rules, or user data were changed during this review.
+
+### Bounded live-sync evidence and remaining gates
+
+- Preserve the prior owner-reported PASS for the tested authenticated two-device sync path. Do not overgeneralize that result to every failure/recovery path.
+- Remaining engineering coverage includes tombstone/delete semantics and anti-resurrection (intentionally blocked), broader cross-tab/account lifecycle isolation, long-offline replay, crash/quota injection, queue stress, and automated end-to-end coverage of authenticated production journeys.
+- Grouped `syncMeta` decisions must remain atomic; unsupported conflict choices and divergent legacy Ruqyah V1 baselines must continue to fail closed.
+- Keep the existing Production sync flags unchanged unless the owner explicitly requests a change. Do not claim that CI or a READY deployment proves every live sync scenario.
+
+---
+
 ## Current operational checkpoint — 2026-11-10 (verified follow-up)
 
 This checkpoint supersedes any older statement below that contradicts the current Production inventory or the owner's direct device test. It is a documentation update only; no runtime code, Firebase rules, production secrets, Vercel settings, or user data were changed.
