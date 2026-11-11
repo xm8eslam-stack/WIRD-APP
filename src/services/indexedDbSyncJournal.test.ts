@@ -2263,6 +2263,38 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
+    await test('IndexedDB quota failure is normalized and preserves the legacy recovery source', async () => {
+      StorageService.__resetStorageForTests();
+      StorageService.setStorageScope('user:quota-recovery');
+      const legacy: LegacyOutboxState = {
+        schemaVersion: 1,
+        deviceId: 'quota-recovery-device',
+        pending: [],
+        acknowledgedIds: [],
+        acknowledgedFingerprints: []
+      };
+      const raw = JSON.stringify(legacy);
+      assert(StorageService.setRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw),
+        'The legacy recovery source must be present before the simulated quota failure');
+      const quotaFactory = {
+        open: () => { throw new DOMException('Storage quota exceeded', 'QuotaExceededError'); }
+      } as unknown as IDBFactory;
+      const journal = new IndexedDbSyncJournal({
+        indexedDBFactory: quotaFactory,
+        databaseName: 'wird-sync-quota-failure-test'
+      });
+      let message = '';
+      try {
+        await journal.importLegacyState(legacy);
+      } catch (error: any) {
+        message = error?.message || String(error);
+      }
+      assert(message.includes('مساحة التخزين المحلية ممتلئة'),
+        'QuotaExceededError must become the explicit local-storage-capacity error');
+      assert(StorageService.verifyRawItem(STORAGE_KEYS.SYNC_OUTBOX, raw),
+        'The exact legacy outbox bytes must remain available after a quota failure');
+    });
+
     await test('Committed events and pending mutations survive closing and reopening the database', async () => {
       const { factory, databaseName, journal } = createJournal();
       await journal.enqueue({ mutationId: 'reopen-event', collection: 'tests', documentId: 'test-1', payload: { score: 8 }, nowMs: 7000 });
