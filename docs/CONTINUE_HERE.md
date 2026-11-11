@@ -4,7 +4,7 @@
 **المستودع:** `xm8eslam-stack/WIRD-APP`  
 **الفرع المرجعي للتطبيق:** `main`  
 **فرع مركز الوثائق الجاري:** `docs/wird-docs-roadmap-reconciled-20261111`  
-**آخر commit توثيقي مسجل في هذه الجولة:** `9087c3e757dd04c8f994fd5f8589eb2833b47d0f` (تأكد من head الحالي بعد كل تعديل).
+**حالة فرع الوثائق:** أعد جلب أحدث head من PR #363 قبل أي فحص أو قرار؛ لا تثبّت SHA للفرع داخل هذه اللقطة لأن التوثيق نفسه يتغير.
 
 > لا تعتمد على أي SHA أو PR أو CI أو Production status في هذه اللقطة قبل إعادة جلبه من GitHub. فرع PR #363 هو مكان تعديلات الوثائق؛ لم يتم الدمج إلى main.
 
@@ -61,4 +61,4 @@
 
 ## 6. بدء الجلسة التالية
 
-اقرأ `AGENTS.md` ثم هذا الملف ثم `DEVELOPMENT_ROADMAP.md` و`DOCUMENTATION_CATALOG.md`. أعد جلب حالة GitHub الحية، ثم ابدأ بأول خطوة غير مكتملة. للسيرة اقرأ `SEERAH_LEARNING_PLAN_AR.md` قبل أي تنفيذ.
+اقرأ `AGENTS.md` ثم هذا الملف ثم `DEVELOPMENT_ROADMAP.md` و`DOCUMENTATION_CATALOG.md`. أعد جلب حالة GitHub الحية، ثم ابدأ بأول خطوة غير مكتملة. للسيرة اقرأ `SEERAH_LEARNING_PLAN_AR.md` و`UX_PRODUCT_ROADMAP_AR.md` قبل أي تنفيذ.
