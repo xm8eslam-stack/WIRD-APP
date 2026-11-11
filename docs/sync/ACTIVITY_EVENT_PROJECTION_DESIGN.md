@@ -107,23 +107,11 @@ If a safe per-device watermark cannot be proven with the existing journal metada
 Proceed first with the pure reducer and deterministic tests after the cutover contract is reviewed. Do not yet wire event projection into production sync: the existing aggregate format cannot distinguish historical sessions from independently completed offline sessions without a proven per-device migration watermark.
 
 
-## 2026-11-11 — Phase 1 pure reducer completed
+## 2026-11-11 — Latest continuation update after main release
 
-- Main commit: `4669db79b535b13acc4b683d7052e7df5d4c9eca`.
-- Added `src/services/activityEventProjection.ts` and its focused test suite, registered in `src/tests/runAllTests.ts`.
-- The reducer validates versioned baseline/event shapes, safe IDs, captured local date + UTC offset consistency, Quran coordinate bounds, duplicate delivery, event-ID payload collisions, baseline identity, daily/archive limits, and returns no partial projection on failure.
-- It is deterministic, preserves the legacy baseline order and values, sorts appended dates/task labels deterministically, and performs no storage/network/migration writes.
-- Phase 1 is implemented in code, but exact-head CI for this commit was not surfaced by the PR-only workflow lookup. The main commit's Vercel status reports success; this is not a Quality Gate or production deployment proof.
-- Phase 2 remains blocked: do not wire local journal/outbox or change the displayed daily log until the per-device legacy/offline cutover watermark is proven. Specifically, an offline device can hold pre-cutover activity not represented in the baseline; timestamp-only inclusion/exclusion risks double counting or data loss.
-- Next safe work: review the journal mutation metadata and backup/import contracts to prove (or reject) a per-device watermark; add a design decision with exact evidence before any runtime wiring. Keep production sync flags, Firestore Rules/schema, and remote projection behavior unchanged.
-
-
-### Cutover watermark audit — 2026-11-11
-
-Reviewed `src/services/indexedDbSyncJournal.ts`, `src/services/localSyncOutbox.ts`, `src/services/domainEvents.ts`, and the session-completion methods in `src/services/storageService.ts` on current main.
-
-- The local journal already has per-install `deviceId`, monotonically increasing `sequence`, `nextSequence`, `lastProjectedSequence`, durable Outbox entries, acknowledgement records, and a local snapshot summary.
-- Session completion still writes a date-keyed `DailyLog[]` snapshot. The existing `session.completed` domain event contains a UTC timestamp and metrics, but does not carry the immutable v2 event contract's captured `localDate` and `timezoneOffsetMinutes`.
-- Legacy outbox import preserves the old localStorage value as a recovery copy and fingerprints it, but this is a per-device local migration marker, not a server-visible acknowledgement that every device has drained pre-cutover session mutations.
-- The local `getSnapshot()` summary exposes counts/cursor, not a durable server registry of every device's cutover watermark. No cross-device acknowledgement protocol was found in the reviewed call paths.
-- Conclusion: the current journal provides useful ingredients for a future watermark, but does **not** prove a global safe cutover for offline devices. A client-only timestamp or local `legacyOutboxMigrated` flag is insufficient. Phase 2 remains blocked until a server-visible, UID-scoped device registry/acknowledgement protocol and old-client write gate are designed, emulator-tested, and explicitly approved for production rules/schema changes.
+- Current main: `ff8665a67fee2252e91d94dc2cba9e6a11937b5c` (PR #332 merged).
+- The pure reducer from `4669db79` remains isolated and deterministic; no storage/cloud wiring is active.
+- Journal cutover audit: local deviceId/sequence/lastProjectedSequence and local outbox acknowledgements exist, but no server-visible per-device registry or old-client write gate proves all offline devices drained pre-cutover legacy mutations. The local legacy import fingerprint is not global acknowledgement. Existing session completion still writes date-keyed DailyLog snapshots; session.completed does not capture localDate + timezoneOffsetMinutes.
+- Decision unchanged: no phase-2 runtime projection, Firestore Rules/schema change, tombstone/delete behavior, production flag change, or legacy log rewrite until an approved server-visible UID-scoped device cutover protocol is designed and Emulator-tested.
+- Main also now contains the offline-package implementation from the earlier PR #318 work. The current `public/sw.js` adds a bounded timeout for audio pre-cache requests compared with the old branch; `pwaIntegration.test.ts` includes the corresponding timeout assertion. PR #318 is therefore superseded by current main rather than a candidate for merging.
+- Latest Production deployment is READY and its Git source SHA matches main `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`; see deployment record `dpl_dow5x6vXqdxHEp92pyyv9kRBkagh`. This is deployment evidence, not a completed live interactive smoke test.
