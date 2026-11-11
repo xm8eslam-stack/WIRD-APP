@@ -1,3 +1,15 @@
+# WIRD — أحدث ملحق تحقق (2026-11-11 16:35 +02:00)
+
+- main: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+- PR #362/#361 merged with exact-head Quality Gate PASS.
+- PR #363 latest head `5e33453bd076f32ebad9053f3e6d8bc4de8070fc`. Runs `43039009676`, `43039794349`, `43039853668` all failed at the sole job before any steps/logs were recorded. This is unresolved workflow startup/runner evidence, not a diagnosed test failure. Do not merge.
+- PR #360/#356 closed as superseded. Unique sync cutover protocol and audio storage contract are carried into docs PR #363.
+- PR #358 run `43030195498` and #359 run `43029617572` failed; both PR descriptions now explicitly block merging unchanged and point to the unified contract. #362's Playwright helper fix is now in main; combined implementation must rebase and rerun exact-head checks.
+- Production source SHA/live smoke and Google AI Studio sync remain NOT VERIFIED.
+
+> This note supersedes older status snapshots below.
+
+---
 # WIRD — أحدث ملحق تحقق (2026-11-11 16:30 +02:00)
 
 - main: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
