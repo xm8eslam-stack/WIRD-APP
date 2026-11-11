@@ -703,3 +703,11 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - A retry on the previous run reproduced the same pre-step failure with no logs. Do not keep retrying absent a changed runner condition or usable diagnostic evidence.
 - Combined Vercel status remains blocked by the free deployment rate limit. An earlier Preview READY event is not proof for this exact head or Production.
 - PR remains OPEN / DRAFT; merge blocked pending inspectable passing exact-head CI.
+
+
+## 2026-11-11 — Claim-level provenance gate for Seerah APIs
+
+- Inspected Islamic Network People `PersonDetail` and Events `EventDetail` OpenAPI schemas. Person biography, birth/death, honorifics and relationships have no per-claim bibliography field in the published schema. EventDetail has a generic source string, not necessarily a traceable book/edition/page citation. QuoteRef has source text and URL but does not guarantee full bibliographic or hadith-grading metadata.
+- Decision: Islamic Network People is currently a discovery/navigation registry only, not a publishable Seerah source by itself. Events is a calendar/event discovery source only; each date and event must be checked against a source. Every WIRD claim requires independent claim-level source metadata.
+- SeerahBook's stated provenance is stronger, but every source must still be opened and checked; dramatized/reconstructed wording cannot be turned into verbatim quotations.
+- Updated Seerah plan section 15 and unified roadmap with the stricter provenance gate. No API records were fetched or imported.
