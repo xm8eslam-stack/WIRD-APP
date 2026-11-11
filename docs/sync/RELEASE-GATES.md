@@ -1,48 +1,48 @@
 ## Verified operational checkpoint — 2026-11-11 (latest observed main)
 
-This checkpoint supersedes older status statements below when they conflict with the exact evidence here.
+This section supersedes earlier status notes below where they conflict with exact current evidence.
 
-### Current source, deployment, and CI
+### Current source, CI, and deployment
 
-- Current `main` SHA observed: `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` (PR #344 merge).
-- Vercel Production deployment for that exact SHA: `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m`, state `READY`, production target. This confirms deployment/source parity, not every live feature path.
-- Main Quality Gate run [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) completed `success` on the exact main SHA above, including desktop/mobile browser smoke.
-- PR #346 exact head `66119fe9837911f7b74df4fe80d946bd4f57d518` and PR #347 exact head `8958011feb2213ae6e76742bead9367e091b42f3` each had all preceding TypeScript/build/server checks passing while desktop/mobile browser smoke remained in progress (runs `43023399225` and `43023520608`). Neither PR is merged at this checkpoint.
+- Current `main` SHA: `d1d33384609bdc4a3c99120956901c92289d5f26` (PR #348 documentation-only merge).
+- Main Quality Gate [43025089584](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025089584) was still in progress at checkpoint; Firestore Emulator tests had passed and desktop/mobile browser smoke was active.
+- The last independently verified Vercel Production deployment remains READY on runtime SHA `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`. PR #348 changed documentation only; no runtime code changed in that merge. A separate Vercel deployment for docs-only SHA `d1d33384609bdc4a3c99120956901c92289d5f26` was not observed.
+- PR #353 keyboard-accessible revision dialogs: exact head `91f4ac7c9c5bc5590d70393d7b29f672fa95b3e1`, Quality Gate [43025536416](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025536416) in progress.
+- PR #354 Ruqyah proxy unexpected-failure handling: exact head `cc2e83b67b1fbc08b8bb52f1e424f07998ae04cc`, Quality Gate [43025241467](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025241467) in progress.
+- PR #351 IndexedDB quota-boundary recovery test: exact head `f259e084e381383168b1f1075064fe108d2c2cad`, Quality Gate [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) in progress.
+- PR #349 is this documentation update; rerun its exact latest head before merge.
 
 ### Firestore Rules deployment — confirmed
 
-- Manual workflow run [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) completed with `success` on source SHA `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674`.
-- Every step succeeded, including verified Quran data generation, Firestore Emulator tests, deployment target/credential validation, Firebase authentication, gcloud setup, deployed-rules parity/bootstrap verification, and **Deploy Firestore Security Rules only**.
-- Current `main` `firestore.rules` blob SHA is `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`, identical to the rules blob recorded for the successful deployment source. Therefore the currently reviewed rules file has not drifted from the successfully deployed rules.
-- This proves rules deployment, not all application-level sync scenarios.
+- Manual workflow [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) completed successfully, including verified Quran data generation, Firestore Emulator tests, target/credential validation, authentication, deployed-rules verification, and **Deploy Firestore Security Rules only**.
+- Current `main` `firestore.rules` blob SHA is `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`, identical to the deployed reviewed rules source. No redeployment is required at this checkpoint.
+- Production environment inventory (names/targets only; secrets not decrypted) confirms `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true`. No Production settings or secrets were changed during this review.
 
-### Production environment inventory (names/targets only)
+### Sync evidence and remaining engineering gates
 
-- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` — Production.
-- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` — Production.
-- `ISLAMICAPI_API_KEY` exists for both Preview and Production. Secret values were not decrypted or displayed.
-- No Production flags, secrets, Firebase rules, or user data were changed during this review.
+- Preserve the owner-reported PASS for the authenticated two-device sync path; it is bounded to the tested journey.
+- Automated tests already cover two-tab duplicate enqueue serialization, concurrent cross-tab monotonic event sequences, UID-scoped outbox isolation, stale-account operations aborting after scope changes, offline/online/foreground retry, IndexedDB close/reopen durability, and transaction-abort rollback.
+- PR #351 adds a focused simulated `QuotaExceededError` at the IndexedDB open boundary and verifies normalized messaging plus exact legacy recovery-source preservation. It does not yet simulate quota exhaustion during an active browser write transaction.
+- Still gated: tombstone/delete semantics and anti-resurrection, full browser-level simultaneous cross-tab sign-out/account-switch lifecycle, long-offline replay under real browser suspension, active-write quota exhaustion and recovery, IndexedDB blocked/versionchange recovery, queue stress, and full authenticated production journey automation.
+- Grouped `syncMeta` conflict choices remain atomic; unsupported choices and divergent legacy Ruqyah V1 baselines must continue to fail closed.
 
-### Bounded live-sync evidence and remaining gates
+### Offline scope — do not overclaim
 
-- Preserve the prior owner-reported PASS for the tested authenticated two-device sync path. Do not overgeneralize that result to every failure/recovery path.
-- Existing automated coverage already includes two-tab duplicate enqueue serialization, concurrent cross-tab monotonic event sequences, UID-scoped outbox isolation, stale-account operations aborting after scope change, offline/online/foreground retry behavior, IndexedDB close/reopen durability, and transaction-abort rollback.
-- Remaining engineering coverage includes tombstone/delete semantics and anti-resurrection (intentionally blocked), full browser-level simultaneous cross-tab sign-out/account-switch lifecycle, long-offline replay under real browser suspension, explicit QuotaExceededError injection and recovery, IndexedDB blocked/versionchange recovery, queue stress, and automated end-to-end coverage of authenticated production journeys.
-- Grouped `syncMeta` decisions must remain atomic; unsupported conflict choices and divergent legacy Ruqyah V1 baselines must continue to fail closed.
-- Keep the existing Production sync flags unchanged unless the owner explicitly requests a change. Do not claim that CI or a READY deployment proves every live sync scenario.
+- PR #348 added a research-backed plan for optional, user-initiated Quran audio downloads. It is a plan only, not an implemented feature.
+- Current offline support covers the app shell and explicitly prepared same-origin app assets, plus bounded opportunistic audio caching. It does not yet provide a managed full-Quran audio library. Uncached external tafsir/API/Firebase features remain network-dependent.
 
 ### Owner-only actions — intentionally deferred until engineering checks finish
 
 No owner action is required to deploy Firestore Rules; that deployment is already confirmed.
 
-At final release verification, ask the owner to do only the following if not already verified against the latest production build:
-1. Open the Production app on the primary device, sign in to the existing verified account, and confirm expected account data is present.
-2. On a second device/browser, sign in to the same account. Create a harmless test progress change on device A, confirm it appears on B, then make a separate harmless change on B and confirm it returns to A. Do not use destructive deletes as test data.
-3. With the test account still active, go offline, make a harmless local progress change, reconnect, and confirm the pending count drains and the change appears on the second device.
-4. Confirm the latest `main` has synchronized to Google AI Studio if that integration is part of the owner's workflow; this external sync is not observable from GitHub CI.
-5. Report any visible mismatch or permission error; never share passwords, service-account JSON, or API keys.
+At final verification, ask the owner to do these only if they have not already been verified against the latest Production runtime:
+1. Sign in on the primary device and confirm expected account data is present.
+2. Sign in to the same account on a second device/browser. Create a harmless progress change on A, verify it on B, then make a separate harmless change on B and verify it on A. Do not use destructive deletes as test data.
+3. Test a harmless offline progress change, reconnect, and verify the outbox drains and the change reaches the second device.
+4. Confirm Google AI Studio has synchronized from the latest `main`, if that integration remains part of the owner's workflow; GitHub CI cannot verify this external sync.
+5. Report any visible mismatch or permission error. Never share passwords, service-account JSON, or API keys.
 
-If these checks were already completed successfully after the latest Production runtime deployment, record the existing evidence instead of repeating them. These are the only owner-dependent steps currently identified; continue all repository-side work without waiting for them.
+If these checks were already completed successfully after the latest Production runtime deployment, record the existing evidence instead of repeating them. Continue repository-side work without waiting for owner actions.
 
 ---
 
@@ -367,9 +367,12 @@ This section is the current status and supersedes older historical statements wh
 - No Firestore rules/schema, production settings, secrets, or sync flags changed in PR #207.
 
 
-## 2026-11-11 — Documentation-only main advance after PR #348
+## 2026-11-11 — Latest deployment and runtime evidence
 
-- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
-- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
-- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
-- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
+- `main` at this checkpoint: `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188`; Vercel Production deployment `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` is `READY` on that exact SHA.
+- PR #342 and #344 are merged. PR #346 is a corrected test-only follow-up for the original #343 browser-test failures; its exact-head workflow run `43023399225` was still running at this checkpoint. Do not infer pass/fail until it completes.
+- Environment metadata was read with decryption disabled. `ISLAMICAPI_API_KEY` is configured for both Preview and Production; its value was not accessed. The two production sync flags remain `true`; no production settings were changed.
+- Runtime error aggregation for `/api/ruqyah` over seven days showed only the Node `DEP0169` deprecation warning (7 occurrences, 4 users). A 30-minute Production function-log query found no matching ruqyah errors. The Hobby retention limit blocked the requested 24-hour function-log window. This does not prove the reported HTTP 500 is fixed or explain its cause.
+- Current offline behavior: opt-in same-origin application asset package; audio remains opportunistic and bounded, not a user-managed full-Quran offline library. Tafsir/API/Firebase/auth are not certified offline.
+- Ruqyah integration remains numeric Quran locators only; render Quran text from the verified local corpus. Full-program recordings remain disabled pending content and redistribution-rights verification.
+- Distinguish CI success, deployment READY, owner-reported device tests, and live interactive smoke in release decisions. No live interactive smoke is claimed here.
