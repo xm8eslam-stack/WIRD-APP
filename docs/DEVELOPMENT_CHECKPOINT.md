@@ -344,3 +344,11 @@ On resumption:
 - A retry of the preceding run reproduced the same pre-step failure. Stop repeated retries until runner conditions change or usable logs appear.
 - Vercel status is still the free deployment-rate limit failure. Earlier READY preview is not evidence for this exact head or Production.
 - Merge remains blocked pending an inspectable, successful exact-head Quality Gate.
+
+
+## 2026-11-11 — Seerah claim-level provenance decision
+
+- Islamic Network People schema has no per-claim source field for biography/date/relationship; Events exposes a generic source string only. These are discovery/navigation aids, not sufficient publication sources.
+- SeerahBook states claim provenance, but primary source inspection is still required; dramatized/reconstructed wording is never a direct quotation.
+- WIRD content registry must store claim-level source, edition/page or stable URL, report status, date precision, reviewer and content version. Offline publication requires separate rights clearance.
+- Updated the specialist Seerah plan and unified roadmap. No external records ingested.
