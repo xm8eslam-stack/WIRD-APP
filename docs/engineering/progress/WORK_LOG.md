@@ -673,3 +673,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Refreshed `docs/CONTINUE_HERE.md` to avoid embedding a stale branch SHA. Always re-fetch PR #363's exact current head.
 - Latest verification attempt: no PR-triggered workflow run was returned for the latest docs commit at the time of inspection. Combined status showed Vercel `failure` with the known `build-rate-limit` target. This is not a code-test result. PR #363 remains Draft; exact-head Quality Gate is still required.
 - Documentation readback was performed for the new Seerah plan and updated roadmap/index files. Application tests remain NOT RUN because no application code changed.
+
+
+## 2026-11-11 — API terms and offline rights review
+
+- Expanded the Seerah plan after reviewing the official API terms pages.
+- Dorar's API terms require visible attribution and a clickable source URL, prohibit bulk extraction/republication/sub-licensing, limit cache to 24–48 hours, require server-side token protection, set a published 60 requests/minute limit, and require a reviewable preview before publication. This rules it out as a sole source for permanent offline content bundles; consider it only for approved, limited live lookup/verification.
+- SeerahBook's public developer page says no key/signup and IP-based limits, but its API reference did not render full endpoint/schema details during review; reuse, storage, offline, commercial rights, and numeric limits remain unresolved.
+- Islamic Network labels People/Events Early Access and says services are free/open, but the reviewed terms page gives no detailed content license for reuse, redistribution, translation, or offline storage; do not infer those rights from price/access language.
+- Decision remains: no API approved as a complete WIRD content corpus or offline bundle source. Continue only with limited read-only POC and rights clarification.
