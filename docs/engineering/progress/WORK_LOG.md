@@ -649,3 +649,18 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - The following documentation-only status commit changes the PR head; re-fetch it before any future gate or merge decision.
 
 ---
+
+
+## 2026-11-11 — Seerah learning feature research and roadmap
+
+- Added `docs/SEERAH_LEARNING_PLAN_AR.md` as the specialist plan for WIRD's proposed Seerah and Companions learning experience. It covers source/API research, editorial policy, interactive learning, quizzes, spaced review, data model, offline-first architecture, privacy/licensing gates, QA, and staged delivery.
+- Product priority explicitly recorded: memorization/revision remains first; Seerah learning is the second core feature.
+- Initial provider research:
+  - SeerahBook exposes read-only people/events/places/relationships and source provenance; its developer page says the content is drawn from a specific Seerah lecture series and cited classical sources. It is a POC candidate, not an automatic publication source.
+  - Dorar's Historical Encyclopedia API documents `GET /api/v1/history/search`, Arabic historical event search, bearer-token access, manual access review, and a request to review the consuming work before publication.
+  - Islamic Network advertises free/open no-key APIs and caching, while People and Events are marked Early Access. Coverage, Arabic data, individual provenance, terms, and uptime still need verification.
+  - Seerah Library and Sirah Atlas were reviewed as UX references, not approved content APIs.
+- No provider has been selected. No external API was integrated; no runtime code, user progress, Firestore Rules/data, secrets, environment variables, production settings, or deployments changed.
+- Documentation updates: unified roadmap, continuation queue, docs entry point, documentation catalog, and UX page/tool map now link to the Seerah plan.
+- Validation: documentation content and links were reviewed by readback. Application tests were NOT RUN because this change is documentation-only. PR #363's previously observed CI state was BLOCKED/UNRESOLVED due to a job failing before recorded steps/logs; re-fetch the new exact PR head and gate.
+- Next: complete the current docs PR gate first; then perform a limited, read-only API coverage/licensing POC and prepare a reviewed Arabic content sample before production implementation.
