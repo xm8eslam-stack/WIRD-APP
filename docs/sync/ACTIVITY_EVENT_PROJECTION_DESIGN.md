@@ -105,3 +105,13 @@ If a safe per-device watermark cannot be proven with the existing journal metada
 ## Decision
 
 Proceed first with the pure reducer and deterministic tests after the cutover contract is reviewed. Do not yet wire event projection into production sync: the existing aggregate format cannot distinguish historical sessions from independently completed offline sessions without a proven per-device migration watermark.
+
+
+## 2026-11-11 — Latest continuation update after main release
+
+- Current main: `ff8665a67fee2252e91d94dc2cba9e6a11937b5c` (PR #332 merged).
+- The pure reducer from `4669db79` remains isolated and deterministic; no storage/cloud wiring is active.
+- Journal cutover audit: local deviceId/sequence/lastProjectedSequence and local outbox acknowledgements exist, but no server-visible per-device registry or old-client write gate proves all offline devices drained pre-cutover legacy mutations. The local legacy import fingerprint is not global acknowledgement. Existing session completion still writes date-keyed DailyLog snapshots; session.completed does not capture localDate + timezoneOffsetMinutes.
+- Decision unchanged: no phase-2 runtime projection, Firestore Rules/schema change, tombstone/delete behavior, production flag change, or legacy log rewrite until an approved server-visible UID-scoped device cutover protocol is designed and Emulator-tested.
+- Main also now contains the offline-package implementation from the earlier PR #318 work. The current `public/sw.js` adds a bounded timeout for audio pre-cache requests compared with the old branch; `pwaIntegration.test.ts` includes the corresponding timeout assertion. PR #318 is therefore superseded by current main rather than a candidate for merging.
+- Latest Production deployment is READY and its Git source SHA matches main `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`; see deployment record `dpl_dow5x6vXqdxHEp92pyyv9kRBkagh`. This is deployment evidence, not a completed live interactive smoke test.
