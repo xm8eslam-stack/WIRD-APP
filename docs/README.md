@@ -9,6 +9,9 @@
 4. [agent-handoffs/LATEST-GOOGLE-STUDIO.md](./agent-handoffs/LATEST-GOOGLE-STUDIO.md) — تسليم Google AI Studio.
 5. [engineering/progress/WORK_LOG.md](./engineering/progress/WORK_LOG.md) — سجل العمل التاريخي.
 
+## الفهرس التفصيلي
+راجع [DOCUMENTATION_CATALOG.md](./DOCUMENTATION_CATALOG.md) لمعرفة وظيفة كل ملف توثيقي موجود.
+
 ## خريطة المجلدات
 | المسار | المحتوى |
 |---|---|
