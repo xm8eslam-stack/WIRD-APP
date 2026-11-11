@@ -87,7 +87,7 @@ export async function runOfflineQuranAudioManifestStoreTests(): Promise<{ passed
     await store.close();
   });
 
-  await test('removes one reciter/ayah record without touching another reciter', async () => {
+  await test('removes one manifest record without touching another reciter', async () => {
     const store = createStore();
     await store.putVerified({
       reciterId: 'ar.alafasy', surahNumber: 1, ayahNumber: 1, globalAyahNumber: 1,
@@ -99,7 +99,7 @@ export async function runOfflineQuranAudioManifestStoreTests(): Promise<{ passed
       url: buildQuranAyahAudioUrl('ar.husary', 1), byteLength: 12000,
       savedAtMs: 1700000000000, verified: true
     });
-    await store.remove('ar.alafasy', 1);
+    await store.removeManifestEntry('ar.alafasy', 1);
     const records = await store.listVerified();
     assert(records.length === 1 && records[0].reciterId === 'ar.husary',
       'Deleting one reciter entry must preserve the other reciter entry for the same ayah.');
