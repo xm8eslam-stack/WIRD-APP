@@ -63,7 +63,7 @@ Production source SHA وlive smoke ومزامنة Google AI Studio: NOT VERIFIED
 
 ## المرحلة 2 — تنزيل صوت القرآن offline
 1. Range planner — مدمج: نطاق الآيات من metadata المحلية وقائمة قراء معتمدة.
-2. Manifest store — قيد المراجعة: بيانات المهام والآيات المتحققة محليًا.
+2. Manifest store — تصميم موحد مقترح في `offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md`: jobs + files + jobItems في IndexedDB واحد، وCache Storage للبايتات فقط. لا تدمج #358/#359 كما هما.
 3. Downloader — تنزيل محدود بعد اختيار المستخدم، مع حجم/عدد/توازي محدود وtimeout/retry.
 4. Integrity — تحقق من HTTP/content type/الحجم وعدم إعلان الاكتمال قبل تحقق كل ملف.
 5. Lifecycle — pause/resume/cancel، إعادة فتح، تنظيف الملفات الجزئية.
