@@ -12,7 +12,7 @@
 | Vercel status على main SHA | SUCCESS | GitHub status أخضر؛ لا يثبت وحده أن Production نشر نفس SHA أو أن live smoke نجح |
 | Production source SHA | NOT VERIFIED | لا يوجد في هذه المراجعة دليل كافٍ يطابق Production مع `8dd2152` |
 | Google AI Studio sync | NOT VERIFIED | يحتاج تحققًا مستقلًا من اتصال المشروع بفرع main |
-| PR #360 | IN PROGRESS | فحص WIRD Quality Gate run `43029173230` كان جاريًا؛ فرعه مبني على main أقدم `4b29904` |
+| PR #360 | IN PROGRESS | فحص WIRD Quality Gate run `43030765045` pending على آخر رأس للفرع `2ad93b0`؛ فرعه ما زال خلف main بcommit واحد |
 | PR #358 | CI PASS | Quality Gate run `43028986222` completed successfully on the observed PR head; implementation remains unmerged and needs architecture review |
 | PR #359 | IN PROGRESS | Quality Gate run `43029617572` جارٍ؛ تنفيذ manifest بيانات الملفات الموثقة |
 | PR #356 | CI PASS | Quality Gate run `43029328133` succeeded; review documentation freshness/overlap before merge |

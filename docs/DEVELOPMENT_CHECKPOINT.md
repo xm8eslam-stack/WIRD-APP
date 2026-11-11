@@ -6,7 +6,7 @@
 - Latest main SHA observed in this review: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
 - PR #353 Quality Gate run `43028294037` completed successfully on its exact PR head. Do not mislabel this as an independently observed post-merge main-only run.
 - GitHub Vercel status on main SHA `8dd2152`: success. Exact Production deployment source SHA and live smoke were not independently verified.
-- PR #360 documentation hub/roadmap: updated head `024020da6310088560a6e5bca3c8ee3ec7b6a6b5`; Quality Gate run `43030365657` was in progress at last observation.
+- PR #360 documentation hub/roadmap: updated head `2ad93b0225a6ab22877b99a8f95128cf8963d091`; Quality Gate run `43030765045` was pending at last observation.
 - PR #358 offline download job/item store: Quality Gate run `43028986222` completed successfully; PR remains open/unmerged pending architecture review.
 - PR #359 offline audio manifest metadata store: Quality Gate run `43029617572` remained in progress at last observation.
 - PR #356 sync documentation update: Quality Gate run `43029328133` completed successfully; PR remains open and its older checkpoint text must be reconciled with current main.
