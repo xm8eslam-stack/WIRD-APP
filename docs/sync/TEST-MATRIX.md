@@ -1,18 +1,17 @@
-# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (latest observed release)
+# CURRENT VERIFIED TEST COVERAGE — 2026-11-11 (latest observed main)
 
-This checkpoint supersedes older status summaries below where they conflict with the exact evidence here.
-
-| Scope | Exact SHA / source | Run / deployment | Result |
+| Scope | Exact SHA | Run / deployment | Result at checkpoint |
 |---|---|---|---|
-| Current main | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Quality Gate [43023291577](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023291577) | Success; desktop/mobile browser smoke passed |
-| Current main Production | Same SHA | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY |
-| Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | Manual run [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; all steps including rules-only deploy |
-| PR #346 | `66119fe9837911f7b74df4fe80d946bd4f57d518` | [43023399225](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023399225) | In progress at checkpoint |
-| PR #347 | `8958011feb2213ae6e76742bead9367e091b42f3` | [43023520608](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43023520608) | In progress at checkpoint |
+| Main after PR #348 | `d1d33384609bdc4a3c99120956901c92289d5f26` | [43025089584](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025089584) | In progress; Firestore Emulator passed, browser smoke active |
+| Last verified Production runtime | `3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188` | Vercel `dpl_AU9ATDJEsm99z4CWir3WLvvdn32m` | READY; PR #348 is docs-only |
+| Firestore Rules deployment | `5de1c2cd0eefa34d6c35d4c039ef2d3ecf8bb674` | [42691610063](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/42691610063) | Success; rules-only deploy confirmed |
+| PR #353 revision dialog accessibility | `91f4ac7c9c5bc5590d70393d7b29f672fa95b3e1` | [43025536416](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025536416) | In progress |
+| PR #354 Ruqyah proxy failure handling | `cc2e83b67b1fbc08b8bb52f1e424f07998ae04cc` | [43025241467](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43025241467) | In progress |
+| PR #351 quota-boundary recovery test | `f259e084e381383168b1f1075064fe108d2c2cad` | [43024968443](https://github.com/xm8eslam-stack/WIRD-APP/actions/runs/43024968443) | In progress |
 
-The currently deployed `firestore.rules` source is verified by blob SHA: current main and the successfully deployed reviewed rules both have `6c9cbf1e7a1ebe4325240d751d40aec9efabc760`. A successful rules deployment is distinct from a successful application sync journey.
+Automated sync coverage already includes multi-tab duplicate enqueue serialization, concurrent monotonic event sequences, UID isolation, stale-account aborts, offline/online/foreground retries, database reopen durability, and atomic transaction rollback. PR #351 adds open-boundary quota error normalization and legacy-source preservation; active-write browser quota fault injection remains untested.
 
-Production environment inventory (without decrypting secrets) confirmed both revisioned-sync and remote-projection flags are `true` for Production. Automated tests already cover two-tab duplicate enqueue serialization, concurrent monotonic sequences, UID isolation, stale-account aborts, offline/online/foreground retry, close/reopen durability, and atomic rollback. Still pending: browser-level simultaneous cross-tab auth lifecycle, real long-offline replay, explicit quota and blocked/versionchange recovery, stress, and destructive-delete anti-resurrection semantics. The prior owner-reported two-device PASS remains bounded evidence.
+Firestore rules and Production flags are verified separately from end-to-end sync. The owner-reported two-device PASS remains bounded evidence. Full offline Quran audio downloads remain a documented plan, not an implemented feature.
 
 ---
 
@@ -191,11 +190,3 @@ Each run's complete job finished with conclusion `success`. The Quality Gate cov
 - `activityEvents` is still a daily aggregate snapshot. PR #325's base fingerprint blocks stale replacement but does not merge independent activity histories.
 - New design: `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code or Firestore Rules changed. Required before implementation: exact legacy baseline/cutover semantics, local calendar date/time-zone capture, idempotent event IDs, offline-device conflict preservation, and backup/restore compatibility.
 - Keep tombstones and whole-snapshot conflict choices fail-closed until collection-specific semantics and anti-resurrection tests pass.
-
-
-## 2026-11-11 — Documentation-only main advance after PR #348
-
-- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
-- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
-- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
-- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
