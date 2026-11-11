@@ -1,14 +1,17 @@
-# WIRD — Google AI Studio handoff (live checkpoint 2026-11-12)
+# WIRD — Google AI Studio handoff (live checkpoint 2026-11-12 01:23 +02:00)
 
 - Canonical source remains GitHub `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
-- Vercel Production is `READY` on the exact same SHA; deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`. This is deployment evidence only, not a live browser smoke.
-- Main Quality Gate run `43079260528` failed before recording steps; logs are unavailable (`BlobNotFound`). No test-level failure or successful gate is evidenced.
-- Documentation PR #363 is OPEN / DRAFT / HOLD. Its observed old head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was based on old main `2c9aa972...`; exact-head run `43057118522` failed before steps and Vercel was rate-limited. The branch was reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. A link-fix follow-up changes the head; re-fetch it before review.
-- PR #361/#362/#354 are merged and included in current main.
-- PR #364 extracts Advisor chat safety from PR #2 without copying the old UI/retention branch. Head `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; run `43117641418` failed before steps/logs (`BlobNotFound`), so no test-level result exists. Vercel Preview deployment succeeded; keep Draft. PR #358/#359 remain overlapping unmerged proposals; build one unified offline-audio store, never merge them separately.
-- Production sync flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are currently `true`. Do not change them; obtain owner decision before altering production settings.
-- Google AI Studio synchronization itself is NOT VERIFIED. Do not claim that Studio has pulled this SHA unless separately confirmed in the Studio UI.
-- Seerah product direction is a continuous historical book (parts → linked chapters → narrative scenes); optional maps, character/place cards, timeline, comprehension pauses, and quizzes must not interrupt reading. See `SEERAH_LEARNING_PLAN_AR.md` §§16–17 and `UX_PRODUCT_ROADMAP_AR.md` §§6–7.
+- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA. This is deployment evidence only, not live browser or sync smoke.
+- Main Quality Gate run `43079260528` failed before steps/logs (`BlobNotFound`); no test-level diagnosis or successful gate is evidenced.
+- PR #363 is OPEN / DRAFT / HOLD, base `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, exact head `484fc70e9b4fbcb7f938be944122b931bfcdd3ee`, 28 documentation-only files. Exact-head run `43118098080` failed before steps (`steps=null`); logs unavailable (`BlobNotFound`); no test-level diagnosis. Vercel Preview Comments succeeded and a Ready Preview comment exists, but neither replaces the gate.
+- PR #361/#362/#354 are merged and main is a descendant of their merge commits.
+- PR #358/#359 remain Draft/unmerged and overlap in IndexedDB manifest ownership. Their last runs passed unit/Emulator/TypeScript/build but failed in the revision browser flow because the guest-entry helper did not reach the revision page. #362 fixed the shared helper; the old heads still need a unified replacement on current main. Do not merge either alone.
+- PR #364 is OPEN / DRAFT; its Quality Gate failed before steps/logs (`BlobNotFound`), while Vercel Preview succeeded. Keep Draft.
+- PR #2 is 115 commits ahead and 469 behind main; do not merge wholesale. PR #364 is a bounded Advisor security extraction candidate.
+- Production sync flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` were observed as `true` in read-only inventory. Do not change them without explicit owner approval.
+- Google AI Studio synchronization itself is NOT VERIFIED. Do not claim Studio has pulled this SHA without separate confirmation in the Studio UI.
+- Seerah direction remains a continuous book (parts → linked chapters → narrative scenes), with claim-level sources, content versions, saved reading anchors, and optional context aids. See `SEERAH_LEARNING_PLAN_AR.md` §§16–17 and `UX_PRODUCT_ROADMAP_AR.md` §§6–7.
+
 
 ---
 ## Seerah API research — follow-up 2026-11-11

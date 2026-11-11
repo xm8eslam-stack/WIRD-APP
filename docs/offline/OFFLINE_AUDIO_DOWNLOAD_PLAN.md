@@ -1,14 +1,12 @@
 # WIRD — Offline Quran audio download plan
 
-**Live checkpoint:** 2026-11-12 00:55 +02:00  
+**Live checkpoint:** 2026-11-12 01:23 +02:00  
 **Current main:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` — Vercel Production `READY` on the same SHA.
 - PR #355's pure range planner is merged; PR #361 keeps EveryAyah network-stream-only and cleans legacy cache entries; PR #362's guest-entry Playwright wait fix is merged.
 - PR #358 and #359 remain OPEN / DRAFT / unmerged. Their exact-head runs failed only at the desktop/mobile revision Playwright flow because the helper never navigated from guest entry; logs show it waited for the add-portion button. Other test suites, TypeScript, Firestore emulator, and production build passed on the observed heads.
 - Do not merge either manifest implementation as-is. Both are based on old main `4b299042...` and overlap in IndexedDB ownership. Build one implementation on current main using `OFFLINE_AUDIO_STORAGE_CONTRACT.md`.
 - No downloader, persistent manifest, Cache Storage coordination, download UI, or real-device offline playback is claimed as implemented. No runtime code changed in this documentation checkpoint.
 - Re-test interruption/recovery, shared files across jobs, deletion reference safety, quota, orphan/missing entries, sync conflicts, browser eviction, and multi-tab behavior before release.
-
----
 
 ---
 # WIRD — Optional Offline Quran Audio Downloads

@@ -1,26 +1,31 @@
-# WIRD — Current checkpoint (2026-11-12 00:55 +02:00)
+# WIRD — Current checkpoint (2026-11-12 01:23 +02:00)
 
-## Exact repository / release evidence
+## Exact repository and release evidence
 - Current `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
-- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`: `READY`, source SHA exactly matches main; alias `wird-app.vercel.app`. No live browser smoke was performed.
-- Main Quality Gate run `43079260528`, job `130727161970`: failed with `steps: null`; log retrieval returned `BlobNotFound`. This is unresolved job-start/runner evidence, not a diagnosed test failure.
-- PR #363's previous head `7e1f3e4b28a6825c06aebf54e6eb4f63a9a651c6` was reconciled with current main by merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628` (main `8e98aa...` is now a parent); GitHub reports `mergeable=true`, base SHA `8e98aa...`, 28 documentation-only changed files. The merge commit showed Vercel Preview Comments success and Vercel deployment pending. The reconciled head `d79805b44b26f4ea73e77ffac21503255983b9c1` then received Quality Gate run `43117295374`, job `130848449010`, which failed before steps; logs returned `BlobNotFound`, so there is no test-level diagnosis. Two relative links in `CURRENT_STATUS.md` were corrected, and the 28 changed docs now pass a second relative-link check. This documentation follow-up creates a new head; re-fetch it before any gate/merge decision. Keep Draft/HOLD.
-- PR #361 merged at `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; PR #362 merged at `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`. Current main is a descendant of both.
-- PR #354 merged at `8c49f716726e329189a1141c28a69059543ea5ba`; current main is a descendant. Its proxy hardening does not diagnose the original Ruqyah 500.
-- PR #358/#359 remain Draft/unmerged. Their observed Playwright failure waited for the revision-page add-portion button while the guest-entry flow had not navigated; #362 fixes the helper. Both old branches need replacement by one combined implementation on latest main.
-- PR #2 remains Draft/open, 115 ahead / 469 behind. Do not merge wholesale; its isolated Advisor chat/security extraction is now PR #364.
+- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`: `READY`, source SHA exactly matches main; alias `wird-app.vercel.app`. No live browser smoke or authenticated sync smoke was performed.
+- Main Quality Gate run `43079260528`: job ended before steps were recorded; logs returned `BlobNotFound`. This is unresolved workflow/job-start evidence, not a diagnosed test failure or a pass.
+- PR #363: OPEN / DRAFT / HOLD, base main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, exact head `484fc70e9b4fbcb7f938be944122b931bfcdd3ee`, mergeable=true, 28 documentation-only files (1,871 additions / 8 deletions). Exact-head run `43118098080`, job `130851207499`, completed failure after ~2 seconds with `steps=null`; job log retrieval returned `BlobNotFound`. One annotation is reported but was not retrievable through the available endpoint. No test-level diagnosis exists. Vercel Preview Comments passed and a Preview Ready comment exists; neither substitutes for Quality Gate or Production verification.
+- PR #361 merged at `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`; PR #362 merged at `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`; PR #354 merged at `8c49f716726e329189a1141c28a69059543ea5ba`. GitHub compare confirms current main is a descendant of each.
+- PR #358 head `4970b87d6ba712d3899093f4e8dd297bef17985e`, run `43030195498`: automated tests, Rules Emulator, TypeScript, and build passed; desktop Playwright failed because the guest flow had not navigated to revision and the add-portion button was absent (159 passed / 1 failed / 2 skipped).
+- PR #359 head `7d31af20fe9cdc69aee4855acaf02e278fbf8b70`, run `43029617572`: same setup issue on desktop/mobile (158 passed / 2 failed / 2 skipped); other configured suites, Emulator, TypeScript, and build passed. PR #362 fixes the shared helper, but these old heads have not been re-run after that merge.
+- PR #358/#359 remain OPEN / DRAFT and overlap in IndexedDB manifest ownership. Neither is safe to merge alone. The combined jobs/files/jobItems + Cache Storage design remains a proposal, not an implementation.
+- PR #364 remains OPEN / DRAFT on `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; run `43117641418` failed before steps/logs (`BlobNotFound`), while Vercel Preview succeeded. No Quality Gate pass is evidenced.
+- PR #2 remains highly divergent: 115 ahead / 469 behind main; do not merge wholesale.
 
-## Production and owner boundary
-- Read-only Vercel inventory confirms `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` in Production. No values/settings were changed. Owner decision to disable both until release gates pass is outstanding.
-- No Firebase Rules/data, production secrets/settings, sync flags, manual deployment, or Google AI Studio sync action was performed.
-- Google AI Studio synchronization, live browser smoke, authenticated production A↔B, and real-device offline audio remain NOT VERIFIED.
+## Product and technical checkpoints
+- Seerah §§16–17 and UX §§6–7 specify a continuous book (parts → linked chapters → narrative scenes), claim-level sources, content versions, reading anchors, and optional aids. No Seerah reader/content is implemented or published.
+- Offline audio remains design-only. EveryAyah stays stream-only; the approved Al Quran Cloud allowlist is not blanket permission for other providers.
+- PR #354 proxy hardening is merged, but the original Ruqyah HTTP 500 root cause and live index response remain unverified.
+- Read-only Vercel inventory has shown both Production sync flags as `true`. No settings, secrets, Firebase Rules/data, sync flags, or user data were changed. Owner decision remains outstanding.
+- Google AI Studio sync, authenticated production A↔B, live browser smoke, and real-device offline playback remain NOT VERIFIED.
 
 ## Next safe work
-1. Re-fetch the new PR #363 head after this documentation update; review all 28 changed files and run the full exact-head gate. Do not merge on a failed/unresolved gate.
-2. Review PR #364's bounded history/prompt safety diff and exact-head Quality Gate; keep main's newer retention/session logic.
-3. Build one offline audio store from the contract (`jobs`, canonical `files`, `jobItems`, Cache Storage bytes) with cross-job sharing and crash/quota/reconciliation tests.
-4. Re-test Ruqyah index/API in Production only through permitted read-only diagnostics; do not change keys/settings.
-5. Continue sync tombstone/cutover and Seerah claim-level content research without activating production sync or publishing unreviewed history.
+1. Correct the remaining documentation inconsistencies on the PR #363 branch, then fetch the new exact head and wait for a complete, recorded Quality Gate.
+2. Keep #363 Draft/HOLD until the full exact-head gate passes and the entire diff is reviewed; Vercel Preview is not enough.
+3. Design one offline-audio implementation on latest main, with shared-file reference safety, cross-store crash recovery, quota/orphan/missing-cache, browser-eviction, and sync-isolation tests.
+4. Continue Ruqyah root-cause verification and sync cutover research without production changes.
+5. Inspect current reader components before any Seerah prototype; do not create historical placeholder text or API ingestion.
+
 
 ---
 ## Latest exact-head CI observation — 2026-11-11 16:45 +02:00

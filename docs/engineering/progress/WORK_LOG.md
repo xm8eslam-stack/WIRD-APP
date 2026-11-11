@@ -1,3 +1,22 @@
+## 2026-11-12 01:23 +02:00 — PR #363 exact-head review and documentation consistency
+
+- Re-fetched main as `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on that exact SHA. No live browser smoke or authenticated A↔B sync test was performed.
+- Re-fetched PR #363: OPEN / DRAFT / mergeable=true; base main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; exact head `484fc70e9b4fbcb7f938be944122b931bfcdd3ee`; 28 documentation-only files (1,871 additions, 8 deletions). Exact-head run `43118098080`, job `130851207499`, completed failure in about two seconds with `steps=null`; log download returned `BlobNotFound`. One annotation was reported but could not be retrieved. This is unresolved workflow/job-start evidence, not a diagnosed test failure and not a pass. Vercel Preview Comments succeeded and the PR timeline showed a Ready Preview; no Production deployment or live smoke is inferred.
+- Reviewed the complete changed-file list and per-file patches for the 28 PR files, plus the current canonical continuation, roadmap, checkpoint, catalog, owner actions, handoff, offline contract, Seerah §§16–17, and UX §§6–7. This was a targeted documentation consistency review, not a line-by-line audit of all 43 Markdown files.
+- Found current documentation inconsistencies: the UX page/tool map still described Seerah as short lessons/quizzes; README had two conflicting introductory status lines; roadmap repeated its disclaimer; offline plan had a duplicate separator; offline storage test contract did not explicitly test sync/account isolation. Corrected these in this follow-up.
+- PR #358 run `43030195498`: 159 Playwright passed, 1 desktop revision-flow failure, 2 skipped; unit tests, Firestore Emulator, TypeScript, build passed. The expected add-portion button was absent because guest navigation had not reached the revision route.
+- PR #359 run `43029617572`: 158 Playwright passed, 2 desktop/mobile revision-flow failures, 2 skipped; other configured suites, Emulator, TypeScript, and build passed. Both are old overlapping manifest proposals; #362 fixes the guest-entry helper, but neither old head has been re-run after that fix. No combined offline downloader/manifest implementation was made.
+- Confirmed by GitHub compare that main descends from PR #361 (`2c9aa972...`), #362 (`cfe9458...`), and #354 (`8c49f716...`). #354 proxy hardening does not prove the original Ruqyah 500 is fixed.
+- PR #364 remains Draft; its run `43117641418` failed before steps/logs (`BlobNotFound`), Preview succeeded. PR #2 is diverged 115 ahead / 469 behind; no wholesale merge.
+- No runtime code, Quran corpus, Firebase Rules/data, Production settings, secrets, sync flags, manual deployment, or Google AI Studio sync was changed or claimed.
+
+### Next
+1. Re-fetch PR #363's new head after this documentation commit; keep Draft/HOLD until every required exact-head Quality Gate step runs and passes.
+2. Do not merge #358/#359 separately; build a single implementation on current main only when cross-store recovery and browser tests can be run safely.
+3. Continue Ruqyah 500/index diagnosis and sync cutover work with read-only evidence; leave owner-only Production actions pending.
+4. For Seerah, inspect reusable reader/router/storage components before a placeholder-only UI prototype; no unverified historical text or API ingestion.
+
+---
 ## 2026-11-12 — Final documentation QA and Advisor security extraction
 
 - Current main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production is READY on the exact same SHA. Main Quality Gate run `43079260528` failed before steps; logs unavailable (`BlobNotFound`).

@@ -81,6 +81,9 @@ Never claim cross-store atomicity. A crash between steps 3 and 4 may leave an or
 8. Invalid host, redirect, HTML response, wrong content type, empty body, oversized response, wrong coordinates, and unapproved reciter all fail closed.
 9. Cross-tab database upgrade/versionchange and blocked-open recovery.
 10. Deletion of jobs/files with shared references, retries, and stale orphan cleanup.
+11. Account/sync isolation: cloud sync, backup restore, account deletion, or a sync conflict must not mutate or resurrect local audio jobs/files; verify the device-local ownership boundary and no cross-account metadata leakage.
+12. Browser storage limits: persistent-storage denial, browser-managed Cache Storage eviction, private-browsing restrictions, and quota changes must produce an honest missing/partial state without false completion.
+13. Multi-tab races: two tabs enqueue/resume/cancel the same job concurrently; one canonical file is retained and progress remains monotonic without duplicate bytes or unsafe deletion.
 
 ## 9. Implementation sequence
 

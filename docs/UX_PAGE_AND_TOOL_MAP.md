@@ -27,33 +27,32 @@ Baseline: current repository UX inventory reviewed 2026-11-11. Proposed destinat
 | Settings | `settings` | Profile, preferences, backup, account and sync controls | 10 |
 | Brand showcase | `showcase` | Internal design reference; keep out of normal navigation | Exclude |
 
-## Proposed second core learning feature — Seerah and Companions
+## Proposed second core learning feature — كتاب «حكاية السيرة»
 
-**Status:** planned; not an existing route or feature yet.  
+**Status:** planned; not an existing route or implemented feature.  
 **Product priority:** second after Quran memorization/revision.  
 **Specialist plan:** `SEERAH_LEARNING_PLAN_AR.md`.
 
-Proposed experience:
-1. Journey home: current stage, continue lesson, completed stages, small optional daily goal.
-2. Stage/lesson reader: short sections, learning objective, source references, previous/next, bookmarks and resume.
-3. Person profiles: names/kunyas/roles and sourced links to events, places, and other people.
-4. Event timeline: filters by phase/person/place and clear approximate/disputed date labels.
-5. Verified map: only locations with reviewed coordinates and provenance.
-6. Lesson quiz: 3–7 questions with answer explanations and sources.
-7. Stage and cumulative tests: chronology, matching, multiple choice, recall, and mixed review.
-8. Mistake review: weak topics and spaced re-practice without punitive streaks.
-9. Progress view: lesson completion and mastery kept separate from Quran memorization/reading metrics.
-10. Offline packs: optional approved content bundles with visible version and size.
+The product is a connected historical book, not a sequence of short lessons or quiz cards:
+
+1. **Book home:** introduce the scope and show parts, current reading position, chapter progress, and a clear resume action.
+2. **Part introduction and contents:** explain the historical period and its context, then list linked chapters in an editorially reviewed order.
+3. **Continuous chapter reader:** present connected Arabic prose divided into narrative scenes with quiet headings; do not turn each paragraph into a separate card or force a fixed scene length.
+4. **Optional reading-and-learning layer:** open sourced people/place/event context, maps, timeline, or a comprehension pause without interrupting the text or losing the reading anchor.
+5. **Chapter ending:** concise connected summary, why the events matter, a bridge to the next chapter, and optional reviewed questions.
+6. **Progress:** save part/chapter/scene plus a stable text anchor, scroll position, and contentVersion; this is reading progress, not Quran memorization or mastery.
+7. **Offline:** optional bundles only for reviewed content with explicit reuse/storage rights and visible version/size.
 
 ### Seerah UX and content checklist
-- The API is a data provider, not a religious/historical authority; no provider is selected yet.
-- Every lesson/claim/question must have source references, editorial state, and content version.
-- Disputed narrations and approximate dates must be labelled or excluded from categorical quizzes.
-- Never invent dialogue, quotes, chronology, locations, or causal links.
-- No unlicensed book text or modern translations; review display, cache, translation, and offline rights.
-- Local-first reading and progress; sync only compact user progress, not duplicate public book content in Firestore.
-- No leaderboards or shaming; reward learning and review gently.
-- Arabic RTL, long names, diacritics, screen readers, reduced motion, touch, and offline states are first-class.
+- An API is a discovery/provider channel, not a historical authority; no provider is approved yet.
+- Every narrative body block and atomic claim, date, quotation, map marker, question, answer, and explanation must have auditable source references, editorial status, and content version.
+- Disputed reports and approximate dates must be labelled; unresolved claims must not appear as categorical quiz answers.
+- Never invent dialogue, emotions, intentions, quotations, chronology, locations, or causal links. Never present reconstructed wording as verbatim quotation.
+- No unlicensed book text or modern translations; review display, caching, translation, and offline rights.
+- Local-first reading progress and stable anchors; sync only compact user progress after a separate safety gate, not public book content or private notes.
+- No forced quizzes, autoplay, popups, leaderboards, or shaming. The reader must remain usable when all optional aids are closed.
+- Arabic RTL, long names, diacritics, screen readers, reduced motion, large text, touch, reload, and offline states are first-class.
+- No figurative depictions of the Prophet ﷺ or Companions.
 
 ## Tool-specific audit checklist
 

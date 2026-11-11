@@ -2,7 +2,6 @@
 
 > آخر مراجعة مركزية: 2026-11-12. ابدأ دائمًا بـ `CONTINUE_HERE.md` ثم `DEVELOPMENT_ROADMAP.md`؛ SHA/PR/CI/Production حالة متغيرة ويجب إعادة جلبها من GitHub/Vercel.
 
-> نقطة الدخول الوحيدة لفهم المشروع واستكماله. آخر مراجعة: 2026-11-11. المصدر البرمجي: `xm8eslam-stack/WIRD-APP` / `main`.
 
 ## ابدأ من هنا
 1. [CONTINUE_HERE.md](./CONTINUE_HERE.md) — الحالة الدقيقة الحالية والخطوة التالية.
