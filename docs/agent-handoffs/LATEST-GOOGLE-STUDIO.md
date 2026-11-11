@@ -89,3 +89,14 @@ Next: owner decision on Production sync flags and public Vercel access; add the 
 - Google AI Studio synchronization remains unverified.
 
 Next: implement the pure activity-event reducer and its migration/replay tests only after the baseline cutover contract is accepted; keep production sync flags, Firestore Rules, and tombstone behavior unchanged.
+
+
+## 2026-11-11 — Continuation checkpoint (after pure activity reducer)
+
+- Current main at inspection: `4669db79b535b13acc4b683d7052e7df5d4c9eca`.
+- PR #331 was closed as superseded; PR #332 is the current-main port for memorization display width/reset/selected-ayah-follow. PR #332 is open; its exact-head checks were not available in this inspection, so do not merge or claim validation.
+- Main includes `4669db79`: pure immutable activity-event projection reducer and focused tests registered in the central test runner. It validates captured local dates/offsets, Quran coordinates, event IDs/collisions, baseline identity, idempotency, deterministic ordering, and overflow. It intentionally has no storage or sync wiring.
+- Main's Vercel commit status for `4669db79` reports `success`; this alone does not establish a matching Production deployment or live smoke. Latest handoff's documented Production SHA predates these main commits; verify the exact current deployment separately before any release claim.
+- Phase 2 local journal/outbox integration remains blocked by the migration contract: prove a per-device outbox watermark that distinguishes pre-cutover offline legacy activity from events already represented in the baseline. Do not use a timestamp-only cutover, merge daily aggregates by addition, alter Firestore rules/schema, enable production sync flags, or rewrite/delete legacy logs.
+- Next: audit existing IndexedDB journal mutation IDs/sequences, backup/export/import compatibility, and account-scope lifecycle to determine whether a provable watermark exists. If not, document the blocking invariant and redesign before runtime changes.
+- No production settings, secrets, sync flags, Firestore rules/schema, or user data changed in this continuation.
