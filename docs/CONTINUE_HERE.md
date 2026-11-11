@@ -15,7 +15,7 @@
 | PR #360 | IN PROGRESS | فحص WIRD Quality Gate run `43029173230` كان جاريًا؛ فرعه مبني على main أقدم `4b29904` |
 | PR #358 | CI PASS | Quality Gate run `43028986222` completed successfully on the observed PR head; implementation remains unmerged and needs architecture review |
 | PR #359 | IN PROGRESS | Quality Gate run `43029617572` جارٍ؛ تنفيذ manifest بيانات الملفات الموثقة |
-| PR #356 | IN PROGRESS | Quality Gate run `43029328133` جارٍ؛ تحديث وثائق المزامنة، وقاعدة PR أقدم من main |
+| PR #356 | CI PASS | Quality Gate run `43029328133` succeeded; review documentation freshness/overlap before merge |
 | PR #357 | CLOSED | لا تستكمل هذا الفرع؛ قارن ما بقي فيه مع #358/#359 قبل إعادة استخدام أي كود |
 
 GitHub Vercel status ليس دليلًا كافيًا على Production. CI وPreview وProduction وGoogle AI Studio أنظمة منفصلة.
