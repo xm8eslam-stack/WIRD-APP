@@ -19,8 +19,23 @@ test.describe('WIRD revision and memorization-test UX', () => {
     await expect(addPortion).toHaveCSS('min-height', '44px');
     await addPortion.click();
 
-    await expect(page.getByRole('heading', { name: 'إضافة مقطع حفظ ومراجعة جديد' })).toBeVisible();
-    await expect(addPortion).toHaveCSS('min-height', '44px');
+    const portionDialog = page.getByRole('dialog', { name: 'إضافة مقطع حفظ ومراجعة جديد' });
+    await expect(portionDialog).toBeVisible();
+    const closePortion = portionDialog.getByRole('button', { name: 'إغلاق نافذة إضافة مقطع' });
+    await expect(closePortion).toHaveCSS('min-height', '44px');
+    await closePortion.click();
+    await expect(portionDialog).toHaveCount(0);
+
+    const addWeakVerse = page.getByRole('button', { name: 'تسجيل آية ملتبسة' });
+    await expect(addWeakVerse).toHaveCSS('min-height', '44px');
+    await addWeakVerse.click();
+
+    const weakDialog = page.getByRole('dialog', { name: 'تسجيل آية ملتبسة أو متعثرة يدوياً' });
+    await expect(weakDialog).toBeVisible();
+    const closeWeakVerse = weakDialog.getByRole('button', { name: 'إغلاق نافذة تسجيل آية ملتبسة' });
+    await expect(closeWeakVerse).toHaveCSS('min-height', '44px');
+    await closeWeakVerse.click();
+    await expect(weakDialog).toHaveCount(0);
   });
 
 });
