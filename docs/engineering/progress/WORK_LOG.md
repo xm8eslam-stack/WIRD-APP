@@ -574,3 +574,14 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Read-only production probing found metadata-backed serverless endpoints returned `FUNCTION_INVOCATION_FAILED`. Native Node loading isolated extensionless TypeScript imports in the Quran metadata dependency. Corrected metadata/API imports to explicit `.ts` paths and made the metadata type-only import explicit. Added `smoke:api-imports` to verify native Node imports and invalid-input responses, and wired it into CI.
 - Local after hotfix edits: `npm test` (584 passed), `npm run lint`, `npm run build`, and `npm run smoke:api-imports` passed. The API smoke exercises invalid inputs only and does not call external providers. The fix is not deployed yet; create a hotfix PR from current main, run exact-head CI, verify Vercel preview API responses, then merge only if green.
 - No production credentials/settings or cloud sync configuration changed. Hadith live upstream still requires server-side Quran Foundation credentials and remains untested.
+
+
+## 2026-11-11 15:52 +02:00 — Reconciliation of documentation and PR queue
+
+- Re-fetched repository tree (310 entries; recursive tree not truncated), latest main SHA `8dd21522430cc014db4eb5da8437f89c42f190f9`, all open PRs, and exact-head check runs.
+- PR #360 exact head `6e3c3c4be799c77a39dab539e3161c3d9f98958d`, run `43030878508`: automated tests, dependency audit, API import smoke, approved audio probes, Rules Emulator, TypeScript, build, and server smoke passed; Desktop/Mobile Playwright smoke failed. Vercel reported build-rate-limit.
+- PR #362 exact head `e2079734a0d150c1046307611a2b28346fdcdb1d` passed Quality Gate; its guest-entry hydration helper fix is not merged. PR #361 exact head `3008c4788caba61930be008e3cb40dcf52cfd78f` passed Quality Gate and remains open.
+- PRs #358, #359, and #356 have failed exact-head Quality Gates in Desktop/Mobile Playwright smoke and remain Draft. #358 and #359 are overlapping offline-audio storage models; do not merge both without one agreed contract.
+- Updated `docs/CONTINUE_HERE.md` to be the live source of truth and aligned this roadmap/checkpoint/handoff to the observed status. Historical progress entries remain preserved, not silently rewritten.
+- No runtime code, Quran data, Firestore rules/data, production secrets/settings, sync flags, or deployments changed. No PR was merged.
+- Next: apply/merge the #362 test-helper fix through the approved branch workflow, rerun each affected exact-head Quality Gate, then continue review of offline audio manifest overlap and reconcile #356.
