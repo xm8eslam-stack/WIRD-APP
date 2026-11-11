@@ -57,7 +57,7 @@ export async function runOfflineQuranAudioManifestStoreTests(): Promise<{ passed
       { ...valid, reciterId: 'unreviewed-reciter' },
       { ...valid, globalAyahNumber: 10 },
       { ...valid, surahNumber: 1 },
-      { ...valid, verified: false as true }
+      { ...valid, verified: false as unknown as true }
     ];
     for (const input of invalid) {
       let rejected = false;
