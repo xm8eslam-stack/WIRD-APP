@@ -365,3 +365,11 @@ This section is the current status and supersedes older historical statements wh
 - This change is not a weak-verse reconciliation release. Do not enable automatic merge of weak-verse snapshots or automatic keep-local/keep-remote resolution until tests prove preservation of independent verse additions, same-verse concurrent failures, retries, and resolution anti-resurrection.
 - Activity-event reconciliation remains gated until immutable session events can rebuild daily aggregates exactly once, including legacy daily-log baselines and account/device recovery.
 - No Firestore rules/schema, production settings, secrets, or sync flags changed in PR #207.
+
+
+## 2026-11-11 — Documentation-only main advance after PR #348
+
+- PR #348 merged as d1d33384609bdc4a3c99120956901c92289d5f26. Its changes are documentation and a planning document only; no runtime source, Firestore Rules/schema, sync settings, or user data changed.
+- Main Quality Gate run 43025089584 is in progress on d1d33384609bdc4a3c99120956901c92289d5f26.
+- Vercel reports build-rate-limit for the d1d333 deployment and no matching deployment record exists. The last verified READY Production deployment remains dpl_AU9ATDJEsm99z4CWir3WLvvdn32m on source SHA 3dd4fbfd1d2c9ed27ce0afe77ede5916f575f188. Since PR #348 was documentation-only, the Production runtime code is unchanged, but exact main/Production SHA parity is no longer true until a new deployment succeeds.
+- This PR's docs should preserve that distinction: current main SHA d1d333..., last READY Production SHA 3dd4fb..., no new live feature behavior is implied.
