@@ -40,7 +40,7 @@ function validId(value: unknown): value is string {
 }
 
 function validOrder(value: unknown): value is number {
-  return Number.isSafeInteger(value) && (value as number) > 0;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
 
 /**
