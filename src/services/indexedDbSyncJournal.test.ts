@@ -62,9 +62,9 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
-    await test('Engine-plan snapshots accept a larger bounded payload while ordinary mutations keep the 128 KB cap', async () => {
+    await test('Engine-plan snapshots accept a larger bounded payload (700 KB) while ordinary mutations keep the 128 KB cap', async () => {
       const { journal } = createJournal('engine-plan-payload-budget');
-      const largePlanPayload = { records: [{ id: 'plan-large', data: 'x'.repeat(140_000) }] };
+      const largePlanPayload = { records: [{ id: 'plan-large', data: 'x'.repeat(700_000) }] };
       const queued = await journal.enqueue({
         mutationId: 'engine-plan-large-payload',
         collection: 'enginePlans',
@@ -72,7 +72,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         payload: largePlanPayload,
         nowMs: 1501
       });
-      assert(queued.status === 'queued', 'A 140 KB engine-plan snapshot must fit the dedicated plan budget');
+      assert(queued.status === 'queued', 'A 700 KB engine-plan snapshot must fit the dedicated plan budget');
 
       const grouped = await journal.enqueue({
         mutationId: 'grouped-engine-plan-large-payload',
@@ -92,7 +92,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         nowMs: 1502
       });
       assert(grouped.status === 'queued',
-        'A grouped syncMeta transaction containing an engine-plan snapshot must use the plan-specific budget');
+        'A grouped syncMeta transaction containing a 700 KB engine-plan snapshot must use the plan-specific budget');
 
       let ordinaryRejected = false;
       try {
@@ -112,13 +112,13 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
           mutationId: 'engine-plan-over-budget',
           collection: 'enginePlans',
           documentId: 'snapshot',
-          payload: { records: [{ id: 'plan-too-large', data: 'x'.repeat(450_001) }] },
+          payload: { records: [{ id: 'plan-too-large', data: 'x'.repeat(800_001) }] },
           nowMs: 1503
         });
       } catch { overBudgetRejected = true; }
       const events = await journal.listEvents();
       assert(overBudgetRejected && events.length === 2,
-        'An engine-plan payload above 450 KB must be rejected without appending a partial event');
+        'An engine-plan payload above 800 KB must be rejected without appending a partial event');
       journal.close();
     });
 
@@ -497,6 +497,65 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       assert((await journal.listReady(9400, 10)).length === 2 &&
         await journal.getRemoteProjectionCursor() === 0,
         'Rejecting a stale decision must preserve every local mutation and the blocked projection cursor');
+      journal.close();
+    });
+
+    await test('Engine-plan conflict resolution accepts a 700 KB snapshot within its dedicated budget', async () => {
+      const uid = 'large-engine-plan-conflict-owner';
+      const { journal } = createJournal(uid);
+      const event = {
+        uid,
+        eventId: 'large-engine-plan-conflict-event',
+        mutationId: 'large-engine-plan-conflict-event',
+        eventType: 'domain-mutation' as const,
+        collection: 'enginePlans' as const,
+        documentId: 'snapshot',
+        operation: 'upsert' as const,
+        schemaVersion: 2 as const,
+        deviceId: 'remote-device',
+        occurredAtMs: 9300,
+        payload: { records: [] },
+        baseRevision: 0,
+        revision: 1,
+        serverSequence: 1
+      };
+      await journal.importRemotePage([event]);
+      const oldPayload = { records: [{ id: 'old-local-plan' }] };
+      await journal.enqueue({
+        mutationId: 'large-engine-plan-old-local-write',
+        collection: 'enginePlans',
+        documentId: 'snapshot',
+        payload: oldPayload,
+        nowMs: 9301
+      });
+      const storedEvent = (await journal.listRemoteInboxAfter(0, 10))[0];
+      const localSnapshot = { wird_enginePlans: JSON.stringify(oldPayload) };
+      await journal.saveProjectionConflict(storedEvent, 'blocked_pending_local', localSnapshot, 9302);
+      const conflict = (await journal.listProjectionConflicts(10))[0];
+      const archived = (conflict.localMutations || []).map(item => ({
+        mutationId: item.mutationId,
+        fingerprint: item.fingerprint
+      }));
+      const largePayload = { records: [{ id: 'large-local-plan', data: 'x'.repeat(700_000) }] };
+      await journal.prepareConflictResolutionIntent({
+        decisionId: 'large-engine-plan-resolution-decision',
+        eventId: event.eventId,
+        eventFingerprint: storedEvent.fingerprint,
+        localSnapshotFingerprint: fingerprintConflictSnapshot(localSnapshot),
+        decision: 'keep-local',
+        baseRevision: 2,
+        payload: largePayload,
+        localMutationFingerprints: archived,
+        nowMs: 9303
+      });
+      const result = await journal.commitKeepLocalConflictResolution(event.eventId, 2, largePayload, 9304);
+      const pending = await journal.listReady(9400, 10);
+      assert(pending.length === 1 && pending[0].mutationId === result.mutationId &&
+        JSON.stringify(pending[0].payload) === JSON.stringify(largePayload),
+        'The large engine-plan replacement must be durably queued after conflict resolution');
+      assert(await journal.getProjectionConflictCount() === 0 &&
+        await journal.getConflictResolutionIntent(event.eventId) === null,
+        'The large plan conflict and prepared intent must commit atomically');
       journal.close();
     });
 

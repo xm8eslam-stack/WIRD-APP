@@ -2,6 +2,7 @@ import { createSecureId } from './secureId';
 import { StorageService } from './storageService';
 import { isValidRuqyahProgressSnapshot, isValidRuqyahProgressSnapshotV2, mergeRuqyahProgressSnapshots } from './ruqyahProgressSchema';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
+import { getSyncMutationPayloadLimit, MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES, MAX_SYNC_MUTATION_PAYLOAD_BYTES } from './syncPayloadLimits';
 
 const DATABASE_NAME = 'wird-sync-journal';
 const DATABASE_VERSION = 9;
@@ -16,29 +17,9 @@ const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_REMOTE_INBOX_EVENTS = 1_000;
-const MAX_PROJECTION_CONFLICTS = 100;
+const MAX_PROJECTION_CONFLICTS = 29; // keeps the aggregate conflict archive budget near the former 50 MB ceiling
 const MAX_CONFLICT_RESOLUTION_INTENTS = 500;
-const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
-const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
-// Engine plans contain a generated day-by-day schedule. Give that one collection
-// a larger, still Firestore-safe budget while keeping ordinary mutations small.
-const MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES = 450_000;
-const maxMutationPayloadBytes = (collection: string, payload?: Record<string, unknown>) => {
-  if (collection === 'enginePlans') return MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES;
-  // Session completion may atomically carry the full engine-plan snapshot
-  // inside a grouped syncMeta transaction.
-  if (collection === 'syncMeta') {
-    const transaction = payload?.transaction;
-    if (transaction && typeof transaction === 'object' && !Array.isArray(transaction)) {
-      const operations = (transaction as Record<string, unknown>).operations;
-      if (Array.isArray(operations) && operations.some(operation =>
-        operation && typeof operation === 'object' && !Array.isArray(operation) &&
-        (operation as Record<string, unknown>).collection === 'enginePlans'
-      )) return MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES;
-    }
-  }
-  return MAX_MUTATION_PAYLOAD_BYTES;
-};
+const MAX_CONFLICT_SNAPSHOT_BYTES = 1_700_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
 
@@ -583,7 +564,7 @@ export class IndexedDbSyncJournal {
           !item.documentId || item.documentId.includes('/') || byteLength(item.documentId) > 1500 ||
           item.operation !== 'upsert' || item.schemaVersion !== 1 ||
           item.deviceId !== state.deviceId || !isRecord(item.payload) ||
-          byteLength(JSON.stringify(item.payload)) > maxMutationPayloadBytes(item.collection, item.payload) ||
+          byteLength(JSON.stringify(item.payload)) > getSyncMutationPayloadLimit(item.collection, item.payload) ||
           !Number.isSafeInteger(item.clientUpdatedAtMs) || item.clientUpdatedAtMs < 0 ||
           !Number.isSafeInteger(item.queuedAtMs) || item.queuedAtMs < 0 ||
           !Number.isSafeInteger(item.attemptCount) || item.attemptCount < 0 ||
@@ -795,7 +776,7 @@ export class IndexedDbSyncJournal {
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تحويل بيانات العملية إلى صيغة قابلة للحفظ.'); }
-    if (!payloadJson || byteLength(payloadJson) > maxMutationPayloadBytes(input.collection, input.payload)) {
+    if (!payloadJson || byteLength(payloadJson) > getSyncMutationPayloadLimit(input.collection, input.payload)) {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
 
@@ -1555,7 +1536,7 @@ export class IndexedDbSyncJournal {
         }
         const payload: Record<string, unknown> = { snapshot: mergedSnapshot };
         const payloadJson = stableStringify(payload);
-        if (byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES ||
+        if (byteLength(payloadJson) > MAX_SYNC_MUTATION_PAYLOAD_BYTES ||
             allPending.length - pending.length + 1 > MAX_PENDING_MUTATIONS) {
           failure = new Error('حمولة أو سعة دمج عدادات الرقية تجاوزت الحدود الآمنة.');
           transaction.abort();
@@ -2175,7 +2156,7 @@ export class IndexedDbSyncJournal {
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تسلسل حمولة قرار حل التعارض؛ لم يتم حفظ القرار.'); }
-    if (!payloadJson || byteLength(payloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!payloadJson || byteLength(payloadJson) > MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES) {
       throw new Error('حمولة قرار حل التعارض تتجاوز الحد الآمن أو غير قابلة للتسلسل.');
     }
     const seenMutationIds = new Set<string>();
@@ -2220,6 +2201,11 @@ export class IndexedDbSyncJournal {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const event = conflict?.event;
+        if (!event || byteLength(payloadJson) > getSyncMutationPayloadLimit(event.collection, input.payload)) {
+          failure = new Error('حمولة قرار حل التعارض تتجاوز حد المجموعة الفعلي أو لا تطابق نوع البيانات.');
+          transaction.abort();
+          return;
+        }
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!conflict || conflict.uid !== uid || conflict.status !== 'open' || !event ||
             event.eventId !== input.eventId || event.fingerprint !== input.eventFingerprint ||
@@ -2446,7 +2432,7 @@ export class IndexedDbSyncJournal {
     let expectedPayloadJson: string;
     try { expectedPayloadJson = JSON.stringify(expectedPayload); }
     catch { throw new Error('حمولة النسخة السحابية غير قابلة للتسلسل؛ لم يتم تغيير البيانات المحلية.'); }
-    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES) {
       throw new Error('حمولة النسخة السحابية تتجاوز الحد الآمن.');
     }
 
@@ -2479,6 +2465,11 @@ export class IndexedDbSyncJournal {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const event = conflict?.event;
+        if (!event || byteLength(expectedPayloadJson) > getSyncMutationPayloadLimit(event.collection, expectedPayload)) {
+          failure = new Error('حمولة حل التعارض تتجاوز حد المجموعة الفعلي أو لا تطابق نوع البيانات.');
+          transaction.abort();
+          return;
+        }
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
             !event || event.eventId !== eventId || event.operation !== 'upsert' ||
@@ -2684,7 +2675,7 @@ export class IndexedDbSyncJournal {
     let expectedPayloadJson: string;
     try { expectedPayloadJson = JSON.stringify(expectedPayload); }
     catch { throw new Error('حمولة النسخة المحلية غير قابلة للتسلسل؛ لم يتم تغيير البيانات.'); }
-    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_MUTATION_PAYLOAD_BYTES) {
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES) {
       throw new Error('حمولة النسخة المحلية تتجاوز الحد الآمن.');
     }
 
@@ -2719,6 +2710,11 @@ export class IndexedDbSyncJournal {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const event = conflict?.event;
+        if (!event || byteLength(expectedPayloadJson) > getSyncMutationPayloadLimit(event.collection, expectedPayload)) {
+          failure = new Error('حمولة حل التعارض تتجاوز حد المجموعة الفعلي أو لا تطابق نوع البيانات.');
+          transaction.abort();
+          return;
+        }
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
             !event || event.eventId !== eventId || event.operation !== 'upsert' ||
@@ -3075,7 +3071,7 @@ export class IndexedDbSyncJournal {
           !Number.isSafeInteger(event.revision) || event.revision !== event.baseRevision + 1 ||
           !Number.isSafeInteger(event.serverSequence) || event.serverSequence < 1 ||
           !isRecord(event.payload) ||
-          byteLength(JSON.stringify(event.payload) || '') > maxMutationPayloadBytes(event.collection, event.payload)) {
+          byteLength(JSON.stringify(event.payload) || '') > getSyncMutationPayloadLimit(event.collection, event.payload)) {
         throw new Error('REMOTE_INBOX_EVENT_INVALID');
       }
       if (event.serverSequence <= previousSequence) {
