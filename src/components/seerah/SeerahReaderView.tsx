@@ -36,6 +36,7 @@ export const SeerahReaderView: React.FC = () => {
   const [fontScale, setFontScale] = useState<'normal' | 'large' | 'larger'>('large');
   const [lineSpacing, setLineSpacing] = useState<'comfortable' | 'relaxed'>('relaxed');
   const [bookmarks, setBookmarks] = useState<SeerahBookmark[]>([]);
+  const [bookmarkError, setBookmarkError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   const activeIndex = useMemo(
@@ -180,12 +181,18 @@ export const SeerahReaderView: React.FC = () => {
                   const changed = isBookmarked
                     ? removeSeerahBookmark(bookmark)
                     : saveSeerahBookmark(bookmark);
-                  if (changed) setBookmarks(readSeerahBookmarks());
+                  if (changed) {
+                    setBookmarks(readSeerahBookmarks());
+                    setBookmarkError(null);
+                  } else {
+                    setBookmarkError('تعذر حفظ التغيير في العلامات على هذا الجهاز. تحقق من مساحة التخزين ثم أعد المحاولة.');
+                  }
                 }} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] ${isBookmarked ? 'bg-[#1C4E46] text-white dark:bg-[#1E4A47]' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-200'}`} aria-pressed={isBookmarked} aria-label={isBookmarked ? 'إزالة علامة هذا المشهد' : 'حفظ علامة لهذا المشهد'}>
                   {isBookmarked ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
                   {isBookmarked ? 'إزالة العلامة' : 'حفظ علامة'}
                 </button>
               </div>
+              {bookmarkError && <p role="alert" className="mt-2 text-xs font-semibold text-red-700 dark:text-red-300">{bookmarkError}</p>}
               <h4 id={activeScene.anchorId} className="scroll-mt-28 text-center text-xl font-black leading-relaxed text-stone-900 dark:text-stone-100 sm:text-2xl">{activeScene.title}</h4>
               <div className={`mx-auto mt-8 max-w-2xl space-y-6 text-justify text-stone-700 dark:text-stone-200 ${fontClass} ${spacingClass}`}>
                 <p className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-5 text-center text-sm leading-8 text-stone-500 dark:border-stone-600 dark:bg-stone-900/30 dark:text-stone-400">
