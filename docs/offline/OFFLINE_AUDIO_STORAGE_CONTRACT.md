@@ -119,3 +119,16 @@ The future Cache Storage adapter must not use only the canonical reciter/ayah UR
 PR #368 currently provides the IndexedDB metadata repository (`jobs`, `files`, `jobItems`) and integrity protections for timestamps, shared-file references, deletion, and cache-generation reconciliation. It does **not** yet fetch audio bytes, write Cache Storage, coordinate a Service Worker, expose a download UI, or provide offline playback. Its state must not be presented to users as a completed download until the Cache Storage adapter confirms the exact generation is present and verified.
 
 The next code slice after the metadata foundation is a separately testable Cache Storage adapter with generation-scoped keys and injectable cache implementation. Only after that should bounded HTTP download orchestration and worker messaging be added. Preserve the device-local boundary: no audio jobs, cache generations, or bytes enter Firebase sync, account backup, or exports.
+
+
+## Cache Storage adapter + bounded downloader implementation slice — 2026-11-12
+
+PR #368 now includes an unmerged implementation slice beyond metadata:
+- Generation-scoped synthetic Cache Storage keys include approved reciter ID, canonical global ayah number, and immutable cacheGenerationId.
+- Cache writes require HTTP 200, non-opaque response, audio content type, non-empty body, bounded byte length, optional content-length consistency, and exact read-back byte equality before returning success.
+- Cache lookup revalidates content type/body and metadata byte length; deletion targets exactly one cache generation.
+- A bounded downloader orchestrator uses the existing canonical CDN URL builder, HTTPS + exact cdn.islamic.network host validation, redirect:error, credentials:omit, cache:no-store, and concurrency limited to 1–2 (default 2).
+- Job items can be marked failed and retried. Pause aborts in-flight requests and returns a queued/partial job; cancel is terminal. Metadata commits only after Cache Storage write/read-back succeeds; if metadata commit fails, the just-written generation is deleted best-effort.
+- New Cache Storage and downloader test suites are registered in runAllTests.
+
+**Still not implemented:** Service Worker message protocol, user-facing download manager UI, local-first playback integration, orphan cache-key garbage collection, real browser Cache Storage integration, and real-device offline playback. Do not claim offline downloads are user-ready.
