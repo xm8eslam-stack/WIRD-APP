@@ -648,3 +648,49 @@ On resumption:
 3. Continue Seerah at highest parallel priority: improve continuous reader shell and editorial source traceability. Research/rights approval precedes content ingestion; never publish prototype scenes or unverified reports.
 4. Continue Offline Audio and PWA independent test work.
 5. Re-fetch exact PR heads and record evidence at every checkpoint.
+
+# Latest checkpoint — 2026-11-12 18:05 UTC
+
+## Active exact heads
+- Main: 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+- #363 docs: 6031431ee1b72b91f51f69fa90a3a79a15b360bb.
+- #365 Seerah: 0856e6a1e215a74324358173bee9a55924e6a5ad.
+- #366 PWA: cade1b630bb429d6a4106de5bf12713df18f3491.
+- #367 interim sync budget: fd417faaa96a11920ef3a8e4f1038f567c36a731.
+- #368 Offline Audio: ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710.
+- #369 memorized range selector: 7ac00ef32f3b3c2b1158f165ed141e6f332ab88e.
+- #370 session display settings: 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb.
+All PRs remain OPEN/DRAFT; none merged.
+
+## Latest code work
+- #365: bookmark UID-scope deletion fixed; reader context now has a source citation panel; publication contract requires rightsStatus + rightsNotes and enforces link-only/no-quote behavior; tests registered. No real content ingested.
+- #368: Cache Storage adapter + bounded downloader + pause/cancel/resume + missing-cache reconciliation + completed-job retry after eviction. Metadata only commits after cache verification. Service Worker, UI and playback integration still missing.
+- #369: multi-Surah checkboxes/search, complete Juz, custom ayah ranges, normalization and tests.
+- #370: collapsible page settings, line spacing and page padding, local persistence and tests.
+- #363: adaptive entitlement/chunk design, Seerah source/license research and updated continuation records.
+
+## Engine Plans inventory — verified facts still to cover
+- StorageService localStorage get/save with 100 cap; backup validator also 100.
+- exportFullBackup synchronous and directly reads localStorage; Settings + Progress Analytics still call it.
+- StorageService.importBackup and resetAllData remain legacy direct-write paths; canonical UI import/reset are journal-first.
+- setStorageScope remains synchronous and may copy/verify/delete localStorage keys; it must not delete Engine Plans before archive copy verification.
+- sessionPersistence enginePlansSnapshot cap remains 100; journaledSnapshotService persists through StorageService.saveEnginePlans.
+- DashboardView reads StorageService.getEnginePlans directly.
+- backupPersistence import/reset, cloudSyncCoordinator, remoteInboxProjector, indexedDbSyncJournal and LocalSyncOutbox are additional projection/sync consumers.
+- localStorage legacy outbox has 1.5 MB cap; current journal/outbox is IndexedDB.
+- Audit of all indirect callers, test fixtures and E2E remains open. Do not start archive migration until closure.
+
+## Adaptive plan capacity
+- No account subscription/entitlement system found in main. No tier names or quota values may be invented.
+- Proposed server-verified entitlement fields: maxSinglePlanBytes, maxArchiveBytes, maxActivePlans; chunk size remains transport-only.
+- Local IndexedDB/browser quota is separate and cannot be promised by navigator.storage.estimate().
+- Downgrade preserves existing records and read/export access; no silent truncation/deletion.
+- Full entitlement and chunk contract is in docs/sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md.
+
+## CI status
+- #365 run 43275942614 / job 131384235586: failure, steps=null, logs_url=null.
+- #368 run 43275594933 / job 131383003139: failure, steps=null, logs_url=null.
+- #369 run 43274079781 / job 131377722661: failure, steps=null, logs_url=null.
+- #370 run 43274209101 / job 131378172561: failure, steps=null, logs_url=null.
+- These are not diagnosed code failures and are not passes. No local build/test/typecheck run in this session.
+- Vercel Free deployment quota remains a separate blocker; no production deploy/live verification claimed.
