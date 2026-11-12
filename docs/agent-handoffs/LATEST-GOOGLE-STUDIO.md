@@ -1,3 +1,40 @@
+# Latest handoff — 2026-11-12 (offline-first is now a primary workstream)
+
+> Read this section first. It supersedes older handoff priority where conflicting; preserve the history below.
+
+## Product direction
+
+Make WIRD fully useful offline after an explicit first-time setup and prepare its architecture for a future installable application. Work in parallel with Quran, worship, Seerah, UX, and sync tasks. PWA remains the primary web baseline; do not choose or add a native wrapper yet.
+
+## Existing offline foundation on main
+
+- Service worker and PWA manifest, shell caching, SPA fallback, and generated static-asset manifest.
+- Explicit resumable offline package for same-origin build assets/lazy chunks.
+- Local Quran/worship data and local-first user progress.
+- Storage usage/quota and opt-in persistence request.
+- Opportunistic bounded audio caching; bounded Mushaf page cache; previously viewed tafsir and validated hadith cache.
+
+## What is not certified
+
+No claim that every route, dynamic asset, API, Firebase/Auth action, fresh tafsir/hadith, full Quran audio, or external Ruqyah index works offline. Offline package and worker tests are not a substitute for real desktop/mobile airplane-mode tests after restart. Existing online-to-offline and offline-to-online sync behavior must be verified separately.
+
+## Required next execution
+
+1. Inventory every route, lazy chunk, image/font/data asset, user action, and API. Classify as bundled, prepared, previously cached, opportunistic, or network-only; record provenance/license/retention.
+2. Audit service worker and generated manifest coverage, especially public static files and lazy routes, cache lifecycle, quota, partial/resume, and private-data exclusion.
+3. Audit localStorage/IndexedDB/journal/outbox/inbox and account/guest separation. Preserve existing data; no broad storage migration without staged compatibility and rollback.
+4. Complete core Quran + daily worship offline workflows; maintain source-verified content and explicit unavailability for missing remote religious material.
+5. Build a single offline center and clear package/storage/download status.
+6. Keep pinned Quran audio downloads separate from the opportunistic 20-ayah cache; only use the approved Al Quran Cloud CDN after terms recheck. EveryAyah remains stream-only.
+7. After web offline gates, compare Capacitor/TWA/native packaging; no premature plugin/native rewrite.
+8. Verify desktop/mobile cold start, airplane mode, reload/restart, update, storage pressure, local progress, and safe online reconciliation.
+
+## Safety and release
+
+No production settings, secrets, Firestore rules/data, sync flags, or user data changes. Never cache auth/private API responses in shared static caches. Do not generate Quran/hadith/tafsir/fiqh fallback text. Do not claim offline certification or app readiness until evidence is recorded. Keep PRs small, exact-head CI required, and hold merge on unresolved checks.
+
+---
+
 ### GOOGLE AI STUDIO HANDOFF
 
 
