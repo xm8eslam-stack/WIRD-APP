@@ -2,6 +2,8 @@
 
 ## قرار التخزين التالي — 2026-11-12 14:55 +02:00
 
+RFC التصميم التفصيلي: [ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md](./sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md). هذا RFC مقترح ولم يُنفذ بعد.
+
 لا ترفع byte limits أو تزيل حد 100 خطة من `StorageService` قبل نقل أرشيف enginePlans من localStorage إلى IndexedDB. #367 يظل حلًا انتقاليًا 800 KB لكل mutation، وليس تخزينًا مرنًا.
 
 التسلسل: جرد كل call sites والاختبارات → local IndexedDB archive + migration lossless + hydration gate → journal/outbox snapshot references atomic → Firestore immutable chunks + manifest → receiver materialization + capability negotiation → two-device/offline gates.
