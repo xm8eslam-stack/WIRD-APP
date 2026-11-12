@@ -150,6 +150,24 @@ export async function runOfflineQuranAudioDownloaderTests(): Promise<{ passed: n
     } finally { library.close(); }
   });
 
+  await test('creates a new retry job when a completed job lost its Cache Storage bytes', async () => {
+    let requests = 0;
+    const { library, cache, downloader } = create(async () => {
+      requests++;
+      return makeResponse();
+    });
+    try {
+      const original = await library.createJob({ ...range, startAyah: 1, endAyah: 1 }, 100);
+      const first = await downloader.download(original.id);
+      assert(first.status === 'completed' && requests === 1, 'Initial download should complete');
+      const file = (await library.listFiles())[0];
+      assert(await cache.deleteGeneration(file), 'Simulated browser eviction should remove the exact cache generation');
+      const restored = await downloader.download(original.id);
+      assert(restored.id !== original.id && restored.status === 'completed', 'Completed history should remain immutable while a new retry job restores missing bytes');
+      assert(requests === 2 && (await library.listFiles())[0].available, 'The missing file should be downloaded and verified again');
+    } finally { library.close(); }
+  });
+
   await test('downloads only URLs produced by the approved canonical CDN builder', async () => {
     let networkCalls = 0;
     const { library, downloader } = create(async () => {
