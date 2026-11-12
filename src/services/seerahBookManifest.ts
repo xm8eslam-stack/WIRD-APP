@@ -39,6 +39,10 @@ function validId(value: unknown): value is string {
   return typeof value === 'string' && SAFE_ID.test(value);
 }
 
+function hasText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 function validOrder(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 }
@@ -90,7 +94,7 @@ export function validateSeerahBookManifest(value: unknown): SeerahManifestValida
       blockers.push('part_record_invalid');
       continue;
     }
-    if (!validId(part.id) || !part.title?.trim()) blockers.push('part_metadata_invalid');
+    if (!validId(part.id) || !hasText(part.title)) blockers.push('part_metadata_invalid');
     if (partIds.has(part.id)) blockers.push('part_id_duplicate:' + part.id);
     partIds.add(part.id);
     if (!validOrder(part.order) || partOrders.has(part.order)) blockers.push('part_order_invalid:' + part.id);
@@ -106,7 +110,7 @@ export function validateSeerahBookManifest(value: unknown): SeerahManifestValida
         blockers.push('chapter_record_invalid:' + part.id);
         continue;
       }
-      if (!validId(chapter.id) || !chapter.title?.trim()) blockers.push('chapter_metadata_invalid:' + chapter.id);
+      if (!validId(chapter.id) || !hasText(chapter.title)) blockers.push('chapter_metadata_invalid:' + chapter.id);
       if (chapterIds.has(chapter.id)) blockers.push('chapter_id_duplicate:' + chapter.id);
       chapterIds.add(chapter.id);
       if (!validOrder(chapter.order) || chapterOrders.has(chapter.order)) blockers.push('chapter_order_invalid:' + chapter.id);
@@ -122,7 +126,7 @@ export function validateSeerahBookManifest(value: unknown): SeerahManifestValida
           blockers.push('scene_record_invalid:' + chapter.id);
           continue;
         }
-        if (!validId(scene.id) || !scene.title?.trim()) blockers.push('scene_metadata_invalid:' + scene.id);
+        if (!validId(scene.id) || !hasText(scene.title)) blockers.push('scene_metadata_invalid:' + scene.id);
         if (sceneIds.has(scene.id)) blockers.push('scene_id_duplicate:' + scene.id);
         sceneIds.add(scene.id);
         if (!validOrder(scene.order) || sceneOrders.has(scene.order)) blockers.push('scene_order_invalid:' + scene.id);
