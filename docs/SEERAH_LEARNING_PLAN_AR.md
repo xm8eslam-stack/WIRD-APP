@@ -576,3 +576,25 @@ research → source capture → atomic claims → chronology/reconciliation → 
 - مع ذلك، لا نستنتج من وجود PDF أو وصف «ملك عام» وحده أن كل استخدام داخل WIRD مسموح بلا قيود. بعض أدلة الوصول التابعة للمكتبات الشريكة (مثل Princeton) تمنع التنزيل الآلي/الزحف، وإعادة توزيع النسخ، والاستخدام التجاري ضمن شروطها المؤسسية. لذلك يبقى القرار: رابط دائم + بيانات ببليوغرافية أولًا؛ لا bulk download أو إعادة استضافة أو استخدام تجاري حتى نراجع شروط العنصر والجهة المزودة والولاية القانونية.
 - توثيق OpenITI نفسه يصف corpus releases بترخيص CC BY-NC-SA 4.0، بينما صفحة شروط الاستخدام تستخدم صياغة CC BY-SA مع منع الاستخدام التجاري. كلاهما يثبت وجود قيد non-commercial، لكن يجب تثبيت الترخيص الدقيق لكل release/ملف ومراجعة اتفاق contributor قبل أي استعمال.
 - نتيجة عملية: أي مصدر من ACO أو OpenITI يظل link_only أو unknown داخل سجل WIRD إلى أن نوثق حقوق الطبعة والملف ونطاق الاستخدام. لا نضع verified_public_domain لمجرد أن المؤلف قديم أو أن النص متاح للتنزيل.
+
+
+### تدقيق شروط APIs — 2026-11-12
+**Dorar API**
+- الوصول يتطلب طلبًا ومراجعة يدوية، ويصدر Token بعد القبول، ويمكن منح صلاحية لكل موسوعة على حدة.
+- الشروط تلزم إظهار نسبة المصدر والرابط المرجعي، وتمنع تعديل حكم الحديث أو اختصاره أو توليد حكم غير موجود، وتلزم بعرض الحديث مع حكم المحدث عند استخدام الموسوعة الحديثية.
+- تمنع السحب الجماعي وإعادة تجميع/تخزين قاعدة البيانات كاملة، وتسمح بذاكرة مؤقتة 24–48 ساعة فقط، وتمنع وضع Token في تطبيق العميل، وتذكر حد 60 طلبًا في الدقيقة ومراجعة بيئة العمل قبل النشر.
+- لذلك لا ندمج Dorar كـ offline corpus ولا نخزن بياناته طويلًا؛ نستخدمه فقط بعد موافقة وصول صريحة، من الخادم، مع attribution/link، وبحدود cache/retention المكتوبة.
+
+**Sunnah.com API**
+- الوثائق الرسمية تتطلب API key، ويُطلب عبر GitHub issue، وتوفر endpoints للـ URN/refs والمجموعات.
+- Sunnah.com تمنع scraping وإعادة نشر مجموعات كاملة، وتسمح بنقل أحاديث فردية/اختيارات لأغراض تعليمية؛ كما توضح أن بعض الترقيم والتخريج/الدرجات ما زال قيد الاستكمال.
+- لذلك لا نعتبر API dump مصدرًا كاملًا أو أن كل حديث في كل مجموعة صحيح؛ نعرض بيانات المصدر والرقم والدرجة حيث ثبتت، ونلتزم بشروط الاستخدام والترخيص قبل أي تخزين.
+
+مراجع الشروط والوثائق:
+- Dorar API terms: https://dorar.net/index.php/api-services/terms
+- Dorar API access: https://dorar.net/index.php/api-services
+- Sunnah.com API specification: https://github.com/sunnah-com/api/blob/master/spec.v1.yml
+- Sunnah.com reproduction and copying: https://beta.sunnah.com/about
+- ACO rights and collection description: https://aco.dlib.nyu.edu/about
+- ACO Tahdhib Ibn Hisham volume 1: https://sites.dlib.nyu.edu/viewer/books/aub_aco002965/1
+- OpenITI license documentation: https://openiti.org/documentation/
