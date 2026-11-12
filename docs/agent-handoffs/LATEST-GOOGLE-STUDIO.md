@@ -166,3 +166,11 @@ Next: implement the pure activity-event reducer and its migration/replay tests o
 - Vercel Preview deployment dpl_EdiisDzw8bygdpNqH98b1AiiF7QX is READY and its git source SHA matches the exact PR head. This verifies the Vite deployment build, not interactive browser/offline behavior.
 - GitHub Actions run 43186509970 ended with failure, but its job reported no steps and log retrieval returned BlobNotFound. This is an unresolved runner/log infrastructure failure; no test/typecheck/build step is evidenced as having executed.
 - PR #366 remains Draft/HOLD. No merge, production deployment, live browser smoke, or real-device airplane-mode test was performed.
+
+
+## 2026-11-12 — Storage capability status clarified
+
+- Corrected offline storage status semantics: browser StorageManager availability is now separate from support for navigator.storage.persist().
+- Settings no longer reports the browser as having no storage support merely because persistent-storage requests are unavailable; it distinguishes unavailable storage inspection, available-but-not-persistent storage, and possible browser eviction.
+- Added service tests for browsers exposing estimate() without persist().
+- This improves status accuracy but does not guarantee storage persistence or prevent browser eviction.
