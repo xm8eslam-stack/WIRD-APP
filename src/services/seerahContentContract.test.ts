@@ -91,6 +91,24 @@ export function runSeerahContentContractTests(): { passed: number; failed: numbe
     if (!result.blockers.includes('editorial_review_not_approved:narrativeContinuity')) throw new Error('Narrative review was not required');
   });
 
+  test('Draft chapters cannot be published before editorial approval', () => {
+    const chapter = validChapter();
+    chapter.status = 'draft';
+    const result = validateSeerahChapterForPublication(chapter);
+    if (!result.blockers.includes('chapter_not_approved_for_publication')) throw new Error('Draft chapter passed publication gate');
+  });
+
+  test('Claims must be represented in the narrative body', () => {
+    const chapter = validChapter();
+    chapter.scenes[0].bodyBlocks[0] = {
+      id: 'heading-only',
+      type: 'heading',
+      text: 'عنوان بنيوي فقط'
+    };
+    const result = validateSeerahChapterForPublication(chapter);
+    if (!result.blockers.includes('claim_not_used_in_narrative:claim-1')) throw new Error('Orphan claim was accepted');
+  });
+
   test('Source references require edition and exact locator metadata', () => {
     const chapter = validChapter();
     chapter.sources[0].locator = '';
