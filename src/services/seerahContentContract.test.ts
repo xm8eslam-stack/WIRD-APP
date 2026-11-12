@@ -52,6 +52,24 @@ export function runSeerahContentContractTests(): { passed: number; failed: numbe
     catch (error: any) { failed++; console.error('  ❌ ' + name + ': ' + (error?.message || error)); }
   };
 
+  test('Malformed imported chapter structures fail closed without throwing', () => {
+    const malformedValues: unknown[] = [
+      null,
+      {},
+      { ...validChapter(), sources: null },
+      { ...validChapter(), claims: [{}] },
+      { ...validChapter(), claims: [{ ...validChapter().claims[0], sourceIds: null }] },
+      { ...validChapter(), scenes: [{ ...validChapter().scenes[0], bodyBlocks: null }] },
+      { ...validChapter(), scenes: [{ ...validChapter().scenes[0], bodyBlocks: [null] }] }
+    ];
+    for (const value of malformedValues) {
+      const result = validateSeerahChapterForPublication(value as SeerahChapterContent);
+      if (result.publishable || result.blockers.length === 0) {
+        throw new Error('Malformed chapter unexpectedly passed publication validation');
+      }
+    }
+  });
+
   test('A fully sourced and reviewed chapter satisfies the publication gate', () => {
     const result = validateSeerahChapterForPublication(validChapter());
     if (!result.publishable || result.blockers.length) throw new Error('Valid chapter was blocked: ' + result.blockers.join(','));
