@@ -62,3 +62,91 @@ export function clearSeerahReadingPosition(storage?: Pick<Storage, 'removeItem'>
     return false;
   }
 }
+
+
+export interface SeerahBookmark {
+  bookVersion: string;
+  partId: string;
+  chapterId: string;
+  sceneId: string;
+  anchorId: string;
+  createdAt: string;
+}
+
+export const SEERAH_BOOKMARKS_KEY = 'wird.seerah.bookmarks.v1';
+
+function normalizeSeerahBookmark(value: unknown): SeerahBookmark | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Partial<SeerahBookmark>;
+  const fields = [candidate.bookVersion, candidate.partId, candidate.chapterId, candidate.sceneId, candidate.anchorId, candidate.createdAt];
+  if (fields.some(field => typeof field !== 'string' || !field.trim() || field.length > 180)) return null;
+  if (!Number.isFinite(Date.parse(candidate.createdAt as string))) return null;
+  return {
+    bookVersion: candidate.bookVersion as string,
+    partId: candidate.partId as string,
+    chapterId: candidate.chapterId as string,
+    sceneId: candidate.sceneId as string,
+    anchorId: candidate.anchorId as string,
+    createdAt: candidate.createdAt as string
+  };
+}
+
+function sameSeerahBookmark(a: SeerahBookmark, b: Pick<SeerahBookmark, 'bookVersion' | 'partId' | 'chapterId' | 'sceneId' | 'anchorId'>): boolean {
+  return a.bookVersion === b.bookVersion && a.partId === b.partId &&
+    a.chapterId === b.chapterId && a.sceneId === b.sceneId && a.anchorId === b.anchorId;
+}
+
+export function readSeerahBookmarks(storage?: Pick<Storage, 'getItem'>): SeerahBookmark[] {
+  try {
+    const source = storage ?? (typeof localStorage !== 'undefined' ? localStorage : undefined);
+    if (!source) return [];
+    const raw = source.getItem(SEERAH_BOOKMARKS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const bookmarks: SeerahBookmark[] = [];
+    for (const item of parsed) {
+      const bookmark = normalizeSeerahBookmark(item);
+      if (bookmark && !bookmarks.some(existing => sameSeerahBookmark(existing, bookmark))) {
+        bookmarks.push(bookmark);
+      }
+    }
+    return bookmarks;
+  } catch {
+    return [];
+  }
+}
+
+export function saveSeerahBookmark(
+  value: SeerahBookmark,
+  storage?: Pick<Storage, 'getItem' | 'setItem'>
+): boolean {
+  const bookmark = normalizeSeerahBookmark(value);
+  if (!bookmark) return false;
+  try {
+    const target = storage ?? (typeof localStorage !== 'undefined' ? localStorage : undefined);
+    if (!target) return false;
+    const current = readSeerahBookmarks(target);
+    const next = [...current.filter(item => !sameSeerahBookmark(item, bookmark)), bookmark];
+    target.setItem(SEERAH_BOOKMARKS_KEY, JSON.stringify(next));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeSeerahBookmark(
+  value: Pick<SeerahBookmark, 'bookVersion' | 'partId' | 'chapterId' | 'sceneId' | 'anchorId'>,
+  storage?: Pick<Storage, 'getItem' | 'setItem'>
+): boolean {
+  try {
+    const target = storage ?? (typeof localStorage !== 'undefined' ? localStorage : undefined);
+    if (!target) return false;
+    const current = readSeerahBookmarks(target);
+    const next = current.filter(item => !sameSeerahBookmark(item, value));
+    target.setItem(SEERAH_BOOKMARKS_KEY, JSON.stringify(next));
+    return true;
+  } catch {
+    return false;
+  }
+}
