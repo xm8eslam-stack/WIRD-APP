@@ -42,7 +42,7 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
     assert(first.manifest.chunks.map(item => item.chunkId).join('|') === second.manifest.chunks.map(item => item.chunkId).join('|'),
       'Same revision and record order must produce stable chunk IDs');
     assert(first.manifest.orderedRecordIds.join(',') === 'plan-b,plan-a', 'Manifest must preserve logical record order');
-    const restored = await materializeEnginePlanArchiveChunks(builtType<typeof records[number]>(), first.manifest, mapChunks(first.chunks));
+    const restored = await materializeEnginePlanArchiveChunks<typeof records[number]>(first.manifest, mapChunks(first.chunks));
     assert(restored.map(record => record.id).join(',') === 'plan-b,plan-a', 'Materialization must preserve record order');
   });
 
@@ -104,9 +104,4 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
   });
 
   return { passed, failed };
-}
-
-// Type helper keeps the test's record generic without duplicating a cast at call sites.
-function builtType<T>(): T {
-  return undefined as unknown as T;
 }
