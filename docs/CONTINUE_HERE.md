@@ -1,5 +1,29 @@
 # أحدث ملحق متابعة — 2026-11-12 12:37 +02:00
 
+## قرار معماري إضافي — 2026-11-12 14:55 +02:00
+
+### التخزين المرن: لا ترفع الحدود مرة أخرى قبل إصلاح الطبقة المحلية
+
+تتبع المسار الحي أثبت أن `StorageService.saveEnginePlans` ما زال يرفض أكثر من 100 سجل ويكتب JSON كاملًا إلى localStorage. PR #367 يوحّد ميزانية payload إلى 800,000 بايت، لكنه لا يزيل حد العدد ولا ينقل الأرشيف من localStorage ولا يقسم الخطة إلى مستندات Firestore.
+
+أضفت التصميم التفصيلي في `docs/sync/ARCHITECTURE.md`:
+- أرشيف محلي versioned في IndexedDB.
+- migration lossless من localStorage، مع إبقاء النسخة القديمة حتى تحقق SHA.
+- تخزين snapshot chunks ومرجع Manifest صغير في journal/outbox بمعاملة ذرية.
+- رفع Firestore chunks immutable ثم نشر manifest pointer بعد التحقق الكامل.
+- استرجاع chunks قبل local projection دون تحريك cursors عند الفشل.
+- توافق إصدارات/قدرات العملاء القديمة قبل إرسال manifest.
+- تأجيل garbage collection حتى توجد device acknowledgements موثوقة.
+- عدم اختراع حصص خطط أو وصف السعة بأنها غير محدودة حرفيًا.
+
+**الخطوة التالية المحددة:** حصر جميع مستهلكي `StorageService.getEnginePlans/saveEnginePlans` واختباراتهم، ثم تصميم خدمة IndexedDB محلية وهيدرشن قبل العرض. لا تحذف حد 100 أو تغير شكل payload قبل اكتمال هذه المرحلة.
+
+### تنزيل الصوت Offline — قيد مهم
+
+أُضيف في PR #368 حقل `cacheGenerationId` لكل نسخة ملف. يجب أن يستخدم Cache Storage adapter مفتاحًا يتضمن generation ID، لا URL ثابتًا فقط؛ حتى لا يحذف تنظيف قديم ملفًا جديدًا أُعيد تنزيله لنفس الآية. يظل #368 metadata-only ولا ينفذ Cache Storage بعد.
+
+
+
 ## متابعة التنفيذ الحية — 2026-11-12 14:35 +02:00
 
 ### التخزين/المزامنة
