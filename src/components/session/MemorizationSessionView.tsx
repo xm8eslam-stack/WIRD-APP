@@ -779,13 +779,6 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               </button>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setDisplayPreferences({ ...DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES })}
-            className="min-h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-          >
-            إعادة ضبط العرض
-          </button>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div role="group" aria-label="تباعد سطور الآيات" className="space-y-2">
