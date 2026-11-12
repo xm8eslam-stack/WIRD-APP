@@ -1042,3 +1042,13 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - أضيفت خلاصة الحالة والـ blockers إلى أعلى `docs/CONTINUE_HERE.md` في commit `bb32f9352fd94e4d9ad6dd5d06d90936c10306cc` على فرع الوثائق.
 - **النتيجة:** لا migration ولا RFC نهائي بعد. الخطوة التالية إكمال caller/fixture scan وسلسلة sync/conflict resolution ثم RFC/ADR. لا رفع حد 100 أو byte budgets. لا merge/deploy أو تغيير Production/Rules/secrets/sync flags.
 - لم تُشغّل اختبارات محلية؛ هذا تدقيق source/docs عبر GitHub. لا تدّعِ نجاح اختبارات من هذه المراجعة.
+
+
+## 2026-11-12 18:25 +02:00 — اكتمال scan مستهلكي Engine Plans والاختبارات
+- جرى scan لكل 100 ملف مصدر TS/TSX تحت `src/` ولكل 78 ملف test/spec في المستودع عند main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. هذا فحص نصوص/عقود مصدرية وليس تشغيلًا للاختبارات.
+- لم يظهر UI consumer مباشر إضافي خارج App وDashboard؛ MemorizationPlansView يمرر props فقط إلى PlanningEngineWizard. ظهر writer إضافي `demoDataPersistence.ts` عبر grouped journal transaction.
+- استُكملت خريطة conflict: `getLocalProjectionSnapshot`, `matchesJournalProjection`, `isLocalProjectionEmpty`, `applyJournalProjection` و`syncConflictResolutionService` كلها تعتمد على Engine Plans localStorage، ويجب تحديثها معًا.
+- Test/fixture coverage المحددة: planningEngine, dailySessionSelection, backupValidation, backupPersistence, journaledSnapshotService, sessionPersistence, storageReliability, storageScope, indexedDbSyncJournal, localSyncOutbox, cloudSyncCoordinator, firestoreRules. E2E plans/dashboard لا يختبران archive backend حاليًا. AuthGate startup hydration يحتاج اختبارات صريحة.
+- **تصميم ذري:** journal/outbox/cursors في IndexedDB، بينما archive المقترح يحتاج backend async. Conflict use-remote يطبق projection داخل معاملة journal IDB الحالية. لا يمكن الادعاء بذَرّية cross-database. RFC يجب أن يقرر same-DB multi-store transaction أو prepare/commit intent idempotent مع crash recovery، ولا يحرك cursor قبل التحقق الكامل.
+- أضيفت خريطة المستهلكين وقيد الذرية إلى أعلى `docs/CONTINUE_HERE.md` في commit `ed9ea1b57adac6c0900361f44c8f679f7df48f4f`.
+- لم يُنفذ RFC أو migration أو تعديل حد 100/byte budgets. لم تُشغّل اختبارات محلية. لا merge/deploy أو تغييرات Production/Rules/secrets/flags.
