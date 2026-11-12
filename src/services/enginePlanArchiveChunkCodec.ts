@@ -51,21 +51,30 @@ function canonicalize(value: unknown, path = '$'): JsonValue {
     return Object.is(value, -0) ? 0 : value;
   }
   if (Array.isArray(value)) {
-    return value.map((item, index) => {
-      if (item === undefined || typeof item === 'function' || typeof item === 'symbol' || typeof item === 'bigint') {
-        throw new Error(`قيمة JSON غير مدعومة في ${path}[${index}].`);
-      }
-      return canonicalize(item, `${path}[${index}]`);
-    });
+    if (Object.getOwnPropertySymbols(value).length > 0 || Object.keys(value).length !== value.length) {
+      throw new Error(`مصفوفة غير متصلة أو تحتوي خصائص إضافية في ${path}.`);
+    }
+    const result: JsonValue[] = [];
+    for (let index = 0; index < value.length; index++) {
+      if (!(index in value)) throw new Error(`عنصر مفقود في ${path}[${index}].`);
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !('value' in descriptor)) throw new Error(`خاصية مصفوفة غير مدعومة في ${path}[${index}].`);
+      result.push(canonicalize(descriptor.value, `${path}[${index}]`));
+    }
+    return result;
   }
   if (isPlainRecord(value)) {
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some(key => typeof key !== 'string') || ownKeys.length !== Object.keys(value).length) {
+      throw new Error(`خصائص غير قابلة للتسلسل في ${path}.`);
+    }
     const result: Record<string, JsonValue> = Object.create(null);
     for (const key of Object.keys(value).sort()) {
-      const child = value[key];
-      if (child === undefined || typeof child === 'function' || typeof child === 'symbol' || typeof child === 'bigint') {
-        throw new Error(`قيمة JSON غير مدعومة في ${path}.${key}.`);
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor || !descriptor.enumerable || !('value' in descriptor)) {
+        throw new Error(`خاصية كائن غير مدعومة في ${path}.${key}.`);
       }
-      result[key] = canonicalize(child, `${path}.${key}`);
+      result[key] = canonicalize(descriptor.value, `${path}.${key}`);
     }
     return result;
   }
@@ -156,7 +165,13 @@ export async function buildEnginePlanArchiveChunks(
     }
   }
 
-  const archiveBytes = new TextEncoder().encode(JSON.stringify(canonicalize(records)));
+  const archiveBytes = new TextEncoder().encode(JSON.stringify(canonicalize({
+    protocolVersion: ENGINE_PLAN_ARCHIVE_CHUNK_PROTOCOL_VERSION,
+    schemaVersion,
+    archiveRevisionId,
+    orderedRecordIds,
+    records
+  })));
   const manifest: EnginePlanArchiveManifest = {
     protocolVersion: ENGINE_PLAN_ARCHIVE_CHUNK_PROTOCOL_VERSION,
     schemaVersion,
@@ -197,6 +212,7 @@ function validateManifest(manifest: EnginePlanArchiveManifest): void {
   for (const chunk of manifest.chunks) {
     if (!chunk || typeof chunk.chunkId !== 'string' || chunkIds.has(chunk.chunkId) ||
         !manifest.orderedRecordIds.includes(chunk.recordId) ||
+        chunk.chunkId !== `${manifest.archiveRevisionId}:${encodeURIComponent(chunk.recordId)}:${chunk.fragmentIndex}` ||
         !Number.isSafeInteger(chunk.recordOrdinal) || manifest.orderedRecordIds[chunk.recordOrdinal] !== chunk.recordId ||
         !Number.isSafeInteger(chunk.fragmentIndex) || !Number.isSafeInteger(chunk.fragmentCount) ||
         chunk.fragmentCount < 1 || chunk.fragmentIndex < 0 || chunk.fragmentIndex >= chunk.fragmentCount ||
@@ -214,7 +230,8 @@ export async function materializeEnginePlanArchiveChunks<T extends EnginePlanArc
   chunkBytesById: ReadonlyMap<string, Uint8Array>
 ): Promise<T[]> {
   validateManifest(manifest);
-  if (!(chunkBytesById instanceof Map) || chunkBytesById.size !== manifest.chunks.length) {
+  if (!chunkBytesById || typeof chunkBytesById.get !== 'function' || typeof chunkBytesById.has !== 'function' ||
+      chunkBytesById.size !== manifest.chunks.length) {
     throw new Error('مجموعة أجزاء الأرشيف ناقصة أو تحتوي أجزاء غير متوقعة.');
   }
 
@@ -233,12 +250,16 @@ export async function materializeEnginePlanArchiveChunks<T extends EnginePlanArc
     const descriptors = (descriptorsByRecord.get(recordId) ?? []).sort((a, b) => a.fragmentIndex - b.fragmentIndex);
     if (descriptors.length === 0) throw new Error(`لا توجد أجزاء للسجل ${recordId}.`);
     const first = descriptors[0];
-    if (descriptors.length !== first.fragmentCount ||
-        descriptors.some((item, index) =>
-          item.recordOrdinal !== ordinal || item.fragmentCount !== first.fragmentCount ||
-          item.recordByteLength !== first.recordByteLength || item.recordSha256 !== first.recordSha256 ||
-          item.fragmentIndex !== index
-        )) {
+    const expectedFragmentCount = Math.max(1, Math.ceil(first.recordByteLength / manifest.maxChunkBytes));
+    if (first.fragmentCount !== expectedFragmentCount || descriptors.length !== first.fragmentCount ||
+        descriptors.some((item, index) => {
+          const expectedLength = index < expectedFragmentCount - 1
+            ? manifest.maxChunkBytes
+            : first.recordByteLength - manifest.maxChunkBytes * (expectedFragmentCount - 1);
+          return item.recordOrdinal !== ordinal || item.fragmentCount !== first.fragmentCount ||
+            item.recordByteLength !== first.recordByteLength || item.recordSha256 !== first.recordSha256 ||
+            item.fragmentIndex !== index || item.byteLength !== expectedLength;
+        })) {
       throw new Error(`تسلسل أجزاء السجل ${recordId} غير مكتمل أو غير متسق.`);
     }
 
@@ -271,7 +292,13 @@ export async function materializeEnginePlanArchiveChunks<T extends EnginePlanArc
   }
 
   if (totalBytes !== manifest.totalBytes) throw new Error('الحجم الإجمالي للأرشيف لا يطابق Manifest.');
-  const archiveBytes = new TextEncoder().encode(JSON.stringify(canonicalize(records)));
+  const archiveBytes = new TextEncoder().encode(JSON.stringify(canonicalize({
+    protocolVersion: manifest.protocolVersion,
+    schemaVersion: manifest.schemaVersion,
+    archiveRevisionId: manifest.archiveRevisionId,
+    orderedRecordIds: manifest.orderedRecordIds,
+    records
+  })));
   if (!equalString(await sha256(archiveBytes), manifest.archiveSha256)) {
     throw new Error('فشلت بصمة الأرشيف الكاملة؛ لن يتم إظهار أي سجل.');
   }
