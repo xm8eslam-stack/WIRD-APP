@@ -139,3 +139,16 @@ A green unit/build/browser suite does not by itself prove that every optional ex
 - Settings no longer reports the browser as having no storage support merely because persistent-storage requests are unavailable; it distinguishes unavailable storage inspection, available-but-not-persistent storage, and possible browser eviction.
 - Added service tests for browsers exposing estimate() without persist().
 - This improves status accuracy but does not guarantee storage persistence or prevent browser eviction.
+
+
+## Adaptive local media cache budget — 2026-11-12
+
+The service-worker implementation in PR #366 now uses `navigator.storage.estimate()` when available to adapt optional audio and printed-Mushaf cache entry limits to current origin quota/usage. It reserves at least 32 MiB or 15% of quota (whichever is larger), allocates conservative shares of remaining headroom, and keeps hard upper bounds. When estimates are unavailable/invalid, it falls back to the existing conservative static limits. Cache limits are re-evaluated on reads/writes; least-recently-used entries are trimmed first. Optional media cache may contract to zero under storage pressure; streaming remains the fallback. This policy never evicts Quran progress, account data, or the sync journal.
+
+This is **device-capability adaptation**, not subscription-tier entitlement. It is source-level work in PR #366 and is not merged or runtime-verified yet. Browser quota estimates are approximate and browser-managed eviction remains possible.
+
+## Adaptive cloud plan storage — separate design boundary
+
+PR #367 currently keeps a safe 800,000-byte maximum for a single engine-plan Firestore document. The total size of a plan must not be confused with the maximum size of one Firestore document. Larger plans require versioned multi-document chunk storage, integrity verification, and atomic manifest publication. Do not raise the single-document limit beyond its reviewed envelope.
+
+Future plan storage should derive chunk count from actual UTF-8 serialized bytes and enforce a separately configured account entitlement only after real product tiers/quotas are defined. Until then, do not invent Free/Pro storage allowances. The proposed chunk protocol must use deterministic idempotent chunk IDs, per-version manifests (count/length/hash/schema), verified complete upload before pointer publication, optimistic revision checks, safe old-version retention, and conflict references rather than duplicating large plan bodies. No Firestore Rules or production changes are authorized by this design note.
