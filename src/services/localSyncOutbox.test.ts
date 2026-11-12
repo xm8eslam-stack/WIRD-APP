@@ -199,6 +199,12 @@ export async function runLocalSyncOutboxTests(): Promise<{ passed: number; faile
       }
       assert(rejected === invalidInputs.length, 'Every malformed or oversized mutation must be rejected');
       assert((await LocalSyncOutbox.getSnapshot()).pendingCount === 0, 'Invalid mutations must not create outbox records');
+
+      const largeEnginePlan = await LocalSyncOutbox.enqueue({
+        mutationId: 'engine-plan-700kb', collection: 'enginePlans', documentId: 'snapshot',
+        payload: { records: [{ id: 'large-plan', data: 'x'.repeat(700_000) }] }
+      });
+      assert(largeEnginePlan.status === 'queued', 'Engine-plan payloads within the shared 800 KB budget must pass the outbox facade');
     });
 
     await test('Acknowledged legacy IDs without fingerprints stay reserved', async () => {
