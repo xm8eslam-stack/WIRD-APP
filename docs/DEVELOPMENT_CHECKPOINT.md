@@ -1,5 +1,17 @@
 # 2026-11-12 — Offline-first checkpoint overlay
 
+## Current workstream checkpoint — 2026-11-12 14:35 +02:00
+
+- Main SHA: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- #365 head `d0fc6753c32e231bcfe4396e0808963ed5c6978f`; bookmark persistence + saved list + accessible storage failure + Playwright reload/remove/scene-list coverage. Run `43211160493` / job `131158819288`: failure without steps/logs.
+- #368 head `4e3a192ee766108ff580cebed32699a70fb7f5ab`; unified offline audio metadata store with jobs/files/jobItems and recoverable orphan deletion. Run `43210985755` / job `131158220859`: failure without steps/logs.
+- #358/#359 are superseded by #368; keep Draft and do not merge independently.
+- #367 head `fd417faaa96a11920ef3a8e4f1038f567c36a731`; docs overlap removed. Still only interim 800 KB payload budget, not chunks.
+- #366 head `b289bba34a93d730ca4fd06a08220d75067bf8c7`; no new implementation in this phase.
+- #363 documentation branch receives this checkpoint and must be re-fetched after updates; no overlapping files with #367/#368.
+- All listed Quality Gate runs have null steps/logs. Vercel Preview blocked by Free build-rate. No merge/deploy/Production settings/rules/data/secrets/flags changed.
+
+
 ## Seerah / PR coordination checkpoint — 2026-11-12 14:05 +02:00
 
 - PR #365 new head `16048985de1df2e17fb0c45afbafa8d16acd7933`: local persistent bookmarks by bookVersion/part/chapter/scene/anchor, deduplication, version isolation, saved-bookmark list, and service tests added. No narrative content or cloud sync.
