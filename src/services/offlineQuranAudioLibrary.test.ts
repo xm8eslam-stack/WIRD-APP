@@ -155,7 +155,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       const updated = await library.getJob(job.id);
       const items = await library.listJobItems(job.id);
       assert(updated?.status === 'queued' && updated.completedAyahs === 0, 'A partial job with missing cache bytes must not retain false progress');
-      assert(items.every(item => item.status === 'failed'), 'Missing cached bytes must become retryable failed items');
+      assert(items.filter(item => item.status === 'failed').length === 1 && items.filter(item => item.status === 'queued').length === 1, 'Only the evicted verified item should become retryable; untouched work stays queued');
     } finally { library.close(); }
   });
 
