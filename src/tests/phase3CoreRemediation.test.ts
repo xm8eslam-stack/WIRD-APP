@@ -611,6 +611,10 @@ export async function runPhase3CoreRemediationTests(): Promise<{ passed: number;
     const route1 = parseRoute('#/library');
     assert(route1.tab === 'library', 'parseRoute parses #/library');
 
+    const seerahRoute = parseRoute('#/seerah');
+    assert(seerahRoute.tab === 'seerah', 'parseRoute supports the Seerah reader deep link');
+    assert(buildRouteHash({ tab: 'seerah' }) === '#/seerah', 'buildRouteHash builds the Seerah reader route');
+
     const route2 = parseRoute('#/session?mode=memorize&surah=67&start=1&end=10');
     assert(route2.tab === 'session', 'parseRoute parses #/session');
     assert(route2.mode === 'memorize', 'parseRoute extracts query param mode');
