@@ -847,3 +847,16 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Found actual file overlap: #367 changes `docs/sync/ARCHITECTURE.md` and `docs/engineering/progress/WORK_LOG.md`, both also changed by #363. This contradicts the intended code-only separation. Canonical docs are assigned to #363; #367 must drop these two paths before code review.
 - #366's local quota-aware LRU media cache remains separate from cloud plan entitlement. #367's 800 KB is a per-document interim envelope only. #365 remains a reader shell with no publishable historical text.
 - No main/Production/rules/secrets/user data/feature flags changed. No PR merged or deployed.
+
+
+---
+
+## 2026-11-12 14:05 +02:00 — Seerah bookmark persistence and PR ownership cleanup
+
+- On PR #365 branch `feat/seerah-continuous-reader-shell-20261112`, added local bookmark persistence keyed by book version, part, chapter, scene, and anchor. Added normalization, duplicate handling, version isolation, targeted removal, sidebar listing/navigation, and service tests. Latest head `16048985de1df2e17fb0c45afbafa8d16acd7933`.
+- Exact-head run `43209263032` / job `131152309833` ended failure with no steps/logs; no code-level test result can be inferred. Vercel exact-head status is blocked by Free build-rate.
+- PR #367 had two actual documentation overlaps with #363. Restored `docs/sync/ARCHITECTURE.md` and `docs/engineering/progress/WORK_LOG.md` to main versions on #367. Latest code-only head `fd417faaa96a11920ef3a8e4f1038f567c36a731`; exact-head run `43209066503` / job `131151602011` also had no steps/logs.
+- Rechecked PR file lists: #363 and #367 now have zero overlapping changed paths.
+- Reviewed Service Worker audio and Mushaf cache hit paths; both refresh insertion order before adaptive LRU trimming. No speculative change made.
+- PR #363 docs branch received live status/checkpoint/owner-action updates; refetch its exact final head before relying on its checks.
+- No merge/deploy/Production setting/rules/secret/user-data changes.
