@@ -55,6 +55,7 @@ export async function runOfflineQuranAudioCacheTests(): Promise<{ passed: number
     const bytes = await adapter.storeVerifiedResponse(identity, makeResponse([9, 8, 7]));
     assert(bytes === 3, 'Stored byte length should match the response');
     assert(await adapter.hasVerifiedFile(identity), 'Verified cache entry should be available');
+    assert(!(await adapter.hasVerifiedFile({ ...identity, byteLength: 99 })), 'Metadata byte-length mismatch must be reported as missing');
     const cached = await adapter.getVerifiedResponse(identity);
     assert(Boolean(cached) && (await cached!.arrayBuffer()).byteLength === 3, 'Cached response should be readable for playback');
   });
