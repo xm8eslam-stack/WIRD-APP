@@ -1,6 +1,6 @@
 import type { OfflineQuranAudioLibrary as LibraryType, OfflineAudioFile } from './offlineQuranAudioLibrary';
 
-export type OfflineAudioCacheIdentity = Pick<OfflineAudioFile, 'reciterId' | 'globalAyahNumber' | 'cacheGenerationId'>;
+export type OfflineAudioCacheIdentity = Pick<OfflineAudioFile, 'reciterId' | 'globalAyahNumber' | 'cacheGenerationId'> & Partial<Pick<OfflineAudioFile, 'byteLength'>>;
 
 export interface OfflineAudioCacheAdapterOptions {
   cacheStorage?: Pick<CacheStorage, 'open'>;
@@ -13,7 +13,7 @@ const DEFAULT_CACHE_NAME = 'wird-offline-quran-audio-v1';
 const DEFAULT_MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 function validateIdentity(identity: OfflineAudioCacheIdentity): void {
-  if (!identity || typeof identity.reciterId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(identity.reciterId) ||
+  if (!identity || typeof identity.reciterId !== 'string' || !/^[a-zA-Z0-9._-]{1,80}$/.test(identity.reciterId) ||
       !Number.isSafeInteger(identity.globalAyahNumber) || identity.globalAyahNumber < 1 || identity.globalAyahNumber > 6236 ||
       typeof identity.cacheGenerationId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(identity.cacheGenerationId)) {
     throw new Error('هوية ملف التلاوة أو جيل التخزين المؤقت غير صالحة.');
@@ -128,7 +128,8 @@ export class OfflineQuranAudioCacheAdapter {
     const response = await cache.match(key);
     if (!response) return null;
     try {
-      await validateAudioResponse(response, this.maxFileBytes);
+      const bytes = await validateAudioResponse(response, this.maxFileBytes);
+      if (identity.byteLength !== undefined && identity.byteLength !== null && identity.byteLength !== bytes.byteLength) return null;
       return response;
     } catch {
       return null;
