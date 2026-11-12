@@ -31,6 +31,7 @@ export interface OfflineAudioFile {
   byteLength: number | null;
   downloadedAtMs: number;
   verified: true;
+  available: boolean;
   pinned: boolean;
 }
 
@@ -147,6 +148,7 @@ function normalizeFile(input: OfflineAudioFileInput): OfflineAudioFile {
     byteLength: input.byteLength,
     downloadedAtMs: input.downloadedAtMs,
     verified: true,
+    available: true,
     pinned: false
   };
 }
@@ -155,7 +157,7 @@ function validateStoredFile(value: unknown): OfflineAudioFile {
   if (!value || typeof value !== 'object') throw new Error('سجل ملف صوتي تالف؛ لم نستخدمه.');
   const record = value as OfflineAudioFile;
   const normalized = normalizeFile(record);
-  if (record.key !== normalized.key || typeof record.pinned !== 'boolean') {
+  if (record.key !== normalized.key || typeof record.available !== 'boolean' || typeof record.pinned !== 'boolean') {
     throw new Error('سجل الملف الصوتي لا يطابق المخطط المعتمد.');
   }
   return { ...normalized, pinned: record.pinned };
@@ -224,7 +226,7 @@ export class OfflineQuranAudioLibrary {
     const fingerprint = requestFingerprint(range);
     const existingJobs = await requestResult(jobs.index('requestFingerprint').getAll(fingerprint)) as OfflineAudioJob[];
     const reusable = existingJobs
-      .filter(job => job.status !== 'failed' && job.status !== 'cancelled')
+      .filter(job => !isTerminal(job.status))
       .sort((a, b) => b.updatedAtMs - a.updatedAtMs)[0];
     if (reusable) {
       validateJob(reusable);
@@ -249,8 +251,7 @@ export class OfflineQuranAudioLibrary {
       const stored = await requestResult(files.get(key));
       let verified = false;
       if (stored) {
-        validateStoredFile(stored);
-        verified = true;
+        verified = validateStoredFile(stored).available;
       }
       relations.push({
         key: jobItemKey(job.id, key),
@@ -401,6 +402,7 @@ export class OfflineQuranAudioLibrary {
         throw new Error('تعارض في الملف المحفوظ لنفس القارئ والآية.');
       }
       normalized.pinned = current.pinned;
+      normalized.available = true;
     }
     files.put(normalized);
     relation.status = 'verified';
@@ -493,7 +495,15 @@ export class OfflineQuranAudioLibrary {
     const db = await this.openDatabase();
     const transaction = db.transaction([FILES], 'readwrite');
     const store = transaction.objectStore(FILES);
-    for (const file of missing) store.delete(file.key);
+    for (const snapshot of missing) {
+      const current = await requestResult(store.get(snapshot.key));
+      if (!current) continue;
+      const file = validateStoredFile(current);
+      if (file.downloadedAtMs === snapshot.downloadedAtMs && file.available) {
+        file.available = false;
+        store.put(file);
+      }
+    }
     await transactionResult(transaction);
     return missing;
   }
