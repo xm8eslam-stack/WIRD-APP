@@ -1,18 +1,3 @@
-# 2026-11-12 — Product-wide offline-first and future app readiness
-
-> This is the current priority overlay. It supersedes the older phase ordering below where conflicting; historical phase evidence and SHAs remain historical and must be rechecked against current main.
-
-- Offline-first completeness is now a primary track running in parallel with Quran, daily worship, Seerah, UX, and sync.
-- Existing PWA foundation includes service-worker shell caching, generated Vite asset manifests, explicit resumable lazy-asset preparation, local Quran/worship data, local-first progress, storage quota/persistence inspection, bounded opportunistic audio caching, Mushaf page caching, and bounded previously-viewed tafsir/verified-hadith caching.
-- PR #366 is the active Draft/HOLD implementation branch for the offline/app-readiness work. It adds public static asset enumeration to the explicit offline manifest and documents the route/capability inventory. Re-fetch its exact head/checks before making status claims.
-- Work milestones: OF0 route/asset/data/action inventory; OF1 PWA lifecycle; OF2 complete offline package; OF3 local data and UID/guest recovery; OF4 verified core Quran/worship content; OF5 licensed pinned audio; OF6 offline center UX; OF7 PWA/platform app evaluation; OF8 real-browser/device certification.
-- PWA remains the primary baseline. Capacitor/TWA/native packaging is deferred until web offline gates pass; no native wrapper or plugin is selected.
-- Network-required features must be labeled honestly. Firebase/Auth, fresh external APIs, uncached tafsir/hadith, and unverified external Ruqyah indexes are not claimed to work offline.
-- No private API responses, auth tokens, user records, backups, or progress may enter shared static caches. Pinned audio remains device-local and excluded from cloud sync/backup. EveryAyah remains stream-only absent documented rights.
-- Offline release requires cold start/restart in airplane mode, all core routes, local progress, storage pressure, service-worker update, and safe online reconciliation on real browsers/devices. CI, Vercel deployment, browser smoke, and device evidence are separate gates.
-
----
-
 # WIRD — Master Engineering Roadmap
 
 **Updated:** 2026-11-06 after PR #57 merge and PR #58 scope-isolation hardening  
