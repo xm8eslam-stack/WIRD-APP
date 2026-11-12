@@ -79,6 +79,11 @@ export function validateSeerahChapterForPublication(
   chapter: SeerahChapterContent
 ): SeerahPublicationValidation {
   const blockers: string[] = [];
+  if (!chapter || typeof chapter !== 'object' ||
+      !Array.isArray(chapter.sources) || !Array.isArray(chapter.claims) ||
+      !Array.isArray(chapter.scenes) || !chapter.reviews || typeof chapter.reviews !== 'object') {
+    return { publishable: false, blockers: ['chapter_structure_invalid'] };
+  }
   const sourceIds = new Set(chapter.sources.map(source => source.id));
   const claimIds = new Set(chapter.claims.map(claim => claim.id));
   const blockIds = new Set<string>();
@@ -96,6 +101,9 @@ export function validateSeerahChapterForPublication(
         !hasText(source.work) || !hasText(source.edition) || !hasText(source.locator)) {
       blockers.push(`source_metadata_incomplete:${source.id || 'unknown'}`);
     }
+    if (!['verified_public_domain', 'licensed_for_use', 'link_only', 'permission_required', 'unknown'].includes(source.rightsStatus)) {
+      blockers.push(`source_rights_status_invalid:${source.id || 'unknown'}`);
+    }
     if (!['verified_public_domain', 'licensed_for_use', 'link_only'].includes(source.rightsStatus)) {
       blockers.push(`source_rights_not_cleared:${source.id}`);
     }
@@ -106,6 +114,12 @@ export function validateSeerahChapterForPublication(
 
   for (const claim of chapter.claims) {
     if (!hasText(claim.id) || !hasText(claim.statement)) blockers.push(`claim_incomplete:${claim.id || 'unknown'}`);
+    if (!Array.isArray(claim.sourceIds)) {
+      blockers.push(`claim_sources_invalid:${claim.id || 'unknown'}`);
+      continue;
+    }
+    if (!['high', 'medium', 'low'].includes(claim.confidence)) blockers.push(`claim_confidence_invalid:${claim.id || 'unknown'}`);
+    if (!['draft', 'verified', 'disputed', 'rejected'].includes(claim.reviewStatus)) blockers.push(`claim_review_status_invalid:${claim.id || 'unknown'}`);
     if (claim.sourceIds.length === 0) blockers.push(`claim_without_sources:${claim.id}`);
     if (!uniqueIds(claim.sourceIds)) blockers.push(`claim_has_duplicate_sources:${claim.id}`);
     for (const sourceId of claim.sourceIds) {
@@ -118,6 +132,10 @@ export function validateSeerahChapterForPublication(
     if (!hasText(scene.id) || !hasText(scene.title)) blockers.push(`scene_incomplete:${scene.id || 'unknown'}`);
     if (sceneIds.has(scene.id)) blockers.push(`duplicate_scene_id:${scene.id}`);
     sceneIds.add(scene.id);
+    if (!Array.isArray(scene.bodyBlocks)) {
+      blockers.push(`scene_body_blocks_invalid:${scene.id || 'unknown'}`);
+      continue;
+    }
     if (scene.bodyBlocks.length === 0) blockers.push(`scene_has_no_body_blocks:${scene.id}`);
 
     for (const block of scene.bodyBlocks) {
@@ -126,6 +144,14 @@ export function validateSeerahChapterForPublication(
       blockIds.add(block.id);
 
       if (block.type === 'heading') continue;
+      if (block.type !== 'paragraph' && block.type !== 'context_note' && block.type !== 'quote_verified') {
+        blockers.push(`body_block_type_invalid:${block.id || 'unknown'}`);
+        continue;
+      }
+      if (!Array.isArray(block.claimIds)) {
+        blockers.push(`body_block_claims_invalid:${block.id || 'unknown'}`);
+        continue;
+      }
       if (block.claimIds.length === 0) blockers.push(`body_block_without_claims:${block.id}`);
       if (!uniqueIds(block.claimIds)) blockers.push(`body_block_duplicate_claims:${block.id}`);
       for (const claimId of block.claimIds) {
