@@ -101,19 +101,43 @@ export class OfflineQuranAudioDownloader {
   }
 
   private async run(jobId: string, execution: ActiveDownload): Promise<OfflineAudioJob> {
-    const job = await this.library.getJob(jobId);
+    // Reconcile browser eviction/corruption before trusting any verified relation.
+    await this.cache.reconcileLibrary(this.library);
+    let activeJobId = jobId;
+    let job = await this.library.getJob(activeJobId);
     if (!job) throw new Error('مهمة تنزيل التلاوة غير موجودة.');
-    if (job.status === 'completed') return job;
+
+    if (job.status === 'completed') {
+      const [relations, files] = await Promise.all([
+        this.library.listJobItems(activeJobId),
+        this.library.listFiles()
+      ]);
+      const fileByKey = new Map(files.map(file => [file.key, file]));
+      const hasMissingAudio = relations.some(item => {
+        if (item.status !== 'verified') return false;
+        const file = fileByKey.get(item.fileKey);
+        return !file || !file.available || file.deletionPending;
+      });
+      if (!hasMissingAudio) return job;
+
+      // A completed job is immutable. Create a new idempotent retry job only
+      // when one or more previously verified Cache Storage generations vanished.
+      const retryJob = await this.library.createJob(job, this.now());
+      if (retryJob.id === activeJobId) return retryJob;
+      activeJobId = retryJob.id;
+      job = retryJob;
+    }
+
     if (job.status === 'failed' || job.status === 'cancelled') {
       throw new Error('هذه المهمة منتهية؛ أنشئ محاولة جديدة لإعادة تنزيل الآيات غير المتاحة.');
     }
 
     const plan = buildQuranAudioDownloadPlan(job);
-    const relations = await this.library.listJobItems(jobId);
+    const relations = await this.library.listJobItems(activeJobId);
     const pending = relations.filter(item => item.status !== 'verified');
-    if (pending.length === 0) return (await this.library.getJob(jobId))!;
+    if (pending.length === 0) return (await this.library.getJob(activeJobId))!;
 
-    if (job.status !== 'downloading') await this.library.setJobStatus(jobId, 'downloading', this.now());
+    if (job.status !== 'downloading') await this.library.setJobStatus(activeJobId, 'downloading', this.now());
     let nextIndex = 0;
     let failures = 0;
 
@@ -124,12 +148,12 @@ export class OfflineQuranAudioDownloader {
         const planned = plan.items.find(candidate => candidate.globalAyahNumber === item.globalAyahNumber);
         if (!planned) {
           failures++;
-          await this.library.markItemFailed(jobId, item.globalAyahNumber, this.now()).catch(() => undefined);
+          await this.library.markItemFailed(activeJobId, item.globalAyahNumber, this.now()).catch(() => undefined);
           continue;
         }
 
         try {
-          await this.library.markItemDownloading(jobId, item.globalAyahNumber, this.now());
+          await this.library.markItemDownloading(activeJobId, item.globalAyahNumber, this.now());
           if (execution.controller.signal.aborted) throw abortError();
           const url = validateApprovedAudioUrl(planned.url);
           const response = await this.fetchImpl(url.toString(), {
@@ -151,7 +175,7 @@ export class OfflineQuranAudioDownloader {
           };
           const byteLength = await this.cache.storeVerifiedResponse(identity, response);
           try {
-            await this.library.recordVerifiedFile(jobId, {
+            await this.library.recordVerifiedFile(activeJobId, {
               reciterId: job.reciterId,
               surahNumber: item.surahNumber,
               ayahNumber: item.ayahNumber,
@@ -168,14 +192,14 @@ export class OfflineQuranAudioDownloader {
           }
         } catch (error) {
           if (!execution.controller.signal.aborted) failures++;
-          await this.library.markItemFailed(jobId, item.globalAyahNumber, this.now()).catch(() => undefined);
+          await this.library.markItemFailed(activeJobId, item.globalAyahNumber, this.now()).catch(() => undefined);
           if (execution.controller.signal.aborted) return;
         }
       }
     };
 
     await Promise.all(Array.from({ length: this.concurrency }, () => worker()));
-    const latest = await this.library.getJob(jobId);
+    const latest = await this.library.getJob(activeJobId);
     if (!latest) throw new Error('اختفت مهمة التنزيل أثناء التنفيذ.');
     if (latest.status === 'completed') return latest;
 
@@ -186,7 +210,5 @@ export class OfflineQuranAudioDownloader {
     else if (latest.completedAyahs === latest.totalAyahs) finalStatus = 'completed';
     else finalStatus = latest.completedAyahs > 0 ? 'partial' : 'queued';
 
-    const updated = await this.library.setJobStatus(jobId, finalStatus, this.now());
-    return updated;
-  }
-}
+    return this.library.setJobStatus(activeJobId, finalStatus, this.now());
+  }}
