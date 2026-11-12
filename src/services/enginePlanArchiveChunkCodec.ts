@@ -237,8 +237,13 @@ function validateManifest(manifest: EnginePlanArchiveManifest): void {
       !/^[a-f0-9]{64}$/.test(manifest.archiveSha256)) {
     throw new Error('بيانات Manifest أرشيف الخطط غير صالحة.');
   }
-  if (new Set(manifest.orderedRecordIds).size !== manifest.orderedRecordIds.length ||
-      manifest.orderedRecordIds.some(id => typeof id !== 'string' || !id.trim())) {
+  for (let index = 0; index < manifest.orderedRecordIds.length; index++) {
+    const id = manifest.orderedRecordIds[index];
+    if (!(index in manifest.orderedRecordIds) || typeof id !== 'string' || !id.trim() || id.length > 256) {
+      throw new Error('ترتيب أو معرّفات سجلات الأرشيف غير صالحة.');
+    }
+  }
+  if (new Set(manifest.orderedRecordIds).size !== manifest.orderedRecordIds.length) {
     throw new Error('ترتيب أو معرّفات سجلات الأرشيف غير صالحة.');
   }
   if ((manifest.recordCount === 0) !== (manifest.chunks.length === 0)) {
@@ -248,6 +253,7 @@ function validateManifest(manifest: EnginePlanArchiveManifest): void {
   const chunkIds = new Set<string>();
   for (const chunk of manifest.chunks) {
     if (!chunk || typeof chunk.chunkId !== 'string' || chunkIds.has(chunk.chunkId) ||
+        typeof chunk.recordId !== 'string' || !chunk.recordId.trim() || chunk.recordId.length > 256 ||
         !manifest.orderedRecordIds.includes(chunk.recordId) ||
         !Number.isSafeInteger(chunk.recordOrdinal) || manifest.orderedRecordIds[chunk.recordOrdinal] !== chunk.recordId ||
         chunk.chunkId !== manifest.archiveRevisionId + ':' + encodeURIComponent(chunk.recordId) + ':' + chunk.fragmentIndex ||
