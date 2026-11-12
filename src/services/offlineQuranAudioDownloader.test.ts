@@ -78,9 +78,14 @@ export async function runOfflineQuranAudioDownloaderTests(): Promise<{ passed: n
   });
 
   await test('keeps successful ayahs and marks failed responses retryable without false completion', async () => {
+    let firstAyahFailure = true;
     const { library, downloader } = create(async input => {
       const url = String(input);
-      return url.endsWith('/1.mp3') ? makeResponse('text/html') : makeResponse();
+      if (url.endsWith('/1.mp3') && firstAyahFailure) {
+        firstAyahFailure = false;
+        return makeResponse('text/html');
+      }
+      return makeResponse();
     });
     try {
       const first = await library.createJob(range, 100);
