@@ -821,3 +821,16 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - آخر رأس PR #365 الذي بُني على Vercel: `5f0f5cb3fb7342dee9dcd5935849cb329bece986`. Preview deployment `dpl_ArPB9Pj4QGeCmUAzdYh1EKypAmus` = READY، وVite build اكتمل بنجاح. هذا لا يثبت اختبار الواجهة الحي أو اجتياز الاختبارات الكاملة.
 - GitHub Quality Gate على SHA نفسه: run `43184272681`، job `131067466738` فشل قبل ظهور أي steps؛ `steps=null` و`logs_url=null`، واسترجاع السجلات أعاد `BlobNotFound`. لا يوجد دليل يحدد فشل test/typecheck/build؛ لا تُعلن CI pass ولا تُشخّصه كفشل اختبارات.
 - PR #365 يظل OPEN / DRAFT / HOLD. لا merge حتى تتوفر Quality Gate ناجحة وقابلة للفحص على exact head. PR #363 للوثائق ما زال منفصلًا ولا يُفترض أنه مدمج في main.
+
+
+## 2026-11-12 — Offline-first and future app readiness consolidated in canonical docs branch
+
+- Adopted offline-first as a primary track alongside Quran, daily worship, Seerah, UX, and sync.
+- Existing PWA/service worker, lazy-package preparation, local Quran/progress, bounded audio/Mushaf/tafsir/hadith caches are treated as a foundation, not certification.
+- Added the Arabic app-readiness roadmap and route/capability matrix; extended the architecture and owner-action requirements.
+- Added public static assets to the explicit offline package, six-second navigation fallback timeout, and clearer storage persistence capability reporting in the separate code PR.
+- Auth/Firebase and live APIs remain network-dependent; local verified content remains authoritative; no generated religious fallback.
+- EveryAyah remains stream-only; pinned audio requires rights review and stays device-local.
+- PWA remains primary; native wrapper decision follows real offline web tests.
+- PR #363 is the canonical docs branch; PR #366 is being reduced to code-only to avoid editing the same documentation files in parallel.
+- No production settings, secrets, Firestore Rules/data, sync flags, or user data changed.
