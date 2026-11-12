@@ -534,3 +534,15 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Read-only production probing found metadata-backed serverless endpoints returned `FUNCTION_INVOCATION_FAILED`. Native Node loading isolated extensionless TypeScript imports in the Quran metadata dependency. Corrected metadata/API imports to explicit `.ts` paths and made the metadata type-only import explicit. Added `smoke:api-imports` to verify native Node imports and invalid-input responses, and wired it into CI.
 - Local after hotfix edits: `npm test` (584 passed), `npm run lint`, `npm run build`, and `npm run smoke:api-imports` passed. The API smoke exercises invalid inputs only and does not call external providers. The fix is not deployed yet; create a hotfix PR from current main, run exact-head CI, verify Vercel preview API responses, then merge only if green.
 - No production credentials/settings or cloud sync configuration changed. Hadith live upstream still requires server-side Quran Foundation credentials and remains untested.
+
+
+## 2026-11-12 — Offline-first and future app readiness adopted as a primary workstream
+
+- Reviewed canonical main baseline 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b and existing offline architecture/services/tests.
+- Confirmed the repository already has a PWA shell/service worker, build-generated asset manifest, explicit resumable full-package download for same-origin build assets, local Quran/worship data, local-first progress, storage quota/persistence inspection, bounded opportunistic audio caching, Mushaf page caching, and limited previously-viewed tafsir/verified-hadith caching.
+- Corrected product framing: this is a substantial offline foundation, not yet proof of complete offline operation or future native-app readiness.
+- Adopted a route/asset/data/action capability matrix and nine ordered work milestones in docs/offline/OFFLINE_FIRST_ARCHITECTURE.md and docs/offline/APP_READINESS_ROADMAP_AR.md.
+- Explicit boundaries: network-only APIs and Firebase/Auth are not promised offline; EveryAyah remains stream-only absent documented rights; pinned audio is separate from opportunistic cache; no generated religious content fallback; no private data in shared caches.
+- Created isolated branch feat/offline-first-app-readiness-20261112 from main SHA 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b for documentation/architecture synchronization. No application code or production configuration changed in this checkpoint.
+- No test, browser offline smoke, real-device test, deployment, or Google AI Studio sync was performed by this documentation checkpoint.
+- Next: inspect all route registrations/lazy imports and build manifest coverage; verify public static assets and external fonts; create the offline capability matrix; then implement the smallest testable service-worker gap.
