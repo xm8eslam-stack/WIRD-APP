@@ -530,3 +530,21 @@ New owner requirements accepted into the queue:
 - Seerah is explicitly elevated to a high-priority parallel workstream. Continue the continuous book reader, anchors/bookmarks/source context and versioned editorial corpus. No unverified or invented historical content may be published.
 
 Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol; (B) memorized ranges UI; (C) collapsible session display settings; (D) Seerah reader/content research; (E) offline audio; (F) PWA. Keep shared docs changes in this PR only; code tracks use separate branches. No merge/deploy/Production settings/Rules/secrets/sync flags without explicit approval.
+
+
+## Latest code-track checkpoint — 2026-11-12
+- #365 Seerah branch head: 113f12c43b9b075541b7d28f58fa89cd71ef73d4. Fixed bookmark deletion to use active guest/UID-scoped key; regression test added. Reader remains a prototype shell; no verified history is published.
+- #369 memorized-range branch head: 7ac00ef32f3b3c2b1158f165ed141e6f332ab88e. Touch-friendly searchable multi-Surah checkboxes, full Juz expansion from generated canonical Quran Juz boundaries, custom ayah ranges, normalization and tests added.
+- #370 display-settings branch head: 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb. Collapsed-by-default accessible settings panel, line spacing and page padding options, device-local compatibility tests added.
+- #369/#370 remain OPEN/DRAFT and are not merged. Quality Gate runs 43274079781 and 43274209101 failed before recording steps/logs; no source-level failure or pass can be inferred. #365 run 43273958209 has the same telemetry gap.
+- Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+
+## Seerah source research checkpoint
+- Dorar Historical Encyclopedia offers a search API, but access is manually reviewed and its published API terms require attribution and visible source links, prohibit bulk scraping/republication, limit cache to 24–48 hours, keep tokens server-side, and require a review environment before publication. No application/access request was sent.
+- Sunnah.com API covers only part of hadith data and requires an API key request; it is not a full Seerah corpus.
+- Arabic Collections Online includes public-domain Arabic book holdings and a record for Tahdhib Sirat Ibn Hisham; verify rights at the individual edition/file level before ingestion.
+- OpenITI release text is under CC BY-NC-SA 4.0 per its documentation; do not embed it in a potentially commercial product without license review.
+- Research references and source-specific decisions are in docs/SEERAH_LEARNING_PLAN_AR.md. No historical content was ingested or approved.
+
+## Adaptive entitlement checkpoint
+- No subscription/billing/entitlement service or account plan tier was found in the inspected main code. Do not invent tiers or limits. Local browser/IndexedDB capacity and server-verified account entitlement are separate. Keep implementing archive/chunk transport independently while owner-defined plan entitlements are pending.
