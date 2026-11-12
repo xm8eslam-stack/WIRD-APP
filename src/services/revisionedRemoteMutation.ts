@@ -5,6 +5,7 @@ import {
   type Firestore
 } from 'firebase/firestore';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
+import { getSyncMutationPayloadLimit } from './syncPayloadLimits';
 
 export interface RevisionedRemoteMutation {
   uid: string;
@@ -68,7 +69,7 @@ export async function writeRevisionedRemoteMutation(
       (input.operation !== 'upsert' && input.operation !== 'tombstone') ||
       !Number.isSafeInteger(input.clientUpdatedAtMs) || input.clientUpdatedAtMs < 0 ||
       !Number.isSafeInteger(input.baseRevision) || input.baseRevision < 0 || input.baseRevision >= Number.MAX_SAFE_INTEGER ||
-      !isRecord(input.payload) || payloadBytes > 128_000) {
+      !isRecord(input.payload) || payloadBytes > getSyncMutationPayloadLimit(input.collection, input.payload)) {
     throw new Error('INVALID_REVISIONED_MUTATION');
   }
 
