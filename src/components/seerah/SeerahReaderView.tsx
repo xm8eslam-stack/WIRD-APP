@@ -19,18 +19,46 @@ import {
 } from '../../services/seerahReadingProgress';
 import type { SeerahBookmark } from '../../services/seerahReadingProgress';
 import type { SeerahSourceReference } from '../../services/seerahContentContract';
+import { createSeerahSceneAnchorId, SeerahBookManifest } from '../../services/seerahBookManifest';
 import { SeerahSourcePanel } from './SeerahSourcePanel';
 
 type ReaderPanel = 'contents' | 'context' | null;
 type Scene = { id: string; title: string; anchorId: string };
 
-const PROTOTYPE_SCENES: Scene[] = [
-  { id: 'scene-1', title: 'المشهد الأول — بداية الفصل', anchorId: 'seerah-prototype-scene-1' },
-  { id: 'scene-2', title: 'المشهد الثاني — امتداد الحكاية', anchorId: 'seerah-prototype-scene-2' },
-  { id: 'scene-3', title: 'المشهد الثالث — جسر إلى الفصل التالي', anchorId: 'seerah-prototype-scene-3' }
-];
-
+const PROTOTYPE_BOOK_ID = 'seerah-reader-prototype';
+const PROTOTYPE_PART_ID = 'prototype-part';
+const PROTOTYPE_CHAPTER_ID = 'prototype-chapter';
 const PROTOTYPE_VERSION = 'reader-shell-prototype-1';
+
+// Temporary navigation fixture only. It contains no historical narrative and is
+// deliberately marked draft so it cannot pass the publication manifest gate.
+const PROTOTYPE_MANIFEST: SeerahBookManifest = {
+  schemaVersion: 1,
+  bookId: PROTOTYPE_BOOK_ID,
+  contentVersion: PROTOTYPE_VERSION,
+  status: 'draft',
+  parts: [{
+    id: PROTOTYPE_PART_ID,
+    title: 'جزء نموذجي',
+    order: 1,
+    chapters: [{
+      id: PROTOTYPE_CHAPTER_ID,
+      title: 'فصل نموذجي',
+      order: 1,
+      scenes: [
+        { id: 'scene-1', title: 'المشهد الأول — بداية الفصل', order: 1, anchorId: createSeerahSceneAnchorId(PROTOTYPE_BOOK_ID, PROTOTYPE_PART_ID, PROTOTYPE_CHAPTER_ID, 'scene-1') },
+        { id: 'scene-2', title: 'المشهد الثاني — امتداد الحكاية', order: 2, anchorId: createSeerahSceneAnchorId(PROTOTYPE_BOOK_ID, PROTOTYPE_PART_ID, PROTOTYPE_CHAPTER_ID, 'scene-2') },
+        { id: 'scene-3', title: 'المشهد الثالث — جسر إلى الفصل التالي', order: 3, anchorId: createSeerahSceneAnchorId(PROTOTYPE_BOOK_ID, PROTOTYPE_PART_ID, PROTOTYPE_CHAPTER_ID, 'scene-3') }
+      ]
+    }]
+  }]
+};
+
+const PROTOTYPE_SCENES: Scene[] = PROTOTYPE_MANIFEST.parts
+  .flatMap(part => part.chapters)
+  .flatMap(chapter => chapter.scenes)
+  .sort((a, b) => a.order - b.order)
+  .map(({ id, title, anchorId }) => ({ id, title, anchorId }));
 
 interface SeerahReaderViewProps {
   sources?: readonly SeerahSourceReference[];
@@ -52,8 +80,8 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
   );
   const activeScene = PROTOTYPE_SCENES[activeIndex] ?? PROTOTYPE_SCENES[0];
   const isBookmarked = bookmarks.some(bookmark =>
-    bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === 'prototype-part' &&
-    bookmark.chapterId === 'prototype-chapter' && bookmark.sceneId === activeScene.id &&
+    bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === PROTOTYPE_PART_ID &&
+    bookmark.chapterId === PROTOTYPE_CHAPTER_ID && bookmark.sceneId === activeScene.id &&
     bookmark.anchorId === activeScene.anchorId
   );
 
@@ -75,8 +103,8 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
     if (!readingStateHydrated) return;
     const position = {
       bookVersion: PROTOTYPE_VERSION,
-      partId: 'prototype-part',
-      chapterId: 'prototype-chapter',
+      partId: PROTOTYPE_PART_ID,
+      chapterId: PROTOTYPE_CHAPTER_ID,
       sceneId: activeScene.id,
       anchorId: activeScene.anchorId,
       updatedAt: new Date().toISOString()
