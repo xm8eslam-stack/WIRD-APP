@@ -247,3 +247,58 @@ Do not combine all stages into one oversized PR. Keep independent stages on sepa
 - No Firestore Rules or Production changes in the local archive PR.
 - No deletion/tombstone semantics for unrelated collections.
 - No claim of unlimited storage; browser quota is finite and implementation must fail safely.
+
+
+## 15. Account-plan adaptive capacity (new owner requirement)
+
+This section defines the contract boundary; it does not create or assume subscription tiers. Main was inspected on 2026-11-12 and no billing/subscription/entitlement service or account tier model was found.
+
+### 15.1 Separate three limits
+
+1. **Per-plan content capacity:** maximum serialized bytes for one Engine Plan, supplied by a verified account entitlement.
+2. **Account archive capacity:** maximum total Engine Plans bytes and/or active plan count for the account, supplied by the same entitlement.
+3. **Local browser capacity:** actual IndexedDB write availability on this device. Browser quota estimates are advisory; the transaction commit is authoritative.
+
+Chunk size is a fourth, transport-only parameter. It is not a user entitlement and must not change when the account changes plan.
+
+### 15.2 Versioned server-authoritative entitlement snapshot
+
+Proposed read-only snapshot shape (field names are contract proposals, not current app fields):
+
+- uid
+- entitlementVersion
+- planId (opaque identifier; no tier names hardcoded in client)
+- issuedAt, expiresAt
+- enginePlans.maxSinglePlanBytes
+- enginePlans.maxArchiveBytes
+- enginePlans.maxActivePlans
+- enginePlans.chunkProtocolVersion
+- enginePlans.maxReadableArchiveSchema
+- enginePlans.maxWritableArchiveSchema
+
+The snapshot must come from a server-verified source (e.g. Firebase custom claims or an authenticated server endpoint backed by trusted billing/owner configuration). Never accept a client-writable Firestore profile field or a request-body planId as authority. Unknown/missing/expired entitlement fails closed for new cloud writes using a documented compatibility policy; it must not make already stored local plans unreadable or deletable.
+
+### 15.3 Effective local write policy
+
+- Validate a single plan against maxSinglePlanBytes and the full account archive against maxArchiveBytes / maxActivePlans.
+- Also check local IndexedDB availability and handle QuotaExceededError atomically.
+- navigator.storage.estimate() may show a useful estimate, but it cannot reserve space or override a failed transaction.
+- Effective capacity is bounded by both the account entitlement and actual device capacity; it is never the larger of the two.
+- If device quota is low, preserve all existing plans and sync evidence. Explain the limitation and allow export/recovery; do not silently delete old plans.
+- If the user downgrades below current usage, preserve all existing records and permit read/export/restore. Block only new additions/expansions that exceed the new limit, unless the actual published product policy explicitly defines a reviewed alternative. Never truncate plans to fit.
+- Upgrade takes effect only after a fresh verified entitlement snapshot; no local plan cache can grant itself a higher quota.
+
+### 15.4 Chunk transport independent of account plan
+
+- Keep a conservative global per-document/chunk payload ceiling with Firestore envelope headroom.
+- Split the immutable archive by stable record IDs and bounded serialized bytes. The manifest carries per-chunk byte lengths and SHA-256, total archive fingerprint, archive revision, schema/protocol version, and entitlement revision used for validation.
+- A plan with a large narrative or schedule may span multiple chunks, but it remains one logical record in the archive. The receiver reconstructs and validates the full record before making it visible.
+- Upload/read-back/verify all chunks before publishing the manifest pointer. Download/verify/materialize all chunks before Inbox cursor advancement.
+- Interrupted uploads remain unreferenced staging objects; retries are idempotent. Never treat a partial chunk set as a valid plan or publish a manifest that exceeds the entitlement.
+- Old clients that cannot read the archive schema/chunk protocol must be capability-gated before the server publishes the new manifest.
+
+### 15.5 Owner decision and release gates
+
+Before enabling plan-based limits, the owner must approve the actual plan catalog and the meaning/value of each entitlement field. No plan names, prices, quotas, or tier defaults may be invented by engineering. The archive repository, local quota handling, chunk protocol, and tests can be implemented independently while that business decision is pending.
+
+Required tests: server-verified vs client-forged entitlement, expired/missing/unknown claims, upgrade/downgrade with over-limit existing records, plan-size vs archive-size limits, chunk-size independence, offline cached claims, quota failure, and account switching. Firestore Rules or Production entitlement wiring requires separate security review and explicit owner approval.
