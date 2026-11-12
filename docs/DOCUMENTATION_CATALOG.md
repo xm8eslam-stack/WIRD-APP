@@ -90,3 +90,7 @@
 - `offline/APP_READINESS_ROADMAP_AR.md` — Arabic roadmap for making WIRD usable offline and preparing future app packaging.
 - `offline/OFFLINE_CAPABILITY_MATRIX_AR.md` — route/asset/data/action inventory and offline classification.
 - `offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md` and `offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md` — reviewed audio sources, rights boundaries, and device-local storage design.
+
+
+## متطلبات المنتج الجديدة
+- [USER_REQUIREMENTS_2026-11-12.md](./product/USER_REQUIREMENTS_2026-11-12.md) — adaptive Engine Plans capacity/chunked sync، تحديد السور والأجزاء ونطاقات الآيات، إعدادات صفحة جلسة قابلة للطي، وأولوية السيرة.
