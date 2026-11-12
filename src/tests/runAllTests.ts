@@ -165,7 +165,7 @@ async function main() {
     { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
     { name: 'Ruqyah Audio Playback Safety & Source Allowlist', runner: runRuqyahViewAudioLockTests },
-    { name: 'Seerah Reader Device-local Reading Position', runner: runSeerahReadingProgressTests },
+    { name: 'Seerah Reader Device-local Position and Versioned Bookmarks', runner: runSeerahReadingProgressTests },
     { name: 'Seerah Claim Provenance and Editorial Publication Gate', runner: runSeerahContentContractTests },
   ];
 
