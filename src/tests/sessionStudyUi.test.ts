@@ -14,7 +14,9 @@ export function runSessionStudyUiTests(): { passed: number; failed: number } {
     assert(session.includes('aria-label="حجم خط الآيات"'), 'font size control must be accessible');
     assert(session.includes('aria-label="عرض مساحة صفحة الحفظ"') && session.includes('data-session-page-width={displayPreferences.pageWidth}'), 'session page width must be adjustable and exposed accessibly');
     assert(session.includes('activePageAyahRef.current?.scrollIntoView'), 'direct ayah jumps must keep the selected verse visible in the whole-session view');
-    assert(session.includes('إعادة ضبط العرض'), 'display preferences must have a one-action reset');
+    assert(session.includes('إعادة ضبط الإعدادات'), 'display preferences must have a one-action reset');
+    assert(session.includes('aria-expanded={isDisplaySettingsOpen}') && session.includes('aria-controls="session-display-settings-panel"') && session.includes('hidden={!isDisplaySettingsOpen}'), 'display settings must be a collapsed-by-default accessible disclosure');
+    assert(session.includes('lineSpacing:') && session.includes('pagePadding:') && preferences.includes('lineSpacing') && preferences.includes('pagePadding'), 'detailed line spacing and page padding controls must be persisted and applied');
     assert(preferences.includes('pageWidth: \'comfortable\'') && preferences.includes('MemorizationSessionPageWidth'), 'page width must be persisted as a validated device-local preference');
     assert(session.includes('aria-label="حجم واجهة جلسة الحفظ"') && session.includes('style={{ zoom: displayPreferences.uiScale / 100 }}'), 'overall session interface must be resizable without changing Quran text content');
     assert(session.includes('sticky bottom-2') && session.includes('aria-label="التنقل بين آيات جلسة الحفظ"'), 'previous/next navigation must remain reachable while scrolling');
