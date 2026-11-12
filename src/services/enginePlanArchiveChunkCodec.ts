@@ -108,7 +108,9 @@ export function canonicalizeEnginePlanArchiveRecord(record: EnginePlanArchiveRec
 async function sha256(bytes: Uint8Array): Promise<string> {
   const subtle = globalThis.crypto?.subtle;
   if (!subtle) throw new Error('يتطلب التحقق من أرشيف الخطط دعم Web Crypto SHA-256.');
-  const digest = await subtle.digest('SHA-256', bytes);
+  const stableInput = new Uint8Array(bytes.byteLength);
+  stableInput.set(bytes);
+  const digest = await subtle.digest('SHA-256', stableInput.buffer as ArrayBuffer);
   return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, '0')).join('');
 }
 
