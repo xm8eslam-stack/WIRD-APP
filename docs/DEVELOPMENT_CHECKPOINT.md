@@ -590,3 +590,26 @@ On resumption:
 - Added `docs/sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md` as a proposed design only.
 - Proposed same-database IndexedDB stores (journal schema v10) so archive revision + event + outbox reference can commit in one local transaction; remote manifest/chunks remain a later separately gated stage.
 - No code migration, tests, merge, deployment, Rules, Production settings, secrets or sync flags changed.
+
+
+# مراجعة المسارات المستقلة — 2026-11-12 18:50 +02:00
+
+## تعديلات مراجعة مضافة إلى فروع PR (لم تُدمج)
+- PR #365: عزل موضع قراءة السيرة والعلامات محليًا حسب StorageService scope (`guest` / `user:<uid>`) بدل مفتاح localStorage عالمي. أضيف اختبار تمييز المفاتيح بين guest ومستخدمين. آخر head: `a2e7ac38677466a7976f759dfc890aeb2fe05fda`.
+- PR #366: إزالة نمط delete-then-put عند cache hit في Service Worker؛ كان فشل إعادة الكتابة بعد الحذف قد يحرم الطلب الحالي من ملف offline موجود. أصبحت الاستجابة المحفوظة تُعاد أولًا ويُجرّب trimming مع معالجة الفشل. أضيف guard ثابت للاختبار. آخر head: `cade1b630bb429d6a4106de5bf12713df18f3491`.
+- PR #368: جعل `finalizeOrphanDeletion` يتطلب `expectedCacheGenerationId` ويرفض إنهاء metadata لجيل أحدث؛ ومنع worker متأخر من مهمة terminal من استبدال cache generation أحدث. أضيف اختباران للسباقات. آخر head: `b5ed5c9bead88835da751c7d6eb5ff7de76d56b2`.
+- PR #367 لم يتغير: 800,000 bytes حد ثابت مؤقت فقط؛ لا chunks ولا archive.
+
+## الحالة الفعلية بعد التعديلات
+- PR #363 docs head قبل هذا التحديث: `d41096af17fbac98297efe39514d7ebe74cfd0fd`.
+- PR #365 head `a2e7ac38677466a7976f759dfc890aeb2fe05fda`.
+- PR #366 head `cade1b630bb429d6a4106de5bf12713df18f3491`.
+- PR #367 head `fd417faaa96a11920ef3a8e4f1038f567c36a731`.
+- PR #368 head `b5ed5c9bead88835da751c7d6eb5ff7de76d56b2`.
+- Quality Gate runs الحالية للرؤوس #363/#365/#366/#367/#368: `43258266345`, `43258645058`, `43258830250`, `43209066503`, `43258983666` على الترتيب. كلها failure، وjob steps/logs_url غير متاحة؛ لا نستنتج منها code failure ولا pass.
+- كل PRs ما زالت OPEN/DRAFT وmergeable=true عند آخر قراءة. لم يحدث merge.
+- لا اختبارات محلية شُغلت في هذه الجلسة. التعديلات أضيفت مع اختبارات/guards مصدرية، لكن يلزم runner صالح ونتائج exact-head قابلة للفحص قبل أي merge.
+- main وProduction كما هما؛ deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` ما زال آخر ما تحقق READY على main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. لم يُجرَ deploy جديد.
+
+---
+
