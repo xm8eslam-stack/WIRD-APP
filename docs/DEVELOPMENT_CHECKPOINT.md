@@ -761,3 +761,12 @@ No source-level failure or successful tests/build/typecheck can be inferred. No 
 - ACO: describes its corpus as public domain and documents the 1955 Tahdhib Ibn Hisham edition, but WIRD still verifies item-level and jurisdiction rights before reuse.
 - OpenITI license sources include CC BY-NC-SA 4.0 documentation and a Terms page with different CC BY-SA wording; both state non-commercial restrictions. Verify per release/contributor.
 - No Seerah narrative content was ingested or published.
+
+## Seerah exact checkpoint — 2026-11-12
+- #365 exact head: adc1ef01b7a0c5eb7e280395520108c94788af5d.
+- Reader now restores saved scene only after hydration barrier; reload E2E added.
+- New versioned Book Manifest index drives prototype scene navigation; stable anchors derive from book/part/chapter/scene IDs and do not depend on titles or array positions.
+- Manifest validation + tests cover schema, IDs, ordering, anchors, malformed nested records and empty published sections.
+- Publication contract rejects malformed source/claim/scene/body-block structures; tests added.
+- Quality Gate run 43289471345 initial job 131431547175 had no steps/logs (BlobNotFound); rerun job 131431824753 queued at checkpoint time. Vercel status is build-rate-limit. No local tests/typecheck/build pass claimed.
+- No historical corpus/content ingested or published. All Seerah content remains blocked pending source-rights and specialist review.
