@@ -1052,3 +1052,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - **تصميم ذري:** journal/outbox/cursors في IndexedDB، بينما archive المقترح يحتاج backend async. Conflict use-remote يطبق projection داخل معاملة journal IDB الحالية. لا يمكن الادعاء بذَرّية cross-database. RFC يجب أن يقرر same-DB multi-store transaction أو prepare/commit intent idempotent مع crash recovery، ولا يحرك cursor قبل التحقق الكامل.
 - أضيفت خريطة المستهلكين وقيد الذرية إلى أعلى `docs/CONTINUE_HERE.md` في commit `ed9ea1b57adac6c0900361f44c8f679f7df48f4f`.
 - لم يُنفذ RFC أو migration أو تعديل حد 100/byte budgets. لم تُشغّل اختبارات محلية. لا merge/deploy أو تغييرات Production/Rules/secrets/flags.
+
+
+## 2026-11-12 18:35 +02:00 — RFC أرشيف Engine Plans
+- أُنشئ `docs/sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md` على فرع الوثائق كتصميم مقترح فقط.
+- القرار المقترح: إضافة archive stores إلى قاعدة `wird-sync-journal` نفسها (schema v10) حتى يمكن commit archive revision + journal event + outbox reference في IndexedDB transaction واحدة. لا نستخدم قاعدة IDB ثانية كـ canonical archive.
+- يغطي RFC: manifests/records/fingerprints، scope isolation، AuthGate hydration، copy-verify-mark migration، rollback، grouped transactions، Inbox/conflict resolution، remote chunks/capability negotiation، backup/import/reset، quota، ومصفوفة الاختبارات/مراحل rollout.
+- لا migration أو كود أو tests منفذة. لا تغيير حدود 100/byte budgets، ولا Production/Rules/secrets/flags، ولا merge/deploy.
