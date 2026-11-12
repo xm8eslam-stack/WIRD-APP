@@ -1173,3 +1173,8 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - All PRs #363, #365, #366, #367, #368, #369, #370, #371 OPEN/DRAFT. No merge/deploy.
 - No local tests/build/typecheck run. Quality Gate failures have no steps/logs and are not evidence of code failure or success.
 - No Firebase Rules, Production settings, secrets, sync flags or user data changed.
+
+## 2026-11-12 — PR #371 final codec hardening
+- Latest head 260df95c620cd534337e39d6707b044eb404139a.
+- Added strict dense ordered-record-ID validation, array hidden-property rejection, tampered totalBytes test, and entitlement-revision binding.
+- Exact-head Quality Gate run 43278752980 / job 131394096177: failure with steps=null/logs_url=null. No test/build/typecheck evidence can be read; no local tests run.
