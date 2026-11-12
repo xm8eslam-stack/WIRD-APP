@@ -1,3 +1,4 @@
+import { StorageService } from './storageService';
 import {
   clearSeerahReadingPosition,
   normalizeSeerahReadingPosition,
@@ -96,6 +97,34 @@ export function runSeerahReadingProgressTests(): { passed: number; failed: numbe
     if (!removeSeerahBookmark(first, storage)) throw new Error('Bookmark removal failed');
     const remaining = readSeerahBookmarks(storage);
     if (remaining.length !== 1 || remaining[0].bookVersion !== 'book-v2') throw new Error('Removal affected the wrong version');
+  });
+
+  test('Bookmark removal writes to the active UID scope instead of an unscoped legacy key', () => {
+    const originalDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    const values = new Map<string, string>();
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); },
+        removeItem: (key: string) => { values.delete(key); }
+      }
+    });
+    StorageService.__resetStorageForTests();
+    try {
+      if (!StorageService.setStorageScope('user:seerah-bookmark-delete')) throw new Error('UID scope did not activate');
+      const bookmark = { bookVersion: 'book-v1', partId: 'part-1', chapterId: 'chapter-1', sceneId: 'scene-1', anchorId: 'scene-1-start', createdAt: '2026-11-12T08:00:00.000Z' };
+      if (!saveSeerahBookmark(bookmark)) throw new Error('Scoped bookmark was not saved');
+      const scopedKey = getSeerahScopedStorageKey(SEERAH_BOOKMARKS_KEY, 'user:seerah-bookmark-delete');
+      if (!values.has(scopedKey)) throw new Error('Bookmark was not stored under the active UID key');
+      if (!removeSeerahBookmark(bookmark)) throw new Error('Scoped bookmark removal failed');
+      if (readSeerahBookmarks().length !== 0) throw new Error('Removed bookmark remains visible in the active UID scope');
+      if (values.has(SEERAH_BOOKMARKS_KEY)) throw new Error('Removal must not create or mutate the unscoped legacy key');
+    } finally {
+      StorageService.__resetStorageForTests();
+      if (originalDescriptor) Object.defineProperty(globalThis, 'localStorage', originalDescriptor);
+      else delete (globalThis as any).localStorage;
+    }
   });
 
   test('Rejects malformed bookmarks and fails closed when storage is corrupt or full', () => {
