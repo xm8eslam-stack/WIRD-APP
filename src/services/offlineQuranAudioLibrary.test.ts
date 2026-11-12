@@ -210,5 +210,21 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     } finally { library.close(); }
   });
 
+  await test('rejects invalid timestamps without corrupting job metadata', async () => {
+    const { library } = createLibrary();
+    try {
+      const job = await library.createJob(oneAyah, 100);
+      let statusRejected = false;
+      try { await library.setJobStatus(job.id, 'downloading', Number.NaN); }
+      catch { statusRejected = true; }
+      let itemRejected = false;
+      try { await library.markItemDownloading(job.id, 1, Number.POSITIVE_INFINITY); }
+      catch { itemRejected = true; }
+      const unchanged = await library.getJob(job.id);
+      assert(statusRejected && itemRejected, 'Non-finite timestamps must be rejected before writing.');
+      assert(unchanged?.status === 'queued' && unchanged.updatedAtMs === 100, 'Rejected timestamps must leave the stored job unchanged and valid.');
+    } finally { library.close(); }
+  });
+
   return { passed, failed };
 }
