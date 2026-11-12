@@ -23,6 +23,7 @@ import { ALL_SURAHS } from '../../data/quranMeta';
 import { PlanningEngine, PlanGenerationInput, EngineGeneratedPlan, ScheduledDayPlan } from '../../services/planningEngine';
 import { PlanLifecycle } from '../../services/planLifecycle';
 import { QuranMath } from '../../services/quranMath';
+import { getFullSurahMemorizedRange, getJuzMemorizedRanges, normalizeMemorizedRanges, type MemorizedRange } from '../../services/memorizedRangeSelection';
 
 interface PlanningEngineWizardProps {
   enginePlans: EngineGeneratedPlan[];
@@ -76,9 +77,14 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const [restDays, setRestDays] = useState<number[]>([5]); // Friday
   const [schedulePref, setSchedulePref] = useState<'single_session' | 'morning_evening'>('single_session');
   
-  // Selected existing memorized portions for major revision
-  const [selectedExistingSurahs, setSelectedExistingSurahs] = useState<number[]>([]);
-  const [surahToAdd, setSurahToAdd] = useState<number>(1);
+  // Previously memorized ranges for major revision: Surahs, complete Juz, or custom ayah intervals.
+  const [selectedExistingRanges, setSelectedExistingRanges] = useState<MemorizedRange[]>([]);
+  const [existingSelectionMode, setExistingSelectionMode] = useState<'surahs' | 'juz' | 'range'>('surahs');
+  const [surahsToAdd, setSurahsToAdd] = useState<number[]>([]);
+  const [juzToAdd, setJuzToAdd] = useState<number>(1);
+  const [rangeSurahNumber, setRangeSurahNumber] = useState<number>(1);
+  const [rangeStartAyah, setRangeStartAyah] = useState<number>(1);
+  const [rangeEndAyah, setRangeEndAyah] = useState<number>(7);
 
   // Max verses for current start & end surah
   const startSurahMeta = ALL_SURAHS.find(s => s.number === startSurah);
@@ -126,14 +132,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
   // Build generation input
   const buildPlanInput = (): PlanGenerationInput => {
-    const existingPortions = selectedExistingSurahs.map(sNum => {
-      const s = ALL_SURAHS.find(item => item.number === sNum);
-      return {
-        surahNumber: sNum,
-        startAyah: 1,
-        endAyah: s ? s.versesCount : 10
-      };
-    });
+    const existingPortions = normalizeMemorizedRanges(selectedExistingRanges);
 
     const safeTargetEndDate = (paceType === 'by_target_date' && targetEndDate && targetEndDate.trim())
       ? targetEndDate.trim()
@@ -599,59 +598,195 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
             </div>
           </div>
 
-          {/* Section E: Existing memorized portions for major revision */}
-          <div>
-            <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              أجزاء وسور محفوظة مسبقاً (لتضمينها تلقائياً في دورة المراجعة الكبرى):
-            </label>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
-              أضف كل سورة حفظتها بالفعل؛ يمكنك اختيار أي سورة من القرآن، وإزالتها لاحقاً. لن نفترض سوراً محفوظة نيابةً عنك.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 mb-3">
-              <select
-                value={surahToAdd}
-                onChange={(e) => setSurahToAdd(Number(e.target.value))}
-                aria-label="اختر سورة محفوظة لإضافتها"
-                className="flex-1 min-w-0 min-h-11 px-3 py-2.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl text-sm"
-              >
-                {ALL_SURAHS.map(surah => (
-                  <option key={surah.number} value={surah.number}>
-                    {surah.number}. سورة {surah.name} ({surah.versesCount} آية)
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                disabled={selectedExistingSurahs.includes(surahToAdd)}
-                onClick={() => setSelectedExistingSurahs(current =>
-                  current.includes(surahToAdd) ? current : [...current, surahToAdd].sort((a, b) => a - b)
-                )}
-                className="min-h-11 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-sm font-bold disabled:opacity-40"
-              >
-                + إضافة السورة
-              </button>
+          {/* Section E: Previously memorized Surahs, Juz, and custom ayah ranges */}
+          <div className="space-y-3">
+            <div>
+              <label className="block font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                المحفوظ مسبقاً (للمراجعة الكبرى)
+              </label>
+              <p className="text-xs text-stone-500 dark:text-stone-400">
+                يمكنك تحديد عدة سور معاً، أو جزء كامل، أو آيات محددة من سورة. لن نضيف أي محفوظ من تلقاء أنفسنا.
+              </p>
             </div>
-            {selectedExistingSurahs.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {selectedExistingSurahs.map(sNum => {
-                  const surah = ALL_SURAHS.find(item => item.number === sNum);
-                  return (
-                    <button
-                      key={sNum}
-                      type="button"
-                      aria-label={`إزالة سورة ${surah?.name || sNum} من المحفوظ`}
-                      onClick={() => setSelectedExistingSurahs(current => current.filter(x => x !== sNum))}
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 text-xs font-semibold"
-                    >
-                      سورة {surah?.name || sNum}
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  );
-                })}
+
+            <div role="group" aria-label="طريقة تحديد المحفوظ" className="flex flex-wrap gap-2">
+              {([
+                { value: 'surahs', label: 'عدة سور' },
+                { value: 'juz', label: 'جزء كامل' },
+                { value: 'range', label: 'نطاق آيات' }
+              ] as const).map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={existingSelectionMode === option.value}
+                  onClick={() => setExistingSelectionMode(option.value)}
+                  className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-semibold ${existingSelectionMode === option.value ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-stone-200 bg-white text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300'}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            {existingSelectionMode === 'surahs' && (
+              <div className="space-y-2">
+                <label htmlFor="memorized-surah-multi-select" className="block text-xs font-semibold text-stone-600 dark:text-stone-300">
+                  اختر سورة أو عدة سور (استخدم Ctrl أو Cmd للاختيار المتعدد)
+                </label>
+                <select
+                  id="memorized-surah-multi-select"
+                  multiple
+                  size={6}
+                  value={surahsToAdd.map(String)}
+                  onChange={event => setSurahsToAdd(Array.from(event.currentTarget.selectedOptions, option => Number(option.value)))}
+                  className="w-full min-h-36 rounded-xl border border-stone-200 bg-white p-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                >
+                  {ALL_SURAHS.map(surah => (
+                    <option key={surah.number} value={surah.number}>
+                      {surah.number}. سورة {surah.name} ({surah.versesCount} آية)
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={surahsToAdd.length === 0}
+                  onClick={() => {
+                    try {
+                      setSelectedExistingRanges(current => normalizeMemorizedRanges([
+                        ...current,
+                        ...surahsToAdd.map(getFullSurahMemorizedRange)
+                      ]));
+                      setSurahsToAdd([]);
+                    } catch (error) {
+                      onToast?.(error instanceof Error ? error.message : 'تعذر إضافة السور المحددة.', 'error');
+                    }
+                  }}
+                  className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                >
+                  + إضافة {surahsToAdd.length || ''} سورة محددة
+                </button>
+              </div>
+            )}
+
+            {existingSelectionMode === 'juz' && (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <label className="sr-only" htmlFor="memorized-juz-select">اختر الجزء المحفوظ</label>
+                <select
+                  id="memorized-juz-select"
+                  value={juzToAdd}
+                  onChange={event => setJuzToAdd(Number(event.target.value))}
+                  className="min-h-11 flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+                >
+                  {Array.from({ length: 30 }, (_, index) => index + 1).map(juz => (
+                    <option key={juz} value={juz}>الجزء {juz}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      setSelectedExistingRanges(current => normalizeMemorizedRanges([
+                        ...current,
+                        ...getJuzMemorizedRanges(juzToAdd)
+                      ]));
+                    } catch (error) {
+                      onToast?.(error instanceof Error ? error.message : 'تعذر إضافة الجزء المحدد.', 'error');
+                    }
+                  }}
+                  className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white"
+                >
+                  + إضافة الجزء كاملاً
+                </button>
+              </div>
+            )}
+
+            {existingSelectionMode === 'range' && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300 sm:col-span-2">
+                  السورة
+                  <select
+                    value={rangeSurahNumber}
+                    onChange={event => {
+                      const next = Number(event.target.value);
+                      setRangeSurahNumber(next);
+                      setRangeStartAyah(1);
+                      setRangeEndAyah(ALL_SURAHS.find(item => item.number === next)?.versesCount || 1);
+                    }}
+                    className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  >
+                    {ALL_SURAHS.map(surah => <option key={surah.number} value={surah.number}>{surah.number}. {surah.name}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300">
+                  من آية
+                  <input
+                    type="number"
+                    min={1}
+                    max={ALL_SURAHS.find(item => item.number === rangeSurahNumber)?.versesCount || 1}
+                    value={rangeStartAyah}
+                    onChange={event => setRangeStartAyah(Number(event.target.value))}
+                    className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300">
+                  إلى آية
+                  <input
+                    type="number"
+                    min={1}
+                    max={ALL_SURAHS.find(item => item.number === rangeSurahNumber)?.versesCount || 1}
+                    value={rangeEndAyah}
+                    onChange={event => setRangeEndAyah(Number(event.target.value))}
+                    className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      setSelectedExistingRanges(current => normalizeMemorizedRanges([
+                        ...current,
+                        { surahNumber: rangeSurahNumber, startAyah: rangeStartAyah, endAyah: rangeEndAyah }
+                      ]));
+                    } catch (error) {
+                      onToast?.(error instanceof Error ? error.message : 'نطاق الآيات غير صالح.', 'error');
+                    }
+                  }}
+                  className="min-h-11 rounded-xl bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white sm:col-span-4"
+                >
+                  + إضافة نطاق الآيات
+                </button>
+              </div>
+            )}
+
+            {selectedExistingRanges.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-stone-600 dark:text-stone-300">
+                  النطاقات المضافة: {selectedExistingRanges.length}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedExistingRanges.map(range => {
+                    const surah = ALL_SURAHS.find(item => item.number === range.surahNumber);
+                    const isWholeSurah = range.startAyah === 1 && range.endAyah === surah?.versesCount;
+                    const key = `${range.surahNumber}:${range.startAyah}-${range.endAyah}`;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        aria-label={`إزالة ${surah?.name || range.surahNumber} من الآية ${range.startAyah} إلى ${range.endAyah}`}
+                        onClick={() => setSelectedExistingRanges(current => current.filter(item =>
+                          item.surahNumber !== range.surahNumber || item.startAyah !== range.startAyah || item.endAyah !== range.endAyah
+                        ))}
+                        className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+                      >
+                        {isWholeSurah ? `سورة ${surah?.name}` : `سورة ${surah?.name} · ${range.startAyah}–${range.endAyah}`}
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
-              <div className="p-3 rounded-xl border border-dashed border-stone-300 dark:border-stone-700 text-xs text-stone-500">
-                لم تضف سوراً محفوظة بعد. أضف السور التي تريد إدراجها في المراجعة الكبرى.
+              <div className="rounded-xl border border-dashed border-stone-300 p-3 text-xs text-stone-500 dark:border-stone-700">
+                لم تضف محفوظاً بعد. يمكنك دمج السور والأجزاء ونطاقات الآيات في قائمة مراجعة واحدة.
               </div>
             )}
           </div>
