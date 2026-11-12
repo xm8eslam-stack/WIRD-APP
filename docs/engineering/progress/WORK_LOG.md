@@ -1185,3 +1185,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - ACO says it selects out-of-copyright books and believes displayed materials are public domain, and the Tahdhib Ibn Hisham record gives edition details (Cairo, Dar Saad Misr, 1374H/1955, Abd al-Salam Harun compiler). WIRD still records each item as link_only/unknown until item and jurisdiction rights are documented.
 - OpenITI documentation states CC BY-NC-SA 4.0; the Terms page uses a different CC BY-SA wording but also says non-commercial. Verify each corpus release/contributor agreement; do not ingest by default.
 - No real Seerah content ingested or published.
+
+## 2026-11-12 — Seerah hydration and fail-closed publication contract
+
+- PR #365 latest head: 6e174575226cae0a25e82742e8bf6d7fb631de21.
+- Fixed reader startup race: saved scene restoration now completes before the first persistence write, preventing default-scene overwrite on reload.
+- Added E2E for restoring scene 2 after reload.
+- Publication validator now rejects malformed imported JSON structures and invalid source/claim/body-block states without throwing; added negative tests.
+- No local test/typecheck/build run. No GitHub Actions run observed for exact head yet; combined status only reports Vercel build-rate-limit failure.
+- No historical text/source ingested or published; no merge/deploy/production changes.
