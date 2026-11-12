@@ -27,6 +27,7 @@ export interface OfflineAudioFile {
   surahNumber: number;
   ayahNumber: number;
   globalAyahNumber: number;
+  cacheGenerationId: string;
   url: string;
   byteLength: number | null;
   downloadedAtMs: number;
@@ -51,6 +52,7 @@ export interface OfflineAudioFileInput {
   surahNumber: number;
   ayahNumber: number;
   globalAyahNumber: number;
+  cacheGenerationId: string;
   url: string;
   byteLength: number | null;
   downloadedAtMs: number;
@@ -149,6 +151,9 @@ function normalizeFile(input: OfflineAudioFileInput): OfflineAudioFile {
   if (!input || typeof input !== 'object' || input.verified !== true) {
     throw new Error('لا يمكن تسجيل ملف تلاوة قبل اكتمال تنزيله والتحقق منه.');
   }
+  if (typeof input.cacheGenerationId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(input.cacheGenerationId)) {
+    throw new Error('معرّف نسخة ملف التلاوة المحفوظ غير صالح.');
+  }
   const plan = buildQuranAudioDownloadPlan({
     reciterId: input.reciterId,
     surahNumber: input.surahNumber,
@@ -167,6 +172,7 @@ function normalizeFile(input: OfflineAudioFileInput): OfflineAudioFile {
     surahNumber: input.surahNumber,
     ayahNumber: input.ayahNumber,
     globalAyahNumber: input.globalAyahNumber,
+    cacheGenerationId: input.cacheGenerationId,
     url: input.url,
     byteLength: input.byteLength,
     downloadedAtMs: input.downloadedAtMs,
