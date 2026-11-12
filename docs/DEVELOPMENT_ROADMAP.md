@@ -1,5 +1,14 @@
 # مسار منتجي جديد — Offline-first والتطبيق المستقبلي
 
+## تحديث مسارات التنفيذ — 2026-11-12 14:35 +02:00
+
+- **Flexible Storage/Sync:** لا يوجد chunked sync implementation. #367 ما زال 800 KB interim per-payload budget؛ يلزم تصميم end-to-end مع local IndexedDB payload refs وmanifest/chunks وFirestore version compatibility قبل التنفيذ.
+- **Offline Audio:** #368 يقدم metadata-only store موحدًا من #358/#359: jobs/files/jobItems، shared file references، pinned retention، available/deletionPending، وtwo-phase orphan cleanup. لا يوجد downloader/Cache Storage adapter/SW protocol/UI بعد.
+- **Seerah:** #365 أضاف persistent bookmarks وقائمة رجوع واختبار Playwright بعد reload؛ لا يوجد محتوى تاريخي معتمد بعد.
+- **Quality:** أحدث workflows على exact heads #365/#368 فشلت دون steps/logs؛ لا يمكن اعتبارها فشل اختبار برمجي أو نجاحًا. Vercel Preview blocked by Free build-rate.
+- **Merge gate:** لا دمج قبل CI قابل للفحص وناجح، ومراجعة diff كاملة. لا تغيير إنتاجي دون موافقة.
+
+
 ## تحديث التنفيذ — 2026-11-12 14:05 +02:00
 
 - قارئ السيرة #365 أصبح يدعم bookmarks محلية مرتبطة بإصدار الكتاب والفصل والمشهد والـ anchor، مع قائمة رجوع داخل الفهرس. لا مزامنة ولا محتوى تاريخي معتمد بعد.
