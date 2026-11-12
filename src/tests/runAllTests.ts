@@ -28,6 +28,7 @@ import { runRevisionPersistenceTests } from '../services/revisionPersistence.tes
 import { runWeakVerseRecordingTests } from '../services/weakVerseRecording.test';
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runLocalSyncOutboxTests } from '../services/localSyncOutbox.test';
+import { runSyncPayloadLimitTests } from '../services/syncPayloadLimits.test';
 import { runIndexedDbSyncJournalTests } from '../services/indexedDbSyncJournal.test';
 import { runJournalProjectionReplayerTests } from '../services/journalProjectionReplayer.test';
 import { runJournaledSnapshotServiceTests } from '../services/journaledSnapshotService.test';
@@ -133,6 +134,7 @@ async function main() {
     { name: 'Atomic Weak-Verse Recording and Portion Rollback', runner: runWeakVerseRecordingTests },
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'UID-Scoped Durable Local Sync Outbox', runner: runLocalSyncOutboxTests },
+    { name: 'Consistent Engine-Plan Payload Limits Across Local and Remote Sync', runner: runSyncPayloadLimitTests },
     { name: 'Atomic IndexedDB Event Journal & Cross-Tab Outbox', runner: runIndexedDbSyncJournalTests },
     { name: 'Deterministic Local Journal Projection Replay', runner: runJournalProjectionReplayerTests },
     { name: 'Journal-First Profile and Plan Snapshot Persistence', runner: runJournaledSnapshotServiceTests },
