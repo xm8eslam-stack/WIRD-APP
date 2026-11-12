@@ -28,6 +28,16 @@ test.describe('WIRD Seerah reader bookmarks', () => {
     await expect(page.getByRole('button', { name: 'حفظ علامة لهذا المشهد' })).toHaveAttribute('aria-pressed', 'false');
   });
 
+  test('restores the last reading scene after reload without overwriting it with the first scene', async ({ page }) => {
+    await page.getByRole('button', { name: /المشهد الثاني/ }).first().click();
+    await expect(page.getByRole('heading', { name: 'المشهد الثاني — امتداد الحكاية' })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'حكاية السيرة' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'المشهد الثاني — امتداد الحكاية' })).toBeVisible();
+    await expect(page.getByText('المشهد 2 من 3')).toBeVisible();
+  });
+
   test('reader exposes an explicit empty source state instead of inventing citations', async ({ page }) => {
     await page.getByRole('button', { name: 'قراءة وتعلّم' }).click();
     const context = page.getByRole('complementary', { name: 'لوحة السياق' });
