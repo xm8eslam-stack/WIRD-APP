@@ -44,6 +44,7 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
   const [bookmarks, setBookmarks] = useState<SeerahBookmark[]>([]);
   const [bookmarkError, setBookmarkError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [readingStateHydrated, setReadingStateHydrated] = useState(false);
 
   const activeIndex = useMemo(
     () => PROTOTYPE_SCENES.findIndex(scene => scene.id === activeSceneId),
@@ -65,9 +66,13 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
         PROTOTYPE_SCENES.some(scene => scene.id === savedPosition.sceneId)) {
       setActiveSceneId(savedPosition.sceneId);
     }
+    // Do not persist the initial scene until the saved position has been restored.
+    // Otherwise the first render can overwrite a reader's last position on reload.
+    setReadingStateHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!readingStateHydrated) return;
     const position = {
       bookVersion: PROTOTYPE_VERSION,
       partId: 'prototype-part',
@@ -77,7 +82,7 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
       updatedAt: new Date().toISOString()
     };
     setSaved(saveSeerahReadingPosition(position));
-  }, [activeScene]);
+  }, [activeScene, readingStateHydrated]);
 
   const selectScene = (sceneId: string) => {
     setActiveSceneId(sceneId);
