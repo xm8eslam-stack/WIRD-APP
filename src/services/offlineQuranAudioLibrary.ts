@@ -414,6 +414,31 @@ export class OfflineQuranAudioLibrary {
     await transactionResult(transaction);
   }
 
+  async markItemFailed(jobId: string, globalAyahNumber: number, nowMs = Date.now()): Promise<void> {
+    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت تحديث عنصر التنزيل غير صالح.');
+    const db = await this.openDatabase();
+    const transaction = db.transaction([JOBS, JOB_ITEMS], 'readwrite');
+    const jobs = transaction.objectStore(JOBS);
+    const items = transaction.objectStore(JOB_ITEMS);
+    const job = await requestResult(jobs.get(jobId)) as OfflineAudioJob | undefined;
+    if (!job) { transaction.abort(); throw new Error('مهمة تنزيل التلاوة غير موجودة.'); }
+    validateJob(job);
+    if (isTerminal(job.status)) { transaction.abort(); throw new Error('لا يمكن تعديل عنصر داخل مهمة منتهية.'); }
+    const key = fileKey(job.reciterId, globalAyahNumber);
+    const item = await requestResult(items.get(jobItemKey(jobId, key))) as OfflineAudioJobItem | undefined;
+    if (!item) { transaction.abort(); throw new Error('موضع الآية خارج مهمة التنزيل.'); }
+    validateJobItem(job, item);
+    if (item.status !== 'verified') {
+      item.status = 'failed';
+      item.updatedAtMs = Math.max(nowMs, job.createdAtMs);
+      job.status = 'downloading';
+      job.updatedAtMs = item.updatedAtMs;
+      writeSafely(transaction, () => items.put(item), 'تعذر تسجيل تعثر عنصر التلاوة.');
+      writeSafely(transaction, () => jobs.put(job), 'تعذر تحديث مهمة التنزيل بعد تعثر عنصر.');
+    }
+    await transactionResult(transaction);
+  }
+
   async recordVerifiedFile(jobId: string, input: OfflineAudioFileInput): Promise<OfflineAudioJob> {
     const normalized = normalizeFile(input);
     const db = await this.openDatabase();
