@@ -99,8 +99,7 @@ export function validateSeerahChapterForPublication(
     if (!['verified_public_domain', 'licensed_for_use', 'link_only'].includes(source.rightsStatus)) {
       blockers.push(`source_rights_not_cleared:${source.id}`);
     }
-    if ((source.rightsStatus === 'verified_public_domain' || source.rightsStatus === 'licensed_for_use') &&
-        !hasText(source.rightsNotes)) {
+    if (!hasText(source.rightsNotes)) {
       blockers.push(`source_rights_basis_missing:${source.id}`);
     }
   }
