@@ -140,7 +140,7 @@ export class OfflineQuranAudioDownloader {
             cache: 'no-store'
           });
           if (execution.controller.signal.aborted) throw abortError();
-          if (response.redirected || (response.url && new URL(response.url).origin !== url.origin)) {
+          if (response.redirected || (response.url && new URL(response.url).href !== url.href)) {
             throw new Error('تم رفض إعادة توجيه ملف التلاوة إلى مصدر آخر.');
           }
 
