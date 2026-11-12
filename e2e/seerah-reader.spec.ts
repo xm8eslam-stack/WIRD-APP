@@ -28,6 +28,15 @@ test.describe('WIRD Seerah reader bookmarks', () => {
     await expect(page.getByRole('button', { name: 'حفظ علامة لهذا المشهد' })).toHaveAttribute('aria-pressed', 'false');
   });
 
+  test('reader exposes an explicit empty source state instead of inventing citations', async ({ page }) => {
+    await page.getByRole('button', { name: 'قراءة وتعلّم' }).click();
+    const context = page.getByRole('complementary', { name: 'لوحة السياق' });
+    await expect(context).toBeVisible();
+    await expect(context.getByRole('region', { name: 'المراجع المعتمدة' })).toBeVisible();
+    await expect(context.getByText(/لا توجد إحالات معتمدة لهذا الموضع بعد/)).toBeVisible();
+    await expect(context.getByText(/لن نعرض رواية تاريخية دون مرجع محدد/)).toBeVisible();
+  });
+
   test('bookmarks are scoped to the prototype content version and return to saved scenes', async ({ page }) => {
     await page.getByRole('button', { name: 'حفظ علامة لهذا المشهد' }).click();
     await page.locator('aside').getByRole('button').filter({ hasText: 'المشهد الثاني — امتداد الحكاية' }).first().click();
