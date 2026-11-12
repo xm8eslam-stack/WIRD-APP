@@ -203,7 +203,8 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       const second = await library.createJob(oneAyah, 300);
       assert(second.status === 'queued', 'A file scheduled for deletion must not be reused as available.');
       await library.recordVerifiedFile(second.id, { ...verifiedInput(), downloadedAtMs: 400 });
-      assert((await library.listFiles())[0].available && !(await library.listFiles())[0].deletionPending, 'A new verified download must cancel the stale deletion marker.');
+      const replacement = (await library.listFiles())[0];
+      assert(replacement.available && !replacement.deletionPending && replacement.cacheGenerationId === 'generation-2', 'A new verified download must install a fresh cache generation and cancel the stale deletion marker.');
       assert(!(await library.finalizeOrphanDeletion('ar.alafasy', 1)), 'A stale cleanup attempt must not delete a newly downloaded file.');
       assert((await library.listFiles()).length === 1, 'The newly downloaded canonical file must remain.');
     } finally { library.close(); }
