@@ -81,6 +81,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
   const [selectedExistingRanges, setSelectedExistingRanges] = useState<MemorizedRange[]>([]);
   const [existingSelectionMode, setExistingSelectionMode] = useState<'surahs' | 'juz' | 'range'>('surahs');
   const [surahsToAdd, setSurahsToAdd] = useState<number[]>([]);
+  const [surahSearch, setSurahSearch] = useState('');
   const [juzToAdd, setJuzToAdd] = useState<number>(1);
   const [rangeSurahNumber, setRangeSurahNumber] = useState<number>(1);
   const [rangeStartAyah, setRangeStartAyah] = useState<number>(1);
@@ -629,23 +630,38 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
 
             {existingSelectionMode === 'surahs' && (
               <div className="space-y-2">
-                <label htmlFor="memorized-surah-multi-select" className="block text-xs font-semibold text-stone-600 dark:text-stone-300">
-                  اختر سورة أو عدة سور (استخدم Ctrl أو Cmd للاختيار المتعدد)
+                <label htmlFor="memorized-surah-search" className="block text-xs font-semibold text-stone-600 dark:text-stone-300">
+                  ابحث وحدد عدة سور بالضغط عليها
                 </label>
-                <select
-                  id="memorized-surah-multi-select"
-                  multiple
-                  size={6}
-                  value={surahsToAdd.map(String)}
-                  onChange={event => setSurahsToAdd(Array.from(event.currentTarget.selectedOptions, option => Number(option.value)))}
-                  className="w-full min-h-36 rounded-xl border border-stone-200 bg-white p-2 text-sm dark:border-stone-700 dark:bg-stone-900"
-                >
-                  {ALL_SURAHS.map(surah => (
-                    <option key={surah.number} value={surah.number}>
-                      {surah.number}. سورة {surah.name} ({surah.versesCount} آية)
-                    </option>
+                <input
+                  id="memorized-surah-search"
+                  type="search"
+                  value={surahSearch}
+                  onChange={event => setSurahSearch(event.target.value)}
+                  placeholder="ابحث باسم السورة..."
+                  className="min-h-11 w-full rounded-xl border border-stone-200 bg-white px-3 text-sm dark:border-stone-700 dark:bg-stone-900"
+                />
+                <div role="group" aria-label="السور المحفوظة المحددة" className="grid max-h-56 grid-cols-1 gap-1 overflow-y-auto rounded-xl border border-stone-200 bg-white p-2 dark:border-stone-700 dark:bg-stone-900 sm:grid-cols-2">
+                  {ALL_SURAHS.filter(surah =>
+                    !surahSearch.trim() || surah.name.includes(surahSearch.trim()) ||
+                    surah.englishName.toLowerCase().includes(surahSearch.trim().toLowerCase()) ||
+                    String(surah.number) === surahSearch.trim()
+                  ).map(surah => (
+                    <label key={surah.number} className="flex min-h-10 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-stone-700 hover:bg-stone-50 dark:text-stone-200 dark:hover:bg-stone-800">
+                      <input
+                        type="checkbox"
+                        checked={surahsToAdd.includes(surah.number)}
+                        onChange={event => setSurahsToAdd(current => event.target.checked
+                          ? [...current, surah.number].sort((a, b) => a - b)
+                          : current.filter(number => number !== surah.number)
+                        )}
+                        className="h-4 w-4 accent-emerald-800"
+                      />
+                      <span>{surah.number}. سورة {surah.name}</span>
+                      <span className="mr-auto text-[10px] text-stone-400">{surah.versesCount} آية</span>
+                    </label>
                   ))}
-                </select>
+                </div>
                 <button
                   type="button"
                   disabled={surahsToAdd.length === 0}
