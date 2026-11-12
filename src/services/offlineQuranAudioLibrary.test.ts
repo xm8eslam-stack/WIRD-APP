@@ -22,6 +22,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     return {
       reciterId: oneAyah.reciterId,
       ...item,
+      cacheGenerationId: 'generation-1',
       byteLength: 2048,
       downloadedAtMs: 200,
       verified: true as const
@@ -135,7 +136,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       const job = await library.createJob(oneAyah, 100);
       await library.recordVerifiedFile(job.id, verifiedInput());
       const missing = await library.reconcileCachedFiles(async () => {
-        await library.recordVerifiedFile(job.id, { ...verifiedInput(), downloadedAtMs: 400 });
+        await library.recordVerifiedFile(job.id, { ...verifiedInput(), cacheGenerationId: 'generation-2', downloadedAtMs: 400 });
         return false;
       });
       assert(missing.length === 1, 'The stale scan may report its earlier observation.');
