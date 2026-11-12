@@ -2,7 +2,7 @@ import { createSecureId } from './secureId';
 import { StorageService } from './storageService';
 import { isValidRuqyahProgressSnapshot, isValidRuqyahProgressSnapshotV2, mergeRuqyahProgressSnapshots } from './ruqyahProgressSchema';
 import type { SyncCollection, SyncOperation } from './localSyncOutbox';
-import { getSyncMutationPayloadLimit, MAX_SYNC_MUTATION_PAYLOAD_BYTES } from './syncPayloadLimits';
+import { getSyncMutationPayloadLimit, MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES, MAX_SYNC_MUTATION_PAYLOAD_BYTES } from './syncPayloadLimits';
 
 const DATABASE_NAME = 'wird-sync-journal';
 const DATABASE_VERSION = 9;
@@ -2156,7 +2156,7 @@ export class IndexedDbSyncJournal {
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تسلسل حمولة قرار حل التعارض؛ لم يتم حفظ القرار.'); }
-    if (!payloadJson || byteLength(payloadJson) > MAX_SYNC_MUTATION_PAYLOAD_BYTES) {
+    if (!payloadJson || byteLength(payloadJson) > MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES) {
       throw new Error('حمولة قرار حل التعارض تتجاوز الحد الآمن أو غير قابلة للتسلسل.');
     }
     const seenMutationIds = new Set<string>();
@@ -2201,6 +2201,11 @@ export class IndexedDbSyncJournal {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const event = conflict?.event;
+        if (!event || byteLength(payloadJson) > getSyncMutationPayloadLimit(event.collection, input.payload)) {
+          failure = new Error('حمولة قرار حل التعارض تتجاوز حد المجموعة الفعلي أو لا تطابق نوع البيانات.');
+          transaction.abort();
+          return;
+        }
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!conflict || conflict.uid !== uid || conflict.status !== 'open' || !event ||
             event.eventId !== input.eventId || event.fingerprint !== input.eventFingerprint ||
@@ -2427,7 +2432,7 @@ export class IndexedDbSyncJournal {
     let expectedPayloadJson: string;
     try { expectedPayloadJson = JSON.stringify(expectedPayload); }
     catch { throw new Error('حمولة النسخة السحابية غير قابلة للتسلسل؛ لم يتم تغيير البيانات المحلية.'); }
-    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_SYNC_MUTATION_PAYLOAD_BYTES) {
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES) {
       throw new Error('حمولة النسخة السحابية تتجاوز الحد الآمن.');
     }
 
@@ -2460,6 +2465,11 @@ export class IndexedDbSyncJournal {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const event = conflict?.event;
+        if (!event || byteLength(expectedPayloadJson) > getSyncMutationPayloadLimit(event.collection, expectedPayload)) {
+          failure = new Error('حمولة حل التعارض تتجاوز حد المجموعة الفعلي أو لا تطابق نوع البيانات.');
+          transaction.abort();
+          return;
+        }
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
             !event || event.eventId !== eventId || event.operation !== 'upsert' ||
@@ -2665,7 +2675,7 @@ export class IndexedDbSyncJournal {
     let expectedPayloadJson: string;
     try { expectedPayloadJson = JSON.stringify(expectedPayload); }
     catch { throw new Error('حمولة النسخة المحلية غير قابلة للتسلسل؛ لم يتم تغيير البيانات.'); }
-    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_SYNC_MUTATION_PAYLOAD_BYTES) {
+    if (!expectedPayloadJson || byteLength(expectedPayloadJson) > MAX_ENGINE_PLAN_SYNC_PAYLOAD_BYTES) {
       throw new Error('حمولة النسخة المحلية تتجاوز الحد الآمن.');
     }
 
