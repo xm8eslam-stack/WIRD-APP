@@ -129,3 +129,12 @@
 - مواصفات القارئ وتجربة التنقل والسياق وحفظ الموضع ومعايير MVP في `docs/UX_PRODUCT_ROADMAP_AR.md` §§6–7. خطة المحتوى والتحرير والمصادر في `docs/SEERAH_LEARNING_PLAN_AR.md` §§16–17.
 - الخطوة التالية: فحص الكود الحالي لتحديد نقاط إعادة الاستخدام قبل إنشاء مكونات جديدة؛ ابدأ بنموذج UI ببيانات placeholder معلّمة، ولا تدخل أي محتوى تاريخي أو API قبل الاعتماد العلمي والحقوقي.
 - لا runtime implementation أو production changes حتى الآن. PR #363 يحتاج إعادة فحص exact-head CI بعد آخر commits؛ لا merge قبل بوابة قابلة للتحقق.
+
+
+## 2026-11-12 — تنفيذ قارئ السيرة وعقد المحتوى
+- PR #365: https://github.com/xm8eslam-stack/WIRD-APP/pull/365 — OPEN / DRAFT / HOLD. الفرع `feat/seerah-continuous-reader-shell-20261112` بدأ من main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- التنفيذ الأولي في `src/components/seerah/SeerahReaderView.tsx`، `src/services/seerahReadingProgress.ts`، و`src/services/seerahContentContract.ts` مع اختبارات خدمة واختبار route. كل محتوى العرض placeholder موسوم؛ لا روايات تاريخية أو مصادر مزيفة.
+- آخر SHA تم فحصه: `5f0f5cb3fb7342dee9dcd5935849cb329bece986`. Vercel Preview `dpl_ArPB9Pj4QGeCmUAzdYh1EKypAmus` READY وبناء Vite ناجح. لم يجرِ browser/device smoke.
+- GitHub run `43184272681` / job `131067466738` فشل بلا steps أو logs (`BlobNotFound`). لا يمكن إثبات فشل tests أو typecheck، ولا يوجد CI pass. لا merge قبل exact-head Quality Gate ناجحة وقابلة للفحص.
+- التالي: إصلاح/استيضاح runner/CI عبر دليل جديد، ثم استكمال قارئ بمحتوى معتمد فقط: anchors حقيقية، علامات مرجعية دائمة، progress model على contentVersion، ولوحة مصادر/مراجعات؛ لا API ingestion أو مزامنة سحابية قبل مراجعة الحقوق والخصوصية.
+- لا runtime deployment إلى production أو Firebase/Firestore أو secrets أو sync flags أو بيانات مستخدمين تغيرت.
