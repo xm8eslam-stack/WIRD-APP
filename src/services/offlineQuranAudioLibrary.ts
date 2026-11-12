@@ -584,7 +584,7 @@ export class OfflineQuranAudioLibrary {
       const current = await requestResult(store.get(snapshot.key));
       if (!current) continue;
       const file = validateStoredFile(current);
-      if (file.downloadedAtMs !== snapshot.downloadedAtMs) continue;
+      if (file.downloadedAtMs !== snapshot.downloadedAtMs || file.cacheGenerationId !== snapshot.cacheGenerationId) continue;
       const shouldBeAvailable = !missingKeys.has(file.key);
       if (file.available !== shouldBeAvailable) {
         file.available = shouldBeAvailable;
