@@ -89,8 +89,8 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
     setBookmarks(readSeerahBookmarks());
     const savedPosition = readSeerahReadingPosition();
     if (savedPosition?.bookVersion === PROTOTYPE_VERSION &&
-        savedPosition.partId === 'prototype-part' &&
-        savedPosition.chapterId === 'prototype-chapter' &&
+        savedPosition.partId === PROTOTYPE_PART_ID &&
+        savedPosition.chapterId === PROTOTYPE_CHAPTER_ID &&
         PROTOTYPE_SCENES.some(scene => scene.id === savedPosition.sceneId)) {
       setActiveSceneId(savedPosition.sceneId);
     }
@@ -212,8 +212,8 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
                 <button type="button" onClick={() => {
                   const bookmark: SeerahBookmark = {
                     bookVersion: PROTOTYPE_VERSION,
-                    partId: 'prototype-part',
-                    chapterId: 'prototype-chapter',
+                    partId: PROTOTYPE_PART_ID,
+                    chapterId: PROTOTYPE_CHAPTER_ID,
                     sceneId: activeScene.id,
                     anchorId: activeScene.anchorId,
                     createdAt: new Date().toISOString()
@@ -277,7 +277,7 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
             </div>
             <div className="mt-3 space-y-2">
               {bookmarks
-                .filter(bookmark => bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === 'prototype-part' && bookmark.chapterId === 'prototype-chapter')
+                .filter(bookmark => bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === PROTOTYPE_PART_ID && bookmark.chapterId === PROTOTYPE_CHAPTER_ID)
                 .map(bookmark => {
                   const scene = PROTOTYPE_SCENES.find(item => item.id === bookmark.sceneId && item.anchorId === bookmark.anchorId);
                   if (!scene) return null;
@@ -287,7 +287,7 @@ export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = []
                     </button>
                   );
                 })}
-              {bookmarks.filter(bookmark => bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === 'prototype-part' && bookmark.chapterId === 'prototype-chapter').length === 0 && (
+              {bookmarks.filter(bookmark => bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === PROTOTYPE_PART_ID && bookmark.chapterId === PROTOTYPE_CHAPTER_ID).length === 0 && (
                 <p className="text-[11px] leading-6 text-stone-500 dark:text-stone-400">لم تحفظ علامات بعد. يمكنك الرجوع إلى أي مشهد تحفظه هنا.</p>
               )}
             </div>
