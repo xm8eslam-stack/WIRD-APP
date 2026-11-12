@@ -226,5 +226,34 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     } finally { library.close(); }
   });
 
+  await test('refuses to delete a job when one of its stored file relations is corrupted', async () => {
+    const { factory, databaseName, library } = createLibrary();
+    try {
+      const job = await library.createJob(oneAyah, 100);
+      await library.recordVerifiedFile(job.id, verifiedInput());
+      const item = (await library.listJobItems(job.id))[0];
+      const request = factory.open(databaseName);
+      const rawDb = await new Promise<IDBDatabase>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      try {
+        const transaction = rawDb.transaction(['jobItems'], 'readwrite');
+        transaction.objectStore('jobItems').put({ ...item, fileKey: 'ar.alafasy:999' });
+        await new Promise<void>((resolve, reject) => {
+          transaction.oncomplete = () => resolve();
+          transaction.onabort = () => reject(transaction.error);
+          transaction.onerror = () => reject(transaction.error);
+        });
+      } finally { rawDb.close(); }
+
+      let rejected = false;
+      try { await library.deleteJob(job.id); } catch { rejected = true; }
+      assert(rejected, 'A job with a forged file relationship must not be deleted.');
+      assert((await library.getJob(job.id))?.status === 'completed', 'The original job record must remain intact.');
+      assert((await library.listFiles()).length === 1, 'The canonical audio file metadata must not be orphaned by a corrupt relationship.');
+    } finally { library.close(); }
+  });
+
   return { passed, failed };
 }
