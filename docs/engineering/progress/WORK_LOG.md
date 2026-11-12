@@ -1147,3 +1147,29 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - #370 run 43274209101 / job 131378172561: completed failure with steps=null and logs_url=null.
 - Re-run attempts did not expose any test/build stage or source-level failure. Do not call these passes or code failures.
 - All PRs #363/#365/#366/#367/#368/#369/#370 remain OPEN/DRAFT. Main base SHA remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+
+## 2026-11-12 — Engine Plans pure chunk codec + latest browser tests
+
+### PR #371 — pure lossless chunk codec
+- Branch feat/engine-plan-archive-chunk-codec-20261112, latest head 597344a5f95a261df5301da4de992850d4a3f5b5.
+- Added deterministic canonical JSON, stable record IDs, fragment splitting with 192,000-byte default transport ceiling, per-chunk/per-record/whole-archive SHA-256, manifest schema/revision/ordered IDs/optional entitlement revision, and strict full materialization validation.
+- Added tests for large-record round-trip, deterministic output, order preservation, empty archive, missing/extra/duplicate/corrupt chunks, revision/schema/entitlement tampering, invalid JSON, cycles and unsafe chunk sizes; registered in runAllTests.
+- Pure codec only. Not wired to IndexedDB archive, Firestore, remote manifest, capability negotiation or Inbox. No migration.
+- Quality Gate run 43278092246 / job 131391785241 failed with steps=null/logs_url=null. No code-level diagnosis or pass.
+
+### Latest E2E additions
+- #365 Seerah head 15963abc5dc45268a1129e872d10e41fd7779d05: E2E checks explicit empty source state and no invented citations.
+- #369 memorized-range head 814bb8788449ebe3d07d46f00a596a1a7b398a5a: E2E covers multi-Surah checkbox selection, complete Juz across Surah boundaries and custom ayah interval.
+- #370 session display head 32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c: E2E covers collapsed-by-default, open/close, line spacing/page padding persistence and reset.
+- Corresponding Quality Gate runs 43277331896 / job 131389114054, 43277201392 / job 131388649297, and 43277107786 / job 131388317808 all failed before exposing steps/logs.
+
+### Full repository inventory dimensions
+- Exact main tree SHA 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b contains 159 TS/TSX files under src and 78 test/spec files: 59 under src, 18 under e2e, 1 under scripts.
+- Reviewed relevant tests include backupPersistence, cloudSyncCoordinator, indexedDbSyncJournal, journalProjectionReplayer, journaledSnapshotService, localSyncOutbox, sessionPersistence, storageScope, syncConflictSafety, storageReliability, cleanInitialization, phase3CoreRemediation, firebaseAuth, backupValidation and relevant E2E.
+- This is a complete test-file inventory but not a complete semantic scan of all 159 source files or every fixture. Do not begin migration until all source call paths and test fixtures are audited.
+
+### Current safety
+- Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+- All PRs #363, #365, #366, #367, #368, #369, #370, #371 OPEN/DRAFT. No merge/deploy.
+- No local tests/build/typecheck run. Quality Gate failures have no steps/logs and are not evidence of code failure or success.
+- No Firebase Rules, Production settings, secrets, sync flags or user data changed.
