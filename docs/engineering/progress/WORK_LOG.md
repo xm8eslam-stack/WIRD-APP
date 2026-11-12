@@ -1111,3 +1111,30 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - #370 head 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb: run 43274209101, job 131378172561, same missing steps/logs.
 - لا pass ولا code-level test failure يمكن استنتاجه. لم تتوفر local runner/container checkout لتشغيل الاختبارات هنا.
 - جميع PRs #363/#365/#366/#367/#368/#369/#370 OPEN/DRAFT؛ لا دمج. main ثابت 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+
+## 2026-11-12 — Seerah rights gate and Offline Audio downloader
+
+### Seerah PR #365
+- Latest head 0856e6a1e215a74324358173bee9a55924e6a5ad.
+- Added a reader source-citation panel displaying title, author/work, edition, exact locator, rights status and safe HTTPS links.
+- Publication contract now requires rightsStatus + rightsNotes for every source. unknown / permission_required / missing status blocks publication. link_only permits citation and reviewed paraphrase but not copied quotation. Exact quotes require verified wording and rights allowing quotation.
+- Added tests for rights clearance, missing rights status/notes, link-only quote rejection, and safe source URL handling.
+- Existing bookmark scope deletion regression fix remains included. No real Seerah content was ingested or approved.
+- Exact-head Quality Gate run 43275942614 / job 131384235586 failed with steps=null/logs_url=null. No source-level diagnosis or pass.
+
+### Offline Audio PR #368
+- Latest head ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710.
+- Added Cache Storage adapter with generation-scoped keys, safe CDN content validation, bounded size, exact read-back byte equality and metadata byte-length reconciliation.
+- Added bounded downloader (concurrency <=2), HTTPS allowlist, redirect rejection, credentials omitted, no-store fetch, retryable item failures, pause/cancel/resume, and completed-job retry after browser cache eviction.
+- Reconciliation now turns missing bytes in non-terminal jobs into retryable items and recalculates progress; completed historical jobs remain immutable and use a new retry job when bytes are evicted.
+- New tests cover adapter, retries, pause/cancel, concurrency, cache eviction and completed-job restoration. No local tests/build/typecheck run.
+- Exact-head Quality Gate run 43275594933 / job 131383003139 failed with steps=null/logs_url=null. No source-level diagnosis or pass.
+- Still missing Service Worker protocol, user-facing download manager UI, local-first playback integration, orphan cache cleanup policy, browser Cache Storage integration and device offline verification.
+
+### Engine Plans inventory follow-up
+- Main source audit reconfirmed StorageService localStorage archive, 100-plan cap in both saveEnginePlans and backup validation, synchronous exportFullBackup, direct legacy importBackup/resetAllData, and synchronous setStorageScope copy/verify/delete behavior.
+- backupPersistence import and reset are journal-first; Settings and Progress Analytics still call synchronous exportFullBackup.
+- sessionPersistence still caps enginePlansSnapshot at 100 and journaledSnapshotService projects through saveEnginePlans.
+- DashboardView still reads StorageService.getEnginePlans directly.
+- cloudSyncCoordinator, remoteInboxProjector, indexedDbSyncJournal and LocalSyncOutbox are archive consumers through projection/outbox/inbox. The localStorage legacy outbox still has a 1.5 MB guard, while current durable journal/outbox is IndexedDB.
+- This is not yet proof that every indirect caller, test fixture and E2E path has been exhausted. Continue audit; do not begin migration.
