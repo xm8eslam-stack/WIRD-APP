@@ -81,3 +81,11 @@
 4. عند تحديث تنفيذ ميزة، حدّث ملفها التخصصي وسجل العمل ونقطة الاستكمال؛ لا تترك حالة قديمة تبدو حاضرة.
 5. لا تحذف السجلات التاريخية؛ أضف تنبيهًا وروابط للمرجع الموحد عند الحاجة.
 6. لا تخزن أسرارًا أو بيانات مستخدمين أو قيم إعدادات حساسة في الوثائق.
+
+
+## Offline-first and app readiness
+
+- `offline/OFFLINE_FIRST_ARCHITECTURE.md` — offline capability contract, caching, storage, rights, and release gates.
+- `offline/APP_READINESS_ROADMAP_AR.md` — Arabic roadmap for making WIRD usable offline and preparing future app packaging.
+- `offline/OFFLINE_CAPABILITY_MATRIX_AR.md` — route/asset/data/action inventory and offline classification.
+- `offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md` and `offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md` — reviewed audio sources, rights boundaries, and device-local storage design.
