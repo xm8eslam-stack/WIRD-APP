@@ -598,3 +598,14 @@ research → source capture → atomic claims → chronology/reconciliation → 
 - ACO rights and collection description: https://aco.dlib.nyu.edu/about
 - ACO Tahdhib Ibn Hisham volume 1: https://sites.dlib.nyu.edu/viewer/books/aub_aco002965/1
 - OpenITI license documentation: https://openiti.org/documentation/
+
+## تحديث تنفيذ القارئ — 2026-11-12 21:xx +02:00
+
+- PR #365 head: `6e174575226cae0a25e82742e8bf6d7fb631de21`.
+- اكتُشف خلل ترتيب Effects: استعادة موضع القراءة من التخزين ثم كتابة المشهد الافتراضي في Effect آخر كان يمكن أن يمحو الموضع المحفوظ فور إعادة التحميل. أضيف `readingStateHydrated` barrier؛ لا يُكتب الموضع إلا بعد انتهاء hydration.
+- أضيف E2E يعيد فتح المشهد الثاني بعد reload ويتحقق من عدم استبداله بالمشهد الأول.
+- شددنا `validateSeerahChapterForPublication` ليغلق بأمان عند هياكل JSON تالفة: chapter arrays مفقودة، سجلات null، sourceIds غير مصفوفة، bodyBlocks تالفة أو block type غير معروف، وحالات confidence/review/rights غير صالحة.
+- أضيفت اختبارات malformed chapter/claim/source/scene/body-block. لم تُشغّل محليًا بعد.
+- لا يوجد محتوى تاريخي منشور أو corpus حقيقي. القارئ لا يزال يعرض placeholder؛ لا نملأه بمعلومات غير موثقة.
+- Exact-head status: لم يظهر GitHub Actions workflow run للـ SHA أعلاه حتى وقت الفحص؛ Combined status يعرض Vercel failure بسبب `build-rate-limit` فقط. هذا لا يثبت فشل الكود، ولا يوجد build/test pass.
+- التالي: فحص حفظ إعدادات القراءة واستقرار anchors مع contentVersion، ثم إنشاء versioned corpus manifest + coverage matrix دون إضافة روايات تاريخية، وبعدها مصدر/claim review tooling. لا يبدأ ingestion قبل استكمال S0 وحقوق كل مصدر.
