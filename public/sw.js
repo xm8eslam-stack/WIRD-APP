@@ -5,6 +5,7 @@ const MUSHAF_PAGE_CACHE_NAME = 'wird-app-mushaf-v1';
 const MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24;
 const MAX_OFFLINE_PACKAGE_ASSETS = 2000;
 const OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS = 15000;
+const OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS = 6000;
 const OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000;
 let offlinePackagePreparationInProgress = false;
 const MAX_SESSION_AUDIO_PRELOAD = 20;
@@ -267,7 +268,7 @@ self.addEventListener('fetch', (event) => {
   // SPA navigations remain network-first, with a complete cached HTML fallback.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).then((networkResponse) => {
+      fetchWithTimeout(req, {}, OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const copy1 = networkResponse.clone();
           const copy2 = networkResponse.clone();
