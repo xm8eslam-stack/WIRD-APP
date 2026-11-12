@@ -562,3 +562,11 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Service-worker SPA navigation now uses a six-second request timeout before falling back to the cached index.html shell, preventing a slow/unreachable network from indefinitely delaying a local launch.
 - Added PWA integration assertions for the timeout constant and its use in the navigation handler.
 - This is code-level coverage only; cold-start and restart behavior still require real browser/device airplane-mode verification.
+
+
+## 2026-11-12 — PR #366 exact-head verification checkpoint
+
+- Latest reviewed PR #366 head: 156274bde0bfedf7c7a87816918acda187376e9f.
+- Vercel Preview deployment dpl_EdiisDzw8bygdpNqH98b1AiiF7QX is READY and its git source SHA matches the exact PR head. This verifies the Vite deployment build, not interactive browser/offline behavior.
+- GitHub Actions run 43186509970 ended with failure, but its job reported no steps and log retrieval returned BlobNotFound. This is an unresolved runner/log infrastructure failure; no test/typecheck/build step is evidenced as having executed.
+- PR #366 remains Draft/HOLD. No merge, production deployment, live browser smoke, or real-device airplane-mode test was performed.
