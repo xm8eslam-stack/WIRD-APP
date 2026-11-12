@@ -158,7 +158,7 @@ export function removeSeerahBookmark(
     if (!target) return false;
     const current = readSeerahBookmarks(target);
     const next = current.filter(item => !sameSeerahBookmark(item, value));
-    target.setItem(SEERAH_BOOKMARKS_KEY, JSON.stringify(next));
+    target.setItem(resolveStorageKey(SEERAH_BOOKMARKS_KEY, storage), JSON.stringify(next));
     return true;
   } catch {
     return false;
