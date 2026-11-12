@@ -397,6 +397,8 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
       const cached = await cache.match(req);
       if (cached) {
+        await cache.delete(req);
+        await cache.put(req, cached.clone());
         await trimAudioCache(cache);
         return cached;
       }
@@ -429,6 +431,7 @@ self.addEventListener('fetch', (event) => {
         // Refresh insertion order so the bounded cache behaves as LRU.
         await cache.delete(req);
         await cache.put(req, cached.clone());
+        await trimMushafPageCache(cache);
         return cached;
       }
       try {
