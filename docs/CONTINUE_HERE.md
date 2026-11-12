@@ -558,3 +558,12 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 - Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b. No merge/deploy/Production setting/Rules/secrets/sync flag changes.
 - Engine Plans inventory reconfirmed the 100-plan cap, synchronous localStorage export, legacy direct import/reset, synchronous scope copy/verify/delete, journal-first import/reset, session snapshot cap, Dashboard direct read and sync projection consumers. Remaining indirect caller/fixture/E2E audit is open; do not begin migration.
 - Adaptive entitlement/chunk contract and Seerah rights research are documented in the RFC and Seerah plan.
+
+## Final rerun audit — 2026-11-12
+- Re-ran the latest failed Quality Gate jobs for #365, #368, #369 and #370.
+- #365 run 43275942614 / job 131384235586: still failed with steps=null and logs_url=null.
+- #368 run 43275594933 / job 131383003139: still failed with steps=null and logs_url=null.
+- #369 run 43274079781 / job 131377722661: still failed with steps=null and logs_url=null.
+- #370 run 43274209101 / job 131378172561: completed failure with steps=null and logs_url=null.
+- Re-run attempts did not expose any test/build stage or source-level failure. Do not call these passes or code failures.
+- All PRs #363/#365/#366/#367/#368/#369/#370 remain OPEN/DRAFT. Main base SHA remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
