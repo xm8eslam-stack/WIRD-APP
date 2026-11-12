@@ -18,6 +18,8 @@ import {
   removeSeerahBookmark
 } from '../../services/seerahReadingProgress';
 import type { SeerahBookmark } from '../../services/seerahReadingProgress';
+import type { SeerahSourceReference } from '../../services/seerahContentContract';
+import { SeerahSourcePanel } from './SeerahSourcePanel';
 
 type ReaderPanel = 'contents' | 'context' | null;
 type Scene = { id: string; title: string; anchorId: string };
@@ -30,7 +32,11 @@ const PROTOTYPE_SCENES: Scene[] = [
 
 const PROTOTYPE_VERSION = 'reader-shell-prototype-1';
 
-export const SeerahReaderView: React.FC = () => {
+interface SeerahReaderViewProps {
+  sources?: readonly SeerahSourceReference[];
+}
+
+export const SeerahReaderView: React.FC<SeerahReaderViewProps> = ({ sources = [] }) => {
   const [activeSceneId, setActiveSceneId] = useState(PROTOTYPE_SCENES[0].id);
   const [activePanel, setActivePanel] = useState<ReaderPanel>('contents');
   const [fontScale, setFontScale] = useState<'normal' | 'large' | 'larger'>('large');
@@ -161,7 +167,8 @@ export const SeerahReaderView: React.FC = () => {
                 <h4 className="font-extrabold text-stone-900 dark:text-stone-100">سياق الفصل ومصادره</h4>
                 <button type="button" onClick={() => setActivePanel(null)} className="min-h-9 rounded-lg px-2 text-xs text-stone-600 hover:bg-white dark:text-stone-300 dark:hover:bg-stone-800">إغلاق</button>
               </div>
-              <p className="mt-2 leading-7 text-stone-600 dark:text-stone-300">ستظهر هنا إحالات الشخصيات والأماكن والأحداث والمراجع المعتمدة، مرتبطة بمواضعها في النص. لا توجد بيانات تاريخية منشورة في هذا النموذج بعد.</p>
+              <p className="mt-2 leading-7 text-stone-600 dark:text-stone-300">تظهر إحالات الشخصيات والأماكن والأحداث والمراجع المعتمدة هنا، مرتبطة بمواضعها في النص. لا تُعرض مصادر غير مراجعة على أنها معتمدة.</p>
+              <SeerahSourcePanel sources={sources} />
             </aside>
           )}
 
