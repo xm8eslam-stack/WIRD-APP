@@ -58,6 +58,7 @@ import { runRuqyahAudioServiceTests } from './ruqyahAudioService.test';
 import { runRuqyahProgressServiceTests } from '../services/ruqyahProgressService.test';
 import { runRuqyahApiServiceTests } from '../services/ruqyahApiService.test';
 import { runRuqyahViewAudioLockTests } from './ruqyahViewAudioLock.test';\nimport { runSeerahReadingProgressTests } from '../services/seerahReadingProgress.test';
+import { runSeerahContentContractTests } from '../services/seerahContentContract.test';
 
 export interface SuiteResult {
   passed: number;
@@ -163,6 +164,7 @@ async function main() {
     { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
     { name: 'Ruqyah Audio Playback Safety & Source Allowlist', runner: runRuqyahViewAudioLockTests },\n    { name: 'Seerah Reader Device-local Reading Position', runner: runSeerahReadingProgressTests },
+    { name: 'Seerah Claim Provenance and Editorial Publication Gate', runner: runSeerahContentContractTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
