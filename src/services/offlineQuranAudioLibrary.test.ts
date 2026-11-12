@@ -42,6 +42,21 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     } finally { library.close(); }
   });
 
+  await test('records a failed ayah as retryable without claiming completion', async () => {
+    const { library } = createLibrary();
+    try {
+      const job = await library.createJob(oneAyah, 100);
+      await library.markItemDownloading(job.id, 1, 110);
+      await library.markItemFailed(job.id, 1, 120);
+      const failed = await library.listJobItems(job.id);
+      assert(failed[0].status === 'failed', 'A failed request must remain retryable at item level');
+      assert((await library.getJob(job.id))?.completedAyahs === 0, 'A failed item must not increase completed progress');
+      await library.markItemDownloading(job.id, 1, 130);
+      const retried = await library.listJobItems(job.id);
+      assert(retried[0].status === 'downloading', 'A failed item must be eligible for retry');
+    } finally { library.close(); }
+  });
+
   await test('records a verified file idempotently and advances progress exactly once', async () => {
     const { library } = createLibrary();
     try {
