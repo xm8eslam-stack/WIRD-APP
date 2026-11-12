@@ -15,6 +15,7 @@ import { runOfflinePreparationServiceTests } from '../services/offlinePreparatio
 import { runOfflineQuranAudioDownloadTests } from '../services/offlineQuranAudioDownload.test';
 import { runOfflineQuranAudioLibraryTests } from '../services/offlineQuranAudioLibrary.test';
 import { runOfflineQuranAudioCacheTests } from '../services/offlineQuranAudioCache.test';
+import { runOfflineQuranAudioDownloaderTests } from '../services/offlineQuranAudioDownloader.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
 import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
@@ -144,6 +145,7 @@ async function main() {
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
     { name: 'Unified Offline Quran Audio Jobs, Canonical Files, Shared References and Recovery', runner: runOfflineQuranAudioLibraryTests },
     { name: 'Offline Quran Audio Cache Storage Adapter', runner: runOfflineQuranAudioCacheTests },
+    { name: 'Offline Quran Audio Bounded Downloader and Recovery', runner: runOfflineQuranAudioDownloaderTests },
     { name: 'Offline Quran Audio Cache Allowlist and Limits', runner: runAudioServiceOfflineCacheTests },
     { name: 'Offline Persistent Storage Permission and Quota', runner: runOfflineStorageServiceTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
