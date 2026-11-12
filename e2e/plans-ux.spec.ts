@@ -107,8 +107,7 @@ test.describe('WIRD memorization plans UX', () => {
     await expect(page.getByRole('button', { name: /إزالة سورة النساء من الآية 1 إلى 23/ })).toBeVisible();
 
     await modes.getByRole('button', { name: 'نطاق آيات' }).click();
-    const surah = page.getByLabel('السورة', { exact: false });
-    await surah.selectOption('67');
+    await page.locator('#memorized-range-surah-select').selectOption('67');
     await page.getByLabel('من آية').fill('1');
     await page.getByLabel('إلى آية').fill('10');
     await page.getByRole('button', { name: 'إضافة نطاق الآيات' }).click();
