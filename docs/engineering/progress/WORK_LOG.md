@@ -1194,3 +1194,14 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Publication validator now rejects malformed imported JSON structures and invalid source/claim/body-block states without throwing; added negative tests.
 - No local test/typecheck/build run. No GitHub Actions run observed for exact head yet; combined status only reports Vercel build-rate-limit failure.
 - No historical text/source ingested or published; no merge/deploy/production changes.
+
+
+## Seerah manifest and reader hardening — 2026-11-12 21:xx +02:00
+
+- PR #365 latest code head: `adc1ef01b7a0c5eb7e280395520108c94788af5d`.
+- Added a versioned `SeerahBookManifest` index for book → parts → chapters → scenes. Explicit order values control reading order; stable scene anchors derive from immutable internal IDs rather than titles or array positions.
+- The prototype reader now derives its navigation scene list from a draft manifest fixture. It remains explicitly non-publishable and contains no historical narrative.
+- Manifest validation rejects unsupported schema, unsafe/duplicate IDs, duplicate order values, unstable/duplicate anchors, malformed nested arrays, and empty published parts/chapters. Tests cover stable anchors across title/version edits and invalid manifests.
+- Fixed saved reading-position hydration race and added reload E2E. Publication contract now fails closed for malformed imported records; malformed-content tests registered.
+- Quality Gate run 43289471345 on exact head initially failed with job 131431547175 but no steps/logs (BlobNotFound). A rerun was requested; latest attempt job 131431824753 is queued at checkpoint time. Vercel reports build-rate-limit only. No local tests/typecheck/build run and no pass claimed.
+- No real historical corpus or content ingested/published. Source S0 rights review remains a hard gate.
