@@ -582,3 +582,13 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 - Exact head 260df95c620cd534337e39d6707b044eb404139a. Pure chunk codec now rejects sparse ordered IDs, hidden array properties and tampered total bytes, and binds the manifest fingerprint to entitlement revision.
 - Quality Gate run 43278752980 / job 131394096177 failed with no steps/logs; no test/build pass or code-level failure diagnosis.
 - No migration or Firestore integration.
+
+## Seerah latest continuation — 2026-11-12
+
+- PR #365 branch `feat/seerah-continuous-reader-shell-20261112`, exact head `6e174575226cae0a25e82742e8bf6d7fb631de21`.
+- Fixed saved reading-position hydration race with a barrier and added reload E2E for restoring the second scene.
+- Hardened publication validation against malformed imported chapter/source/claim/scene/body-block structures, unknown block types, invalid claim confidence/review status and invalid rights status.
+- Added malformed-content tests; not run locally.
+- No Actions run yet for this exact head; combined status shows only Vercel build-rate-limit failure. Do not claim code failure or CI pass.
+- Reader is still a shell with placeholder scenes. No historical material is published. S0 source rights research remains incomplete; Dorar API access requires manual approval, ACO item rights require checking, OpenITI NC restrictions prohibit assuming reuse.
+- Next: persistent reading preferences and stable anchors across content versions; add a versioned book/part/chapter manifest + measurable coverage matrix; then a human-review workflow for source capture and atomic claims. Keep real narrative ingestion blocked until source/rights and specialist review gates pass.
