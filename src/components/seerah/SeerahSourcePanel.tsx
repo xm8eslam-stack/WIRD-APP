@@ -17,11 +17,21 @@ export const SeerahSourcePanel: React.FC<SeerahSourcePanelProps> = ({ sources })
       <ol className="mt-3 space-y-2">
         {sources.map(source => {
           const safeUrl = resolveSafeSeerahSourceUrl(source.url);
+          const rightsLabel = source.rightsStatus === 'verified_public_domain'
+            ? 'الحقوق: ملك عام متحقق'
+            : source.rightsStatus === 'licensed_for_use'
+              ? 'الحقوق: ترخيص استخدام موثق'
+              : source.rightsStatus === 'link_only'
+                ? 'الحقوق: إحالة ورابط فقط'
+                : source.rightsStatus === 'permission_required'
+                  ? 'الحقوق: يتطلب إذنًا'
+                  : 'الحقوق: غير متحققة';
           return (
             <li key={source.id} className="rounded-xl border border-stone-200 bg-white/70 p-3 dark:border-stone-700 dark:bg-stone-900/30">
               <p className="text-xs font-bold leading-6 text-stone-900 dark:text-stone-100">{source.title}</p>
               <p className="mt-1 text-[11px] leading-5 text-stone-600 dark:text-stone-300">{source.author} · {source.work}</p>
               <p className="mt-1 text-[11px] leading-5 text-stone-500 dark:text-stone-400">{source.edition} · موضع الإحالة: {source.locator}</p>
+              <p className="mt-1 text-[10px] font-semibold text-stone-500 dark:text-stone-400">{rightsLabel}</p>
               {safeUrl ? (
                 <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs font-bold text-emerald-800 underline underline-offset-4 dark:text-emerald-300">
                   فتح المرجع
