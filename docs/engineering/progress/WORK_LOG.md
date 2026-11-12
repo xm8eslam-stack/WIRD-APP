@@ -1028,3 +1028,17 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - This is a fixed interim per-mutation cap, not adaptive storage entitlement, not archive chunking, and not a solution for the 100-plan guard or localStorage archive. Current main still has its older 128,000-byte remote writer validation; only the unmerged #367 branch contains the shared 800 KB implementation.
 - Do not raise the 800 KB value further. The long-term path remains local IndexedDB archive + verified manifest/chunks + receiver materialization/capability negotiation. Per-document envelope headroom and Firestore limits must be tested with actual serialized records, not only synthetic filler.
 - CI for #367's exact head remains unverified/failing without inspectable job steps from the prior audit; do not merge based on source review alone.
+
+
+## 2026-11-12 18:15 +02:00 — إعادة تحقق PRs وتدقيق Engine Plans archive
+
+- main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` مؤكد من قاعدة PRs ومن Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` بحالة READY على نفس SHA والـ alias `wird-app.vercel.app`. لا live browser/sync smoke.
+- أعيد جلب PR metadata: #363 head `9a5eb9579b474c50bc192a4f0dac2001d3aa7afb`; #365 `d0fc6753c32e231bcfe4396e0808963ed5c6978f`; #366 `b289bba34a93d730ca4fd06a08220d75067bf8c7`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #368 `08851241bff289e04b13568188e0b2103a1d02e3`. جميعها OPEN/DRAFT وتستهدف main.
+- أحدث Quality Gate runs المطابقة لهذه الرؤوس: #363 `43217043348` / job `131178813698`; #365 `43211160493` / job `131158819288`; #366 `43202600366` / job `131129580249`; #367 `43209066503` / job `131151602011`; #368 `43215055425` / job `131172059517`. كلها completed failure مع `steps=null` و`logs_url=null`; لا pass ولا test-level diagnosis.
+- جرى تأكيد Production deployment عبر Vercel read-only: READY، main، exact SHA match. لا إعدادات أو أسرار أو flags تم تغييرها.
+- جرد source مؤكد: StorageService localStorage/limit 100؛ App hydration/read/write/session; Dashboard direct getEnginePlans; PlanningEngineWizard props/callback; journaledSnapshotService; sessionPersistence; applyJournalProjection/matchesJournalProjection; backupPersistence journal-first import/reset; Settings + Progress Analytics synchronous export; AuthGate scope → journal replay → legacy portions migration → App mount.
+- AuthGate هو hydration barrier المناسب مبدئيًا، لكنه لا يهيئ Engine Plans archive حاليًا. setStorageScope ما زال synchronous وينسخ/يتحقق/يحذف localStorage keys القديمة؛ لا يمكن افتراض أنه يهاجر IndexedDB.
+- اختبارات معروفة: storageScope, storageReliability, backupValidation, backupPersistence, journaledSnapshotService, sessionPersistence, journalProjectionReplayer, indexedDbSyncJournal, localSyncOutbox. لم يكتمل بعد مسح كل fixtures/callers؛ GitHub code search أعاد 0 مع incomplete_results، لذلك لا ندّعي فحصًا شاملًا.
+- أضيفت خلاصة الحالة والـ blockers إلى أعلى `docs/CONTINUE_HERE.md` في commit `bb32f9352fd94e4d9ad6dd5d06d90936c10306cc` على فرع الوثائق.
+- **النتيجة:** لا migration ولا RFC نهائي بعد. الخطوة التالية إكمال caller/fixture scan وسلسلة sync/conflict resolution ثم RFC/ADR. لا رفع حد 100 أو byte budgets. لا merge/deploy أو تغيير Production/Rules/secrets/sync flags.
+- لم تُشغّل اختبارات محلية؛ هذا تدقيق source/docs عبر GitHub. لا تدّعِ نجاح اختبارات من هذه المراجعة.
