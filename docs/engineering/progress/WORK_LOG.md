@@ -546,3 +546,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Created isolated branch feat/offline-first-app-readiness-20261112 from main SHA 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b for documentation/architecture synchronization. No application code or production configuration changed in this checkpoint.
 - No test, browser offline smoke, real-device test, deployment, or Google AI Studio sync was performed by this documentation checkpoint.
 - Next: inspect all route registrations/lazy imports and build manifest coverage; verify public static assets and external fonts; create the offline capability matrix; then implement the smallest testable service-worker gap.
+
+
+## 2026-11-12 — Public static assets included in explicit offline package
+
+- Added recursive public-directory asset discovery with a supported extension allowlist.
+- Updated the generated offline package manifest to combine bundled chunks/assets and public static files, deduplicated and sorted.
+- Deliberately excludes public/sw.js from the content package so the browser's service-worker update lifecycle remains authoritative.
+- Added PWA integration coverage for manifest.json, icons, nested public images, and service-worker exclusion.
+- PR #366 opened as Draft/HOLD from main baseline 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b. Exact-head CI, build output inspection, and browser/real-device offline verification remain pending.
