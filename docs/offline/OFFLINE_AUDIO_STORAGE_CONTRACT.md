@@ -112,3 +112,10 @@ Never claim cross-store atomicity. A crash between steps 3 and 4 may leave an or
 
 The future Cache Storage adapter must not use only the canonical reciter/ayah URL as the stored cache key. Each completed download needs an immutable `cacheGenerationId`; the cache key must include the canonical file identity plus that generation. `OfflineQuranAudioLibrary` stores the generation and returns it with orphan candidates. Cleanup deletes only the exact generation it was asked to remove. A re-download creates a new generation, so delayed cleanup for an older generation cannot delete the replacement. Cache generation IDs are local metadata and are never synchronized to Firestore.
 
+
+
+## Current implementation checkpoint — 2026-11-12
+
+PR #368 currently provides the IndexedDB metadata repository (`jobs`, `files`, `jobItems`) and integrity protections for timestamps, shared-file references, deletion, and cache-generation reconciliation. It does **not** yet fetch audio bytes, write Cache Storage, coordinate a Service Worker, expose a download UI, or provide offline playback. Its state must not be presented to users as a completed download until the Cache Storage adapter confirms the exact generation is present and verified.
+
+The next code slice after the metadata foundation is a separately testable Cache Storage adapter with generation-scoped keys and injectable cache implementation. Only after that should bounded HTTP download orchestration and worker messaging be added. Preserve the device-local boundary: no audio jobs, cache generations, or bytes enter Firebase sync, account backup, or exports.
