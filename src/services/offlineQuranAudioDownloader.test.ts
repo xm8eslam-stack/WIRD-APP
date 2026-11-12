@@ -94,7 +94,7 @@ export async function runOfflineQuranAudioDownloaderTests(): Promise<{ passed: n
       assert(partial.status === 'partial' && partial.completedAyahs === 2, 'Two valid ayahs should be retained as a partial job');
       assert(items.filter(item => item.status === 'failed').length === 1, 'The failed ayah must remain retryable');
       const retry = await library.createJob(range, 600);
-      assert(retry.id !== first.id && retry.completedAyahs === 2, 'Retry should reuse verified files without duplicating them');
+      assert(retry.id === first.id && retry.completedAyahs === 2, 'Retry should resume the partial job and reuse verified files without duplicating them');
       const completed = await downloader.download(retry.id);
       assert(completed.status === 'completed' && completed.completedAyahs === 3, 'Retry should complete the missing ayah');
     } finally { library.close(); }
