@@ -86,6 +86,16 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
     await expectReject(() => materializeEnginePlanArchiveChunks(changedSchema, mapChunks(built.chunks)),
       'Changing schema version must invalidate the archive fingerprint');
 
+    const changedTotal = JSON.parse(JSON.stringify(built.manifest));
+    changedTotal.totalBytes++;
+    await expectReject(() => materializeEnginePlanArchiveChunks(changedTotal, mapChunks(built.chunks)),
+      'Changing total archive bytes must fail validation');
+
+    const sparseOrder = JSON.parse(JSON.stringify(built.manifest));
+    sparseOrder.orderedRecordIds = new Array(sparseOrder.recordCount);
+    await expectReject(() => materializeEnginePlanArchiveChunks(sparseOrder, mapChunks(built.chunks)),
+      'Sparse ordered record IDs must fail manifest validation');
+
     const changedChunkId = JSON.parse(JSON.stringify(built.manifest));
     changedChunkId.chunks[0].chunkId = 'revision-3:other:0';
     await expectReject(() => materializeEnginePlanArchiveChunks(changedChunkId, mapChunks(built.chunks)),
