@@ -584,3 +584,9 @@ On resumption:
 - Cross-database atomicity is unresolved: archive IDB separate from journal IDB cannot be transactionally atomic by assumption. RFC must specify same-database stores or an idempotent two-phase intent/recovery protocol, including conflict resolution and cursor invariants.
 - Documentation commits: consumer/test inventory `ed9ea1b57adac6c0900361f44c8f679f7df48f4f`; work-log update `131a828c810f8dae21177acffe6a4150c9ccb4c0`. This checkpoint update creates a new documentation PR head; re-fetch it before check/merge decisions.
 - No RFC implementation or migration yet. No byte/record limits changed. No merge/deploy/Production/Rules/secrets/sync flags changed.
+
+
+## 2026-11-12 18:35 +02:00 — RFC archive proposal
+- Added `docs/sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md` as a proposed design only.
+- Proposed same-database IndexedDB stores (journal schema v10) so archive revision + event + outbox reference can commit in one local transaction; remote manifest/chunks remain a later separately gated stage.
+- No code migration, tests, merge, deployment, Rules, Production settings, secrets or sync flags changed.
