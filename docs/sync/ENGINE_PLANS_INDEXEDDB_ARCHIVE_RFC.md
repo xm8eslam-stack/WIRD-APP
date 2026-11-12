@@ -317,3 +317,9 @@ PR #371 adds a pure codec only; it does not perform archive migration or remote 
 - Tests are registered in runAllTests and cover large record round-trip, deterministic fingerprints, ordering, empty archive, missing/extra/duplicate/corrupt chunks, revision/schema/entitlement tampering and invalid JSON.
 - This codec is not yet connected to IndexedDB archive revisions, Firestore chunk documents, manifest publication, capability negotiation or remote inbox materialization. Those remain separate stages after the full consumer/fixture audit and owner-approved entitlement source.
 - Exact PR #371 head 597344a5f95a261df5301da4de992850d4a3f5b5; Quality Gate run 43278092246 / job 131391785241 failed before exposing steps/logs. No local tests/typecheck/build run.
+
+### PR #371 latest head refresh
+- Current exact head: 260df95c620cd534337e39d6707b044eb404139a.
+- Additional validation rejects sparse orderedRecordIds, non-enumerable array properties, tampered totalBytes and changed entitlementRevision.
+- Quality Gate run 43278752980 / job 131394096177 completed failure with steps=null/logs_url=null. No test/typecheck/build stage is inspectable.
+- Codec remains pure and disconnected from archive migration, Firestore and remote Inbox.
