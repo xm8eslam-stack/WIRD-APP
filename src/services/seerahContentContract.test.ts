@@ -136,6 +136,21 @@ export function runSeerahContentContractTests(): { passed: number; failed: numbe
     }
   });
 
+  test('Missing rights status fails closed', () => {
+    const chapter = validChapter();
+    (chapter.sources[0] as any).rightsStatus = undefined;
+    const result = validateSeerahChapterForPublication(chapter);
+    if (!result.blockers.includes('source_rights_not_cleared:source-1')) throw new Error('Missing rights status was accepted');
+  });
+
+  test('Link-only citations require documented usage restrictions', () => {
+    const chapter = validChapter();
+    chapter.sources[0].rightsStatus = 'link_only';
+    chapter.sources[0].rightsNotes = '';
+    const result = validateSeerahChapterForPublication(chapter);
+    if (!result.blockers.includes('source_rights_basis_missing:source-1')) throw new Error('Missing link-only usage notes were accepted');
+  });
+
   test('Public-domain and licensed sources require an explicit rights basis', () => {
     const chapter = validChapter();
     chapter.sources[0].rightsNotes = '';
