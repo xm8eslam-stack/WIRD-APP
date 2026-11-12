@@ -1082,3 +1082,32 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 
 ---
 
+
+## 2026-11-12 — تنفيذ متطلبات المحفوظ وإعدادات الجلسة + مراجعة السيرة
+
+### الحالة المصدرية الجديدة
+- PR #369 branch feat/memorized-ranges-multi-select-20261112 head 7ac00ef32f3b3c2b1158f165ed141e6f332ab88e: أضيفت خدمة memorizedRangeSelection لاستخراج حدود الجزء من QURAN_JUZ_STARTS المولد من Quran dataset، وتقسيم الجزء إلى نطاقات لكل سورة، وتطبيع/دمج النطاقات المتداخلة والمتجاورة. واجهة PlanningEngineWizard أصبحت تدعم اختيار عدة سور عبر checkboxes قابلة للمس مع بحث، أو جزء كامل، أو نطاق آيات مخصص. أضيفت اختبارات service + UI وسجلت في test runner.
+- PR #370 branch feat/session-display-settings-disclosure-20261112 head 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb: إعدادات عرض الجلسة أصبحت disclosure مطوية افتراضيًا مع aria-expanded/controls، وأضيف lineSpacing وpagePadding إلى تفضيلات الجهاز المحلية وتطبيقهما على عرض الآيات وبطاقات القراءة. أضيفت اختبارات التطبيع والتوافق مع الإعدادات القديمة واختبار UI.
+- PR #365 branch feat/seerah-continuous-reader-shell-20261112 head 113f12c43b9b075541b7d28f58fa89cd71ef73d4: اكتشاف وإصلاح bug فعلي في حذف علامة السيرة؛ الدالة كانت تكتب إلى مفتاح global بدل Storage Scope النشط. أصبحت تستخدم نفس scoped-key resolver وأضيف regression test على UID scope.
+- PR #363 docs head c58bcfeafb53277a3535b70df43a644c4b754bc5: أضيفت متطلبات المالك الجديدة، وخريطة المسارات المتوازية، وبحث أولي عن مصادر السيرة وحقوقها وشروط API.
+
+### نتيجة بحث السيرة
+- لا يوجد اعتماد أو ingestion للمحتوى.
+- Dorar History API متاح بطلب ومراجعة يدوية، وشروطه تشمل attribution + رابط المصدر، منع bulk scraping/republishing، caching 24–48 ساعة، server-side token، ومراجعة قبل النشر. السعر/الإتاحة التجارية لم يُحسما؛ لا تكامل قبل موافقة/توضيح.
+- Sunnah.com API يتيح جزءًا من بيانات الحديث بعد طلب API key، ويضيف بيانات بعد فحص يدوي؛ ليس corpus شاملًا للسيرة.
+- Arabic Collections Online يعرض كتبًا عربية تصفها المنصة بأنها public domain، ومنها سجل تهذيب سيرة ابن هشام؛ يلزم تحقق حقوق كل طبعة/ملف وعدم افتراض أن كل نسخة أو تحقيق متاح لإعادة النشر.
+- OpenITI releases منشورة تحت CC BY-NC-SA 4.0 بحسب توثيقها؛ لا تُدمج نصوصها في منتج قابل للتجارية دون مراجعة قانونية للترخيص.
+- التفاصيل والروابط في docs/SEERAH_LEARNING_PLAN_AR.md.
+
+### Entitlement / adaptive capacity finding
+- فحص src/types/quran.ts وStorageService وserver.ts وfirestore.rules مع probe لمسارات entitlement/subscription المعروفة لم يُظهر entitlement/billing service أو plan tiers أو server-authoritative quota model في main.
+- لذلك لا يجوز اختراع Free/Pro أو limits. يلزم لاحقًا عقد entitlement server-verified (مثلاً custom claims/verified backend) وموافقة المالك على أسماء الخطط وحدودها قبل تفعيل حصص حسابية.
+- السعة المحلية تبقى منفصلة وتُحسب من browser storage quota/write success. تقسيم sync إلى chunks يحل نقل الملفات الكبيرة ولا ينشئ بحد ذاته entitlement أو unlimited storage.
+- لا تغييرات في main أو Firestore Rules أو Production أو secrets أو sync flags.
+
+### Exact-head CI evidence
+- #365 head 113f12c43b9b075541b7d28f58fa89cd71ef73d4: Quality Gate run 43273958209, job 131377298902, completed failure; steps=null, logs_url=null.
+- #369 head 7ac00ef32f3b3c2b1158f165ed141e6f332ab88e: run 43274079781, job 131377722661, same missing steps/logs.
+- #370 head 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb: run 43274209101, job 131378172561, same missing steps/logs.
+- لا pass ولا code-level test failure يمكن استنتاجه. لم تتوفر local runner/container checkout لتشغيل الاختبارات هنا.
+- جميع PRs #363/#365/#366/#367/#368/#369/#370 OPEN/DRAFT؛ لا دمج. main ثابت 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
