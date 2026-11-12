@@ -1,3 +1,42 @@
+# مراجعة متابعة جديدة — 2026-11-12 18:15 +02:00
+
+## الحالة الحية المعاد التحقق منها
+- `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` = READY، target production، branch `main`، و`githubCommitSha` مطابق تمامًا لـ main؛ alias `wird-app.vercel.app`. لا يعني ذلك تنفيذ live browser/sync smoke.
+- PR #363: OPEN / DRAFT / mergeable، head `9a5eb9579b474c50bc192a4f0dac2001d3aa7afb`، run `43217043348` / job `131178813698`: failure مع `steps=null` و`logs_url=null`؛ لا تشخيص اختبار ولا pass.
+- PR #365: OPEN / DRAFT، head `d0fc6753c32e231bcfe4396e0808963ed5c6978f`، run `43211160493` / job `131158819288`: failure بلا steps/logs.
+- PR #366: OPEN / DRAFT، head `b289bba34a93d730ca4fd06a08220d75067bf8c7`، run `43202600366` / job `131129580249`: failure بلا steps/logs.
+- PR #367: OPEN / DRAFT، head `fd417faaa96a11920ef3a8e4f1038f567c36a731`، run `43209066503` / job `131151602011`: failure بلا steps/logs.
+- PR #368: OPEN / DRAFT، head `08851241bff289e04b13568188e0b2103a1d02e3`، run `43215055425` / job `131172059517`: failure بلا steps/logs.
+- جميع رؤوس PRs أعلاه تستهدف main SHA المذكور. لا يوجد دليل قابل للفحص على نجاح الاختبارات لهذه الرؤوس، ولا نعد فشل الـ runner فشلًا برمجيًا مثبتًا.
+
+## جرد Engine Plans — تقدم مثبت، وليس مكتملًا بعد
+1. `StorageService.getEnginePlans/saveEnginePlans` يقرآن/يكتبان JSON في localStorage؛ حد الحفظ 100. `validateBackupPayload` يفرض 100 أيضًا.
+2. `App.tsx` يهيئ الحالة عبر getEnginePlans ويعيد القراءة في refresh/session/dashboard/progress flows؛ الحفظ العادي عبر `persistEnginePlansSnapshot`، وإكمال الجلسة قد يضمّن snapshot في grouped journal transaction.
+3. `DashboardView.tsx` يقرأ `StorageService.getEnginePlans()` مباشرة عند اختيار الجلسة اليومية؛ يجب تحويله إلى مصدر hydrated موحد (prop/store) قبل cutover.
+4. `PlanningEngineWizard` يتعامل عبر props و`onUpdateEnginePlans`، ولا ينبغي أن يفتح backend التخزين بنفسه.
+5. `journaledSnapshotService` يكتب `enginePlans/snapshot` عبر `StorageService.saveEnginePlans`. `sessionPersistence` يرفض أكثر من 100.
+6. `StorageService.applyJournalProjection` يكتب Engine Plans إلى localStorage، و`matchesJournalProjection` يقرأ المفتاح مباشرة ويفرض 100؛ journal replay يعتمد على هذه الواجهات قبل cursor advancement.
+7. `remoteInboxProjector` يمرر الحدث إلى `StorageService.applyJournalEvent` داخل finalize transaction؛ لا يتحرك remote projection cursor إلا بعد نجاح materialization/finalization.
+8. مسارا export المؤكدان هما SettingsView وProgressAnalyticsView، وكلاهما يستدعي `StorageService.exportFullBackup()` المتزامنة. يجب تحويل كليهما إلى async verified archive export مع loading/error handling.
+9. مسارا UI للاستيراد يستخدمان `importBackupFile → importBackupJournaled → persistJournaledTransaction`. أما `StorageService.importBackup` فيظل legacy direct localStorage writer، ويجب استكمال مسح جميع callers قبل إهماله.
+10. واجهة reset في التطبيق journal-first عبر `resetAllDataJournaled`; `StorageService.resetAllData` low-level legacy direct deletion ولا يجوز جعله المسار canonical.
+11. اختبارات موجودة ومتصلة بالمسار: `storageScope.test.ts`, `storageReliability.test.ts`, `backupValidation.test.ts`, `backupPersistence.test.ts`, `journaledSnapshotService.test.ts`, `sessionPersistence.test.ts`, `journalProjectionReplayer.test.ts`, `indexedDbSyncJournal.test.ts`, `localSyncOutbox.test.ts`. هذا جرد suites المعروفة وليس بعد inventory لكل fixtures/callers غير المباشرين.
+
+## ما لم يكتمل — يمنع بدء migration
+- إكمال scan لكل استدعاءات `getEnginePlans/saveEnginePlans/exportFullBackup/importBackup/resetAllData` وكل fixtures والـ test harnesses. GitHub code search لم يقدم نتائج موثوقة (0 مع incomplete_results)، لذا لا ندّعي grep شاملًا.
+- توثيق sequence كامل من App/UI → archive → journal/outbox → remote writer/Firestore → inbox/projector → archive materialization/conflicts.
+- تحديد atomic boundary بين archive revision وjournal/outbox references، بما يشمل rollback بعد crash/quota/account switch.
+- فحص conflict-resolution flows والـ backup validation fixtures وحدود payload والـ grouped transactions والعملاء الأقدم.
+- لا تبدأ migration أو تغيّر حد 100 أو byte budgets قبل إغلاق هذه البنود واعتماد RFC/ADR واختبارات crash/restart/UID isolation.
+
+## القرار التالي
+أكمل الجرد على main والاختبارات والـ fixtures، ثم اكتب RFC للأرشيف المحلي versioned IndexedDB وhydration barrier وcopy-verify-mark migration وrollback، مع الاحتفاظ بنسخة localStorage القديمة read-only. بعد ذلك فقط يبدأ تنفيذ adapter في فرع مستقل. لا merge/deploy أو تغيير Production/Rules/secrets/sync flags.
+
+لم تُجرَ اختبارات محلية في هذه المراجعة؛ تم فحص ملفات المصدر والاختبارات عبر GitHub فقط. لم تتغير main أو Production أو Firebase Rules أو البيانات أو الأسرار أو sync flags.
+
+---
+
 # أحدث ملحق متابعة — 2026-11-12 12:37 +02:00
 
 ## قرار معماري إضافي — 2026-11-12 14:55 +02:00
