@@ -268,7 +268,7 @@ self.addEventListener('fetch', (event) => {
   // SPA navigations remain network-first, with a complete cached HTML fallback.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetchWithTimeout(req, {}, OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS).then((networkResponse) => {
+      fetchWithTimeout(req, {}, OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS).then(async (networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const copy1 = networkResponse.clone();
           const copy2 = networkResponse.clone();
@@ -276,6 +276,14 @@ self.addEventListener('fetch', (event) => {
             cache.put('/', copy1);
             cache.put('/index.html', copy2);
           });
+          return networkResponse;
+        }
+        // A reachable server can still be unhealthy (502/503/504). Prefer the
+        // last known-good app shell for server failures, but preserve real 4xx
+        // responses so missing resources and intentional access denials remain visible.
+        if (networkResponse && networkResponse.status >= 500) {
+          const cache = await caches.open(CACHE_NAME);
+          return (await cache.match('/index.html')) || (await cache.match('/')) || networkResponse;
         }
         return networkResponse;
       }).catch(async () => {
