@@ -46,7 +46,7 @@ export function runMemorizationDisplayPreferenceTests(): { passed: number; faile
     test('legacy preferences without a page width remain readable', () => {
       values.set('wird:memorization-display:v1', JSON.stringify({ fontSize: 30, uiScale: 95, density: 'compact', viewMode: 'page' }));
       const restored = getMemorizationDisplayPreferences();
-      assert(restored.fontSize === 30 && restored.uiScale === 95 && restored.pageWidth === 'comfortable',
+      assert(restored.fontSize === 30 && restored.uiScale === 95 && restored.pageWidth === 'comfortable' && restored.lineSpacing === 'comfortable' && restored.pagePadding === 'comfortable',
         'Existing device-local settings must remain compatible when pageWidth is introduced');
     });
     test('invalid or corrupt display preferences safely fall back without affecting user data', () => {
