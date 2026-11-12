@@ -23,21 +23,21 @@ export function runMemorizationDisplayPreferenceTests(): { passed: number; faile
   });
   try {
     test('memorization display preferences persist on this device and restore exactly', () => {
-      const chosen = { fontSize: 40, uiScale: 85, density: 'compact' as const, viewMode: 'page' as const, pageWidth: 'wide' as const };
+      const chosen = { fontSize: 40, uiScale: 85, density: 'compact' as const, viewMode: 'page' as const, pageWidth: 'wide' as const, lineSpacing: 'relaxed' as const, pagePadding: 'wide' as const };
       assert(saveMemorizationDisplayPreferences(chosen), 'Valid display preferences should persist');
       assert(JSON.stringify(getMemorizationDisplayPreferences()) === JSON.stringify(chosen),
         'Reloading preferences should restore the selected size, density, and page mode');
     });
     test('overall session interface scale is clamped to a readable range', () => {
-      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 120, density: 'comfortable', viewMode: 'focused', pageWidth: 'comfortable' }),
+      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 120, density: 'comfortable', viewMode: 'focused', pageWidth: 'comfortable', lineSpacing: 'comfortable', pagePadding: 'comfortable' }),
         'Out-of-range interface scale should be safely normalized');
       assert(getMemorizationDisplayPreferences().uiScale === 110, 'Interface scale must not exceed 110%');
-      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 60, density: 'comfortable', viewMode: 'focused', pageWidth: 'comfortable' }),
+      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 60, density: 'comfortable', viewMode: 'focused', pageWidth: 'comfortable', lineSpacing: 'comfortable', pagePadding: 'comfortable' }),
         'Below-range interface scale should be safely normalized');
       assert(getMemorizationDisplayPreferences().uiScale === 80, 'Interface scale must not fall below 80%');
     });
     test('page width is persisted and invalid values fall back to the comfortable layout', () => {
-      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 100, density: 'comfortable', viewMode: 'page', pageWidth: 'full' }),
+      assert(saveMemorizationDisplayPreferences({ fontSize: 32, uiScale: 100, density: 'comfortable', viewMode: 'page', pageWidth: 'full', lineSpacing: 'compact', pagePadding: 'compact' }),
         'Full-width reading preference should persist');
       assert(getMemorizationDisplayPreferences().pageWidth === 'full', 'Full-width reading preference should be restored');
       values.set('wird:memorization-display:v1', JSON.stringify({ fontSize: 32, uiScale: 100, density: 'comfortable', viewMode: 'focused', pageWidth: 'unknown' }));
@@ -46,7 +46,7 @@ export function runMemorizationDisplayPreferenceTests(): { passed: number; faile
     test('legacy preferences without a page width remain readable', () => {
       values.set('wird:memorization-display:v1', JSON.stringify({ fontSize: 30, uiScale: 95, density: 'compact', viewMode: 'page' }));
       const restored = getMemorizationDisplayPreferences();
-      assert(restored.fontSize === 30 && restored.uiScale === 95 && restored.pageWidth === 'comfortable',
+      assert(restored.fontSize === 30 && restored.uiScale === 95 && restored.pageWidth === 'comfortable' && restored.lineSpacing === 'comfortable' && restored.pagePadding === 'comfortable',
         'Existing device-local settings must remain compatible when pageWidth is introduced');
     });
     test('invalid or corrupt display preferences safely fall back without affecting user data', () => {
@@ -54,8 +54,17 @@ export function runMemorizationDisplayPreferenceTests(): { passed: number; faile
       assert(JSON.stringify(getMemorizationDisplayPreferences()) === JSON.stringify(DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES),
         'Corrupt presentation preferences should use safe defaults');
     });
+    test('line spacing and page padding persist and invalid values fall back safely', () => {
+      const chosen = { fontSize: 32, uiScale: 100, density: 'comfortable' as const, viewMode: 'focused' as const, pageWidth: 'comfortable' as const, lineSpacing: 'relaxed' as const, pagePadding: 'wide' as const };
+      assert(saveMemorizationDisplayPreferences(chosen), 'Detailed typography preferences should persist');
+      const restored = getMemorizationDisplayPreferences();
+      assert(restored.lineSpacing === 'relaxed' && restored.pagePadding === 'wide', 'Line spacing and page padding should restore');
+      values.set('wird:memorization-display:v1', JSON.stringify({ ...chosen, lineSpacing: 'invalid', pagePadding: 'invalid' }));
+      const normalized = getMemorizationDisplayPreferences();
+      assert(normalized.lineSpacing === 'comfortable' && normalized.pagePadding === 'comfortable', 'Invalid display options must fall back to defaults');
+    });
     test('display font size is clamped to the accessible supported range', () => {
-      assert(saveMemorizationDisplayPreferences({ fontSize: 100, uiScale: 100, density: 'comfortable', viewMode: 'focused', pageWidth: 'comfortable' }),
+      assert(saveMemorizationDisplayPreferences({ fontSize: 100, uiScale: 100, density: 'comfortable', viewMode: 'focused', pageWidth: 'comfortable', lineSpacing: 'comfortable', pagePadding: 'comfortable' }),
         'Out-of-range font size should be safely normalized');
       assert(getMemorizationDisplayPreferences().fontSize === 44, 'Font size must not exceed 44px');
     });

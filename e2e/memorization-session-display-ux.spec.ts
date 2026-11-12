@@ -5,7 +5,13 @@ test.describe('WIRD memorization session display controls', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'المتابعة كزائر دون تسجيل حساب' }).click();
     await page.goto('/#/session?surah=67&start=1&end=10&mode=memorize');
-    await expect(page.getByRole('region', { name: 'إعدادات عرض جلسة الحفظ' })).toBeVisible();
+    const region = page.getByRole('region', { name: 'إعدادات عرض جلسة الحفظ' });
+    await expect(region).toBeVisible();
+    const toggle = region.getByRole('button', { name: /إعدادات عرض الصفحة/ });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#session-display-settings-panel')).toBeVisible();
   });
 
   test('text size, interface scale, and density controls expose accessible values and touch targets', async ({ page }) => {
@@ -26,6 +32,19 @@ test.describe('WIRD memorization session display controls', () => {
     await compact.click();
     await expect(compact).toHaveAttribute('aria-pressed', 'true');
     await expect(compact).toHaveCSS('min-height', '44px');
+  });
+
+  test('display settings can be collapsed and reopened without losing the page', async ({ page }) => {
+    const controls = page.getByRole('region', { name: 'إعدادات عرض جلسة الحفظ' });
+    const toggle = controls.getByRole('button', { name: /إعدادات عرض الصفحة/ });
+    const panel = page.locator('#session-display-settings-panel');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
   });
 
   test('focused and all-ayah layouts remain usable on narrow phones', async ({ page }) => {
@@ -57,6 +76,13 @@ test.describe('WIRD memorization session display controls', () => {
 
     const widthControls = controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' });
     const session = page.locator('[data-session-page-width]');
+    const lineSpacing = controls.getByRole('group', { name: 'تباعد سطور الآيات' });
+    await lineSpacing.getByRole('button', { name: 'واسع' }).click();
+    await expect(lineSpacing.getByRole('button', { name: 'واسع' })).toHaveAttribute('aria-pressed', 'true');
+    const pagePadding = controls.getByRole('group', { name: 'هوامش مساحة القراءة' });
+    await pagePadding.getByRole('button', { name: 'واسعة' }).click();
+    await expect(pagePadding.getByRole('button', { name: 'واسعة' })).toHaveAttribute('aria-pressed', 'true');
+
     await widthControls.getByRole('button', { name: 'واسعة' }).click();
     await expect(session).toHaveAttribute('data-session-page-width', 'wide');
     const wideMaxWidth = await session.evaluate(element => getComputedStyle(element).maxWidth);
@@ -68,8 +94,14 @@ test.describe('WIRD memorization session display controls', () => {
 
     await page.reload();
     await expect(controls).toBeVisible();
+    const reopenedToggle = controls.getByRole('button', { name: /إعدادات عرض الصفحة/ });
+    await expect(reopenedToggle).toHaveAttribute('aria-expanded', 'false');
+    await reopenedToggle.click();
+    await expect(reopenedToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(controls.getByRole('button', { name: 'كل آيات الجلسة' })).toHaveAttribute('aria-pressed', 'true');
     await expect(controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'ملء العرض' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'تباعد سطور الآيات' }).getByRole('button', { name: 'واسع' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'هوامش مساحة القراءة' }).getByRole('button', { name: 'واسعة' })).toHaveAttribute('aria-pressed', 'true');
 
     const pageList = page.getByRole('region', { name: 'كل آيات الجلسة' });
     const jump = page.getByRole('combobox', { name: 'الانتقال المباشر إلى آية في الجلسة' });
@@ -79,9 +111,11 @@ test.describe('WIRD memorization session display controls', () => {
     await expect(activeAyah).toBeVisible();
     await expect(activeAyah).toBeInViewport();
 
-    await controls.getByRole('button', { name: 'إعادة ضبط العرض' }).click();
+    await controls.getByRole('button', { name: 'إعادة ضبط الإعدادات' }).click();
     await expect(session).toHaveAttribute('data-session-page-width', 'comfortable');
     await expect(controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'مريحة' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'تباعد سطور الآيات' }).getByRole('button', { name: 'متوازن' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'هوامش مساحة القراءة' }).getByRole('button', { name: 'متوسطة' })).toHaveAttribute('aria-pressed', 'true');
 
     await page.setViewportSize({ width: 390, height: 844 });
     await controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'ملء العرض' }).click();

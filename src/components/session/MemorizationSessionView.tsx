@@ -11,7 +11,9 @@ import {
   BookOpen, 
   ArrowRight,
   Flame,
-  Award
+  Award,
+  Settings2,
+  ChevronDown
 } from 'lucide-react';
 import { ALL_SURAHS } from '../../data/quranMeta';
 import { loadSurahVerses, getAyahWords, loadSimpleAyahText, loadSimpleAyahRange } from '../../data/quranDataLoader';
@@ -106,6 +108,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
   const [displayPreferences, setDisplayPreferences] = useState<MemorizationDisplayPreferences>(
     () => getMemorizationDisplayPreferences()
   );
+  const [isDisplaySettingsOpen, setIsDisplaySettingsOpen] = useState(false);
   useEffect(() => {
     saveMemorizationDisplayPreferences(displayPreferences);
   }, [displayPreferences]);
@@ -652,8 +655,27 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       {/* Session display controls: local-only presentation preferences */}
       <section
         aria-label="إعدادات عرض جلسة الحفظ"
-        className="bg-white dark:bg-stone-800/90 rounded-2xl p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs space-y-4"
+        className="bg-white dark:bg-stone-800/90 rounded-2xl p-3 sm:p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs"
       >
+        <button
+          type="button"
+          aria-expanded={isDisplaySettingsOpen}
+          aria-controls="session-display-settings-panel"
+          onClick={() => setIsDisplaySettingsOpen(open => !open)}
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl text-right focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        >
+          <span className="inline-flex items-center gap-2 text-sm font-bold text-stone-800 dark:text-stone-100">
+            <Settings2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
+            إعدادات عرض الصفحة
+          </span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="hidden truncate text-[11px] text-stone-500 sm:inline">
+              {displayPreferences.fontSize}px · {displayPreferences.uiScale}% · {displayPreferences.pageWidth === 'full' ? 'ملء العرض' : displayPreferences.pageWidth === 'wide' ? 'واسعة' : 'مريحة'}
+            </span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-stone-500 transition-transform ${isDisplaySettingsOpen ? 'rotate-180' : ''}`} />
+          </span>
+        </button>
+        <div id="session-display-settings-panel" hidden={!isDisplaySettingsOpen} className="mt-4 space-y-4 border-t border-stone-100 pt-4 dark:border-stone-700">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5">
           <label htmlFor="session-ui-scale" className="text-xs font-bold text-stone-700 dark:text-stone-200 whitespace-nowrap">
             حجم واجهة الجلسة
@@ -757,23 +779,68 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
               </button>
             ))}
           </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div role="group" aria-label="تباعد سطور الآيات" className="space-y-2">
+            <span className="block text-xs font-bold text-stone-700 dark:text-stone-200">تباعد السطور</span>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { value: 'compact', label: 'متقارب' },
+                { value: 'comfortable', label: 'متوازن' },
+                { value: 'relaxed', label: 'واسع' }
+              ] as const).map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={displayPreferences.lineSpacing === option.value}
+                  onClick={() => updateDisplayPreferences({ lineSpacing: option.value })}
+                  className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.lineSpacing === option.value ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300'}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div role="group" aria-label="هوامش مساحة القراءة" className="space-y-2">
+            <span className="block text-xs font-bold text-stone-700 dark:text-stone-200">هوامش الصفحة</span>
+            <div className="flex flex-wrap gap-2">
+              {([
+                { value: 'compact', label: 'ضيقة' },
+                { value: 'comfortable', label: 'متوسطة' },
+                { value: 'wide', label: 'واسعة' }
+              ] as const).map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={displayPreferences.pagePadding === option.value}
+                  onClick={() => updateDisplayPreferences({ pagePadding: option.value })}
+                  className={`min-h-10 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${displayPreferences.pagePadding === option.value ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-stone-200 bg-stone-50 text-stone-600 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300'}`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[11px] text-stone-500 dark:text-stone-400">
+            الإعدادات محلية على هذا الجهاز فقط، ولا تدخل ضمن مزامنة تقدم الحفظ أو النسخ الاحتياطية.
+          </p>
           <button
             type="button"
             onClick={() => setDisplayPreferences({ ...DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES })}
-            className="min-h-11 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            className="min-h-10 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-2 text-xs font-semibold text-stone-600 dark:text-stone-300 hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
           >
-            إعادة ضبط العرض
+            إعادة ضبط الإعدادات
           </button>
         </div>
-        <p className="text-[11px] text-stone-500 dark:text-stone-400">
-          يمكنك توسيع مساحة الصفحة أو تصغير العناصر وزيادة كثافة الآيات. تُحفظ الاختيارات على هذا الجهاز فقط، ولا تدخل ضمن مزامنة بيانات الحفظ.
-        </p>
+        </div>
       </section>
 
       {displayPreferences.viewMode === 'page' && (
         <section
           aria-label="كل آيات الجلسة"
-          className="bg-[#fdfbf7] dark:bg-stone-800/90 rounded-2xl p-3 sm:p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs"
+          className={`bg-[#fdfbf7] dark:bg-stone-800/90 rounded-2xl ${displayPreferences.pagePadding === 'compact' ? 'p-2 sm:p-3' : displayPreferences.pagePadding === 'wide' ? 'p-5 sm:p-7' : 'p-3 sm:p-4'} border border-stone-200/80 dark:border-stone-700/80 shadow-xs`}
         >
           <div className="flex items-center justify-between gap-3 px-2 pb-3">
             <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100">كل آيات الجلسة</h3>
@@ -808,7 +875,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
                     className="font-quran quran-text text-stone-900 dark:text-stone-100 flex-1"
                     style={{
                       fontSize: `${displayPreferences.fontSize}px`,
-                      lineHeight: displayPreferences.density === 'compact' ? 1.8 : 2.25
+                      lineHeight: displayPreferences.lineSpacing === 'compact' ? 1.7 : displayPreferences.lineSpacing === 'relaxed' ? 2.5 : 2.1
                     }}
                   >
                     {pageDisplayTexts[index]}
@@ -822,7 +889,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       )}
 
       {/* 2. Main Ayah Display & Word Masking Studio */}
-      <div className={`bg-[#fdfbf7] dark:bg-stone-800/90 rounded-3xl ${displayPreferences.density === 'compact' ? 'p-4 md:p-6 space-y-4' : 'p-6 md:p-10 space-y-6'} border border-stone-200/80 dark:border-stone-700/80 shadow-xs text-center relative`}>
+      <div className={`bg-[#fdfbf7] dark:bg-stone-800/90 rounded-3xl ${displayPreferences.pagePadding === 'compact' ? 'p-3 md:p-4' : displayPreferences.pagePadding === 'wide' ? 'p-8 md:p-12' : displayPreferences.density === 'compact' ? 'p-4 md:p-6' : 'p-6 md:p-10'} ${displayPreferences.density === 'compact' ? 'space-y-4' : 'space-y-6'} border border-stone-200/80 dark:border-stone-700/80 shadow-xs text-center relative`}>
         {/* Basmala on first ayah if not At-Tawbah */}
         {currentAyah.numberInSurah === 1 && surahNumber !== 1 && surahNumber !== 9 && (
           <div className="font-quran text-lg text-stone-500 dark:text-stone-400 pb-2 border-b border-stone-200/50 dark:border-stone-700">

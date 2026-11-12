@@ -1,6 +1,8 @@
 export type MemorizationSessionViewMode = 'focused' | 'page';
 export type MemorizationSessionDensity = 'comfortable' | 'compact';
 export type MemorizationSessionPageWidth = 'comfortable' | 'wide' | 'full';
+export type MemorizationSessionLineSpacing = 'compact' | 'comfortable' | 'relaxed';
+export type MemorizationSessionPagePadding = 'compact' | 'comfortable' | 'wide';
 
 export interface MemorizationDisplayPreferences {
   fontSize: number;
@@ -8,6 +10,8 @@ export interface MemorizationDisplayPreferences {
   density: MemorizationSessionDensity;
   viewMode: MemorizationSessionViewMode;
   pageWidth: MemorizationSessionPageWidth;
+  lineSpacing: MemorizationSessionLineSpacing;
+  pagePadding: MemorizationSessionPagePadding;
 }
 
 export const DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES: Readonly<MemorizationDisplayPreferences> = {
@@ -15,7 +19,9 @@ export const DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES: Readonly<MemorizationDisp
   uiScale: 100,
   density: 'comfortable',
   viewMode: 'focused',
-  pageWidth: 'comfortable'
+  pageWidth: 'comfortable',
+  lineSpacing: 'comfortable',
+  pagePadding: 'comfortable'
 };
 
 const STORAGE_KEY = 'wird:memorization-display:v1';
@@ -46,7 +52,13 @@ function normalizePreferences(value: unknown): MemorizationDisplayPreferences {
       : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.viewMode,
     pageWidth: candidate.pageWidth === 'wide' || candidate.pageWidth === 'full'
       ? candidate.pageWidth
-      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.pageWidth
+      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.pageWidth,
+    lineSpacing: candidate.lineSpacing === 'compact' || candidate.lineSpacing === 'comfortable' || candidate.lineSpacing === 'relaxed'
+      ? candidate.lineSpacing
+      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.lineSpacing,
+    pagePadding: candidate.pagePadding === 'compact' || candidate.pagePadding === 'comfortable' || candidate.pagePadding === 'wide'
+      ? candidate.pagePadding
+      : DEFAULT_MEMORIZATION_DISPLAY_PREFERENCES.pagePadding
   };
 }
 
