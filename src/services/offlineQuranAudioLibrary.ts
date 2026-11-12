@@ -607,33 +607,81 @@ export class OfflineQuranAudioLibrary {
   }
 
   /**
-   * Reconcile IndexedDB metadata with Cache Storage before treating files as available.
-   * A missing cache object is marked unavailable; historical job records and pin preference remain.
-   * The caller owns the cache namespace and supplies the exact cache-presence check.
+   * Reconcile IndexedDB metadata and job relations against Cache Storage.
+   * Missing bytes turn non-terminal verified relations back into retryable items.
+   * Completed historical jobs stay immutable; a later retry creates a new job.
    */
   async reconcileCachedFiles(hasCachedFile: (file: OfflineAudioFile) => Promise<boolean>): Promise<OfflineAudioFile[]> {
-    const files = await this.listFiles();
-    const checks = await Promise.all(files.map(async file => ({
+    const snapshots = await this.listFiles();
+    const checks = await Promise.all(snapshots.map(async file => ({
       file,
       present: await hasCachedFile(file)
     })));
+    const presenceByKey = new Map(checks.map(item => [item.file.key, item.present]));
+    const generationByKey = new Map(checks.map(item => [item.file.key, item.file.cacheGenerationId]));
     const missing = checks.filter(item => !item.present).map(item => item.file);
-    if (checks.length === 0) return [];
-    const missingKeys = new Set(missing.map(file => file.key));
+
     const db = await this.openDatabase();
-    const transaction = db.transaction([FILES], 'readwrite');
-    const store = transaction.objectStore(FILES);
-    for (const snapshot of checks.map(item => item.file)) {
-      const current = await requestResult(store.get(snapshot.key));
+    const transaction = db.transaction([JOBS, FILES, JOB_ITEMS], 'readwrite');
+    const jobs = transaction.objectStore(JOBS);
+    const files = transaction.objectStore(FILES);
+    const items = transaction.objectStore(JOB_ITEMS);
+    const changedJobIds = new Set<string>();
+
+    for (const snapshot of checks) {
+      const current = await requestResult(files.get(snapshot.file.key));
       if (!current) continue;
       const file = validateStoredFile(current);
-      if (file.downloadedAtMs !== snapshot.downloadedAtMs || file.cacheGenerationId !== snapshot.cacheGenerationId) continue;
-      const shouldBeAvailable = !missingKeys.has(file.key);
-      if (file.available !== shouldBeAvailable) {
-        file.available = shouldBeAvailable;
-        writeSafely(transaction, () => store.put(file), 'تعذر تحديث حالة توفر الملف الصوتي.');
+      if (file.cacheGenerationId !== generationByKey.get(file.key) ||
+          file.downloadedAtMs !== snapshot.file.downloadedAtMs) continue;
+      if (file.available !== snapshot.present) {
+        file.available = snapshot.present;
+        writeSafely(transaction, () => files.put(file), 'تعذر تحديث حالة توفر الملف الصوتي.');
       }
     }
+
+    const relations = await requestResult(items.getAll()) as OfflineAudioJobItem[];
+    for (const relation of relations) {
+      if (relation.status !== 'verified') continue;
+      const job = await requestResult(jobs.get(relation.jobId)) as OfflineAudioJob | undefined;
+      if (!job) continue;
+      validateJob(job);
+      validateJobItem(job, relation);
+      if (isTerminal(job.status)) continue;
+
+      const stored = await requestResult(files.get(relation.fileKey));
+      let available: boolean;
+      if (!stored) {
+        available = false;
+      } else {
+        const file = validateStoredFile(stored);
+        // A file that appeared or changed generation after the scan must not be
+        // judged using a stale cache-presence result.
+        if (!presenceByKey.has(file.key) || file.cacheGenerationId !== generationByKey.get(file.key)) continue;
+        available = presenceByKey.get(file.key) === true && !file.deletionPending;
+      }
+
+      if (!available) {
+        relation.status = 'failed';
+        relation.updatedAtMs = Math.max(relation.updatedAtMs, job.updatedAtMs, Date.now());
+        writeSafely(transaction, () => items.put(relation), 'تعذر إعادة عنصر التلاوة المفقود إلى قائمة المحاولة.');
+        changedJobIds.add(job.id);
+      }
+    }
+
+    for (const jobId of changedJobIds) {
+      const job = await requestResult(jobs.get(jobId)) as OfflineAudioJob | undefined;
+      if (!job || isTerminal(job.status)) continue;
+      const jobRelations = await requestResult(items.index('jobId').getAll(jobId)) as OfflineAudioJobItem[];
+      jobRelations.forEach(relation => validateJobItem(job, relation));
+      job.completedAyahs = jobRelations.filter(relation => relation.status === 'verified').length;
+      job.status = jobRelations.some(relation => relation.status === 'downloading')
+        ? 'downloading'
+        : job.completedAyahs > 0 ? 'partial' : 'queued';
+      job.updatedAtMs = Math.max(job.updatedAtMs, Date.now());
+      writeSafely(transaction, () => jobs.put(job), 'تعذر تحديث تقدم مهمة التلاوة بعد الاستعادة.');
+    }
+
     await transactionResult(transaction);
     return missing;
   }
