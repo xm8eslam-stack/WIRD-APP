@@ -224,7 +224,7 @@ export class OfflineQuranAudioLibrary {
     const fingerprint = requestFingerprint(range);
     const existingJobs = await requestResult(jobs.index('requestFingerprint').getAll(fingerprint)) as OfflineAudioJob[];
     const reusable = existingJobs
-      .filter(job => !isTerminal(job.status))
+      .filter(job => job.status !== 'failed' && job.status !== 'cancelled')
       .sort((a, b) => b.updatedAtMs - a.updatedAtMs)[0];
     if (reusable) {
       validateJob(reusable);
@@ -331,9 +331,12 @@ export class OfflineQuranAudioLibrary {
       failed: ['failed'],
       cancelled: ['cancelled']
     };
-    if (!allowed[job.status].includes(status)) {
+    if (!allowed[job.status].includes(status) ||
+        (status === 'completed' && job.completedAyahs !== job.totalAyahs) ||
+        (status === 'partial' && (job.completedAyahs < 1 || job.completedAyahs >= job.totalAyahs)) ||
+        (status === 'queued' && job.completedAyahs !== 0)) {
       transaction.abort();
-      throw new Error('انتقال حالة مهمة التنزيل غير مسموح.');
+      throw new Error('انتقال حالة مهمة التنزيل غير مسموح أو لا يطابق تقدمها.');
     }
     job.status = status;
     job.updatedAtMs = Math.max(nowMs, job.createdAtMs);
@@ -354,6 +357,10 @@ export class OfflineQuranAudioLibrary {
     const key = fileKey(job.reciterId, globalAyahNumber);
     const item = await requestResult(items.get(jobItemKey(jobId, key))) as OfflineAudioJobItem | undefined;
     if (!item) { transaction.abort(); throw new Error('موضع الآية خارج مهمة التنزيل.'); }
+    if (item.status === 'verified') {
+      await transactionResult(transaction);
+      return;
+    }
     item.status = 'downloading';
     item.updatedAtMs = Math.max(nowMs, job.createdAtMs);
     job.status = 'downloading';
@@ -404,7 +411,7 @@ export class OfflineQuranAudioLibrary {
     const affectedJobIds = [...new Set(relatedItems.map(item => item.jobId))];
     for (const affectedId of affectedJobIds) {
       const affectedJob = await requestResult(jobs.get(affectedId)) as OfflineAudioJob | undefined;
-      if (!affectedJob) continue;
+      if (!affectedJob || isTerminal(affectedJob.status)) continue;
       const allItems = await requestResult(items.index('jobId').getAll(affectedId)) as OfflineAudioJobItem[];
       affectedJob.completedAyahs = allItems.filter(item => item.status === 'verified').length;
       affectedJob.status = affectedJob.completedAyahs === affectedJob.totalAyahs
@@ -425,6 +432,7 @@ export class OfflineQuranAudioLibrary {
     const items = transaction.objectStore(JOB_ITEMS);
     const job = await requestResult(jobs.get(jobId));
     if (!job) { await transactionResult(transaction); return { orphanedFiles: [] }; }
+    validateJob(job);
     const relations = await requestResult(items.index('jobId').getAll(jobId)) as OfflineAudioJobItem[];
     relations.forEach(item => items.delete(item.key));
     jobs.delete(jobId);
@@ -467,6 +475,27 @@ export class OfflineQuranAudioLibrary {
     }
     await transactionResult(transaction);
     return { orphanedFiles: [] };
+  }
+
+  /**
+   * Reconcile IndexedDB metadata with Cache Storage before treating files as available.
+   * A missing cache object removes only its metadata record; historical job records remain.
+   * The caller owns the cache namespace and supplies the exact cache-presence check.
+   */
+  async reconcileCachedFiles(hasCachedFile: (file: OfflineAudioFile) => Promise<boolean>): Promise<OfflineAudioFile[]> {
+    const files = await this.listFiles();
+    const checks = await Promise.all(files.map(async file => ({
+      file,
+      present: await hasCachedFile(file)
+    })));
+    const missing = checks.filter(item => !item.present).map(item => item.file);
+    if (missing.length === 0) return [];
+    const db = await this.openDatabase();
+    const transaction = db.transaction([FILES], 'readwrite');
+    const store = transaction.objectStore(FILES);
+    for (const file of missing) store.delete(file.key);
+    await transactionResult(transaction);
+    return missing;
   }
 
   close(): void {
