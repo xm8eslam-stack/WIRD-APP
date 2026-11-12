@@ -82,8 +82,11 @@ function canonicalize(value: unknown, path = '$'): JsonValue {
 }
 
 export function canonicalizeEnginePlanArchiveRecord(record: EnginePlanArchiveRecord): string {
-  if (!isPlainRecord(record) || typeof record.id !== 'string' || !record.id.trim() || record.id.length > 256) {
-    throw new Error('كل خطة تحتاج إلى record ID ثابت وصالح.');
+  if (!isPlainRecord(record)) throw new Error('كل خطة تحتاج إلى كائن سجل صالح.');
+  const idDescriptor = Object.getOwnPropertyDescriptor(record, 'id');
+  if (!idDescriptor || !('value' in idDescriptor) || typeof idDescriptor.value !== 'string' ||
+      !idDescriptor.value.trim() || idDescriptor.value.length > 256) {
+    throw new Error('كل خطة تحتاج إلى record ID ثابتًا وصريحًا وصالحًا.');
   }
   return JSON.stringify(canonicalize(record));
 }
