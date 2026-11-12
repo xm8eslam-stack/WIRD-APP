@@ -14,6 +14,7 @@ import { runPwaIntegrationTests } from './pwaIntegration.test';
 import { runOfflinePreparationServiceTests } from '../services/offlinePreparationService.test';
 import { runOfflineQuranAudioDownloadTests } from '../services/offlineQuranAudioDownload.test';
 import { runOfflineQuranAudioLibraryTests } from '../services/offlineQuranAudioLibrary.test';
+import { runOfflineQuranAudioCacheTests } from '../services/offlineQuranAudioCache.test';
 import { runFirebaseAuthTests } from './firebaseAuth.test';
 import { runPhase3CoreRemediationTests } from './phase3CoreRemediation.test';
 import { runQuranLazyLoadingTests } from './quranLazyLoading.test';
