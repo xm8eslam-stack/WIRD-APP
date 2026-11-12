@@ -17,6 +17,7 @@ export interface EnginePlanArchiveManifest {
   protocolVersion: number;
   schemaVersion: number;
   archiveRevisionId: string;
+  entitlementRevision: string | null;
   recordCount: number;
   totalBytes: number;
   archiveSha256: string;
@@ -134,12 +135,14 @@ function archiveFingerprintPayload(
   schemaVersion: number,
   archiveRevisionId: string,
   orderedRecordIds: string[],
-  records: readonly EnginePlanArchiveRecord[]
+  records: readonly EnginePlanArchiveRecord[],
+  entitlementRevision: string | null
 ): Uint8Array {
   const payload = {
     protocolVersion: ENGINE_PLAN_ARCHIVE_CHUNK_PROTOCOL_VERSION,
     schemaVersion,
     archiveRevisionId,
+    entitlementRevision,
     orderedRecordIds,
     records
   };
@@ -150,12 +153,17 @@ export async function buildEnginePlanArchiveChunks(
   records: readonly EnginePlanArchiveRecord[],
   archiveRevisionId: string,
   schemaVersion: number,
-  maxChunkBytes = MAX_ENGINE_PLAN_ARCHIVE_CHUNK_BYTES
+  maxChunkBytes = MAX_ENGINE_PLAN_ARCHIVE_CHUNK_BYTES,
+  entitlementRevision: string | null = null
 ): Promise<BuiltEnginePlanArchive> {
   validateRevisionId(archiveRevisionId);
   if (!Number.isSafeInteger(schemaVersion) || schemaVersion < 1) throw new RangeError('إصدار مخطط أرشيف الخطط غير صالح.');
   if (!Number.isSafeInteger(maxChunkBytes) || maxChunkBytes < 1 || maxChunkBytes > MAX_ENGINE_PLAN_ARCHIVE_CHUNK_BYTES) {
     throw new RangeError('حجم جزء المزامنة يتجاوز الحد الآمن للبروتوكول.');
+  }
+  if (entitlementRevision !== null &&
+      (typeof entitlementRevision !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(entitlementRevision))) {
+    throw new Error('إصدار استحقاق الخطة غير صالح.');
   }
   if (!Array.isArray(records)) throw new TypeError('قائمة الخطط غير صالحة.');
 
@@ -200,9 +208,10 @@ export async function buildEnginePlanArchiveChunks(
     protocolVersion: ENGINE_PLAN_ARCHIVE_CHUNK_PROTOCOL_VERSION,
     schemaVersion,
     archiveRevisionId,
+    entitlementRevision,
     recordCount: records.length,
     totalBytes,
-    archiveSha256: await sha256(archiveFingerprintPayload(schemaVersion, archiveRevisionId, orderedRecordIds, records)),
+    archiveSha256: await sha256(archiveFingerprintPayload(schemaVersion, archiveRevisionId, orderedRecordIds, records, entitlementRevision)),
     orderedRecordIds,
     maxChunkBytes,
     chunks: chunks.map(chunk => ({ ...chunk.descriptor }))
@@ -216,6 +225,7 @@ function validateManifest(manifest: EnginePlanArchiveManifest): void {
   }
   validateRevisionId(manifest.archiveRevisionId);
   if (!Number.isSafeInteger(manifest.schemaVersion) || manifest.schemaVersion < 1 ||
+      (manifest.entitlementRevision !== null && (typeof manifest.entitlementRevision !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(manifest.entitlementRevision))) ||
       !Number.isSafeInteger(manifest.recordCount) || manifest.recordCount < 0 ||
       !Number.isSafeInteger(manifest.totalBytes) || manifest.totalBytes < 0 ||
       !Number.isSafeInteger(manifest.maxChunkBytes) || manifest.maxChunkBytes < 1 ||
@@ -321,7 +331,8 @@ export async function materializeEnginePlanArchiveChunks<T extends EnginePlanArc
     manifest.schemaVersion,
     manifest.archiveRevisionId,
     manifest.orderedRecordIds,
-    records
+    records,
+    manifest.entitlementRevision
   ));
   if (archiveFingerprint !== manifest.archiveSha256) {
     throw new Error('فشلت بصمة الأرشيف الكاملة؛ لن يتم إظهار أي سجل.');
