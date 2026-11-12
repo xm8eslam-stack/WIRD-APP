@@ -1,5 +1,14 @@
 # مسار منتجي جديد — Offline-first والتطبيق المستقبلي
 
+## قرار التخزين التالي — 2026-11-12 14:55 +02:00
+
+لا ترفع byte limits أو تزيل حد 100 خطة من `StorageService` قبل نقل أرشيف enginePlans من localStorage إلى IndexedDB. #367 يظل حلًا انتقاليًا 800 KB لكل mutation، وليس تخزينًا مرنًا.
+
+التسلسل: جرد كل call sites والاختبارات → local IndexedDB archive + migration lossless + hydration gate → journal/outbox snapshot references atomic → Firestore immutable chunks + manifest → receiver materialization + capability negotiation → two-device/offline gates.
+
+لا يوجد entitlement source موثق؛ لا تخترع user tiers. لا GC للإصدارات السابقة قبل device acknowledgements موثوقة.
+
+
 ## تحديث مسارات التنفيذ — 2026-11-12 14:35 +02:00
 
 - **Flexible Storage/Sync:** لا يوجد chunked sync implementation. #367 ما زال 800 KB interim per-payload budget؛ يلزم تصميم end-to-end مع local IndexedDB payload refs وmanifest/chunks وFirestore version compatibility قبل التنفيذ.
