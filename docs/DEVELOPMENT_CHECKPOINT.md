@@ -1,5 +1,15 @@
 # 2026-11-12 — Offline-first checkpoint overlay
 
+## Seerah / PR coordination checkpoint — 2026-11-12 14:05 +02:00
+
+- PR #365 new head `16048985de1df2e17fb0c45afbafa8d16acd7933`: local persistent bookmarks by bookVersion/part/chapter/scene/anchor, deduplication, version isolation, saved-bookmark list, and service tests added. No narrative content or cloud sync.
+- PR #365 run `43209263032` / job `131152309833`: failed before steps/logs (`steps=null`, `logs_url=null`); no test-level result. Exact-head Vercel blocked by Free build-rate.
+- PR #367 docs overlap was removed by restoring `docs/sync/ARCHITECTURE.md` and `docs/engineering/progress/WORK_LOG.md` to main versions. Current code-only head `fd417faaa96a11920ef3a8e4f1038f567c36a731`; run `43209066503` / job `131151602011` also failed before steps/logs.
+- PR #363 docs branch updated with latest findings; its head changed during the update sequence and must be re-fetched before any merge/check decision.
+- PR #366 unchanged; quota-aware optional media cache remains source-level only, not real-device Offline proof.
+- No merge, deploy, main change, Production configuration, Firestore Rules/data, credentials, sync flags, or user data changed.
+
+
 ## Live checkpoint overlay — 2026-11-12 13:40 +02:00
 
 - Verified main ref: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
