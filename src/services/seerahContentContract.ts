@@ -97,6 +97,10 @@ export function validateSeerahChapterForPublication(
   if (!uniqueIds(chapter.claims.map(claim => claim.id))) blockers.push('duplicate_claim_id');
 
   for (const source of chapter.sources) {
+    if (!source || typeof source !== 'object') {
+      blockers.push('source_record_invalid');
+      continue;
+    }
     if (!hasText(source.id) || !hasText(source.title) || !hasText(source.author) ||
         !hasText(source.work) || !hasText(source.edition) || !hasText(source.locator)) {
       blockers.push(`source_metadata_incomplete:${source.id || 'unknown'}`);
@@ -113,6 +117,10 @@ export function validateSeerahChapterForPublication(
   }
 
   for (const claim of chapter.claims) {
+    if (!claim || typeof claim !== 'object') {
+      blockers.push('claim_record_invalid');
+      continue;
+    }
     if (!hasText(claim.id) || !hasText(claim.statement)) blockers.push(`claim_incomplete:${claim.id || 'unknown'}`);
     if (!Array.isArray(claim.sourceIds)) {
       blockers.push(`claim_sources_invalid:${claim.id || 'unknown'}`);
@@ -129,6 +137,10 @@ export function validateSeerahChapterForPublication(
   }
 
   for (const scene of chapter.scenes) {
+    if (!scene || typeof scene !== 'object') {
+      blockers.push('scene_record_invalid');
+      continue;
+    }
     if (!hasText(scene.id) || !hasText(scene.title)) blockers.push(`scene_incomplete:${scene.id || 'unknown'}`);
     if (sceneIds.has(scene.id)) blockers.push(`duplicate_scene_id:${scene.id}`);
     sceneIds.add(scene.id);
@@ -139,6 +151,10 @@ export function validateSeerahChapterForPublication(
     if (scene.bodyBlocks.length === 0) blockers.push(`scene_has_no_body_blocks:${scene.id}`);
 
     for (const block of scene.bodyBlocks) {
+      if (!block || typeof block !== 'object') {
+        blockers.push(`body_block_record_invalid:${scene.id || 'unknown'}`);
+        continue;
+      }
       if (!hasText(block.id) || !hasText(block.text)) blockers.push(`body_block_incomplete:${block.id || 'unknown'}`);
       if (blockIds.has(block.id)) blockers.push(`duplicate_body_block_id:${block.id}`);
       blockIds.add(block.id);
