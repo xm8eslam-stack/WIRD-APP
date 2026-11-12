@@ -158,3 +158,11 @@ Next: implement the pure activity-event reducer and its migration/replay tests o
 - Offline package currently downloads same-origin app JS/CSS and related approved static assets only after explicit user action. Audio caching is opportunistic and bounded (20 URLs per message; 40 entries retained); no full-Quran audio download manager or complete offline tafsir/API/Firebase availability is claimed.
 - Ruqyah proxy `api/ruqyah.ts` uses `process.env.ISLAMICAPI_API_KEY`, accepts only the allowlisted `instant` + `from-quran` programs, and returns sanitized numeric Quran coordinates. Quran text must continue to come from WIRD's verified local corpus. Full Brief/Medium/Long recordings remain disabled pending exact-content and redistribution-rights verification.
 - Release and live-verification status remains bounded: GitHub CI, Vercel READY, owner-reported sync experience, and live smoke are separate evidence categories. Do not change production sync flags, Vercel protection, secrets, Firebase rules/schema, or user data without explicit owner approval.
+
+
+## 2026-11-12 — PR #366 exact-head verification checkpoint
+
+- Latest reviewed PR #366 head: 156274bde0bfedf7c7a87816918acda187376e9f.
+- Vercel Preview deployment dpl_EdiisDzw8bygdpNqH98b1AiiF7QX is READY and its git source SHA matches the exact PR head. This verifies the Vite deployment build, not interactive browser/offline behavior.
+- GitHub Actions run 43186509970 ended with failure, but its job reported no steps and log retrieval returned BlobNotFound. This is an unresolved runner/log infrastructure failure; no test/typecheck/build step is evidenced as having executed.
+- PR #366 remains Draft/HOLD. No merge, production deployment, live browser smoke, or real-device airplane-mode test was performed.
