@@ -749,3 +749,8 @@ No source-level failure or successful tests/build/typecheck can be inferred. No 
 3. Continue Seerah reader and source provenance at highest priority; no content until rights and historical claim reviews pass.
 4. Continue Offline Audio SW protocol, download UI, local-first playback, orphan cleanup and browser/device tests.
 5. Recheck all exact heads and Quality Gate logs before any merge. Keep Production/Firebase/Secrets/Sync flags untouched.
+
+## PR #371 latest exact head
+- Current head 260df95c620cd534337e39d6707b044eb404139a.
+- Quality Gate run 43278752980 / job 131394096177 failed with steps/logs null. No source-level diagnosis or pass.
+- Codec still pure; no archive migration or remote sync integration.
