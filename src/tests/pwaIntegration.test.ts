@@ -87,6 +87,8 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes('OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS = 6000'), 'Navigation must fall back to the cached shell after a bounded network wait');
     assert(swContent.includes('fetchWithTimeout(req, {}, OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS)'), 'Navigation requests must use the bounded timeout before offline fallback');
     assert(swContent.includes("cache.match('/index.html')"), 'SW must fall back to /index.html offline');
+    assert(swContent.includes('networkResponse.status >= 500'), 'SPA navigation must use the cached app shell when the server responds with 5xx');
+    assert(swContent.includes('Preserve real 4xx'), 'SPA navigation must not hide intentional client errors behind the cached shell');
     assert(swContent.includes("PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json'"), 'SW must load the build-generated app-shell manifest');
     assert(swContent.includes('precacheApplicationShell'), 'SW must precache the generated static dependency graph');
     assert(swContent.includes('cache.addAll(safeAssets)'), 'SW must cache entry JS/CSS atomically before activation');
