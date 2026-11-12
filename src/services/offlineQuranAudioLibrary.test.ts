@@ -163,5 +163,30 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     } finally { reopened.close(); }
   });
 
+  await test('aborts the complete job transaction when an IndexedDB write hits quota', async () => {
+    const factory = new IDBFactory();
+    const databaseName = 'wird-offline-audio-library-quota-test';
+    const library = new OfflineQuranAudioLibrary({ indexedDBFactory: factory, databaseName });
+    const originalAdd = IDBObjectStore.prototype.add;
+    let message = '';
+    IDBObjectStore.prototype.add = function (value: any, key?: IDBValidKey) {
+      if (this.name === 'jobItems') throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+      return originalAdd.call(this, value, key);
+    };
+    try {
+      try { await library.createJob({ reciterId: 'ar.alafasy', surahNumber: 1, startAyah: 1, endAyah: 2 }, 100); }
+      catch (error) { message = error instanceof Error ? error.message : String(error); }
+    } finally {
+      IDBObjectStore.prototype.add = originalAdd;
+      library.close();
+    }
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const reopened = new OfflineQuranAudioLibrary({ indexedDBFactory: factory, databaseName });
+    try {
+      assert(message.includes('مساحة التخزين المحلية ممتلئة'), 'Quota errors must be normalized for the user.');
+      assert((await reopened.listJobs()).length === 0, 'A failed job-item write must roll back the job record too.');
+    } finally { reopened.close(); }
+  });
+
   return { passed, failed };
 }
