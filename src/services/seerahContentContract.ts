@@ -80,6 +80,7 @@ export function validateSeerahChapterForPublication(
   const claimIds = new Set(chapter.claims.map(claim => claim.id));
   const blockIds = new Set<string>();
   const sceneIds = new Set<string>();
+  const bodyClaimIds = new Set<string>();
 
   if (!hasText(chapter.id)) blockers.push('chapter_id_missing');
   if (!hasText(chapter.contentVersion)) blockers.push('content_version_missing');
@@ -119,6 +120,7 @@ export function validateSeerahChapterForPublication(
       if (block.claimIds.length === 0) blockers.push(`body_block_without_claims:${block.id}`);
       if (!uniqueIds(block.claimIds)) blockers.push(`body_block_duplicate_claims:${block.id}`);
       for (const claimId of block.claimIds) {
+        bodyClaimIds.add(claimId);
         if (!claimIds.has(claimId)) blockers.push(`body_block_claim_missing:${block.id}:${claimId}`);
       }
       if (block.type === 'quote_verified' && block.exactWordingVerified !== true) {
@@ -127,11 +129,13 @@ export function validateSeerahChapterForPublication(
     }
   }
 
-  if (chapter.status === 'published') {
-    for (const review of REQUIRED_REVIEWS) {
-      if (chapter.reviews[review] !== 'approved') blockers.push(`editorial_review_not_approved:${review}`);
-    }
-    if (chapter.claims.length === 0) blockers.push('published_chapter_has_no_claims');
+  if (chapter.status !== 'approved' && chapter.status !== 'published') blockers.push('chapter_not_approved_for_publication');
+  for (const review of REQUIRED_REVIEWS) {
+    if (chapter.reviews[review] !== 'approved') blockers.push(`editorial_review_not_approved:${review}`);
+  }
+  if (chapter.claims.length === 0) blockers.push('published_chapter_has_no_claims');
+  for (const claim of chapter.claims) {
+    if (!bodyClaimIds.has(claim.id)) blockers.push(`claim_not_used_in_narrative:${claim.id}`);
   }
 
   const uniqueBlockers = [...new Set(blockers)];
