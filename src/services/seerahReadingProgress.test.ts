@@ -3,7 +3,11 @@ import {
   normalizeSeerahReadingPosition,
   readSeerahReadingPosition,
   saveSeerahReadingPosition,
-  SEERAH_READING_POSITION_KEY
+  SEERAH_READING_POSITION_KEY,
+  readSeerahBookmarks,
+  saveSeerahBookmark,
+  removeSeerahBookmark,
+  SEERAH_BOOKMARKS_KEY
 } from './seerahReadingProgress';
 
 class MemoryStorage {
@@ -60,6 +64,38 @@ export function runSeerahReadingProgressTests(): { passed: number; failed: numbe
     if (readSeerahReadingPosition(malformed) !== null) throw new Error('Malformed JSON should not throw or restore');
     const unavailable = { setItem: () => { throw new Error('quota'); } };
     if (saveSeerahReadingPosition(position, unavailable)) throw new Error('Storage failure reported as success');
+  });
+
+  test('Saves versioned bookmarks and restores them without duplicating the same scene anchor', () => {
+    const storage = new MemoryStorage();
+    const bookmark = { bookVersion: 'book-v1', partId: 'part-1', chapterId: 'chapter-1', sceneId: 'scene-2', anchorId: 'scene-2-start', createdAt: '2026-11-12T08:00:00.000Z' };
+    if (!saveSeerahBookmark(bookmark, storage)) throw new Error('Bookmark was not saved');
+    if (!saveSeerahBookmark({ ...bookmark, createdAt: '2026-11-12T09:00:00.000Z' }, storage)) throw new Error('Bookmark update failed');
+    const restored = readSeerahBookmarks(storage);
+    if (restored.length !== 1 || restored[0].createdAt !== '2026-11-12T09:00:00.000Z') throw new Error('Bookmark identity was duplicated or not updated');
+    if (!storage.getItem(SEERAH_BOOKMARKS_KEY)) throw new Error('Bookmark storage key missing');
+  });
+
+  test('Keeps bookmarks from different content versions separate and removes only the selected bookmark', () => {
+    const storage = new MemoryStorage();
+    const first = { bookVersion: 'book-v1', partId: 'part-1', chapterId: 'chapter-1', sceneId: 'scene-1', anchorId: 'scene-1-start', createdAt: '2026-11-12T08:00:00.000Z' };
+    const second = { ...first, bookVersion: 'book-v2', createdAt: '2026-11-12T08:01:00.000Z' };
+    saveSeerahBookmark(first, storage);
+    saveSeerahBookmark(second, storage);
+    if (readSeerahBookmarks(storage).length !== 2) throw new Error('Different content versions were collapsed');
+    if (!removeSeerahBookmark(first, storage)) throw new Error('Bookmark removal failed');
+    const remaining = readSeerahBookmarks(storage);
+    if (remaining.length !== 1 || remaining[0].bookVersion !== 'book-v2') throw new Error('Removal affected the wrong version');
+  });
+
+  test('Rejects malformed bookmarks and fails closed when storage is corrupt or full', () => {
+    const storage = new MemoryStorage();
+    const invalid = { bookVersion: '', partId: 'part', chapterId: 'chapter', sceneId: 'scene', anchorId: 'anchor', createdAt: 'not-a-date' };
+    if (saveSeerahBookmark(invalid as any, storage)) throw new Error('Malformed bookmark was saved');
+    const corrupt = { getItem: () => '{bad json' };
+    if (readSeerahBookmarks(corrupt).length !== 0) throw new Error('Corrupt bookmark JSON was accepted');
+    const full = { getItem: () => null, setItem: () => { throw new Error('quota'); } };
+    if (saveSeerahBookmark({ bookVersion: 'v1', partId: 'p', chapterId: 'c', sceneId: 's', anchorId: 'a', createdAt: '2026-11-12T08:00:00.000Z' }, full as any)) throw new Error('Quota failure reported as success');
   });
 
   return { passed, failed };
