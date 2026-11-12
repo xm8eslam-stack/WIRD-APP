@@ -42,5 +42,11 @@
 ## اصطلاحات الحالة
 `DONE` مكتمل بدليل؛ `MERGED` مدمج وليس بالضرورة منشورًا؛ `IN PROGRESS` جارٍ؛ `VERIFY` يحتاج تحققًا؛ `BLOCKED` متعطل؛ `NOT STARTED` لم يبدأ؛ `OWNER ACTION` يحتاج المالك.
 
+## مسار Offline-first وجاهزية التطبيق
+- [OFFLINE_FIRST_ARCHITECTURE.md](./offline/OFFLINE_FIRST_ARCHITECTURE.md) — عقد الإتاحة دون اتصال وحدود التخزين.
+- [APP_READINESS_ROADMAP_AR.md](./offline/APP_READINESS_ROADMAP_AR.md) — خطة الجاهزية كتطبيق مستقبلي.
+- [OFFLINE_CAPABILITY_MATRIX_AR.md](./offline/OFFLINE_CAPABILITY_MATRIX_AR.md) — جرد المسارات والبيانات والأفعال وتصنيفها Offline/Network.
+- [OFFLINE_AUDIO_DOWNLOAD_PLAN.md](./offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md) و[OFFLINE_AUDIO_STORAGE_CONTRACT.md](./offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md) — حقوق الصوت وعقد تنزيلاته.
+
 ## قبل كل جلسة
 اقرأ `AGENTS.md` ثم `CONTINUE_HERE.md` ثم الخطة الموحدة. أعد جلب SHA وPRs وCI والنشر. لا تعتمد على أرقام قديمة. نفّذ على فرع مستقل وسجّل نتيجة SHA الدقيقة.
