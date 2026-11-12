@@ -29,6 +29,7 @@ import { runWeakVerseRecordingTests } from '../services/weakVerseRecording.test'
 import { runStorageReliabilityTests } from './storageReliability.test';
 import { runLocalSyncOutboxTests } from '../services/localSyncOutbox.test';
 import { runIndexedDbSyncJournalTests } from '../services/indexedDbSyncJournal.test';
+import { runEnginePlanArchiveChunkCodecTests } from '../services/enginePlanArchiveChunkCodec.test';
 import { runJournalProjectionReplayerTests } from '../services/journalProjectionReplayer.test';
 import { runJournaledSnapshotServiceTests } from '../services/journaledSnapshotService.test';
 import { runSecureIdTests } from '../services/secureId.test';
@@ -134,6 +135,7 @@ async function main() {
     { name: 'Durable Session Completion Rollback', runner: runStorageReliabilityTests },
     { name: 'UID-Scoped Durable Local Sync Outbox', runner: runLocalSyncOutboxTests },
     { name: 'Atomic IndexedDB Event Journal & Cross-Tab Outbox', runner: runIndexedDbSyncJournalTests },
+    { name: 'Engine Plans Lossless Chunk Codec', runner: runEnginePlanArchiveChunkCodecTests },
     { name: 'Deterministic Local Journal Projection Replay', runner: runJournalProjectionReplayerTests },
     { name: 'Journal-First Profile and Plan Snapshot Persistence', runner: runJournaledSnapshotServiceTests },
     { name: 'Collision-Resistant Local Event IDs', runner: runSecureIdTests },
