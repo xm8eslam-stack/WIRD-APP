@@ -24,6 +24,7 @@ export interface RouteState {
 export const VALID_NAV_TABS: NavTabId[] = [
   'dashboard',
   'library',
+  'seerah',
   'plans',
   'session',
   'revision',

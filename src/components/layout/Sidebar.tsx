@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { 
   Home, 
   BookOpen, 
+  ScrollText,
   Calendar, 
   Sparkles, 
   Repeat, 
@@ -120,6 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       items: [
         { id: 'dashboard', label: 'الرئيسية', icon: Home },
         { id: 'library', label: 'القرآن والمصحف', icon: BookOpen },
+        { id: 'seerah', label: 'حكاية السيرة', icon: ScrollText },
       ]
     },
     {

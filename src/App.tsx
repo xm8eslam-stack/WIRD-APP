@@ -19,6 +19,7 @@ import { persistEnginePlansSnapshot, persistJournaledTransaction, persistPlansSn
 
 // Lazy loaded views for optimal chunking and initial load performance
 const QuranLibraryView = React.lazy(() => import('./components/library/QuranLibraryView').then(m => ({ default: m.QuranLibraryView })));
+const SeerahReaderView = React.lazy(() => import('./components/seerah/SeerahReaderView').then(m => ({ default: m.SeerahReaderView })));
 const MemorizationPlansView = React.lazy(() => import('./components/plans/MemorizationPlansView').then(m => ({ default: m.MemorizationPlansView })));
 const MemorizationSessionView = React.lazy(() => import('./components/session/MemorizationSessionView').then(m => ({ default: m.MemorizationSessionView })));
 const RevisionCenterView = React.lazy(() => import('./components/revision/RevisionCenterView').then(m => ({ default: m.RevisionCenterView })));
@@ -208,6 +209,7 @@ export default function App() {
   const tabTitles: Record<NavTabId, string> = {
     dashboard: 'الرئيسية',
     library: 'القرآن الكريم',
+    seerah: 'حكاية السيرة',
     plans: 'خطط الحفظ',
     session: 'جلسة الحفظ',
     revision: 'المراجعة والتثبيت',
@@ -622,6 +624,8 @@ export default function App() {
                 preferredReciter={profile.preferredReciter}
               />
             )}
+
+            {currentTab === 'seerah' && <SeerahReaderView />}
 
             {currentTab === 'plans' && (
               <MemorizationPlansView
