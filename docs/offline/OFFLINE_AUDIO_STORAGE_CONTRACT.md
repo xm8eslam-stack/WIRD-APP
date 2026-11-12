@@ -132,3 +132,10 @@ PR #368 now includes an unmerged implementation slice beyond metadata:
 - New Cache Storage and downloader test suites are registered in runAllTests.
 
 **Still not implemented:** Service Worker message protocol, user-facing download manager UI, local-first playback integration, orphan cache-key garbage collection, real browser Cache Storage integration, and real-device offline playback. Do not claim offline downloads are user-ready.
+
+
+### Cache-eviction recovery refinement — 2026-11-12
+- Cache reconciliation now checks both file metadata and verified job-item relations. When a non-terminal job's verified bytes are missing, the corresponding item becomes retryable and the job's completed count/status is recalculated; untouched queued items remain queued.
+- Terminal completed jobs remain immutable for history. If their cache bytes are evicted, the downloader creates a new retry job from the original range and re-downloads only missing files.
+- A cache scan that races with a newer cache generation must not mark the new generation unavailable; generation and downloaded timestamp are compared before applying scan results.
+- A cache write is not considered a completed download until Cache Storage read-back matches the original bytes and the corresponding IndexedDB metadata transaction commits.
