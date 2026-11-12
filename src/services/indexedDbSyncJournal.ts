@@ -2710,6 +2710,11 @@ export class IndexedDbSyncJournal {
         readsRemaining--;
         if (readsRemaining !== 0 || failure) return;
         const event = conflict?.event;
+        if (!event || byteLength(expectedPayloadJson) > getSyncMutationPayloadLimit(event.collection, expectedPayload)) {
+          failure = new Error('حمولة حل التعارض تتجاوز حد المجموعة الفعلي أو لا تطابق نوع البيانات.');
+          transaction.abort();
+          return;
+        }
         const matchingInbox = inboxEvents.find(item => item.serverSequence === event?.serverSequence);
         if (!metadata || !conflict || conflict.uid !== uid || conflict.status !== 'open' ||
             !event || event.eventId !== eventId || event.operation !== 'upsert' ||
