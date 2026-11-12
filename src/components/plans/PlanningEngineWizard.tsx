@@ -194,8 +194,8 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
       const updated = [planToSave, ...enginePlans.filter(plan => plan.id !== planToSave.id)];
       const serializedSnapshot = JSON.stringify({ records: updated });
       const snapshotBytes = new TextEncoder().encode(serializedSnapshot).length;
-      if (snapshotBytes > 450_000) {
-        onToast?.('هذه الخطة أكبر من الحد الآمن للمزامنة (450 كيلوبايت). قلّل نطاق الخطة أو زد مقدار الحفظ اليومي قبل اعتمادها؛ لم نفقد أي بيانات.', 'error');
+      if (snapshotBytes > 800_000) {
+        onToast?.('حجم الخطة يتجاوز الحد الآمن للمزامنة السحابية (800 كيلوبايت). قلّل نطاقها أو قسّمها إلى خطط أصغر قبل الاعتماد؛ لم نفقد أي بيانات.', 'error');
         return;
       }
       if (!await onUpdateEnginePlans(updated)) return;
