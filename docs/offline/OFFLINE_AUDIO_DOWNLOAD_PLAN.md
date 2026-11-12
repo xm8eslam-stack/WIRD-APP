@@ -82,3 +82,12 @@ Let a user explicitly download a chosen Quran reciter's surah or ayah range to t
 - No automatic downloads over mobile data.
 - No change to current reciter defaults or existing continuous playback semantics.
 - No claim that tafsir, Firebase/Auth, IslamicAPI, or all remote resources work offline.
+
+
+## Cache Storage + downloader implementation checkpoint — 2026-11-12
+- PR #368 adds a generation-scoped Cache Storage adapter and bounded downloader orchestration. See OFFLINE_AUDIO_STORAGE_CONTRACT.md for validation and recovery boundaries.
+- Downloader supports 1–2 concurrent requests (default 2), approved CDN host validation, redirect rejection, retryable failed items, pause/abort, cancel, and resume of queued/partial jobs.
+- Cache data is only committed to IndexedDB metadata after Cache Storage write and exact read-back verification. Audio remains device-local and excluded from sync/backup.
+- New service tests cover cache key generations, invalid responses, byte-length mismatch, downloader success, retry, pause, cancel and bounded concurrency.
+- Exact-head #368 run 43275108775 / job 131381335018 ended failure with no steps/logs; no code-level diagnosis or test pass is available.
+- Still missing: Service Worker protocol, download UI, local-first playback, orphan-cache cleanup policy, actual browser integration, and real-device offline test. This is not a released feature.
