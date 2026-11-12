@@ -89,3 +89,11 @@ A green unit/build/browser suite does not by itself prove that every optional ex
 - Service-worker SPA navigation now uses a six-second request timeout before falling back to the cached index.html shell, preventing a slow/unreachable network from indefinitely delaying a local launch.
 - Added PWA integration assertions for the timeout constant and its use in the navigation handler.
 - This is code-level coverage only; cold-start and restart behavior still require real browser/device airplane-mode verification.
+
+
+## 2026-11-12 — Storage capability status clarified
+
+- Corrected offline storage status semantics: browser StorageManager availability is now separate from support for navigator.storage.persist().
+- Settings no longer reports the browser as having no storage support merely because persistent-storage requests are unavailable; it distinguishes unavailable storage inspection, available-but-not-persistent storage, and possible browser eviction.
+- Added service tests for browsers exposing estimate() without persist().
+- This improves status accuracy but does not guarantee storage persistence or prevent browser eviction.
