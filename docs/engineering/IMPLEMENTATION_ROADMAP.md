@@ -1,3 +1,40 @@
+# 2026-11-12 — New product-wide priority: offline-first and future app readiness
+
+> This section supersedes older priority ordering below where it conflicts. Historical milestone status is retained as history; re-audit it against current main before treating it as current.
+
+## Direction
+
+Develop offline-first completeness in parallel with Quran, worship, Seerah, UX, and sync work. The future app must remain useful after a deliberate first-time setup without a network. Do not promise that external APIs, Firebase/Auth, fresh tafsir/hadith, live prayer-time calculations, or remote sync work offline.
+
+## Existing implementation already present on main
+
+- PWA manifest and service worker; shell caching and SPA navigation fallback.
+- Build-generated manifest for app chunks; explicit resumable full-package preparation into a separate content cache.
+- Local Quran and worship datasets; local-first user activity and offline sync journals.
+- Storage usage/quota inspection and opt-in persistent-storage request.
+- Bounded opportunistic Quran/Ruqyah audio cache and bounded Mushaf page cache.
+- Viewed tafsir and verified hadith caching within existing limits.
+
+This is a foundation, not an offline release certification. Do not rewrite it without a measured defect.
+
+## Workstream milestones
+
+- OF0 Inventory: route/asset/data/action matrix and source/license/cache classification.
+- OF1 PWA lifecycle: install, update, offline reload, cache versioning, error recovery, and service-worker controller behavior.
+- OF2 Full package: complete essential lazy-route and static dependency coverage; accurate resumable progress/status; safe size/quota behavior.
+- OF3 Local data: audit persistence and user/guest/UID isolation; transactional IndexedDB only for demonstrated requirements; migration and backup safety.
+- OF4 Core content: verified Quran and essential worship content bundled; previously verified tafsir/hadith only; network-only labels elsewhere.
+- OF5 Audio: approved-source pinned downloads and local-first playback; independent from opportunistic cache and cloud sync.
+- OF6 Offline UX: offline center, capability labels, storage management, retry/resume and accessibility.
+- OF7 App readiness: PWA install checks and platform comparison; decide wrapper only after web offline release gates.
+- OF8 Certification: desktop/mobile browser automation plus real-device airplane-mode and online-recovery tests.
+
+## Execution rule
+
+Run independent tracks in parallel where files and data boundaries do not overlap. Keep tests running while doing unrelated audit/docs work; do not bypass a failed or unavailable gate. Record CI, Vercel deployment, browser smoke, and real-device offline evidence separately. Do not change production settings, secrets, Firestore rules/data, sync flags, or user data without explicit owner approval.
+
+---
+
 # WIRD Engineering Roadmap
 
 **Updated:** 2026-11-06  
