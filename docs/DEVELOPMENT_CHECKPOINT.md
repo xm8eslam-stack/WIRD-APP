@@ -1,5 +1,15 @@
 # 2026-11-12 — Offline-first checkpoint overlay
 
+## Live checkpoint overlay — 2026-11-12 13:40 +02:00
+
+- Verified main ref: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Active PR heads: #363 `5f336a31687bc534fb729c56a9c49dabf0416c18`; #365 `ea9d578855424bcadf08cd7f29d6f14c11b90d06`; #366 `b289bba34a93d730ca4fd06a08220d75067bf8c7`; #367 `cf88ac83de8706c20a01cf3b00827e8fe6e71473`.
+- Exact-head workflows: #363 run 43203107824/job 131131326627; #365 run 43186044298/job 131073336535; #366 run 43202600366/job 131129580249; #367 run 43200705034/job 131123069674. All concluded failure with `steps=null` and `logs_url=null`; no test-level result is available.
+- Vercel: #365 and #367 show successful Preview status; #363 and #366 are blocked by the Free build-rate limit. None is Production evidence.
+- #367 overlaps with #363 in two documentation files; canonical documentation belongs in #363. Remove the overlapping documentation edits from #367 before code review.
+- No code, main branch, Production settings, rules, credentials, sync flags, or user data changed in this checkpoint update.
+
+
 - الهدف: وِرد يعمل عمليًا دون إنترنت بعد إعداد أولي، ويُجهز كتطبيق مستقبلي مع إبقاء PWA هو الأساس.
 - الموجود: PWA/Service Worker، shell cache، Vite manifest، حزمة lazy assets قابلة للاستكمال، بيانات قرآن/عبادات محلية، local-first progress، فحص quota/persistence، audio cache انتهازي محدود، Mushaf page cache، وتخزين بعض التفسير/الأحاديث التي سبق عرضها والتحقق منها.
 - غير المثبت: كل المسارات بعد restart/airplane mode، اكتمال public assets، الخطوط الخارجية، AuthGate offline restore، كل الأفعال المحلية، offline audio library، والتزامن بعد انقطاع الشبكة على جهازين.
