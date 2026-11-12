@@ -517,3 +517,16 @@
 - This is a fixed interim per-mutation cap, not adaptive storage entitlement, not archive chunking, and not a solution for the 100-plan guard or localStorage archive. Current main still has its older 128,000-byte remote writer validation; only the unmerged #367 branch contains the shared 800 KB implementation.
 - Do not raise the 800 KB value further. The long-term path remains local IndexedDB archive + verified manifest/chunks + receiver materialization/capability negotiation. Per-document envelope headroom and Firestore limits must be tested with actual serialized records, not only synthetic filler.
 - CI for #367's exact head remains unverified/failing without inspectable job steps from the prior audit; do not merge based on source review alone.
+
+
+# User requirements added — 2026-11-12
+
+Authoritative detailed requirements: [USER_REQUIREMENTS_2026-11-12.md](./product/USER_REQUIREMENTS_2026-11-12.md).
+
+New owner requirements accepted into the queue:
+- Engine Plans capacity must adapt to the user's actual server-verified account entitlement; local browser quota remains a separate constraint. Cloud sync must use immutable verified chunks/manifests and preserve all records across interruption, upgrade/downgrade and mixed client versions. Do not invent tiers/quotas or treat PR #367's 800 KB interim payload cap as capacity.
+- Previously memorized selection must support multi-Surah selection, complete Juz selection, and custom ayah ranges within a Surah, with canonical coordinate validation and confirmation before progress mutation.
+- Memorization session page settings must become a collapsible disclosure panel (tap to open/close), initially compact, with expanded detailed width/scale/font/typography/density/view/margin controls and reset-to-defaults; preserve reading position and local preference isolation.
+- Seerah is explicitly elevated to a high-priority parallel workstream. Continue the continuous book reader, anchors/bookmarks/source context and versioned editorial corpus. No unverified or invented historical content may be published.
+
+Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol; (B) memorized ranges UI; (C) collapsible session display settings; (D) Seerah reader/content research; (E) offline audio; (F) PWA. Keep shared docs changes in this PR only; code tracks use separate branches. No merge/deploy/Production settings/Rules/secrets/sync flags without explicit approval.
