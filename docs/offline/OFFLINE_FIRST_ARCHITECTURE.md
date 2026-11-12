@@ -82,3 +82,10 @@ When the user explicitly starts offline preparation, WIRD requests persistent br
 The release gate must verify first-visit shell caching, explicit package download and resume, package status accuracy, offline reload after a browser restart, Quran and ruqyah playback from cached segments, local user-data persistence, offline-to-online sync reconciliation, and browser storage eviction behavior.
 
 A green unit/build/browser suite does not by itself prove that every optional external service is available offline. The UI and release notes must distinguish bundled, previously cached, and network-only content.
+
+
+## 2026-11-12 — Bounded offline navigation fallback
+
+- Service-worker SPA navigation now uses a six-second request timeout before falling back to the cached index.html shell, preventing a slow/unreachable network from indefinitely delaying a local launch.
+- Added PWA integration assertions for the timeout constant and its use in the navigation handler.
+- This is code-level coverage only; cold-start and restart behavior still require real browser/device airplane-mode verification.
