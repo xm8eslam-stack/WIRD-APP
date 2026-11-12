@@ -7,7 +7,8 @@ import {
   readSeerahBookmarks,
   saveSeerahBookmark,
   removeSeerahBookmark,
-  SEERAH_BOOKMARKS_KEY
+  SEERAH_BOOKMARKS_KEY,
+  getSeerahScopedStorageKey
 } from './seerahReadingProgress';
 
 class MemoryStorage {
@@ -32,6 +33,15 @@ export function runSeerahReadingProgressTests(): { passed: number; failed: numbe
     anchorId: 'scene-sample-scene-2',
     updatedAt: '2026-11-12T08:00:00.000Z'
   };
+
+  test('Separates local reader data between guest and authenticated account scopes', () => {
+    const guest = getSeerahScopedStorageKey(SEERAH_READING_POSITION_KEY, 'guest');
+    const firstUser = getSeerahScopedStorageKey(SEERAH_READING_POSITION_KEY, 'user:uid-one');
+    const secondUser = getSeerahScopedStorageKey(SEERAH_READING_POSITION_KEY, 'user:uid-two');
+    if (guest === firstUser || firstUser === secondUser || guest === secondUser) {
+      throw new Error('Reader state keys must be unique for every storage scope');
+    }
+  });
 
   test('Normalizes a complete reading position and rejects malformed values', () => {
     if (!normalizeSeerahReadingPosition(position)) throw new Error('Valid position rejected');
