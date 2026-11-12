@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const OFFLINE_PUBLIC_ASSET_EXTENSION = /\\.(?:css|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf|json|webmanifest)$/i;
+const OFFLINE_PUBLIC_ASSET_EXTENSION = /\.(?:css|svg|png|jpe?g|webp|avif|gif|ico|woff2?|ttf|otf|json|webmanifest)$/i;
 
 /**
  * List public static files that the explicit offline package must include.
