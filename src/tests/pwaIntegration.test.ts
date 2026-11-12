@@ -55,7 +55,7 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes("url.hostname === 'raw.githubusercontent.com'"), 'Only the pinned Quran.ws Mushaf asset host may enter the page cache');
     assert(swContent.includes("url.protocol === 'https:'"), 'Mushaf page cache must reject insecure HTTP');
     assert(swContent.includes('if (cached) {') && swContent.includes('return cached;'), 'Cache hits must serve the verified cached response');
-    assert(!/await cache\\.delete\\(req\\);\\s*await cache\\.put\\(req, cached\\.clone\\(\\)\\)/.test(swContent), 'Cache trimming must not delete a usable response before a replacement write');
+    assert(!/await cache\.delete\(req\);\s*await cache\.put\(req, cached\.clone\(\)\)/.test(swContent), 'Cache trimming must not delete a usable response before a replacement write');
     assert(swContent.includes("/quran-ws/quran-svg/3ff27b46cecb0c0519d77531d9c868a579d1f623/mushafs/hafs/kfqc/svg/"), 'Mushaf caching must be pinned to a reviewed release and edition');
     assert(swContent.includes('MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24'), 'Printed page cache must retain its conservative fallback bound');
     assert(swContent.includes('getAdaptiveOfflineCacheLimits'), 'Offline media cache budgets must adapt to available origin storage');
