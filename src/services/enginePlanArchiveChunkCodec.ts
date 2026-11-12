@@ -55,7 +55,9 @@ function canonicalize(value: unknown, path = "$", seen = new WeakSet<object>()):
     if (seen.has(value)) throw new Error('مرجع دائري غير مدعوم في ' + path + '.');
     seen.add(value);
     try {
-      if (Object.getOwnPropertySymbols(value).length > 0 || Object.keys(value).length !== value.length) {
+      const ownKeys = Reflect.ownKeys(value);
+      if (ownKeys.some(key => typeof key !== 'string') || ownKeys.length !== value.length + 1 ||
+          Object.keys(value).length !== value.length) {
         throw new Error('مصفوفة غير متصلة أو تحتوي خصائص إضافية في ' + path + '.');
       }
       const result: JsonValue[] = [];
