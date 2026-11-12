@@ -71,6 +71,11 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
 
   await test('binds manifest fingerprint to schema and revision and rejects descriptor tampering', async () => {
     const built = await buildEnginePlanArchiveChunks([{ id: 'plan-x', value: 'data' }], 'revision-3', 1, 128);
+    const changedRevision = JSON.parse(JSON.stringify(built.manifest));
+    changedRevision.archiveRevisionId = 'other-revision';
+    await expectReject(() => materializeEnginePlanArchiveChunks(changedRevision, mapChunks(built.chunks)),
+      'Changing archive revision must invalidate the manifest/chunk identity');
+
     const changedSchema = JSON.parse(JSON.stringify(built.manifest));
     changedSchema.schemaVersion = 2;
     await expectReject(() => materializeEnginePlanArchiveChunks(changedSchema, mapChunks(built.chunks)),
@@ -91,6 +96,10 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
       'Non-plain objects must not be silently serialized');
     await expectReject(() => buildEnginePlanArchiveChunks([{ id: 'bad', value: Number.NaN }], 'revision-4', 1),
       'Non-finite numbers must be rejected');
+    const circular: any = { id: 'cycle' };
+    circular.self = circular;
+    await expectReject(() => buildEnginePlanArchiveChunks([circular], 'revision-4', 1),
+      'Circular plan records must be rejected');
     await expectReject(() => buildEnginePlanArchiveChunks([{ id: 'large' }], 'revision-4', 1, MAX_ENGINE_PLAN_ARCHIVE_CHUNK_BYTES + 1),
       'Chunk size above protocol ceiling must be rejected');
   });
