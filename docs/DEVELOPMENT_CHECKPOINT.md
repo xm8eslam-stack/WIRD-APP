@@ -563,3 +563,13 @@ On resumption:
 - Both Settings and Progress Analytics import through `importBackupFile` (journal-first); Settings export is not journal-aware today. `StorageService.importBackup` remains the legacy direct localStorage writer and is covered by tests, but its full production caller scan is still required before deprecation.
 - App state is initialized from `getEnginePlans()`; Dashboard independently reads it; Planning UI consumes props and sends updates. These three paths need one hydrated source of truth and no synchronous fallback-to-empty during archive startup.
 - This is still a targeted source audit, not a claim that every one of the 159 TS/TSX files was exhaustively scanned. Continue checking the remaining UI/services for direct backup API calls and legacy archive access before implementation.
+
+
+## 2026-11-12 18:15 +02:00 — Engine Plans archive audit checkpoint
+- Verified main + Production exact SHA: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` READY on same SHA.
+- Active Draft heads: #363 `9a5eb9579b474c50bc192a4f0dac2001d3aa7afb`; #365 `d0fc6753c32e231bcfe4396e0808963ed5c6978f`; #366 `b289bba34a93d730ca4fd06a08220d75067bf8c7`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #368 `08851241bff289e04b13568188e0b2103a1d02e3`.
+- Latest exact-head Quality Gates: #363 run `43217043348`; #365 `43211160493`; #366 `43202600366`; #367 `43209066503`; #368 `43215055425`. All failed with no recorded steps/logs; no test-level diagnosis and no pass.
+- Engine Plans inventory remains IN PROGRESS. Verified direct consumers: App, Dashboard, Settings export, Progress Analytics export, backup validation/import, session completion, journal projection/replay, remote inbox projector, reset. AuthGate is the existing startup barrier but archive hydration is absent. Scope transfer remains synchronous localStorage copy/verify/delete. Known test suites are listed in CONTINUE_HERE; all fixtures/callers are not yet exhaustively scanned.
+- No migration/RFC implementation started. Do not change 100-record limit or byte budgets. Continue caller/fixture and conflict/sync lifecycle inventory before ADR and implementation.
+- Documentation commits on docs branch: continuation update `bb32f9352fd94e4d9ad6dd5d06d90936c10306cc`; work-log update `f46d615844cf7605d6221a13cd457fb87a694b55`. This checkpoint update itself creates a new docs branch head; re-fetch PR #363 before any CI/merge decision.
+- No tests were run locally. No merge/deploy/Production setting/Rules/secrets/sync flag changes.
