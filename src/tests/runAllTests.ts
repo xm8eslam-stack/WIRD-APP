@@ -60,6 +60,7 @@ import { runRuqyahApiServiceTests } from '../services/ruqyahApiService.test';
 import { runRuqyahViewAudioLockTests } from './ruqyahViewAudioLock.test';
 import { runSeerahReadingProgressTests } from '../services/seerahReadingProgress.test';
 import { runSeerahContentContractTests } from '../services/seerahContentContract.test';
+import { runSeerahSourcePresentationTests } from '../services/seerahSourcePresentation.test';
 
 export interface SuiteResult {
   passed: number;
@@ -167,6 +168,7 @@ async function main() {
     { name: 'Ruqyah Audio Playback Safety & Source Allowlist', runner: runRuqyahViewAudioLockTests },
     { name: 'Seerah Reader Device-local Position and Versioned Bookmarks', runner: runSeerahReadingProgressTests },
     { name: 'Seerah Claim Provenance and Editorial Publication Gate', runner: runSeerahContentContractTests },
+    { name: 'Seerah Source Citation URL Safety', runner: runSeerahSourcePresentationTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
