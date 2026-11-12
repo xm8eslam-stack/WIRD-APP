@@ -30,12 +30,12 @@ test.describe('WIRD Seerah reader bookmarks', () => {
 
   test('bookmarks are scoped to the prototype content version and return to saved scenes', async ({ page }) => {
     await page.getByRole('button', { name: 'حفظ علامة لهذا المشهد' }).click();
-    await page.getByRole('button', { name: 'المشهد الثاني — امتداد الحكاية', exact: true }).first().click();
+    await page.locator('aside').getByRole('button').filter({ hasText: 'المشهد الثاني — امتداد الحكاية' }).first().click();
     await expect(page.getByRole('heading', { name: 'المشهد الثاني — امتداد الحكاية' })).toBeVisible();
 
     await page.getByRole('button', { name: 'حفظ علامة لهذا المشهد' }).click();
     await expect(page.getByText('علاماتي المحفوظة')).toBeVisible();
-    await expect(page.locator('aside').getByRole('button', { name: 'المشهد الأول — بداية الفصل', exact: true })).toHaveCount(2);
-    await expect(page.locator('aside').getByRole('button', { name: 'المشهد الثاني — امتداد الحكاية', exact: true })).toHaveCount(2);
+    await expect(page.locator('aside').getByRole('button').filter({ hasText: 'المشهد الأول — بداية الفصل' })).toHaveCount(2);
+    await expect(page.locator('aside').getByRole('button').filter({ hasText: 'المشهد الثاني — امتداد الحكاية' })).toHaveCount(2);
   });
 });
