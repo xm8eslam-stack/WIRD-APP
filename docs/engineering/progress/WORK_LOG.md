@@ -555,3 +555,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Deliberately excludes public/sw.js from the content package so the browser's service-worker update lifecycle remains authoritative.
 - Added PWA integration coverage for manifest.json, icons, nested public images, and service-worker exclusion.
 - PR #366 opened as Draft/HOLD from main baseline 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b. Exact-head CI, build output inspection, and browser/real-device offline verification remain pending.
+
+
+## 2026-11-12 — Bounded offline navigation fallback
+
+- Service-worker SPA navigation now uses a six-second request timeout before falling back to the cached index.html shell, preventing a slow/unreachable network from indefinitely delaying a local launch.
+- Added PWA integration assertions for the timeout constant and its use in the navigation handler.
+- This is code-level coverage only; cold-start and restart behavior still require real browser/device airplane-mode verification.
