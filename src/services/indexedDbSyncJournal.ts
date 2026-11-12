@@ -17,29 +17,9 @@ const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
 const MAX_REMOTE_REVISION_RECORDS = 10_000;
 const MAX_REMOTE_INBOX_EVENTS = 1_000;
-const MAX_PROJECTION_CONFLICTS = 100;
+const MAX_PROJECTION_CONFLICTS = 29; // keeps the aggregate conflict archive budget near the former 50 MB ceiling
 const MAX_CONFLICT_RESOLUTION_INTENTS = 500;
-const MAX_CONFLICT_SNAPSHOT_BYTES = 500_000;
-const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
-// Engine plans contain a generated day-by-day schedule. Give that one collection
-// a larger, still Firestore-safe budget while keeping ordinary mutations small.
-const MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES = 450_000;
-const maxMutationPayloadBytes = (collection: string, payload?: Record<string, unknown>) => {
-  if (collection === 'enginePlans') return MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES;
-  // Session completion may atomically carry the full engine-plan snapshot
-  // inside a grouped syncMeta transaction.
-  if (collection === 'syncMeta') {
-    const transaction = payload?.transaction;
-    if (transaction && typeof transaction === 'object' && !Array.isArray(transaction)) {
-      const operations = (transaction as Record<string, unknown>).operations;
-      if (Array.isArray(operations) && operations.some(operation =>
-        operation && typeof operation === 'object' && !Array.isArray(operation) &&
-        (operation as Record<string, unknown>).collection === 'enginePlans'
-      )) return MAX_ENGINE_PLAN_MUTATION_PAYLOAD_BYTES;
-    }
-  }
-  return MAX_MUTATION_PAYLOAD_BYTES;
-};
+const MAX_CONFLICT_SNAPSHOT_BYTES = 1_700_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
 
