@@ -1,3 +1,45 @@
+
+
+## 2026-11-12 — Offline-first completeness and future application direction
+
+This addendum expands the existing offline foundation into a product-wide workstream. It does not claim that the current implementation has passed the complete release matrix.
+
+### Capability contract
+
+Every feature must declare one of these states in both its service contract and UI where relevant:
+- Bundled: available on a fresh install without network (for example, verified Quran text and essential static worship data).
+- Prepared for offline: available after the user explicitly downloads the app/content package to this device.
+- Previously cached: available only if the exact validated content was fetched and retained earlier; show source/version/time and handle expiry.
+- Opportunistically cached: best-effort media/assets may be available offline but are not guaranteed or pinned.
+- Network required: needs authentication, a server API, a live provider, or content not previously cached. Show a clear offline explanation and preserve the user's place/input.
+
+Never collapse these states into a generic “works offline” label.
+
+### Work plan (ordered, with independent tracks)
+
+1. Inventory: build a route × asset × data × action matrix. Include every lazy route and deep link, dynamically imported Quran datasets, fonts, icons, Mushaf images, audio, tafsir, hadith, Ruqyah, prayer-time/geolocation, Qibla, auth, backup/export, and sync. Record actual source, license, cache policy, maximum size/retention, and offline fallback.
+2. Service-worker audit: test install/activate/update lifecycle, manifest validation, content-type checks, cross-origin allowlists, cache version migration, request timeout, cancellation, partial package recovery, and cache cleanup. Verify no private API responses, user records, auth tokens, or credentials enter shared static caches.
+3. Data layer: inventory localStorage, IndexedDB journal/outbox/inbox, cache storage, and backup paths. Keep user-owned records separate from public content/media. Introduce transactional IndexedDB only where a concrete crash-atomicity or scale requirement is demonstrated; preserve migration/rollback and UID/guest isolation.
+4. Core offline package: ensure all essential routes and their static dependencies are included, including lazy JS/CSS and any same-origin static assets required by those routes. Keep the package bounded and versioned; show package version and incomplete/missing counts.
+5. Content: bundle verified Quran text and essential daily worship data with provenance/version. Cache tafsir/hadith only after existing verification gates; stale or missing records must not be replaced by AI-generated religious text. Network-only APIs remain clearly labeled.
+6. Audio: retain the 20-ayah opportunistic queue as a separate best-effort cache. Implement explicit pinned downloads only from the approved Al Quran Cloud CDN/reciter allowlist after terms recheck; never bulk-cache EveryAyah without documented rights. Add quota estimates, user budget, resume, cancel, retry, delete, integrity checks, and offline-first playback selection.
+7. Offline center and settings: a single panel reports browser support, service-worker controller/version, package completion, storage usage/quota/persistence, audio downloads, cached content, and network-only services. Do not claim persistence is guaranteed when the browser declines it.
+8. App preparation: keep web PWA as the primary cross-platform baseline. After offline gates pass, compare Capacitor, Trusted Web Activity (Android), and native options against push/background audio/storage/auth needs, store policy, accessibility, update model, and free/maintenance cost. No wrapper or native plugin is selected or installed yet.
+9. Verification: run deterministic unit/service-worker tests, then Playwright offline scenarios on desktop/mobile browsers, then manual real-device airplane-mode tests. Verify offline launch after browser/app restart and after service-worker upgrade. Record device/browser/OS, build SHA, cache state, and exact steps.
+
+### Non-negotiable invariants
+
+- No secrets, Firebase tokens, account-specific API payloads, private backups, or user progress in a shared public content cache.
+- No network request is allowed to block local reading or corrupt local progress.
+- Offline writes are durable locally first; online replay is idempotent and conflict-safe.
+- Cache cleanup never deletes user-pinned downloads or local user data without explicit user action.
+- Quran/hadith/tafsir/fiqh content remains source-bound; offline fallback is exact previously verified content or a clear unavailable state.
+- Storage estimates are advisory; quota and eviction must be treated as normal runtime conditions.
+- Service worker is not a substitute for app-native background execution; do not promise background audio/download guarantees across platforms.
+
+### Definition of done
+
+Offline readiness is certified only when the route/data/action matrix is complete, the package and local data recover after restart, core workflows pass airplane-mode tests, online reconciliation passes replay/conflict tests, no private data enters shared caches, and the exact released SHA is verified in a real installed PWA. Future native packaging has its own separate platform test gate.
 # WIRD Offline-First Architecture
 
 Last updated: 2026-11-10
