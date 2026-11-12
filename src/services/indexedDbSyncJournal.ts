@@ -564,7 +564,7 @@ export class IndexedDbSyncJournal {
           !item.documentId || item.documentId.includes('/') || byteLength(item.documentId) > 1500 ||
           item.operation !== 'upsert' || item.schemaVersion !== 1 ||
           item.deviceId !== state.deviceId || !isRecord(item.payload) ||
-          byteLength(JSON.stringify(item.payload)) > maxMutationPayloadBytes(item.collection, item.payload) ||
+          byteLength(JSON.stringify(item.payload)) > getSyncMutationPayloadLimit(item.collection, item.payload) ||
           !Number.isSafeInteger(item.clientUpdatedAtMs) || item.clientUpdatedAtMs < 0 ||
           !Number.isSafeInteger(item.queuedAtMs) || item.queuedAtMs < 0 ||
           !Number.isSafeInteger(item.attemptCount) || item.attemptCount < 0 ||
@@ -776,7 +776,7 @@ export class IndexedDbSyncJournal {
     let payloadJson: string;
     try { payloadJson = JSON.stringify(input.payload); }
     catch { throw new Error('تعذر تحويل بيانات العملية إلى صيغة قابلة للحفظ.'); }
-    if (!payloadJson || byteLength(payloadJson) > maxMutationPayloadBytes(input.collection, input.payload)) {
+    if (!payloadJson || byteLength(payloadJson) > getSyncMutationPayloadLimit(input.collection, input.payload)) {
       throw new Error('بيانات العملية أكبر من الحد المسموح به أو غير قابلة للتسلسل.');
     }
 
@@ -3056,7 +3056,7 @@ export class IndexedDbSyncJournal {
           !Number.isSafeInteger(event.revision) || event.revision !== event.baseRevision + 1 ||
           !Number.isSafeInteger(event.serverSequence) || event.serverSequence < 1 ||
           !isRecord(event.payload) ||
-          byteLength(JSON.stringify(event.payload) || '') > maxMutationPayloadBytes(event.collection, event.payload)) {
+          byteLength(JSON.stringify(event.payload) || '') > getSyncMutationPayloadLimit(event.collection, event.payload)) {
         throw new Error('REMOTE_INBOX_EVENT_INVALID');
       }
       if (event.serverSequence <= previousSequence) {
