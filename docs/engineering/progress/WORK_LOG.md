@@ -1138,3 +1138,12 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - DashboardView still reads StorageService.getEnginePlans directly.
 - cloudSyncCoordinator, remoteInboxProjector, indexedDbSyncJournal and LocalSyncOutbox are archive consumers through projection/outbox/inbox. The localStorage legacy outbox still has a 1.5 MB guard, while current durable journal/outbox is IndexedDB.
 - This is not yet proof that every indirect caller, test fixture and E2E path has been exhausted. Continue audit; do not begin migration.
+
+## Final rerun audit — 2026-11-12
+- Re-ran the latest failed Quality Gate jobs for #365, #368, #369 and #370.
+- #365 run 43275942614 / job 131384235586: still failed with steps=null and logs_url=null.
+- #368 run 43275594933 / job 131383003139: still failed with steps=null and logs_url=null.
+- #369 run 43274079781 / job 131377722661: still failed with steps=null and logs_url=null.
+- #370 run 43274209101 / job 131378172561: completed failure with steps=null and logs_url=null.
+- Re-run attempts did not expose any test/build stage or source-level failure. Do not call these passes or code failures.
+- All PRs #363/#365/#366/#367/#368/#369/#370 remain OPEN/DRAFT. Main base SHA remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
