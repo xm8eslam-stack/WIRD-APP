@@ -1,5 +1,6 @@
 export interface OfflineStorageStatus {
   supported: boolean;
+  persistenceSupported: boolean;
   persisted: boolean | null;
   usageBytes: number | null;
   quotaBytes: number | null;
@@ -12,7 +13,7 @@ function getStorageManager(): StorageManager | null {
 
 export async function getOfflineStorageStatus(): Promise<OfflineStorageStatus> {
   const storage = getStorageManager();
-  if (!storage) return { supported: false, persisted: null, usageBytes: null, quotaBytes: null };
+  if (!storage) return { supported: false, persistenceSupported: false, persisted: null, usageBytes: null, quotaBytes: null };
 
   const [persisted, estimate] = await Promise.all([
     typeof storage.persisted === 'function'
@@ -24,7 +25,8 @@ export async function getOfflineStorageStatus(): Promise<OfflineStorageStatus> {
   ]);
 
   return {
-    supported: typeof storage.persist === 'function',
+    supported: true,
+    persistenceSupported: typeof storage.persist === 'function',
     persisted: typeof storage.persisted === 'function' ? persisted : null,
     usageBytes: Number.isFinite(estimate.usage) ? estimate.usage! : null,
     quotaBytes: Number.isFinite(estimate.quota) ? estimate.quota! : null

@@ -5,6 +5,7 @@ const MUSHAF_PAGE_CACHE_NAME = 'wird-app-mushaf-v1';
 const MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24;
 const MAX_OFFLINE_PACKAGE_ASSETS = 2000;
 const OFFLINE_MANIFEST_REQUEST_TIMEOUT_MS = 15000;
+const OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS = 6000;
 const OFFLINE_ASSET_REQUEST_TIMEOUT_MS = 30000;
 let offlinePackagePreparationInProgress = false;
 const MAX_SESSION_AUDIO_PRELOAD = 20;
@@ -46,9 +47,58 @@ function isValidOfflineAssetResponse(pathname, response) {
 }
 
 
+/**
+ * Adapt optional offline media caches to the storage currently available to this
+ * origin. Keep a reserve for the app and user data; Cache Storage is opportunistic.
+ * If the browser cannot report quota, retain the conservative static defaults.
+ */
+async function getAdaptiveOfflineCacheLimits() {
+  try {
+    const storage = self.navigator && self.navigator.storage;
+    if (!storage || typeof storage.estimate !== 'function') {
+      return {
+        audioEntries: MAX_AUDIO_CACHE_ENTRIES,
+        mushafEntries: MAX_MUSHAF_PAGE_CACHE_ENTRIES
+      };
+    }
+    const estimate = await storage.estimate();
+    const quota = Number(estimate && estimate.quota);
+    const usage = Number(estimate && estimate.usage);
+    if (!Number.isFinite(quota) || quota <= 0 || !Number.isFinite(usage) || usage < 0) {
+      return {
+        audioEntries: MAX_AUDIO_CACHE_ENTRIES,
+        mushafEntries: MAX_MUSHAF_PAGE_CACHE_ENTRIES
+      };
+    }
+    const available = Math.max(0, quota - usage);
+    const reserve = Math.max(32 * 1024 * 1024, quota * 0.15);
+    const cacheable = Math.max(0, available - reserve);
+    // Approximate sizes are deliberately conservative; hard caps prevent runaway caches.
+    const audioEntries = Math.min(MAX_AUDIO_CACHE_ENTRIES, Math.floor(cacheable * 0.20 / (5 * 1024 * 1024)));
+    const mushafEntries = Math.min(96, Math.floor(cacheable * 0.08 / (256 * 1024)));
+    return {
+      audioEntries: Math.max(0, audioEntries),
+      mushafEntries: Math.max(0, mushafEntries)
+    };
+  } catch {
+    return {
+      audioEntries: MAX_AUDIO_CACHE_ENTRIES,
+      mushafEntries: MAX_MUSHAF_PAGE_CACHE_ENTRIES
+    };
+  }
+}
+
 async function trimAudioCache(cache) {
+  const limits = await getAdaptiveOfflineCacheLimits();
   const keys = await cache.keys();
-  const overflow = keys.length - MAX_AUDIO_CACHE_ENTRIES;
+  const overflow = keys.length - limits.audioEntries;
+  for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
+}
+
+async function trimMushafPageCache(cache) {
+  const limits = await getAdaptiveOfflineCacheLimits();
+  const keys = await cache.keys();
+  const overflow = keys.length - limits.mushafEntries;
   for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
 }
 
@@ -267,7 +317,7 @@ self.addEventListener('fetch', (event) => {
   // SPA navigations remain network-first, with a complete cached HTML fallback.
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).then((networkResponse) => {
+      fetchWithTimeout(req, {}, OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS).then(async (networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const copy1 = networkResponse.clone();
           const copy2 = networkResponse.clone();
@@ -275,6 +325,14 @@ self.addEventListener('fetch', (event) => {
             cache.put('/', copy1);
             cache.put('/index.html', copy2);
           });
+          return networkResponse;
+        }
+        // A reachable server can still be unhealthy (502/503/504). Prefer the
+        // last known-good app shell for server failures, but preserve real 4xx
+        // responses so missing resources and intentional access denials remain visible.
+        if (networkResponse && networkResponse.status >= 500) {
+          const cache = await caches.open(CACHE_NAME);
+          return (await cache.match('/index.html')) || (await cache.match('/')) || networkResponse;
         }
         return networkResponse;
       }).catch(async () => {
@@ -338,7 +396,13 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
       const cached = await cache.match(req);
-      if (cached) return cached;
+      if (cached) {
+        // Never delete a usable offline response before a replacement write succeeds.
+        try { await trimAudioCache(cache); } catch (error) {
+          console.warn('[WIRD SW] Could not trim the audio cache after a hit:', error);
+        }
+        return cached;
+      }
       try { return await fetch(req); }
       catch (error) {
         console.warn('[WIRD SW] Approved Quran CDN audio unavailable offline:', req.url, error);
@@ -365,9 +429,10 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(MUSHAF_PAGE_CACHE_NAME);
       const cached = await cache.match(req);
       if (cached) {
-        // Refresh insertion order so the bounded cache behaves as LRU.
-        await cache.delete(req);
-        await cache.put(req, cached.clone());
+        // Serve the verified response first; cache trimming must not make this request fail.
+        try { await trimMushafPageCache(cache); } catch (error) {
+          console.warn('[WIRD SW] Could not trim the Mushaf page cache after a hit:', error);
+        }
         return cached;
       }
       try {
@@ -376,9 +441,7 @@ self.addEventListener('fetch', (event) => {
         const validType = contentType.includes('image/svg+xml');
         if (response.status === 200 && response.type === 'cors' && validType) {
           await cache.put(req, response.clone());
-          const keys = await cache.keys();
-          const overflow = keys.length - MAX_MUSHAF_PAGE_CACHE_ENTRIES;
-          for (let i = 0; i < overflow; i++) await cache.delete(keys[i]);
+          await trimMushafPageCache(cache);
         }
         return response;
       } catch (error) {

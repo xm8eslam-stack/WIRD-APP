@@ -1,3 +1,4 @@
+import { listOfflinePublicAssets } from '../../scripts/offlinePublicAssets';
 import fs from 'fs';
 import path from 'path';
 
@@ -53,13 +54,21 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes("MUSHAF_PAGE_CACHE_NAME = 'wird-app-mushaf-v1'"), 'Printed Mushaf pages must use a dedicated cache');
     assert(swContent.includes("url.hostname === 'raw.githubusercontent.com'"), 'Only the pinned Quran.ws Mushaf asset host may enter the page cache');
     assert(swContent.includes("url.protocol === 'https:'"), 'Mushaf page cache must reject insecure HTTP');
-    assert(swContent.includes('await cache.delete(req);') && swContent.includes('await cache.put(req, cached.clone());'), 'Mushaf page cache must refresh recency on cache hits');
+    assert(swContent.includes('if (cached) {') && swContent.includes('return cached;'), 'Cache hits must serve the verified cached response');
+    assert(!/await cache\.delete\(req\);\s*await cache\.put\(req, cached\.clone\(\)\)/.test(swContent), 'Cache trimming must not delete a usable response before a replacement write');
     assert(swContent.includes("/quran-ws/quran-svg/3ff27b46cecb0c0519d77531d9c868a579d1f623/mushafs/hafs/kfqc/svg/"), 'Mushaf caching must be pinned to a reviewed release and edition');
-    assert(swContent.includes('MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24'), 'Printed page cache must remain bounded');
+    assert(swContent.includes('MAX_MUSHAF_PAGE_CACHE_ENTRIES = 24'), 'Printed page cache must retain its conservative fallback bound');
+    assert(swContent.includes('getAdaptiveOfflineCacheLimits'), 'Offline media cache budgets must adapt to available origin storage');
+    assert(swContent.includes('storage.estimate()'), 'Adaptive cache policy must inspect browser-reported storage quota and usage');
+    assert(swContent.includes('const reserve = Math.max(32 * 1024 * 1024, quota * 0.15)'), 'Adaptive cache policy must reserve storage headroom for app and user data');
+    assert(swContent.includes('audioEntries: Math.max(0, audioEntries)'), 'Audio cache may contract to zero when the device has insufficient safe headroom');
+    assert(swContent.includes('mushafEntries: Math.max(0, mushafEntries)'), 'Mushaf cache may contract to zero when the device has insufficient safe headroom');
+    assert(swContent.includes('trimMushafPageCache(cache)'), 'Mushaf cache must be trimmed against the adaptive budget');
+    assert(swContent.includes('await trimAudioCache(cache);'), 'Audio cache must re-evaluate its adaptive budget on cache hits');
     assert(swContent.includes('name !== MUSHAF_PAGE_CACHE_NAME'), 'Printed page cache must survive service-worker upgrades');
     assert(swContent.includes('WIRD_CACHE_SESSION_AUDIO'), 'SW must accept active-session audio cache messages');
     assert(swContent.includes('MAX_SESSION_AUDIO_PRELOAD = 20'), 'Audio preloading must be capped per session');
-    assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must have a bounded entry count');
+    assert(swContent.includes('MAX_AUDIO_CACHE_ENTRIES = 40'), 'Audio cache must retain a hard maximum entry count');
     assert(swContent.includes('fetchWithTimeout(request, {}, 10000)'), 'Audio pre-caching must time out rather than hold the service-worker event indefinitely');
     const audioService = fs.readFileSync(path.resolve('./src/services/audioService.ts'), 'utf8');
     assert(audioService.includes('requestOfflineAudioCache'), 'Quran audio service must expose opportunistic offline pre-caching');
@@ -83,7 +92,11 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
     assert(swContent.includes("event.waitUntil("), 'SW must handle install/activate wait');
     assert(swContent.includes("caches.delete"), 'SW must clean up old versioned caches on activate');
     assert(swContent.includes("req.mode === 'navigate'"), 'SW must implement SPA navigation fallback');
+    assert(swContent.includes('OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS = 6000'), 'Navigation must fall back to the cached shell after a bounded network wait');
+    assert(swContent.includes('fetchWithTimeout(req, {}, OFFLINE_NAVIGATION_REQUEST_TIMEOUT_MS)'), 'Navigation requests must use the bounded timeout before offline fallback');
     assert(swContent.includes("cache.match('/index.html')"), 'SW must fall back to /index.html offline');
+    assert(swContent.includes('networkResponse.status >= 500'), 'SPA navigation must use the cached app shell when the server responds with 5xx');
+    assert(swContent.includes('Preserve real 4xx'), 'SPA navigation must not hide intentional client errors behind the cached shell');
     assert(swContent.includes("PRECACHE_MANIFEST_URL = '/wird-precache-manifest.json'"), 'SW must load the build-generated app-shell manifest');
     assert(swContent.includes('precacheApplicationShell'), 'SW must precache the generated static dependency graph');
     assert(swContent.includes('cache.addAll(safeAssets)'), 'SW must cache entry JS/CSS atomically before activation');
@@ -168,6 +181,18 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
 
     assert(mainContent.includes("navigator.serviceWorker.register('/sw.js')"), 'main.tsx must register /sw.js');
     assert(mainContent.includes("wird-pwa-update-available"), 'main.tsx must dispatch update event on new worker');
+  });
+
+
+  test('explicit offline package includes supported public assets but excludes the service worker script', () => {
+    const assets = listOfflinePublicAssets(path.resolve('./public'));
+    assert(assets.includes('/manifest.json'), 'Public web manifest must be included in the explicit offline package');
+    assert(assets.includes('/icon-192.png'), 'Public PWA icons must be included in the explicit offline package');
+    assert(assets.includes('/assets/aistudio/IMG_0140_900ee5d2.jpeg'), 'Nested public images must be included in the explicit offline package');
+    assert(!assets.includes('/sw.js'), 'The service worker script must be updated through its own lifecycle, not the content package');
+    const viteConfig = fs.readFileSync(path.resolve('./vite.config.ts'), 'utf8');
+    assert(viteConfig.includes('listOfflinePublicAssets'), 'Vite must merge public static assets into the offline package manifest');
+    assert(viteConfig.includes('allAssets: [...allAssets].sort()'), 'The generated offline manifest must contain deduplicated public and bundled assets');
   });
 
   return { passed, failed };

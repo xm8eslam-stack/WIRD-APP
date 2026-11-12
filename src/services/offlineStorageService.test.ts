@@ -44,5 +44,23 @@ export async function runOfflineStorageServiceTests(): Promise<{ passed: number;
     }
   });
 
+
+  await test('distinguishes available storage from unsupported persistent-storage requests', async () => {
+    const previous = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    const storage = {
+      estimate: async () => ({ usage: 2048, quota: 8192 })
+    };
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { storage } });
+    try {
+      const status = await getOfflineStorageStatus();
+      assert(status.supported, 'StorageManager availability must be reported independently.');
+      assert(!status.persistenceSupported && status.persisted === null, 'Missing persist APIs must not be reported as missing storage.');
+      assert(status.usageBytes === 2048 && status.quotaBytes === 8192, 'Quota estimates must remain available without persistent-storage support.');
+    } finally {
+      if (previous) Object.defineProperty(globalThis, 'navigator', previous);
+      else Reflect.deleteProperty(globalThis, 'navigator');
+    }
+  });
+
   return { passed, failed };
 }
