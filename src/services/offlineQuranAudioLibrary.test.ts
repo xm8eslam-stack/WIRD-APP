@@ -60,9 +60,12 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     const { library } = createLibrary();
     try {
       const first = await library.createJob(oneAyah, 100);
+      const second = await library.createJob({ reciterId: 'ar.alafasy', surahNumber: 1, startAyah: 1, endAyah: 2 }, 200);
       await library.recordVerifiedFile(first.id, verifiedInput());
-      const second = await library.createJob({ reciterId: 'ar.alafasy', surahNumber: 1, startAyah: 1, endAyah: 2 }, 300);
-      assert(second.completedAyahs === 1 && second.status === 'partial', 'The second job must reuse the already verified first ayah.');
+      const secondAfterSharedFile = await library.getJob(second.id);
+      const secondItems = await library.listJobItems(second.id);
+      assert(secondAfterSharedFile?.completedAyahs === 1 && secondAfterSharedFile.status === 'partial', 'A file completed in another job must advance every live referencing job.');
+      assert(secondItems[0].status === 'verified', 'The shared job-item relation must become verified when the canonical file is committed.');
       const firstDelete = await library.deleteJob(first.id);
       assert(firstDelete.orphanedFiles.length === 0 && (await library.listFiles()).length === 1, 'Deleting one job must preserve a file referenced by another job.');
       const secondDelete = await library.deleteJob(second.id);
