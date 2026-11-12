@@ -872,3 +872,15 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - #363 remains the canonical docs branch. #367's two overlapping docs files were restored to main; no overlap remains between #363 and #367/#368.
 - No main merge, deploy, Firestore Rules, production schema/data, credentials, flags, or user data changed.
 
+
+
+## 2026-11-12 14:55 +02:00 — End-to-end plan storage architecture review
+
+- Traced the live path from `StorageService.saveEnginePlans` through `persistEnginePlansSnapshot`, IndexedDB journal, local Outbox, coordinator, revisioned writer, Firestore state/event docs, and remote inbox/projector.
+- Confirmed the 100-plan hard cap and full JSON localStorage archive remain on main. Main's journal engine-plan budget is 450,000 bytes; PR #367 proposes 800,000 bytes and shared alignment but does not remove the count cap or migrate local storage.
+- Confirmed the Outbox has a 1,500,000-byte aggregate cap and stores full serialized state through StorageService. The writer stores the payload in both state and immutable event documents.
+- Confirmed Firestore Rules currently authorize the existing top-level user collection/document layout only; a nested chunk path requires explicit rules and Emulator tests.
+- Added detailed end-to-end design to `docs/sync/ARCHITECTURE.md`: local IndexedDB archive, lossless migration/hydration, atomic journal references, immutable Firestore chunks, manifest publication, receiver materialization, old-client capability negotiation, and delayed garbage collection.
+- Explicitly deferred deleting the 100-plan cap or increasing constants again. Next coding slice is call-site/test inventory and local IndexedDB archive design.
+- Added cache generation identity requirement to the Offline Audio contract: Cache Storage keys must be versioned per download generation to prevent stale cleanup from deleting a replacement file.
+
