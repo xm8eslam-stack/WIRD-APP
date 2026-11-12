@@ -20,6 +20,8 @@ PR #366 is the active offline-first branch/PR. Its public-asset manifest improve
 
 No claim that every route, dynamic asset, API, Firebase/Auth action, fresh tafsir/hadith, full Quran audio, or external Ruqyah index works offline. Offline package and worker tests are not a substitute for real desktop/mobile airplane-mode tests after restart. Existing online-to-offline and offline-to-online sync behavior must be verified separately.
 
+- Navigation fallback now has a six-second network timeout before serving cached index.html; this is not yet real-device verified.
+
 ## Required next execution
 
 1. Inventory every route, lazy chunk, image/font/data asset, user action, and API. Classify as bundled, prepared, previously cached, opportunistic, or network-only; record provenance/license/retention.
