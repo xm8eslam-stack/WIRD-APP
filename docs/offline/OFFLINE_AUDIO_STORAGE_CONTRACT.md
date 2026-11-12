@@ -1,5 +1,17 @@
 # WIRD — Offline Quran Audio Storage Contract
 
+## Implementation checkpoint — 2026-11-12 14:35 +02:00
+
+PR #368 now implements the **device-local metadata foundation only** from this contract:
+- One IndexedDB database with `jobs`, canonical `files`, and `jobItems` relation stores.
+- Reuse of one verified reciter/ayah file across overlapping jobs.
+- `available` state distinct from historical verification, so Cache Storage eviction is not reported as offline-ready.
+- `pinned` retention and durable `deletionPending` markers; Cache Storage deletion must succeed before `finalizeOrphanDeletion` removes metadata.
+- fake-indexeddb tests for shared references, quota rollback, eviction, stale scans, and deletion races.
+
+PR #358 and #359 remain Draft and are superseded; do not merge independently. PR #368 does **not** fetch audio, coordinate Cache Storage writes/deletes, implement the Service Worker protocol, add download UI, or prove offline playback. The complete contract and release gates remain in force.
+
+
 **Status:** Proposed engineering contract; not implemented or released.
 **Reviewed:** 2026-11-12.
 **Related PRs:** #355 (range planner, merged), #356 (planner work superseded by #355), #358 (job + item store proposal), #359 (verified-file manifest proposal), #361 (EveryAyah rights boundary, merged).
