@@ -573,3 +573,14 @@ On resumption:
 - No migration/RFC implementation started. Do not change 100-record limit or byte budgets. Continue caller/fixture and conflict/sync lifecycle inventory before ADR and implementation.
 - Documentation commits on docs branch: continuation update `bb32f9352fd94e4d9ad6dd5d06d90936c10306cc`; work-log update `f46d615844cf7605d6221a13cd457fb87a694b55`. This checkpoint update itself creates a new docs branch head; re-fetch PR #363 before any CI/merge decision.
 - No tests were run locally. No merge/deploy/Production setting/Rules/secrets/sync flag changes.
+
+
+## 2026-11-12 18:25 +02:00 — Engine Plans inventory complete / RFC gate
+- Scan completed over 100 `src/**/*.ts(x)` files and 78 test/spec files at main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. No local tests executed.
+- Direct UI: App state/write paths and Dashboard direct read; MemorizationPlansView/PlanningEngineWizard are prop-based. Additional journal writer: demoDataPersistence.
+- Backup exports: Settings + Progress Analytics synchronous. Imports: both UI paths journal-first. Low-level legacy import/reset remain test/compatibility APIs pending caller scan result and deprecation policy.
+- Projection and conflict contracts still use localStorage: apply/matches/isEmpty/local snapshot; conflict resolver use-remote/keep-local validates those snapshots. Remote inbox and journal replay depend on them.
+- Test matrix references: planningEngine, dailySessionSelection, backupValidation, backupPersistence, journaledSnapshotService, sessionPersistence, storageReliability, storageScope, indexedDbSyncJournal, localSyncOutbox, cloudSyncCoordinator, Firestore Rules. Add explicit AuthGate archive hydration/restart/scope-switch tests.
+- Cross-database atomicity is unresolved: archive IDB separate from journal IDB cannot be transactionally atomic by assumption. RFC must specify same-database stores or an idempotent two-phase intent/recovery protocol, including conflict resolution and cursor invariants.
+- Documentation commits: consumer/test inventory `ed9ea1b57adac6c0900361f44c8f679f7df48f4f`; work-log update `131a828c810f8dae21177acffe6a4150c9ccb4c0`. This checkpoint update creates a new documentation PR head; re-fetch it before check/merge decisions.
+- No RFC implementation or migration yet. No byte/record limits changed. No merge/deploy/Production/Rules/secrets/sync flags changed.
