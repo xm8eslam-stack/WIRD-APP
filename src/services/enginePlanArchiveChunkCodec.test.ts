@@ -101,6 +101,14 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
       'Non-plain objects must not be silently serialized');
     await expectReject(() => buildEnginePlanArchiveChunks([{ id: 'bad', value: Number.NaN }], 'revision-4', 1),
       'Non-finite numbers must be rejected');
+    const sparse: any[] = [];
+    sparse[1] = 'missing-zero';
+    await expectReject(() => buildEnginePlanArchiveChunks([{ id: 'sparse', value: sparse }], 'revision-4', 1),
+      'Sparse arrays must be rejected rather than normalized to null');
+    const hidden: any[] = ['visible'];
+    Object.defineProperty(hidden, 'extra', { value: 'hidden', enumerable: false });
+    await expectReject(() => buildEnginePlanArchiveChunks([{ id: 'hidden', value: hidden }], 'revision-4', 1),
+      'Non-enumerable array properties must not be silently dropped');
     const circular: any = { id: 'cycle' };
     circular.self = circular;
     await expectReject(() => buildEnginePlanArchiveChunks([circular], 'revision-4', 1),
