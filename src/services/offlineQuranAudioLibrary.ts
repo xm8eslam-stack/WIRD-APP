@@ -187,6 +187,11 @@ function validateStoredFile(value: unknown): OfflineAudioFile {
   return { ...normalized, available: record.available, pinned: record.pinned, deletionPending: record.deletionPending };
 }
 
+/**
+ * Device-local metadata coordinator only. Audio bytes stay in a dedicated Cache Storage namespace.
+ * Callers must verify cache presence before playback and finalize orphan deletion only after cache deletion succeeds.
+ * This service is intentionally excluded from Firebase sync, backup, and account export.
+ */
 export class OfflineQuranAudioLibrary {
   private readonly factory: IDBFactory;
   private readonly databaseName: string;
