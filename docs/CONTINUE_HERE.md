@@ -354,3 +354,10 @@
 - #368 head: `08851241bff289e04b13568188e0b2103a1d02e3`. أحدث Quality Gate run `43215055425` / job `131172059517` = failure مع `steps=null` و`logs_url=null`; لا يمكن معرفة هل بدأت الاختبارات أو البناء.
 - #365/#366/#367 ما زالت على الرؤوس المسجلة في جدول التدقيق السابق، وQuality Gate لكل منها فشل قبل تسجيل الخطوات. جميع PRs تبقى OPEN / DRAFT / HOLD.
 - لم يتغير main، ولا توجد عمليات دمج أو نشر أو تعديلات Production/Rules/secrets/flags.
+
+
+## 2026-11-12 — final refresh before handoff
+- #368 exact head `08851241bff289e04b13568188e0b2103a1d02e3`: latest Quality Gate run `43215055425` / job `131172059517` انتهى failure بعد نحو 4 ثوانٍ، مع `steps=[]` و`logs_url=null`، وسحب logs أعاد `BlobNotFound`. لم يبدأ أي step مسجل؛ لا test/build diagnosis ولا pass.
+- #363 docs latest head قبل هذا التحديث كان `754b291c7b77c7521cc6676c5dcb2c9ab01c7fc8`; لا workflow run ظهر لهذا الرأس. هذا التحديث سيولد رأسًا جديدًا، ويجب إعادة جلبه قبل أي قرار.
+- تمت مراجعة `.github/workflows/ci.yml`: Quality Gate مصمم لتشغيل npm tests، npm audit، Rules Emulator، lint، build، server smoke وPlaywright؛ لكن لا توجد أي steps مسجلة في الوظائف الفاشلة، لذلك لا نعرف أي مرحلة وصلت إليها. لا تغيّر workflow أو تضعف gate دون تشخيص من سجل قابل للقراءة.
+- لم يحدث merge/deploy أو تعديل main أو Production أو Rules أو secrets أو flags.
