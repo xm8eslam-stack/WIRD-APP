@@ -200,3 +200,95 @@ This addendum supersedes older release-state statements above where they conflic
 - This is identity normalization only. It does not merge concurrent `weakVerses/snapshot` full-snapshot writes, does not make `mistakeCount` additive across devices, and does not prevent a stale active snapshot from resurrecting a resolved verse.
 - Weak-verse remote projection and conflict resolution must therefore remain fail-closed until a durable event/tombstone model exists. Do not union arrays blindly or sum counters.
 - Activity remains a per-day `DailyLog` aggregate snapshot. Session completion already has a stable mutation ID and `session.completed` domain event, but the local activity projection still adds into one date bucket. A safe multi-device design needs immutable per-session event identity, deduplicated materialization, legacy baseline migration, and rollback/recovery coverage before changing the projection.
+
+
+---
+
+## Engine plan archive scaling and chunked Firestore publication — design review 2026-11-12
+
+**Status:** architecture decision proposal only. No chunked runtime implementation or Firestore schema/rule deployment is included in this documentation update.
+
+### 1. Verified current constraints
+
+- `StorageService.saveEnginePlans` rejects arrays longer than 100 and stores the full JSON archive through the synchronous `localStorage` adapter. Removing the count check alone would expose the browser's localStorage quota and would not make storage adaptive.
+- `persistEnginePlansSnapshot` journals the complete `{ records: plans }` payload. The current main journal has a 450,000-byte engine-plan mutation budget; PR #367 proposes a shared 800,000-byte per-mutation budget across journal/outbox/writer. That PR does not implement chunking.
+- `localSyncOutbox` stores its complete serialized state through StorageService and currently has a 1,500,000-byte aggregate cap. A larger individual payload can still exhaust the aggregate outbox budget when other pending mutations exist.
+- `revisionedRemoteMutation` writes one state document and one immutable event containing the payload. The event ledger and state document therefore both carry the current full snapshot.
+- Firestore documents have a hard size ceiling; raising client-side byte limits cannot bypass it. The existing Firestore rules only allow the current top-level user collection/document shape and do not yet authorize a versioned chunk subcollection.
+- `remoteInboxProjector` expects the existing collection payload shape and has no manifest materialization step. An old client cannot safely project a new manifest-shaped enginePlans payload.
+
+### 2. Required end-to-end target
+
+#### Local archive
+
+1. Add a versioned `enginePlanSnapshots` object store to the durable IndexedDB journal database (or prove a separate database can preserve the required atomicity; same-database transaction is preferred).
+2. Store large plan snapshots as immutable local versions with:
+   - `snapshotId` / `versionId`
+   - schema version and plan identity
+   - UTF-8 serialized byte length
+   - chunk count and per-chunk byte length
+   - per-chunk SHA-256 and full-snapshot digest
+   - creation time and storage-scope UID
+3. Keep small plans on the existing path when safe; large plans use local chunks. Do not retain the full large snapshot a second time in the Outbox.
+4. Extend the journal API so the snapshot version and its small outbox manifest/reference are committed atomically. A failed transaction must leave the previous active snapshot and outbox untouched.
+5. Migrate the existing localStorage archive losslessly: copy to IndexedDB, read back and verify the full digest, then switch the active pointer. Keep the old value until verification passes.
+6. Because `StorageService.getEnginePlans()` is synchronous today, do not simply change its backing store and leave callers unaware. Either hydrate a verified in-memory read cache before the app exposes plan-dependent screens, or migrate consumers to an explicitly asynchronous repository. The first render must not mistake “IndexedDB not loaded yet” for “the user has no plans”.
+
+#### Remote Firestore chunks
+
+1. Use a dedicated per-user immutable version path, e.g. `users/{uid}/enginePlanVersions/{versionId}/chunks/{chunkId}`. Final collection/path names must be confirmed against the current rules and migration policy before coding.
+2. Keep each chunk comfortably below the Firestore per-document ceiling; an initial target around 256 KiB of serialized UTF-8 content is proposed, not a final measured guarantee.
+3. Split only at UTF-8 code-point boundaries. Never slice JavaScript strings by UTF-16 index and assume the byte budget is preserved.
+4. Use stable version/chunk identities so retrying the same mutation is idempotent. A new content version must never overwrite chunks belonging to the previous version.
+5. Each chunk record must bind UID, plan identity, version, index/count, byte length, schema version, and SHA-256. Reject a duplicate chunk ID if any immutable field or digest differs.
+6. Upload all chunks first. Read them back and verify count, ordering, UTF-8 byte lengths, each digest, and the full reconstructed snapshot digest.
+7. Only after complete verification, publish a small manifest pointer through the existing revisioned `enginePlans` event/state transaction. The manifest pointer is the atomic visibility boundary.
+8. Never delete the prior valid version as part of publication. Garbage collection is deferred until a separately verified device-acknowledgement/retention policy exists; do not infer that all devices have received a version merely because one device uploaded it.
+
+#### Remote import and projection
+
+1. A receiving client reads the manifest event and downloads the exact referenced immutable chunks.
+2. Verify the entire set before writing a materialized event into the durable local inbox.
+3. If any chunk is missing, malformed, out of order, too large, or fails its digest, preserve the event and both cursors; do not partially update the local plan archive.
+4. Materialize the verified snapshot into the local IndexedDB archive, then atomically advance the local active-version pointer and projection cursor.
+5. Keep pending local mutations and conflict archives intact. A remote manifest must never overwrite unsynced local work.
+6. An old client that does not advertise manifest support must not receive or project a manifest payload. Add explicit capability/version negotiation before rollout; do not rely on “everyone updates quickly”.
+
+### 3. Quota and entitlement model
+
+- “Unlimited” cannot mean unlimited physical bytes. Browser IndexedDB quota, device eviction, Firestore document/write/storage limits, account usage, and billing remain real constraints.
+- Remove arbitrary hard-coded plan-count limits only after the IndexedDB archive and migration path are ready.
+- Keep three limits separate: per-chunk Firestore document budget, per-mutation/outbox metadata budget, and aggregate per-user storage entitlement.
+- No verified subscription/entitlement source or plan tiers are established in this repository review. Do not invent quotas or label any user as unlimited. Define a server-trusted `getStorageEntitlement(uid)` policy only after the product's actual plans and billing rules are specified.
+- Show the user an honest usage estimate and a clear “storage unavailable/quota reached” state. Never delete the last valid snapshot to make room.
+
+### 4. Firestore rules and rollout boundary
+
+- A nested chunk path requires explicit owner-only read/create rules and immutable-update/delete denial or a separately reviewed retention rule. The existing broad top-level user match does not automatically authorize this nested path.
+- Add emulator tests for cross-UID reads/writes, unverified users, invalid chunk fields, duplicate IDs, updates, deletes, manifest publication before all chunks, and old-client compatibility.
+- Production Firestore Rules deployment, schema changes, and sync feature-flag changes remain owner-approved actions. This design does not authorize them.
+- The manifest protocol must remain feature-gated until all clients that can receive the event understand it and the production rollout/rollback plan is approved.
+
+### 5. Required test matrix
+
+- Small inline snapshot remains backward compatible.
+- Multi-chunk snapshots at boundary sizes (one byte below/at/above chunk target and multiple chunks).
+- Arabic text, emoji, combining marks, and mixed scripts split/reassemble byte-for-byte.
+- Duplicate upload, interrupted upload, missing chunk, reordered chunk, altered byte length, altered digest, and full digest mismatch.
+- Manifest pointer never publishes before all chunks verify.
+- Failed local migration leaves the original localStorage value intact.
+- Crash between local chunk writes and outbox commit; crash after chunk upload but before manifest publication; crash after publication but before local acknowledgement.
+- Two devices with concurrent edits, stale revision, pending local mutation, account switch, and old client without manifest capability.
+- IndexedDB quota exhaustion, Firestore permission/quota errors, outbox near aggregate cap, and retry after connectivity returns.
+- No chunk garbage collection while any supported device may still need the previous version.
+
+### 6. Implementation sequence
+
+1. Complete PR #367's interim limit alignment only after exact-head CI becomes inspectable and passes.
+2. Build and test the local IndexedDB archive/migration layer independently of Firestore.
+3. Integrate atomic snapshot-reference journaling and local projection.
+4. Add the immutable Firestore chunk writer and Emulator rules in a separate reviewed change.
+5. Add manifest materialization to the remote inbox/projector with old-client capability gating.
+6. Run multi-device and offline recovery gates before any production rollout.
+
+**Do not start by deleting the 100-plan guard or increasing byte constants again.** The safe next coding slice is the local archive repository plus a lossless migration/hydration strategy, after the existing read/write call sites and test fixtures are mapped.
