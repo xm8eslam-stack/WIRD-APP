@@ -47,6 +47,8 @@ The repository has a meaningful offline foundation, but full offline readiness i
 ## Active work branch
 
 - feat/offline-first-app-readiness-20261112 is a documentation/architecture checkpoint branch from the exact main baseline above.
+- PR #366 is open as Draft/HOLD for the offline package/public-asset coverage work; exact-head checks and preview remain to be verified.
+- The build manifest now includes recursively discovered supported public assets in the explicit offline package, excluding sw.js so the browser can manage worker updates.
 - No production deployment, Firebase rules/data, secrets, environment variables, sync flags, or user data were changed.
 - No merge is authorized until code work, independent review, and exact-head quality gates are complete.
 
