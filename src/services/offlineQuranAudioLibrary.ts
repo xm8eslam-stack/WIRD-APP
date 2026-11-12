@@ -33,6 +33,7 @@ export interface OfflineAudioFile {
   verified: true;
   available: boolean;
   pinned: boolean;
+  deletionPending: boolean;
 }
 
 export interface OfflineAudioJobItem {
@@ -171,7 +172,8 @@ function normalizeFile(input: OfflineAudioFileInput): OfflineAudioFile {
     downloadedAtMs: input.downloadedAtMs,
     verified: true,
     available: true,
-    pinned: false
+    pinned: false,
+    deletionPending: false
   };
 }
 
@@ -179,10 +181,10 @@ function validateStoredFile(value: unknown): OfflineAudioFile {
   if (!value || typeof value !== 'object') throw new Error('سجل ملف صوتي تالف؛ لم نستخدمه.');
   const record = value as OfflineAudioFile;
   const normalized = normalizeFile(record);
-  if (record.key !== normalized.key || typeof record.available !== 'boolean' || typeof record.pinned !== 'boolean') {
+  if (record.key !== normalized.key || typeof record.available !== 'boolean' || typeof record.pinned !== 'boolean' || typeof record.deletionPending !== 'boolean') {
     throw new Error('سجل الملف الصوتي لا يطابق المخطط المعتمد.');
   }
-  return { ...normalized, pinned: record.pinned };
+  return { ...normalized, available: record.available, pinned: record.pinned, deletionPending: record.deletionPending };
 }
 
 export class OfflineQuranAudioLibrary {
@@ -273,7 +275,8 @@ export class OfflineQuranAudioLibrary {
       const stored = await requestResult(files.get(key));
       let verified = false;
       if (stored) {
-        verified = validateStoredFile(stored).available;
+        const storedFile = validateStoredFile(stored);
+        verified = storedFile.available && !storedFile.deletionPending;
       }
       relations.push({
         key: jobItemKey(job.id, key),
@@ -431,6 +434,7 @@ export class OfflineQuranAudioLibrary {
       }
       normalized.pinned = current.pinned;
       normalized.available = true;
+      normalized.deletionPending = false;
     }
     writeSafely(transaction, () => files.put(normalized), 'تعذر تسجيل الملف الصوتي المحقق.');
     relation.status = 'verified';
@@ -483,7 +487,8 @@ export class OfflineQuranAudioLibrary {
       if (!stored) continue;
       const file = validateStoredFile(stored);
       if (file.pinned) continue;
-      writeSafely(transaction, () => files.delete(file.key), 'تعذر حذف سجل ملف صوتي غير مستخدم.');
+      file.deletionPending = true;
+      writeSafely(transaction, () => files.put(file), 'تعذر تسجيل حذف ملف صوتي غير مستخدم.');
       orphanedFiles.push(file);
     }
     await transactionResult(transaction);
@@ -499,17 +504,21 @@ export class OfflineQuranAudioLibrary {
     const stored = await requestResult(files.get(key));
     if (!stored) { transaction.abort(); throw new Error('ملف التلاوة غير موجود في المكتبة المحلية.'); }
     const file = validateStoredFile(stored);
-    if (pinned && !file.available) { transaction.abort(); throw new Error('لا يمكن تثبيت ملف صوتي غير موجود في التخزين المحلي.'); }
+    if (pinned && (!file.available || file.deletionPending)) { transaction.abort(); throw new Error('لا يمكن تثبيت ملف صوتي غير متاح أو جارٍ حذفه.'); }
     file.pinned = pinned;
     if (pinned) {
+      file.deletionPending = false;
       writeSafely(transaction, () => files.put(file), 'تعذر تحديث تفضيل تثبيت الملف الصوتي.');
       await transactionResult(transaction);
       return { orphanedFiles: [] };
     }
     const references = await requestResult(items.index('fileKey').getAll(key)) as OfflineAudioJobItem[];
-    if (references.length > 0) writeSafely(transaction, () => files.put(file), 'تعذر تحديث تفضيل تثبيت الملف الصوتي.');
-    else {
-      writeSafely(transaction, () => files.delete(key), 'تعذر حذف سجل الملف الصوتي.');
+    if (references.length > 0) {
+      file.deletionPending = false;
+      writeSafely(transaction, () => files.put(file), 'تعذر تحديث تفضيل تثبيت الملف الصوتي.');
+    } else {
+      file.deletionPending = true;
+      writeSafely(transaction, () => files.put(file), 'تعذر تسجيل حذف الملف الصوتي.');
       await transactionResult(transaction);
       return { orphanedFiles: [file] };
     }
@@ -518,8 +527,34 @@ export class OfflineQuranAudioLibrary {
   }
 
   /**
+   * Finalize metadata removal only after the caller has successfully deleted the Cache Storage object.
+   * A crash before this call leaves a durable deletionPending record that can be retried.
+   */
+  async finalizeOrphanDeletion(reciterId: string, globalAyahNumber: number): Promise<boolean> {
+    const key = fileKey(reciterId, globalAyahNumber);
+    const db = await this.openDatabase();
+    const transaction = db.transaction([FILES, JOB_ITEMS], 'readwrite');
+    const files = transaction.objectStore(FILES);
+    const items = transaction.objectStore(JOB_ITEMS);
+    const stored = await requestResult(files.get(key));
+    if (!stored) { await transactionResult(transaction); return true; }
+    const file = validateStoredFile(stored);
+    if (!file.deletionPending) { await transactionResult(transaction); return false; }
+    const references = await requestResult(items.index('fileKey').getAll(key)) as OfflineAudioJobItem[];
+    if (references.length > 0 || file.pinned) {
+      file.deletionPending = false;
+      writeSafely(transaction, () => files.put(file), 'تعذر إلغاء حذف الملف الصوتي المرتبط.');
+      await transactionResult(transaction);
+      return false;
+    }
+    writeSafely(transaction, () => files.delete(key), 'تعذر إنهاء حذف سجل الملف الصوتي.');
+    await transactionResult(transaction);
+    return true;
+  }
+
+  /**
    * Reconcile IndexedDB metadata with Cache Storage before treating files as available.
-   * A missing cache object removes only its metadata record; historical job records remain.
+   * A missing cache object is marked unavailable; historical job records and pin preference remain.
    * The caller owns the cache namespace and supplies the exact cache-presence check.
    */
   async reconcileCachedFiles(hasCachedFile: (file: OfflineAudioFile) => Promise<boolean>): Promise<OfflineAudioFile[]> {
