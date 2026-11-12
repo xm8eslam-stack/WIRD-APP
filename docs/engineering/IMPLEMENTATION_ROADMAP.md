@@ -1,3 +1,19 @@
+# 2026-11-12 — Offline-first implementation overlay
+
+1. OF0 inventory: route/asset/data/action matrix, licenses, size, cache policy, and fallback.
+2. OF1 service worker lifecycle: first install, controller, navigation timeout, update, cache versioning, and offline restart.
+3. OF2 complete package: lazy chunks plus required public static assets; inspect generated manifest and exclude sw.js from content cache.
+4. OF3 local data: storage scopes, IndexedDB journals, restart recovery, quota and eviction.
+5. OF4 verified Quran and essential daily worship data; network-only labels for remote content.
+6. OF5 licensed pinned audio downloads separated from opportunistic cache and cloud sync.
+7. OF6 accessible Offline Center with progress, storage state, and feature capability labels.
+8. OF7 PWA platform checks, then evidence-based Capacitor/TWA/native comparison.
+9. OF8 browser and real-device airplane-mode certification plus online replay/conflict tests.
+
+Run independent tracks in parallel without overlapping file ownership. Keep Production settings, sync flags, secrets, Firestore Rules/data, and user records untouched absent explicit approval.
+
+---
+
 > **Documentation routing update — 2026-11-11:** This file is retained for detailed historical/specialist context. Current state: [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md). Unified roadmap: [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). Documentation map: [`docs/README.md`](../README.md). Re-fetch GitHub before using any old SHA, PR state, or deployment statement below.
 
 ---
