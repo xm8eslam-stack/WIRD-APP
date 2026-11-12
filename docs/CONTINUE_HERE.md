@@ -1,5 +1,33 @@
 # أحدث ملحق متابعة — 2026-11-12 12:37 +02:00
 
+## متابعة التنفيذ الحية — 2026-11-12 14:35 +02:00
+
+### التخزين/المزامنة
+- main ما زال `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- PR #367 head `fd417faaa96a11920ef3a8e4f1038f567c36a731`: بعد إزالة ملفي الوثائق المتداخلين أصبح كودًا فقط، ولا يزال حد 800 KB مؤقتًا لكل payload وليس chunked sync. run `43209066503` / job `131151602011` فشل دون steps/logs؛ Vercel blocked by Free build-rate.
+- لا يبدأ chunked sync قبل مراجعة localStorage/IndexedDB، Outbox, coordinator, writer, event ledger, inbox/projector, Firestore Rules، وتوافق الإصدارات القديمة. لا يوجد تنفيذ chunks حتى الآن.
+
+### Offline / تنزيلات القرآن
+- PR #368 head `4e3a192ee766108ff580cebed32699a70fb7f5ab` يضيف أساس metadata موحدًا: IndexedDB stores `jobs`, `files`, `jobItems`، مشاركة الملفات بين المهام، pin retention، حالة `available`، وعلامة `deletionPending` مع finalize بعد حذف Cache Storage بنجاح.
+- اختبارات fake-indexeddb أضيفت لـ idempotency، مشاركة الملف، الحذف الآمن، pin/unpin، cache eviction، stale scan، quota rollback، واستعادة قاعدة البيانات.
+- run `43210985755` / job `131158220859` انتهى failure دون steps/logs؛ لا توجد نتيجة اختبار قابلة للتشخيص. Vercel blocked by Free build-rate.
+- PR #358 و#359 ما زالا Draft لكن وُسما بأنهما superseded؛ لا تدمج أيًا منهما منفردًا. #368 لا ينفذ تنزيل HTTP أو Cache Storage adapter أو Service Worker protocol أو UI أو offline playback بعد.
+- EveryAyah يظل streaming فقط. الصوت المحفوظ يبقى محليًا ولا يدخل Firebase sync أو backup.
+
+### السيرة
+- PR #365 head `d0fc6753c32e231bcfe4396e0808963ed5c6978f`: علامات مرجعية محلية مرتبطة بإصدار الكتاب/الجزء/الفصل/المشهد/anchor، مع قائمة رجوع، معالجة فشل التخزين، واختبار Playwright للحفظ بعد reload والإزالة والرجوع للمشهد.
+- run `43211160493` / job `131158819288` انتهى failure دون steps/logs؛ لا يمكن إعلان نجاح الاختبارات. Vercel blocked by Free build-rate.
+- القارئ ما زال shell تجريبيًا ولا يحتوي سردًا تاريخيًا معتمدًا؛ لا cloud sync للعلامات.
+
+### التوثيق وتداخل PRs
+- PR #363 هو المالك الوحيد للوثائق.
+- لا يوجد تداخل ملفات بين #363 و#367 أو #368.
+- #363 head عند بدء هذه الإضافة `268e814772a73d98a456ef13e2ded2dfafd5510e`؛ run `43209499439` / job `131153164362` فشل دون steps/logs. هذه الإضافة ستغير head؛ أعد جلبه قبل أي قرار.
+- #366 ما زال head `b289bba34a93d730ca4fd06a08220d75067bf8c7`؛ run `43202600366` / job `131129580249` دون steps/logs.
+
+**الحدود:** لا merge ولا deploy ولا تغييرات على main أو Firestore Rules/production schema/data/secrets/flags أو بيانات المستخدمين. كل Quality Gates الحديثة غير قابلة للتشخيص بسبب عدم وجود steps/logs. لا تدّعِ نجاحًا ولا تكرر rerun دون سبب جديد.
+
+
 ## متابعة تنفيذ جديدة — 2026-11-12 14:05 +02:00
 
 ### تغييرات منذ آخر checkpoint
