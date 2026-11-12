@@ -1,6 +1,7 @@
 export type SeerahClaimReviewStatus = 'draft' | 'verified' | 'disputed' | 'rejected';
 export type SeerahEditorialReviewStatus = 'pending' | 'approved' | 'rejected';
 export type SeerahChapterStatus = 'draft' | 'in_review' | 'approved' | 'published';
+export type SeerahSourceRightsStatus = 'verified_public_domain' | 'licensed_for_use' | 'link_only' | 'permission_required' | 'unknown';
 
 export interface SeerahSourceReference {
   id: string;
@@ -9,6 +10,8 @@ export interface SeerahSourceReference {
   work: string;
   edition: string;
   locator: string;
+  rightsStatus: SeerahSourceRightsStatus;
+  rightsNotes?: string;
   url?: string;
 }
 
@@ -93,6 +96,13 @@ export function validateSeerahChapterForPublication(
         !hasText(source.work) || !hasText(source.edition) || !hasText(source.locator)) {
       blockers.push(`source_metadata_incomplete:${source.id || 'unknown'}`);
     }
+    if (source.rightsStatus === 'unknown' || source.rightsStatus === 'permission_required') {
+      blockers.push(`source_rights_not_cleared:${source.id}`);
+    }
+    if ((source.rightsStatus === 'verified_public_domain' || source.rightsStatus === 'licensed_for_use') &&
+        !hasText(source.rightsNotes)) {
+      blockers.push(`source_rights_basis_missing:${source.id}`);
+    }
   }
 
   for (const claim of chapter.claims) {
@@ -123,8 +133,17 @@ export function validateSeerahChapterForPublication(
         bodyClaimIds.add(claimId);
         if (!claimIds.has(claimId)) blockers.push(`body_block_claim_missing:${block.id}:${claimId}`);
       }
-      if (block.type === 'quote_verified' && block.exactWordingVerified !== true) {
-        blockers.push(`quote_wording_not_verified:${block.id}`);
+      if (block.type === 'quote_verified') {
+        if (block.exactWordingVerified !== true) blockers.push(`quote_wording_not_verified:${block.id}`);
+        const quoteSourceIds = block.claimIds.flatMap(claimId =>
+          chapter.claims.find(claim => claim.id === claimId)?.sourceIds ?? []
+        );
+        for (const sourceId of quoteSourceIds) {
+          const source = chapter.sources.find(candidate => candidate.id === sourceId);
+          if (source && source.rightsStatus !== 'verified_public_domain' && source.rightsStatus !== 'licensed_for_use') {
+            blockers.push(`quote_source_rights_not_cleared:${block.id}:${sourceId}`);
+          }
+        }
       }
     }
   }
