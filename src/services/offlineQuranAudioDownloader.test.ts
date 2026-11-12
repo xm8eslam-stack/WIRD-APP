@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { OfflineQuranAudioCacheAdapter } from './offlineQuranAudioCache';
+import { buildQuranAudioDownloadPlan } from './offlineQuranAudioDownload';
 import { OfflineQuranAudioDownloader } from './offlineQuranAudioDownloader';
 import { OfflineQuranAudioLibrary } from './offlineQuranAudioLibrary';
 
@@ -144,16 +145,18 @@ export async function runOfflineQuranAudioDownloaderTests(): Promise<{ passed: n
     } finally { library.close(); }
   });
 
-  await test('rejects an unapproved source host before network access', async () => {
+  await test('downloads only URLs produced by the approved canonical CDN builder', async () => {
     let networkCalls = 0;
     const { library, downloader } = create(async () => {
       networkCalls++;
       return makeResponse();
     });
     try {
+      const plan = buildQuranAudioDownloadPlan(range);
+      assert(plan.items.every(item => new URL(item.url).hostname === 'cdn.islamic.network'), 'Every canonical download URL must use the approved CDN host');
       const job = await library.createJob(range, 100);
       const result = await downloader.download(job.id);
-      assert(result.status === 'completed' && networkCalls === 3, 'The canonical plan builder should provide only the approved host URLs');
+      assert(result.status === 'completed' && networkCalls === 3, 'The canonical plan should download every requested ayah');
     } finally { library.close(); }
   });
 
