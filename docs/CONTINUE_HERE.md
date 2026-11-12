@@ -1,5 +1,7 @@
 # إغلاق جرد المستهلكين والاختبارات — 2026-11-12 18:25 +02:00
 
+**RFC المقترح:** [ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md](./sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md). الحالة: تصميم فقط؛ لم يبدأ التنفيذ أو migration.
+
 ## نتيجة scan موسع على main
 - فُحصت ملفات المصدر الـ100 من نوع TS/TSX تحت `src/` بحثًا عن `getEnginePlans/saveEnginePlans/ENGINE_PLANS/enginePlans/exportFullBackup/importBackup/resetAllData` وواجهات التخزين ذات الصلة.
 - فُحصت ملفات الاختبار وE2E الـ78 (test/spec) بحثًا عن نفس العقود.
