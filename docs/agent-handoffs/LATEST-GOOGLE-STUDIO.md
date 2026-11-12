@@ -1,3 +1,17 @@
+# أولوية تسليم جديدة — Offline-first / app readiness (2026-11-12)
+
+- اجعل Offline-first مسارًا رئيسيًا متوازيًا مع القرآن والعبادات والسيرة وUX والمزامنة.
+- اقرأ docs/offline/OFFLINE_FIRST_ARCHITECTURE.md وAPP_READINESS_ROADMAP_AR.md وOFFLINE_CAPABILITY_MATRIX_AR.md.
+- PWA الحالي هو الأساس؛ حافظ على service worker وحزمة التحضير والتخزين المحلي. لا تعِد كتابة هذه الطبقات دون سبب مقاس.
+- راجع public asset manifest، lazy route coverage، navigation timeout، StorageManager مقابل persist support، cache namespaces، وAuthGate offline restoration.
+- اختبر local-first behavior بعد restart وفي airplane mode، مع quota/eviction/update. لا تدّعِ اكتمالًا دون browser/device evidence.
+- الشبكات الخارجية وFirebase/Auth والـ API الحي والمحتوى غير المحفوظ تحتاج اتصالًا. لا تخزن tokens أو بيانات مستخدم في shared caches.
+- الصوت المثبت ليس cache انتهازيًا؛ راجع الحقوق قبل التنزيل. EveryAyah stream-only حاليًا.
+- Capacitor/TWA/native مؤجل حتى نجاح PWA offline gates.
+- PR #366 للكود وPR #363 للوثائق؛ لا تعدّل نفس الملفات بين الفرعين. افحص exact SHA/checks/deployment قبل الدمج.
+
+---
+
 # WIRD — Google AI Studio handoff (live checkpoint 2026-11-12 01:31 +02:00)
 
 - GitHub `main` remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA. This is deployment evidence only.
