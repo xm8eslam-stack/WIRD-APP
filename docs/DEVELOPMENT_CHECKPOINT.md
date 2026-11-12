@@ -754,3 +754,10 @@ No source-level failure or successful tests/build/typecheck can be inferred. No 
 - Current head 260df95c620cd534337e39d6707b044eb404139a.
 - Quality Gate run 43278752980 / job 131394096177 failed with steps/logs null. No source-level diagnosis or pass.
 - Codec still pure; no archive migration or remote sync integration.
+
+## Seerah API and rights evidence
+- Dorar: manual token approval, per-encyclopedia permission, visible source attribution + reference URL, no bulk scraping/full DB storage/redistribution, 24–48h cache, server-side token, 60 requests/minute; keep hadith text with its grade.
+- Sunnah.com: API key requested through GitHub; no scraping or mass reproduction of collections; individual educational selections permitted; some numbering/grading remains in progress.
+- ACO: describes its corpus as public domain and documents the 1955 Tahdhib Ibn Hisham edition, but WIRD still verifies item-level and jurisdiction rights before reuse.
+- OpenITI license sources include CC BY-NC-SA 4.0 documentation and a Terms page with different CC BY-SA wording; both state non-commercial restrictions. Verify per release/contributor.
+- No Seerah narrative content was ingested or published.
