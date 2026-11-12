@@ -14,7 +14,9 @@ function validChapter(): SeerahChapterContent {
       author: 'مؤلف تجريبي',
       work: 'عمل تجريبي',
       edition: 'طبعة تجريبية',
-      locator: 'موضع تجريبي'
+      locator: 'موضع تجريبي',
+      rightsStatus: 'verified_public_domain',
+      rightsNotes: 'اختبار داخلي فقط؛ لا يمثل اعتماد حقوق لأي كتاب حقيقي.'
     }],
     claims: [{
       id: 'claim-1',
@@ -107,6 +109,38 @@ export function runSeerahContentContractTests(): { passed: number; failed: numbe
     };
     const result = validateSeerahChapterForPublication(chapter);
     if (!result.blockers.includes('claim_not_used_in_narrative:claim-1')) throw new Error('Orphan claim was accepted');
+  });
+
+  test('Unknown or permission-required source rights block publication', () => {
+    const chapter = validChapter();
+    chapter.sources[0].rightsStatus = 'unknown';
+    const result = validateSeerahChapterForPublication(chapter);
+    if (!result.blockers.includes('source_rights_not_cleared:source-1')) throw new Error('Unknown source rights were accepted');
+  });
+
+  test('Link-only sources may support paraphrase but never copied quotations', () => {
+    const chapter = validChapter();
+    chapter.sources[0].rightsStatus = 'link_only';
+    const paraphrase = validateSeerahChapterForPublication(chapter);
+    if (!paraphrase.publishable) throw new Error('Link-only citation should permit reviewed paraphrase without copied text');
+    chapter.scenes[0].bodyBlocks[0] = {
+      id: 'quote-link-only',
+      type: 'quote_verified',
+      text: 'اقتباس تجريبي',
+      claimIds: ['claim-1'],
+      exactWordingVerified: true
+    };
+    const quote = validateSeerahChapterForPublication(chapter);
+    if (!quote.blockers.includes('quote_source_rights_not_cleared:quote-link-only:source-1')) {
+      throw new Error('Link-only source was allowed to provide copied quotation');
+    }
+  });
+
+  test('Public-domain and licensed sources require an explicit rights basis', () => {
+    const chapter = validChapter();
+    chapter.sources[0].rightsNotes = '';
+    const result = validateSeerahChapterForPublication(chapter);
+    if (!result.blockers.includes('source_rights_basis_missing:source-1')) throw new Error('Rights basis was not required');
   });
 
   test('Source references require edition and exact locator metadata', () => {
