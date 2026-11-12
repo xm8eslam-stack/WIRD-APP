@@ -1,5 +1,14 @@
 # WIRD — Offline Quran audio download plan
 
+## Live implementation checkpoint — 2026-11-12 14:35 +02:00
+
+- PR #355 pure range planner remains merged.
+- PR #368 is the current unified metadata foundation replacing the overlapping #358/#359 proposals. It implements jobs/files/jobItems, shared canonical file relations, pinned retention, cache-eviction state, recoverable deletion markers, and tests.
+- PR #358 and #359 remain Draft/unmerged and are superseded by #368.
+- Not implemented yet: HTTP downloader, Cache Storage adapter, service-worker message protocol, download UI, playback local-first lookup, and real-device offline playback.
+- Exact-head #368 Quality Gate run `43210985755` / job `131158220859` ended failure with no steps/logs; do not claim test success or code failure. Vercel Preview is blocked by Free build-rate.
+
+
 **Live checkpoint:** 2026-11-12 01:23 +02:00  
 **Current main:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` — Vercel Production `READY` on the same SHA.
 - PR #355's pure range planner is merged; PR #361 keeps EveryAyah network-stream-only and cleans legacy cache entries; PR #362's guest-entry Playwright wait fix is merged.
