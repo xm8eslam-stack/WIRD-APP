@@ -354,6 +354,7 @@ export class OfflineQuranAudioLibrary {
   }
 
   async setJobStatus(jobId: string, status: OfflineAudioJobStatus, nowMs = Date.now()): Promise<OfflineAudioJob> {
+    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت تحديث مهمة التنزيل غير صالح.');
     const db = await this.openDatabase();
     const transaction = db.transaction([JOBS], 'readwrite');
     const store = transaction.objectStore(JOBS);
@@ -387,6 +388,7 @@ export class OfflineQuranAudioLibrary {
   }
 
   async markItemDownloading(jobId: string, globalAyahNumber: number, nowMs = Date.now()): Promise<void> {
+    if (!Number.isSafeInteger(nowMs) || nowMs < 0) throw new Error('وقت تحديث عنصر التنزيل غير صالح.');
     const db = await this.openDatabase();
     const transaction = db.transaction([JOBS, JOB_ITEMS], 'readwrite');
     const jobs = transaction.objectStore(JOBS);
