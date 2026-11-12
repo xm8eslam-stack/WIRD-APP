@@ -427,6 +427,14 @@ export class OfflineQuranAudioLibrary {
 
     const relatedItems = await requestResult(items.index('fileKey').getAll(normalized.key)) as OfflineAudioJobItem[];
     const affectedJobIds = [...new Set(relatedItems.map(item => item.jobId))];
+    for (const relatedItem of relatedItems) {
+      const relatedJob = await requestResult(jobs.get(relatedItem.jobId)) as OfflineAudioJob | undefined;
+      if (!relatedJob || isTerminal(relatedJob.status)) continue;
+      validateJobItem(relatedJob, relatedItem);
+      relatedItem.status = 'verified';
+      relatedItem.updatedAtMs = Math.max(relatedItem.updatedAtMs, relation.updatedAtMs);
+      items.put(relatedItem);
+    }
     for (const affectedId of affectedJobIds) {
       const affectedJob = await requestResult(jobs.get(affectedId)) as OfflineAudioJob | undefined;
       if (!affectedJob || isTerminal(affectedJob.status)) continue;
@@ -478,6 +486,7 @@ export class OfflineQuranAudioLibrary {
     const stored = await requestResult(files.get(key));
     if (!stored) { transaction.abort(); throw new Error('ملف التلاوة غير موجود في المكتبة المحلية.'); }
     const file = validateStoredFile(stored);
+    if (pinned && !file.available) { transaction.abort(); throw new Error('لا يمكن تثبيت ملف صوتي غير موجود في التخزين المحلي.'); }
     file.pinned = pinned;
     if (pinned) {
       files.put(file);
