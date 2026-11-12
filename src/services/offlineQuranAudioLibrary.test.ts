@@ -72,7 +72,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       const secondDelete = await library.deleteJob(second.id);
       assert(secondDelete.orphanedFiles.length === 1 && secondDelete.orphanedFiles[0].key === 'ar.alafasy:1', 'The last relation removal must return the now-orphaned file for Cache Storage cleanup.');
       assert((await library.listFiles())[0].deletionPending, 'The orphan record must remain durable until Cache Storage deletion is confirmed.');
-      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1), 'Successful Cache Storage deletion must finalize metadata removal.');
+      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1, 'generation-1'), 'Successful Cache Storage deletion must finalize metadata removal.');
       assert((await library.listFiles()).length === 0, 'Finalized orphan metadata must be removed.');
     } finally { library.close(); }
   });
@@ -87,7 +87,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       assert(deletion.orphanedFiles.length === 0 && (await library.listFiles())[0].pinned, 'Deleting the job must preserve a pinned file.');
       const unpin = await library.setFilePinned('ar.alafasy', 1, false);
       assert(unpin.orphanedFiles.length === 1 && (await library.listFiles())[0].deletionPending, 'Explicit unpin with no job references must create a durable deletion candidate.');
-      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1), 'The caller may finalize after Cache Storage deletion succeeds.');
+      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1, 'generation-1'), 'The caller may finalize after Cache Storage deletion succeeds.');
       assert((await library.listFiles()).length === 0, 'The file metadata must disappear only after deletion is finalized.');
     } finally { library.close(); }
   });
@@ -205,8 +205,29 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       await library.recordVerifiedFile(second.id, { ...verifiedInput(), downloadedAtMs: 400 });
       const replacement = (await library.listFiles())[0];
       assert(replacement.available && !replacement.deletionPending && replacement.cacheGenerationId === 'generation-2', 'A new verified download must install a fresh cache generation and cancel the stale deletion marker.');
-      assert(!(await library.finalizeOrphanDeletion('ar.alafasy', 1)), 'A stale cleanup attempt must not delete a newly downloaded file.');
+      assert(!(await library.finalizeOrphanDeletion('ar.alafasy', 1, 'generation-1')), 'A stale cleanup attempt must not delete a newly downloaded file.');
       assert((await library.listFiles()).length === 1, 'The newly downloaded canonical file must remain.');
+    } finally { library.close(); }
+  });
+
+  await test('stale orphan cleanup cannot remove a newer generation that is itself pending deletion', async () => {
+    const { library } = createLibrary();
+    try {
+      const first = await library.createJob(oneAyah, 100);
+      await library.recordVerifiedFile(first.id, verifiedInput());
+      await library.deleteJob(first.id);
+
+      const second = await library.createJob(oneAyah, 300);
+      await library.recordVerifiedFile(second.id, { ...verifiedInput(), cacheGenerationId: 'generation-2', downloadedAtMs: 400 });
+      await library.deleteJob(second.id);
+
+      const staleCleanup = await library.finalizeOrphanDeletion('ar.alafasy', 1, 'generation-1');
+      const current = (await library.listFiles())[0];
+      assert(!staleCleanup && current.cacheGenerationId === 'generation-2' && current.deletionPending,
+        'A delayed cleanup for generation 1 must not remove generation 2 metadata even when generation 2 is pending deletion.');
+      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1, 'generation-2'),
+        'The cleanup matching the current generation may finalize its deletion.');
+      assert((await library.listFiles()).length === 0, 'Only the matching generation may be finalized.');
     } finally { library.close(); }
   });
 
