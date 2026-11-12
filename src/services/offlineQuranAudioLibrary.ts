@@ -123,6 +123,7 @@ function validateJob(job: OfflineAudioJob): void {
 }
 
 function validateJobItem(job: OfflineAudioJob, item: OfflineAudioJobItem): void {
+  if (!item || typeof item !== 'object') throw new Error('علاقة ملف التلاوة بمهمة التنزيل غير صالحة.');
   const expected = buildQuranAudioDownloadPlan(job).items.find(candidate =>
     candidate.globalAyahNumber === item.globalAyahNumber
   );
