@@ -1,3 +1,14 @@
+# 2026-11-12 — Offline-first checkpoint overlay
+
+- الهدف: وِرد يعمل عمليًا دون إنترنت بعد إعداد أولي، ويُجهز كتطبيق مستقبلي مع إبقاء PWA هو الأساس.
+- الموجود: PWA/Service Worker، shell cache، Vite manifest، حزمة lazy assets قابلة للاستكمال، بيانات قرآن/عبادات محلية، local-first progress، فحص quota/persistence، audio cache انتهازي محدود، Mushaf page cache، وتخزين بعض التفسير/الأحاديث التي سبق عرضها والتحقق منها.
+- غير المثبت: كل المسارات بعد restart/airplane mode، اكتمال public assets، الخطوط الخارجية، AuthGate offline restore، كل الأفعال المحلية، offline audio library، والتزامن بعد انقطاع الشبكة على جهازين.
+- الخطة: راجع مصفوفة القدرات وخارطة جاهزية التطبيق في docs/offline. لا تعتبر package status وحده دليلًا على توفر كل ميزة.
+- المسار البرمجي #366 مستقل عن مسار الوثائق #363 لتجنب تعارض الملفات. أعد جلب exact head قبل أي قرار.
+- لا Production settings أو secrets أو Firebase Rules/data أو sync flags أو بيانات مستخدمين تغيرت.
+
+---
+
 # WIRD — Current checkpoint (2026-11-12 01:31 +02:00)
 
 ## Exact repository and release evidence
