@@ -107,3 +107,8 @@ Never claim cross-store atomicity. A crash between steps 3 and 4 may leave an or
 6. Verify offline playback and deletion on desktop/mobile browsers before calling the feature complete.
 
 **Release boundary:** this contract is a design proposal. It does not mean WIRD currently supports managed offline Quran audio downloads.
+
+## Cache key generation safety — 2026-11-12
+
+The future Cache Storage adapter must not use only the canonical reciter/ayah URL as the stored cache key. Each completed download needs an immutable `cacheGenerationId`; the cache key must include the canonical file identity plus that generation. `OfflineQuranAudioLibrary` stores the generation and returns it with orphan candidates. Cleanup deletes only the exact generation it was asked to remove. A re-download creates a new generation, so delayed cleanup for an older generation cannot delete the replacement. Cache generation IDs are local metadata and are never synchronized to Firestore.
+
