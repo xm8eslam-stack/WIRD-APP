@@ -490,6 +490,8 @@ export class OfflineQuranAudioLibrary {
     if (!job) { await transactionResult(transaction); return { orphanedFiles: [] }; }
     validateJob(job);
     const relations = await requestResult(items.index('jobId').getAll(jobId)) as OfflineAudioJobItem[];
+    // Validate every relationship before mutating anything; a corrupt fileKey must not orphan or target another file.
+    relations.forEach(item => validateJobItem(job, item));
     relations.forEach(item => writeSafely(transaction, () => items.delete(item.key), 'تعذر حذف علاقات مهمة التنزيل.'));
     writeSafely(transaction, () => jobs.delete(jobId), 'تعذر حذف مهمة التنزيل.');
     const orphanedFiles: OfflineAudioFile[] = [];
