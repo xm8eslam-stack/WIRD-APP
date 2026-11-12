@@ -32,6 +32,7 @@ export const SeerahSourcePanel: React.FC<SeerahSourcePanelProps> = ({ sources })
               <p className="mt-1 text-[11px] leading-5 text-stone-600 dark:text-stone-300">{source.author} · {source.work}</p>
               <p className="mt-1 text-[11px] leading-5 text-stone-500 dark:text-stone-400">{source.edition} · موضع الإحالة: {source.locator}</p>
               <p className="mt-1 text-[10px] font-semibold text-stone-500 dark:text-stone-400">{rightsLabel}</p>
+              {source.rightsNotes && <p className="mt-1 text-[10px] leading-5 text-stone-500 dark:text-stone-400">{source.rightsNotes}</p>}
               {safeUrl ? (
                 <a href={safeUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex min-h-9 items-center text-xs font-bold text-emerald-800 underline underline-offset-4 dark:text-emerald-300">
                   فتح المرجع
