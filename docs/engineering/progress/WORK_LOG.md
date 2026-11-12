@@ -947,3 +947,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - التخزين السحابي: IndexedDB journal له حد 450,000 bytes على main، وlocal outbox حد إجمالي 1,500,000 bytes، وremote projection يستخدم `applyJournalProjection`. PR #367 يغيّر حد الوثيقة مؤقتًا فقط إلى 800,000 bytes؛ لا chunks/manifest ولا ترحيل local archive.
 - ما زال inventory غير مكتمل لكل المستهلكين غير المباشرين/الشاشات ونسخ الاختبارات بسبب أن code search لم يعرض نتائج؛ لا تبدأ IndexedDB migration قبل إنهاء فحص كل مستهلك/backup/import/export/projection والتهيئة.
 - لا تغيّر حد 100 أو budgets، ولا تفعل remote flags/Firestore Rules أو أي Production setting. الخطوة التالية: إكمال inventory ثم تصميم IndexedDB archive + lossless migration + startup hydration + rollback.
+
+
+## 2026-11-12 — أحدث نتيجة بعد التحقق من رؤوس PR
+- #363 docs head: `e805f5c30606b7ae77412c78f8bdf80fcba5923c`. لم يظهر PR-triggered workflow run لهذا الرأس عند آخر استعلام؛ Vercel ما زال محجوبًا بـ `build-rate-limit`. لا Preview/CI/Production pass مثبت.
+- #368 head: `08851241bff289e04b13568188e0b2103a1d02e3`. أحدث Quality Gate run `43215055425` / job `131172059517` = failure مع `steps=null` و`logs_url=null`; لا يمكن معرفة هل بدأت الاختبارات أو البناء.
+- #365/#366/#367 ما زالت على الرؤوس المسجلة في جدول التدقيق السابق، وQuality Gate لكل منها فشل قبل تسجيل الخطوات. جميع PRs تبقى OPEN / DRAFT / HOLD.
+- لم يتغير main، ولا توجد عمليات دمج أو نشر أو تعديلات Production/Rules/secrets/flags.
