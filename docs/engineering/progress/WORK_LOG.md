@@ -860,3 +860,15 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Reviewed Service Worker audio and Mushaf cache hit paths; both refresh insertion order before adaptive LRU trimming. No speculative change made.
 - PR #363 docs branch received live status/checkpoint/owner-action updates; refetch its exact final head before relying on its checks.
 - No merge/deploy/Production setting/rules/secret/user-data changes.
+
+
+## 2026-11-12 14:35 +02:00 — Unified audio metadata foundation and Seerah bookmark e2e
+
+- Opened Draft PR #368 from current main, combining #358 job lifecycle and #359 canonical file identity into `jobs/files/jobItems`. Added shared-file reference handling, pin protection, cache availability reconciliation, two-phase `deletionPending` cleanup, and stale cleanup race protection.
+- Added fake-indexeddb coverage for job idempotency, shared references, pin/unpin, eviction, stale cache scan, quota rollback, terminal states, and reopen persistence; registered the suite in `runAllTests.ts`.
+- #368 exact head `4e3a192ee766108ff580cebed32699a70fb7f5ab`, run `43210985755` / job `131158220859`: failed without steps/logs. No test-level conclusion. No Vercel Preview due Free build-rate.
+- Marked #358 and #359 as superseded by #368; both remain Draft/unmerged for traceability. #368 is metadata only; downloader, Cache Storage adapter, service worker protocol, UI, and offline playback are future phases.
+- PR #365 adds device-local versioned bookmarks, saved scene list, accessible storage error, and Playwright coverage for persistence after reload, removal, and scene navigation. Exact head `d0fc6753c32e231bcfe4396e0808963ed5c6978f`, run `43211160493` / job `131158819288`: failed without steps/logs.
+- #363 remains the canonical docs branch. #367's two overlapping docs files were restored to main; no overlap remains between #363 and #367/#368.
+- No main merge, deploy, Firestore Rules, production schema/data, credentials, flags, or user data changed.
+
