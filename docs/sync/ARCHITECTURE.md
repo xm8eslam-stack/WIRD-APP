@@ -292,3 +292,29 @@ This addendum supersedes older release-state statements above where they conflic
 6. Run multi-device and offline recovery gates before any production rollout.
 
 **Do not start by deleting the 100-plan guard or increasing byte constants again.** The safe next coding slice is the local archive repository plus a lossless migration/hydration strategy, after the existing read/write call sites and test fixtures are mapped.
+
+
+## Engine Plans archive migration — call-site audit addendum (2026-11-12)
+
+The current main-branch inventory confirms that the migration boundary is wider than `StorageService.getEnginePlans/saveEnginePlans`:
+
+- UI state initialization and refresh are in `src/App.tsx`; the planning wizard receives the array through props and emits `onUpdateEnginePlans` rather than owning persistence.
+- Normal writes go through `persistEnginePlansSnapshot` in `journaledSnapshotService`; session completion can include an optional enginePlans snapshot through `sessionPersistence`.
+- Backup validation caps enginePlans at 100; journal-first import creates one `enginePlans/snapshot` operation. Legacy `StorageService.exportBackup/importBackup` still directly serializes/writes the localStorage key and must remain covered until all callers and compatibility paths are accounted for.
+- Reset emits an empty enginePlans snapshot. Projection writes through `saveEnginePlans`, while `matchesJournalProjection` reads the legacy key directly. Clear/reset/recovery key lists also include ENGINE_PLANS.
+- `cloudSyncCoordinator`, `revisionedRemoteMutation`, `remoteInboxProjector`, `indexedDbSyncJournal`, and `localSyncOutbox` all recognize the enginePlans collection. Receiver materialization and cursor ordering therefore form part of the archive migration, not an optional later integration.
+- Existing test coverage spans `storageReliability`, `backupValidation`, `journaledSnapshotService`, `backupPersistence`, `sessionPersistence`, `indexedDbSyncJournal`, and `localSyncOutbox` suites. Inventory is still incomplete for every indirect UI/legacy backup caller and all test fixtures.
+
+### Required migration API and invariants
+
+1. IndexedDB is the canonical durable archive; use a versioned envelope with schema version, monotonically increasing revision/generation, record count, stable content digest, and validated records. Avoid one unbounded localStorage JSON string as the canonical copy.
+2. Because IndexedDB is asynchronous, startup must expose a hydration barrier before App state, backup export, planning, or sync projection can read the archive. No consumer may silently fall back to an empty array while hydration is pending or failed.
+3. Migration is copy-verify-mark, not move: validate legacy records, write the new archive transactionally, read it back, verify IDs/count/digest, then persist a migration marker. Preserve the old localStorage value read-only through at least one successful close/reopen cycle and a tested rollback window.
+4. Journal writes must reference the exact archive revision and expected base revision. If the archive transaction or journal/outbox commit fails, surface failure and do not advance remote cursors or claim success. Idempotent retries must not duplicate records.
+5. Backup export serializes a verified archive snapshot. Import validates the complete payload first, stages the new archive, commits atomically, and can restore the previous revision after quota/transaction failure. Reset must use the same transaction boundary.
+6. Remote snapshots larger than the safe inline mutation budget require immutable chunks plus a manifest. Upload and verify all chunks before publishing the manifest pointer. Receiver materializes and verifies the full archive before projection/cursor advancement.
+7. Capability negotiation is mandatory before sending manifest/chunk events to older clients. Firestore Rules, schema rollout, and feature flags remain separately owner-approved.
+8. Keep three independent budgets: chunk/document bytes, mutation/outbox metadata bytes, and real aggregate storage entitlement. No subscription tier or unlimited quota may be invented.
+
+### Gate before implementation
+Complete the remaining repository-wide scan for legacy backup/import/export callers and test fixtures; add a call-site inventory test or static guard where practical; then implement the local archive/hydration layer in isolation. Do not remove the 100-record guard or change remote byte budgets as a substitute for migration.
