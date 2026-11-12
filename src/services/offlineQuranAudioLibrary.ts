@@ -445,6 +445,13 @@ export class OfflineQuranAudioLibrary {
         transaction.abort();
         throw new Error('تعارض في الملف المحفوظ لنفس القارئ والآية.');
       }
+      // A completed/failed/cancelled job may be retried by a delayed worker.
+      // It must not replace a newer cache generation installed by another job.
+      if (isTerminal(job.status) && relation.status === 'verified' &&
+          current.cacheGenerationId !== normalized.cacheGenerationId) {
+        transaction.abort();
+        throw new Error('انتهت مهمة التنزيل ولا يمكنها استبدال نسخة صوتية أحدث.');
+      }
       normalized.pinned = current.pinned;
       normalized.available = true;
       normalized.deletionPending = false;
