@@ -609,3 +609,14 @@ research → source capture → atomic claims → chronology/reconciliation → 
 - لا يوجد محتوى تاريخي منشور أو corpus حقيقي. القارئ لا يزال يعرض placeholder؛ لا نملأه بمعلومات غير موثقة.
 - Exact-head status: لم يظهر GitHub Actions workflow run للـ SHA أعلاه حتى وقت الفحص؛ Combined status يعرض Vercel failure بسبب `build-rate-limit` فقط. هذا لا يثبت فشل الكود، ولا يوجد build/test pass.
 - التالي: فحص حفظ إعدادات القراءة واستقرار anchors مع contentVersion، ثم إنشاء versioned corpus manifest + coverage matrix دون إضافة روايات تاريخية، وبعدها مصدر/claim review tooling. لا يبدأ ingestion قبل استكمال S0 وحقوق كل مصدر.
+
+
+## Seerah manifest and reader hardening — 2026-11-12 21:xx +02:00
+
+- PR #365 latest code head: `adc1ef01b7a0c5eb7e280395520108c94788af5d`.
+- Added a versioned `SeerahBookManifest` index for book → parts → chapters → scenes. Explicit order values control reading order; stable scene anchors derive from immutable internal IDs rather than titles or array positions.
+- The prototype reader now derives its navigation scene list from a draft manifest fixture. It remains explicitly non-publishable and contains no historical narrative.
+- Manifest validation rejects unsupported schema, unsafe/duplicate IDs, duplicate order values, unstable/duplicate anchors, malformed nested arrays, and empty published parts/chapters. Tests cover stable anchors across title/version edits and invalid manifests.
+- Fixed saved reading-position hydration race and added reload E2E. Publication contract now fails closed for malformed imported records; malformed-content tests registered.
+- Quality Gate run 43289471345 on exact head initially failed with job 131431547175 but no steps/logs (BlobNotFound). A rerun was requested; latest attempt job 131431824753 is queued at checkpoint time. Vercel reports build-rate-limit only. No local tests/typecheck/build run and no pass claimed.
+- No real historical corpus or content ingested/published. Source S0 rights review remains a hard gate.
