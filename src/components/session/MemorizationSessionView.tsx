@@ -840,7 +840,7 @@ export const MemorizationSessionView: React.FC<MemorizationSessionViewProps> = (
       {displayPreferences.viewMode === 'page' && (
         <section
           aria-label="كل آيات الجلسة"
-          className="bg-[#fdfbf7] dark:bg-stone-800/90 rounded-2xl p-3 sm:p-4 border border-stone-200/80 dark:border-stone-700/80 shadow-xs"
+          className={`bg-[#fdfbf7] dark:bg-stone-800/90 rounded-2xl ${displayPreferences.pagePadding === 'compact' ? 'p-2 sm:p-3' : displayPreferences.pagePadding === 'wide' ? 'p-5 sm:p-7' : 'p-3 sm:p-4'} border border-stone-200/80 dark:border-stone-700/80 shadow-xs`}
         >
           <div className="flex items-center justify-between gap-3 px-2 pb-3">
             <h3 className="text-sm font-bold text-stone-800 dark:text-stone-100">كل آيات الجلسة</h3>
