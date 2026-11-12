@@ -62,9 +62,9 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
       journal.close();
     });
 
-    await test('Engine-plan snapshots accept a larger bounded payload while ordinary mutations keep the 128 KB cap', async () => {
+    await test('Engine-plan snapshots accept a larger bounded payload (700 KB) while ordinary mutations keep the 128 KB cap', async () => {
       const { journal } = createJournal('engine-plan-payload-budget');
-      const largePlanPayload = { records: [{ id: 'plan-large', data: 'x'.repeat(140_000) }] };
+      const largePlanPayload = { records: [{ id: 'plan-large', data: 'x'.repeat(700_000) }] };
       const queued = await journal.enqueue({
         mutationId: 'engine-plan-large-payload',
         collection: 'enginePlans',
@@ -112,13 +112,13 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
           mutationId: 'engine-plan-over-budget',
           collection: 'enginePlans',
           documentId: 'snapshot',
-          payload: { records: [{ id: 'plan-too-large', data: 'x'.repeat(450_001) }] },
+          payload: { records: [{ id: 'plan-too-large', data: 'x'.repeat(800_001) }] },
           nowMs: 1503
         });
       } catch { overBudgetRejected = true; }
       const events = await journal.listEvents();
       assert(overBudgetRejected && events.length === 2,
-        'An engine-plan payload above 450 KB must be rejected without appending a partial event');
+        'An engine-plan payload above 800 KB must be rejected without appending a partial event');
       journal.close();
     });
 
