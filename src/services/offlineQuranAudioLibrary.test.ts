@@ -145,6 +145,20 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     } finally { library.close(); }
   });
 
+  await test('reconciles missing bytes in a partial job back into retryable item state', async () => {
+    const { library } = createLibrary();
+    try {
+      const job = await library.createJob({ reciterId: 'ar.alafasy', surahNumber: 1, startAyah: 1, endAyah: 2 }, 100);
+      await library.recordVerifiedFile(job.id, verifiedInput());
+      assert((await library.getJob(job.id))?.status === 'partial', 'One verified ayah should create a partial job');
+      await library.reconcileCachedFiles(async () => false);
+      const updated = await library.getJob(job.id);
+      const items = await library.listJobItems(job.id);
+      assert(updated?.status === 'queued' && updated.completedAyahs === 0, 'A partial job with missing cache bytes must not retain false progress');
+      assert(items.every(item => item.status === 'failed'), 'Missing cached bytes must become retryable failed items');
+    } finally { library.close(); }
+  });
+
   await test('does not mark a newer concurrent download missing after a slow cache scan', async () => {
     const { library } = createLibrary();
     try {
