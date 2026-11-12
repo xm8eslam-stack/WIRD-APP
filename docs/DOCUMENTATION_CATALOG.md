@@ -61,6 +61,7 @@
 | `ruqyah/SUNNI_SOURCE_POLICY.md` | سياسة المصادر والمحتوى الشرعي والتحقق |
 
 ## المزامنة السحابية
+| `sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md` | RFC لأرشيف Engine Plans المحلي versioned IndexedDB، والهيدرشن والترحيل والذرية وmanifest/chunks والتوافق والاختبارات |
 | الملف | الغرض |
 |---|---|
 | `sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md` | تصميم سجل أحداث النشاط وإسقاطه |
