@@ -88,6 +88,15 @@ function transactionResult(transaction: IDBTransaction): Promise<void> {
   });
 }
 
+function writeSafely<T>(transaction: IDBTransaction, action: () => IDBRequest<T>, fallback: string): IDBRequest<T> {
+  try {
+    return action();
+  } catch (error) {
+    try { transaction.abort(); } catch { /* transaction may already be inactive */ }
+    throw normalizeStorageError(error, fallback);
+  }
+}
+
 function isTerminal(status: OfflineAudioJobStatus): boolean {
   return status === 'completed' || status === 'failed' || status === 'cancelled';
 }
@@ -106,7 +115,7 @@ function requestFingerprint(range: QuranAudioDownloadRange): string {
 
 function validateJob(job: OfflineAudioJob): void {
   if (!job || job.schemaVersion !== 1 || typeof job.id !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(job.id) ||
-      typeof job.requestFingerprint !== 'string' || !job.requestFingerprint ||
+      typeof job.requestFingerprint !== 'string' || !job.requestFingerprint || job.requestFingerprint !== requestFingerprint(job) ||
       !['queued', 'downloading', 'partial', 'completed', 'failed', 'cancelled'].includes(job.status)) {
     throw new Error('بيانات مهمة تنزيل التلاوة غير صالحة.');
   }
@@ -280,8 +289,8 @@ export class OfflineQuranAudioLibrary {
     job.status = job.completedAyahs === job.totalAyahs
       ? 'completed'
       : job.completedAyahs > 0 ? 'partial' : 'queued';
-    jobs.add(job);
-    relations.forEach(item => items.add(item));
+    writeSafely(transaction, () => jobs.add(job), 'تعذر إنشاء مهمة تنزيل التلاوة.');
+    relations.forEach(item => writeSafely(transaction, () => items.add(item), 'تعذر إنشاء عناصر مهمة التنزيل.'));
     await transactionResult(transaction);
     return job;
   }
@@ -358,7 +367,7 @@ export class OfflineQuranAudioLibrary {
     }
     job.status = status;
     job.updatedAtMs = Math.max(nowMs, job.createdAtMs);
-    store.put(job);
+    writeSafely(transaction, () => store.put(job), 'تعذر تحديث حالة مهمة التنزيل.');
     await transactionResult(transaction);
     return job;
   }
@@ -384,8 +393,8 @@ export class OfflineQuranAudioLibrary {
     item.updatedAtMs = Math.max(nowMs, job.createdAtMs);
     job.status = 'downloading';
     job.updatedAtMs = item.updatedAtMs;
-    items.put(item);
-    jobs.put(job);
+    writeSafely(transaction, () => items.put(item), 'تعذر تحديث عنصر التلاوة في المهمة.');
+    writeSafely(transaction, () => jobs.put(job), 'تعذر تحديث تقدم مهمة التنزيل.');
     await transactionResult(transaction);
   }
 
@@ -423,10 +432,10 @@ export class OfflineQuranAudioLibrary {
       normalized.pinned = current.pinned;
       normalized.available = true;
     }
-    files.put(normalized);
+    writeSafely(transaction, () => files.put(normalized), 'تعذر تسجيل الملف الصوتي المحقق.');
     relation.status = 'verified';
     relation.updatedAtMs = Math.max(input.downloadedAtMs, job.createdAtMs);
-    items.put(relation);
+    writeSafely(transaction, () => items.put(relation), 'تعذر ربط الملف الصوتي بمهمة التنزيل.');
 
     const relatedItems = await requestResult(items.index('fileKey').getAll(normalized.key)) as OfflineAudioJobItem[];
     const affectedJobIds = [...new Set(relatedItems.map(item => item.jobId))];
@@ -436,7 +445,7 @@ export class OfflineQuranAudioLibrary {
       validateJobItem(relatedJob, relatedItem);
       relatedItem.status = 'verified';
       relatedItem.updatedAtMs = Math.max(relatedItem.updatedAtMs, relation.updatedAtMs);
-      items.put(relatedItem);
+      writeSafely(transaction, () => items.put(relatedItem), 'تعذر تحديث علاقة ملف صوتي مشتركة.');
     }
     for (const affectedId of affectedJobIds) {
       const affectedJob = await requestResult(jobs.get(affectedId)) as OfflineAudioJob | undefined;
@@ -448,7 +457,7 @@ export class OfflineQuranAudioLibrary {
         : allItems.some(item => item.status === 'downloading') ? 'downloading'
           : affectedJob.completedAyahs > 0 ? 'partial' : 'downloading';
       affectedJob.updatedAtMs = Math.max(affectedJob.updatedAtMs, relation.updatedAtMs);
-      jobs.put(affectedJob);
+      writeSafely(transaction, () => jobs.put(affectedJob), 'تعذر تحديث تقدم مهمة مرتبطة.');
     }
     await transactionResult(transaction);
     return (await this.getJob(jobId))!;
@@ -464,8 +473,8 @@ export class OfflineQuranAudioLibrary {
     if (!job) { await transactionResult(transaction); return { orphanedFiles: [] }; }
     validateJob(job);
     const relations = await requestResult(items.index('jobId').getAll(jobId)) as OfflineAudioJobItem[];
-    relations.forEach(item => items.delete(item.key));
-    jobs.delete(jobId);
+    relations.forEach(item => writeSafely(transaction, () => items.delete(item.key), 'تعذر حذف علاقات مهمة التنزيل.'));
+    writeSafely(transaction, () => jobs.delete(jobId), 'تعذر حذف مهمة التنزيل.');
     const orphanedFiles: OfflineAudioFile[] = [];
     for (const relation of relations) {
       const remaining = await requestResult(items.index('fileKey').getAll(relation.fileKey)) as OfflineAudioJobItem[];
@@ -474,7 +483,7 @@ export class OfflineQuranAudioLibrary {
       if (!stored) continue;
       const file = validateStoredFile(stored);
       if (file.pinned) continue;
-      files.delete(file.key);
+      writeSafely(transaction, () => files.delete(file.key), 'تعذر حذف سجل ملف صوتي غير مستخدم.');
       orphanedFiles.push(file);
     }
     await transactionResult(transaction);
@@ -493,14 +502,14 @@ export class OfflineQuranAudioLibrary {
     if (pinned && !file.available) { transaction.abort(); throw new Error('لا يمكن تثبيت ملف صوتي غير موجود في التخزين المحلي.'); }
     file.pinned = pinned;
     if (pinned) {
-      files.put(file);
+      writeSafely(transaction, () => files.put(file), 'تعذر تحديث تفضيل تثبيت الملف الصوتي.');
       await transactionResult(transaction);
       return { orphanedFiles: [] };
     }
     const references = await requestResult(items.index('fileKey').getAll(key)) as OfflineAudioJobItem[];
-    if (references.length > 0) files.put(file);
+    if (references.length > 0) writeSafely(transaction, () => files.put(file), 'تعذر تحديث تفضيل تثبيت الملف الصوتي.');
     else {
-      files.delete(key);
+      writeSafely(transaction, () => files.delete(key), 'تعذر حذف سجل الملف الصوتي.');
       await transactionResult(transaction);
       return { orphanedFiles: [file] };
     }
@@ -533,7 +542,7 @@ export class OfflineQuranAudioLibrary {
       const shouldBeAvailable = !missingKeys.has(file.key);
       if (file.available !== shouldBeAvailable) {
         file.available = shouldBeAvailable;
-        store.put(file);
+        writeSafely(transaction, () => store.put(file), 'تعذر تحديث حالة توفر الملف الصوتي.');
       }
     }
     await transactionResult(transaction);
