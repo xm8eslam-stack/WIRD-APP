@@ -613,3 +613,38 @@ On resumption:
 
 ---
 
+
+# 2026-11-12 — Current continuation checkpoint
+
+## Main and PR heads
+- Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b; no merge/deploy.
+- #363 docs: c58bcfeafb53277a3535b70df43a644c4b754bc5 OPEN/DRAFT.
+- #365 Seerah: 113f12c43b9b075541b7d28f58fa89cd71ef73d4 OPEN/DRAFT.
+- #366 Offline/PWA: cade1b630bb429d6a4106de5bf12713df18f3491 OPEN/DRAFT.
+- #367 sync payload interim cap: fd417faaa96a11920ef3a8e4f1038f567c36a731 OPEN/DRAFT.
+- #368 Offline Audio metadata: b5ed5c9bead88835da751c7d6eb5ff7de76d56b2 OPEN/DRAFT.
+- #369 memorized range selection: 7ac00ef32f3b3c2b1158f165ed141e6f332ab88e OPEN/DRAFT.
+- #370 session display disclosure: 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb OPEN/DRAFT.
+
+## New implementation checkpoints
+- #369: searchable touch-friendly multi-Surah checkbox selection; full Juz expansion via generated canonical Quran Juz starts; custom per-Surah ayah ranges; sorted overlap/adjacency normalization; service + UI test suites registered. No local tests run.
+- #370: collapsed-by-default accessible display-settings disclosure; page width/UI scale/font/density/view controls retained; line spacing + page padding added and applied; device-local migration defaults tested. No local tests run.
+- #365: fixed scoped bookmark deletion writing to a global key; added UID-scope regression test. Seerah reader remains an explicit shell/prototype, not approved historical content.
+- #363: requirements and initial source/licensing review added. Dorar API has manual approval and restrictive attribution/cache/no-bulk/republication terms; OpenITI CC BY-NC-SA; ACO public-domain collection with per-edition rights verification still required.
+
+## Adaptive Engine Plans capacity
+- No subscription/entitlement/billing service or tier model was found in the inspected main source. Do not invent tiers or quota values.
+- Separate local IndexedDB/browser quota from server-verified account entitlement. Chunked sync must be immutable, resumable and SHA-256 verified; manifest publication last; materialize before cursor advancement. Downgrades must not delete existing data.
+- Continue archive consumer/fixture audit and entitlement contract design before migration. Do not raise 100-plan limit or 800 KB interim payload cap as a substitute.
+
+## Exact-head CI
+- #365 run 43273958209 / job 131377298902; #369 run 43274079781 / job 131377722661; #370 run 43274209101 / job 131378172561.
+- All completed failure with steps=null and logs_url=null. This is runner/telemetry evidence only; no code failure diagnosis and no successful test/build evidence.
+- No local tests/build/typecheck executed in this session. No PR merged. No Vercel/Firebase Production settings, Rules, secrets, or sync flags changed.
+
+## Next exact actions
+1. Continue Engine Plans inventory for remaining direct/indirect export/import, conflict, inbox, journal replay, reset, and fixtures. Then Stage A contract review; no migration before audit closure.
+2. Run #369 and #370 through a functioning, inspectable CI runner and fix any confirmed source/test failures. Add keyboard/screen-reader/mobile manual review before merge.
+3. Continue Seerah at highest parallel priority: improve continuous reader shell and editorial source traceability. Research/rights approval precedes content ingestion; never publish prototype scenes or unverified reports.
+4. Continue Offline Audio and PWA independent test work.
+5. Re-fetch exact PR heads and record evidence at every checkpoint.
