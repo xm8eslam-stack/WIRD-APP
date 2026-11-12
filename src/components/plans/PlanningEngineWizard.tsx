@@ -720,6 +720,7 @@ export const PlanningEngineWizard: React.FC<PlanningEngineWizardProps> = ({
                 <label className="flex flex-col gap-1 text-xs font-semibold text-stone-600 dark:text-stone-300 sm:col-span-2">
                   السورة
                   <select
+                    id="memorized-range-surah-select"
                     value={rangeSurahNumber}
                     onChange={event => {
                       const next = Number(event.target.value);
