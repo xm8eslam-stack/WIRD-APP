@@ -96,7 +96,7 @@ export function validateSeerahChapterForPublication(
         !hasText(source.work) || !hasText(source.edition) || !hasText(source.locator)) {
       blockers.push(`source_metadata_incomplete:${source.id || 'unknown'}`);
     }
-    if (source.rightsStatus === 'unknown' || source.rightsStatus === 'permission_required') {
+    if (!['verified_public_domain', 'licensed_for_use', 'link_only'].includes(source.rightsStatus)) {
       blockers.push(`source_rights_not_cleared:${source.id}`);
     }
     if ((source.rightsStatus === 'verified_public_domain' || source.rightsStatus === 'licensed_for_use') &&
