@@ -548,3 +548,13 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 
 ## Adaptive entitlement checkpoint
 - No subscription/billing/entitlement service or account plan tier was found in the inspected main code. Do not invent tiers or limits. Local browser/IndexedDB capacity and server-verified account entitlement are separate. Keep implementing archive/chunk transport independently while owner-defined plan entitlements are pending.
+
+## Latest 2026-11-12 implementation delta
+- #365 head 0856e6a1e215a74324358173bee9a55924e6a5ad: scoped bookmark deletion regression fixed; source citation panel added; Seerah source rights are now mandatory in the publication contract. No historical text/content was ingested or approved.
+- #368 head ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710: Cache Storage adapter and bounded downloader added; retryable item failure, pause/cancel/resume and cache-eviction recovery added. Still no Service Worker protocol, download UI, playback integration or device verification.
+- #369 head 7ac00ef32f3b3c2b1158f165ed141e6f332ab88e: multi-Surah/Juz/custom ayah selector and tests.
+- #370 head 2bbb54da778ab3eb2ac863e2b12c4e31fbe39dfb: collapsed page settings with line-spacing and page-padding controls.
+- Latest #365 and #368 Quality Gate runs failed without steps/logs (43275942614 and 43275594933); no code-level failure or pass can be inferred.
+- Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b. No merge/deploy/Production setting/Rules/secrets/sync flag changes.
+- Engine Plans inventory reconfirmed the 100-plan cap, synchronous localStorage export, legacy direct import/reset, synchronous scope copy/verify/delete, journal-first import/reset, session snapshot cap, Dashboard direct read and sync projection consumers. Remaining indirect caller/fixture/E2E audit is open; do not begin migration.
+- Adaptive entitlement/chunk contract and Seerah rights research are documented in the RFC and Seerah plan.
