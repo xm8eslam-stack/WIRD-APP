@@ -112,7 +112,7 @@ function isValidMutation(value: unknown): value is OutboxMutation {
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
     && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128 && !/[\u0000-\u001f]/.test(value.deviceId)
-    && isRecord(value.payload) && payloadBytes <= MAX_MUTATION_PAYLOAD_BYTES
+    && isRecord(value.payload) && payloadBytes <= getSyncMutationPayloadLimit(String(value.collection), value.payload)
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
     && Number.isSafeInteger(value.nextAttemptAtMs) && Number(value.nextAttemptAtMs) >= 0
