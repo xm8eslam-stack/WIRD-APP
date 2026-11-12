@@ -420,3 +420,11 @@
 - Both Settings and Progress Analytics import through `importBackupFile` (journal-first); Settings export is not journal-aware today. `StorageService.importBackup` remains the legacy direct localStorage writer and is covered by tests, but its full production caller scan is still required before deprecation.
 - App state is initialized from `getEnginePlans()`; Dashboard independently reads it; Planning UI consumes props and sends updates. These three paths need one hydrated source of truth and no synchronous fallback-to-empty during archive startup.
 - This is still a targeted source audit, not a claim that every one of the 159 TS/TSX files was exhaustively scanned. Continue checking the remaining UI/services for direct backup API calls and legacy archive access before implementation.
+
+
+## 2026-11-12 — PR #367 remote payload patch review
+- Reviewed the actual #367 patch (not just its title): it introduces `syncPayloadLimits.ts` and routes IndexedDB journal validation, local outbox validation, and `writeRevisionedRemoteMutation` through the same `getSyncMutationPayloadLimit` helper. Engine Plans and grouped transactions containing Engine Plans receive an 800,000-byte payload ceiling; ordinary collections retain 128,000 bytes.
+- The same patch updates conflict resolution payload checks and conflict snapshot retention sizing (`MAX_CONFLICT_SNAPSHOT_BYTES=1,700,000`, conflict count 29) to keep the aggregate conflict archive near the previous ceiling. It adds tests that exercise 700 KB local journal/outbox/conflict paths and pre-network Firestore writer rejection above the shared cap.
+- This is a fixed interim per-mutation cap, not adaptive storage entitlement, not archive chunking, and not a solution for the 100-plan guard or localStorage archive. Current main still has its older 128,000-byte remote writer validation; only the unmerged #367 branch contains the shared 800 KB implementation.
+- Do not raise the 800 KB value further. The long-term path remains local IndexedDB archive + verified manifest/chunks + receiver materialization/capability negotiation. Per-document envelope headroom and Firestore limits must be tested with actual serialized records, not only synthetic filler.
+- CI for #367's exact head remains unverified/failing without inspectable job steps from the prior audit; do not merge based on source review alone.
