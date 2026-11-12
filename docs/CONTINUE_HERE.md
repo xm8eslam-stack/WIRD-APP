@@ -1,3 +1,20 @@
+# أولوية تنفيذ جديدة — Offline-first وجاهزية التطبيق (2026-11-12)
+
+اجعل إتاحة وِرد دون إنترنت مسارًا أساسيًا متوازيًا مع القرآن والعبادات والسيرة وتجربة المستخدم والمزامنة. الهدف أن يظل التطبيق مفيدًا بعد تجهيز أولي صريح، ثم يكون قابلًا للتغليف كتطبيق مستقبلي دون إعادة كتابة مبكرة.
+
+- اقرأ docs/offline/OFFLINE_FIRST_ARCHITECTURE.md وdocs/offline/APP_READINESS_ROADMAP_AR.md وdocs/offline/OFFLINE_CAPABILITY_MATRIX_AR.md.
+- لا تعِد بناء PWA الموجود؛ راجع Service Worker وmanifest وحزمة lazy chunks والتخزين المحلي والصوت والبيانات الموثقة أولًا.
+- ابنِ مصفوفة لكل route × asset × data × action وصنّفها: bundled / prepared / previously cached / opportunistic / network-required.
+- سد فجوة public assets في allAssets، واختبر الحزمة الفعلية بعد build، وراجع الخطوط والملفات الخارجية.
+- اختبر فتح التطبيق بعد restart وفي وضع الطيران، وحفظ التقدم محليًا، والتعامل مع quota/eviction، ثم الاسترداد والمزامنة عند عودة الشبكة.
+- Auth/Firebase والـ APIs الحية والمحتوى غير المحفوظ لا تُعلن Offline. لا cache للبيانات الخاصة أو الرموز أو ردود API الخاصة.
+- الصوت المثبت منفصل عن cache الانتهازي؛ EveryAyah يبقى stream-only حتى وجود حق واضح، ولا مزامنة للصوت.
+- PWA هو الأساس؛ لا اختيار Capacitor/TWA/native أو إضافة plugins قبل اجتياز بوابات Offline web.
+- PR #366 مسار كود منفصل عن PR #363 الوثائقي. أعد جلب SHA/CI/Vercel على exact head. لا تدمج أيًا منهما لمجرد نجاح Vercel.
+- ضع اختبار الأجهزة الفعلية وقرار المنصات المستقبلية في OWNER_ACTIONS.md ولا توقف المهام المستقلة بسببه.
+
+---
+
 # WIRD — نقطة الاستكمال الحالية (مصدر الحقيقة)
 
 **آخر تحقق حي:** 2026-11-12 01:31 +02:00  
