@@ -198,3 +198,12 @@ This addendum supersedes older release-state statements above where they conflic
 - This is identity normalization only. It does not merge concurrent `weakVerses/snapshot` full-snapshot writes, does not make `mistakeCount` additive across devices, and does not prevent a stale active snapshot from resurrecting a resolved verse.
 - Weak-verse remote projection and conflict resolution must therefore remain fail-closed until a durable event/tombstone model exists. Do not union arrays blindly or sum counters.
 - Activity remains a per-day `DailyLog` aggregate snapshot. Session completion already has a stable mutation ID and `session.completed` domain event, but the local activity projection still adds into one date bucket. A safe multi-device design needs immutable per-session event identity, deduplicated materialization, legacy baseline migration, and rollback/recovery coverage before changing the projection.
+
+
+## 2026-11-12 — Engine-plan payload budget alignment
+
+Smart memorization plan snapshots are larger than ordinary mutations because each plan carries a generated day-by-day schedule. A single shared validator now governs the local IndexedDB journal, legacy outbox normalization, and revisioned Firestore writer: 128 KB for ordinary mutations and 800 KB for engine-plan snapshots (including grouped session transactions that carry an engine-plan projection). The previous 450 KB UI/journal-only exception did not match the remote writer's generic 128 KB validation and could defer failure until upload.
+
+The 800 KB cap is intentionally below Firestore Standard's 1 MiB maximum document size to leave envelope headroom. It is not a 3–4× increase. Do not raise it to 1.35–1.8 MB without a chunked multi-document engine-plan schema, complete reconstruction/versioning, idempotent partial upload handling, and atomic local projection/recovery. Firestore rules and production sync flags are unchanged.
+
+Conflict evidence now allows up to 1.7 MB per record for larger plan snapshots and their pending mutation evidence. The maximum retained conflict record count is reduced from 100 to 29 to keep the aggregate theoretical bound near 50 MB. Open conflicts are not pruned; when capacity is exhausted, new conflict archival fails closed and the remote inbox/outbox evidence remains.
