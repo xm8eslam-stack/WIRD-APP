@@ -384,3 +384,14 @@ Unit/integration، Rules Emulator عند الحاجة، TypeScript/lint/build، 
 - Both Settings and Progress Analytics import through `importBackupFile` (journal-first); Settings export is not journal-aware today. `StorageService.importBackup` remains the legacy direct localStorage writer and is covered by tests, but its full production caller scan is still required before deprecation.
 - App state is initialized from `getEnginePlans()`; Dashboard independently reads it; Planning UI consumes props and sends updates. These three paths need one hydrated source of truth and no synchronous fallback-to-empty during archive startup.
 - This is still a targeted source audit, not a claim that every one of the 159 TS/TSX files was exhaustively scanned. Continue checking the remaining UI/services for direct backup API calls and legacy archive access before implementation.
+
+
+## متطلبات المالك الجديدة — 2026-11-12
+المرجع التفصيلي: [USER_REQUIREMENTS_2026-11-12.md](./product/USER_REQUIREMENTS_2026-11-12.md).
+
+- **Adaptive Engine Plans:** فصل سعة الأرشيف المحلي (IndexedDB quota) عن entitlement الحساب الخادمي، ثم مزامنة chunks/manifests موثقة بـ SHA-256 مع استئناف آمن ونشر manifest أخيرًا. لا tiers أو حصص مخترعة، ولا حذف عند downgrade.
+- **المحفوظ السابق:** multi-select لسور متعددة، جزء كامل، ونطاق آيات مخصص، بالاعتماد على QuranMath والحدود القرآنية المعتمدة. تأكيد قبل تعديل أي تقدم.
+- **إعدادات صفحة الجلسة:** تحويل شريط التحكم الحالي إلى disclosure قابل للفتح والإغلاق، مطوي افتراضيًا، مع تفاصيل منظمة وملخص إعدادات وإعادة ضبط، دون فقد موضع الآية.
+- **السيرة:** أولوية مرتفعة بالتوازي؛ القارئ المتصل والـ bookmarks/anchors والمصادر وسجل المراجعات ومحتوى معتمد فقط.
+
+التنفيذ على فروع مستقلة، مع إبقاء توثيق المنتج في PR #363. لا merge أو deploy أو تغيير إعدادات إنتاج دون الموافقات وبوابات الجودة.
