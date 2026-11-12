@@ -70,7 +70,9 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       assert(firstDelete.orphanedFiles.length === 0 && (await library.listFiles()).length === 1, 'Deleting one job must preserve a file referenced by another job.');
       const secondDelete = await library.deleteJob(second.id);
       assert(secondDelete.orphanedFiles.length === 1 && secondDelete.orphanedFiles[0].key === 'ar.alafasy:1', 'The last relation removal must return the now-orphaned file for Cache Storage cleanup.');
-      assert((await library.listFiles()).length === 0, 'Unpinned orphan metadata must be removed.');
+      assert((await library.listFiles())[0].deletionPending, 'The orphan record must remain durable until Cache Storage deletion is confirmed.');
+      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1), 'Successful Cache Storage deletion must finalize metadata removal.');
+      assert((await library.listFiles()).length === 0, 'Finalized orphan metadata must be removed.');
     } finally { library.close(); }
   });
 
@@ -83,7 +85,9 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       const deletion = await library.deleteJob(job.id);
       assert(deletion.orphanedFiles.length === 0 && (await library.listFiles())[0].pinned, 'Deleting the job must preserve a pinned file.');
       const unpin = await library.setFilePinned('ar.alafasy', 1, false);
-      assert(unpin.orphanedFiles.length === 1 && (await library.listFiles()).length === 0, 'Explicit unpin with no job references must return the file for deletion.');
+      assert(unpin.orphanedFiles.length === 1 && (await library.listFiles())[0].deletionPending, 'Explicit unpin with no job references must create a durable deletion candidate.');
+      assert(await library.finalizeOrphanDeletion('ar.alafasy', 1), 'The caller may finalize after Cache Storage deletion succeeds.');
+      assert((await library.listFiles()).length === 0, 'The file metadata must disappear only after deletion is finalized.');
     } finally { library.close(); }
   });
 
@@ -186,6 +190,22 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       assert(message.includes('مساحة التخزين المحلية ممتلئة'), 'Quota errors must be normalized for the user.');
       assert((await reopened.listJobs()).length === 0, 'A failed job-item write must roll back the job record too.');
     } finally { reopened.close(); }
+  });
+
+  await test('a new job safely cancels a pending orphan deletion after re-downloading the same ayah', async () => {
+    const { library } = createLibrary();
+    try {
+      const first = await library.createJob(oneAyah, 100);
+      await library.recordVerifiedFile(first.id, verifiedInput());
+      const orphan = await library.deleteJob(first.id);
+      assert(orphan.orphanedFiles.length === 1, 'Deleting the last job should schedule orphan cleanup.');
+      const second = await library.createJob(oneAyah, 300);
+      assert(second.status === 'queued', 'A file scheduled for deletion must not be reused as available.');
+      await library.recordVerifiedFile(second.id, { ...verifiedInput(), downloadedAtMs: 400 });
+      assert((await library.listFiles())[0].available && !(await library.listFiles())[0].deletionPending, 'A new verified download must cancel the stale deletion marker.');
+      assert(!(await library.finalizeOrphanDeletion('ar.alafasy', 1)), 'A stale cleanup attempt must not delete a newly downloaded file.');
+      assert((await library.listFiles()).length === 1, 'The newly downloaded canonical file must remain.');
+    } finally { library.close(); }
   });
 
   return { passed, failed };
