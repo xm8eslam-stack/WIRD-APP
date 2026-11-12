@@ -12,8 +12,12 @@ import {
 } from 'lucide-react';
 import {
   readSeerahReadingPosition,
-  saveSeerahReadingPosition
+  saveSeerahReadingPosition,
+  readSeerahBookmarks,
+  saveSeerahBookmark,
+  removeSeerahBookmark
 } from '../../services/seerahReadingProgress';
+import type { SeerahBookmark } from '../../services/seerahReadingProgress';
 
 type ReaderPanel = 'contents' | 'context' | null;
 type Scene = { id: string; title: string; anchorId: string };
@@ -31,7 +35,7 @@ export const SeerahReaderView: React.FC = () => {
   const [activePanel, setActivePanel] = useState<ReaderPanel>('contents');
   const [fontScale, setFontScale] = useState<'normal' | 'large' | 'larger'>('large');
   const [lineSpacing, setLineSpacing] = useState<'comfortable' | 'relaxed'>('relaxed');
-  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarks, setBookmarks] = useState<SeerahBookmark[]>([]);
   const [saved, setSaved] = useState(false);
 
   const activeIndex = useMemo(
@@ -39,8 +43,14 @@ export const SeerahReaderView: React.FC = () => {
     [activeSceneId]
   );
   const activeScene = PROTOTYPE_SCENES[activeIndex] ?? PROTOTYPE_SCENES[0];
+  const isBookmarked = bookmarks.some(bookmark =>
+    bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === 'prototype-part' &&
+    bookmark.chapterId === 'prototype-chapter' && bookmark.sceneId === activeScene.id &&
+    bookmark.anchorId === activeScene.anchorId
+  );
 
   useEffect(() => {
+    setBookmarks(readSeerahBookmarks());
     const savedPosition = readSeerahReadingPosition();
     if (savedPosition?.bookVersion === PROTOTYPE_VERSION &&
         savedPosition.partId === 'prototype-part' &&
@@ -64,7 +74,6 @@ export const SeerahReaderView: React.FC = () => {
 
   const selectScene = (sceneId: string) => {
     setActiveSceneId(sceneId);
-    setIsBookmarked(false);
     const target = PROTOTYPE_SCENES.find(scene => scene.id === sceneId);
     if (target) {
       window.requestAnimationFrame(() => {
@@ -159,9 +168,22 @@ export const SeerahReaderView: React.FC = () => {
             <div className="mx-auto max-w-3xl">
               <div className="mb-8 flex items-center justify-between gap-3">
                 <span className="text-[11px] font-bold text-[#8A6C19] dark:text-[#E0A96D]">مشهد تجريبي · لا يحتوي على سرد تاريخي</span>
-                <button type="button" onClick={() => setIsBookmarked(value => !value)} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] ${isBookmarked ? 'bg-[#1C4E46] text-white dark:bg-[#1E4A47]' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-200'}`} aria-pressed={isBookmarked}>
+                <button type="button" onClick={() => {
+                  const bookmark: SeerahBookmark = {
+                    bookVersion: PROTOTYPE_VERSION,
+                    partId: 'prototype-part',
+                    chapterId: 'prototype-chapter',
+                    sceneId: activeScene.id,
+                    anchorId: activeScene.anchorId,
+                    createdAt: new Date().toISOString()
+                  };
+                  const changed = isBookmarked
+                    ? removeSeerahBookmark(bookmark)
+                    : saveSeerahBookmark(bookmark);
+                  if (changed) setBookmarks(readSeerahBookmarks());
+                }} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] ${isBookmarked ? 'bg-[#1C4E46] text-white dark:bg-[#1E4A47]' : 'bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-200'}`} aria-pressed={isBookmarked} aria-label={isBookmarked ? 'إزالة علامة هذا المشهد' : 'حفظ علامة لهذا المشهد'}>
                   {isBookmarked ? <Check className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
-                  {isBookmarked ? 'علامة محفوظة (نموذج)' : 'حفظ علامة'}
+                  {isBookmarked ? 'إزالة العلامة' : 'حفظ علامة'}
                 </button>
               </div>
               <h4 id={activeScene.anchorId} className="scroll-mt-28 text-center text-xl font-black leading-relaxed text-stone-900 dark:text-stone-100 sm:text-2xl">{activeScene.title}</h4>
@@ -200,6 +222,28 @@ export const SeerahReaderView: React.FC = () => {
           <div className="mt-5 rounded-xl bg-stone-50 p-3 dark:bg-stone-900/40">
             <p className="text-[10px] font-bold text-stone-500 dark:text-stone-400">حالة المحتوى</p>
             <p className="mt-1 text-xs font-bold text-amber-800 dark:text-amber-300">هيكل تجريبي — بانتظار اعتماد المصادر والنص</p>
+          </div>
+          <div className="mt-5 border-t border-stone-100 pt-4 dark:border-stone-700">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-xs font-extrabold text-stone-800 dark:text-stone-100">علاماتي المحفوظة</h4>
+              <Bookmark className="h-4 w-4 text-[#8A6C19] dark:text-[#E0A96D]" aria-hidden="true" />
+            </div>
+            <div className="mt-3 space-y-2">
+              {bookmarks
+                .filter(bookmark => bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === 'prototype-part' && bookmark.chapterId === 'prototype-chapter')
+                .map(bookmark => {
+                  const scene = PROTOTYPE_SCENES.find(item => item.id === bookmark.sceneId && item.anchorId === bookmark.anchorId);
+                  if (!scene) return null;
+                  return (
+                    <button key={`${bookmark.bookVersion}:${bookmark.sceneId}:${bookmark.anchorId}`} type="button" onClick={() => selectScene(scene.id)} className="w-full rounded-lg border border-stone-200 px-3 py-2 text-right text-xs font-semibold text-stone-700 hover:bg-stone-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C59B27] dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-800">
+                      {scene.title}
+                    </button>
+                  );
+                })}
+              {bookmarks.filter(bookmark => bookmark.bookVersion === PROTOTYPE_VERSION && bookmark.partId === 'prototype-part' && bookmark.chapterId === 'prototype-chapter').length === 0 && (
+                <p className="text-[11px] leading-6 text-stone-500 dark:text-stone-400">لم تحفظ علامات بعد. يمكنك الرجوع إلى أي مشهد تحفظه هنا.</p>
+              )}
+            </div>
           </div>
         </aside>
       </div>
