@@ -1,3 +1,30 @@
+# إغلاق جرد المستهلكين والاختبارات — 2026-11-12 18:25 +02:00
+
+## نتيجة scan موسع على main
+- فُحصت ملفات المصدر الـ100 من نوع TS/TSX تحت `src/` بحثًا عن `getEnginePlans/saveEnginePlans/ENGINE_PLANS/enginePlans/exportFullBackup/importBackup/resetAllData` وواجهات التخزين ذات الصلة.
+- فُحصت ملفات الاختبار وE2E الـ78 (test/spec) بحثًا عن نفس العقود.
+- هذا scan للمستودع عند main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`، وليس تشغيلًا للاختبارات.
+
+## خريطة المستهلكين بعد الإكمال
+- **UI المباشر:** `App.tsx` مصدر state والقراءة والحفظ؛ `DashboardView.tsx` يقرأ Engine Plans مباشرة لاختيار الجلسة؛ `MemorizationPlansView.tsx` يمرر القائمة إلى `PlanningEngineWizard` عبر props/callback فقط؛ لا مستهلك تخزين مباشر إضافي ظهر في بقية ملفات UI بعد scan.
+- **مصادر كتابة إضافية:** `demoDataPersistence.ts` ينشئ خطة تجريبية داخل grouped journal transaction؛ `journaledSnapshotService.ts` هو snapshot writer؛ `sessionPersistence.ts` يضمّن الخطة اختياريًا مع إكمال الجلسة.
+- **Backup/reset:** Settings وProgress Analytics هما مسارا export المتزامنان؛ كلا UI import يستخدم `importBackupFile` journal-first؛ `StorageService.importBackup` بقي legacy direct writer ولم يظهر مستهلك UI له في المسح؛ reset في التطبيق journal-first، والـ low-level `StorageService.resetAllData` ظهر في fixtures/tests.
+- **Projection/bootstrap:** `applyJournalProjection`, `matchesJournalProjection`, `isLocalProjectionEmpty`, و`getLocalProjectionSnapshot` كلها تقرأ/تكتب/تلتقط `ENGINE_PLANS` من localStorage. `journalProjectionReplayer` يعيد الإسقاط قبل تركيب App. `remoteInboxProjector` و`IndexedDbSyncJournal` يستخدمان واجهات StorageService لتطبيق النسخ المستوردة.
+- **Conflict resolution:** `syncConflictResolutionService` يستخدم `getLocalProjectionSnapshot` و`matchesJournalProjection` عند use-remote وkeep-local؛ و`IndexedDbSyncJournal.commitUseRemoteConflictResolution` يستدعي projection داخل معاملة journal IndexedDB. يجب نقل هذه العقود كلها مع archive backend، لا get/save فقط.
+- **Cloud path:** `cloudSyncCoordinator`, `LocalSyncOutbox`, `IndexedDbSyncJournal`, `revisionedRemoteMutation`, و`remoteInboxProjector` تسمح بمجموعة enginePlans وتتعامل مع payloads/snapshots والـ revisions/cursors. على main الحد الحالي في journal هو 450,000 bytes، والـ outbox له budget إجمالي منفصل 1,500,000 bytes؛ #367 فقط يغيّر الميزانية إلى 800,000 مؤقتًا على فرعه.
+- **اختبارات/fixtures ذات صلة:** `planningEngine.test.ts`, `dailySessionSelection.test.ts`, `backupValidation.test.ts`, `backupPersistence.test.ts`, `journaledSnapshotService.test.ts`, `sessionPersistence.test.ts`, `storageReliability.test.ts`, `storageScope.test.ts`, `indexedDbSyncJournal.test.ts`, `localSyncOutbox.test.ts`, `cloudSyncCoordinator.test.ts`, و`scripts/firestoreRules.test.ts`. `journaledSnapshotService.test.ts` يختبر تحميل demo data مع enginePlans؛ `cloudSyncCoordinator.test.ts` يختبر enqueue/delete/recovery؛ `firestoreRules.test.ts` يتضمن حالات تعارض Engine Plans.
+- لا توجد واجهة مستقلة لـ AuthGate tests في شجرة الاختبارات الحالية؛ تهيئة الحساب/النطاق مغطاة جزئيًا في `storageScope.test.ts` و`firebaseAuth.test.ts`، ويجب إضافة اختبارات startup hydration صريحة.
+
+## قيد ذرية جديد يجب حله في RFC
+المسار الحالي يثبت journal/outbox داخل IndexedDB ثم يعيد الإسقاط إلى localStorage مع recovery markers/cursors. كما أن `commitUseRemoteConflictResolution` ينفذ `StorageService.applyJournalProjection` أثناء معاملة IndexedDB الخاصة بالـ journal. إذا كان Engine Plans archive في قاعدة IndexedDB منفصلة، فلن تكون كتابته ذرية تلقائيًا مع journal/outbox/conflict/cursor. يجب أن يختار RFC أحد تصميمين واضحين:
+1. archive + journal/outbox في نفس قاعدة IndexedDB ومعاملة متعددة stores واحدة حيث يمكن ضمانها، أو
+2. بروتوكول prepare/commit intent idempotent عبر قاعدتين، مع revision/fingerprint/record IDs، وrecovery عند كل نقطة crash، وعدم تحريك أي cursor قبل تحقق materialization.
+لا يكفي وعد "atomic" دون تعريف transaction boundary الفعلية. ويجب أن تتعامل conflict snapshots مع archive revision/fingerprint بدل الاعتماد على localStorage raw bytes وحدها.
+
+## حالة الجرد
+اكتمل scan ملفات المصدر والاختبارات المعروفة عند SHA المحدد، لكن لم يبدأ RFC أو migration أو تغيير حدود. التالي: توثيق sequence diagrams والعقود/نقاط crash، ثم كتابة RFC/ADR واختبار تصميمه قبل تنفيذ adapter. لا تغييرات Production/Rules/secrets/flags أو merge/deploy.
+---
+
 # مراجعة متابعة جديدة — 2026-11-12 18:15 +02:00
 
 ## الحالة الحية المعاد التحقق منها
