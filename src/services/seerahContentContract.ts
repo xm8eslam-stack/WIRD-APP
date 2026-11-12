@@ -160,7 +160,8 @@ export function validateSeerahChapterForPublication(
       blockIds.add(block.id);
 
       if (block.type === 'heading') continue;
-      if (block.type !== 'paragraph' && block.type !== 'context_note' && block.type !== 'quote_verified') {
+      const blockType: unknown = (block as { type?: unknown }).type;
+      if (blockType !== 'paragraph' && blockType !== 'context_note' && blockType !== 'quote_verified') {
         blockers.push(`body_block_type_invalid:${block.id || 'unknown'}`);
         continue;
       }
