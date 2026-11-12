@@ -1,15 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowRight,
   Bookmark,
   BookOpenText,
   Check,
   ChevronLeft,
   ChevronRight,
   List,
-  Moon,
   PanelRightClose,
-  PanelRightOpen,
   Settings2,
   Type
 } from 'lucide-react';
