@@ -834,3 +834,16 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - PWA remains primary; native wrapper decision follows real offline web tests.
 - PR #363 is the canonical docs branch; PR #366 is being reduced to code-only to avoid editing the same documentation files in parallel.
 - No production settings, secrets, Firestore Rules/data, sync flags, or user data changed.
+
+
+---
+
+## 2026-11-12 13:40 +02:00 — Live PR audit and cross-branch file reconciliation
+
+- Verified `refs/heads/main` directly: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Re-fetched exact PR metadata and file lists for #363/#365/#366/#367. All remain OPEN / DRAFT / mergeable.
+- Exact-head CI runs: #363 `43203107824` (job `131131326627`), #365 `43186044298` (job `131073336535`), #366 `43202600366` (job `131129580249`), #367 `43200705034` (job `131123069674`). Each job completed failure with `steps=null` and `logs_url=null`; this is not a diagnosed test failure and not a pass.
+- Vercel status: #365 and #367 Preview success; #363 and #366 blocked by Free build-rate limit. No new Production or live-device evidence.
+- Found actual file overlap: #367 changes `docs/sync/ARCHITECTURE.md` and `docs/engineering/progress/WORK_LOG.md`, both also changed by #363. This contradicts the intended code-only separation. Canonical docs are assigned to #363; #367 must drop these two paths before code review.
+- #366's local quota-aware LRU media cache remains separate from cloud plan entitlement. #367's 800 KB is a per-document interim envelope only. #365 remains a reader shell with no publishable historical text.
+- No main/Production/rules/secrets/user data/feature flags changed. No PR merged or deployed.
