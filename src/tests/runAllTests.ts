@@ -143,6 +143,7 @@ async function main() {
     { name: 'Due-Date and Explicit Scope Daily Session Selection', runner: runDailySessionSelectionTests },
     { name: 'Preset Scope & Next Uncovered Memorization Range', runner: runPlanRangeSelectionTests },
     { name: 'Unified Offline Quran Audio Jobs, Canonical Files, Shared References and Recovery', runner: runOfflineQuranAudioLibraryTests },
+    { name: 'Offline Quran Audio Cache Storage Adapter', runner: runOfflineQuranAudioCacheTests },
     { name: 'Offline Quran Audio Cache Allowlist and Limits', runner: runAudioServiceOfflineCacheTests },
     { name: 'Offline Persistent Storage Permission and Quota', runner: runOfflineStorageServiceTests },
     { name: 'Shared Audio Playback Speed Preferences', runner: runAudioPreferencesTests },
