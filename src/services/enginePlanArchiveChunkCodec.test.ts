@@ -76,6 +76,11 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
     await expectReject(() => materializeEnginePlanArchiveChunks(changedRevision, mapChunks(built.chunks)),
       'Changing archive revision must invalidate the manifest/chunk identity');
 
+    const changedEntitlement = JSON.parse(JSON.stringify(built.manifest));
+    changedEntitlement.entitlementRevision = 'new-entitlement-revision';
+    await expectReject(() => materializeEnginePlanArchiveChunks(changedEntitlement, mapChunks(built.chunks)),
+      'Changing entitlement revision must invalidate the archive fingerprint');
+
     const changedSchema = JSON.parse(JSON.stringify(built.manifest));
     changedSchema.schemaVersion = 2;
     await expectReject(() => materializeEnginePlanArchiveChunks(changedSchema, mapChunks(built.chunks)),
