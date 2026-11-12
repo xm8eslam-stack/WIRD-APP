@@ -20,7 +20,7 @@ export async function runEnginePlanArchiveChunkCodecTests(): Promise<{ passed: n
     assert(rejected, message);
   };
   const mapChunks = (chunks: EnginePlanArchiveChunk[]) =>
-    new Map(chunks.map(chunk => [chunk.descriptor.chunkId, chunk.bytes]));
+    new Map<string, Uint8Array>(chunks.map(chunk => [chunk.descriptor.chunkId, chunk.bytes] as const));
 
   await test('splits a single oversized plan across bounded chunks and reconstructs it byte-for-byte', async () => {
     const records = [
