@@ -2,6 +2,7 @@ import { STORAGE_KEYS, StorageService } from './storageService';
 import { createSecureId } from './secureId';
 import { IndexedDbSyncJournal } from './indexedDbSyncJournal';
 import type { ConflictResolutionIntent, PrepareConflictResolutionIntentInput, JournalOutboxEntry, LegacyOutboxState, RemoteInboxEvent, RemoteInboxEventInput, RemoteProjectionConflict } from './indexedDbSyncJournal';
+import { getSyncMutationPayloadLimit } from './syncPayloadLimits';
 
 export type SyncCollection =
   | 'profile'
@@ -67,7 +68,7 @@ interface OutboxState {
 const MAX_OUTBOX_BYTES = 1_500_000;
 const MAX_PENDING_MUTATIONS = 1000;
 const MAX_ACKNOWLEDGED_IDS = 5000;
-import { getSyncMutationPayloadLimit } from './syncPayloadLimits';
+const MAX_MUTATION_PAYLOAD_BYTES = 128_000;
 const MAX_BATCH_SIZE = 100;
 const MAX_BACKOFF_MS = 60 * 60 * 1000;
 const ALLOWED_COLLECTIONS = new Set<SyncCollection>([
@@ -112,7 +113,7 @@ function isValidMutation(value: unknown): value is OutboxMutation {
     && value.schemaVersion === 1
     && Number.isSafeInteger(value.clientUpdatedAtMs) && Number(value.clientUpdatedAtMs) >= 0
     && typeof value.deviceId === 'string' && value.deviceId.length > 0 && value.deviceId.length <= 128 && !/[\u0000-\u001f]/.test(value.deviceId)
-    && isRecord(value.payload) && payloadBytes <= getSyncMutationPayloadLimit(String(value.collection), value.payload)
+    && isRecord(value.payload) && payloadBytes <= MAX_MUTATION_PAYLOAD_BYTES
     && Number.isSafeInteger(value.queuedAtMs) && Number(value.queuedAtMs) >= 0
     && Number.isSafeInteger(value.attemptCount) && Number(value.attemptCount) >= 0
     && Number.isSafeInteger(value.nextAttemptAtMs) && Number(value.nextAttemptAtMs) >= 0
