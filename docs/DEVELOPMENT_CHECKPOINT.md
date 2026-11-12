@@ -702,3 +702,50 @@ Latest exact-head Quality Gate jobs were rerun:
 - #369: run 43274079781 / job 131377722661 — failure, steps/logs absent.
 - #370: run 43274209101 / job 131378172561 — failure, steps/logs absent.
 No test/build stage is inspectable. This is not evidence of code failure or success.
+
+# Final continuation update — 2026-11-12
+
+## Active branches / exact heads
+- Main: 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+- #363 docs: latest before this checkpoint b85797aa091c4f20ed3685cc23494ab55c8defff (fetch current PR head before continuing).
+- #365 Seerah: 15963abc5dc45268a1129e872d10e41fd7779d05.
+- #366 Offline/PWA: cade1b630bb429d6a4106de5bf12713df18f3491.
+- #367 interim sync budget: fd417faaa96a11920ef3a8e4f1038f567c36a731.
+- #368 Offline Audio: ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710.
+- #369 memorized ranges: 814bb8788449ebe3d07d46f00a596a1a7b398a5a.
+- #370 display settings: 32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c.
+- #371 archive chunk codec: 597344a5f95a261df5301da4de992850d4a3f5b5.
+All PRs OPEN/DRAFT. No merge.
+
+## New implementation
+- #371 pure archive chunk codec: canonical JSON, record fragments, stable IDs, SHA-256 at chunk/record/archive level, manifest binding to schema/revision/ordered record IDs/optional entitlement revision, strict full reconstruction. Default chunk ceiling 192,000 raw bytes. No migration or Firestore integration.
+- #365 source rights gate and citation panel, UID bookmark deletion fix, E2E empty-source state. No historical content ingested.
+- #368 Cache Storage adapter and bounded downloader, retry/pause/cancel/resume, cache eviction recovery. Service Worker/UI/playback still missing.
+- #369 touch-friendly multi-Surah checkboxes/search, complete Juz and custom ayah range; browser E2E added.
+- #370 collapsed accessible display settings, line spacing and page padding; browser E2E added.
+
+## Inventory
+- Main at SHA 8e98aa3 contains 159 src TS/TSX files and 78 test/spec files (59 src, 18 e2e, 1 scripts).
+- Key storage consumers and tests reviewed, but semantic scan of all 159 source files and all indirect fixtures is not complete. No Engine Plans migration until closure.
+- Confirmed main facts: localStorage plan archive; 100-plan cap in save and backup validation; sync exportFullBackup; legacy direct import/reset APIs; synchronous storage-scope copy/verify/delete; journal-first UI import/reset; Dashboard direct read; journal/outbox/inbox/conflict consumers; localStorage legacy outbox 1.5 MB cap.
+
+## Adaptive plan capacity + chunks
+- Main has no entitlement/billing/tier source. Do not invent tiers or quotas.
+- Contract in RFC separates per-plan bytes, account archive bytes, active plan count, local browser quota, and transport chunk size.
+- Downgrade preserves existing data; block new writes over limit; no truncation/deletion.
+- PR #371 is only the pure codec. Remote chunk uploads/manifests/Inbox materialization remain future stages after archive migration and security review.
+
+## Latest CI evidence
+- #365 run 43277331896 / job 131389114054: failure, steps/logs null.
+- #368 run 43275594933 / job 131383003139: failure, steps/logs null.
+- #369 run 43277201392 / job 131388649297: failure, steps/logs null.
+- #370 run 43277107786 / job 131388317808: failure, steps/logs null.
+- #371 run 43278092246 / job 131391785241: failure, steps/logs null.
+No source-level failure or successful tests/build/typecheck can be inferred. No local runner used.
+
+## Next work
+1. Complete semantic scan of all main source callers, all fixtures and E2E before Engine Plans migration.
+2. Review and typecheck/test #371; then connect chunk codec only after archive Stage B and approved transaction boundaries.
+3. Continue Seerah reader and source provenance at highest priority; no content until rights and historical claim reviews pass.
+4. Continue Offline Audio SW protocol, download UI, local-first playback, orphan cleanup and browser/device tests.
+5. Recheck all exact heads and Quality Gate logs before any merge. Keep Production/Firebase/Secrets/Sync flags untouched.
