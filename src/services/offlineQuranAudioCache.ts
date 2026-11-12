@@ -1,4 +1,4 @@
-import type { OfflineQuranAudioLibrary, OfflineQuranAudioLibrary as LibraryType, OfflineAudioFile } from './offlineQuranAudioLibrary';
+import type { OfflineQuranAudioLibrary as LibraryType, OfflineAudioFile } from './offlineQuranAudioLibrary';
 
 export type OfflineAudioCacheIdentity = Pick<OfflineAudioFile, 'reciterId' | 'globalAyahNumber' | 'cacheGenerationId'>;
 
