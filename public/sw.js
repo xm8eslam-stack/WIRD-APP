@@ -396,7 +396,10 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
       const cached = await cache.match(req);
-      if (cached) return cached;
+      if (cached) {
+        await trimAudioCache(cache);
+        return cached;
+      }
       try { return await fetch(req); }
       catch (error) {
         console.warn('[WIRD SW] Approved Quran CDN audio unavailable offline:', req.url, error);
