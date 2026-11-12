@@ -81,6 +81,20 @@ export function runSeerahBookManifestTests(): { passed: number; failed: number }
     }
   });
 
+  test('Published books cannot contain empty parts or chapters', () => {
+    const manifest = validManifest();
+    manifest.parts[0].chapters[0].scenes = [];
+    const result = validateSeerahBookManifest(manifest);
+    if (result.publishable || !result.blockers.includes('published_chapter_empty:chapter-one')) {
+      throw new Error('A published empty chapter was accepted');
+    }
+    manifest.parts[0].chapters = [];
+    const emptyPart = validateSeerahBookManifest(manifest);
+    if (!emptyPart.blockers.includes('published_part_empty:part-one')) {
+      throw new Error('A published empty part was accepted');
+    }
+  });
+
   test('Draft manifests are valid drafts but cannot be published', () => {
     const manifest = validManifest();
     manifest.status = 'draft';
