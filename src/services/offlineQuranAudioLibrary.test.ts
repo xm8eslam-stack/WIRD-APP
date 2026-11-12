@@ -144,6 +144,32 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     } finally { library.close(); }
   });
 
+  await test('a delayed completed job cannot overwrite a newer cache generation', async () => {
+    const { library } = createLibrary();
+    try {
+      const first = await library.createJob(oneAyah, 100);
+      await library.recordVerifiedFile(first.id, verifiedInput());
+      const second = await library.createJob(oneAyah, 300);
+      await library.recordVerifiedFile(second.id, {
+        ...verifiedInput(),
+        cacheGenerationId: 'generation-2',
+        downloadedAtMs: 400
+      });
+
+      let staleWriteRejected = false;
+      try {
+        await library.recordVerifiedFile(first.id, {
+          ...verifiedInput(),
+          cacheGenerationId: 'generation-1',
+          downloadedAtMs: 500
+        });
+      } catch { staleWriteRejected = true; }
+      const current = (await library.listFiles())[0];
+      assert(staleWriteRejected && current.cacheGenerationId === 'generation-2' && current.downloadedAtMs === 400,
+        'A delayed retry from a terminal job must not replace the newer verified cache generation.');
+    } finally { library.close(); }
+  });
+
   await test('refuses to mark an incomplete job completed', async () => {
     const { library } = createLibrary();
     try {
