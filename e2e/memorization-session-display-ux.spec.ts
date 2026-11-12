@@ -100,6 +100,8 @@ test.describe('WIRD memorization session display controls', () => {
     await expect(reopenedToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(controls.getByRole('button', { name: 'كل آيات الجلسة' })).toHaveAttribute('aria-pressed', 'true');
     await expect(controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'ملء العرض' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'تباعد سطور الآيات' }).getByRole('button', { name: 'واسع' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'هوامش مساحة القراءة' }).getByRole('button', { name: 'واسعة' })).toHaveAttribute('aria-pressed', 'true');
 
     const pageList = page.getByRole('region', { name: 'كل آيات الجلسة' });
     const jump = page.getByRole('combobox', { name: 'الانتقال المباشر إلى آية في الجلسة' });
@@ -112,6 +114,8 @@ test.describe('WIRD memorization session display controls', () => {
     await controls.getByRole('button', { name: 'إعادة ضبط الإعدادات' }).click();
     await expect(session).toHaveAttribute('data-session-page-width', 'comfortable');
     await expect(controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'مريحة' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'تباعد سطور الآيات' }).getByRole('button', { name: 'متوازن' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(controls.getByRole('group', { name: 'هوامش مساحة القراءة' }).getByRole('button', { name: 'متوسطة' })).toHaveAttribute('aria-pressed', 'true');
 
     await page.setViewportSize({ width: 390, height: 844 });
     await controls.getByRole('group', { name: 'عرض مساحة صفحة الحفظ' }).getByRole('button', { name: 'ملء العرض' }).click();
