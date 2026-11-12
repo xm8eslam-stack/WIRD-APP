@@ -1,8 +1,7 @@
 import { buildQuranAudioDownloadPlan } from './offlineQuranAudioDownload';
 import {
   OfflineQuranAudioLibrary,
-  type OfflineAudioJob,
-  type OfflineAudioJobItem
+  type OfflineAudioJob
 } from './offlineQuranAudioLibrary';
 import {
   OfflineQuranAudioCacheAdapter,
