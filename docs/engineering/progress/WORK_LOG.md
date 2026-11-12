@@ -534,3 +534,14 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Read-only production probing found metadata-backed serverless endpoints returned `FUNCTION_INVOCATION_FAILED`. Native Node loading isolated extensionless TypeScript imports in the Quran metadata dependency. Corrected metadata/API imports to explicit `.ts` paths and made the metadata type-only import explicit. Added `smoke:api-imports` to verify native Node imports and invalid-input responses, and wired it into CI.
 - Local after hotfix edits: `npm test` (584 passed), `npm run lint`, `npm run build`, and `npm run smoke:api-imports` passed. The API smoke exercises invalid inputs only and does not call external providers. The fix is not deployed yet; create a hotfix PR from current main, run exact-head CI, verify Vercel preview API responses, then merge only if green.
 - No production credentials/settings or cloud sync configuration changed. Hadith live upstream still requires server-side Quran Foundation credentials and remains untested.
+
+
+## 2026-11-12 — Smart memorization plan payload budget correction
+
+- The user-facing 450 KB check, IndexedDB journal allowance, and revisioned Firestore writer had drifted apart. In particular, the remote writer still enforced the generic 128 KB cap, so some plan payloads accepted by the journal could fail only when uploaded.
+- Added one shared payload-limit contract: ordinary mutations remain 128 KB; smart engine-plan snapshots and grouped session transactions that include them use 800 KB end-to-end across journal, legacy outbox validation, and remote writer.
+- The 800 KB cap is a bounded increase (about 1.78×), not the requested 3–4×. A 1.35–1.8 MB single-document payload cannot be safely sent through the current one-document Firestore projection because standard Firestore documents are limited to 1 MiB. Larger plans require a versioned multi-document/chunked projection with atomic reconstruction and recovery, not a larger scalar limit.
+- Increased the per-conflict evidence budget to 1.7 MB to cover the larger local plan snapshot plus its pending mutation evidence, while reducing the retained conflict-record cap from 100 to 29 to keep the theoretical aggregate archive budget near 50 MB. Unresolved conflicts remain protected; capacity exhaustion blocks safely without deleting evidence.
+- Added regression coverage for 700 KB plan snapshots through the IndexedDB journal and outbox facade, the shared budget selector, grouped session transaction handling, and rejection by the remote writer above the 800 KB cap.
+- No Firestore Rules, production flags, credentials, Firebase data, or user data changed. This is code-only and remains unmerged pending exact-head CI and independent review.
+- Follow-up: design and test chunked engine-plan storage if real plans regularly exceed 800 KB; preserve whole-plan local reconstruction and versioned atomic completion before changing remote schema.
