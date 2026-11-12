@@ -567,3 +567,13 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 - #370 run 43274209101 / job 131378172561: completed failure with steps=null and logs_url=null.
 - Re-run attempts did not expose any test/build stage or source-level failure. Do not call these passes or code failures.
 - All PRs #363/#365/#366/#367/#368/#369/#370 remain OPEN/DRAFT. Main base SHA remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+
+## Latest code and CI checkpoint — 2026-11-12
+- #371 branch feat/engine-plan-archive-chunk-codec-20261112 head 597344a5f95a261df5301da4de992850d4a3f5b5 adds a pure lossless chunk codec with stable canonical records and SHA-256 verification. It is not connected to archive migration or Firestore.
+- #365 head 15963abc5dc45268a1129e872d10e41fd7779d05 includes Seerah source-rights publication gate, citation panel, bookmark UID-scope fix and E2E empty-source state.
+- #368 head ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710 includes Cache Storage adapter, bounded downloader, pause/cancel/resume and cache-eviction recovery; UI/SW/playback/device tests remain.
+- #369 head 814bb8788449ebe3d07d46f00a596a1a7b398a5a includes multi-Surah/Juz/custom ayah selection and browser E2E.
+- #370 head 32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c includes collapsible display settings, line spacing/page padding and browser E2E.
+- Main tree inventory: 159 src TS/TSX files, 78 test/spec files (59 src, 18 e2e, 1 script). Relevant storage tests reviewed, but all 159 source files and every indirect fixture have not yet been semantically audited. Do not begin Engine Plans migration.
+- Quality Gate exact-head runs #365 43277331896, #368 43275594933, #369 43277201392, #370 43277107786, #371 43278092246 all failed with steps/logs null. No test/build pass or source failure can be inferred.
+- Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b. No PR merged/deployed, no Production/Firebase Rules/Secrets/Sync flag changes.
