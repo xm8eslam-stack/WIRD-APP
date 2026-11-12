@@ -1,3 +1,4 @@
+import { listOfflinePublicAssets } from '../../scripts/offlinePublicAssets';
 import fs from 'fs';
 import path from 'path';
 
@@ -168,6 +169,18 @@ export function runPwaIntegrationTests(): { passed: number; failed: number } {
 
     assert(mainContent.includes("navigator.serviceWorker.register('/sw.js')"), 'main.tsx must register /sw.js');
     assert(mainContent.includes("wird-pwa-update-available"), 'main.tsx must dispatch update event on new worker');
+  });
+
+
+  test('explicit offline package includes supported public assets but excludes the service worker script', () => {
+    const assets = listOfflinePublicAssets(path.resolve('./public'));
+    assert(assets.includes('/manifest.json'), 'Public web manifest must be included in the explicit offline package');
+    assert(assets.includes('/icon-192.png'), 'Public PWA icons must be included in the explicit offline package');
+    assert(assets.includes('/assets/aistudio/IMG_0140_900ee5d2.jpeg'), 'Nested public images must be included in the explicit offline package');
+    assert(!assets.includes('/sw.js'), 'The service worker script must be updated through its own lifecycle, not the content package');
+    const viteConfig = fs.readFileSync(path.resolve('./vite.config.ts'), 'utf8');
+    assert(viteConfig.includes('listOfflinePublicAssets'), 'Vite must merge public static assets into the offline package manifest');
+    assert(viteConfig.includes('allAssets: [...allAssets].sort()'), 'The generated offline manifest must contain deduplicated public and bundled assets');
   });
 
   return { passed, failed };
