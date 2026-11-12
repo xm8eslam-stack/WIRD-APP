@@ -302,3 +302,18 @@ The snapshot must come from a server-verified source (e.g. Firebase custom claim
 Before enabling plan-based limits, the owner must approve the actual plan catalog and the meaning/value of each entitlement field. No plan names, prices, quotas, or tier defaults may be invented by engineering. The archive repository, local quota handling, chunk protocol, and tests can be implemented independently while that business decision is pending.
 
 Required tests: server-verified vs client-forged entitlement, expired/missing/unknown claims, upgrade/downgrade with over-limit existing records, plan-size vs archive-size limits, chunk-size independence, offline cached claims, quota failure, and account switching. Firestore Rules or Production entitlement wiring requires separate security review and explicit owner approval.
+
+
+## 16. Pure archive chunk codec implementation — PR #371
+
+PR #371 adds a pure codec only; it does not perform archive migration or remote writes.
+
+- API: buildEnginePlanArchiveChunks(records, archiveRevisionId, schemaVersion, maxChunkBytes, entitlementRevision) and materializeEnginePlanArchiveChunks(manifest, chunkBytesById).
+- Stable canonical JSON sorts object keys and rejects unsupported values, accessors, sparse arrays, non-finite numbers, circular references and unstable/missing record IDs.
+- Large logical records are split into immutable fragments. Each descriptor binds archive revision, record ID, ordinal, fragment index/count, byte lengths, chunk SHA-256 and whole-record SHA-256.
+- Manifest binds protocol/schema version, archive revision, optional server-authoritative entitlement revision, ordered record IDs, total bytes, transport chunk ceiling and whole-archive SHA-256.
+- Materialization verifies every fragment, record, ordering, size, schema/revision/entitlement binding and full archive fingerprint before returning any records.
+- Default raw chunk ceiling is 192,000 bytes; it is a transport bound, not a per-plan/account quota. A negotiated smaller limit may be passed by the caller.
+- Tests are registered in runAllTests and cover large record round-trip, deterministic fingerprints, ordering, empty archive, missing/extra/duplicate/corrupt chunks, revision/schema/entitlement tampering and invalid JSON.
+- This codec is not yet connected to IndexedDB archive revisions, Firestore chunk documents, manifest publication, capability negotiation or remote inbox materialization. Those remain separate stages after the full consumer/fixture audit and owner-approved entitlement source.
+- Exact PR #371 head 597344a5f95a261df5301da4de992850d4a3f5b5; Quality Gate run 43278092246 / job 131391785241 failed before exposing steps/logs. No local tests/typecheck/build run.
