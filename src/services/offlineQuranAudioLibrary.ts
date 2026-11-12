@@ -122,6 +122,18 @@ function validateJob(job: OfflineAudioJob): void {
   }
 }
 
+function validateJobItem(job: OfflineAudioJob, item: OfflineAudioJobItem): void {
+  const expected = buildQuranAudioDownloadPlan(job).items.find(candidate =>
+    candidate.globalAyahNumber === item.globalAyahNumber
+  );
+  if (!item || item.jobId !== job.id || item.fileKey !== fileKey(job.reciterId, item.globalAyahNumber) ||
+      item.key !== jobItemKey(job.id, item.fileKey) || item.reciterId !== job.reciterId ||
+      !expected || !['queued', 'downloading', 'verified', 'failed'].includes(item.status) ||
+      !Number.isSafeInteger(item.updatedAtMs) || item.updatedAtMs < job.createdAtMs) {
+    throw new Error('علاقة ملف التلاوة بمهمة التنزيل غير صالحة.');
+  }
+}
+
 function normalizeFile(input: OfflineAudioFileInput): OfflineAudioFile {
   if (!input || typeof input !== 'object' || input.verified !== true) {
     throw new Error('لا يمكن تسجيل ملف تلاوة قبل اكتمال تنزيله والتحقق منه.');
@@ -300,6 +312,7 @@ export class OfflineQuranAudioLibrary {
     const values = await requestResult(transaction.objectStore(JOB_ITEMS).index('jobId').getAll(jobId)) as OfflineAudioJobItem[];
     await transactionResult(transaction);
     validateJob(job);
+    values.forEach(item => validateJobItem(job, item));
     return values.sort((a, b) => a.globalAyahNumber - b.globalAyahNumber);
   }
 
@@ -358,6 +371,7 @@ export class OfflineQuranAudioLibrary {
     const key = fileKey(job.reciterId, globalAyahNumber);
     const item = await requestResult(items.get(jobItemKey(jobId, key))) as OfflineAudioJobItem | undefined;
     if (!item) { transaction.abort(); throw new Error('موضع الآية خارج مهمة التنزيل.'); }
+    validateJobItem(job, item);
     if (item.status === 'verified') {
       await transactionResult(transaction);
       return;
@@ -390,6 +404,7 @@ export class OfflineQuranAudioLibrary {
     const relationKey = jobItemKey(jobId, normalized.key);
     const relation = await requestResult(items.get(relationKey)) as OfflineAudioJobItem | undefined;
     if (!relation) { transaction.abort(); throw new Error('علاقة ملف التلاوة بالمهمة غير موجودة.'); }
+    validateJobItem(job, relation);
     if (isTerminal(job.status) && relation.status !== 'verified') {
       transaction.abort();
       throw new Error('لا يمكن إضافة ملف جديد إلى مهمة تنزيل منتهية.');
