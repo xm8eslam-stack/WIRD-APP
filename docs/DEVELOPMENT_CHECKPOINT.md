@@ -1,3 +1,57 @@
+# CURRENT DEVELOPMENT CHECKPOINT — 2026-11-12 (offline-first + app readiness)
+
+> This checkpoint supersedes older statements below wherever they conflict. Historical evidence remains preserved. Source baseline reviewed: main 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b; work branch: feat/offline-first-app-readiness-20261112.
+
+## Product-level direction
+
+WIRD is now being developed with offline-first completeness and future app packaging as a first-class release track, in parallel with Quran, worship, Seerah, UX, and sync work. The intended future application must remain useful without a connection after a deliberate initial setup. Offline is not a promise that every third-party API or account operation works without a network.
+
+## Existing offline foundation found on main
+
+- PWA manifest, service-worker registration, first-visit shell caching, SPA navigation fallback, and generated Vite asset manifest already exist.
+- Explicit resumable offline-package preparation downloads same-origin build assets (including lazy-loaded chunks) to a separate content cache; status reports cached/missing totals.
+- Local Quran/worship data and local-first user activity already provide an offline-capable foundation.
+- A browser-storage status/persistence request service exists; persistent storage is requested only after explicit user action.
+- Quran/ruqyah audio currently has bounded opportunistic pre-cache, not a full offline audio library.
+- Mushaf page cache is bounded; tafsir and validated hadith content are cached only after viewing and within their retention limits.
+- External API routes, Firebase/Auth, uncached tafsir/hadith, and optional external ruqyah index remain network-dependent.
+- EveryAyah bulk/offline audio caching is prohibited by the current rights review; only the reviewed Al Quran Cloud CDN path may be considered for explicit user-owned downloads after rechecking provider terms.
+
+## Current offline status — do not overclaim
+
+The repository has a meaningful offline foundation, but full offline readiness is not yet certified. Existing service-worker and preparation-service tests establish implementation contracts, not real-browser proof of offline use after restart, storage eviction resilience, every lazy route, all media, or offline-to-online reconciliation. Future app packaging is also not yet implemented or selected.
+
+## Parallel work tracks
+
+1. Offline audit and completeness: inspect every route, lazy chunk, image/font/data asset, navigation path, worker message, cache namespace, and storage boundary; classify bundled / explicitly downloaded / opportunistically cached / network-only.
+2. Offline data reliability: move new durable user-owned content toward a transactional IndexedDB repository where appropriate; preserve existing archives and migrations; do not casually replace working local storage or sync journals.
+3. Offline reading and worship: Quran text and essential daily worship content must be available locally; tafsir/hadith/API data remains source-validated and only previously cached records can be shown offline; show clear freshness/source state.
+4. Audio: keep opportunistic cache separate from user-pinned downloads; only approved provider/reciter/bitrate; quota-aware, resumable, cancelable, verifiable, deletable, and never synced/backed up to cloud.
+5. Offline UX: add a single understandable offline center with package readiness, storage estimate, download/resume, missing content, and explicit network-only labels; no misleading green ready state.
+6. App readiness: preserve responsive PWA and installability; add platform capability checks and a future native wrapper evaluation (Capacitor first candidate, not yet adopted) only after offline web gates. Avoid premature native plugins or platform-specific rewrites.
+7. Sync and recovery: offline writes remain local; online replay must be idempotent, UID-scoped, conflict-safe, and must never erase local unsynced work. Production sync flags, rules, and cutover remain owner-controlled.
+8. Release verification: real-browser desktop/mobile offline test matrix, cold start/restart, airplane mode, lazy route traversal, media, account switching, quota/eviction, app update, and offline-to-online recovery.
+
+## Release gates
+
+- A fresh install can open the app shell; an explicit full package can finish, resume, and accurately report readiness.
+- All user-facing routes needed for core Quran and daily worship are reachable offline after package completion.
+- No API endpoint, credential, Firebase/Auth operation, or network-only feature is represented as offline-capable.
+- Quran text stays bundled and verified; no generated substitute for Quran, hadith, tafsir, or fiqh.
+- Local user data survives offline reload/restart and account/guest scope changes without leakage.
+- Offline mutations reconcile online without loss or duplicate counting; do not enable production sync on the basis of browser tests alone.
+- Storage limits, persistent-storage denial, quota exhaustion, partial downloads, cancellation, and cache eviction have explicit tested behavior.
+- PWA installation and platform behavior are verified on target browsers; native packaging decision is evidence-based.
+- Exact-head GitHub quality gate and Vercel deployment are separate; live offline smoke is a third, explicit gate.
+
+## Active work branch
+
+- feat/offline-first-app-readiness-20261112 is a documentation/architecture checkpoint branch from the exact main baseline above.
+- No production deployment, Firebase rules/data, secrets, environment variables, sync flags, or user data were changed.
+- No merge is authorized until code work, independent review, and exact-head quality gates are complete.
+
+---
+
 # CURRENT DEVELOPMENT CHECKPOINT — 2026-11-11
 
 > This is the latest verified checkpoint. Older checkpoints below are historical and must not override this section.
