@@ -694,3 +694,11 @@ All PRs remain OPEN/DRAFT; none merged.
 - #370 run 43274209101 / job 131378172561: failure, steps=null, logs_url=null.
 - These are not diagnosed code failures and are not passes. No local build/test/typecheck run in this session.
 - Vercel Free deployment quota remains a separate blocker; no production deploy/live verification claimed.
+
+## Rerun result — 2026-11-12
+Latest exact-head Quality Gate jobs were rerun:
+- #365: run 43275942614 / job 131384235586 — failure, steps/logs absent.
+- #368: run 43275594933 / job 131383003139 — failure, steps/logs absent.
+- #369: run 43274079781 / job 131377722661 — failure, steps/logs absent.
+- #370: run 43274209101 / job 131378172561 — failure, steps/logs absent.
+No test/build stage is inspectable. This is not evidence of code failure or success.
