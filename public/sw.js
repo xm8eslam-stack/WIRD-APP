@@ -397,9 +397,10 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(AUDIO_CACHE_NAME);
       const cached = await cache.match(req);
       if (cached) {
-        await cache.delete(req);
-        await cache.put(req, cached.clone());
-        await trimAudioCache(cache);
+        // Never delete a usable offline response before a replacement write succeeds.
+        try { await trimAudioCache(cache); } catch (error) {
+          console.warn('[WIRD SW] Could not trim the audio cache after a hit:', error);
+        }
         return cached;
       }
       try { return await fetch(req); }
@@ -428,10 +429,10 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(MUSHAF_PAGE_CACHE_NAME);
       const cached = await cache.match(req);
       if (cached) {
-        // Refresh insertion order so the bounded cache behaves as LRU.
-        await cache.delete(req);
-        await cache.put(req, cached.clone());
-        await trimMushafPageCache(cache);
+        // Serve the verified response first; cache trimming must not make this request fail.
+        try { await trimMushafPageCache(cache); } catch (error) {
+          console.warn('[WIRD SW] Could not trim the Mushaf page cache after a hit:', error);
+        }
         return cached;
       }
       try {
