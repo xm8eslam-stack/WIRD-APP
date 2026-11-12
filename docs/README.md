@@ -27,6 +27,9 @@
 | `docs/DEVELOPMENT_*.md` | نقطة التوقف والخطة الموحدة |
 | `docs/SEERAH_LEARNING_PLAN_AR.md` | الخطة التخصصية لمسار السيرة والصحابة |
 
+## وثائق المزامنة
+- [sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md](./sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md) — تصميم أرشيف الخطط الذكية في IndexedDB، الترحيل، الذرية، الاسترداد والمزامنة المقسمة.
+
 ## وثائق العمل دون اتصال
 - [offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md](./offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md) — خطة تنزيل الصوت.
 - [offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md](./offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md) — العقد الموحد المقترح للتخزين والاسترداد.
