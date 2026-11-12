@@ -577,3 +577,8 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 - Main tree inventory: 159 src TS/TSX files, 78 test/spec files (59 src, 18 e2e, 1 script). Relevant storage tests reviewed, but all 159 source files and every indirect fixture have not yet been semantically audited. Do not begin Engine Plans migration.
 - Quality Gate exact-head runs #365 43277331896, #368 43275594933, #369 43277201392, #370 43277107786, #371 43278092246 all failed with steps/logs null. No test/build pass or source failure can be inferred.
 - Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b. No PR merged/deployed, no Production/Firebase Rules/Secrets/Sync flag changes.
+
+## PR #371 latest
+- Exact head 260df95c620cd534337e39d6707b044eb404139a. Pure chunk codec now rejects sparse ordered IDs, hidden array properties and tampered total bytes, and binds the manifest fingerprint to entitlement revision.
+- Quality Gate run 43278752980 / job 131394096177 failed with no steps/logs; no test/build pass or code-level failure diagnosis.
+- No migration or Firestore integration.
