@@ -423,3 +423,14 @@ On resumption:
 - SeerahBook states claim provenance, but primary source inspection is still required; dramatized/reconstructed wording is never a direct quotation.
 - WIRD content registry must store claim-level source, edition/page or stable URL, report status, date precision, reviewer and content version. Offline publication requires separate rights clearance.
 - Updated the specialist Seerah plan and unified roadmap. No external records ingested.
+
+
+## Plan archive architecture checkpoint — 2026-11-12
+
+- Verified current main still stores the full Engine Plans JSON in localStorage and rejects more than 100 records.
+- PR #367's 800,000-byte shared mutation budget is interim only; it does not solve localStorage quota, the count cap, or large archive persistence.
+- The Outbox has a 1.5 MB aggregate cap; Firestore writer duplicates the payload into state and immutable event documents.
+- The remote projector expects the old `{ records }` shape. Manifest payloads require receiver-side chunk materialization and old-client capability negotiation.
+- Added the full local-first / chunked-Firestore architecture and release gates to `docs/sync/ARCHITECTURE.md`.
+- Next safe implementation: inventory all Engine Plans read/write call sites and tests, then implement a lossless IndexedDB archive/migration/hydration layer. Do not remove the 100-plan guard or raise more byte limits before that.
+- Future audio Cache Storage keys must include immutable `cacheGenerationId` so stale orphan cleanup cannot delete a newer download.
