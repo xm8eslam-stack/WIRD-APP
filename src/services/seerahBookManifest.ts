@@ -103,6 +103,9 @@ export function validateSeerahBookManifest(value: unknown): SeerahManifestValida
       blockers.push('part_chapters_invalid:' + part.id);
       continue;
     }
+    if (manifest.status === 'published' && part.chapters.length === 0) {
+      blockers.push('published_part_empty:' + part.id);
+    }
 
     const chapterOrders = new Set<number>();
     for (const chapter of part.chapters) {
@@ -118,6 +121,9 @@ export function validateSeerahBookManifest(value: unknown): SeerahManifestValida
       if (!Array.isArray(chapter.scenes)) {
         blockers.push('chapter_scenes_invalid:' + chapter.id);
         continue;
+      }
+      if (manifest.status === 'published' && chapter.scenes.length === 0) {
+        blockers.push('published_chapter_empty:' + chapter.id);
       }
 
       const sceneOrders = new Set<number>();
