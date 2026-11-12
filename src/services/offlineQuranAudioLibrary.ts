@@ -314,6 +314,9 @@ export class OfflineQuranAudioLibrary {
     await transactionResult(transaction);
     validateJob(job);
     values.forEach(item => validateJobItem(job, item));
+    if (values.filter(item => item.status === 'verified').length !== job.completedAyahs) {
+      throw new Error('تقدم مهمة التنزيل لا يطابق علاقات الملفات المحفوظة.');
+    }
     return values.sort((a, b) => a.globalAyahNumber - b.globalAyahNumber);
   }
 
@@ -442,7 +445,8 @@ export class OfflineQuranAudioLibrary {
       affectedJob.completedAyahs = allItems.filter(item => item.status === 'verified').length;
       affectedJob.status = affectedJob.completedAyahs === affectedJob.totalAyahs
         ? 'completed'
-        : affectedJob.completedAyahs > 0 ? 'partial' : 'downloading';
+        : allItems.some(item => item.status === 'downloading') ? 'downloading'
+          : affectedJob.completedAyahs > 0 ? 'partial' : 'downloading';
       affectedJob.updatedAtMs = Math.max(affectedJob.updatedAtMs, relation.updatedAtMs);
       jobs.put(affectedJob);
     }
@@ -516,16 +520,19 @@ export class OfflineQuranAudioLibrary {
       present: await hasCachedFile(file)
     })));
     const missing = checks.filter(item => !item.present).map(item => item.file);
-    if (missing.length === 0) return [];
+    if (checks.length === 0) return [];
+    const missingKeys = new Set(missing.map(file => file.key));
     const db = await this.openDatabase();
     const transaction = db.transaction([FILES], 'readwrite');
     const store = transaction.objectStore(FILES);
-    for (const snapshot of missing) {
+    for (const snapshot of checks.map(item => item.file)) {
       const current = await requestResult(store.get(snapshot.key));
       if (!current) continue;
       const file = validateStoredFile(current);
-      if (file.downloadedAtMs === snapshot.downloadedAtMs && file.available) {
-        file.available = false;
+      if (file.downloadedAtMs !== snapshot.downloadedAtMs) continue;
+      const shouldBeAvailable = !missingKeys.has(file.key);
+      if (file.available !== shouldBeAvailable) {
+        file.available = shouldBeAvailable;
         store.put(file);
       }
     }
