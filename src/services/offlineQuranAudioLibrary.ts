@@ -545,7 +545,10 @@ export class OfflineQuranAudioLibrary {
    * Finalize metadata removal only after the caller has successfully deleted the Cache Storage object.
    * A crash before this call leaves a durable deletionPending record that can be retried.
    */
-  async finalizeOrphanDeletion(reciterId: string, globalAyahNumber: number): Promise<boolean> {
+  async finalizeOrphanDeletion(reciterId: string, globalAyahNumber: number, expectedCacheGenerationId: string): Promise<boolean> {
+    if (typeof expectedCacheGenerationId !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(expectedCacheGenerationId)) {
+      throw new Error('معرّف نسخة الملف المطلوب حذفها غير صالح.');
+    }
     const key = fileKey(reciterId, globalAyahNumber);
     const db = await this.openDatabase();
     const transaction = db.transaction([FILES, JOB_ITEMS], 'readwrite');
@@ -554,7 +557,11 @@ export class OfflineQuranAudioLibrary {
     const stored = await requestResult(files.get(key));
     if (!stored) { await transactionResult(transaction); return true; }
     const file = validateStoredFile(stored);
-    if (!file.deletionPending) { await transactionResult(transaction); return false; }
+    // A delayed Cache Storage cleanup must never remove metadata for a newer download generation.
+    if (file.cacheGenerationId !== expectedCacheGenerationId || !file.deletionPending) {
+      await transactionResult(transaction);
+      return false;
+    }
     const references = await requestResult(items.index('fileKey').getAll(key)) as OfflineAudioJobItem[];
     if (references.length > 0 || file.pinned) {
       file.deletionPending = false;
