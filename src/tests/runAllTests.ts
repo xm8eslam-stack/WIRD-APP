@@ -57,7 +57,7 @@ import { runRuqyahProxyTests } from './ruqyahProxy.test';
 import { runRuqyahAudioServiceTests } from './ruqyahAudioService.test';
 import { runRuqyahProgressServiceTests } from '../services/ruqyahProgressService.test';
 import { runRuqyahApiServiceTests } from '../services/ruqyahApiService.test';
-import { runRuqyahViewAudioLockTests } from './ruqyahViewAudioLock.test';
+import { runRuqyahViewAudioLockTests } from './ruqyahViewAudioLock.test';\nimport { runSeerahReadingProgressTests } from '../services/seerahReadingProgress.test';
 
 export interface SuiteResult {
   passed: number;
@@ -162,7 +162,7 @@ async function main() {
     { name: 'Ruqyah API Proxy Security, Validation & Key Isolation', runner: runRuqyahProxyTests },
     { name: 'Ruqyah Canonical Quran Text & Complete Ayah Resolution', runner: runRuqyahContentServiceTests },
     { name: 'Ruqyah Shariah Data & Audio Integrity', runner: runRuqyahIntegrityTests },
-    { name: 'Ruqyah Audio Playback Safety & Source Allowlist', runner: runRuqyahViewAudioLockTests },
+    { name: 'Ruqyah Audio Playback Safety & Source Allowlist', runner: runRuqyahViewAudioLockTests },\n    { name: 'Seerah Reader Device-local Reading Position', runner: runSeerahReadingProgressTests },
   ];
 
   const { passed, failed } = await executeSuiteAggregation(suites);
