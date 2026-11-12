@@ -1,4 +1,5 @@
 import { runAllPlanningEngineTests } from '../services/planningEngine.test';
+import { runMemorizedRangeSelectionTests } from '../services/memorizedRangeSelection.test';
 import { runAllRetentionTests } from '../services/retentionService.test';
 import { runAllAdvisorTests } from '../services/deterministicAdvisor.test';
 import { runStreakTests } from './streakCalculations.test';
@@ -103,6 +104,7 @@ async function main() {
 
   const suites = [
     { name: 'Planning Engine Math & Task Distribution', runner: () => runAllPlanningEngineTests() },
+    { name: 'Previously Memorized Multi-Surah, Juz & Ayah Ranges', runner: () => runMemorizedRangeSelectionTests() },
     { name: 'Retention & Spaced Revision Engine', runner: () => runAllRetentionTests() },
     { name: 'Deterministic Advisor Engine (Offline AI Fallback)', runner: () => runAllAdvisorTests() },
     { name: 'Truthful Daily Streak Engine (Phase 3)', runner: runStreakTests },
