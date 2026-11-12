@@ -1,5 +1,16 @@
 # مسار منتجي جديد — Offline-first والتطبيق المستقبلي
 
+## حالة التنفيذ الحية — 2026-11-12 13:40 +02:00
+
+المصدر الحي: `docs/CONTINUE_HERE.md`. main هو `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. PRs #363/#365/#366/#367 ما زالت Draft؛ كل Quality Gate على الرؤوس الحالية انتهى دون تسجيل steps/logs، فلا يوجد pass ولا فشل اختبار برمجي مُشخّص.
+
+- **Storage/Sync:** #367 يثبت حد 800 KB لمستند enginePlans فقط. المطلوب التالي هو versioned chunks + manifest integrity + atomic publication بعد تدقيق كامل لسلسلة المزامنة. لا توجد حصة اشتراك/entitlement موثقة؛ لا تخترع tiers أو حصص.
+- **Offline:** #366 يضيف تضمين public assets وfallback عند 5xx وسياسة LRU تكيفية لكاش الوسائط. لا يثبت ذلك Offline readiness؛ يلزم matrix route/data/action واختبار restart/airplane-mode.
+- **Seerah:** #365 قارئ shell وعقد claims/sources/reviews وتقدم قراءة محلي. لا يوجد محتوى تاريخي حقيقي للنشر. التالي bookmarks وanchors ونسخة المحتوى بعد فحص القارئ، ثم محتوى بمراجع ومراجعات بشرية.
+- **تنسيق PRs:** ملفات docs المشتركة تظل في #363 فقط؛ لا تجعل #367 يعدّل `docs/sync/ARCHITECTURE.md` أو `docs/engineering/progress/WORK_LOG.md` بالتوازي.
+- **بوابة الدمج:** لا دمج حتى Quality Gate exact-head قابل للفحص وناجح ومراجعة كاملة؛ Preview لا يعوض CI ولا يثبت Production.
+
+
 يُنفذ بالتوازي مع القرآن والعبادات والسيرة والـ UX والمزامنة. الأولوية ليست إعادة كتابة البنية بل إكمال ما هو موجود وإثباته.
 
 1. OF0: جرد جميع المسارات والـ lazy chunks والملفات العامة والخطوط والبيانات والأفعال ومصادرها وحقوقها وسياسة cache.
