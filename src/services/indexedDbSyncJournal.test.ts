@@ -72,7 +72,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         payload: largePlanPayload,
         nowMs: 1501
       });
-      assert(queued.status === 'queued', 'A 140 KB engine-plan snapshot must fit the dedicated plan budget');
+      assert(queued.status === 'queued', 'A 700 KB engine-plan snapshot must fit the dedicated plan budget');
 
       const grouped = await journal.enqueue({
         mutationId: 'grouped-engine-plan-large-payload',
@@ -92,7 +92,7 @@ export async function runIndexedDbSyncJournalTests(): Promise<{ passed: number; 
         nowMs: 1502
       });
       assert(grouped.status === 'queued',
-        'A grouped syncMeta transaction containing an engine-plan snapshot must use the plan-specific budget');
+        'A grouped syncMeta transaction containing a 700 KB engine-plan snapshot must use the plan-specific budget');
 
       let ordinaryRejected = false;
       try {
