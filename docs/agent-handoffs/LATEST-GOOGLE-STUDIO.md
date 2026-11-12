@@ -14,6 +14,8 @@ Make WIRD fully useful offline after an explicit first-time setup and prepare it
 - Storage usage/quota and opt-in persistence request.
 - Opportunistic bounded audio caching; bounded Mushaf page cache; previously viewed tafsir and validated hadith cache.
 
+PR #366 is the active offline-first branch/PR. Its public-asset manifest improvement is not yet merged or CI-certified.
+
 ## What is not certified
 
 No claim that every route, dynamic asset, API, Firebase/Auth action, fresh tafsir/hadith, full Quran audio, or external Ruqyah index works offline. Offline package and worker tests are not a substitute for real desktop/mobile airplane-mode tests after restart. Existing online-to-offline and offline-to-online sync behavior must be verified separately.
