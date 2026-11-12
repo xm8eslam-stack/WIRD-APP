@@ -1178,3 +1178,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Latest head 260df95c620cd534337e39d6707b044eb404139a.
 - Added strict dense ordered-record-ID validation, array hidden-property rejection, tampered totalBytes test, and entitlement-revision binding.
 - Exact-head Quality Gate run 43278752980 / job 131394096177: failure with steps=null/logs_url=null. No test/build/typecheck evidence can be read; no local tests run.
+
+## Seerah API rights audit — 2026-11-12
+- Dorar API requires manual access approval and per-encyclopedia permission; terms require visible attribution/reference links, prohibit bulk scraping/full-database storage and downstream redistribution, limit response caching to 24–48 hours, keep tokens server-side, and state 60 requests/minute. Hadith text must remain paired with the returned grading where applicable.
+- Sunnah.com API requires an API key requested through its GitHub project. Its policy prohibits scraping and mass reproduction of full collections; individual hadith selections may be used for teaching/presentation. Sunnah.com notes some numbering and grading work remains in progress, so collection membership alone is not a claim that every hadith is authentic.
+- ACO says it selects out-of-copyright books and believes displayed materials are public domain, and the Tahdhib Ibn Hisham record gives edition details (Cairo, Dar Saad Misr, 1374H/1955, Abd al-Salam Harun compiler). WIRD still records each item as link_only/unknown until item and jurisdiction rights are documented.
+- OpenITI documentation states CC BY-NC-SA 4.0; the Terms page uses a different CC BY-SA wording but also says non-commercial. Verify each corpus release/contributor agreement; do not ingest by default.
+- No real Seerah content ingested or published.
