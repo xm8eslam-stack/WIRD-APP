@@ -1,3 +1,14 @@
+## 2026-11-13 — Bun single-graph CI candidate PR #372
+
+- Refreshed main and production: main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel production `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` READY on exact same SHA.
+- Created one-commit draft PR #372 `fix/bun-single-graph-ci-clean-20261113`, head `950640ea78d29e87d426a89d8887c15e4de2abac`, 4 files: `package.json`, `bun.lock`, `.github/workflows/ci.yml`, `playwright.config.ts`. No merge.
+- App graph: explicit `@playwright/test@1.56.1`, Bun trusted lifecycle packages `@firebase/util`, `esbuild`, `protobufjs`, pinned `bunx firebase-tools@15.0.0` CLI. CI uses `bun install --frozen-lockfile`, `bun audit`, `bun run` and `bunx`; Playwright preview uses Bun. No npm install/npm audit remains.
+- Sandbox used Bun 1.4.4. `bun install --force` PASS; `bun install --frozen-lockfile` PASS; `bun audit --audit-level=high` PASS (0 advisories / 360 packages); Playwright CLI version PASS 1.56.1; Firebase CLI version PASS 15.0.0; `pretest`/`prebuild` hooks verified with fixture. Full app tests/typecheck/build/Firestore/Playwright NOT TESTED because sandbox lacked private source.
+- Tried `firebase-tools@15.0.0` as devDependency; audit then showed high advisories in CLI dependency graph (basic-ftp and zod). Removed it from app dependencies; pinned via bunx instead. Final application lock audit passed.
+- GitHub Actions run `43391729769` attempt 1 and retry attempt 2 both fail immediately with no steps/logs; latest job `131773203535` has steps=null/logs_url=null, logs return BlobNotFound. BLOCKED infrastructure observability, not code failure/pass.
+- Vercel status on PR SHA: deployment rate limited — retry in 24 hours. No preview. Production unchanged.
+- Next: obtain inspectable full-source CI run before merge; no weakening checks. Continue IndexedDB archive consumer inventory separately.
+
 ## 2026-11-12 01:31 +02:00 — Exact-head runner diagnosis and preview verification
 
 - Rechecked PR #363 head `acdfeef4e4baf99251e4768bbbc808fabab4f130` and run `43120106137` / job `130858118105`. GitHub reports completed failure after about two seconds, `steps=null`; log download returns `BlobNotFound`; one annotation is counted but not retrievable. This is unresolved job/runner evidence, not a test-level failure or a pass.
