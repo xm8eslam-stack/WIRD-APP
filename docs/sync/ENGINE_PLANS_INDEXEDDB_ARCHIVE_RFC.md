@@ -463,3 +463,48 @@ This review is against main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, not a ru
 - No archive repository, immutable chunk records, SHA-256 manifest, or archive-aware conflict API exists on main. PR #371 codec remains separate and is not integrated.
 - **Stage B remains HOLD.** Do not change schema v9, payload caps, Firestore Rules, Production flags, or local/remote data until the archive-reference API and tests above are implemented on an isolated branch and pass exact-head Quality Gate.
 - Source review only. No tests were executed and no runtime code was changed in this review.
+
+ 
+## 19. PR #371 archive codec review and integration constraints — 2026-11-13
+
+Reviewed PR #371 source at exact HEAD 260df95c620cd534337e39d6707b044eb404139a:
+- src/services/enginePlanArchiveChunkCodec.ts
+- src/services/enginePlanArchiveChunkCodec.test.ts
+- src/tests/runAllTests.ts
+
+PR #371 remains OPEN/DRAFT and is not in main. Its codec is a useful pure building block, not an archive repository or a complete remote protocol.
+
+### 19.1 What the codec already provides
+
+- Protocol version 1, stable record IDs and order, canonical JSON serialization, duplicate-ID rejection, SHA-256 per fragment, per-record SHA-256, and whole-archive SHA-256.
+- Per-fragment ceiling 192,000 bytes, with reconstruction checks for missing/extra/corrupt chunks, fragment order/count, canonical record bytes, record ID, total bytes, and archive fingerprint.
+- Rejects unsupported values (undefined, Date/non-plain objects, cycles, sparse arrays, non-finite numbers, hidden properties) rather than silently dropping data.
+- Tests cover split/rebuild, stable ordering/IDs, missing/extra/corrupt/duplicate chunks, schema/revision/entitlement binding, malformed values, unsafe chunk size, and empty archives.
+
+### 19.2 Integration blockers and design corrections
+
+1. **The codec returns a fully materialized manifest containing every chunk descriptor and every ordered record ID.** There is no manifest byte-size/page limit or manifest paging. A sufficiently large archive can exceed Firestore's 1 MiB document ceiling even though each data chunk is only 192 KB. Do not store the entire manifest as one Firestore document. Add a hierarchical manifest: bounded descriptor pages (e.g. target ≤256 KB serialized each), each with a SHA-256 page digest and ordered page index; a small root manifest references pages and binds their hashes, total counts/bytes, revision, schema and archive fingerprint. The exact page size is a protocol constant with safety headroom, not an account quota.
+2. **No repository adapter exists.** Codec functions build and materialize byte arrays only. There is no IndexedDB object-store schema, staging/publish API, local revision-head CAS, scope key, garbage collection, quota recovery, or crash recovery.
+3. **No Firestore transport exists.** There is no chunk upload/download pagination, server-side manifest publication, immutable document path contract, retry/resume, old-client capability negotiation, or retention/rollback policy.
+4. **No Journal/Outbox/Inbox integration exists.** Journal and Outbox still carry full Engine Plans payloads. Remote Inbox still stores the full event payload inline. No event references a manifest/revision/chunk page.
+5. **No conflict integration exists.** Conflict intent payload checks remain 128 KB. The codec does not let conflict intents point to an immutable archive revision or verify a selected remote manifest at commit.
+6. **Memory behavior needs a streaming review.** Build currently retains all output chunks in memory and computes a whole-archive fingerprint over a canonicalized payload containing all records. Materialize retains all record bytes and the full record list. This may be acceptable for small local fixtures but must not be the only path for large adaptive archives. Production sync should stream bounded pages/chunks and incrementally verify per-record/page/archive digests without loading all cloud bytes into one JS object graph.
+7. **Descriptor validation needs a root/page boundary.** The codec validates descriptors against a complete in-memory manifest; a paged protocol must bind page index, first/last record ordinal, descriptor count, and each page digest to the root, then validate global no-gap/no-overlap ordering across pages before publishing the head.
+8. **Record schema validation is currently generic.** Canonical JSON shape and id are validated, but domain-specific EngineGeneratedPlan schema/semantic validation must run before the archive head is advanced. Codec validity is not equivalent to a valid WIRD plan.
+9. **The entitlementRevision field is only a binding field.** It is not authorization and must not be interpreted as proof of a plan tier or capacity. Actual entitlement enforcement requires a trusted server-authoritative contract, separately designed; no client-supplied entitlement value grants storage/sync rights.
+
+### 19.3 Recommended integration shape
+
+- Keep the codec pure and deterministic. Add manifest-page encode/decode helpers or a separate paged-manifest codec; do not mix Firestore or IndexedDB side effects into the pure codec.
+- IndexedDB v10 should extend wird-sync-journal, adding archive revisions, record/chunk fragments, manifest pages, and staging metadata stores (or equivalent stores) with compound UID/revision keys. Do not create a second canonical database.
+- Use immutable revision IDs and a per-scope archive-head record. Guest and user:<uid> must never share keys.
+- Stage locally: validate strict legacy raw bytes → build and persist immutable local archive revision → read it back and verify all fragments/pages/manifest → atomically publish archive head + migration marker + Journal event + Outbox reference → only then allow App mount and later legacy-key cleanup. Preserve the exact legacy raw bytes read-only until explicit rollback retention expiry.
+- Stage remotely: upload immutable chunks in bounded batches; upload manifest pages; verify remote reads/digests; publish a small root/head pointer last using a revision/CAS check. Readers must ignore uncommitted staging revisions.
+- Receive remotely: import event + received cursor into Inbox; stage referenced pages/chunks; validate every page and record plus WIRD plan schema; then atomically publish the remote archive head + remote revision + projection cursor + Inbox deletion/conflict resolution. The received cursor can be ahead; the projection cursor cannot.
+- Conflict resolution stores only archive revision ID, root manifest digest, event fingerprint, and decision metadata. Use-remote revalidates remote head immediately before atomic head switch. Keep-local creates a new immutable local revision and queues a small reference mutation.
+- Retain previous heads/revisions until the new revision is fully acknowledged and rollback retention is satisfied. Garbage collection must be reachability-based and must never delete a chunk referenced by current head, pending Outbox, Inbox, open conflict, prepared intent, or rollback copy.
+- Quota failure must leave previous head, journal, Outbox, Inbox, cursor and source localStorage unchanged; staging fragments may be marked abandoned and collected only after proving they are unreachable.
+
+### 19.4 Decision
+
+PR #371 codec may be reused after its own exact-head tests are inspectable and pass, but it is not sufficient to begin archive migration. Manifest paging, streaming/memory bounds, domain validation, repository persistence, remote transport, Journal/Outbox/Inbox references, conflict resolution, CAS publication, crash recovery and retention remain unimplemented. Keep #371 Draft until its CI is inspectable; keep archive Stage B HOLD.
