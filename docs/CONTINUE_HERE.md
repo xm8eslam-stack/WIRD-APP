@@ -830,3 +830,8 @@ Read RFC section 18 before archive implementation. Key decisions:
 Reviewed exact PR #371 HEAD 260df95c620cd534337e39d6707b044eb404139a. The pure codec provides canonical records, 192 KB fragments, SHA-256 fragment/record/archive fingerprints and malformed/missing/corrupt chunk rejection. It does not provide paged manifests, streaming, IndexedDB repository, Firestore transport, journal/outbox/inbox references, domain plan validation, conflict integration or crash/quota recovery. A large descriptor manifest can exceed Firestore's 1 MiB document limit; add bounded manifest pages plus a small root digest before remote integration. Details are in RFC section 19.
 
 PR #371 Quality Gate run 43278752980 / job 131394096177 and PR #372 run 43391729769 / job 131773203535 both report failure with steps=null and logs_url=null. Classify BLOCKED observability; no code-level diagnosis and no Quality Gate PASS. Keep both Draft. Main remains unchanged; no tests or runtime code changed in this review.
+
+
+## Latest docs-head CI refresh — 2026-11-13 09:21 UTC
+
+PR #363 exact head c08186440e28ec53a6e7434c5212c7bed61b81e2 produced Quality Gate run 43400615632 / job 131802241149. Job completed failure with steps=null and logs_url=null; log retrieval returned BlobNotFound. Classify BLOCKED observability; no code-level failure or pass is diagnosed. Keep PR #363 Draft. Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
