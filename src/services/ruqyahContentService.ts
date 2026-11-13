@@ -94,3 +94,25 @@ export async function getRuqyahAudioQueue(item: RuqyahItem): Promise<RuqyahAudio
     globalAyahNumber: ayah.number
   }));
 }
+
+export interface RuqyahAudioQueueEntry extends RuqyahAudioAyah {
+  itemId: string;
+  title: string;
+}
+
+/** Preserve category item/ayah order while removing duplicate global ayahs. */
+export async function getRuqyahAudioQueueForItems(items: RuqyahItem[]): Promise<RuqyahAudioQueueEntry[]> {
+  const itemQueues = await Promise.all(items
+    .filter(item => item.type === 'quran')
+    .map(async item => ({ item, ayahs: await getRuqyahAudioQueue(item) })));
+  const seenAyahs = new Set<number>();
+  return itemQueues.flatMap(({ item, ayahs }) => ayahs.map(ayah => ({
+    ...ayah,
+    itemId: item.id,
+    title: item.title
+  }))).filter(entry => {
+    if (seenAyahs.has(entry.globalAyahNumber)) return false;
+    seenAyahs.add(entry.globalAyahNumber);
+    return true;
+  });
+}
