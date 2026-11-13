@@ -839,6 +839,7 @@ Main SHA remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. The second-pass sou
 Newly verified indirect consumers include daily session selection, cloud sync coordinator, demo-data transaction, revisioned remote mutation, PlanningEngineWizard, and Firestore Rules tests. Exact locations: `dailySessionSelection.ts:83-87`, `cloudSyncCoordinator.ts:22`, `demoDataPersistence.ts:34`, `revisionedRemoteMutation.ts:66`, `PlanningEngineWizard.tsx:194-243`, `scripts/firestoreRules.test.ts:1317`.
 
 Important unresolved design risks:
+- `StorageService.getEnginePlans()` uses `readJsonArrayArchive` (`storageService.ts:378-395`), which filters invalid records or returns an empty array on corruption while preserving raw bytes. Migration must use a strict raw-byte reader and must not interpret this fallback as an empty archive.
 - AuthGate does not hydrate an Engine Plans archive before App mounts; Dashboard independently reads StorageService.
 - `setStorageScope` currently removes legacy source keys after copying/verifying scoped keys; archive migration must preserve the original bytes through copy→verify→mark.
 - Settings and Progress Analytics still export synchronously.
