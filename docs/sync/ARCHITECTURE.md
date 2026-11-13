@@ -1,3 +1,15 @@
+# Current architecture evidence overlay — 2026-11-13
+
+> The architecture/design below remains technical reference. Its dated operational claims are historical; current runtime and release state is maintained in `docs/CONTINUE_HERE.md` and `docs/sync/RELEASE-GATES.md`.
+
+- Current main SHA: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA.
+- Both Production sync flags are currently true; full certification remains HOLD. Do not toggle without owner approval.
+- Production Rules deployment and direct Google AI Studio sync were not verified in the 2026-11-13 audit.
+- CI runs without steps/logs are BLOCKED observability, not code failure/pass.
+
+---
+
 > **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md) (اضبط مسار الرابط النسبي حسب مكان الملف)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
 
 # CURRENT ARCHITECTURE STATUS — 2026-11-07 (main at PR #158)
