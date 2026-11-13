@@ -402,3 +402,64 @@ Baseline: main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. A second-pass lexical
 ### 17.3 Exit gate
 
 The code-source lexical sweep is complete for the 183 TS/TSX/JS files at the exact main SHA above. Before Stage B, still review non-code repository fixtures/config/data where relevant, verify the RFC's full transaction and crash-recovery design, and add the missing tests listed above. No migration, schema bump, cap increase, payload-budget change, Firestore Rules change, or Production flag change is authorized by this audit.
+
+
+
+## 18. IndexedDB journal, remote cursor, and conflict transaction review — 2026-11-13
+
+This review is against main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, not a runtime test. Source paths and ranges were fetched directly from that ref.
+
+### 18.1 Two remote cursors have distinct meanings
+
+- **Ingestion cursor — `remoteCursor`:** `importRemotePage` (`indexedDbSyncJournal.ts:3058-3185`) validates each event, requires strictly increasing contiguous server sequences, inserts every not-yet-stored event into `remoteInbox`, checks the 1,000-event inbox bound, and commits the inbox rows plus `remoteCursor` in the same IndexedDB read/write transaction. This is a durable *received* cursor, not proof of application.
+- **Projection cursor — `remoteProjectionCursor`:** the projector reads only events after this cursor. `markRemoteProjected` (`indexedDbSyncJournal.ts:3221-3290`) advances it one sequence at a time only when the matching inbox event exists and there is no unresolved conflict, prepared resolution intent, or outstanding projection intent. It deletes that inbox row in the same transaction.
+- The coordinator (`cloudSyncCoordinator.ts:440-506`) imports server pages first, then projects, and reports success only when the two cursors match. When projection is disabled, it intentionally leaves a received-but-not-projected backlog.
+- **Conclusion:** The existing cursor separation is sound in principle. Do not collapse the two cursors. The ingestion cursor may advance after the complete page is durably staged; the projection cursor must never advance until the entire archive manifest/revision is locally materialized and verified.
+
+### 18.2 Normal remote projection transaction
+
+1. `projectRemoteInboxBatch` reads the next event, cached revision, pending local mutations, initialization state, and any existing projection intent (`remoteInboxProjector.ts:161-435`).
+2. A conflicting event is retained in Inbox and archived with a local projection snapshot and relevant local mutation evidence. No projection cursor is advanced while the conflict remains unresolved.
+3. For a projectable event, it creates a durable `remoteProjectionIntent` first.
+4. `finalizeRemoteProjection` (`indexedDbSyncJournal.ts:1693-1885`) verifies the exact intent and inbox identity, requires `cursor + 1 === sequence`, rejects pending local mutations, and in one IndexedDB transaction commits remote revision metadata, initialized-collection baselines, projection cursor, Inbox deletion, and conflict closure.
+5. The `applyProjection` callback is synchronous and writes the localStorage projection while that IndexedDB transaction is active. This is **not a cross-database atomic transaction**: localStorage and IndexedDB cannot commit atomically together. The prewritten durable projection intent plus idempotent replay is a recovery protocol, not true atomicity. Archive migration should make IndexedDB the canonical data store and localStorage a rebuildable projection; the archive revision and journal metadata should share one IndexedDB transaction.
+
+### 18.3 Conflict resolution transaction semantics
+
+- `saveProjectionConflict` archives the remote event, local snapshot, and relevant local Outbox mutations in one IndexedDB transaction; grouped `syncMeta` events gather child-collection mutations as well (`indexedDbSyncJournal.ts:~1950-2140`).
+- `prepareConflictResolutionIntent` stores an immutable user choice bound to event fingerprint, server sequence, collection/document, local snapshot fingerprint, and local mutation fingerprint set (`indexedDbSyncJournal.ts:2160-2350`). It does not move either cursor or mutate projection/Outbox.
+- **Payload mismatch is confirmed:** the remote Inbox accepts Engine Plans payloads under the 450,000-byte per-collection budget (`indexedDbSyncJournal.ts:3077-3079`), but conflict-intent preparation enforces the generic 128,000-byte ceiling (`2175-2180`). `commitUseRemoteConflictResolution` enforces the same 128,000-byte ceiling (`2434-2449`); `commitKeepLocalConflictResolution` does likewise (`2672+`, payload check near method entry). Therefore a valid large Engine Plans event can be ingested and archived but cannot be explicitly resolved through either use-remote or keep-local. This is a real compatibility gap, not merely a theoretical limit. Do not simply raise all conflict payload limits: use verified immutable archive revision references for large Engine Plans, and keep small bounded decision metadata in the intent.
+- Use-remote re-fetches authoritative Firestore state, validates it, prepares/reuses a bound intent, re-fetches immediately before commit, and checks revision/payload equality (`syncConflictResolutionService.ts`). The IndexedDB commit then validates the intent and archived evidence, applies the projection, supersedes matching pending Outbox mutations, updates revision metadata, advances projection cursor, deletes Inbox event, closes conflict, and deletes intent (`indexedDbSyncJournal.ts:2434-2670`).
+- Keep-local rebuilds a consolidated local payload from verified archived mutations and current projection, re-fetches the remote base revision, then atomically replaces old pending mutations with one new event/Outbox mutation, updates remote revision metadata and projection cursor, deletes Inbox event, closes conflict, and removes the prepared intent (`indexedDbSyncJournal.ts:2672-3015`).
+- Both conflict commit paths still apply the selected projection synchronously to localStorage inside the IndexedDB transaction. As above, the archive cutover must replace this with an IndexedDB canonical revision commit and a recoverable projection update.
+
+### 18.4 Required archive-aware transaction contracts
+
+**Local mutation (including grouped session completion):** prepare/validate immutable archive revision and fingerprint outside the transaction; in one IndexedDB transaction verify expected archive head/scope, write all immutable records and manifest, append journal event, enqueue Outbox reference, and advance the archive head. If any write/quota/constraint fails, none of those IndexedDB records or metadata may commit. Update localStorage only as a derived projection after commit; if projection fails, retain the durable event for replay and do not report a failed data commit as data loss.
+
+**Remote ingestion:** validate event envelope and manifest/chunk references; persist inbox envelope and received cursor together. If archive chunks are fetched separately, persist verified chunks incrementally under a staging revision but do not expose the revision as canonical or advance projection cursor. Incomplete staging is resumable and quota-safe.
+
+**Remote projection:** verify every chunk count, stable ID, ordering, schema, and SHA-256 manifest fingerprint before commit. In one IndexedDB transaction publish the immutable remote archive revision as the collection head, commit remote revision metadata, advance projection cursor, delete the Inbox event, and close any reconciled conflict. If any check fails, preserve previous head, Inbox event, conflict evidence, and cursor. Never advance cursor on a partial manifest.
+
+**Conflict use-remote:** store only a bounded immutable revision reference (revision ID + manifest hash + event fingerprint + decision ID) in the prepared intent. Re-fetch remote head and verify it still matches immediately before commit. In one IndexedDB transaction atomically switch archive head, supersede exact pending local references, update remote revision, advance projection cursor, delete Inbox row, close conflict, and remove intent. Retain old immutable revisions for rollback.
+
+**Conflict keep-local:** validate the local archive head and all mutation references/fingerprints, create a new immutable revision based on that head, enqueue one bounded manifest-reference mutation against the latest verified remote revision, and commit archive head + journal + Outbox + conflict closure/cursor state in one transaction. Preserve archived old mutation evidence until the replacement is acknowledged and retention policy permits compaction.
+
+### 18.5 Test matrix required before Stage B
+
+1. Remote ingestion page: contiguous page, duplicate identical event, duplicate mismatched fingerprint, gap, out-of-order sequence, 100-event page, 1,000-event inbox full, quota failure; prove inbox rows and received cursor commit/abort together.
+2. Projection: complete archive manifest; missing chunk; wrong chunk hash; duplicate stable ID; schema mismatch; interrupted download; quota failure; scope switch during fetch; stale intent; already-applied idempotent retry; prove projection cursor does not move on any incomplete case.
+3. Conflict archive: ordinary and grouped `syncMeta` conflict, Engine Plans archive reference, local pending mutation set changes after display, fingerprint mismatch, missing local revision, oversized inline payload rejection, old-client event without archive capability.
+4. Use-remote: remote revision changes after intent; archive chunk missing; local head changes; UID switch; IndexedDB abort; projection materialization failure; retry after crash; cursor/inbox/conflict/Outbox/archive head invariants.
+5. Keep-local: multiple direct and grouped mutations, later direct mutation supersedes grouped one, stale local fingerprint, unexpected collection/document, large plan manifest, Outbox capacity, transaction abort, retry after crash.
+6. Upgrade: v9 → v10 preserves every existing store and all guest/UID data; failed upgrade leaves v9 readable; no second canonical database.
+7. Cross-tab: two tabs enqueue local mutation while remote event is staged/projected; lock unavailable; scope switches while waiting; prove no cross-account writes and no cursor skip.
+
+### 18.6 Exit decision
+
+- Cursor split and Inbox staging are structurally appropriate and already have useful atomicity within IndexedDB.
+- Existing remote finalization/conflict commits are **not fully atomic across IndexedDB and localStorage**; they rely on durable intent and replay. This is acceptable as a legacy projection strategy only if explicitly preserved and tested; it is not the final archive ownership model.
+- The 128 KB conflict payload ceiling is a confirmed blocker for valid 450 KB Engine Plans events.
+- No archive repository, immutable chunk records, SHA-256 manifest, or archive-aware conflict API exists on main. PR #371 codec remains separate and is not integrated.
+- **Stage B remains HOLD.** Do not change schema v9, payload caps, Firestore Rules, Production flags, or local/remote data until the archive-reference API and tests above are implemented on an isolated branch and pass exact-head Quality Gate.
+- Source review only. No tests were executed and no runtime code was changed in this review.
