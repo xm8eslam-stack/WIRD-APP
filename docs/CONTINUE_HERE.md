@@ -1,3 +1,16 @@
+## آخر جرد تعارضات الملفات — 2026-11-13
+
+تم جلب changed filenames كاملة ومقسمة الصفحات لكل PR مفتوح. التعارضات الفعلية:
+- `src/tests/runAllTests.ts`: #365 و#367 و#368 و#369 و#371 و#358 و#359 و#2 — يجب تسلسل تعديل registry وإعادة تطبيق كل patch على base الجديد.
+- `PlanningEngineWizard.tsx`: #367 و#369 و#2 — تعارض مباشر بين الميزانية واختيار نطاق الحفظ؛ لا دمج متزامن.
+- #365 مع #2: `App.tsx` و`Sidebar.tsx`.
+- #366 مع #2: `SettingsView.tsx`.
+- #370 مع #2: `MemorizationSessionView.tsx`.
+- #364 مع #2: `api/advisor.ts` و`advisorService.ts` و`geminiSecurity.test.ts`.
+- #363 مع #2: `DEVELOPMENT_CHECKPOINT.md` و`FIRESTORE_SYNC_DESIGN.md`؛ #363 مع #359: `OFFLINE_AUDIO_DOWNLOAD_PLAN.md`.
+
+#2 branch قديم، 37 ملفًا، non-mergeable ومتداخل مع غالبية المسارات الحالية؛ لا يُدمج wholesale. #358/#359 قديمان ويُعاملان كـ superseded by #368، ولا يكتب #359 فوق خطة الصوت التي يملكها #363. كل التفاصيل في [CHANGE_CONTROL.md](./CHANGE_CONTROL.md).
+
 # أحدث استكمال تشغيلي — 2026-11-13
 
 > هذا التحديث يعلو على أي جداول أو حالات تاريخية أدناه. تمت المصالحة من GitHub وVercel قبل التسجيل.
