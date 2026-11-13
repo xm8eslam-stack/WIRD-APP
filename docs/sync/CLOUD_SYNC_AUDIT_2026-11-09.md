@@ -1,3 +1,5 @@
+> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [CONTINUE_HERE.md](../CONTINUE_HERE.md); mandatory reconciliation rules are in [CHANGE_CONTROL.md](../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
+
 # Latest live sync / release checkpoint — 2026-11-12
 
 - Current main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
