@@ -4,6 +4,7 @@
 
 
 ## ابدأ من هنا
+0. [CHANGE_CONTROL.md](./CHANGE_CONTROL.md) — سياسة إلزامية لمصالحة GitHub/CI/Vercel/Firebase ومنع تعارضات الفروع والوثائق مع كل تعديل.
 1. [CONTINUE_HERE.md](./CONTINUE_HERE.md) — الحالة الدقيقة الحالية والخطوة التالية.
 2. [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) — خارطة المنتج والميزات وترتيب الأولويات.
 3. [SEERAH_LEARNING_PLAN_AR.md](./SEERAH_LEARNING_PLAN_AR.md) — خطة السيرة النبوية والصحابة: بحث المصادر وAPI، المنهج، التعلم التفاعلي، الاختبارات، البنية ومراحل التنفيذ.
