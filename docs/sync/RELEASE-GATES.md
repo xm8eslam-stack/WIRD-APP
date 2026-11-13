@@ -1,3 +1,25 @@
+# Current sync release-gate reconciliation — 2026-11-13
+
+> This section supersedes any older operational status below. Historical test/design notes remain useful, but do not treat their SHA, flag values, or deployment claims as current.
+
+- Current GitHub main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is `READY`, target `production`, and its source SHA exactly matches main. Alias: `wird-app.vercel.app`.
+- Production flags are both currently `true`. This is an observed configuration fact, not approval that all sync release gates have passed. No toggle is authorized by this audit.
+- Owner-reported authenticated A↔B testing is a bounded `OWNER-REPORTED PASS`; it does not prove long-offline replay, crash recovery, all conflict types, account switching, tombstones, or every collection.
+- Recent GitHub Quality Gate runs on PRs fail before recording any steps; log retrieval returns `BlobNotFound`. Current main has no recent Quality Gate run returned. CI evidence is `BLOCKED`, not code `FAIL` or `PASS`.
+- GitHub main protection is disabled; required status enforcement is off. This is an enforcement gap, not a reason to bypass tests.
+- Vercel SSO protection is enabled for all non-custom domains; only `wird-app.vercel.app` is listed. Public anonymous access is not established.
+- `ISLAMICAPI_API_KEY` exists for Preview and Production as a sensitive variable. Old `ISLAMICAPI_API_KEY1` mismatch notes are stale.
+- Production Firebase Rules deployment was not independently confirmed in this audit; Emulator success is not production deployment evidence.
+
+## Release decision
+
+**HOLD for full release certification.** The production deployment/source parity is verified, but current main Quality Gate evidence, public-access behavior, Firebase Production Rules evidence, and complete sync lifecycle/offline/conflict certification remain separate and unresolved. Preserve current production settings until the owner gives a specific decision.
+
+See [CHANGE_CONTROL.md](../CHANGE_CONTROL.md), [CONTINUE_HERE.md](../CONTINUE_HERE.md), and [OWNER_ACTIONS.md](../OWNER_ACTIONS.md) for the live evidence and pending decisions.
+
+---
+
 ## Current operational checkpoint — 2026-11-10 (verified follow-up)
 
 This checkpoint supersedes any older statement below that contradicts the current Production inventory or the owner's direct device test. It is a documentation update only; no runtime code, Firebase rules, production secrets, Vercel settings, or user data were changed.
