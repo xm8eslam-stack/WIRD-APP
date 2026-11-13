@@ -139,3 +139,35 @@ PR #368 now includes an unmerged implementation slice beyond metadata:
 - Terminal completed jobs remain immutable for history. If their cache bytes are evicted, the downloader creates a new retry job from the original range and re-downloads only missing files.
 - A cache scan that races with a newer cache generation must not mark the new generation unavailable; generation and downloaded timestamp are compared before applying scan results.
 - A cache write is not considered a completed download until Cache Storage read-back matches the original bytes and the corresponding IndexedDB metadata transaction commits.
+
+
+### Official provider-rights recheck and remaining implementation gates — 2026-11-13
+
+The current Al Quran Cloud terms were rechecked on 2026-11-13:
+- The provider states that its website, API and audio CDN are free and require no account or API key.
+- Recitations remain the copyright of their reciters; the current terms explicitly permit streaming, embedding and downloading for personal and educational use.
+- The terms ask integrators to cache audio on their side. If audio is used in a commercial product, reciters may ask for removal.
+- The CDN documentation confirms the ayah URL form `https://cdn.islamic.network/quran/audio/{bitrate}/{edition}/{number}.mp3` and the global ayah number range 1–6236.
+
+Official references to re-check before release:
+- Terms: https://alquran.cloud/terms-and-conditions
+- CDN documentation: https://alquran.cloud/cdn
+- Credits: https://alquran.cloud/credits
+
+This supports the current WIRD educational/personal-use integration, subject to attribution and rechecking the live terms at release. It is not blanket permission to redistribute the recitations in a commercial product.
+
+### PR #368 exact-head implementation review
+
+Reviewed PR #368 head `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`. It now contains the IndexedDB library, generation-scoped Cache Storage adapter, and bounded downloader. The adapter validates HTTPS origin, HTTP 200/non-opaque response, audio content type, non-empty body, an 8 MiB per-file maximum, optional Content-Length consistency, and exact byte read-back. The downloader uses the canonical WIRD reciter URL builder, exact `cdn.islamic.network` host validation, redirect rejection, omitted credentials, no-store fetch, and concurrency 1–2 (default 2).
+
+The following release gaps remain and must be addressed before exposing the feature in the UI:
+
+1. **No aggregate job/range budget or quota preflight is visible in the reviewed downloader.** The 8 MiB limit is per file; a full-Surah job can contain many ayahs. Estimate available storage before user confirmation and again during bounded batches, reserve headroom for app/user data, and stop promptly on quota exhaustion. Do not invent a fixed Free/Pro tier or hardcoded per-account quota.
+2. **The new audio Cache Storage namespace is `wird-offline-quran-audio-v1`.** PR #366's adaptive Service Worker trimming currently manages its own audio and Mushaf cache names; it does not automatically manage this new namespace. Choose one explicit owner for audio eviction and ensure every deletion is reflected in the IndexedDB availability metadata before the UI reports the file missing.
+3. **Orphan cache cleanup is still missing.** Add reachability-based reconciliation/garbage collection that checks every file reference, active job, pinned file, and cache generation before deleting bytes. A stale cleanup must never delete a replacement generation.
+4. **No Service Worker protocol, download-manager UI, local-first playback integration, real browser Cache Storage test, or real-device offline playback is present yet.** The current PR is a backend/service foundation, not a user-ready offline download feature.
+5. **Pause/cancel/retry and quota-failure behavior need real browser coverage**, including simultaneous jobs sharing the same reciter/ayah, interrupted writes, cache eviction, storage-pressure recovery, and two-tab races.
+
+The latest PR body and exact source head agree that this is still Draft/HOLD. The PR's test files are registered, but the GitHub Quality Gate runner has not executed steps on the observed attempts; no local test suite was run during this review.
+
+**Release decision:** keep the implementation behind an unexposed service boundary. Do not add user-facing controls or claim offline audio is ready until quota/eviction/orphan ownership, playback integration, browser tests, and exact-head CI are complete.
