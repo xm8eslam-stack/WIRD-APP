@@ -4,6 +4,7 @@ import { RUQYAH_ITEMS, getRuqyahItemsByCategory } from '../data/ruqyahData';
 import { ALL_SURAHS } from '../data/quranMeta';
 import {
   getRuqyahAudioQueue,
+  getRuqyahAudioQueueForItems,
   getRuqyahAyahs,
   getRuqyahDisplayText,
   loadRuqyahSurah,
@@ -81,20 +82,24 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
   await test('Combined category queues preserve item order and deduplicate repeated global ayahs', async () => {
     for (const category of ['brief', 'medium', 'full', 'eye_envy', 'illness'] as const) {
       const items = getRuqyahItemsByCategory(category).filter(item => item.type === 'quran');
-      const entries = (await Promise.all(items.map(item => getRuqyahAudioQueue(item)))).flat();
+      const rawQueues = await Promise.all(items.map(async item => ({
+        item,
+        ayahs: await getRuqyahAudioQueue(item)
+      })));
+      const expected = rawQueues.flatMap(({ item, ayahs }) => ayahs.map(ayah => ({
+        ...ayah,
+        itemId: item.id,
+        title: item.title
+      })));
       const seen = new Set<number>();
-      const deduplicated = entries.filter(entry => {
+      const expectedDeduplicated = expected.filter(entry => {
         if (seen.has(entry.globalAyahNumber)) return false;
         seen.add(entry.globalAyahNumber);
         return true;
       });
-      let previousSourceIndex = -1;
-      for (const entry of deduplicated) {
-        const sourceIndex = entries.findIndex(candidate => candidate.globalAyahNumber === entry.globalAyahNumber);
-        assert(sourceIndex > previousSourceIndex, category + ' queue deduplication changed the original item/ayah order');
-        previousSourceIndex = sourceIndex;
-      }
-      assert(new Set(deduplicated.map(entry => entry.globalAyahNumber)).size === deduplicated.length, category + ' queue contains duplicate global ayahs');
+      const actual = await getRuqyahAudioQueueForItems(items);
+      assert(JSON.stringify(actual) === JSON.stringify(expectedDeduplicated), category + ' queue did not preserve ordered first occurrence while deduplicating');
+      assert(new Set(actual.map(entry => entry.globalAyahNumber)).size === actual.length, category + ' queue contains duplicate global ayahs');
     }
   });
 
