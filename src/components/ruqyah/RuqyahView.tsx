@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getRuqyahAudioQueue, getRuqyahDisplayText, getRuqyahAyahs } from '../../services/ruqyahContentService';
+import { getRuqyahAudioQueue, getRuqyahAyahs } from '../../services/ruqyahContentService';
 import type { Ayah } from '../../types/quran';
 import { QuranText } from '../shared/QuranText';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
@@ -818,7 +818,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                             : quranAyahsByItem[item.id]
                               ? quranAyahsByItem[item.id].map(ayah => <React.Fragment key={ayah.number}><QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>{' ۞ '}</React.Fragment>)
                               : <span role="status" className="text-sm font-sans text-stone-500">لم يتم تحميل نص الآيات بعد.</span>
-                        : getRuqyahDisplayText(item)}
+                        : item.text}
                     </p>
                   </div>
 
