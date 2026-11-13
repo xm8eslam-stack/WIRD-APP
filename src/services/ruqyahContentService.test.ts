@@ -133,6 +133,7 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
     assert(missingRejected, 'Invalid/missing Surah coordinate must be rejected');
     const validSurah = await loadRuqyahSurah(1);
     const corruptions = [
+      [],
       validSurah.slice(0, -1),
       validSurah.map((ayah, index) => index === 0 ? { ...ayah, numberInSurah: 2 } : ayah),
       validSurah.map((ayah, index) => index === 0 ? { ...ayah, number: 999 } : ayah),
@@ -160,6 +161,7 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
     await Promise.all(repeatedSurahItems.map(item => getRuqyahAyahs(item)));
     const loaderSource = fs.readFileSync(path.resolve(process.cwd(), 'src/data/quranDataLoader.ts'), 'utf8');
     assert(loaderSource.includes('surahCache') && loaderSource.includes('surahCache.set(surahNumber, pending)'), 'Existing per-Surah cache must deduplicate concurrent requests');
+    assert(loaderSource.includes("if (!loader) throw new Error('Missing local Quran chunk"), 'Missing local Quran chunks must throw instead of returning hand-entered text');
     assert(ALL_SURAHS.length === 114, 'Surah metadata must cover the complete Quran');
   });
 
