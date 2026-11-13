@@ -170,3 +170,13 @@ PR #372 changes exactly four paths: `package.json`, `bun.lock`, `.github/workflo
 The repository `vercel.json` explicitly sets `git.deploymentEnabled` to `* = false` and `main = true`; feature-branch Vercel preview deployments are therefore disabled by repository policy. In addition, the Vercel commit status on #372 SHA reports `Deployment rate limited — retry in 24 hours`. Do not change this branch deployment policy or Vercel settings to force previews. Production remains the separate READY deployment on main.
 
 PR #372 remains OPEN/DRAFT, one commit, head `950640ea78d29e87d426a89d8887c15e4de2abac`, mergeable=true at last read. GitHub Actions attempt 2 remains BLOCKED due missing job steps/logs (BlobNotFound).
+
+
+## 8. Reconciled state — 2026-11-13 follow-up
+
+- Main re-read: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` (unchanged).
+- Current open PRs include #372 CI/Bun candidate head `950640ea78d29e87d426a89d8887c15e4de2abac`, #371 archive codec `260df95c620cd534337e39d6707b044eb404139a`, #370 display settings `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`, #369 memorized ranges `814bb8788449ebe3d07d46f00a596a1a7b398a5a`, #368 offline audio `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`, #367 sync budget `fd417faaa96a11920ef3a8e4f1038f567c36a731`, #366 offline/PWA `cade1b630bb429d6a4106de5bf12713df18f3491`, #365 Seerah `adc1ef01b7a0c5eb7e280395520108c94788af5d`, #364 advisor `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`, and #363 docs head `3cb28412d96259f91451efdfce71ffe614beaf15). All are OPEN/DRAFT; none merged.
+- PR #372 modifies only `package.json`, `bun.lock`, `.github/workflows/ci.yml`, and `playwright.config.ts`; current changed-file comparison shows no path overlap with #363–#371. It remains a candidate only: exact-head GitHub Actions run `43391729769`, attempt 2/job `131773203535`, failed without steps/logs (BLOCKED observability); Vercel status is Free deployment rate-limit. Package-only Bun 1.4.4 checks are PASS, but full source tests/typecheck/build/Firestore/Playwright remain NOT TESTED.
+- Production remains deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY, target production, source SHA equal to main, alias `wird-app.vercel.app`. SSO remains enabled for non-custom domains; no change made.
+- Engine Plans targeted consumer audit has been appended to the RFC. The inventory is not yet exhaustive and migration remains HOLD.
+- Vercel rate-limit statuses on PRs do not represent source test failures. Do not change `vercel.json`, production settings or protection to force previews.

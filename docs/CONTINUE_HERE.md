@@ -1,3 +1,24 @@
+
+
+# Latest continuation — 2026-11-13 (follow-up audit)
+
+## Exact state
+- GitHub main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` (unchanged).
+- Production Vercel deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY, target production, source SHA matches main, alias `wird-app.vercel.app`. SSO remains enabled for non-custom domains. No deploy or settings change.
+- Open PR heads: #372 `950640ea78d29e87d426a89d8887c15e4de2abac`; #371 `260df95c620cd534337e39d6707b044eb404139a`; #370 `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`; #369 `814bb8788449ebe3d07d46f00a596a1a7b398a5a`; #368 `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #366 `cade1b630bb429d6a4106de5bf12713df18f3491`; #365 `adc1ef01b7a0c5eb7e280395520108c94788af5d`; #364 `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; #363 `3cb28412d96259f91451efdfce71ffe614beaf15`. All OPEN/DRAFT.
+
+## CI/Bun
+- #372 is a four-file isolated candidate with one Bun app dependency graph and a frozen lockfile. Package-only Bun 1.4.4 install/frozen install/audit/CLI checks passed in the isolated sandbox. Full app checks were NOT TESTED.
+- Exact-head Actions run `43391729769`, attempt 2/job `131773203535`, still has no steps/logs and is BLOCKED; Vercel reports `api-deployments-free-per-day`. No preview is expected because `vercel.json` disables feature-branch deployments. Do not alter this policy to force preview.
+
+## Engine Plans archive audit
+- See section 16 in [the RFC](./sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md) for verified direct UI, startup, backup, journal/outbox/inbox/conflict and test-registry consumers.
+- Confirmed high-risk seams: App initializes Engine Plans synchronously; Dashboard independently reads StorageService; AuthGate has no archive hydration barrier; Settings and Progress Analytics export synchronously; backup validation/session persistence retain the 100-plan cap; journal/remote projection/conflicts still materialize localStorage; DB schema is v9 and current main per-mutation Engine Plans budget is 450,000 bytes.
+- Targeted review is not an exhaustive repository-wide indirect-call/fixture/E2E audit. Migration remains HOLD. Next: finish complete call-site-to-test matrix, then implement only local archive stages with crash/quota/scope tests; do not start remote chunks or change payload budgets prematurely.
+
+## Coordination
+- Shared paths remain serialized: #365/#367/#368/#369/#371 touch `src/tests/runAllTests.ts`; #367/#369 share `PlanningEngineWizard.tsx`; older #358/#359 remain superseded by #368. #372 has no changed-path overlap with these product PRs.
+- GitHub Quality Gate failures with missing job steps/logs remain BLOCKED, not code FAIL or PASS. No merge, deploy, production config, Firebase Rules, secret, SSO, branch-protection or sync-flag change.
 ## PR #372 isolation note
 
 #372 modifies only `package.json`, `bun.lock`, `.github/workflows/ci.yml`, and `playwright.config.ts`. A fresh path comparison against #363–#371, #358, #359 and #2 found no overlaps. It can be tested independently of shared product/test registry files.

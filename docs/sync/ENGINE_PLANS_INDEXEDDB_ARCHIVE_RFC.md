@@ -323,3 +323,39 @@ PR #371 adds a pure codec only; it does not perform archive migration or remote 
 - Additional validation rejects sparse orderedRecordIds, non-enumerable array properties, tampered totalBytes and changed entitlementRevision.
 - Quality Gate run 43278752980 / job 131394096177 completed failure with steps=null/logs_url=null. No test/typecheck/build stage is inspectable.
 - Codec remains pure and disconnected from archive migration, Firestore and remote Inbox.
+
+
+## 16. Consumer inventory audit — 2026-11-13 (source review, not migration approval)
+
+Baseline: main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. The repository tree contains 159 source TS/TSX files and 19 E2E/script TS/JS files (178 relevant files total). This pass reviewed the principal storage, startup, UI, backup, journal, outbox, inbox, conflict, and test-registry paths below. It is a targeted source audit; it does **not** certify that every indirect caller, fixture, or test has been exhaustively inspected. Migration remains HOLD.
+
+### Confirmed direct/UI and lifecycle consumers
+- `src/App.tsx`: initializes React `enginePlans` synchronously from `StorageService.getEnginePlans()`; repeats that read in refresh, daily-session selection, session completion, reset, and view refresh. `handleUpdateEnginePlans` calls `persistEnginePlansSnapshot` then updates React state after success. App state is currently initialized before any async archive hydration exists.
+- `src/components/dashboard/DashboardView.tsx`: independently calls `StorageService.getEnginePlans()` in daily-session selection instead of consuming the hydrated App snapshot. This is a stale/empty-read risk at cutover and must be replaced by a prop/shared ready store.
+- `src/components/plans/PlanningEngineWizard.tsx`: consumes `enginePlans` and writes create/update/delete/activation changes through `onUpdateEnginePlans`; it does not own durable storage directly.
+- `src/components/auth/AuthGate.tsx`: resolves storage scope, runs `setStorageScope`, awaits journal replay for a user, then legacy portions migration, and finally mounts App. Required future order is scope resolution → archive hydration/legacy copy-verify-marker → journal replay/materialization → portions migration → mount.
+- `src/services/storageService.ts`: `getEnginePlans/saveEnginePlans` use one localStorage JSON-array key; save rejects >100; backup payload validation separately rejects >100. `getLocalProjectionSnapshot`, `isLocalProjectionEmpty`, `matchesJournalProjection`, and `applyJournalProjection/applyJournalEvent` expose Engine Plans through localStorage projection contracts.
+- `src/services/sessionPersistence.ts`: validates optional plan snapshot at <=100 and adds it to the same grouped session transaction as progress/activity/profile.
+- `src/services/demoDataPersistence.ts`: grouped demo-data transaction includes an Engine Plans snapshot.
+- `src/services/backupPersistence.ts`: backup import builds journal projection operations for Engine Plans; journal-first reset includes an empty Engine Plans snapshot. Import/reset must become archive-revision aware and preserve grouped atomicity.
+- Backup export entrypoints confirmed in `src/components/settings/SettingsView.tsx` and `src/components/progress/ProgressAnalyticsView.tsx`; both call synchronous `StorageService.exportFullBackup()`. Both must move to one async verified archive snapshot API. Both UI import entrypoints use `importBackupFile` (journal-first). The legacy low-level `StorageService.importBackup` is used by the backup validation tests reviewed; full production caller scan remains open.
+
+### Confirmed sync/projection consumers
+- `src/services/journaledSnapshotService.ts`: emits `enginePlans/snapshot` event payload and projects it via `StorageService.saveEnginePlans`.
+- `src/services/indexedDbSyncJournal.ts`: current IndexedDB database `wird-sync-journal` schema v9 stores events/outbox/Inbox/conflicts, but Engine Plans payloads remain inline and are projected back through localStorage. Current main per-mutation ceiling is 450,000 bytes; grouped syncMeta containing Engine Plans inherits that ceiling. The PR #371 codec is not connected to these paths.
+- `src/services/localSyncOutbox.ts` and `src/services/cloudSyncCoordinator.ts`: include `enginePlans` in allowed collections and legacy remote-state collection lists.
+- `src/services/remoteInboxProjector.ts`: grouped transaction allowlist includes Engine Plans; remote projection delegates to StorageService local projection APIs and conflict snapshots.
+- `src/services/syncConflictResolutionService.ts`: grouped conflict resolution allows Engine Plans and compares the local projection snapshot against durable localStorage before replay.
+- This confirms the archive migration is not a UI-only storage replacement. Journal replay, outbox, remote Inbox, grouped transactions, first-sync guards, conflicts and revision/cursor finalization all need archive references and verified materialization. LocalStorage writes performed inside IndexedDB journal operations are not one cross-store atomic transaction; the proposed shared-database archive stores are intended to close that gap.
+
+### Test/fixture map confirmed in the source registry and targeted files
+- Main aggregator: `src/tests/runAllTests.ts` includes planning engine, backup validation, backup persistence, clean initialization, session persistence, local sync outbox, IndexedDB journal, journal replay, journaled snapshot service, cloud sync coordinator, sync conflict safety, daily session selection and plan range selection suites.
+- Relevant direct test modules include `src/services/planningEngine.test.ts`, `src/tests/backupValidation.test.ts`, `src/services/backupPersistence.test.ts`, `src/services/sessionPersistence.test.ts`, `src/services/journaledSnapshotService.test.ts`, `src/services/indexedDbSyncJournal.test.ts`, `src/services/localSyncOutbox.test.ts`, `src/services/journalProjectionReplayer.test.ts`, `src/services/cloudSyncCoordinator.test.ts`, `src/services/syncConflictSafety.test.ts`, `src/services/storageScope.test.ts`, and `src/tests/cleanInitialization.test.ts`.
+- Relevant browser suites include `e2e/plans-ux.spec.ts` and `e2e/dashboard-ux.spec.ts`; test registry and fixtures need a complete second-pass audit before implementation.
+
+### Remaining audit gates before Stage B
+1. Complete repository-wide caller search for every direct `ENGINE_PLANS` key, `getEnginePlans/saveEnginePlans`, generic `getRawItem/setRawItem/removeRawItem`, backup export/import/reset and projection method. Include generated fixtures, scripts, E2E helpers and migration/restore paths.
+2. Trace the complete grouped transaction/cursor path for normal mutations, session completion, demo data, import/reset, remote Inbox, use-remote/keep-local and replay after crash. Specify archive revision references at each boundary.
+3. Inspect every test fixture that seeds legacy localStorage, fake IndexedDB, outbox/Inbox/conflict state, plus account switching and reload tests.
+4. Produce a call-site-to-test matrix with exact file/line and missing test per call site. Only then freeze the migration PR scope.
+5. Do not remove the 100 cap, change payload ceilings, alter schema/rules/flags or start migration before these gates and the RFC transaction design are reviewed.

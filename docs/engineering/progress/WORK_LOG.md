@@ -1,3 +1,12 @@
+
+
+## 2026-11-13 — Engine Plans consumer audit follow-up
+
+- Re-read exact main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; main unchanged. Reviewed AuthGate, App, Dashboard, PlanningEngineWizard, StorageService validation/read/write/projection, session persistence, journaled snapshot service, backup persistence, IndexedDB journal, local outbox, cloud coordinator, remote Inbox projector, conflict resolution, Settings/Progress export and the central test registry.
+- Confirmed direct consumers and risks are recorded in section 16 of the Engine Plans RFC: App synchronous hydration and repeated reads; Dashboard independent read; AuthGate lacks archive hydration; synchronous backup export in two screens; import/reset/session/demo grouped projections; localStorage-backed journal/Inbox/conflict materialization; v9 journal DB; 450,000-byte main mutation cap; 100-plan guards in storage, backup validation and session persistence.
+- Confirmed test registry suites and key E2E plans/dashboard. This is a targeted audit, not exhaustive search of all 159 source files plus 19 E2E/script files; no migration started and no limits changed.
+- PR #372 exact head `950640ea78d29e87d426a89d8887c15e4de2abac`; run `43391729769` attempt 2/job `131773203535` has no steps/logs; BLOCKED. Package-only Bun checks PASS; full source tests/build/Firestore/browser NOT TESTED.
+- Main and Production parity unchanged; no merge/deploy/config/Rules/secrets/flags changes.
 ## 2026-11-13 — Bun single-graph CI candidate PR #372
 
 - Refreshed main and production: main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel production `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` READY on exact same SHA.
