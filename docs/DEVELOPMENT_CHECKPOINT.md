@@ -1,3 +1,7 @@
+## 2026-11-13 — latest CI repair state
+
+PR #372 proposes the Bun-only app dependency graph and a frozen Bun lock. Isolated Bun 1.4.4 checks pass (frozen install, audit high with 0 advisories / 360 packages; CLI version checks); full app tests/typecheck/build/Firestore/Playwright remain NOT TESTED. GitHub Actions exact-head run #43391729769 attempt 2 fails with missing steps/logs and BlobNotFound; Vercel preview is rate-limited. Main and production remain unchanged and aligned at `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. PR #372 remains Draft. See CONTINUE_HERE.md and CHANGE_CONTROL.md for full details.
+
 ## Latest verified continuation — 2026-11-13
 
 See [CONTINUE_HERE.md](./CONTINUE_HERE.md) for the current PR matrix and full handoff. Main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production is READY on the same SHA. No merge, deploy, code, workflow, lockfile, secret, Rules, or runtime configuration change occurred in this continuation. The package-only Bun check confirms a stale committed lock and a split Bun/npm CI graph; full-source validation is still blocked. The current Quality Gate failures on #363/#371 expose no job steps/logs and are classified BLOCKED. Engine Plans migration remains HOLD pending complete indirect-consumer/test inventory and atomic archive/journal design. Documentation updates are on PR #363 only.
