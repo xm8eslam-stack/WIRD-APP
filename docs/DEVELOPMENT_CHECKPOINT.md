@@ -1,3 +1,7 @@
+## Latest verified continuation — 2026-11-13
+
+See [CONTINUE_HERE.md](./CONTINUE_HERE.md) for the current PR matrix and full handoff. Main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production is READY on the same SHA. No merge, deploy, code, workflow, lockfile, secret, Rules, or runtime configuration change occurred in this continuation. The package-only Bun check confirms a stale committed lock and a split Bun/npm CI graph; full-source validation is still blocked. The current Quality Gate failures on #363/#371 expose no job steps/logs and are classified BLOCKED. Engine Plans migration remains HOLD pending complete indirect-consumer/test inventory and atomic archive/journal design. Documentation updates are on PR #363 only.
+
 # CURRENT DEVELOPMENT CHECKPOINT — 2026-11-13
 
 > Current operational evidence is in [CONTINUE_HERE.md](./CONTINUE_HERE.md). This dated section supersedes older SHA, PR, CI, Vercel, environment, and release-status claims below. Historical entries are preserved as history only.
