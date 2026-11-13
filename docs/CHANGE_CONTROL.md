@@ -41,6 +41,9 @@ When sources disagree, preserve both observations, identify the system and times
 5. Add tests with the implementation. Do not update test assertions merely to match an unverified behavior.
 6. Keep one package-manager dependency graph. The committed `bun.lock` is authoritative because `package.json` declares Bun and Vercel detects Bun. CI must not run a second independent npm install for the application graph. If Playwright needs a package, make its dependency treatment explicit and reproducible.
 
+### Commit hygiene
+Batch related changes into one or a few coherent commits. Avoid a separate commit per file. If a branch becomes disproportionately long relative to its changed-file set, keep it Draft, inspect the full commit and file history, and prefer a clean/squash strategy only after reviewing the exact diff. Never force-push a shared branch without checking collaborators and authorization.
+
 ### Before PR completion
 1. Review the complete diff, not only the summary.
 2. Run all relevant automated suites and the full required Quality Gate on the exact current PR head.
