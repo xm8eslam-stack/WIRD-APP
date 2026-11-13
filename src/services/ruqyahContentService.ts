@@ -1,6 +1,7 @@
 import type { Ayah } from '../types/quran';
 import type { RuqyahItem } from '../data/ruqyahData';
 import { loadSurahVerses } from '../data/quranDataLoader';
+import { ALL_SURAHS } from '../data/quranMeta';
 
 export interface RuqyahVerseRange {
   start: number;
@@ -13,25 +14,9 @@ export interface RuqyahAudioAyah {
   globalAyahNumber: number;
 }
 
-const SURAH_VERSE_COUNTS = [
-  7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,
-  112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,
-  89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,
-  30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,
-  15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6
-] as const;
-
-const SURAH_GLOBAL_STARTS: readonly number[] = SURAH_VERSE_COUNTS.reduce<number[]>(
-  (starts, count, index) => {
-    starts[index] = (starts[index - 1] ?? 0) + (index === 0 ? 1 : SURAH_VERSE_COUNTS[index - 1]);
-    return starts;
-  },
-  []
-);
-
 export function parseRuqyahVerseRange(value: string): RuqyahVerseRange {
   if (typeof value !== 'string') throw new Error('نطاق آيات الرقية غير صالح.');
-  const match = value.trim().match(/^(\\d+)\\s*(?:[-–—]\\s*(\\d+))?$/);
+  const match = value.trim().match(/^(\d+)\s*(?:[-–—]\s*(\d+))?$/);
   if (!match) throw new Error('نطاق آيات الرقية غير صالح.');
   const start = Number(match[1]);
   const end = match[2] === undefined ? start : Number(match[2]);
@@ -41,6 +26,25 @@ export function parseRuqyahVerseRange(value: string): RuqyahVerseRange {
   return { start, end };
 }
 
+export function validateRuqyahSurahChunk(surahNumber: number, verses: Ayah[]): void {
+  const metadata = ALL_SURAHS[surahNumber - 1];
+  if (!metadata || metadata.number !== surahNumber || !Array.isArray(verses) ||
+      verses.length !== metadata.versesCount) {
+    throw new Error('بيانات سورة ' + surahNumber + ' ناقصة أو غير مكتملة في المصحف المحلي المعتمد.');
+  }
+  const globalStart = ALL_SURAHS.slice(0, surahNumber - 1)
+    .reduce((total, surah) => total + surah.versesCount, 1);
+  for (let index = 0; index < verses.length; index++) {
+    const ayah = verses[index];
+    if (!ayah || ayah.surahNumber !== surahNumber ||
+        ayah.numberInSurah !== index + 1 ||
+        ayah.number !== globalStart + index ||
+        typeof ayah.text !== 'string' || !ayah.text.trim()) {
+      throw new Error('تعذر التحقق من سلامة تسلسل آيات سورة ' + surahNumber + ' في المصحف المحلي المعتمد.');
+    }
+  }
+}
+
 function validateQuranItem(item: RuqyahItem): { surahNumber: number; range: RuqyahVerseRange } {
   const surahNumber = item.surahNumber;
   if (item.type !== 'quran' || !Number.isInteger(surahNumber) ||
@@ -48,8 +52,8 @@ function validateQuranItem(item: RuqyahItem): { surahNumber: number; range: Ruqy
     throw new Error('بيانات موضع الآيات في عنصر الرقية غير مكتملة.');
   }
   const range = parseRuqyahVerseRange(item.verseRange);
-  const expectedCount = SURAH_VERSE_COUNTS[surahNumber - 1];
-  if (!expectedCount || range.end > expectedCount) {
+  const metadata = ALL_SURAHS[surahNumber - 1];
+  if (!metadata || range.end > metadata.versesCount) {
     throw new Error('نطاق الآيات ' + surahNumber + ':' + item.verseRange + ' خارج حدود السورة في المصحف المعتمد.');
   }
   return { surahNumber, range };
@@ -60,20 +64,7 @@ export async function loadRuqyahSurah(surahNumber: number): Promise<Ayah[]> {
     throw new Error('رقم السورة غير صالح لتحميل المصحف المعتمد.');
   }
   const verses = await loadSurahVerses(surahNumber);
-  const expectedCount = SURAH_VERSE_COUNTS[surahNumber - 1];
-  if (!Array.isArray(verses) || verses.length !== expectedCount) {
-    throw new Error('بيانات سورة ' + surahNumber + ' ناقصة أو غير مكتملة في المصحف المحلي المعتمد.');
-  }
-  const globalStart = SURAH_GLOBAL_STARTS[surahNumber - 1];
-  for (let index = 0; index < verses.length; index++) {
-    const ayah = verses[index];
-    if (!ayah || ayah.surahNumber !== surahNumber ||
-        ayah.numberInSurah !== index + 1 ||
-        ayah.number !== globalStart + index ||
-        typeof ayah.text !== 'string' || !ayah.text.trim()) {
-      throw new Error('تعذر التحقق من سلامة تسلسل آيات سورة ' + surahNumber + ' في المصحف المحلي المعتمد.');
-    }
-  }
+  validateRuqyahSurahChunk(surahNumber, verses);
   return verses;
 }
 
