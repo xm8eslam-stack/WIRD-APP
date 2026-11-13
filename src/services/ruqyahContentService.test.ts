@@ -73,6 +73,10 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
       assert(ayahs.length === range.end - range.start + 1, item.id + ' has an incomplete canonical range');
       assert(ayahs[0].numberInSurah === range.start, item.id + ' starts at the wrong ayah');
       assert(ayahs[ayahs.length - 1].numberInSurah === range.end, item.id + ' ends at the wrong ayah');
+      const expectedGlobalStart = ALL_SURAHS.slice(0, item.surahNumber! - 1)
+        .reduce((total, surah) => total + surah.versesCount, 1) + range.start - 1;
+      assert(ayahs[0].number === expectedGlobalStart, item.id + ' starts at the wrong global Quran ayah');
+      assert(ayahs[ayahs.length - 1].number === expectedGlobalStart + range.end - range.start, item.id + ' ends at the wrong global Quran ayah');
       assert(ayahs.every((ayah, index) => ayah.numberInSurah === range.start + index), item.id + ' is not sequential');
       const display = await getRuqyahDisplayText(item);
       assert(display === ayahs.map(ayah => ayah.text).join(' ۞ '), item.id + ' is not rendered from canonical Quran data');
