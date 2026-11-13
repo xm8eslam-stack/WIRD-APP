@@ -806,3 +806,8 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 
 ### Next action
 Review the complete archive transaction/cursor/conflict protocol against RFC section 17, then prepare only the missing focused test plan and a separate migration-stage branch after path ownership is rechecked. Do not implement the IndexedDB migration until that review and test matrix are accepted.
+
+
+## Additional corruption-safety finding — 2026-11-13
+
+`StorageService.getEnginePlans()` delegates to `readJsonArrayArchive` (`src/services/storageService.ts:378-395`), which filters malformed records or returns `[]` on corrupt/non-array input while preserving the original bytes. This is non-destructive but can expose a partial/empty UI view. IndexedDB migration must strictly read and validate the exact scoped raw bytes, distinguish inaccessible storage from absent data, and fail closed; never migrate from the filtered/empty getter result.
