@@ -865,3 +865,11 @@ Important qualification: current projection and conflict-resolution callbacks sy
 Confirmed compatibility blocker: Engine Plans remote Inbox accepts up to 450 KB, but conflict intent preparation and use-remote/keep-local commit payloads are capped at 128 KB. Large valid Engine Plans events can become stuck in conflict. The archive-aware fix is small revision/hash references in intents and Outbox, not a blanket limit increase.
 
 Detailed review, transaction contracts, and test matrix are in RFC section 18. Source review only; no tests were run and no code changed. Keep archive Stage B HOLD.
+
+
+
+## 2026-11-13 — PR #371 codec assessment
+
+PR #371's pure chunk codec has canonical JSON, stable record IDs/order, 192 KB fragments, SHA-256 fragment/record/archive integrity and corruption/missing-chunk rejection. It is not an archive repository or remote transport. Its full in-memory manifest has no paging and can exceed Firestore's 1 MiB document ceiling for large archives. Streaming, hierarchical manifest pages, domain EngineGeneratedPlan validation, IndexedDB persistence, Firestore transport, sync reference integration, conflict resolution and crash/quota recovery remain missing. See RFC section 19.
+
+#371 run 43278752980/job 131394096177 and #372 run 43391729769/job 131773203535 are failures without inspectable steps/logs; classify BLOCKED observability. Keep both Draft. No local tests or runtime code changes.
