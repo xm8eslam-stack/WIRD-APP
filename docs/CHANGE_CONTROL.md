@@ -124,3 +124,23 @@ The main-branch source was re-read at `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`
 5. Review the exact diff and lockfile package graph; then require a fresh exact-head CI run with inspectable steps/logs. Do not weaken checks or edit main directly.
 
 Until all five steps pass, classify the dependency repair as IN PROGRESS / BLOCKED for full-source validation. Do not claim the isolated audit is a full app security or build pass.
+
+
+## 8. Exact changed-path overlap refresh — 2026-11-13
+
+The paginated GitHub changed-filename lists were fetched for PRs #2, #358–#371. This is the exact overlap register from those lists (not inferred from PR titles):
+
+| Shared path | PRs | Required handling |
+|---|---|---|
+| `src/tests/runAllTests.ts` | #365, #367, #368, #369, #371, #358, #359, #2 | One-at-a-time serialization. After each accepted change, reapply the next patch to the new base and rerun its exact-head suite. |
+| `src/components/plans/PlanningEngineWizard.tsx` | #367, #369, #2 | Resolve #367/#369 product interaction in sequence; #2 is stale and must not be merged wholesale. |
+| `src/App.tsx`, `src/components/layout/Sidebar.tsx` | #365, #2 | #365 owns current Seerah integration; inspect #2 only for isolated non-stale changes. |
+| `src/components/settings/SettingsView.tsx` | #366, #2 | #366 owns current offline settings integration; do not merge #2 wholesale. |
+| `src/components/session/MemorizationSessionView.tsx` | #370, #2 | #370 owns current display preferences UI; selectively reconcile any still-needed #2 behavior. |
+| `api/advisor.ts`, `src/services/advisorService.ts`, `src/tests/geminiSecurity.test.ts` | #364, #2 | #364 is the isolated current Advisor security patch; #2 remains stale. |
+| `docs/DEVELOPMENT_CHECKPOINT.md`, `docs/engineering/FIRESTORE_SYNC_DESIGN.md` | #363, #2 | #363 is the canonical documentation consolidation; do not merge #2's historical copies. |
+| `docs/offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md` | #363, #359 | #363 owns current offline audio contract/plan. #359 is a stale predecessor to #368 and must not overwrite it. |
+
+PR #2 touches 37 paths and overlaps current work across advisor, Seerah/App shell, settings, session, plan wizard, test registry and docs. It remains OPEN/DRAFT/non-mergeable on a stale base; do not merge or rebase wholesale. If a specific still-needed change is discovered, extract only that commit/hunk after reviewing its provenance and re-test on current main. #358/#359 are also stale predecessors; #368 is the unified audio implementation branch, but it still requires its own exact-head validation and remaining SW/UI/playback work.
+
+Current active PR changed-file counts from the paginated lists: #363 36, #364 3, #365 16, #366 7, #367 9, #368 7, #369 6, #370 5, #371 3. The exact path list remains queryable from GitHub; the table above records all cross-PR collisions.
