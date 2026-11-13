@@ -35,25 +35,21 @@ jobs:
           package-manager-cache: false
       - name: Verify Node.js runtime matches Vercel
         run: node -e "if (process.versions.node.split('.')[0] !== '26') process.exit(1)"
-      - name: Setup Bun for lockfile verification
+      - name: Setup Bun for the locked dependency graph
         uses: oven-sh/setup-bun@v2
-      - name: Refresh Bun lockfile for the new rules-test dependency
-        run: |
-          bun install --force
-          git diff -- bun.lock
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Install Playwright test runner for TypeScript validation
-        run: npm install --no-save --no-package-lock @playwright/test@1.56.1
-      - name: Audit dependency vulnerabilities
-        run: npm audit --audit-level=high
+        with:
+          bun-version: 1.4.4
+      - name: Install dependencies from the committed lockfile
+        run: bun install --frozen-lockfile
+      - name: Audit the committed Bun dependency graph
+        run: bun audit --audit-level=high
       - name: Run automated test suites
-        run: npm test
+        run: bun run test
       - name: Verify all 604 printed Mushaf coordinate maps against WIRD local Quran data
         if: ${{ inputs.validate_mushaf || contains(github.event.pull_request.title, 'Mushaf') || contains(github.head_ref, 'mushaf') }}
-        run: npm run mushaf:validate-coverage
+        run: bun run mushaf:validate-coverage
       - name: Verify native TypeScript API module imports
-        run: npm run smoke:api-imports
+        run: bun run smoke:api-imports
       - name: Verify approved Quran audio CDN availability and byte-range streaming
         run: node scripts/check-ruqyah-audio-source.mjs
       - name: Set up Java 21 for Firestore Emulator
@@ -62,23 +58,23 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Firestore Security Rules Emulator Tests
-        run: npm run test:firestore-rules
+        run: bun run test:firestore-rules
       - name: TypeScript validation
-        run: npm run lint
+        run: bun run lint
       - name: Production build (includes Quran chunk validation)
-        run: npm run build
+        run: bun run build
       - name: Production server startup smoke test
-        run: npm run smoke:server
+        run: bun run smoke:server
 
-      # Playwright's browser downloader is kept on Node 24 for compatibility;
-      # the app build, server smoke, and actual browser tests remain on Node 26.
+      # Playwright browser download remains on Node 24 for compatibility;
+      # app build, server smoke, and actual browser tests run on Node 26.
       - name: Set up Node.js 24 for Playwright browser download
         uses: actions/setup-node@v7
         with:
           node-version: 24
           package-manager-cache: false
       - name: Install Chromium for browser tests
-        run: npx playwright install --with-deps chromium
+        run: bunx playwright install --with-deps chromium
       - name: Restore Node.js 26 for browser tests
         uses: actions/setup-node@v7
         with:
@@ -87,7 +83,7 @@ jobs:
       - name: Verify Node.js runtime before browser tests
         run: node -e "if (process.versions.node.split('.')[0] !== '26') process.exit(1)"
       - name: Desktop and mobile browser smoke tests
-        run: npx playwright test
+        run: bunx playwright test
       - name: Upload Playwright diagnostics
         if: always()
         uses: actions/upload-artifact@v4

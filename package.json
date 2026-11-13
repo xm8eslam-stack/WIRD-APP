@@ -20,7 +20,7 @@
     "test": "tsx src/tests/runAllTests.ts",
     "smoke:server": "node scripts/smoke-server.mjs",
     "smoke:api-imports": "node scripts/smoke-api-imports.mjs",
-    "test:firestore-rules": "npx --yes firebase-tools@15.0.0 emulators:exec --only firestore --project demo-wird \"tsx scripts/firestoreRules.test.ts\"",
+    "test:firestore-rules": "bunx firebase-tools@15.0.0 emulators:exec --only firestore --project demo-wird \"tsx scripts/firestoreRules.test.ts\"",
     "quran:split": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
     "predev": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
     "prebuild": "node scripts/validate-quran-simple.mjs && node scripts/split-quran-data.mjs && node scripts/split-quran-simple-data.mjs",
@@ -53,6 +53,12 @@
     "fake-indexeddb": "^6.2.7",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "@types/express": "^4.17.21"
-  }
+    "@types/express": "^4.17.21",
+    "@playwright/test": "1.56.1"
+  },
+  "trustedDependencies": [
+    "@firebase/util",
+    "esbuild",
+    "protobufjs"
+  ]
 }
