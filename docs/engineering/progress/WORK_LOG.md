@@ -16,3 +16,6 @@
 - Identified payload ceiling mismatch for future large-plan conflict handling: normal Engine Plans journal mutation ceiling 450,000 bytes; conflict intent/use-remote/keep-local generic payload checks and legacy localStorage Outbox parser remain 128,000 bytes.
 - Rechecked PR #372 run `43391729769` / job `131773203535`: no steps/logs; log endpoint returned BlobNotFound. BLOCKED observability. No full-source tests, typecheck, build, emulator or Playwright executed.
 - No source code or production settings changed. No test execution in this documentation/audit pass. Engine Plans migration remains HOLD.
+
+
+- Additional corruption-safety finding: `StorageService.getEnginePlans()` delegates to `readJsonArrayArchive` (`storageService.ts:378-395`), which filters malformed records or returns an empty array while preserving the original bytes. Migration must use a strict raw-byte read/validator and fail closed rather than hydrate from a filtered/empty fallback.
