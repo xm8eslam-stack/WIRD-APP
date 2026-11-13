@@ -46,4 +46,48 @@ jobs:
       - name: Run automated test suites
         run: bun run test
       - name: Verify all 604 printed Mushaf coordinate maps against WIRD local Quran data
-        if: ${{¶»§q«^
+        if: ${{ inputs.validate_mushaf || contains(github.event.pull_request.title, 'Mushaf') || contains(github.head_ref, 'mushaf') }}
+        run: bun run mushaf:validate-coverage
+      - name: Verify native TypeScript API module imports
+        run: bun run smoke:api-imports
+      - name: Verify approved Quran audio CDN availability and byte-range streaming
+        run: node scripts/check-ruqyah-audio-source.mjs
+      - name: Set up Java 21 for Firestore Emulator
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Firestore Security Rules Emulator Tests
+        run: bun run test:firestore-rules
+      - name: TypeScript validation
+        run: bun run lint
+      - name: Production build (includes Quran chunk validation)
+        run: bun run build
+      - name: Production server startup smoke test
+        run: bun run smoke:server
+
+      # Playwright browser download remains on Node 24 for compatibility;
+      # app build, server smoke, and actual browser tests run on Node 26.
+      - name: Set up Node.js 24 for Playwright browser download
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Install Chromium for browser tests
+        run: bunx playwright install --with-deps chromium
+      - name: Restore Node.js 26 for browser tests
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Verify Node.js runtime before browser tests
+        run: node -e "if (process.versions.node.split('.')[0] !== '26') process.exit(1)"
+      - name: Desktop and mobile browser smoke tests
+        run: bunx playwright test
+      - name: Upload Playwright diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-results
+          path: test-results/playwright
+          if-no-files-found: ignore
