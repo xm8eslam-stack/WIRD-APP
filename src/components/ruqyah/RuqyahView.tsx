@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getRuqyahAudioQueue, getRuqyahAyahs } from '../../services/ruqyahContentService';
+import { getRuqyahAudioQueueForItems, getRuqyahAyahs } from '../../services/ruqyahContentService';
 import type { Ayah } from '../../types/quran';
 import { QuranText } from '../shared/QuranText';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
@@ -159,24 +159,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     setAudioError('');
     try {
       const targetItems = item ? [item] : currentItems.filter(candidate => candidate.type === 'quran');
-      const itemQueues = await Promise.all(targetItems.map(async target => ({
-        target,
-        ayahs: await getRuqyahAudioQueue(target)
-      })));
+      const queue = await getRuqyahAudioQueueForItems(targetItems);
       if (buildRequestId !== audioBuildRequestIdRef.current) return;
-
-      const seenAyahs = new Set<number>();
-      const queue = itemQueues.flatMap(({ target, ayahs }) =>
-        ayahs.map(ayah => ({
-          globalAyahNumber: ayah.globalAyahNumber,
-          itemId: target.id,
-          title: target.title
-        }))
-      ).filter(entry => {
-        if (seenAyahs.has(entry.globalAyahNumber)) return false;
-        seenAyahs.add(entry.globalAyahNumber);
-        return true;
-      });
 
       if (queue.length === 0) throw new Error('لا توجد آيات قرآنية صالحة للتشغيل في هذا القسم.');
       if (buildRequestId !== audioBuildRequestIdRef.current) return;
