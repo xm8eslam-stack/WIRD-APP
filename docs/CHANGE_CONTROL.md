@@ -161,3 +161,12 @@ An experiment adding `firebase-tools@15.0.0` to the application devDependencies 
 PR #372 head `950640ea78d29e87d426a89d8887c15e4de2abac`, one commit, 4 changed files, OPEN/DRAFT, not merged. Its GitHub Actions run `43391729769` failed immediately; attempt 2 job `131773203535` again had `steps=null` and `logs_url=null`; fetching logs returned `BlobNotFound`. This is BLOCKED runner/log observability, not evidence of a source test failure or pass. Vercel status on this SHA says `Deployment rate limited — retry in 24 hours`; no preview deployment was created. Production remains READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 
 Do not merge #372 until exact-head full-source checks run with inspectable steps/logs and all checks pass. Do not weaken the Quality Gate. No main, production, Firebase Rules, secrets, or sync flags were changed.
+
+
+## 10. PR #372 path isolation and Vercel preview policy — 2026-11-13
+
+PR #372 changes exactly four paths: `package.json`, `bun.lock`, `.github/workflows/ci.yml`, and `playwright.config.ts`. A fresh changed-file comparison against PRs #363–#371, #358, #359, and #2 found **no shared paths**. It can be validated independently of the `runAllTests.ts` and `PlanningEngineWizard.tsx` overlap queue.
+
+The repository `vercel.json` explicitly sets `git.deploymentEnabled` to `* = false` and `main = true`; feature-branch Vercel preview deployments are therefore disabled by repository policy. In addition, the Vercel commit status on #372 SHA reports `Deployment rate limited — retry in 24 hours`. Do not change this branch deployment policy or Vercel settings to force previews. Production remains the separate READY deployment on main.
+
+PR #372 remains OPEN/DRAFT, one commit, head `950640ea78d29e87d426a89d8887c15e4de2abac`, mergeable=true at last read. GitHub Actions attempt 2 remains BLOCKED due missing job steps/logs (BlobNotFound).
