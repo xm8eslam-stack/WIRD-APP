@@ -822,3 +822,11 @@ Read RFC section 18 before archive implementation. Key decisions:
 - 450 KB Engine Plans events can enter Inbox but 128 KB conflict-intent/use-remote/keep-local caps prevent resolving large conflicts. Use immutable archive revision references and hashes in conflict records, not inline arrays or global cap increases.
 - Stage B remains HOLD. Next: design the archive-reference data model and API contract, then author isolated focused tests before schema migration. Recheck PR path ownership first; do not touch shared journal/StorageService files while #367/#371 remain active unless a separate branch is explicitly coordinated.
 - No code changes or tests in this review.
+
+
+
+## PR #371 codec review — 2026-11-13
+
+Reviewed exact PR #371 HEAD 260df95c620cd534337e39d6707b044eb404139a. The pure codec provides canonical records, 192 KB fragments, SHA-256 fragment/record/archive fingerprints and malformed/missing/corrupt chunk rejection. It does not provide paged manifests, streaming, IndexedDB repository, Firestore transport, journal/outbox/inbox references, domain plan validation, conflict integration or crash/quota recovery. A large descriptor manifest can exceed Firestore's 1 MiB document limit; add bounded manifest pages plus a small root digest before remote integration. Details are in RFC section 19.
+
+PR #371 Quality Gate run 43278752980 / job 131394096177 and PR #372 run 43391729769 / job 131773203535 both report failure with steps=null and logs_url=null. Classify BLOCKED observability; no code-level diagnosis and no Quality Gate PASS. Keep both Draft. Main remains unchanged; no tests or runtime code changed in this review.
