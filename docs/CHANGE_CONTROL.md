@@ -1,0 +1,106 @@
+# WIRD — Change Control & Evidence Reconciliation
+
+**Status:** Mandatory operating policy  
+**Updated:** 2026-11-13  
+**Repository:** `xm8eslam-stack/WIRD-APP`  
+**Production source branch:** `main` (Google AI Studio is configured to use main; actual AI Studio sync must be verified separately)
+
+## 1. Source-of-truth hierarchy
+
+No single system proves the state of another system.
+
+| Fact | Authoritative evidence | Not sufficient |
+|---|---|---|
+| Source code | GitHub branch/ref + exact commit SHA | Old checkpoint, local recollection |
+| PR state and overlap | Current PR metadata + changed-file lists + current heads | PR title or stale handoff |
+| CI result | Workflow run tied to exact SHA, job steps and logs | Green badge on another SHA; failure without steps |
+| Production deployment | Vercel deployment metadata: target, source SHA, state, alias | Preview READY; GitHub Vercel status alone |
+| Public reachability | Project protection configuration + anonymous read-only smoke | Domain verified or deployment READY |
+| Runtime config | Vercel variable key/target inventory (values hidden) | Code defaults or stale docs |
+| Firebase Rules | Successful Rules deployment run + deployed rules blob/source SHA | Emulator tests or a workflow file |
+| Google AI Studio | Direct sync/build evidence from AI Studio | GitHub commit alone |
+| Physical device | Recorded device/browser/network test | Playwright emulation or emulator |
+
+When sources disagree, preserve both observations, identify the system and timestamp, and do not silently pick the more convenient value.
+
+## 2. Mandatory workflow for every change
+
+### Before editing
+1. Read `AGENTS.md`, `GEMINI.md`, `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, this policy, and the relevant specialist docs.
+2. Fetch current `main` SHA, complete open PRs, relevant head/base SHAs, changed files, review state, and exact-head workflow runs.
+3. Fetch current Vercel Production deployment (including target, source SHA and aliases), domain/protection state, and environment-variable key/target inventory without decrypting values.
+4. Fetch the latest Firebase Rules deployment evidence and distinguish it from Emulator results.
+5. Build a path-ownership table. Identify overlaps in source files, test registries such as `src/tests/runAllTests.ts`, package manifests/lockfiles, workflows, and docs.
+6. Put any owner-only decision in `docs/OWNER_ACTIONS.md` before it can block independent work.
+
+### During editing
+1. Work from a fresh feature branch or the already-authorized task branch; never edit `main` directly.
+2. Keep parallel tasks on disjoint path sets. If a shared file must change, serialize edits and rebase/reapply after the first change lands.
+3. Do not raise byte limits or remove data constraints as a substitute for the approved architecture.
+4. Keep local data, user data, secrets, Firebase, Production configuration, and public-access settings within their explicit authorization boundaries.
+5. Add tests with the implementation. Do not update test assertions merely to match an unverified behavior.
+6. Keep one package-manager dependency graph. The committed `bun.lock` is authoritative because `package.json` declares Bun and Vercel detects Bun. CI must not run a second independent npm install for the application graph. If Playwright needs a package, make its dependency treatment explicit and reproducible.
+
+### Before PR completion
+1. Review the complete diff, not only the summary.
+2. Run all relevant automated suites and the full required Quality Gate on the exact current PR head.
+3. Inspect job steps/logs. If GitHub reports failure but provides no job steps/logs, classify as `BLOCKED` until runner evidence is restored; never call it code failure or pass.
+4. Review PR overlaps against all open PRs. Do not merge two PRs that both edit a shared file without sequencing and revalidation.
+5. Re-fetch the PR head after all commits and ensure the check SHA exactly matches it.
+6. Keep incomplete work Draft. No merge/deploy is implied by the request to audit or repair.
+
+### After a merge (only when authorized)
+1. Re-fetch main and record the merge SHA.
+2. Verify a post-merge Quality Gate on the exact new main SHA.
+3. Verify Vercel Production is READY on that exact SHA and alias, then perform read-only smoke.
+4. Verify Firebase Rules deployment separately if Rules changed.
+5. Reconcile runtime flags and public-access requirements with the approved owner decision.
+6. Update all live docs and perform the stale-fact/link/overlap scan again.
+
+## 3. Evidence vocabulary
+
+- **PASS:** the stated test or check ran and succeeded on the recorded SHA.
+- **FAIL:** the stated test ran and failed, with an identified step/log.
+- **BLOCKED:** an external dependency, permission, quota, runner, or missing observability prevents a valid result.
+- **NOT TESTED:** no execution/evidence exists.
+- **OWNER-REPORTED PASS:** the owner reports a real-world result, but no independent trace exists.
+- **READY:** Vercel deployment lifecycle state only; it does not mean public, correct, secure, or fully tested.
+
+Never turn a blocked or untested item into a pass by inference.
+
+## 4. Conflict register — 2026-11-13
+
+This is a dated observation, not permission to change production settings.
+
+| Area | Verified observation | Reconciliation / action |
+|---|---|---|
+| GitHub main | `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` | Current source baseline at audit time |
+| Production deployment | `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY, target production, alias `wird-app.vercel.app`, exact same SHA as main | Source/deployment parity PASS; live functional smoke is separate |
+| Public access | SSO protection enabled for all non-custom domains; only `wird-app.vercel.app` is listed and verified | Anonymous public access is not established; owner decision required; do not change protection automatically |
+| Sync flags | `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` for Production | Runtime state is ON; full release certification is still HOLD. Do not silently call the flags OFF or toggle them without specific approval |
+| IslamicAPI key | `ISLAMICAPI_API_KEY` exists as a sensitive variable for Preview and Production | Old notes claiming Production only has `ISLAMICAPI_API_KEY1` are stale. Never read or disclose the value |
+| Branch protection | `main` reports `protected=false`; required checks enforcement is off; repository rulesets list is empty | GitHub enforcement gap. No settings change performed; owner/admin authorization and an agreed ruleset are required |
+| CI | Recent PR workflow runs ended in 3–4 seconds; jobs had no steps; log retrieval returned `BlobNotFound`. No recent main-branch workflow run was returned | Runner/log observability BLOCKED. This is not evidence of source failure or a pass |
+| Package manager | `package.json` declares `bun@1.4.4`; `bun.lock` exists; Vercel detects Bun; CI runs `bun install --force` then `npm install` and `npm audit` | Dependency graph parity conflict. Replace with one Bun-based frozen install/audit/test/build only after validating the lockfile and Playwright dependency path |
+| Engine Plans | Main still uses localStorage with a 100-plan limit; #367 is only a temporary 800,000-byte sync budget; #371 is a codec-only PR | IndexedDB archive integration/migration remains unimplemented; do not raise limits as a substitute |
+| Offline audio | #368 is an unmerged Draft branch with repository, Cache Storage adapter, downloader and job lifecycle work | These changes are not in main/Production; no UI/SW/offline playback/device completion claim |
+| PR coordination | #365, #367, #368, #369 and #371 all modify `src/tests/runAllTests.ts`; #367 and #369 also modify `PlanningEngineWizard.tsx`; #358/#359 use an older base and are superseded by #368 | Serialize test-registry and wizard changes; rebase/reapply and rerun exact-head checks after each preceding merge |
+| Firebase Rules | Emulator coverage exists; latest deployed Production Rules source/blob was not independently verified in this audit | Emulator PASS does not prove Production Rules deployment |
+| Google AI Studio | `main` is configured as source; actual sync/build state not observed | Keep as NOT TESTED until direct evidence |
+
+## 5. Mandatory document reconciliation
+
+After each meaningful change, update:
+- `docs/CONTINUE_HERE.md` — current live state and next action;
+- `docs/DEVELOPMENT_ROADMAP.md` — product sequencing if affected;
+- the relevant specialist design/release document;
+- `docs/engineering/progress/WORK_LOG.md` — append-only evidence log;
+- `docs/DEVELOPMENT_CHECKPOINT.md` — latest verified checkpoint;
+- `docs/OWNER_ACTIONS.md` — add/close owner decisions;
+- `docs/README.md` — document map if links/ownership change.
+
+Older checkpoint files are historical. Add a banner pointing to the current continuation file; preserve their dated evidence, but never present old SHA/PR/environment facts as current.
+
+## 6. Non-negotiable approval boundaries
+
+No automatic merge, production deploy/promotion/rollback, Firebase Rules deployment, production data mutation, Vercel environment/protection change, secret rotation, or sync-flag change. Obtain the specific owner approval first and preserve an auditable before/after record.
