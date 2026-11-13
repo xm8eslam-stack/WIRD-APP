@@ -4,6 +4,7 @@ import {
   fetchRuqyahApiData,
   readRuqyahApiIndexCache,
   resolveApiQuranEntry,
+  resolveApiQuranEntryText,
   matchesApiQuranEntry,
   writeRuqyahApiIndexCache
 } from '../../services/ruqyahApiService';
@@ -17,6 +18,80 @@ const PROGRAMS: Array<{ id: ProgramId; label: string }> = [
   { id: 'a-medium-ruqya', label: 'فهرس متوسط' },
   { id: 'a-long-ruqya', label: 'فهرس موسع' }
 ];
+
+const RuqyahApiEntryCard: React.FC<{ entry: RuqyahApiEntry; index: number }> = ({ entry, index }) => {
+  const [verifiedText, setVerifiedText] = useState('');
+  const [textLoading, setTextLoading] = useState(true);
+  const [textError, setTextError] = useState<string | null>(null);
+  let resolved: ReturnType<typeof resolveApiQuranEntry> | null = null;
+  let validationError: string | null = null;
+
+  try {
+    resolved = resolveApiQuranEntry(entry);
+  } catch (reason) {
+    validationError = reason instanceof Error ? reason.message : 'تعذر مطابقة موضع الآيات بالمصحف المعتمد.';
+  }
+
+  useEffect(() => {
+    let active = true;
+    setVerifiedText('');
+    setTextError(null);
+    if (!resolved) {
+      setTextLoading(false);
+      return () => { active = false; };
+    }
+
+    setTextLoading(true);
+    void resolveApiQuranEntryText(entry)
+      .then(text => {
+        if (active) setVerifiedText(text);
+      })
+      .catch(reason => {
+        if (active) setTextError(reason instanceof Error ? reason.message : 'تعذر تحميل النص من مصحف وِرد المحلي المعتمد.');
+      })
+      .finally(() => {
+        if (active) setTextLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [entry.id, entry.title]);
+
+  return (
+    <article className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 md:p-5 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+            {resolved ? 'سورة ' + resolved.surahName : 'موضع قرآني غير صالح'}
+          </h3>
+          {resolved && (
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
+              الآيات: {resolved.startAyah}{resolved.endAyah !== resolved.startAyah ? '–' + resolved.endAyah : ''}
+            </p>
+          )}
+        </div>
+        <span className="shrink-0 rounded-lg bg-stone-100 dark:bg-stone-800 px-2 py-1 text-[10px] font-bold text-stone-600 dark:text-stone-300">
+          {index + 1}
+        </span>
+      </div>
+      {validationError ? (
+        <p role="alert" className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3">{validationError}</p>
+      ) : textLoading ? (
+        <p role="status" aria-live="polite" className="text-xs text-stone-500 rounded-xl bg-stone-50 dark:bg-stone-800/50 p-3">جارٍ تحميل الآيات من مصحف وِرد المحلي المعتمد…</p>
+      ) : textError ? (
+        <p role="alert" className="text-xs text-red-700 dark:text-red-300 rounded-xl bg-red-50 dark:bg-red-950/30 p-3">{textError}</p>
+      ) : resolved && verifiedText ? (
+        <p className="font-quran text-lg md:text-xl leading-[2.2] text-center text-stone-900 dark:text-stone-100">
+          <QuranText surahNumber={resolved.surahNumber} ayahNumber={resolved.startAyah} endAyahNumber={resolved.endAyah}>{verifiedText}</QuranText>
+        </p>
+      ) : (
+        <p role="alert" className="text-xs text-red-700 dark:text-red-300 rounded-xl bg-red-50 dark:bg-red-950/30 p-3">تعذر تحميل النص من مصحف وِرد المحلي المعتمد.</p>
+      )}
+      <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
+        <span className="text-[11px] text-stone-400">النص من مصحف وِرد المعتمد؛ الفهرس الخارجي لا يضيف تفسيرًا أو حكمًا شرعيًا.</span>
+      </div>
+    </article>
+  );
+};
 
 export const RuqyahApiLibrary: React.FC = () => {
   const [program, setProgram] = useState<ProgramId>('brief-ruqya');
@@ -180,42 +255,9 @@ export const RuqyahApiLibrary: React.FC = () => {
         </div>
       ) : entries.length > 0 ? (
         <div className="space-y-3">
-          {filteredEntries.map((entry, index) => {
-            let resolved: ReturnType<typeof resolveApiQuranEntry> | null = null;
-            let validationError: string | null = null;
-            try { resolved = resolveApiQuranEntry(entry); }
-            catch (reason) {
-              validationError = reason instanceof Error ? reason.message : 'تعذر مطابقة موضع الآيات بالمصحف المعتمد.';
-            }
-            return (
-              <article key={String(entry.id) + '-' + index}
-                className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 md:p-5 space-y-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                      {resolved ? 'سورة ' + resolved.surahName : 'موضع قرآني غير صالح'}
-                    </h3>
-                    {resolved && (
-                      <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">
-                        الآيات: {resolved.startAyah}{resolved.endAyah !== resolved.startAyah ? '–' + resolved.endAyah : ''}
-                      </p>
-                    )}
-                  </div>
-                  <span className="shrink-0 rounded-lg bg-stone-100 dark:bg-stone-800 px-2 py-1 text-[10px] font-bold text-stone-600 dark:text-stone-300">
-                    {index + 1}
-                  </span>
-                </div>
-                {validationError ? (
-                  <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 rounded-xl p-3">{validationError}</p>
-                ) : resolved && (
-                  <p className="font-quran text-lg md:text-xl leading-[2.2] text-center text-stone-900 dark:text-stone-100"><QuranText surahNumber={resolved.surahNumber} ayahNumber={resolved.startAyah} endAyahNumber={resolved.endAyah}>{resolved.text}</QuranText></p>
-                )}
-                <div className="pt-2 border-t border-stone-100 dark:border-stone-800">
-                  <span className="text-[11px] text-stone-400">النص من مصحف وِرد المعتمد؛ الفهرس الخارجي لا يضيف تفسيرًا أو حكمًا شرعيًا.</span>
-                </div>
-              </article>
-            );
-          })}
+          {filteredEntries.map((entry, index) => (
+            <RuqyahApiEntryCard key={String(entry.id) + '-' + entry.title + '-' + index} entry={entry} index={index} />
+          ))}
         </div>
       ) : null}
     </section>
