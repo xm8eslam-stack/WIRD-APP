@@ -876,3 +876,14 @@ PR #371's pure chunk codec has canonical JSON, stable record IDs/order, 192 KB f
 
 
 PR #363 latest docs head c08186440e28ec53a6e7434c5212c7bed61b81e2 Quality Gate run 43400615632/job 131802241149 completed failure with no steps/logs; log retrieval returned BlobNotFound. BLOCKED observability; do not infer a code-level failure or success. Keep Draft.
+
+
+## Latest verified continuation — 2026-11-13
+
+- Main SHA: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`: READY, alias `wird-app.vercel.app`, source main SHA above.
+- PR #363–#372 remain OPEN/DRAFT in the latest listing. Latest exact heads: #363 `b4ab45c2f1e55b8b7b8fd1948e20855b11057b3a` before this docs checkpoint; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #371 `260df95c620cd534337e39d6707b044eb404139a`; #372 `950640ea78d29e87d426a89d8887c15e4de2abac`.
+- CI observability: #363 run 43400687488/job 131802482654; #372 run 43391729769/job 131773203535; #371 run 43278752980/job 131394096177. All returned completed failure with steps=null/logs_url=null and BlobNotFound on log retrieval. BLOCKED — observability; no pass or source-level failure diagnosis.
+- Added RFC §20 for archive repository APIs, IndexedDB v10 proposal, paged manifests, transactional publication, copy/verify/publish migration, scope fencing, rollback, GC and required tests.
+- Updated CONTINUE_HERE and WORK_LOG. Documentation-only; no source/test execution, no schema migration, no production changes, no merge/deploy.
+- Stage B remains HOLD until full call-site inventory, exact call-site/test matrix, and inspectable exact-head Quality Gate are complete.
