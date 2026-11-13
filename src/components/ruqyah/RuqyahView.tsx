@@ -155,6 +155,20 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   const startRuqyahAudio = async (item?: RuqyahItem) => {
     const buildRequestId = ++audioBuildRequestIdRef.current;
+    audioRequestIdRef.current += 1;
+    audioQueueRef.current = [];
+    audioQueueIndexRef.current = 0;
+    const previousAudio = audioRef.current;
+    if (previousAudio) {
+      previousAudio.pause();
+      previousAudio.removeAttribute('src');
+      previousAudio.load();
+    }
+    setAudioQueueLength(0);
+    setAudioQueuePosition(0);
+    setAudioCurrentItemId(null);
+    setAudioCurrentItemTitle('');
+    setAudioIsPlaying(false);
     setAudioIsLoading(true);
     setAudioError('');
     try {
