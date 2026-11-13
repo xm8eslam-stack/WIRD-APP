@@ -1,3 +1,34 @@
+# CURRENT DEVELOPMENT CHECKPOINT — 2026-11-13
+
+> Current operational evidence is in [CONTINUE_HERE.md](./CONTINUE_HERE.md). This dated section supersedes older SHA, PR, CI, Vercel, environment, and release-status claims below. Historical entries are preserved as history only.
+
+## Exact source and Production parity
+- GitHub `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, `READY`, target `production`, branch `main`, exact source SHA equals main, alias `wird-app.vercel.app`.
+- Vercel SSO protection is enabled for all non-custom domains. Only the verified Vercel domain is listed; anonymous public access is not established.
+- Production sync flags are currently both `true`. This is observed runtime configuration, not release certification. Do not change them without specific owner approval.
+- `ISLAMICAPI_API_KEY` is present for Preview and Production as a sensitive variable; no secret value was read.
+- GitHub main protection is disabled and required-check enforcement is off.
+- Current main combined status exposes a Vercel success context, but no recent main-branch Quality Gate run was returned. Production parity is not CI proof.
+
+## CI and open PR state
+- Recent PR Quality Gate failures have no recorded steps and logs return `BlobNotFound`; classify as BLOCKED observability/runner evidence, not code failure or pass.
+- Open PRs and exact heads are listed in [CONTINUE_HERE.md](./CONTINUE_HERE.md). Shared-path overlaps exist in `src/tests/runAllTests.ts` across #365/#367/#368/#369/#371 and in `PlanningEngineWizard.tsx` across #367/#369.
+- #358/#359 are superseded by #368; #2 is stale/non-mergeable.
+- No PR merged and no new Production deployment was created in this audit.
+
+## Current engineering boundaries
+- Engine Plans IndexedDB archive remains design-only; main still uses localStorage and a 100-plan limit.
+- PR #367's 800 KB sync cap is an unmerged temporary payload budget, not adaptive storage/chunking. PR #371 is codec-only.
+- PR #368 has additional Offline Audio components on its branch but is not in main/Production; full offline download/playback is not complete.
+- CI's Bun/npm dual-install differs from Vercel's Bun lockfile graph and needs a validated single-manager correction.
+- Firebase Rules Production deployment and Google AI Studio sync remain NOT TESTED in this audit.
+
+## Owner-only actions
+See [OWNER_ACTIONS.md](./OWNER_ACTIONS.md). No production settings, protection, secrets, Firebase Rules/data, sync flags, merge, or deploy were changed.
+
+---
+
 # 2026-11-12 — Offline-first checkpoint overlay
 
 ## Current workstream checkpoint — 2026-11-12 14:35 +02:00
