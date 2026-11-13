@@ -1,3 +1,69 @@
+# نقطة المصالحة التشغيلية — 2026-11-13
+
+> **هذه هي أحدث طبقة تشغيلية.** أي حالة أقدم أدناه سجل تاريخي فقط. اقرأ أيضًا [سياسة ضبط التغيير](./CHANGE_CONTROL.md) قبل أي تعديل.
+
+## الحالة المثبتة من GitHub وVercel
+
+- Repository: `xm8eslam-stack/WIRD-APP`.
+- `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production: deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` = `READY`, target `production`, branch `main`, source SHA مطابق تمامًا لـ main، alias `https://wird-app.vercel.app`.
+- Vercel project protection: SSO enabled for `all_except_custom_domains`; only `wird-app.vercel.app` is listed and verified. Domain verification is not proof of anonymous public access. Owner decision required; unchanged.
+- Production flags: `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true`. هذه حقيقة إعدادات حالية، وليست شهادة اكتمال مزامنة. لا تبديل دون موافقة محددة.
+- `ISLAMICAPI_API_KEY` is present as a sensitive variable for both Preview and Production. Any note claiming only `ISLAMICAPI_API_KEY1` exists in Production is stale. No value was read.
+- `main` branch protection is disabled; required status enforcement is off; repository rulesets list is empty. No setting was changed.
+- GitHub combined status for current main exposes a Vercel success context only. No recent main-branch Quality Gate run was returned by the current workflow-run query.
+- Firebase Rules: Emulator tests exist, but latest deployed Production Rules source/blob was not independently confirmed in this audit.
+- Google AI Studio: configured to use `main`; actual sync/build state was not observed.
+
+## CI observability
+
+Recent PR Quality Gate runs completed in approximately 3–4 seconds with no recorded job steps. `fetch_workflow_job_steps` returned empty arrays, and log retrieval returned GitHub `BlobNotFound`. Classify these runs as **BLOCKED / runner-or-log observability unavailable**, not code failure and not pass. The earlier PR #358/#359 Playwright failures had actual failed test steps and remain historical evidence for those superseded branches only.
+
+## PR coordination — current heads at audit time
+
+| PR | Head SHA | State | Coordination |
+|---|---|---|---|
+| #363 docs | `f62b0eb7a8a965ca4478bb56c05ce542656da203` | OPEN / DRAFT | This branch carries the documentation reconciliation; head will advance as this update is committed |
+| #364 Advisor security | `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98` | OPEN / DRAFT | Distinct API/service paths |
+| #365 Seerah | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | OPEN / DRAFT | Shares test aggregator |
+| #366 Offline/PWA | `cade1b630bb429d6a4106de5bf12713df18f3491` | OPEN / DRAFT | Service Worker/offline paths |
+| #367 Sync budget | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | OPEN / DRAFT | Shares test aggregator and PlanningEngineWizard with #369 |
+| #368 Offline Audio | `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710` | OPEN / DRAFT | Shares test aggregator; newer unified implementation |
+| #369 memorized ranges | `814bb8788449ebe3d07d46f00a596a1a7b398a5a` | OPEN / DRAFT | Shares test aggregator and PlanningEngineWizard with #367 |
+| #370 session display | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | OPEN / DRAFT | Distinct session paths |
+| #371 archive codec | `260df95c620cd534337e39d6707b044eb404139a` | OPEN / DRAFT | Shares test aggregator |
+| #358 / #359 | `4970b87d...` / `7d31af20...` | OPEN / DRAFT | Older base SHA; superseded by #368; do not merge independently |
+| #2 | `9e6d7a11...` | OPEN / DRAFT | Very stale base and non-mergeable; do not merge wholesale |
+
+**Path-overlap rule:** #365, #367, #368, #369, and #371 all modify `src/tests/runAllTests.ts`. #367 and #369 both modify `src/components/plans/PlanningEngineWizard.tsx`. These changes must be serialized/reapplied after each preceding merge; do not merge them in parallel. #363 owns documentation paths; do not let feature PRs independently rewrite the same docs.
+
+## Engineering truth and release boundaries
+
+- Engine Plans remain on localStorage in main, with the 100-plan validation limit. PR #367's 800,000-byte cap is only a temporary unmerged payload budget, not adaptive storage or chunks. PR #371 adds a codec only; no IndexedDB archive integration/migration.
+- PR #368 contains a more advanced unified local audio download implementation on its branch, but it is not in main/Production. Do not claim complete offline audio until Service Worker protocol, UI, offline playback, and real browser/device verification are done.
+- Bun is declared in `package.json` (`bun@1.4.4`), `bun.lock` is committed, and Vercel detects Bun. CI currently runs Bun lock refresh then a separate `npm install`/audit/test/build path. This is a dependency-graph parity defect to resolve by moving CI to one validated Bun graph; do not make an untested workflow edit.
+- No merge, deploy, Production setting/protection change, Firebase Rules change, secret change, or sync-flag change occurred during this audit.
+
+## Owner actions still open
+
+1. Decide whether to keep or disable the two Production sync flags while full release gates remain incomplete.
+2. Decide whether the Vercel domain must be publicly accessible without SSO; authorize a protection/domain change separately if needed.
+3. Authorize GitHub branch protection/ruleset changes and define required checks/reviewers.
+4. Verify Google AI Studio sync from the connected `main` branch.
+5. Approve a controlled real-device A↔B/offline recovery test after exact-SHA deployment and release gates.
+6. Confirm the current Production Firebase Rules deployment evidence if any rule changes are planned.
+
+## Immediate next engineering steps
+
+1. Restore GitHub Actions runner/log observability and run a fresh exact-main Quality Gate.
+2. Reconcile CI to the Bun lockfile and audit the exact locked dependency graph; add/lock Playwright as a reproducible test dependency.
+3. Serialize shared-file PR work and reconcile stale/superseded branches.
+4. Finish the Engine Plans consumer/test inventory and RFC before any migration.
+5. Continue independent offline/audio/Seerah work only on disjoint paths and with exact-head tests.
+6. Update this section after every meaningful change; never let a historical section below override it.
+
+---
+
 # مراجعة المسارات المستقلة — 2026-11-12 18:50 +02:00
 
 ## تعديلات مراجعة مضافة إلى فروع PR (لم تُدمج)
