@@ -722,3 +722,22 @@ The latest observed exact-head runs before retry were:
 All four jobs reported `conclusion=failure`, but `steps=null` and `logs_url=null`; no individual command outcome is observable. A retry was successfully requested for each failed job. Retry completion and exact-head test results remain pending and must be fetched before any pass/failure classification.
 
 **Decision unchanged: all four PRs remain OPEN/DRAFT; #367/#371/#372 remain HOLD, and #363 remains documentation-only Draft/HOLD. No merge, deploy, production sync activation, schema change, Rules/data change, or secrets/settings change is performed.**
+
+
+## 23. CI runner allocation and deployment boundary — 2026-11-13
+
+The GitHub REST workflow/job records were checked directly after the retries:
+
+- PR #363 run `43475819437`, attempt 2, job `132059729366`: completed failure in approximately 3 seconds; `steps=[]`, `runner_id=0`, empty runner name.
+- PR #367 run `43209066503`, attempt 2, job `132059755899`: same empty-step / runner_id=0 result.
+- PR #371 run `43278752980`, attempt 2, job `132059776012`: same empty-step / runner_id=0 result.
+- PR #372 run `43391729769`, attempt 3, job `132059785133`: same empty-step / runner_id=0 result.
+- The new exact-head PR #363 run for `81b187e3ab2e25cf74e47be41d1fcfa728941bd7` is run `43476057043`, attempt 1, job `132060047769`; it also failed in approximately 2 seconds with `steps=[]`, `runner_id=0`.
+
+These records show that GitHub did not assign a runner or start a workflow step. This is stronger evidence of a runner allocation/dispatch failure than the earlier connector-only `steps=null` result, but the API exposes no diagnostic message identifying the root cause. Therefore no repository command ran, and none of these attempts is a code/test failure or a passing quality gate. Further immediate retries are not useful until the runner service/repository Actions configuration is investigated.
+
+Vercel boundary recheck:
+- Production alias `wird-app.vercel.app` is attached to READY deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, sourced from `main` SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Latest documentation preview `dpl_7czKY3nPsoGHe3UKpmcCgKjPeNMF` is READY for docs branch SHA `81b187e3ab2e25cf74e47be41d1fcfa728941bd7`, with a preview-only alias. It is not Production and contains no runtime changes from this audit.
+
+No manual deploy, alias reassignment, Production promotion, or sync setting change was performed. A READY preview is not a live application smoke test. Keep all PRs Draft/HOLD until runner allocation is restored and a full inspectable Quality Gate passes on each final code head.
