@@ -830,3 +830,25 @@ No source-level failure or successful tests/build/typecheck can be inferred. No 
 - Publication contract rejects malformed source/claim/scene/body-block structures; tests added.
 - Quality Gate run 43289471345 initial job 131431547175 had no steps/logs (BlobNotFound); rerun job 131431824753 queued at checkpoint time. Vercel status is build-rate-limit. No local tests/typecheck/build pass claimed.
 - No historical corpus/content ingested or published. All Seerah content remains blocked pending source-rights and specialist review.
+
+
+## 2026-11-13 — Engine Plans consumer/test inventory update
+
+Main SHA remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. The second-pass source sweep inspected all 183 TS/TSX/JS files in the repository tree (159 src, 18 e2e, 1 scripts, 5 api). The complete call-site-to-test matrix is in `docs/sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md` section 17.
+
+Newly verified indirect consumers include daily session selection, cloud sync coordinator, demo-data transaction, revisioned remote mutation, PlanningEngineWizard, and Firestore Rules tests. Exact locations: `dailySessionSelection.ts:83-87`, `cloudSyncCoordinator.ts:22`, `demoDataPersistence.ts:34`, `revisionedRemoteMutation.ts:66`, `PlanningEngineWizard.tsx:194-243`, `scripts/firestoreRules.test.ts:1317`.
+
+Important unresolved design risks:
+- AuthGate does not hydrate an Engine Plans archive before App mounts; Dashboard independently reads StorageService.
+- `setStorageScope` currently removes legacy source keys after copying/verifying scoped keys; archive migration must preserve the original bytes through copy→verify→mark.
+- Settings and Progress Analytics still export synchronously.
+- 100-plan cap remains in storage/backup/session paths; do not raise it as a substitute for archive.
+- Journal mutation budget is 450 KB for Engine Plans, but conflict intent/use-remote/keep-local payload checks remain 128 KB; legacy localStorage Outbox parsing also uses 128 KB.
+
+Missing dedicated coverage includes AuthGate hydration, archive migration/crash/quota, Engine Plans scope switching, demo-data grouped transaction, session Engine Plans snapshot, remote Inbox archive materialization/cursor, and Engine Plans conflict resolution. Source review only: no tests were run and no code changed. Keep migration HOLD.
+
+### PR #372 exact-head refresh
+- HEAD: `950640ea78d29e87d426a89d8887c15e4de2abac`, OPEN/DRAFT.
+- Run `43391729769`, job `131773203535`: completed failure with null steps/logs; log retrieval returned BlobNotFound. BLOCKED observability, not a code-level diagnosis.
+- Vercel combined status remains blocked by the Free-plan build-rate limit. Full-source test/typecheck/build/emulator/Playwright remain NOT TESTED.
+- No merge/deploy/production/Firebase/secrets/sync-flag changes.
