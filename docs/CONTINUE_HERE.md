@@ -37,6 +37,10 @@ Recent PR Quality Gate runs completed in approximately 3–4 seconds with no rec
 
 **Path-overlap rule:** #365, #367, #368, #369, and #371 all modify `src/tests/runAllTests.ts`. #367 and #369 both modify `src/components/plans/PlanningEngineWizard.tsx`. These changes must be serialized/reapplied after each preceding merge; do not merge them in parallel. #363 owns documentation paths; do not let feature PRs independently rewrite the same docs.
 
+
+
+**PR #363 history note:** GitHub compare reports 251 commits ahead of main but only 36 changed files. This does not itself prove a merge conflict; it makes history review noisy. Keep the PR Draft, review the complete diff and commit history, and prefer squash/clean-history handling only after exact-head gates and owner-approved merge planning.
+
 ## Engineering truth and release boundaries
 
 - Engine Plans remain on localStorage in main, with the 100-plan validation limit. PR #367's 800,000-byte cap is only a temporary unmerged payload budget, not adaptive storage or chunks. PR #371 adds a codec only; no IndexedDB archive integration/migration.
