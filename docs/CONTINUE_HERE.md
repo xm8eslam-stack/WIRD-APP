@@ -835,3 +835,37 @@ PR #371 Quality Gate run 43278752980 / job 131394096177 and PR #372 run 43391729
 ## Latest docs-head CI refresh — 2026-11-13 09:21 UTC
 
 PR #363 exact head c08186440e28ec53a6e7434c5212c7bed61b81e2 produced Quality Gate run 43400615632 / job 131802241149. Job completed failure with steps=null and logs_url=null; log retrieval returned BlobNotFound. Classify BLOCKED observability; no code-level failure or pass is diagnosed. Keep PR #363 Draft. Main remains 8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b.
+
+
+## Continuation checkpoint — 2026-11-13 (archive repository design + CI observability)
+
+Current verified baseline remains main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY and points to that same main SHA with alias `wird-app.vercel.app`.
+
+PR refresh:
+- #363 docs branch latest head before this checkpoint was `b4ab45c2f1e55b8b7b8fd1948e20855b11057b3a`; this continuation update adds archive repository contracts to its branch.
+- #367 latest head `fd417faaa96a11920ef3a8e4f1038f567c36a731`; 9 changed files, including shared 800,000-byte enginePlans/syncMeta budget and 1.7 MB conflict evidence ceiling.
+- #371 latest head `260df95c620cd534337e39d6707b044eb404139a`; pure codec only, no IndexedDB repository or transport.
+- #372 latest head `950640ea78d29e87d426a89d8887c15e4de2abac`; changes CI to a single Bun 1.4.4 locked dependency graph and uses Bun for test/audit/build/Playwright commands.
+- Other active Draft PRs remain #364–#370. #358/#359 remain superseded by #368; do not merge them independently.
+
+Exact-head CI observability refresh:
+- #363 run `43400687488`, job `131802482654`: completed failure, steps=null, logs_url=null; log download returns BlobNotFound.
+- #372 run `43391729769`, job `131773203535`: same missing steps/logs and BlobNotFound.
+- #371 run `43278752980`, job `131394096177`: same missing steps/logs and BlobNotFound.
+- Classify these as BLOCKED — CI observability. They are not source-level failures and not passes. Do not merge any affected PR.
+
+PR #367 / #371 coordination:
+- #367 aligns all current inline Engine Plans mutation paths to 800 KB, keeps ordinary payloads 128 KB, and allows conflict evidence up to 1.7 MB. This is an interim single-document ceiling only; it does not implement archive chunks or entitlement-based capacity.
+- #371's 192 KB fragment codec remains a pure builder/materializer. Its all-descriptors single manifest, in-memory materialization, missing repository/transport, and absent Journal/Outbox/Inbox/conflict integration remain blockers.
+- Do not combine or merge these PRs as a substitute for archive protocol. The future event should carry a bounded immutable archive reference, not an inline Engine Plans array.
+
+Documentation update:
+- Added RFC section 20: executable repository contract, proposed extension of existing IndexedDB v9 to v10, scope/revision keys, bounded hierarchical manifest pages, repository API, atomic local/remote publish, migration state machine, fencing, GC reachability and Stage B test families.
+- Section 20 is design only. No runtime code, IndexedDB schema, Firestore, Rules, production settings, secrets, sync flags, merge or deployment changed.
+
+Next required work:
+1. Complete the full Engine Plans call-site inventory across every source file, fixtures, test helpers, E2E, migration scripts and any raw localStorage/backup APIs; create an exact call-site → required test matrix.
+2. Inspect #367 and #371 at exact heads for semantic overlap and ensure #367's 800 KB cap is not mistaken for adaptive storage or chunk transport.
+3. Review #372's full CI patch and obtain inspectable exact-head CI. If job logs remain unavailable, preserve Draft/HOLD and diagnose runner/log artifact retention separately; do not rerun workflows without approval.
+4. Only after the complete inventory and design tests are specified should an isolated archive-repository implementation branch be opened. Do not start migration or bump IndexedDB schema before that gate.
+5. Continue to preserve main/Production and all user data. No PR merge, deploy, environment, Rules, secrets, or sync-flag change without explicit owner approval.
