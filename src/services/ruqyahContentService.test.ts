@@ -88,10 +88,12 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
         seen.add(entry.globalAyahNumber);
         return true;
       });
-      assert(deduplicated.every((entry, index) => index === 0 || deduplicated[index - 1].globalAyahNumber < entry.globalAyahNumber ||
-        entries.findIndex(candidate => candidate.globalAyahNumber === entry.globalAyahNumber) >
-        entries.findIndex(candidate => candidate.globalAyahNumber === deduplicated[index - 1].globalAyahNumber) - 1),
-      category + ' queue deduplication lost source order');
+      let previousSourceIndex = -1;
+      for (const entry of deduplicated) {
+        const sourceIndex = entries.findIndex(candidate => candidate.globalAyahNumber === entry.globalAyahNumber);
+        assert(sourceIndex > previousSourceIndex, category + ' queue deduplication changed the original item/ayah order');
+        previousSourceIndex = sourceIndex;
+      }
       assert(new Set(deduplicated.map(entry => entry.globalAyahNumber)).size === deduplicated.length, category + ' queue contains duplicate global ayahs');
     }
   });
@@ -101,7 +103,7 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
     const guideline = getRuqyahItemsByCategory('guidelines')[0];
     assert(Boolean(dua), 'A dua item must exist');
     assert(typeof getRuqyahDisplayText(dua!) === 'string' && getRuqyahDisplayText(dua!) === dua!.text, 'Dua text must remain synchronous and unchanged');
-    assert(typeof getRuqyahDisplayText(guideline) === 'string' && getRuqyahDisplayText(guideline) === guideline.text, 'Guideline text must remain synchronous and unchanged');
+    assert(typeof getRuqyahDisplayText(guideline!) === 'string' && getRuqyahDisplayText(guideline!) === guideline!.text, 'Guideline text must remain synchronous and unchanged');
   });
 
   await test('Invalid Quran coordinates fail closed rather than using stored item text', async () => {
