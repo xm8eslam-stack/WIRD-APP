@@ -34,3 +34,6 @@
 
 - Reviewed PR #371 chunk codec at exact head 260df95c620cd534337e39d6707b044eb404139a. Pure codec has SHA-256 chunk/record/archive integrity and 192 KB fragments, but no manifest paging, streaming, persistence, Firestore transport, journal/outbox/inbox integration, domain schema validation, conflict support or crash/quota recovery. Added RFC section 19; manifest descriptor list requires hierarchical paging before Firestore publication.
 - Refreshed exact-head CI evidence: #371 run 43278752980/job 131394096177 and #372 run 43391729769/job 131773203535 both failed with null steps/logs. BLOCKED observability, not code-level FAIL/PASS. No tests executed locally; no source changes.
+
+
+- Latest PR #363 docs head c08186440e28ec53a6e7434c5212c7bed61b81e2: run 43400615632/job 131802241149 completed failure with null steps/logs; log retrieval returned BlobNotFound. BLOCKED observability, not a docs or code-level diagnosis. Keep Draft; no CI PASS.
