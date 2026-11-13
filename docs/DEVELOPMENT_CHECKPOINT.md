@@ -873,3 +873,6 @@ Detailed review, transaction contracts, and test matrix are in RFC section 18. S
 PR #371's pure chunk codec has canonical JSON, stable record IDs/order, 192 KB fragments, SHA-256 fragment/record/archive integrity and corruption/missing-chunk rejection. It is not an archive repository or remote transport. Its full in-memory manifest has no paging and can exceed Firestore's 1 MiB document ceiling for large archives. Streaming, hierarchical manifest pages, domain EngineGeneratedPlan validation, IndexedDB persistence, Firestore transport, sync reference integration, conflict resolution and crash/quota recovery remain missing. See RFC section 19.
 
 #371 run 43278752980/job 131394096177 and #372 run 43391729769/job 131773203535 are failures without inspectable steps/logs; classify BLOCKED observability. Keep both Draft. No local tests or runtime code changes.
+
+
+PR #363 latest docs head c08186440e28ec53a6e7434c5212c7bed61b81e2 Quality Gate run 43400615632/job 131802241149 completed failure with no steps/logs; log retrieval returned BlobNotFound. BLOCKED observability; do not infer a code-level failure or success. Keep Draft.
