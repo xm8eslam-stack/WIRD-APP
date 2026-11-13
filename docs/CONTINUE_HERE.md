@@ -1,3 +1,9 @@
+## PR #372 isolation note
+
+#372 modifies only `package.json`, `bun.lock`, `.github/workflows/ci.yml`, and `playwright.config.ts`. A fresh path comparison against #363–#371, #358, #359 and #2 found no overlaps. It can be tested independently of shared product/test registry files.
+
+`vercel.json` disables Vercel deployments on all refs except `main` (`* = false`, `main = true`); therefore no feature preview is expected. The Vercel status also explicitly reports the build rate limit. Do not change deployment policy or production settings to force a preview.
+
 # Latest operational checkpoint — 2026-11-13 (refreshed after PR #372)
 
 
