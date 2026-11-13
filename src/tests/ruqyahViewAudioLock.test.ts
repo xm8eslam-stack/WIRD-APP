@@ -73,6 +73,13 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
       viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
   );
   test(
+    'Changing Ruqyah category stops the current audio source and clears its playlist',
+    viewSource.includes('setAudioQueueLength(0)') &&
+      viewSource.includes('audio.pause()') &&
+      viewSource.includes("audio.removeAttribute('src')") &&
+      viewSource.includes('audioQueueIndexRef.current = 0')
+  );
+  test(
     'Audio queue is awaited before replacing the active queue and preserves async request ordering',
     viewSource.includes('await getRuqyahAudioQueueForItems(targetItems)') &&
       viewSource.includes('getRuqyahAudioQueueForItems') &&
