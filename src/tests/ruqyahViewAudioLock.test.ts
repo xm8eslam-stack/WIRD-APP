@@ -23,7 +23,7 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
   test(
     'Quran playback uses the canonical local ayah queue and fixed approved CDN builder',
-    viewSource.includes('getRuqyahAudioQueue(target)') &&
+    viewSource.includes('getRuqyahAudioQueueForItems(targetItems)') &&
       viewSource.includes('buildQuranAyahAudioUrl(selectedReciterIdRef.current, entry.globalAyahNumber)')
   );
   const audioStart = viewSource.indexOf('const startRuqyahAudio');
