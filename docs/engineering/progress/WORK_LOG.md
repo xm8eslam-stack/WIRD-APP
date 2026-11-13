@@ -37,3 +37,15 @@
 
 
 - Latest PR #363 docs head c08186440e28ec53a6e7434c5212c7bed61b81e2: run 43400615632/job 131802241149 completed failure with null steps/logs; log retrieval returned BlobNotFound. BLOCKED observability, not a docs or code-level diagnosis. Keep Draft; no CI PASS.
+
+
+## 2026-11-13 — Engine Plans archive repository design and CI refresh
+
+- Added RFC §20 defining the archive repository boundary: existing IndexedDB database extension (proposed v10), guest/user scope keys, immutable revisions, bounded manifest pages, asynchronous repository APIs, atomic publish transactions, copy→verify→publish migration, multi-tab fencing, rollback and reachability-based GC.
+- Updated `docs/CONTINUE_HERE.md` with the current main/Production baseline, exact PR heads, CI observability outcomes and next gates.
+- Refreshed exact-head CI: #363 run 43400687488/job 131802482654, #372 run 43391729769/job 131773203535 and #371 run 43278752980/job 131394096177 all completed failure without inspectable steps/logs; log retrieval returned BlobNotFound. All are BLOCKED — observability, not source-level FAIL and not PASS.
+- Reviewed #367 changed paths and patch: 800 KB is a shared interim inline budget; 128 KB ordinary mutations; 1.7 MB conflict evidence. It does not implement chunked archive transport or adaptive entitlement.
+- Reviewed #371 changed paths and codec: pure chunk codec only; no repository, manifest paging, streaming transport, or sync/conflict reference integration.
+- Reviewed #372 changed paths: CI workflow, bun.lock, package.json, Playwright config; one Bun 1.4.4 lockfile path. Isolated dependency checks are PR-author-reported only; full repository Quality Gate remains blocked by missing job logs.
+- No source code or runtime tests were executed in this continuation. No main, Production, Firebase Rules/data, secrets, sync flags, or user data changed. No merge or deployment.
+- Engine Plans caller inventory and call-site→test matrix remain incomplete. Stage B remains HOLD.
