@@ -148,8 +148,8 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
 
   await test('Quran resolution has no manual-text fallback and no eager verified corpus dependency', () => {
     const source = fs.readFileSync(path.resolve(process.cwd(), 'src/services/ruqyahContentService.ts'), 'utf8');
-    assert(!/from\\s+['"][^'"]*verifiedAyahs/.test(source), 'Service must not statically import verifiedAyahs');
-    assert(!/from\\s+['"][^'"]*completeQuranData\\.json/.test(source), 'Service must not statically import completeQuranData.json');
+    assert(!source.includes('verifiedAyahs'), 'Service must not statically import verifiedAyahs');
+    assert(!source.includes('completeQuranData.json'), 'Service must not statically import completeQuranData.json');
     assert(source.includes('loadSurahVerses') && source.includes('await loadSurahVerses'), 'Service must use the existing lazy local loader');
     assert(!source.includes('item.text') || source.includes("if (item.type !== 'quran') return item.text"), 'Manual text may only be returned for non-Quran material');
   });
