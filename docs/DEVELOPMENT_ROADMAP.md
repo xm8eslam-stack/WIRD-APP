@@ -14,7 +14,7 @@ RFC التصميم التفصيلي: [ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md](./s
 ## تحديث مسارات التنفيذ — 2026-11-12 14:35 +02:00
 
 - **Flexible Storage/Sync:** لا يوجد chunked sync implementation. #367 ما زال 800 KB interim per-payload budget؛ يلزم تصميم end-to-end مع local IndexedDB payload refs وmanifest/chunks وFirestore version compatibility قبل التنفيذ.
-- **Offline Audio:** #368 يقدم metadata-only store موحدًا من #358/#359: jobs/files/jobItems، shared file references، pinned retention، available/deletionPending، وtwo-phase orphan cleanup. لا يوجد downloader/Cache Storage adapter/SW protocol/UI بعد.
+- **Offline Audio:** #368 يقدم تنفيذًا موحدًا على فرعه: IndexedDB jobs/files/jobItems، Cache Storage adapter، bounded HTTP downloader، pause/resume/cancel/retry، والتحقق من أجيال التخزين. ما زال Draft وغير موجود في main/Production؛ المتبقي Service Worker protocol، UI، local playback، واختبارات متصفح/أجهزة حقيقية.
 - **Seerah:** #365 أضاف persistent bookmarks وقائمة رجوع واختبار Playwright بعد reload؛ لا يوجد محتوى تاريخي معتمد بعد.
 - **Quality:** أحدث workflows على exact heads #365/#368 فشلت دون steps/logs؛ لا يمكن اعتبارها فشل اختبار برمجي أو نجاحًا. Vercel Preview blocked by Free build-rate.
 - **Merge gate:** لا دمج قبل CI قابل للفحص وناجح، ومراجعة diff كاملة. لا تغيير إنتاجي دون موافقة.
@@ -96,7 +96,7 @@ RFC التصميم التفصيلي: [ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md](./s
 | الأولوية | المسار | الهدف | الحالة |
 |---|---|---|---|
 | P0 | PR queue | إغلاق الفروع الحالية باختبارات exact SHA | #361/#362/#354 merged؛ #363 Draft/HOLD على آخر head مفحوص `acdfeef4`، run `43120106137` بلا steps/logs؛ #364 Draft/HOLD بلا تشخيص اختبار؛ #358/#359 overlapping Drafts؛ #2 diverged 115 ahead / 469 behind |
-| P0 | صوت القرآن offline | تنزيل اختياري محدود وتخزين محلي وتشغيل offline | planner #355 وحقوق EveryAyah في #361 مدمجان؛ لا manifest/downloader/UI؛ #358/#359 لم يدمجا، والعقد الموحد مرجع التنفيذ |
+| P0 | صوت القرآن offline | تنزيل اختياري محدود وتخزين محلي وتشغيل offline | #368 Draft: metadata + Cache Storage adapter + bounded downloader؛ لم يدمج بعد. المتبقي SW protocol/UI/playback/device verification؛ #358/#359 superseded |
 | P0 | الرقية | إصلاح فهرس الآيات و500/502 والتحقق من الصوت | #354 أضاف JSON 502 آمنًا؛ سبب 500 الأصلي وفهرس الآيات يحتاجان تحققًا حيًا مستقلًا |
 | P1-1 | الحفظ والمراجعة | جلسات دقيقة وتكرار وتسميع وتقدم موثوق | أساس واسع موجود؛ أولوية المنتج الأولى |
 | P1-2 | السيرة النبوية والصحابة | كتاب تاريخي تفاعلي متصل بأجزاء وفصول ومشاهد، مع سياق وشخصيات وخرائط واختبارات اختيارية | **خطة بحث وتصميم موثقة؛ لم يبدأ التنفيذ** |
@@ -294,7 +294,7 @@ Unit/integration، Rules Emulator عند الحاجة، TypeScript/lint/build، 
 - اكتُشفت فجوة تحقق: `setJobStatus` و`markItemDownloading` كانا يقبلان `NaN`/Infinity كطابع زمني، وقد يحفظان قيمة غير صالحة تفسد سجل المهمة.
 - أضيف تحقق `Number.isSafeInteger(nowMs) && nowMs >= 0` قبل فتح المعاملة في الدالتين، واختبار regression يمرر `NaN` و`Infinity` ويتأكد من رفضهما وبقاء المهمة سليمة.
 - أصبح رأس #368 `58c9d0cee27e4dd999955d92362247862d76f4dd`. Quality Gate run `43214640907` / job `131170651663` انتهى failure بلا steps/logs؛ لم يُثبت تشغيل الاختبار الجديد بعد.
-- يظل #368 أساس metadata فقط: لا downloader ولا Cache Storage adapter ولا Service Worker protocol ولا UI ولا playback. كل الصوتيات المحفوظة محليًا تبقى خارج Firebase sync/backup.
+- #368 الحالي يتجاوز metadata-only: يضيف Cache Storage adapter وHTTP downloader محدودًا مع pause/resume/cancel/retry. لا يزال لا يثبت Service Worker integration أو UI أو local playback أو اختبار جهاز حقيقي. كل الصوتيات المحفوظة محليًا تبقى خارج Firebase sync/backup.
 
 ### جرد تخزين الخطط على main
 - تم تأكيد `src/services/storageService.ts` على main، 2265 سطرًا.
@@ -312,7 +312,7 @@ Unit/integration، Rules Emulator عند الحاجة، TypeScript/lint/build، 
 ### الخطوة التالية الإلزامية
 1. أكمل جرد call sites لـ `getEnginePlans/saveEnginePlans` وعمليات backup/restore/import/export والـ sync receiver/projection، مع مسارات الاستهلاك والاختبارات.
 2. راجع migration/hydration lifecycle وتصميم rollback على مستوى IndexedDB قبل التنفيذ.
-3. تابع #368 باختبارات generation/deletion/cache contract، ثم أضف downloader وCache Storage adapter في PR منفصل بعد مراجعة البروتوكول.
+3. راجع downloader وCache Storage adapter الحاليين في #368، ثم أكمل Service Worker protocol وUI وplayback واختبارات airplane-mode/restart قبل الدمج.
 4. تابع #365 و#366 بشكل مستقل دون دمج؛ محتوى السيرة يبقى placeholder حتى الاعتماد العلمي، وOffline الحقيقي يحتاج اختبار جهاز/airplane mode.
 5. لا دمج لأي PR قبل Quality Gate قابل للفحص وناجح على exact head، ومراجعة diff كاملة. لا تعاود rerun لنفس runner بلا دليل على تغير ظروفه.
 
