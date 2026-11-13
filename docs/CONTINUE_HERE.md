@@ -811,3 +811,14 @@ Review the complete archive transaction/cursor/conflict protocol against RFC sec
 ## Additional corruption-safety finding — 2026-11-13
 
 `StorageService.getEnginePlans()` delegates to `readJsonArrayArchive` (`src/services/storageService.ts:378-395`), which filters malformed records or returns `[]` on corrupt/non-array input while preserving the original bytes. This is non-destructive but can expose a partial/empty UI view. IndexedDB migration must strictly read and validate the exact scoped raw bytes, distinguish inaccessible storage from absent data, and fail closed; never migrate from the filtered/empty getter result.
+
+
+
+## Next checkpoint — remote transaction review complete (2026-11-13)
+
+Read RFC section 18 before archive implementation. Key decisions:
+- Keep `remoteCursor` (durable Inbox ingestion) separate from `remoteProjectionCursor` (verified local materialization/reconciliation). Import commits page rows + received cursor atomically; projection commits archive head/revision + projection cursor + Inbox deletion + conflict closure atomically.
+- Existing callbacks update localStorage inside IndexedDB transactions; that is not cross-store atomicity. IndexedDB archive becomes canonical, localStorage rebuildable only.
+- 450 KB Engine Plans events can enter Inbox but 128 KB conflict-intent/use-remote/keep-local caps prevent resolving large conflicts. Use immutable archive revision references and hashes in conflict records, not inline arrays or global cap increases.
+- Stage B remains HOLD. Next: design the archive-reference data model and API contract, then author isolated focused tests before schema migration. Recheck PR path ownership first; do not touch shared journal/StorageService files while #367/#371 remain active unless a separate branch is explicitly coordinated.
+- No code changes or tests in this review.
