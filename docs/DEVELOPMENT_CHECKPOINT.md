@@ -853,3 +853,15 @@ Missing dedicated coverage includes AuthGate hydration, archive migration/crash/
 - Run `43391729769`, job `131773203535`: completed failure with null steps/logs; log retrieval returned BlobNotFound. BLOCKED observability, not a code-level diagnosis.
 - Vercel combined status remains blocked by the Free-plan build-rate limit. Full-source test/typecheck/build/emulator/Playwright remain NOT TESTED.
 - No merge/deploy/production/Firebase/secrets/sync-flag changes.
+
+
+
+## 2026-11-13 — Remote transaction review
+
+The remote synchronization path has two distinct cursors: `remoteCursor` (durably ingested into remoteInbox) and `remoteProjectionCursor` (durably applied/reconciled). `importRemotePage` commits Inbox rows and received cursor together; projection commits cursor, revision metadata, Inbox deletion and conflict closure together. The coordinator requires cursor equality before declaring reconciliation complete. Preserve this split.
+
+Important qualification: current projection and conflict-resolution callbacks synchronously mutate localStorage while an IndexedDB transaction is open. These two stores cannot commit atomically. Durable projection intents and replay provide recovery, but are not true cross-store atomicity. In the archive design, IndexedDB must own canonical immutable revisions, and localStorage must be a rebuildable projection.
+
+Confirmed compatibility blocker: Engine Plans remote Inbox accepts up to 450 KB, but conflict intent preparation and use-remote/keep-local commit payloads are capped at 128 KB. Large valid Engine Plans events can become stuck in conflict. The archive-aware fix is small revision/hash references in intents and Outbox, not a blanket limit increase.
+
+Detailed review, transaction contracts, and test matrix are in RFC section 18. Source review only; no tests were run and no code changed. Keep archive Stage B HOLD.
