@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getRuqyahAudioQueue, getRuqyahDisplayText, getRuqyahAyahs } from '../../services/ruqyahContentService';
+import type { Ayah } from '../../types/quran';
 import { QuranText } from '../shared/QuranText';
 import { buildQuranAyahAudioUrl, FALLBACK_QURAN_RECITERS, fetchQuranReciters } from '../../services/ruqyahAudioService';
 import { requestOfflineAudioCache } from '../../services/audioService';
@@ -69,13 +70,45 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(0);
   const [audioVolume, setAudioVolume] = useState(0.85);
+  const [quranAyahsByItem, setQuranAyahsByItem] = useState<Record<string, Ayah[]>>({});
+  const [quranLoadingItems, setQuranLoadingItems] = useState<Record<string, boolean>>({});
+  const [quranErrors, setQuranErrors] = useState<Record<string, string>>({});
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const selectedReciterIdRef = useRef(selectedReciterId);
   const audioQueueRef = useRef<Array<{ globalAyahNumber: number; itemId: string; title: string }>>([]);
   const audioQueueIndexRef = useRef(0);
   const audioRequestIdRef = useRef(0);
+  const audioBuildRequestIdRef = useRef(0);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
+
+  useEffect(() => {
+    let active = true;
+    const quranItems = currentItems.filter(candidate => candidate.type === 'quran');
+    setQuranAyahsByItem({});
+    setQuranErrors({});
+    setQuranLoadingItems(Object.fromEntries(quranItems.map(candidate => [candidate.id, true])));
+
+    void Promise.all(quranItems.map(async candidate => {
+      try {
+        const ayahs = await getRuqyahAyahs(candidate);
+        if (active) setQuranAyahsByItem(previous => ({ ...previous, [candidate.id]: ayahs }));
+      } catch (error) {
+        if (active) setQuranErrors(previous => ({
+          ...previous,
+          [candidate.id]: error instanceof Error ? error.message : 'تعذر تحميل آيات المصحف المحلي المعتمد.'
+        }));
+      } finally {
+        if (active) setQuranLoadingItems(previous => ({ ...previous, [candidate.id]: false }));
+      }
+    }));
+
+    return () => {
+      active = false;
+      audioBuildRequestIdRef.current += 1;
+      audioRequestIdRef.current += 1;
+    };
+  }, [activeCategory]);
 
   const formatAudioTime = (seconds: number) => {
     if (!Number.isFinite(seconds) || seconds <= 0) return '00:00';
@@ -120,12 +153,21 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
     }
   };
 
-  const startRuqyahAudio = (item?: RuqyahItem) => {
+  const startRuqyahAudio = async (item?: RuqyahItem) => {
+    const buildRequestId = ++audioBuildRequestIdRef.current;
+    setAudioIsLoading(true);
+    setAudioError('');
     try {
       const targetItems = item ? [item] : currentItems.filter(candidate => candidate.type === 'quran');
+      const itemQueues = await Promise.all(targetItems.map(async target => ({
+        target,
+        ayahs: await getRuqyahAudioQueue(target)
+      })));
+      if (buildRequestId !== audioBuildRequestIdRef.current) return;
+
       const seenAyahs = new Set<number>();
-      const queue = targetItems.flatMap(target =>
-        getRuqyahAudioQueue(target).map(ayah => ({
+      const queue = itemQueues.flatMap(({ target, ayahs }) =>
+        ayahs.map(ayah => ({
           globalAyahNumber: ayah.globalAyahNumber,
           itemId: target.id,
           title: target.title
@@ -137,19 +179,24 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       });
 
       if (queue.length === 0) throw new Error('لا توجد آيات قرآنية صالحة للتشغيل في هذا القسم.');
+      if (buildRequestId !== audioBuildRequestIdRef.current) return;
       audioQueueRef.current = queue;
       setAudioQueueLength(queue.length);
       setAudioQueuePosition(0);
       setAudioQueueLabel(item ? item.title : 'آيات قسم ' + CATEGORY_TABS.find(tab => tab.id === activeCategory)?.label);
       setAudioError('');
       setAudioStatusMessage('');
+      setAudioIsLoading(false);
       void playAudioQueuePosition(0);
     } catch (error) {
-      setAudioError(error instanceof Error ? error.message : 'تعذر تجهيز تلاوة آيات الرقية.');
+      if (buildRequestId !== audioBuildRequestIdRef.current) return;
+      setAudioIsLoading(false);
+      setAudioError(error instanceof Error ? error.message : 'تعذر تجهيز تلاوة آيات الرقية من المصحف المحلي المعتمد.');
     }
   };
 
   const stopRuqyahAudio = () => {
+    audioBuildRequestIdRef.current += 1;
     audioRequestIdRef.current += 1;
     audioQueueRef.current = [];
     audioQueueIndexRef.current = 0;
@@ -274,6 +321,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
+      audioBuildRequestIdRef.current += 1;
       audioRequestIdRef.current += 1;
       audioQueueRef.current = [];
       audio.pause();
@@ -290,6 +338,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
 
   useEffect(() => {
     return () => {
+      audioBuildRequestIdRef.current += 1;
+      audioRequestIdRef.current += 1;
       audioRef.current?.pause();
       audioQueueRef.current = [];
     };
@@ -761,7 +811,13 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                       item.type === 'quran' ? 'tracking-normal' : 'font-sans font-medium'
                     }`}>
                       {item.type === 'quran'
-                        ? getRuqyahAyahs(item).map(ayah => <React.Fragment key={ayah.number}><QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>{' ۞ '}</React.Fragment>)
+                        ? quranLoadingItems[item.id]
+                          ? <span role="status" className="text-sm font-sans text-stone-500">جارٍ تحميل الآيات من المصحف المحلي المعتمد…</span>
+                          : quranErrors[item.id]
+                            ? <span role="alert" className="text-sm font-sans text-red-700 dark:text-red-300">{quranErrors[item.id]}</span>
+                            : quranAyahsByItem[item.id]
+                              ? quranAyahsByItem[item.id].map(ayah => <React.Fragment key={ayah.number}><QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>{' ۞ '}</React.Fragment>)
+                              : <span role="status" className="text-sm font-sans text-stone-500">لم يتم تحميل نص الآيات بعد.</span>
                         : getRuqyahDisplayText(item)}
                     </p>
                   </div>
