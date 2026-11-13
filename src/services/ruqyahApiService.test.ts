@@ -20,7 +20,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
   const originalFetch = globalThis.fetch;
 
   try {
-    await test('External Quran locator is sanitized and resolves only canonical WIRD text and metadata', () => {
+    await test('External Quran locator is sanitized and resolves only canonical WIRD text and metadata', async () => {
       const local = RUQYAH_ITEMS.find(item => item.id === 'q-fatihah');
       assert(Boolean(local), 'Canonical Al-Fatiha item must exist');
       const untrustedArabic = 'نص تجريبي غير صحيح من المصدر';
@@ -33,27 +33,29 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
         translation: 'ترجمة غير موثقة'
       } as unknown as import('./ruqyahApiService').RuqyahApiEntry;
       const resolved = resolveApiQuranEntry(hostileEntry);
-      assert(resolved.text === getRuqyahDisplayText(local!), 'External Quran text must be replaced by canonical WIRD text');
-      assert(resolved.text !== untrustedArabic, 'Unverified API Arabic must never override canonical Quran text');
+      const canonicalText = await resolveApiQuranEntryText(hostileEntry);
+      assert(resolved.text === '', 'API metadata resolver must not retain provider verse text');
+      assert(canonicalText === await getRuqyahDisplayText(local!), 'External Quran text must be replaced by canonical WIRD text');
+      assert(canonicalText !== untrustedArabic, 'Unverified API Arabic must never override canonical Quran text');
       assert(resolved.surahName === 'الفاتحة' && resolved.surahNumber === 1 &&
         resolved.startAyah === 1 && resolved.endAyah === 7, 'Surah metadata must come from WIRD canonical metadata');
-      const arabicDigits = resolveApiQuranEntryText({ id: 2, title: '٢:١-٥' });
+      const arabicDigits = await resolveApiQuranEntryText({ id: 2, title: '٢:١-٥' });
       const localBaqarah = RUQYAH_ITEMS.find(item => item.id === 'q-baqarah-1-5');
       assert(Boolean(localBaqarah) && arabicDigits === getRuqyahDisplayText(localBaqarah!), 'Arabic-Indic Quran coordinates must resolve correctly');
     });
 
-    await test('External Quran entries without valid coordinates fail closed', () => {
+    await test('External Quran entries without valid coordinates fail closed', async () => {
       for (const title of ['Al-Fatiha', '115:1', '2:287', '2:5-1', 'Al-Baqarah 2:255', '2:255, 3:33', '2:255 3:33']) {
         let rejected = false;
-        try { resolveApiQuranEntryText({ id: 2, title }); } catch { rejected = true; }
+        try { await resolveApiQuranEntryText({ id: 2, title }); } catch { rejected = true; }
         assert(rejected, 'Invalid external Quran title must be rejected: ' + title);
       }
     });
 
-    await test('External Quran entries with invalid provider IDs fail closed', () => {
+    await test('External Quran entries with invalid provider IDs fail closed', async () => {
       for (const id of [0, -1, 1.5, 1_000_000_000, Number.MAX_SAFE_INTEGER, '0', 'abc', '1234567890']) {
         let rejected = false;
-        try { resolveApiQuranEntryText({ id, title: '2:255' }); } catch { rejected = true; }
+        try { await resolveApiQuranEntryText({ id, title: '2:255' }); } catch { rejected = true; }
         assert(rejected, 'Invalid external Quran item ID must be rejected: ' + String(id));
       }
     });
