@@ -50,6 +50,8 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       const library = readFileSync(new URL('../components/ruqyah/RuqyahApiLibrary.tsx', import.meta.url), 'utf8');
       assert(service.includes("return { ...locator, text: '' }"), 'API resolver must discard provider verse text');
       assert(!library.includes('entry.arabic') && !library.includes('entry.text') && !library.includes('entry.translation'), 'API library must never render provider-authored Quran text');
+      assert(library.includes('resolveApiQuranEntryText(entry)'), 'Each API locator card must asynchronously resolve its text from WIRD local Quran data');
+      assert(library.includes('verifiedText') && library.includes('textLoading') && library.includes('textError'), 'API locator cards must expose local Quran loading and fail-closed error states');
       assert(library.includes('<QuranText surahNumber={resolved.surahNumber}'), 'API library must render by canonical local Surah/ayah coordinates');
     });
 
