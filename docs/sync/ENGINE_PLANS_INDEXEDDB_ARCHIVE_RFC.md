@@ -508,3 +508,116 @@ PR #371 remains OPEN/DRAFT and is not in main. Its codec is a useful pure buildi
 ### 19.4 Decision
 
 PR #371 codec may be reused after its own exact-head tests are inspectable and pass, but it is not sufficient to begin archive migration. Manifest paging, streaming/memory bounds, domain validation, repository persistence, remote transport, Journal/Outbox/Inbox references, conflict resolution, CAS publication, crash recovery and retention remain unimplemented. Keep #371 Draft until its CI is inspectable; keep archive Stage B HOLD.
+
+
+## 20. Executable archive repository contract — design checkpoint 2026-11-13
+
+This section converts the previous transaction findings into a concrete repository/API boundary. It is a design proposal only. It does not authorize an IndexedDB version bump, migration, Firestore writes, Rules changes, cap changes, or rollout.
+
+### 20.1 IndexedDB ownership and key model
+
+Extend the existing `wird-sync-journal` database (currently schema v9 on main); do not create a second canonical database. The proposed next schema is v10, subject to an explicit upgrade review and preservation tests.
+
+Every archive row is scoped by an immutable owner key:
+- Guest: `guest`
+- Signed-in user: `user:<uid>`
+
+Never derive the owner key from a display name, email, or mutable auth state. Every read/write transaction must receive a captured scope token and re-check that it still matches the active scope before publishing a head. A scope switch aborts outstanding staging/publish work; it must never retarget a transaction to the next user.
+
+Proposed stores (exact names are implementation choices, but responsibilities are mandatory):
+- `enginePlanArchiveHeads`: one current head per scope; key `[scopeKey]`; stores revision ID, root manifest digest, generation, schema version, and migration state.
+- `enginePlanArchiveRevisions`: immutable revision/root records; key `[scopeKey, revisionId]`; stores parent revision, root digest, record count, total bytes, archive schema, creation metadata, and publication state.
+- `enginePlanArchiveRecords`: immutable canonical record fragments; key `[scopeKey, revisionId, recordId, fragmentIndex]`; stores fragment bytes and verified descriptor fields. A record may span fragments; ordering is explicit, never inferred from object-store iteration.
+- `enginePlanArchiveManifestPages`: immutable bounded descriptor pages; key `[scopeKey, revisionId, pageIndex]`; stores first/last record ordinal, descriptor count, serialized byte length, page digest, and descriptors.
+- `enginePlanArchiveStaging`: resumable, non-canonical staging state; key `[scopeKey, revisionId]`; records expected root digest, received page/chunk bitmap or cursors, last activity, and failure state.
+- `enginePlanArchiveMigration`: durable per-scope migration marker and source fingerprint; key `[scopeKey]`; states are absent → copying → verified → published → legacy-cleanup-eligible. The exact original legacy raw bytes/fingerprint remain available for rollback until the retention gate is explicitly satisfied.
+
+All compound keys include scope and revision. No store may use a global record ID as a key without the scope/revision prefix.
+
+### 20.2 Bounded manifest protocol
+
+Keep data fragments below the codec's 192,000-byte ceiling. Do not put all chunk descriptors or all ordered record IDs in one root document.
+
+Use a two-level manifest:
+1. Descriptor pages target at most 256 KiB serialized, with a hard encoded-byte check before persistence. Each page binds page index, first/last record ordinal, descriptor count, total bytes, and SHA-256 digest.
+2. A small root manifest binds protocol/schema version, immutable revision ID, parent revision, scope binding, record count, total bytes, page count, ordered page digests, and whole-archive fingerprint.
+3. The root must be small enough for the transport's document ceiling with explicit headroom. If the page-digest list itself becomes too large, introduce a bounded multi-level page index; never silently exceed the document limit.
+4. Validation proves contiguous page indexes, contiguous record ordinals, no duplicate/missing record IDs, exact fragment counts/order, per-fragment and per-record hashes, page hashes, aggregate byte totals, and final archive digest before publication.
+
+The 256 KiB page target is a transport/protocol bound, not a per-user storage entitlement.
+
+### 20.3 Repository API boundary
+
+The repository is the only canonical Engine Plans persistence API after cutover. Proposed asynchronous operations:
+
+- `getHead(scopeToken)` → verified head metadata or empty.
+- `readRevision(scopeToken, revisionId)` → stream/iterator of records only after manifest/page/fragment verification; expose no partially verified revision as current.
+- `prepareRevision(scopeToken, records, expectedHead)` → validate domain schema, stable IDs, canonical bytes and hashes; return an immutable prepared revision without publishing it.
+- `stageRevision(scopeToken, preparedRevision, batchBudget)` → persist bounded fragments/pages as non-canonical staging; resumable and idempotent.
+- `verifyStagedRevision(scopeToken, revisionId)` → read back from IndexedDB and independently verify every page/fragment/record and aggregate digest.
+- `publishLocalRevision(scopeToken, revisionId, expectedHead, journalEvent, outboxReference)` → one IndexedDB read/write transaction that checks scope + compare-and-swap head, changes revision to published, advances head, appends Journal event, enqueues Outbox reference, and records migration marker when applicable.
+- `publishRemoteRevision(scopeToken, revisionId, expectedHead, remoteRevision, inboxEventId, projectionSequence)` → one IndexedDB transaction that advances archive head and remote revision metadata, advances only the projection cursor, deletes the fully materialized Inbox event, and closes the matching conflict/intent.
+- `exportVerifiedBackup(scopeToken)` → one consistent async snapshot including the verified Engine Plans archive revision.
+- `importBackup(scopeToken, input)` / `resetScope(scopeToken)` → recoverable journaled operations that preserve or atomically replace archive head and rollback references.
+- `collectGarbage(scopeToken, retentionPolicy)` → reachability-based collection only; never delete a referenced revision or fragment.
+
+No caller may mutate the archive stores directly. No UI may reconstruct an archive by reading arbitrary chunks itself. Existing synchronous export and direct localStorage APIs must remain until every caller is migrated; then they become compatibility adapters or are removed in a separately reviewed change.
+
+### 20.4 Transaction and failure rules
+
+- Preparation, network I/O, canonicalization and expensive hashing occur before opening a short IndexedDB write transaction.
+- The publish transaction re-checks scope, expected head/generation, all referenced staging rows, and expected Journal/Outbox identity. It performs no network calls and no unbounded async work.
+- Local publication commits immutable revision + head CAS + Journal event + Outbox reference + migration marker in one transaction. Quota/constraint/abort means none of these become visible.
+- Remote ingestion commits Inbox event(s) + received cursor together, as today. Chunk fetch/staging may continue afterward. The received cursor may be ahead of the projection cursor.
+- Remote projection commits archive head + remote revision + projection cursor + Inbox deletion + conflict closure in one transaction, only after full local read-back verification.
+- A failed localStorage projection is recoverable derived-view work; it must not roll back or misreport a successfully committed canonical IndexedDB revision. Replay is idempotent and scoped.
+- Use-remote intent stores a small immutable reference (revision ID + root digest + event fingerprint + decision ID), not the full plan body.
+- Keep-local creates a new immutable revision from the verified local head and queues one small reference event. Previous revisions remain reachable until the replacement is acknowledged and rollback retention expires.
+- Any failed verification leaves the prior head and both cursors unchanged; preserve Inbox/conflict evidence for retry or user resolution.
+
+### 20.5 Migration state machine
+
+For each scope, migration is copy → verify → publish → cleanup-eligible; never destructive move:
+1. Capture the exact legacy Engine Plans raw string and its byte length/fingerprint. Do not parse-and-reserialize it as the rollback source.
+2. Strictly parse and validate every plan against the current WIRD domain schema. Preserve unknown-but-valid fields only if the domain contract explicitly allows them; otherwise stop and report the exact record, without dropping it.
+3. Build immutable revision and paged manifest; stage to IndexedDB in bounded transactions.
+4. Read back from IndexedDB and verify all records, pages, and root digest independently.
+5. In one transaction compare-and-swap the expected empty/current head, publish revision, append migration journal event, enqueue reference if cloud sync is enabled for that scope, and mark migration published.
+6. AuthGate must await verified archive hydration for the selected scope before App mounts or any Engine Plans consumer reads data.
+7. Keep the original legacy bytes read-only. Cleanup is a later explicit release step only after backup/rollback evidence and all consumers have switched to the repository. Cleanup must never run on first successful copy.
+8. On quota, interruption, tab closure, or scope switch, retain legacy bytes and previous head; leave resumable staging or mark it abandoned without exposing it.
+
+### 20.6 Locking, multi-tab and scope changes
+
+Use a per-scope lease/lock record with owner token, monotonically increasing fencing generation, expiry and operation ID. Every writer re-checks the fencing generation inside its publish transaction. A stale tab cannot publish after another tab acquired a newer generation. Do not rely on an in-memory mutex alone. If the browser lacks a reliable lock primitive, the IndexedDB transaction plus generation CAS is the authority. On auth scope switch, cancel fetches, stop staging, invalidate old tokens and wait for the new scope's hydration barrier before exposing data.
+
+### 20.7 Garbage collection and rollback reachability
+
+A revision/chunk is live if reachable from any of:
+- current archive head;
+- previous head inside rollback retention;
+- pending Outbox event/reference;
+- received Inbox event/reference;
+- open projection conflict;
+- prepared conflict-resolution intent;
+- active staging session;
+- migration rollback copy or backup snapshot not yet expired.
+
+GC first marks unreachable candidates with a generation and grace period; a later pass re-checks every root and only then deletes. GC never runs as part of publish, migration, conflict resolution, or quota-failure recovery. Quota pressure may evict only already-proven unreachable staging/orphan records; it must never evict the last known-good revision.
+
+### 20.8 Required test families and Stage B entry criteria
+
+Before implementation is allowed to enter migration:
+- v9 → v10 upgrade preservation for every existing store and guest/user data, including injected upgrade abort.
+- Guest/user scope isolation, scope-switch cancellation, two-tab fencing and stale-writer rejection.
+- Exact-byte legacy copy, malformed record rejection, unknown schema, empty archive, large multi-page manifest, page boundary/no-gap/no-overlap, fragment and root hash corruption.
+- Atomic local revision + Journal + Outbox + head rollback on quota/constraint/abort.
+- AuthGate hydration barrier and no pre-hydration consumer access.
+- Async export/import/reset, session completion, grouped syncMeta, demo-data paths, backup rollback.
+- Inbox received cursor may advance while projection cursor remains fixed; no projection on partial pages/chunks.
+- Use-remote and keep-local conflict paths with stale revisions, missing chunks, scope switch, pending mutation changes and crash/retry.
+- GC reachability across every root listed above; prove no current/pending/conflicted/rollback chunk can be deleted.
+- Browser E2E across desktop/mobile plus actual multi-tab tests where supported.
+- Exact-head inspectable CI: unit/integration tests, TypeScript, lint, production build, Firestore Rules Emulator and Playwright. No invisible/empty CI run counts as a pass.
+
+**Stage B remains HOLD.** The repository API and schema are now specified at design level, but the full Engine Plans caller inventory and test-to-call-site matrix are still incomplete. No schema v10, code migration, Firestore protocol, Rules, cap change, production flag, merge or deployment is authorized by this design checkpoint.
