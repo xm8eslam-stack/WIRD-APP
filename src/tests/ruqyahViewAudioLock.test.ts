@@ -85,6 +85,13 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
       viewSource.includes('getRuqyahAudioQueueForItems') &&
       viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
   );
+  test(
+    'Starting a new queue cancels prior audio before asynchronous Quran resolution',
+    viewSource.includes('audioRequestIdRef.current += 1;') &&
+      viewSource.includes('previousAudio.pause()') &&
+      viewSource.includes('previousAudio.removeAttribute(\'src\')') &&
+      viewSource.includes('await getRuqyahAudioQueueForItems(targetItems)')
+  );
 
   test(
     'Requested Quran ayahs use eager buffering only after an explicit playback request',
