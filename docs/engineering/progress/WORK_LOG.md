@@ -1219,3 +1219,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - The regenerated lockfile/package experiment was not committed; an exploratory branch was reverted to main-equivalent package.json and no PR was opened. Follow-up is to commit a reviewed, reproducible Bun lockfile/Playwright dependency correction and replace the separate npm install/audit/test/build path only after full-source validation.
 - Documentation branch PR #363 was updated with a mandatory change-control policy, current checkpoint, owner actions, release-gate clarification, and historical status banners. It remains OPEN/DRAFT pending exact-head CI evidence and review.
 - No merge, production deploy, Firebase Rules deployment, production settings/protection/secrets/flags change, or user-data change occurred.
+
+
+## 2026-11-13 — Documentation reconciliation PR exact-head follow-up
+
+- PR #363 head before this append: `83a0db1672473de81ce207bd1a8bc376e1926a6b`; run `43387056003` failed within seconds, job `131757885122` had no steps, and log retrieval returned `BlobNotFound`. This is BLOCKED runner/log observability, not a code failure or pass.
+- The documentation PR remains OPEN/DRAFT and mergeable against main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. This append advances the docs branch; re-fetch its new exact head and check before any review/merge.
+- The separate Bun lockfile experiment branch has no changed files relative to main after reverting the exploratory package edit; no CI code change was committed.
