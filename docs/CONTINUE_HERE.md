@@ -791,3 +791,18 @@ Parallel tracks: (A) Engine Plans IndexedDB archive + entitlement/chunk protocol
 - Fixed saved reading-position hydration race and added reload E2E. Publication contract now fails closed for malformed imported records; malformed-content tests registered.
 - Quality Gate run 43289471345 on exact head initially failed with job 131431547175 but no steps/logs (BlobNotFound). A rerun was requested; latest attempt job 131431824753 is queued at checkpoint time. Vercel reports build-rate-limit only. No local tests/typecheck/build run and no pass claimed.
 - No real historical corpus or content ingested/published. Source S0 rights review remains a hard gate.
+
+
+## 2026-11-13 — Engine Plans second-pass source audit
+
+- Refreshed main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` (unchanged). PR #363–#372 remain OPEN/DRAFT at the latest observed heads: #363 `d87a34fa795f014c979b92466eb67023d977cd93`; #364 `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; #365 `adc1ef01b7a0c5eb7e280395520108c94788af5d`; #366 `cade1b630bb429d6a4106de5bf12713df18f3491`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #368 `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`; #369 `814bb8788449ebe3d07d46f00a596a1a7b398a5a`; #370 `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`; #371 `260df95c620cd534337e39d6707b044eb404139a`; #372 `950640ea78d29e87d426a89d8887c15e4de2abac`.
+- Completed lexical scan of 183 TS/TSX/JS files (159 src, 18 e2e, 1 script, 5 api). Literal key `wird_engine_plans` appears at `src/services/storageService.ts:36`; the complete call-site/test matrix and exact line references are in RFC section 17.
+- Newly mapped indirect consumers: `dailySessionSelection.ts:83-87`, `cloudSyncCoordinator.ts:22`, `demoDataPersistence.ts:34`, `revisionedRemoteMutation.ts:66`, `PlanningEngineWizard.tsx:194-243`, and Firestore Rules test `scripts/firestoreRules.test.ts:1317`.
+- Critical future-cutover requirements: AuthGate has no archive hydration barrier; Dashboard reads the store independently; setStorageScope removes legacy source after scoped copy/verify; Settings and Progress Analytics export synchronously; session persistence and backup validation retain the 100-plan cap.
+- Additional payload risk: normal journal Engine Plans mutations allow 450,000 bytes, while generic conflict intent/use-remote/keep-local checks remain 128,000 bytes (`indexedDbSyncJournal.ts:2449,2687`). Legacy localStorage Outbox validation is also 128,000 bytes per mutation. Keep chunk references small and test conflict behavior before supporting large plan revisions.
+- Missing tests identified: AuthGate archive hydration, archive migration/rollback/quota, Engine Plans scope switch, demo transaction, session Engine Plans snapshot, remote Inbox archive materialization/cursor, and Engine Plans conflict resolution. Existing coverage and exact paths are recorded in RFC section 17.
+- CI #372: run `43391729769`, job `131773203535`, completed failure with `steps=null`, `logs_url=null`; a fresh log fetch returned BlobNotFound at 2026-11-13T09:03:58Z. Classify BLOCKED observability, not source FAIL/PASS. Vercel combined status for #372 head is failure at the Free-plan `build-rate-limit` URL. Full-source tests/typecheck/build/emulator/Playwright remain NOT TESTED.
+- No code changes, tests, merges, deployments, Production/Firebase/Secrets/Sync flag changes, or schema changes in this audit. Keep #372 Draft and Engine Plans migration HOLD.
+
+### Next action
+Review the complete archive transaction/cursor/conflict protocol against RFC section 17, then prepare only the missing focused test plan and a separate migration-stage branch after path ownership is rechecked. Do not implement the IndexedDB migration until that review and test matrix are accepted.
