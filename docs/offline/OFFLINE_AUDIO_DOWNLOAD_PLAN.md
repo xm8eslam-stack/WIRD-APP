@@ -1,3 +1,16 @@
+# Current implementation status — 2026-11-13
+
+> This is the current branch-aware status. The original PR #355-only status below is historical and must not be read as the latest work.
+
+- Main does not yet contain a complete persistent Offline Audio download feature.
+- PR #368 is OPEN/DRAFT at head `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`. Its branch includes a unified metadata library, Cache Storage adapter, bounded HTTP downloader, and job lifecycle/retry/pause/resume/cancel work with tests. It is not merged or in Production.
+- PR #366 is a separate Offline/PWA shell/readiness change; it does not by itself complete the audio-download worker protocol or local playback integration.
+- Remaining #368 work: Service Worker message protocol/integration, download UI/library, playback from verified local files, real browser/device airplane-mode/restart/quota tests, and proof that audio stays excluded from Firebase and backups.
+- PRs #358/#359 are superseded by #368 and must not be merged independently.
+- See [CONTINUE_HERE.md](../CONTINUE_HERE.md) for current PR heads and [CHANGE_CONTROL.md](../CHANGE_CONTROL.md) for shared-file sequencing.
+
+---
+
 # WIRD — Offline Quran audio download plan
 
 ## Live implementation checkpoint — 2026-11-12 14:35 +02:00
