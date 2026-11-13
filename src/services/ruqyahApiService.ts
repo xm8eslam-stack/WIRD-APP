@@ -211,20 +211,6 @@ export function readRuqyahApiIndexCache(
  */
 export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQuranEntry {
   const locator = resolveApiQuranLocator(entry);
-  const item: RuqyahItem = {
-    id: 'external-ruqyah-' + String(locator.id),
-    categories: ['brief'],
-    type: 'quran',
-    title: 'موضع قرآني من الفهرس',
-    surahNumber: locator.surahNumber,
-    surahName: locator.surahName,
-    verseRange: locator.startAyah === locator.endAyah
-      ? String(locator.startAyah)
-      : locator.startAyah + '-' + locator.endAyah,
-    text: '',
-    repeatTarget: null,
-    source: 'WIRD canonical Quran corpus'
-  };
   // The API contributes coordinates only. The UI resolves displayed Quran text from WIRD's local QuranText loader.
   return { ...locator, text: '' };
 }
