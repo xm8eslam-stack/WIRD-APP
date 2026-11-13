@@ -321,11 +321,25 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   }, [audioVolume]);
 
   useEffect(() => {
+    setAudioQueueLength(0);
+    setAudioQueuePosition(0);
+    setAudioCurrentItemId(null);
+    setAudioCurrentItemTitle('');
+    setAudioQueueLabel('');
+    setAudioIsPlaying(false);
+    setAudioIsLoading(false);
+
     return () => {
       audioBuildRequestIdRef.current += 1;
       audioRequestIdRef.current += 1;
-      audioRef.current?.pause();
       audioQueueRef.current = [];
+      audioQueueIndexRef.current = 0;
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+      }
     };
   }, [activeCategory]);
 
