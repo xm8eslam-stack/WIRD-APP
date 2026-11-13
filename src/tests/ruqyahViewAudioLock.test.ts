@@ -74,8 +74,8 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
   test(
     'Audio queue is awaited before replacing the active queue and preserves async request ordering',
-    viewSource.includes('await getRuqyahAudioQueue(target)') &&
-      viewSource.includes('const itemQueues = await Promise.all') &&
+    viewSource.includes('await getRuqyahAudioQueueForItems(targetItems)') &&
+      viewSource.includes('getRuqyahAudioQueueForItems') &&
       viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
   );
 
