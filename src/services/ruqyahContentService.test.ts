@@ -39,6 +39,31 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
     }
   });
 
+  await test('Every Quran item retains its exact approved Surah and verse-range coordinates', () => {
+    const expected: Record<string, { surahNumber: number; verseRange: string }> = {
+      'q-fatihah': { surahNumber: 1, verseRange: '1-7' },
+      'q-baqarah-1-5': { surahNumber: 2, verseRange: '1-5' },
+      'q-kursi': { surahNumber: 2, verseRange: '255' },
+      'q-baqarah-256-257': { surahNumber: 2, verseRange: '256-257' },
+      'q-baqarah-last2': { surahNumber: 2, verseRange: '285-286' },
+      'q-araf-magic': { surahNumber: 7, verseRange: '117-122' },
+      'q-yunus-magic': { surahNumber: 10, verseRange: '81-82' },
+      'q-ta-ha-magic': { surahNumber: 20, verseRange: '69' },
+      'q-isra-healing': { surahNumber: 17, verseRange: '82' },
+      'q-ikhlas': { surahNumber: 112, verseRange: '1-4' },
+      'q-falaq': { surahNumber: 113, verseRange: '1-5' },
+      'q-nas': { surahNumber: 114, verseRange: '1-6' }
+    };
+    const items = RUQYAH_ITEMS.filter(item => item.type === 'quran');
+    assert(items.length === Object.keys(expected).length, 'Quran item set changed without updating the exact-range regression fixture');
+    for (const item of items) {
+      const expectedItem = expected[item.id];
+      assert(Boolean(expectedItem), 'Unexpected Quran item: ' + item.id);
+      assert(item.surahNumber === expectedItem.surahNumber && item.verseRange === expectedItem.verseRange,
+        item.id + ' must retain its exact approved Quran coordinates');
+    }
+  });
+
   await test('Every Quran item resolves the exact verified local range and endpoints', async () => {
     const items = RUQYAH_ITEMS.filter(item => item.type === 'quran');
     assert(items.length > 0, 'Quran Ruqyah items must exist');
