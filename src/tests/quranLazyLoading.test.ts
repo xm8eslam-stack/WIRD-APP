@@ -87,6 +87,15 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     assert(revision.includes('loadAyahByCoordinate') && revision.includes('loadSimpleAyahText') && revision.includes('weakSimpleTexts') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use coordinate-based Simple text for weak-ayah display and search');
   });
 
+  test('Ruqyah content service cannot statically reach the full Quran corpus', () => {
+    const service = read('src/services/ruqyahContentService.ts');
+    assert(!/from\\s+['"][^'"]*verifiedAyahs/.test(service), 'Ruqyah service must not import verifiedAyahs directly');
+    assert(!/from\\s+['"][^'"]*completeQuranData\\.json/.test(service), 'Ruqyah service must not import completeQuranData.json directly');
+    assert(!/from\\s+['"][^'"]*(?:quran|verified)[^'"]*(?:barrel|index)/i.test(service), 'Ruqyah service must not route Quran data through a static barrel');
+    assert(service.includes("from '../data/quranDataLoader'") && service.includes('loadSurahVerses'), 'Ruqyah service must use the existing per-Surah loader');
+    assert(service.includes('await loadSurahVerses'), 'Ruqyah service must resolve local Surah chunks asynchronously');
+  });
+
   test('Quran source attribution metadata is independent from the full text payload', () => {
     const info = read('src/data/quranDataInfo.ts');
     assert(info.includes('Tanzil Project') && info.includes('CC BY 3.0'), 'Source and license attribution must remain available');
