@@ -1,3 +1,35 @@
+# أحدث استكمال تشغيلي — 2026-11-13 09:xx +02:00
+
+> هذا التحديث يعلو على أي جداول أو حالات تاريخية أدناه. تمت المصالحة من GitHub وVercel قبل التسجيل.
+
+## الحالة الحالية
+- `main` ما زال `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` = READY، target production، alias `wird-app.vercel.app`، ومصدره نفس SHA تمامًا. لم يحدث deploy أو تغيير إعدادات.
+- PR #363 مفتوح/Draft/mergeable، head `7c299743ab17f6add6966715fec9ebaff51dceef`، 254 commits و36 ملفًا؛ لا merge. metadata يعرض merge_commit_sha غير فارغ مع merged=false؛ نعتمد state/merged=false، ولا نفسر الحقل وحده كدمج.
+- PR heads الحالية: #364 `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; #365 `adc1ef01b7a0c5eb7e280395520108c94788af5d`; #366 `cade1b630bb429d6a4106de5bf12713df18f3491`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #368 `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`; #369 `814bb8788449ebe3d07d46f00a596a1a7b398a5a`; #370 `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`; #371 `260df95c620cd534337e39d6707b044eb404139a`. كلها OPEN/DRAFT في آخر قراءة.
+- #358/#359 قديمان وعلى base مختلف، ومُستبدلان عمليًا بمسار #368؛ لا تدمجهما منفصلين. #2 قديم وغير mergeable.
+- PRs #365/#367/#368/#369/#371 تتشارك `src/tests/runAllTests.ts`؛ #367/#369 يتشاركان أيضًا `PlanningEngineWizard.tsx`. تسلسل إلزامي، ولا merge متزامن لهذه المسارات.
+
+## CI وBun — عطل مثبت يحتاج إصلاحًا
+- main `package.json` يعلن Bun 1.4.4 وNode >=24.12 <27، override لـ `@grpc/grpc-js@1.14.6`.
+- `bun.lock` لا يطابق manifest: dependency maps قديمة، `esbuild` فيه ^0.25.0 مقابل ^0.28.2 في manifest، وoverride/dependency additions غير منعكسة.
+- `.github/workflows/ci.yml` يحدّث Bun lock بـ `bun install --force` ثم يثبت التطبيق مرة ثانية عبر npm، ويثبت Playwright مؤقتًا بـ npm. هذا يخالف مبدأ dependency graph واحد.
+- التحقق المعزول السابق: frozen install يفشل على lock الحالي؛ بعد regenerate في sandbox للحزم فقط، frozen install وBun audit high نجحا (0 advisory / 360 packages). لم يكن المصدر الخاص موجودًا في sandbox، لذلك tests/build/typecheck/browser لم تُختبر. لا lock جديد ملتزم ولا كود CI معدل.
+- خطة الإصلاح مثبتة في [CHANGE_CONTROL.md](./CHANGE_CONTROL.md). لا تعتمد lock regenerated قبل full-source checkout والاختبارات الكاملة.
+
+## آخر CI evidence
+- main SHA: لم يظهر له PR-triggered workflow run في الاستعلام الحالي.
+- #371 run 43278752980 / job 131394096177: failure مع steps=null وlogs_url=null.
+- #368 run 43275594933: failure سابق غير قابل للفحص؛ #363 run 43387141521 / job 131758165310 كذلك steps=null/logs_url=null. تصنيفها BLOCKED/observability، لا code FAIL ولا PASS.
+- لا Vercel Preview جديد مثبت على رؤوس PRs أعلاه. Production parity فقط مؤكدة.
+
+## الاستكمال التالي
+1. حل مشكلة الحصول على full-source checkout في بيئة معزولة مخولة، ثم أصلح Bun lock/CI وفق CHANGE_CONTROL.
+2. واصل مراجعة overlap/changed files لكل PR؛ لا تدمج.
+3. أبقِ Engine Plans IndexedDB migration متوقفة حتى يكتمل تدقيق المستهلكين غير المباشرين والاختبارات ونقاط atomicity/recovery؛ #371 codec فقط وليس migration.
+4. استمر في مسارات الصوت/PWA/السيرة/تجربة الخطط على مسارات غير متداخلة، مع exact-head evidence.
+5. لا تغيّر Production flags أو SSO أو branch protection أو Firebase Rules أو secrets ولا تنشر/تدمج دون الموافقات المحددة.
+
 # نقطة المصالحة التشغيلية — 2026-11-13
 
 > **هذه هي أحدث طبقة تشغيلية.** أي حالة أقدم أدناه سجل تاريخي فقط. اقرأ أيضًا [سياسة ضبط التغيير](./CHANGE_CONTROL.md) قبل أي تعديل.
