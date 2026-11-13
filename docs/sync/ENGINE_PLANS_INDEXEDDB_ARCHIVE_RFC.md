@@ -679,3 +679,46 @@ No unit, integration, typecheck, lint, build, emulator or Playwright tests were 
 6. Keep remote Firestore transport, conflict references, backup/reset conversion and rollout behind their own exact-head gates.
 
 **Status remains DESIGN / HOLD.** This audit addendum changes documentation only. It does not approve or implement Stage B, change IndexedDB schema, alter runtime code or payload limits, touch Firestore Rules/data, enable production sync, merge a PR, or deploy.
+
+
+## 22. Exact-head PR review and CI retry checkpoint — 2026-11-13
+
+### 22.1 PR #367 — interim 800 KB payload alignment
+
+Reviewed exact head `fd417faaa96a11920ef3a8e4f1038f567c36a731` and the changed payload-limit helper/tests.
+
+- The shared helper gives `enginePlans` and grouped `syncMeta` transactions containing an Engine Plans operation an 800,000-byte limit; ordinary mutations remain at 128,000 bytes.
+- The helper is applied at the IndexedDB journal, legacy Outbox facade, revisioned Firestore writer, remote Inbox validation, and the reviewed conflict prepare/commit paths.
+- New tests exercise a 700 KB journal/outbox payload, grouped session envelope, rejection above 800 KB, and a large keep-local conflict resolution.
+- Conflict snapshots are raised to 1,700,000 bytes and retained conflict count reduced to 29. This bounds the theoretical conflict-snapshot subtotal around 49.3 MB, but does not establish actual browser quota availability or make 800 KB a chunked archive protocol.
+- The 800 KB scalar limit is still an interim compatibility ceiling, not adaptive storage, not a server-authoritative entitlement, and not a substitute for immutable archive revisions. Keep Draft/HOLD until CI is inspectable and the archive protocol replaces this interim path.
+
+### 22.2 PR #371 — codec review remains incomplete for production use
+
+Reviewed exact head `260df95c620cd534337e39d6707b044eb404139a`, codec and its tests.
+
+- The pure codec canonicalizes JSON records, rejects unsupported/circular/sparse values, splits records into fragments no larger than 192,000 bytes, and validates fragment, record and archive SHA-256 fingerprints on reconstruction.
+- The returned manifest still materializes every ordered record ID and every chunk descriptor in one object. There is no encoded manifest byte ceiling or descriptor paging.
+- Build and materialize retain complete chunk/record collections in memory; archive fingerprinting canonicalizes the complete record set. This is not a bounded streaming implementation for large archives.
+- The codec has no IndexedDB persistence, staging/publish/CAS, scope fencing, quota recovery, Firestore transport, Journal/Outbox/Inbox references, or conflict-resolution integration.
+- It is suitable only as a pure codec prototype until paged manifests and bounded streaming are implemented and tested. Do not connect it to live data or migration.
+
+### 22.3 PR #372 — CI dependency graph proposal
+
+Reviewed exact head `950640ea78d29e87d426a89d8887c15e4de2abac`, package manifest, lockfile and workflow.
+
+- The workflow switches the full verification sequence to Bun 1.4.4 and frozen lockfile installation; the lockfile includes Playwright and Firestore Rules test dependencies, plus explicit trusted dependencies and a gRPC override.
+- Main still uses the mixed Bun/npm workflow and does not yet declare the Playwright test package directly. The proposed single Bun graph is directionally coherent, but exact-head CI must prove frozen install, audit, test runner, Firestore emulator, TypeScript, build, server smoke and Playwright under the selected Node/Bun versions.
+- The workflow currently has a 30-minute job timeout. No change to main is justified by the currently uninspectable run result.
+
+### 22.4 CI retry evidence
+
+The latest observed exact-head runs before retry were:
+- #363 docs head after audit update `0487a6dcf8ca8615c8c86e38dc5e2d8983a915f2`: run `43475819437`, job `132059257172`.
+- #367: run `43209066503`, job `131151602011`.
+- #371: run `43278752980`, job `131394096177`.
+- #372: run `43391729769`, job `131773203535`.
+
+All four jobs reported `conclusion=failure`, but `steps=null` and `logs_url=null`; no individual command outcome is observable. A retry was successfully requested for each failed job. Retry completion and exact-head test results remain pending and must be fetched before any pass/failure classification.
+
+**Decision unchanged: all four PRs remain OPEN/DRAFT; #367/#371/#372 remain HOLD, and #363 remains documentation-only Draft/HOLD. No merge, deploy, production sync activation, schema change, Rules/data change, or secrets/settings change is performed.**
