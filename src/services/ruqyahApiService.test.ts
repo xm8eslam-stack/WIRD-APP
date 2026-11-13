@@ -41,7 +41,7 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
         resolved.startAyah === 1 && resolved.endAyah === 7, 'Surah metadata must come from WIRD canonical metadata');
       const arabicDigits = await resolveApiQuranEntryText({ id: 2, title: '٢:١-٥' });
       const localBaqarah = RUQYAH_ITEMS.find(item => item.id === 'q-baqarah-1-5');
-      assert(Boolean(localBaqarah) && arabicDigits === getRuqyahDisplayText(localBaqarah!), 'Arabic-Indic Quran coordinates must resolve correctly');
+      assert(Boolean(localBaqarah) && arabicDigits === await getRuqyahDisplayText(localBaqarah!), 'Arabic-Indic Quran coordinates must resolve correctly');
     });
 
     await test('External Quran entries without valid coordinates fail closed', async () => {
