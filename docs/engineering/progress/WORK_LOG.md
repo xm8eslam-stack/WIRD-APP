@@ -19,3 +19,13 @@
 
 
 - Additional corruption-safety finding: `StorageService.getEnginePlans()` delegates to `readJsonArrayArchive` (`storageService.ts:378-395`), which filters malformed records or returns an empty array while preserving the original bytes. Migration must use a strict raw-byte read/validator and fail closed rather than hydrate from a filtered/empty fallback.
+
+
+
+## 2026-11-13 — Remote Inbox, cursor, and conflict transaction review
+
+- Reviewed main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` in `indexedDbSyncJournal.ts`, `remoteInboxProjector.ts`, `syncConflictResolutionService.ts`, `cloudSyncCoordinator.ts`, and `journalProjectionReplayer.ts`.
+- Confirmed `remoteCursor` is the durable ingestion cursor: remote Inbox rows and cursor advance in one IndexedDB transaction after contiguous page validation. `remoteProjectionCursor` is separate and advances only after projection/finalization; coordinator requires equality before reporting reconciliation complete.
+- Confirmed normal remote finalization atomically updates revision/baseline metadata, projection cursor, Inbox deletion, and conflict closure in IndexedDB. However its synchronous apply callback writes localStorage inside that transaction; this is not cross-database atomicity. Existing durable intent/replay is a recovery protocol. IndexedDB archive must become canonical; localStorage remains a rebuildable projection.
+- Confirmed conflict preparation and both use-remote/keep-local commit APIs enforce 128 KB, while Engine Plans Inbox validation permits 450 KB. Large Engine Plans conflicts can be received but cannot be explicitly resolved. Require archive revision references in conflict intents/Outbox, not blanket cap increases.
+- Added detailed transaction contracts and 7 test groups to RFC section 18. No code changed and no tests executed. Stage B remains HOLD.
