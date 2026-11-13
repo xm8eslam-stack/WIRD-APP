@@ -225,7 +225,8 @@ export function resolveApiQuranEntry(entry: RuqyahApiEntry): ResolvedRuqyahApiQu
     repeatTarget: null,
     source: 'WIRD canonical Quran corpus'
   };
-  return { ...locator, text: getRuqyahDisplayText(item) };
+  // The API contributes coordinates only. The UI resolves displayed Quran text from WIRD's local QuranText loader.
+  return { ...locator, text: '' };
 }
 
 /** Match only canonical WIRD surah metadata and verse coordinates, never provider-authored titles. */
@@ -255,6 +256,25 @@ export function matchesApiQuranEntry(entry: RuqyahApiEntry, query: string): bool
   }
 }
 
-export function resolveApiQuranEntryText(entry: RuqyahApiEntry): string {
-  return resolveApiQuranEntry(entry).text;
+export async function resolveApiQuranEntryText(entry: RuqyahApiEntry): Promise<string> {
+  const locator = resolveApiQuranLocator(entry);
+  const item: RuqyahItem = {
+    id: 'external-ruqyah-' + String(locator.id),
+    categories: ['brief'],
+    type: 'quran',
+    title: 'موضع قرآني من الفهرس',
+    surahNumber: locator.surahNumber,
+    surahName: locator.surahName,
+    verseRange: locator.startAyah === locator.endAyah
+      ? String(locator.startAyah)
+      : locator.startAyah + '-' + locator.endAyah,
+    text: '',
+    repeatTarget: null,
+    source: 'WIRD canonical Quran corpus'
+  };
+  const resolved = await getRuqyahDisplayText(item);
+  if (typeof resolved !== 'string' || !resolved.trim()) {
+    throw new Error('تعذر تحميل النص من مصحف وِرد المحلي المعتمد.');
+  }
+  return resolved;
 }
