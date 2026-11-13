@@ -23,7 +23,7 @@ Recent PR Quality Gate runs completed in approximately 3–4 seconds with no rec
 
 | PR | Head SHA | State | Coordination |
 |---|---|---|---|
-| #363 docs | `f62b0eb7a8a965ca4478bb56c05ce542656da203` | OPEN / DRAFT | This branch carries the documentation reconciliation; head will advance as this update is committed |
+| #363 docs | `2eb392a5b3aec8576a2b1a45dbdc1a6abf3978cf` قبل هذه الجولة | OPEN / DRAFT | This branch carries the documentation reconciliation; this update advances its head and triggers a new exact-head run |
 | #364 Advisor security | `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98` | OPEN / DRAFT | Distinct API/service paths |
 | #365 Seerah | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | OPEN / DRAFT | Shares test aggregator |
 | #366 Offline/PWA | `cade1b630bb429d6a4106de5bf12713df18f3491` | OPEN / DRAFT | Service Worker/offline paths |
@@ -41,7 +41,7 @@ Recent PR Quality Gate runs completed in approximately 3–4 seconds with no rec
 
 - Engine Plans remain on localStorage in main, with the 100-plan validation limit. PR #367's 800,000-byte cap is only a temporary unmerged payload budget, not adaptive storage or chunks. PR #371 adds a codec only; no IndexedDB archive integration/migration.
 - PR #368 contains a more advanced unified local audio download implementation on its branch, but it is not in main/Production. Do not claim complete offline audio until Service Worker protocol, UI, offline playback, and real browser/device verification are done.
-- Bun is declared in `package.json` (`bun@1.4.4`), `bun.lock` is committed, and Vercel detects Bun. CI currently runs Bun lock refresh then a separate `npm install`/audit/test/build path. This is a dependency-graph parity defect to resolve by moving CI to one validated Bun graph; do not make an untested workflow edit.
+- Bun is declared in `package.json` (`bun@1.4.4`), `bun.lock` is committed, and Vercel detects Bun. CI currently refreshes Bun lock then uses a separate `npm install`/audit/test/build graph. Isolated Bun 1.4.4 verification confirmed the committed lock fails `bun install --frozen-lockfile` because the package override and workspace dependency maps are stale; a regenerated sandbox lock passes frozen install and `bun audit --audit-level=high` (0 advisories / 360 packages). The regenerated lock was not committed and full app tests/build were not run. Fix the lock and CI graph together after full-source validation.
 - No merge, deploy, Production setting/protection change, Firebase Rules change, secret change, or sync-flag change occurred during this audit.
 
 ## Owner actions still open
