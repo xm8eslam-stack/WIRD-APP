@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { RUQYAH_ITEMS } from '../data/ruqyahData';
 import { getRuqyahDisplayText } from './ruqyahContentService';
 import {
@@ -42,6 +43,14 @@ export async function runRuqyahApiServiceTests(): Promise<{ passed: number; fail
       const arabicDigits = await resolveApiQuranEntryText({ id: 2, title: '٢:١-٥' });
       const localBaqarah = RUQYAH_ITEMS.find(item => item.id === 'q-baqarah-1-5');
       assert(Boolean(localBaqarah) && arabicDigits === await getRuqyahDisplayText(localBaqarah!), 'Arabic-Indic Quran coordinates must resolve correctly');
+    });
+
+    await test('API library treats provider entries as coordinates only and renders WIRD-local Quran text', () => {
+      const service = readFileSync(new URL('./ruqyahApiService.ts', import.meta.url), 'utf8');
+      const library = readFileSync(new URL('../components/ruqyah/RuqyahApiLibrary.tsx', import.meta.url), 'utf8');
+      assert(service.includes("return { ...locator, text: '' }"), 'API resolver must discard provider verse text');
+      assert(!library.includes('entry.arabic') && !library.includes('entry.text') && !library.includes('entry.translation'), 'API library must never render provider-authored Quran text');
+      assert(library.includes('<QuranText surahNumber={resolved.surahNumber}'), 'API library must render by canonical local Surah/ayah coordinates');
     });
 
     await test('External Quran entries without valid coordinates fail closed', async () => {
