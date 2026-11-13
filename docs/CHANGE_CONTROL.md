@@ -107,3 +107,20 @@ Older checkpoint files are historical. Add a banner pointing to the current cont
 ## 6. Non-negotiable approval boundaries
 
 No automatic merge, production deploy/promotion/rollback, Firebase Rules deployment, production data mutation, Vercel environment/protection change, secret rotation, or sync-flag change. Obtain the specific owner approval first and preserve an auditable before/after record.
+
+## 7. Bun lockfile and CI dependency-graph incident — 2026-11-13
+
+The main-branch source was re-read at `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`:
+- `package.json` declares `packageManager: bun@1.4.4`, Node `>=24.12.0 <27`, and override `@grpc/grpc-js: 1.14.6`.
+- `bun.lock` is stale against that manifest: its workspace dependency map omits manifest entries (including the Firebase Rules test dependency), records `esbuild ^0.25.0` while the manifest requires `^0.28.2`, and does not reflect the current override configuration.
+- `.github/workflows/ci.yml` currently runs `bun install --force` (refreshing the lock), then a separate `npm install`, a no-save npm Playwright install, and npm audit/test/lint/build. This creates two dependency-resolution graphs and means the committed lock is not the graph actually used for most checks.
+- Isolated Bun 1.4.4 verification already showed `bun install --frozen-lockfile` fails on the committed lock with “lockfile had changes, but lockfile is frozen”; regenerating the lock in an isolated package-only sandbox then allowed frozen install and `bun audit --audit-level=high` (0 advisories / 360 packages). That regenerated lock was not committed. Full private source tests, typecheck, build and Playwright were NOT TESTED.
+
+**Required repair sequence:**
+1. Obtain a trusted full-source checkout at the exact target SHA in an authorized isolated environment; do not rely on package-only verification as app validation.
+2. Regenerate `bun.lock` using Bun 1.4.4 against the unchanged manifest, then prove `bun install --frozen-lockfile` succeeds from a clean state.
+3. Add Playwright as an explicit pinned dev dependency (or document and prove another reproducible Bun-native runner arrangement); remove `npm install`, `npm audit`, and the transient no-save Playwright installation from the app dependency path.
+4. Run Bun-native audit, tests, TypeScript validation, production build, server/API smoke, Firestore emulator tests, and Playwright browser tests from that one graph. Keep tool-only ephemeral CLI use explicitly separate from application dependencies.
+5. Review the exact diff and lockfile package graph; then require a fresh exact-head CI run with inspectable steps/logs. Do not weaken checks or edit main directly.
+
+Until all five steps pass, classify the dependency repair as IN PROGRESS / BLOCKED for full-source validation. Do not claim the isolated audit is a full app security or build pass.
