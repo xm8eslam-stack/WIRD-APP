@@ -741,3 +741,29 @@ Vercel boundary recheck:
 - Latest documentation preview `dpl_7czKY3nPsoGHe3UKpmcCgKjPeNMF` is READY for docs branch SHA `81b187e3ab2e25cf74e47be41d1fcfa728941bd7`, with a preview-only alias. It is not Production and contains no runtime changes from this audit.
 
 No manual deploy, alias reassignment, Production promotion, or sync setting change was performed. A READY preview is not a live application smoke test. Keep all PRs Draft/HOLD until runner allocation is restored and a full inspectable Quality Gate passes on each final code head.
+
+
+## 24. Active PR changed-path collision map — 2026-11-13
+
+A fresh exact changed-path comparison was run across OPEN PRs #363–#372. This is a path-overlap map, not a mergeability or semantic-equivalence claim.
+
+| PR pair | Shared paths | Required handling |
+| --- | --- | --- |
+| #365 with #367, #368, #369, #371 | `src/tests/runAllTests.ts` | Serialize test-runner edits; rebase/reapply each registration and inspect the final aggregator. |
+| #367 with #368, #371 | `src/tests/runAllTests.ts` | Do not merge in parallel; reapply registrations and rerun the full gate after each final head. |
+| #367 with #369 | `src/components/plans/PlanningEngineWizard.tsx`, `src/tests/runAllTests.ts` | Resolve the same component carefully: retain both the 800 KB warning/guard and the multi-Surah/Juz/range UX. Re-run plan wizard and range E2E after integration. |
+| #368 with #369 | `src/tests/runAllTests.ts` | Only aggregator collision observed; still serialize registration edits. |
+| #368 with #371 | `src/tests/runAllTests.ts` | Only aggregator collision observed; serialize registration edits. |
+| #369 with #371 | `src/tests/runAllTests.ts` | Only aggregator collision observed; serialize registration edits. |
+
+No changed-path overlap was observed in this scan between #366 and #368, or between #370 and the other listed code PRs. That does not rule out runtime interaction: #366 changes Service Worker/offline storage behavior while #368 introduces a separate offline audio Cache Storage/library/downloader stack, so their storage ownership, cache names, eviction and UI integration still need a semantic integration review before either is treated as a complete offline-audio release.
+
+### Required integration order
+
+1. Keep all current PRs Draft/HOLD until CI runner allocation is restored.
+2. Integrate #367 and #369 on one plan-component branch in a controlled sequence, preserving both changes and all test registrations.
+3. Integrate #365, #368 and #371 one at a time, resolving only the test aggregator collision at each step.
+4. Keep #370 isolated; verify it against the final session component after other merges.
+5. Re-run the complete exact-head suite after the last rebase/merge. A previous PR's pass cannot certify a combined head.
+
+This scan does not authorize merging any PR or changing main.
