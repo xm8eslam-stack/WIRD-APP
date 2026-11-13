@@ -1205,3 +1205,17 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Fixed saved reading-position hydration race and added reload E2E. Publication contract now fails closed for malformed imported records; malformed-content tests registered.
 - Quality Gate run 43289471345 on exact head initially failed with job 131431547175 but no steps/logs (BlobNotFound). A rerun was requested; latest attempt job 131431824753 is queued at checkpoint time. Vercel reports build-rate-limit only. No local tests/typecheck/build run and no pass claimed.
 - No real historical corpus or content ingested/published. Source S0 rights review remains a hard gate.
+
+
+## 2026-11-13 — GitHub/Vercel conflict reconciliation and CI package-manager probe
+
+- Audited GitHub main `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, 12 open PRs, changed-file overlaps, workflow runs, branch protection/rulesets, Vercel Production deployment, project protection, domain, and environment-variable key/target inventory. No secret values were read.
+- Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY, target production, alias `wird-app.vercel.app`, and exact source SHA equals main. Vercel SSO protection is enabled for all non-custom domains; only the Vercel domain is listed.
+- Both Production sync flags are currently `true`; `ISLAMICAPI_API_KEY` exists for Preview and Production. No Production setting was changed.
+- GitHub main protection is disabled; required-check enforcement is off; no repository rulesets were found.
+- Recent PR Quality Gate runs fail within 3–4 seconds with empty step arrays; log retrieval returns `BlobNotFound`. No recent main Quality Gate run was returned. Classification: BLOCKED observability/runner evidence.
+- Path conflicts: #365/#367/#368/#369/#371 all touch `src/tests/runAllTests.ts`; #367/#369 also touch `PlanningEngineWizard.tsx`. #358/#359 use an older base and are superseded by #368. No PR merged.
+- CI package-manager probe in isolated Vercel sandbox (Node 24.22.3, Bun 1.4.4): original `bun install --frozen-lockfile` FAIL because lockfile did not match package.json override; Bun explicitly reported `@grpc/grpc-js` override changed. Regenerating the lock in the sandbox then running frozen install PASS. `bun audit --audit-level=high` PASS with no vulnerabilities in the regenerated graph (360 packages). Full app tests/build were NOT TESTED because the private repository source was not mounted in the sandbox.
+- The regenerated lockfile/package experiment was not committed; an exploratory branch was reverted to main-equivalent package.json and no PR was opened. Follow-up is to commit a reviewed, reproducible Bun lockfile/Playwright dependency correction and replace the separate npm install/audit/test/build path only after full-source validation.
+- Documentation branch PR #363 was updated with a mandatory change-control policy, current checkpoint, owner actions, release-gate clarification, and historical status banners. It remains OPEN/DRAFT pending exact-head CI evidence and review.
+- No merge, production deploy, Firebase Rules deployment, production settings/protection/secrets/flags change, or user-data change occurred.
