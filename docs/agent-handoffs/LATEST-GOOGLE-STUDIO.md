@@ -1,3 +1,21 @@
+# GOOGLE AI STUDIO — Current handoff overlay — 2026-11-13
+
+> This dated overlay supersedes all older SHA/deployment status in this handoff. Do not treat GitHub updates as proof of AI Studio synchronization.
+
+- Repository: `xm8eslam-stack/WIRD-APP`.
+- Current GitHub main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY on the exact main SHA, alias `wird-app.vercel.app`.
+- Vercel SSO protection is enabled for non-custom domains; anonymous public access is not established.
+- Production sync flags are both true; this is configuration state, not complete sync release approval.
+- `ISLAMICAPI_API_KEY` exists in Preview and Production; never expose its value.
+- GitHub main branch protection is off. Recent PR Quality Gate runs lack steps/logs and are BLOCKED for observability.
+- Actual Google AI Studio sync/build status remains NOT TESTED. Confirm from AI Studio directly after the owner-approved documentation PR is merged.
+- No merge, production deployment, environment/secret/protection change, Firebase Rules change, or sync-flag change was performed in this audit.
+
+Read `AGENTS.md`, `docs/CHANGE_CONTROL.md`, and `docs/CONTINUE_HERE.md` before further work.
+
+---
+
 # أولوية تسليم جديدة — Offline-first / app readiness (2026-11-12)
 
 - اجعل Offline-first مسارًا رئيسيًا متوازيًا مع القرآن والعبادات والسيرة وUX والمزامنة.
