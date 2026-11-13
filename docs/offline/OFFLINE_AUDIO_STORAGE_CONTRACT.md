@@ -171,3 +171,14 @@ The following release gaps remain and must be addressed before exposing the feat
 The latest PR body and exact source head agree that this is still Draft/HOLD. The PR's test files are registered, but the GitHub Quality Gate runner has not executed steps on the observed attempts; no local test suite was run during this review.
 
 **Release decision:** keep the implementation behind an unexposed service boundary. Do not add user-facing controls or claim offline audio is ready until quota/eviction/orphan ownership, playback integration, browser tests, and exact-head CI are complete.
+
+ 
+### Cross-PR consolidation and crash recovery follow-up — 2026-11-13
+
+PR #358, #359 and #368 have overlapping responsibilities. #358 stores download jobs/items in a dedicated IndexedDB database; #359 stores verified audio-file manifest metadata in a second database; #368 combines jobs, per-job item relations, canonical files, shared references, pinning and cache-generation metadata in one library. Prefer one canonical implementation, currently #368 as the most complete candidate. Port any unique tests from #358/#359 into #368 before marking those standalone stores superseded. Do not merge independent databases as parallel sources of truth.
+
+A crash-consistency gap remains in #368: Cache Storage bytes are written before IndexedDB metadata. If the process terminates after Cache Storage write but before metadata commit, exception cleanup cannot run. Current reconciliation checks metadata-referenced files against Cache Storage but does not discover cache keys with no metadata row. Add a generation-aware orphan sweep over only the owned cache namespace, using durable staging/grace records and checking job references, active intents, pinned files and replacement generations before deletion.
+
+PR #366's generic Service Worker storage trimming currently does not own #368's separate offline-audio cache namespace. Define a single eviction owner and metadata reconciliation contract before integration. An eviction must not leave IndexedDB claiming a file is available, and a delayed cleanup must not delete a replacement generation.
+
+PR #368 remains service-layer foundation only: no aggregate job/range quota preflight, real browser Cache Storage integration tests, UI, Service Worker download lifecycle, or real-device offline playback has been verified. Keep user-facing downloads unexposed until those gates pass.
