@@ -1,4 +1,4 @@
-> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [docs/CONTINUE_HERE.md](../../CONTINUE_HERE.md) (adjust relative path if needed); mandatory reconciliation rules are in [docs/CHANGE_CONTROL.md](../../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
+> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [CONTINUE_HERE.md](../CONTINUE_HERE.md); mandatory reconciliation rules are in [CHANGE_CONTROL.md](../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
 
 # 2026-11-12 — Offline-first implementation overlay
 
