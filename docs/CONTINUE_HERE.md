@@ -5,7 +5,7 @@
 ## Exact state
 - GitHub main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` (unchanged).
 - Production Vercel deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY, target production, source SHA matches main, alias `wird-app.vercel.app`. SSO remains enabled for non-custom domains. No deploy or settings change.
-- Open PR heads: #372 `950640ea78d29e87d426a89d8887c15e4de2abac`; #371 `260df95c620cd534337e39d6707b044eb404139a`; #370 `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`; #369 `814bb8788449ebe3d07d46f00a596a1a7b398a5a`; #368 `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #366 `cade1b630bb429d6a4106de5bf12713df18f3491`; #365 `adc1ef01b7a0c5eb7e280395520108c94788af5d`; #364 `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; #363 `c0596ba24c7c00def8f67a77be1372b9dd67f839`. All OPEN/DRAFT.
+- Open PR heads: #372 `950640ea78d29e87d426a89d8887c15e4de2abac`; #371 `260df95c620cd534337e39d6707b044eb404139a`; #370 `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`; #369 `814bb8788449ebe3d07d46f00a596a1a7b398a5a`; #368 `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #366 `cade1b630bb429d6a4106de5bf12713df18f3491`; #365 `adc1ef01b7a0c5eb7e280395520108c94788af5d`; #364 `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; PR #363 documentation remains OPEN/DRAFT; fetch its live head before each continuation rather than storing a self-referential SHA here.. All OPEN/DRAFT.
 
 ## CI/Bun
 - #372 is a four-file isolated candidate with one Bun app dependency graph and a frozen lockfile. Package-only Bun 1.4.4 install/frozen install/audit/CLI checks passed in the isolated sandbox. Full app checks were NOT TESTED.
