@@ -58,6 +58,28 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
 
   test(
+    'Ruqyah Quran cards resolve asynchronously with explicit loading and fail-closed error states',
+    viewSource.includes('getRuqyahAyahs(candidate)') &&
+      viewSource.includes('quranLoadingItems[item.id]') &&
+      viewSource.includes('quranErrors[item.id]') &&
+      viewSource.includes('quranAyahsByItem[item.id]') &&
+      !viewSource.includes('getRuqyahAyahs(item).map')
+  );
+  test(
+    'Category changes and unmount invalidate pending Quran/audio requests',
+    viewSource.includes('let active = true') &&
+      viewSource.includes('if (active) setQuranAyahsByItem') &&
+      viewSource.includes('audioBuildRequestIdRef.current += 1') &&
+      viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
+  );
+  test(
+    'Audio queue is awaited before replacing the active queue and preserves async request ordering',
+    viewSource.includes('await getRuqyahAudioQueue(target)') &&
+      viewSource.includes('const itemQueues = await Promise.all') &&
+      viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
+  );
+
+  test(
     'Requested Quran ayahs use eager buffering only after an explicit playback request',
     viewSource.includes("audio.preload = 'auto'") &&
       viewSource.includes('audio.src = buildQuranAyahAudioUrl') &&
