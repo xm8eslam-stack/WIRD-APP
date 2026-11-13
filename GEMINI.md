@@ -20,3 +20,7 @@ For synchronization architecture, read `docs/sync/ARCHITECTURE.md`, `docs/sync/R
 - Record failed checks and return to them after independent work; do not weaken tests.
 - Keep owner-only/physical-device/Production actions in `docs/OWNER_ACTIONS.md` until the end.
 - Update the unified queue, feature roadmap, specialist checkpoint, and work log after meaningful progress.
+
+
+## Mandatory change reconciliation
+For every modification, follow `AGENTS.md` and `docs/CHANGE_CONTROL.md`: refresh exact GitHub/Vercel/Firebase evidence; map every open PR's changed paths before parallel work; serialize overlapping files; use the committed Bun lock as the single dependency graph; run and inspect exact-head checks; distinguish missing logs from code failures; update the live queue, specialist notes, work log, checkpoint and owner actions; then search for stale SHAs, contradictory status, wrong environment-variable names and broken links. Never change Production settings, secrets, Firebase Rules/data, sync flags, public-access protection, merge or deploy without the required specific approval.
