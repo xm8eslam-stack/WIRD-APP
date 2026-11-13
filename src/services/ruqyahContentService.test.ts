@@ -128,6 +128,8 @@ export async function runRuqyahContentServiceTests(): Promise<{ passed: number; 
       });
       const actual = await getRuqyahAudioQueueForItems(items);
       assert(JSON.stringify(actual) === JSON.stringify(expectedDeduplicated), category + ' queue did not preserve ordered first occurrence while deduplicating');
+      const repeatedItemQueue = await getRuqyahAudioQueueForItems(items.length ? [...items, items[0]] : items);
+      assert(JSON.stringify(repeatedItemQueue) === JSON.stringify(actual), category + ' queue failed to deduplicate repeated global ayahs from repeated item input');
       assert(new Set(actual.map(entry => entry.globalAyahNumber)).size === actual.length, category + ' queue contains duplicate global ayahs');
     }
   });
