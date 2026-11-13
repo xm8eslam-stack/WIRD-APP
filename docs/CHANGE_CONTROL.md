@@ -144,3 +144,20 @@ The paginated GitHub changed-filename lists were fetched for PRs #2, #358–#371
 PR #2 touches 37 paths and overlaps current work across advisor, Seerah/App shell, settings, session, plan wizard, test registry and docs. It remains OPEN/DRAFT/non-mergeable on a stale base; do not merge or rebase wholesale. If a specific still-needed change is discovered, extract only that commit/hunk after reviewing its provenance and re-test on current main. #358/#359 are also stale predecessors; #368 is the unified audio implementation branch, but it still requires its own exact-head validation and remaining SW/UI/playback work.
 
 Current active PR changed-file counts from the paginated lists: #363 36, #364 3, #365 16, #366 7, #367 9, #368 7, #369 6, #370 5, #371 3. The exact path list remains queryable from GitHub; the table above records all cross-PR collisions.
+
+
+## 9. Bun single-graph CI candidate — 2026-11-13
+
+PR #372 (`fix/bun-single-graph-ci-clean-20261113`) proposes one Bun 1.4.4 application dependency graph:
+- `package.json`: add pinned `@playwright/test@1.56.1`; add `trustedDependencies` for `@firebase/util`, `esbuild`, and `protobufjs`; use `bunx firebase-tools@15.0.0` for the Firestore CLI.
+- `bun.lock`: regenerated from the existing main lock as the seed (not from an empty graph), resolving the manifest drift and adding Playwright.
+- `.github/workflows/ci.yml`: replace Bun force-refresh + npm install/audit/test with `bun install --frozen-lockfile`, `bun audit`, and `bun run`/`bunx` commands. Existing test, mushaf, API smoke, approved audio CDN, Firestore Rules, TypeScript, build, server smoke, and Playwright checks are retained.
+- `playwright.config.ts`: preview web server now runs via `bun run preview`.
+
+Isolated package validation on Bun 1.4.4: force install PASS; frozen install PASS; `bun audit --audit-level=high` PASS (0 advisories / 360 packages); Playwright CLI 1.56.1 PASS; Firebase CLI 15.0.0 PASS; Bun pretest/prebuild lifecycle behavior PASS in a fixture. The package-only sandbox did not contain private app source, so full app tests/typecheck/build/Firestore/browser tests remain NOT TESTED.
+
+An experiment adding `firebase-tools@15.0.0` to the application devDependencies caused high advisories in its separate CLI graph (including `basic-ftp` and `zod`); it was removed from the app graph and pinned as a `bunx` tool instead. The final app graph audit passed.
+
+PR #372 head `950640ea78d29e87d426a89d8887c15e4de2abac`, one commit, 4 changed files, OPEN/DRAFT, not merged. Its GitHub Actions run `43391729769` failed immediately; attempt 2 job `131773203535` again had `steps=null` and `logs_url=null`; fetching logs returned `BlobNotFound`. This is BLOCKED runner/log observability, not evidence of a source test failure or pass. Vercel status on this SHA says `Deployment rate limited — retry in 24 hours`; no preview deployment was created. Production remains READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+
+Do not merge #372 until exact-head full-source checks run with inspectable steps/logs and all checks pass. Do not weaken the Quality Gate. No main, production, Firebase Rules, secrets, or sync flags were changed.
