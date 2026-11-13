@@ -1,3 +1,49 @@
+# Latest operational checkpoint — 2026-11-13 (refreshed after PR #372)
+
+
+
+## Bun / CI repair candidate
+
+- New PR #372: `https://github.com/xm8eslam-stack/WIRD-APP/pull/372`
+
+- Branch: `fix/bun-single-graph-ci-clean-20261113`
+
+- Exact HEAD: `950640ea78d29e87d426a89d8887c15e4de2abac` (one commit; four files; OPEN/DRAFT; not merged).
+
+- Isolated Bun 1.4.4 package validation: `bun install --force` PASS; `bun install --frozen-lockfile` PASS; `bun audit --audit-level=high` PASS (0 advisories / 360 packages); `bunx playwright --version` = 1.56.1; `bunx firebase-tools@15.0.0 --version` = 15.0.0. Full app source tests/typecheck/build/Firestore/browser tests NOT TESTED in sandbox.
+
+- CI run `43391729769`, attempt 2 job `131773203535`: immediate failure with no job steps and no logs URL; logs endpoint returned `BlobNotFound`. Classification BLOCKED runner/log observability, not code FAIL or PASS.
+
+- Vercel status for this PR SHA: `Deployment rate limited — retry in 24 hours`; no preview deployment created.
+
+- The proposed workflow removes npm install/audit and uses one Bun app graph; Firebase CLI remains a pinned `bunx` tool because putting it in devDependencies produced high advisory findings in its CLI graph.
+
+
+
+## Repository and production
+
+- Main remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+
+- Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` remains READY, target production, source SHA exactly main, alias `wird-app.vercel.app`.
+
+- PR #363 docs remains OPEN/DRAFT, head `8ad512d3e74d549bb20c9c4769198c9152ad9fd9`, not merged.
+
+- Open draft PRs: #372 `950640ea78d29e87d426a89d8887c15e4de2abac`; #371 `260df95c620cd534337e39d6707b044eb404139a`; #370 `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c`; #369 `814bb8788449ebe3d07d46f00a596a1a7b398a5a`; #368 `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`; #367 `fd417faaa96a11920ef3a8e4f1038f567c36a731`; #366 `cade1b630bb429d6a4106de5bf12713df18f3491`; #365 `adc1ef01b7a0c5eb7e280395520108c94788af5d`; #364 `3a4e79c03d405d05aa9ca39c47c9c9276f1f0a98`; #363 docs `8ad512d3e74d549bb20c9c4769198c9152ad9fd9`; #359 `7d31af20fe9cdc69aee4855acaf02e278fbf8b70`; #358 `4970b87d6ba712d3899093f4e8dd297bef17985e`; #2 `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d`.
+
+
+
+## Next actions
+
+1. Restore GitHub Actions runner/log visibility or run the exact PR head in a trusted full-source runner; then diagnose any real code/test failures.
+
+2. Re-run the exact frozen Bun install and complete Quality Gate on the full source. Keep PR #372 Draft until every step is inspectable and green.
+
+3. Continue the Engine Plans IndexedDB archive indirect-consumer/test inventory; do not migrate until complete.
+
+4. Keep PR overlap sequencing from CHANGE_CONTROL.md; no parallel merges on shared files.
+
+5. Do not change production settings, secrets, Firebase Rules, or sync flags; do not merge or deploy without required release gates.
+
 ## آخر جرد تعارضات الملفات — 2026-11-13
 
 تم جلب changed filenames كاملة ومقسمة الصفحات لكل PR مفتوح. التعارضات الفعلية:
