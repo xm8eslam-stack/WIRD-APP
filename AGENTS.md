@@ -134,6 +134,10 @@ Unless the user explicitly authorizes the specific action:
 
 Commit work to the appropriate feature branch, not directly to `main`, unless the user has explicitly instructed otherwise. Keep risky or incomplete work in a Draft PR.
 
+## Commit hygiene
+
+- Batch a coherent multi-file change into one or a small number of reviewable commits; do not create one commit per file merely because the Contents API is used. If a long-running branch accumulates excessive commits relative to its diff, keep it Draft and prepare a reviewed squash/clean-branch plan before merge. Never rewrite or force-push a shared branch without checking collaborators and authorization.
+
 ## GitHub checkpoint and progress record
 
 After every substantial stage:
