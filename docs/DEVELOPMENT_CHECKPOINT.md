@@ -21,7 +21,7 @@
 - Engine Plans IndexedDB archive remains design-only; main still uses localStorage and a 100-plan limit.
 - PR #367's 800 KB sync cap is an unmerged temporary payload budget, not adaptive storage/chunking. PR #371 is codec-only.
 - PR #368 has additional Offline Audio components on its branch but is not in main/Production; full offline download/playback is not complete.
-- CI's Bun/npm dual-install differs from Vercel's Bun lockfile graph and needs a validated single-manager correction.
+- CI's Bun/npm dual-install differs from Vercel's Bun lockfile graph. In an isolated Bun 1.4.4 probe, the committed lock failed frozen install due stale package override/workspace metadata; a regenerated sandbox lock passed frozen install and Bun audit (0 advisories / 360 packages). The regenerated lock was not committed and full app tests/build were NOT TESTED. Correct the lock and workflow together after full-source validation.
 - Firebase Rules Production deployment and Google AI Studio sync remain NOT TESTED in this audit.
 
 ## Owner-only actions
