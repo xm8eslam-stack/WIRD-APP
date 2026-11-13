@@ -89,9 +89,9 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
 
   test('Ruqyah content service cannot statically reach the full Quran corpus', () => {
     const service = read('src/services/ruqyahContentService.ts');
-    assert(!/from\\s+['"][^'"]*verifiedAyahs/.test(service), 'Ruqyah service must not import verifiedAyahs directly');
-    assert(!/from\\s+['"][^'"]*completeQuranData\\.json/.test(service), 'Ruqyah service must not import completeQuranData.json directly');
-    assert(!/from\\s+['"][^'"]*(?:quran|verified)[^'"]*(?:barrel|index)/i.test(service), 'Ruqyah service must not route Quran data through a static barrel');
+    assert(!service.includes('verifiedAyahs'), 'Ruqyah service must not import verifiedAyahs directly');
+    assert(!service.includes('completeQuranData.json'), 'Ruqyah service must not import completeQuranData.json directly');
+    assert(!service.includes("from '../data'") && !service.includes("from '../data/index"), 'Ruqyah service must not route Quran data through a static barrel');
     assert(service.includes("from '../data/quranDataLoader'") && service.includes('loadSurahVerses'), 'Ruqyah service must use the existing per-Surah loader');
     assert(service.includes('await loadSurahVerses'), 'Ruqyah service must resolve local Surah chunks asynchronously');
   });
