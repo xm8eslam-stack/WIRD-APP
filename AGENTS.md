@@ -20,6 +20,25 @@ Work from the actual repository state. Inspect the current branch, latest commit
 
 Execute continuously in safe, reviewable stages: inspect → plan → implement → test → review → fix → retest → commit → record progress. Do not stop at proposals or documentation when code implementation is required. Do not ask the user to repeat information already available in the repository or conversation.
 
+
+
+## Mandatory reconciliation and change-control protocol (every modification)
+
+This section applies to every source, test, configuration, workflow, documentation, and generated-data change. It supplements the detailed process in `docs/CHANGE_CONTROL.md`.
+
+1. **Refresh evidence before editing.** Fetch the exact `main` SHA, complete open-PR list, each relevant PR head/base SHA and changed-file list, exact-head workflow runs/checks, latest Vercel Production deployment and alias, project protection, environment-variable names/targets (never values), and the latest Firebase Rules deployment evidence. Re-read `docs/CONTINUE_HERE.md` and the relevant specialist checkpoint. Never reuse yesterday's evidence as current.
+2. **Map file ownership before parallel work.** Build a changed-path matrix for every open PR. If two PRs touch the same source, test aggregator, workflow, lockfile, or documentation path, mark the overlap and sequence the work. Do not merge overlapping PRs concurrently. Rebase/reapply the later change on the newly updated main and re-run its exact-head gate.
+3. **Use one authority per fact.** Code facts come from the exact source SHA; deployed facts come from Vercel/Firebase deployment metadata; CI facts come from workflow runs on the exact SHA; owner-reported behavior is labeled as such; documentation is a derived record, never proof of runtime state.
+4. **Classify, do not flatten, discrepancies.** Use `PASS`, `FAIL`, `BLOCKED`, `NOT TESTED`, or `OWNER-REPORTED PASS`. A READY deployment is not proof of public access, Firebase Rules deployment, sync correctness, or physical-device behavior. Missing workflow steps/logs are an observability/runner blocker, not a code pass or code failure.
+5. **Preserve package-manager parity.** `package.json` declares Bun and `bun.lock` is the committed lockfile; Vercel detects Bun. CI must install, audit, test, and build from one reproducible dependency graph. Do not silently mix an updated Bun lock with a separate npm-resolved install. Any CI package-manager change must first prove manifest/lockfile consistency and preserve Playwright, audit, Emulator, API smoke, and build coverage.
+6. **Review production boundaries separately.** Never change Vercel environment variables/flags, protection/access settings, secrets, Firebase Rules/schema/data, deploy/promote/rollback, or merge PRs without the specific owner authorization required by this repository. Record current observed values without exposing secrets. Keep unapproved changes in `docs/OWNER_ACTIONS.md`.
+7. **Run exact-head gates.** Review the complete diff and run the required suites. A failed run with no steps/logs is `BLOCKED`; retrieve a rerun or a valid runner before inferring test outcomes. Do not weaken or skip checks. Record run IDs and exact SHAs.
+8. **Reconcile after every meaningful change.** Update `docs/CONTINUE_HERE.md` (current operational facts and next actions), `docs/DEVELOPMENT_ROADMAP.md` (product sequencing when affected), the relevant specialist design/release document, `docs/engineering/progress/WORK_LOG.md`, `docs/DEVELOPMENT_CHECKPOINT.md`, and `docs/OWNER_ACTIONS.md` when owner action is added/closed. Update `docs/README.md` when document ownership or links change.
+9. **Supersede stale instructions explicitly.** Historical checkpoint files must be labeled historical and link to the current continuation queue. Do not delete useful history; do not leave an old PR number, SHA, feature status, or production value looking like a live instruction.
+10. **Finish with a conflict scan.** Search the changed docs/code for stale SHAs, contradictory feature states, duplicated limits, wrong env-var names, obsolete PR numbers, broken file links, and changed-path overlaps. Fetch the branch and PR metadata again after commits and record the resulting head SHA.
+
+The current operational truth is maintained in `docs/CONTINUE_HERE.md`; the product plan in `docs/DEVELOPMENT_ROADMAP.md`; this protocol in `docs/CHANGE_CONTROL.md`; and technical truth in the relevant specialist document. These do not override fresh GitHub/Vercel/Firebase evidence.
+
 ## The user is not the QA operator
 
 The user cannot be expected to run terminal commands, inspect browser consoles, operate Google AI Studio or Vercel, or manually test every release. Do not make manual user verification a release prerequisite when an automated alternative can be built.
