@@ -767,3 +767,42 @@ No changed-path overlap was observed in this scan between #366 and #368, or betw
 5. Re-run the complete exact-head suite after the last rebase/merge. A previous PR's pass cannot certify a combined head.
 
 This scan does not authorize merging any PR or changing main.
+
+ 
+## 25. CI and active-PR follow-up — 2026-11-13
+
+### CI runner allocation is repository-wide, not a Bun/npm failure
+
+Fresh job records were checked for both main push runs and PR runs:
+- main run `43079260528`, job `130727161970`;
+- main-based offline PR run `43187463697`, job `131078128002`;
+- main-based session UX run `43277107786`, job `131388317808`;
+- latest docs PR run `43476780717`, job `132062538575`.
+
+Every inspected job completed within roughly 1–2 seconds with `runner_id=0` and `steps=[]`. The job-steps API also returns an empty array; job-log retrieval returns BlobNotFound. This affects main push and unrelated PRs, not only the archive branch. The evidence therefore supports a repository/account Actions dispatch or runner-allocation incident; it does not identify the root cause. The available connector cannot inspect private repository Actions settings, billing, or runner administration. Do not keep changing dependency managers or retrying identical jobs as if that repairs dispatch.
+
+Owner/admin follow-up, outside code changes: inspect GitHub repository Settings → Actions → General (allowed actions, workflow permissions, fork/PR policy), organization/account Actions usage and billing limits, and any runner-group restrictions. If GitHub-hosted runners are disabled/restricted or billing is blocked, resolve that at the account/repository settings layer. Do not change those settings through an inferred assumption.
+
+### Offline-audio PR lineage and duplicate ownership
+
+A fresh review expanded the changed-path map to include PRs #358 and #359:
+- #358 creates `wird-offline-quran-audio` with separate `jobs` and `items` stores.
+- #359 creates a second database, `wird-offline-quran-audio-v1`, with a separate verified-file manifest.
+- #368 uses `wird-offline-quran-audio` and unifies jobs, job-item relations, canonical files, pin state, cache-generation IDs, and orphan-deletion metadata.
+- All three PRs edit `src/tests/runAllTests.ts`; #358 and #359 also duplicate offline audio metadata ownership with #368.
+
+The recommended direction is to select one canonical store (currently #368 is the most integrated candidate), compare unique tests from #358/#359, port missing coverage into that one store, then explicitly mark the other stores superseded. Do not merge the three stores together. PR #358/#359 branches share an ancestor that is not behind current main, but their independent IndexedDB databases still create duplicate sources of truth.
+
+### #368 crash-window finding
+
+The reviewed #368 downloader writes and verifies Cache Storage bytes before committing the IndexedDB file metadata. Ordinary exceptions attempt to delete the new cache generation, but a tab/process crash between Cache Storage `put()` and IndexedDB `recordVerifiedFile()` leaves bytes with no metadata record. The current reconciliation walks known IndexedDB files and checks whether bytes exist; it does not enumerate app-owned Cache Storage keys to find unreferenced generations.
+
+Before release, add generation-aware orphan discovery with durable staging/grace semantics. It must check all canonical file rows, job references, active download intents, pinned state, and cache generation identity. It must not mistake an in-flight writer for an orphan or delete a replacement generation. Test a restart exactly between cache write and metadata commit.
+
+### Product-scope and offline-cache integration decisions
+
+- PR #365's Seerah reader is a broader Islamic-content feature and remains outside the currently approved focused Qur'an/daily-worship WIRD scope unless the owner explicitly expands the product.
+- PR #366's Service Worker cache trimming and #368's offline-audio Cache Storage namespace have separate ownership today. Before combining them, define one audio eviction owner and an atomic/recoverable metadata reconciliation protocol; do not simply add a cache name to a generic trim list.
+- PR #372's Bun lockfile proposal may improve dependency reproducibility after runner allocation is restored, but it cannot repair jobs that fail before runner assignment.
+
+These are review findings and recommendations only. No PR was merged, no runtime branch was modified, and no user-facing offline-audio controls were added.
