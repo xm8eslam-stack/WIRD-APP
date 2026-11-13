@@ -621,3 +621,61 @@ Before implementation is allowed to enter migration:
 - Exact-head inspectable CI: unit/integration tests, TypeScript, lint, production build, Firestore Rules Emulator and Playwright. No invisible/empty CI run counts as a pass.
 
 **Stage B remains HOLD.** The repository API and schema are now specified at design level, but the full Engine Plans caller inventory and test-to-call-site matrix are still incomplete. No schema v10, code migration, Firestore protocol, Rules, cap change, production flag, merge or deployment is authorized by this design checkpoint.
+
+
+## 21. Main-branch implementation audit — 2026-11-13 (verified scope and remaining evidence)
+
+Baseline reviewed: `main` at `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. This is a source review of the named files and test paths below; it is not a claim that every source file or caller was exhaustively scanned, and no test command was executed in this review.
+
+### 21.1 Confirmed runtime boundaries
+
+- `storageService.ts` still stores `wird_engine_plans` as a localStorage JSON value; `getEnginePlans()` / `saveEnginePlans()` are synchronous and the legacy local cap is 100 plans.
+- The current IndexedDB journal is `wird-sync-journal`, schema version 9, with stores for events, outbox, acknowledgements, metadata, remoteInbox, projectionConflicts and conflictResolutionIntents. No Engine Plans archive revision/chunk/page stores are present in the reviewed v9 schema.
+- `AuthGate` establishes the guest/user storage scope and replays journal work before mounting App. This is the required place to await verified archive hydration before any Engine Plans consumer is mounted.
+- App and Planning Engine flows persist plan changes through journaled snapshot paths, while Dashboard still reads Engine Plans synchronously. Settings and Progress Analytics both use the synchronous full-backup export path that reads the legacy localStorage value. These are explicit async-hydration/export migration call sites.
+- Backup import and UI reset use journal-first paths. The low-level synchronous `StorageService.importBackup()` and `resetAllData()` remain legacy APIs; the complete caller inventory is not yet independently closed by a reproducible repository-wide scan.
+- Session persistence groups Engine Plans with session work, but reviewed tests use empty plan arrays in the relevant grouped snapshot cases. No verified test currently proves a non-empty plan revision and session completion publish atomically.
+
+### 21.2 Confirmed payload-budget mismatch on main
+
+The reviewed main code has distinct ceilings that must not be conflated:
+
+| Path | Observed ceiling |
+| --- | ---: |
+| IndexedDB Journal Engine Plans payload | 450,000 bytes |
+| Ordinary mutation / legacy Outbox per mutation | 128,000 bytes |
+| Legacy Outbox aggregate | 1,500,000 bytes |
+| Revisioned Firestore writer | 128,000 bytes |
+| Conflict snapshot | 500,000 bytes |
+| Some conflict-resolution paths | 128,000 bytes |
+
+This creates a local-acceptance / later-sync-or-conflict-rejection risk for payloads that fit the journal but exceed downstream budgets. PR #367 proposes a consistent interim 800,000-byte Engine Plans budget, but it is not merged into main and is not a chunked archive protocol. Do not change main's limits as a substitute for archive integration.
+
+### 21.3 Tests reviewed versus gaps
+
+Reviewed test families include storage scope, backup persistence, session persistence, planning engine, journaled snapshot service, IndexedDB sync journal, cloud sync coordinator, clean initialization, storage reliability, backup validation, journal projection replay, and plans/dashboard/settings/progress E2E.
+
+Existing coverage demonstrates local plan persistence, selected journal/replay behavior, some quota/rollback handling, sync retry behavior, and malformed local data protection. It does not yet establish the archive release gates below:
+
+- v9→v10 upgrade preservation and injected upgrade-abort recovery;
+- real non-empty plan export → import → reload roundtrip;
+- session completion atomicity with a non-empty plan revision;
+- paged manifest integrity, streaming memory bounds, and chunk/page/root corruption recovery;
+- migration interruption/resume with exact legacy-byte retention;
+- two-tab fencing and stale-writer rejection for archive heads;
+- archive-aware conflict use-remote/keep-local and Inbox projection atomicity;
+- reset/account-deletion tombstones preventing archive resurrection;
+- reachability GC across head, rollback, outbox, inbox, conflicts, intents, staging and backup roots.
+
+No unit, integration, typecheck, lint, build, emulator or Playwright tests were run as part of this source review. Existing CI failures with unavailable step/log data remain unclassified; they are neither a code-level failure diagnosis nor a pass.
+
+### 21.4 Safe next sequence
+
+1. Finish a reproducible complete Engine Plans caller inventory and map each caller to an async repository consumer.
+2. Add pure paged-manifest and bounded streaming codec tests independently of IndexedDB.
+3. Implement the archive repository behind a feature-isolated adapter on a new branch, with no v10 migration or caller cutover in the first increment.
+4. Prove repository behavior against an isolated test database, including CAS, staging, read-back verification, quota rollback, scope isolation and fencing.
+5. Only then prepare the v9→v10 upgrade and AuthGate hydration integration as a separately reviewable increment.
+6. Keep remote Firestore transport, conflict references, backup/reset conversion and rollout behind their own exact-head gates.
+
+**Status remains DESIGN / HOLD.** This audit addendum changes documentation only. It does not approve or implement Stage B, change IndexedDB schema, alter runtime code or payload limits, touch Firestore Rules/data, enable production sync, merge a PR, or deploy.
