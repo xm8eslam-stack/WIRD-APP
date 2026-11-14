@@ -162,10 +162,12 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
   await test('does not mark a newer concurrent download missing after a slow cache scan', async () => {
     const { library } = createLibrary();
     try {
-      const job = await library.createJob(oneAyah, 100);
-      await library.recordVerifiedFile(job.id, verifiedInput());
+      const first = await library.createJob(oneAyah, 100);
+      await library.recordVerifiedFile(first.id, verifiedInput());
+      await library.deleteJob(first.id);
+      const retry = await library.createJob(oneAyah, 300);
       const missing = await library.reconcileCachedFiles(async () => {
-        await library.recordVerifiedFile(job.id, { ...verifiedInput(), cacheGenerationId: 'generation-2', downloadedAtMs: 400 });
+        await library.recordVerifiedFile(retry.id, { ...verifiedInput(), cacheGenerationId: 'generation-2', downloadedAtMs: 400 });
         return false;
       });
       assert(missing.length === 1, 'The stale scan may report its earlier observation.');
@@ -178,6 +180,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
     try {
       const first = await library.createJob(oneAyah, 100);
       await library.recordVerifiedFile(first.id, verifiedInput());
+      await library.reconcileCachedFiles(async () => false);
       const second = await library.createJob(oneAyah, 300);
       await library.recordVerifiedFile(second.id, {
         ...verifiedInput(),
@@ -257,7 +260,7 @@ export async function runOfflineQuranAudioLibraryTests(): Promise<{ passed: numb
       assert(orphan.orphanedFiles.length === 1, 'Deleting the last job should schedule orphan cleanup.');
       const second = await library.createJob(oneAyah, 300);
       assert(second.status === 'queued', 'A file scheduled for deletion must not be reused as available.');
-      await library.recordVerifiedFile(second.id, { ...verifiedInput(), downloadedAtMs: 400 });
+      await library.recordVerifiedFile(second.id, { ...verifiedInput(), cacheGenerationId: 'generation-2', downloadedAtMs: 400 });
       const replacement = (await library.listFiles())[0];
       assert(replacement.available && !replacement.deletionPending && replacement.cacheGenerationId === 'generation-2', 'A new verified download must install a fresh cache generation and cancel the stale deletion marker.');
       assert(!(await library.finalizeOrphanDeletion('ar.alafasy', 1, 'generation-1')), 'A stale cleanup attempt must not delete a newly downloaded file.');
