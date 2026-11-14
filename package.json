@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "wird-app",
   "packageManager": "bun@1.4.4",
   "private": true,
   "engines": {
