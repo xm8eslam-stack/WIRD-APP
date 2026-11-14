@@ -20,3 +20,19 @@ For synchronization architecture, read `docs/sync/ARCHITECTURE.md`, `docs/sync/R
 - Record failed checks and return to them after independent work; do not weaken tests.
 - Keep owner-only/physical-device/Production actions in `docs/OWNER_ACTIONS.md` until the end.
 - Update the unified queue, feature roadmap, specialist checkpoint, and work log after meaningful progress.
+
+
+## Current verified-state workflow (2026-11-14)
+
+Before every Google AI Studio task, read:
+- `docs/engineering/MASTER_PROJECT_STATE.md`
+- `docs/engineering/RELEASE_CHECKLIST.md`
+- `docs/engineering/ARCHITECTURE.md`
+- `docs/engineering/WORK_LOG.md`
+- `docs/CONTINUE_HERE.md`
+
+Use `docs/engineering/README.md` as the index. Append new history only to `docs/engineering/WORK_LOG.md`; the former `progress/WORK_LOG.md` path is a compatibility pointer.
+
+Do not assume Production sync is disabled. The two Vercel Production sync flags were verified as `true` on 2026-11-14. Do not change them, Firebase settings, secrets, rules, or user data without explicit owner approval. Do not run sync-related Production actions while the release-gate discrepancy is unresolved.
+
+Always distinguish local/isolated tests, GitHub Actions, Vercel Preview, Production deployment, live application smoke, and Google AI Studio synchronization. Never claim a test or deployment passed without exact SHA evidence.
