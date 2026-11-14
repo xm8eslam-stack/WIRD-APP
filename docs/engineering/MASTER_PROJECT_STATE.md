@@ -38,7 +38,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell; device verification required |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype; no publishable content |
 | #364 | `2a98c6da77bd849811326696ab7075fe6c9c85b8` | Advisor history-boundary + UTF-8 byte limit; 6 assertions PASS; latest Preview blocked |
-| #363 | `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57` | Documentation consolidation; original Work Log restored |
+| #363 | `self-reference; re-fetch current PR head` | Documentation consolidation; original Work Log restored |
 | #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest; do not merge beside #368 |
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store; do not merge beside #368 |
 | #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX baseline; do not merge as a unit |
@@ -65,7 +65,7 @@ Latest verified feature commit: `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`.
 
 Latest verified feature commit: `ad33875b0304020f930c7b606ef8782d36148707`.
 
-Client-supplied history sender labels are discarded before prompt construction. Every previous message is framed as untrusted user-provided context, preventing a client from impersonating an authenticated assistant message. Five targeted source assertions PASS. Preview deployment `13RYRdPik7XUUEHk856JMfbn6j99` is READY. Full security suite and browser verification remain NOT VERIFIED.
+Client-supplied history sender labels are discarded before prompt construction. Every previous message is framed as untrusted user-provided context, preventing a client from impersonating an authenticated assistant message. Six targeted source assertions PASS, plus a stubbed API route smoke proving UTF-8 oversize rejection and forged-role downgrading. Latest feature head `2a98c6da77bd849811326696ab7075fe6c9c85b8`; last READY Preview is older commit `ad33875b0304020f930c7b606ef8782d36148707`; current head blocked by Vercel build-rate-limit. Full security suite and browser verification remain NOT VERIFIED.
 
 ### Plans and memorization — PRs #367, #369, #371
 
