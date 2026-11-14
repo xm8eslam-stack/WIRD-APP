@@ -111,7 +111,8 @@ export default async function handler(req: any, res: any) {
       });
     }
     const bodyStr = JSON.stringify(body);
-    if (bodyStr.length > 4096) {
+    const bodyByteLength = new TextEncoder().encode(bodyStr).byteLength;
+    if (bodyByteLength > 4096) {
       return res.status(400).json({
         success: false,
         code: 'PAYLOAD_TOO_LARGE',
