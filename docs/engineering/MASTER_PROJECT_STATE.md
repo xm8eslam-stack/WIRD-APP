@@ -69,7 +69,7 @@ Client-supplied history sender labels are discarded before prompt construction. 
 
 ### Plans and memorization — PRs #367, #369, #371
 
-- #369: multi-Surah/Juz/custom-range selection and overlap normalization; fixed the Juz 30 114:5 off-by-one. Seven isolated range tests PASS with a canonical boundary fixture; exact-head CI and generated-index E2E remain NOT VERIFIED.
+- #369: multi-Surah/Juz/custom-range selection and overlap normalization; latest head `3478ae22a200a817a240d8b28e532b01674427bf` fixes the Juz 30 terminal coordinate to 114:6. The PR branch documentation reports seven isolated range tests PASS, but this session did not independently execute them. Exact-head Quality Gate run `43570929405` / job `132374935104` failed before steps/logs; generated-index E2E remains NOT VERIFIED.
 - #371: lossless archive codec and SHA-256 integrity tests; six isolated codec tests PASS. The codec is not integrated into actual Outbox/Inbox/Firestore persistence.
 - #367: aligns a single-payload limit at 800 KB. This is interim sizing, not chunked archive transport. Do not merge as a complete archive solution.
 - Before integration: add bounded manifest/resource validation, chunk persistence and retrieval, atomic manifest publication, backward-compatible reads, corruption recovery, migration/rollback evidence, and multi-client emulator tests.
