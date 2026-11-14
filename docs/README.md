@@ -1,56 +1,25 @@
 # وِرد | WIRD — دليل المستودع والوثائق
 
-> آخر مراجعة مركزية: 2026-11-12. ابدأ دائمًا بـ `CONTINUE_HERE.md` ثم `DEVELOPMENT_ROADMAP.md`؛ SHA/PR/CI/Production حالة متغيرة ويجب إعادة جلبها من GitHub/Vercel.
-
+**آخر مراجعة مباشرة:** 2026-11-14  
+**المستودع:** `xm8eslam-stack/WIRD-APP`  
+**الفرع المرجعي:** `main`
 
 ## ابدأ من هنا
-0. [CHANGE_CONTROL.md](./CHANGE_CONTROL.md) — سياسة إلزامية لمصالحة GitHub/CI/Vercel/Firebase ومنع تعارضات الفروع والوثائق مع كل تعديل.
-1. [CONTINUE_HERE.md](./CONTINUE_HERE.md) — الحالة الدقيقة الحالية والخطوة التالية.
-2. [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) — خارطة المنتج والميزات وترتيب الأولويات.
-3. [SEERAH_LEARNING_PLAN_AR.md](./SEERAH_LEARNING_PLAN_AR.md) — خطة السيرة النبوية والصحابة: بحث المصادر وAPI، المنهج، التعلم التفاعلي، الاختبارات، البنية ومراحل التنفيذ.
-4. [DEVELOPMENT_CHECKPOINT.md](./DEVELOPMENT_CHECKPOINT.md) — سجل نقاط التوقف والأدلة.
-5. [agent-handoffs/LATEST-GOOGLE-STUDIO.md](./agent-handoffs/LATEST-GOOGLE-STUDIO.md) — تسليم Google AI Studio.
-6. [engineering/progress/WORK_LOG.md](./engineering/progress/WORK_LOG.md) — سجل العمل التاريخي.
-
-## الفهرس التفصيلي
-راجع [DOCUMENTATION_CATALOG.md](./DOCUMENTATION_CATALOG.md) لمعرفة وظيفة كل ملف توثيقي موجود.
-
-## خريطة المجلدات
-| المسار | المحتوى |
-|---|---|
-| `docs/engineering/` | الهندسة والأمان والبحث والتنفيذ |
-| `docs/engineering/progress/` | الحالة ونقاط الاستكمال وسجل العمل وبوابات الإصدار |
-| `docs/sync/` | تصميم المزامنة والتعارضات والاسترداد والاختبارات |
-| `docs/ruqyah/` | مصادر الرقية والتكامل والاختبارات |
-| `docs/offline/` | العمل دون اتصال وتنزيل الصوت وعقد التخزين |
-| `docs/agent-handoffs/` | تسليمات الوكلاء وGoogle AI Studio |
-| `docs/UX_*.md` | خريطة الصفحات وتجربة الاستخدام |
-| `docs/DEVELOPMENT_*.md` | نقطة التوقف والخطة الموحدة |
-| `docs/SEERAH_LEARNING_PLAN_AR.md` | الخطة التخصصية لمسار السيرة والصحابة |
-
-## وثائق المزامنة
-- [sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md](./sync/ENGINE_PLANS_INDEXEDDB_ARCHIVE_RFC.md) — تصميم أرشيف الخطط الذكية في IndexedDB، الترحيل، الذرية، الاسترداد والمزامنة المقسمة.
-
-## وثائق العمل دون اتصال
-- [offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md](./offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md) — خطة تنزيل الصوت.
-- [offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md](./offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md) — العقد الموحد المقترح للتخزين والاسترداد.
+1. [CONTINUE_HERE.md](./CONTINUE_HERE.md) — طابور التنفيذ الحالي.
+2. [engineering/MASTER_PROJECT_STATE.md](./engineering/MASTER_PROJECT_STATE.md) — الحالة المثبتة من GitHub وVercel وFirebase.
+3. [engineering/RELEASE_CHECKLIST.md](./engineering/RELEASE_CHECKLIST.md) — بوابات الإصدار والأدلة.
+4. [engineering/README.md](./engineering/README.md) — فهرس الهندسة والوثائق التخصصية.
+5. [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md) — خارطة المنتج.
+6. [engineering/WORK_LOG.md](./engineering/WORK_LOG.md) — سجل العمل التاريخي append-only.
+7. [agent-handoffs/LATEST-GOOGLE-STUDIO.md](./agent-handoffs/LATEST-GOOGLE-STUDIO.md) — تسليم Google AI Studio.
 
 ## مصدر الحقيقة
-- الحالة: `docs/CONTINUE_HERE.md`.
-- الخطة: `docs/DEVELOPMENT_ROADMAP.md`.
-- السيرة: `docs/SEERAH_LEARNING_PLAN_AR.md`.
-- التاريخ: `docs/DEVELOPMENT_CHECKPOINT.md` و`docs/engineering/progress/WORK_LOG.md`.
+- الحالة المثبتة: `docs/engineering/MASTER_PROJECT_STATE.md`.
+- طابور العمل الحي: `docs/CONTINUE_HERE.md`.
+- بوابات الإصدار: `docs/engineering/RELEASE_CHECKLIST.md`.
+- التاريخ: `docs/engineering/WORK_LOG.md`.
 - قواعد العمل: `AGENTS.md` ثم `GEMINI.md`.
-- لا تحذف أو تنقل الملفات القديمة عشوائيًا؛ حافظ على الروابط والتاريخ وأضف إشعارًا يوجّه للمرجع الموحد.
-
-## اصطلاحات الحالة
-`DONE` مكتمل بدليل؛ `MERGED` مدمج وليس بالضرورة منشورًا؛ `IN PROGRESS` جارٍ؛ `VERIFY` يحتاج تحققًا؛ `BLOCKED` متعطل؛ `NOT STARTED` لم يبدأ؛ `OWNER ACTION` يحتاج المالك.
-
-## مسار Offline-first وجاهزية التطبيق
-- [OFFLINE_FIRST_ARCHITECTURE.md](./offline/OFFLINE_FIRST_ARCHITECTURE.md) — عقد الإتاحة دون اتصال وحدود التخزين.
-- [APP_READINESS_ROADMAP_AR.md](./offline/APP_READINESS_ROADMAP_AR.md) — خطة الجاهزية كتطبيق مستقبلي.
-- [OFFLINE_CAPABILITY_MATRIX_AR.md](./offline/OFFLINE_CAPABILITY_MATRIX_AR.md) — جرد المسارات والبيانات والأفعال وتصنيفها Offline/Network.
-- [OFFLINE_AUDIO_DOWNLOAD_PLAN.md](./offline/OFFLINE_AUDIO_DOWNLOAD_PLAN.md) و[OFFLINE_AUDIO_STORAGE_CONTRACT.md](./offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md) — حقوق الصوت وعقد تنزيلاته.
+- التصميم التخصصي: `docs/sync/`, `docs/offline/`, `docs/ruqyah/`.
 
 ## قبل كل جلسة
-اقرأ `AGENTS.md` ثم `CONTINUE_HERE.md` ثم الخطة الموحدة. أعد جلب SHA وPRs وCI والنشر. لا تعتمد على أرقام قديمة. نفّذ على فرع مستقل وسجّل نتيجة SHA الدقيقة.
+اقرأ `AGENTS.md` ثم الحالة المثبتة وبوابات الإصدار. أعد جلب main SHA وPRs وCI وVercel. لا تعتمد على أرقام أو حالات تاريخية دون إعادة التحقق. لا تحذف التاريخ؛ أضف تصحيحًا مؤرخًا أو تحديثًا جديدًا.
