@@ -177,8 +177,8 @@ export class OfflineQuranAudioDownloader {
           try {
             await this.library.recordVerifiedFile(activeJobId, {
               reciterId: job.reciterId,
-              surahNumber: item.surahNumber,
-              ayahNumber: item.ayahNumber,
+              surahNumber: planned.surahNumber,
+              ayahNumber: planned.ayahNumber,
               globalAyahNumber: item.globalAyahNumber,
               cacheGenerationId: identity.cacheGenerationId,
               url: planned.url,
