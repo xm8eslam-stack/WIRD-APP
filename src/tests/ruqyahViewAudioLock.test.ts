@@ -66,6 +66,17 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
       !viewSource.includes('getRuqyahAyahs(item).map')
   );
   test(
+    'Failed local Quran chunks expose an online-aware retry without external text fallback',
+    viewSource.includes('quranRetryNonce') &&
+      viewSource.includes('[activeCategory, quranRetryNonce]') &&
+      viewSource.includes('setQuranRetryNonce(value => value + 1)') &&
+      viewSource.includes("addEventListener('offline'") &&
+      viewSource.includes("addEventListener('online'") &&
+      viewSource.includes('disabled={!isOnline}') &&
+      viewSource.includes('إعادة المحاولة') &&
+      !viewSource.includes('verifiedAyahs')
+  );
+  test(
     'Category changes and unmount invalidate pending Quran/audio requests',
     viewSource.includes('let active = true') &&
       viewSource.includes('if (active) setQuranAyahsByItem') &&
