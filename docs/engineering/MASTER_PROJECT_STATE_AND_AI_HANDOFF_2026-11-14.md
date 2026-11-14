@@ -293,3 +293,8 @@ Proceed now. Do not stop after writing this prompt. Execute the work.
 ### Follow-up log retrieval (2026-11-14)
 
 The GitHub Actions job-log download endpoint was attempted for all four job IDs listed above (132360373984, 132094643958, 132059785133, 130727161970). Each returned HTTP 404 from GitHub's temporary log-blob storage (`BlobNotFound`). This confirms that the raw job logs are no longer retrievable through that endpoint at the time of this audit; it does not explain why the jobs failed. Keep the root cause **BLOCKED / unknown**. Inspect workflow/run metadata and trigger a new controlled run only after reviewing workflow configuration and runner availability.
+
+
+### Vercel connector access check (2026-11-14)
+
+The connected WIRD Vercel account was selected explicitly, but the read-only project lookup for `wird-app` returned HTTP 403 `forbidden / Not authorized`. No project/deployment records were exposed, and no CLI fallback is available in this execution environment. Therefore deployment/alias verification remains **BLOCKED**, not merely unqueried. Do not retry the same unauthorized request or infer project state from the public URL.
