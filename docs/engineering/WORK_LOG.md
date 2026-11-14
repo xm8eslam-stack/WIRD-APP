@@ -625,3 +625,8 @@ The full matrix and safe integration order are in `MASTER_PROJECT_STATE.md`.
 - #374's package name-only correction overlaps #372's package/lockfile dependency graph update. Marked both as a serialized integration conflict; do not merge one branch's stale lockfile over the other.
 - The deleted binary was reported as the only tracked file in its temporary-media directory and unreferenced by code/blueprint. Its patch is binary and not text-inspectable; associated blueprint/implementation plan remain retained. No other artifacts or user data were deleted.
 - #374 remains OPEN/DRAFT; no merge or deployment.
+
+
+## 2026-11-14 09:20 local — Engine Plan archive codec resource review
+
+Reviewed full PR #371 codec source and tests. Confirmed canonical JSON validation, SHA-256 integrity, per-record fragmentation, missing/extra/corrupt chunk rejection, and stable reconstruction. Identified release blockers: no maximum total archive bytes/record count/chunk count/fragment count; full in-memory chunk retention plus duplicate archive fingerprint allocation; no manifest byte-size ceiling; descriptor preflight is not bounded before materialization; no IndexedDB/Firestore persistence integration, atomic manifest/CAS, rollback, or orphan-GC protocol. The six codec tests do not cover these resource-exhaustion and migration/integration cases. Details and required gates recorded in `MASTER_PROJECT_STATE.md`. No code changed because no safe end-to-end integration can be validated while exact-head CI telemetry is unavailable.
