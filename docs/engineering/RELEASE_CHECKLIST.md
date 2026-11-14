@@ -103,3 +103,18 @@ Use only these statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT VERIFIED**. Reco
 ## Release rule
 
 A release is **BLOCKED** while any critical section above remains BLOCKED or FAIL. Do not enable remote sync, change Production settings, deploy Firestore rules, or merge a candidate PR without exact-head evidence and required owner authorization.
+
+
+## 2026-11-14 09:00 local — latest re-check
+
+| Gate | Evidence | Status |
+|---|---|---|
+| PR inventory | 16 open PRs; latest heads re-fetched; #375 advanced to `495b9ccada1bb327abeee469af16faa52ddc9707` | PASS |
+| GitHub Quality Gate | #375 rerun run `43570354110`, latest job `132373650377`; `steps=null`, `logs_url=null` | BLOCKED |
+| Cross-PR CI telemetry | #373 run `43568676649`, #363 `43570268180`, #372 `43391729769`; all fail before steps/logs | BLOCKED |
+| Production deployment | `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` | PASS |
+| Production sync configuration | Both required-disabled flags read as `true`; no changes made | FAIL |
+| Production Ruqyah long index after #373 | Feature PR not merged; live post-fix smoke not run | NOT VERIFIED |
+| Full repository tests/build on exact PR heads | No complete local checkout or inspectable CI steps | NOT VERIFIED |
+
+No PR is merge-eligible while the required exact-head Quality Gate is not inspectable and passing. Production sync settings remain untouched pending explicit owner approval.
