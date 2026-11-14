@@ -616,3 +616,12 @@ Re-fetched changed filenames for #367, #369, #371, #368, #358, #359, #366, #374,
 - #366/#368 have no changed-path overlap but still require semantic integration of service-worker versioning and Cache Storage ownership.
 - #374 includes a temporary media artifact path under `.aistudio/artifacts/brain/.../.tempmediaStorage/`; verify generated/unreferenced before deletion.
 The full matrix and safe integration order are in `MASTER_PROJECT_STATE.md`.
+
+
+## 2026-11-14 09:15 local — #374 hygiene PR integration review
+
+- Inspected #374 changed-path inventory and patches for its binary artifact, package.json, engineering README, and audit report.
+- #374's engineering README still designates `progress/WORK_LOG.md` as active history, conflicting with #363's canonical `docs/engineering/WORK_LOG.md` and compatibility pointer. Marked this in the #374 PR description.
+- #374's package name-only correction overlaps #372's package/lockfile dependency graph update. Marked both as a serialized integration conflict; do not merge one branch's stale lockfile over the other.
+- The deleted binary was reported as the only tracked file in its temporary-media directory and unreferenced by code/blueprint. Its patch is binary and not text-inspectable; associated blueprint/implementation plan remain retained. No other artifacts or user data were deleted.
+- #374 remains OPEN/DRAFT; no merge or deployment.
