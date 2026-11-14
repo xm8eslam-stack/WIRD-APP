@@ -1,3 +1,8 @@
+> **Verified update 2026-11-14:** Current main is `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Production is READY on the same SHA. Current release is BLOCKED: GitHub Actions runner failures provide no steps/logs; PR #373's Ruqyah fix is Preview-only; Plans chunk persistence is not integrated; Offline cross-tab/recovery work is incomplete; Seerah content is not verified. Both Vercel Production sync flags are currently `true`, contrary to the disabled-until-gates policy; do not change them without explicit owner authorization. Use [MASTER_PROJECT_STATE.md](./engineering/MASTER_PROJECT_STATE.md) and [RELEASE_CHECKLIST.md](./engineering/RELEASE_CHECKLIST.md) for current evidence. Older status tables below are historical and must be revalidated before action.
+
+
+---
+
 # مسار منتجي جديد — Offline-first والتطبيق المستقبلي
 
 ## قرار التخزين التالي — 2026-11-12 14:55 +02:00
