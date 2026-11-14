@@ -156,3 +156,10 @@ The current PR #363 exact-head Vercel status is **FAIL** with `build-rate-limit`
 - Production deployment history re-fetched from Vercel: latest Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. This confirms deployment identity/readiness only; it does not certify the current feature PRs or live Ruqyah behavior.
 - Vercel Production variables were listed without decrypting secrets. `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` remain present in Production. This violates the disabled-until-release-gates policy. No values or project settings were changed; explicit owner approval is required before any change.
 - `ISLAMICAPI_API_KEY` exists as a sensitive Production variable; its value was not read or exposed.
+
+
+### Additional exact CI evidence — PRs #358 and #359
+
+The last recorded runs for #358 (`43030195498`) and #359 (`43029617572`) did execute. Dependency installation, automated test suites, Firestore Rules Emulator, TypeScript validation, production build, and server-startup smoke all passed. The Desktop and mobile browser smoke step failed on both runs. GitHub returned no stored job log URL, so the underlying Playwright assertion/error is unavailable. This is an observed browser-test failure, not merely a pre-step runner failure. Both PRs are superseded by #368 and must not be merged as competing stores.
+
+The newer exact-head PR runs #373, #374, #363, #364, #365, #366, #367, #368, #369, #370, #371, #372, and #375 failed before steps/logs were recorded (`steps=null`, `logs_url=null`). PR #373's safe retry repeated that pre-step failure. These runs do not establish application test outcomes.
