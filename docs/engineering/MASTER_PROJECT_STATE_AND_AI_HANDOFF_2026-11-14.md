@@ -298,3 +298,115 @@ The GitHub Actions job-log download endpoint was attempted for all four job IDs 
 ### Vercel connector access check (2026-11-14)
 
 The connected WIRD Vercel account was selected explicitly, but the read-only project lookup for `wird-app` returned HTTP 403 `forbidden / Not authorized`. No project/deployment records were exposed, and no CLI fallback is available in this execution environment. Therefore deployment/alias verification remains **BLOCKED**, not merely unqueried. Do not retry the same unauthorized request or infer project state from the public URL.
+
+
+---
+
+## 20. VERIFIED EXECUTION FOLLOW-UP — 2026-11-14
+
+This section supersedes earlier historical statements only where it records newer, exact evidence. It does not authorize production configuration changes or PR merges.
+
+### 20.1 Repository and release checkpoint
+
+- Current `main`: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production Vercel deployment: **READY**, deployment `DKfbfqsBHqzS95CoTdYZCtPPPZwu`, associated with the same `main` SHA.
+- No PR has been merged during this follow-up.
+- 16 PRs are currently open: #375, #374, #373, #372, #371, #370, #369, #368, #367, #366, #365, #364, #363, #359, #358, and #2.
+- A local Git working tree/branch is **NOT VERIFIED**. The available workflow used remote GitHub file operations and isolated Vercel sandboxes; no claim of a local full-suite run is made.
+
+### 20.2 Ruqyah — implementation and evidence
+
+PR #373 was updated on its feature branch. Latest verified feature commit:
+
+`d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`
+
+Changes:
+- Keeps verified Quran text sourced from WIRD's local corpus and uses the existing per-Surah lazy loader.
+- Adds online/offline state and a retry control for failed local Quran chunk loads.
+- Adds strict support for a provider locator containing an exact canonical whole-Surah name and number. The server resolves that locator through local `ALL_SURAHS` metadata and emits only a normalized coordinate range; provider Quran text and translations remain stripped.
+- The previously failing long-program dataset contains 171 Quran entries. Its one bare-Surah locator, `الأعلى ٨٧`, now resolves to local coordinates `87:1-19`.
+
+Observed tests in isolated Node 26:
+- Ruqyah API proxy/security tests: 20 PASS, 0 FAIL.
+- Ruqyah view/audio-lock tests: 14 PASS, 0 FAIL.
+- Full 171-entry provider dataset passed through the actual API handler with mocked upstream transport: 171 normalized coordinate entries, whole-Surah locator resolved, provider-authored text stripped.
+- These are targeted isolated tests, not GitHub Actions or the full repository test suite.
+
+Vercel Preview for the exact PR #373 commit: **READY**, deployment `5PDvHdHztx9Tf6yLR2ojQww2nhs1`.
+- Vite build completed.
+- 114 Surah chunks generated; 6,236 Quran ayah coordinates validated.
+- Ruqyah route chunk observed at 68.25 KB (18.77 KB gzip) in the corresponding feature build.
+- Preview browser/API verification remains **BLOCKED** by Vercel Deployment Protection; protection settings were not changed.
+
+Production API smoke test before the feature fix:
+- Short program: HTTP 200, 9 entries.
+- Medium program: HTTP 200, 63 entries.
+- Long program: HTTP 502, `INVALID_RUQYAH_SOURCE_RESPONSE`.
+The long-program fix is on PR #373 only. Production remains **NOT VERIFIED FIXED** until a gated merge and production deployment.
+
+### 20.3 CI — exact failure evidence
+
+The latest PR #373 run `43568676649` and its retry both failed before any job steps were recorded. The retry job has `steps: null` and `logs_url: null`; job-log retrieval returned no stored logs. This does not establish an application test failure.
+
+PR #364 run `43569132395` shows the same pattern: failed job, `steps: null`, `logs_url: null`.
+
+No CI pass is claimed. Do not disable tests or infer that the Bun workflow change fixes runner-start failures.
+
+### 20.4 Advisor security
+
+PR #364 was updated at commit:
+
+`ad33875b0304020f930c7b606ef8782d36148707`
+
+Client-supplied history sender labels are no longer rendered as authenticated assistant messages. All prior messages are framed as untrusted user-provided context. Five targeted source assertions passed in an isolated Node 26 check.
+
+Vercel Preview for this commit: **READY**, deployment `13RYRdPik7XUUEHk856JMfbn6j99`. GitHub Actions remains failed before steps; no full security test suite or browser verification is claimed.
+
+### 20.5 Engine Plans and memorization
+
+- #369 multi-range selection logic reviewed; no merge pending CI and exact-head regression evidence.
+- #371 archive codec tests: 6 PASS in isolation. The codec is not wired into the actual Outbox/Inbox/Firestore persistence path.
+- #367 still raises the single-payload budget to 800 KB. Do not merge it as a complete solution to archive payload growth. Chunk transport integration, bounded manifest/resource validation, backward-compatible reads, corruption recovery, and rollback evidence remain required.
+
+### 20.6 Offline/PWA
+
+PR #368 contains an IndexedDB job library, downloader, and Cache Storage adapter despite its older PR description. Review found missing cross-tab job ownership/locking, incomplete end-to-end orphan cleanup, and inconsistent Cache Storage quota handling. No real-device, restart-recovery, or airplane-mode verification is claimed.
+
+Do not merge #358/#359 as competing stores alongside #368. Review #366's service-worker caches together with the unified audio store.
+
+### 20.7 Documentation and history
+
+- The final #363 documentation branch's `docs/engineering/progress/WORK_LOG.md` contains the complete previous `main` work log as an exact substring; the original nonblank history was preserved. The branch version has 1,208 lines versus 537 on the inspected `main` snapshot.
+- The requested canonical files `docs/engineering/MASTER_PROJECT_STATE.md`, `docs/engineering/ARCHITECTURE.md`, and `docs/engineering/RELEASE_CHECKLIST.md` are not yet present in the inspected documentation branch.
+- `docs/sync/REMOTE_REPLICATION_PLAN.md`, referenced by current `AGENTS.md`, was not found. Related sync architecture/state/release-gate documents exist in the documentation consolidation branch.
+- A root `README.md` was not found on inspected `main`.
+
+### 20.8 Firebase and Vercel safety — critical
+
+- Repository Firebase client configuration identifies project `wird-quran-app`; repository Firestore rules were inspected. No Firebase project, rules, database, or user data was changed.
+- Vercel environment metadata confirms `ISLAMICAPI_API_KEY` exists in Preview and Production. Its value was not read or disclosed.
+- **Both Production sync flags were read as `true`:**
+  - `VITE_WIRD_REVISIONED_SYNC_ENABLED`
+  - `VITE_WIRD_REMOTE_PROJECTION_ENABLED`
+- This conflicts with the required disabled-until-gates-verified policy. No environment value was changed. Explicit owner approval is required before disabling either flag.
+- Production runtime error query returned no errors in the inspected 24-hour window; no Ruqyah runtime logs appeared in the inspected 30-minute window. Absence of recent logs is not proof that historical failures are resolved.
+
+### 20.9 Status summary
+
+| Area | Status |
+|---|---|
+| Main SHA and Production deployment identity | PASS |
+| Ruqyah targeted tests and full 171-entry handler fixture | PASS |
+| Ruqyah production Long index | FAIL before feature fix; fix pending PR merge |
+| Ruqyah Preview build | PASS |
+| PR #373 GitHub Actions | BLOCKED — runner failure before steps/logs |
+| PR #364 targeted source assertions and Preview build | PASS |
+| PR #364 GitHub Actions | BLOCKED — runner failure before steps/logs |
+| Plans archive integration | BLOCKED |
+| Offline cross-tab/recovery/device verification | BLOCKED |
+| Seerah source verification | NOT VERIFIED |
+| Documentation canonical hierarchy | BLOCKED |
+| Production sync flags | FAIL — both currently true; no change made |
+| Full repository test suite and production post-fix smoke | NOT VERIFIED |
+
+Continue from these exact findings. Do not merge a PR or change Production/Firebase settings based solely on this checkpoint.
