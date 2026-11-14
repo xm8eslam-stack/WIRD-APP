@@ -586,3 +586,13 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Reviewed #372 changed paths: CI workflow, bun.lock, package.json, Playwright config; one Bun 1.4.4 lockfile path. Isolated dependency checks are PR-author-reported only; full repository Quality Gate remains blocked by missing job logs.
 - No source code or runtime tests were executed in this continuation. No main, Production, Firebase Rules/data, secrets, sync flags, or user data changed. No merge or deployment.
 - Engine Plans caller inventory and call-site→test matrix remain incomplete. Stage B remains HOLD.
+
+
+## 2026-11-14 09:00 local — CI retry and Production re-check
+
+- Re-fetched all 16 open PRs. All remain OPEN / DRAFT. Current exact heads are recorded in `MASTER_PROJECT_STATE.md`; #375 advanced to `495b9ccada1bb327abeee469af16faa52ddc9707` after the prior checkpoint. #363 remains `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57`.
+- Retried the failed job for PR #375 Quality Gate run `43570354110`. Latest attempt job `132373650377` again completed failure without any recorded steps or log URL. This supports a GitHub Actions runner/job initialization or telemetry problem, not a diagnosed application test failure.
+- Rechecked exact-head runs: #373 `43568676649`, #363 `43570268180`, #372 `43391729769`; all show the same no-steps/no-logs failure.
+- Re-fetched Vercel Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` READY on `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Re-listed Vercel env metadata without decrypting secrets. Production sync flags remain `true`, a release-policy discrepancy. No Vercel/Firebase settings were modified and no secret values were read.
+- No PR merged. Ruqyah remains Preview-only; production post-fix smoke is NOT VERIFIED.
