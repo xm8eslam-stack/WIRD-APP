@@ -43,7 +43,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store; do not merge beside #368 |
 | #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX baseline; do not merge as a unit |
 
-Latest refresh 2026-11-14 09:00 local: PR #375 head is now `495b9ccada1bb327abeee469af16faa52ddc9707` (it advanced after the earlier checkpoint); #363 remains `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57`. All other listed heads were re-fetched and remain unchanged. All 16 PRs are OPEN / DRAFT. #2 is not mergeable. Re-fetch the head before any merge because values can move.
+PR #363 and PR #375 are self-updating documentation branches; their head SHAs change when their own files are amended and are intentionally not pinned in this table. Re-fetch their live heads before every action. All 16 PRs remain OPEN / DRAFT at the latest inventory. #2 is not mergeable. Re-fetch every exact head before merge because values can move.
 
 
 ## 2. Current feature-branch checkpoints
