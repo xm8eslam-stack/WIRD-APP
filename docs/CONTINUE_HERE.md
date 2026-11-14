@@ -1,3 +1,27 @@
+# CURRENT VERIFIED UPDATE — 2026-11-14
+
+**Main SHA:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`  
+**Production deployment:** READY on the same SHA (`DKfbfqsBHqzS95CoTdYZCtPPPZwu`).  
+**Current PR count:** 16 open PRs; re-fetch exact head SHAs before every action.
+
+## Current blockers and next execution
+
+1. **Production sync safety — FAIL/BLOCKED:** both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are currently `true` in Vercel Production. No values were changed. Wait for explicit owner authorization before disabling them; do not perform sync-related Production actions meanwhile.
+2. **GitHub Actions — BLOCKED:** recent PR jobs fail before recording steps/logs (`steps=null`, `logs_url=null`). A safe retry of PR #373 repeated the same failure. Do not call this an application test failure or a pass.
+3. **Ruqyah — PR #373:** latest verified feature commit `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`; Preview READY. 20 API proxy tests + 14 view/audio-lock tests PASS in isolated Node 26; full 171-entry long-program handler fixture PASS. Production long index previously returned HTTP 502 and remains NOT VERIFIED fixed until gated merge/deploy and post-deploy smoke.
+4. **Advisor — PR #364:** latest verified feature commit `ad33875b0304020f930c7b606ef8782d36148707`; client-supplied assistant history roles are no longer trusted. Five targeted source assertions PASS; Preview READY; GitHub CI BLOCKED.
+5. **Plans:** #369 multi-range logic reviewed; #371 codec tests 6/6 PASS but codec is not integrated into actual persistence; #367's 800 KB single-payload limit is not a complete chunking solution.
+6. **Offline/PWA:** #368 has an IndexedDB job library, downloader and Cache Storage adapter, but cross-tab ownership, complete orphan cleanup, quota UX, reader playback integration and device recovery remain BLOCKED/NOT VERIFIED. Do not merge #358/#359 as competing stores.
+7. **Seerah:** #365 is a reader shell/prototype with no publishable verified narrative. Source and rights review remain NOT VERIFIED.
+8. **Documentation:** original 537-line main work log has been restored before the newer reconciliation entries (589 lines total) and copied to canonical `docs/engineering/WORK_LOG.md`; the old path is a compatibility pointer.
+
+See [MASTER_PROJECT_STATE.md](./engineering/MASTER_PROJECT_STATE.md), [RELEASE_CHECKLIST.md](./engineering/RELEASE_CHECKLIST.md), and [engineering/README.md](./engineering/README.md) for evidence.
+
+**The sections below are historical snapshots. Do not treat their SHA values, PR statuses, or test results as current.**
+
+
+---
+
 
 
 # Latest continuation — 2026-11-13 (follow-up audit)
