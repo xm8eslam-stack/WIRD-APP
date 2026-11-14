@@ -37,7 +37,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 | #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB payload budget; not a chunking solution |
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell; device verification required |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype; no publishable content |
-| #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor history-boundary fix; Preview READY; CI BLOCKED |
+| #364 | `2a98c6da77bd849811326696ab7075fe6c9c85b8` | Advisor history-boundary + UTF-8 byte limit; 6 assertions PASS; latest Preview blocked |
 | #363 | `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57` | Documentation consolidation; original Work Log restored |
 | #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest; do not merge beside #368 |
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store; do not merge beside #368 |
