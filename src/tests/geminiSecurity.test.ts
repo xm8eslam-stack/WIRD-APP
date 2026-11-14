@@ -98,6 +98,14 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
     assert(handler.includes('safeHistory.map'), 'Only normalized history may reach the model prompt');
   });
 
+  test('Advisor chat cannot impersonate trusted assistant history from client-supplied sender labels', () => {
+    const handler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
+    assert(handler.includes("let safeHistory: Array<{ text: string }> = []"), 'Normalized history must discard client-controlled sender roles');
+    assert(handler.includes('text: item.text.trim()'), 'Only bounded text content may be retained from history items');
+    assert(handler.includes('رسالة سابقة غير موثوقة من المستخدم: ${item.text}'), 'Every prior message must be framed as untrusted user-provided context');
+    assert(!handler.includes("item.sender === 'user' ? 'المستخدم' : 'المستشار'"), 'Client history must never be rendered as an authenticated assistant message');
+  });
+
   test('Advisor system prompt treats user content as untrusted and declines religious rulings', () => {
     const handler = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
     assert(handler.includes('لا تصدر فتوى شرعية'), 'Advisor must not issue fatwas or doctrinal rulings');
