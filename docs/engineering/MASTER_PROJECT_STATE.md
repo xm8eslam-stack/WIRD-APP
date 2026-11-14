@@ -26,7 +26,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 
 | PR | Head SHA | Review disposition |
 |---:|---|---|
-| #375 | `self-reference; re-fetch current PR head` | Handoff evidence updated; documentation review |
+| #375 | `495b9ccada1bb327abeee469af16faa52ddc9707` | Handoff; latest exact-head CI retry failed before steps/logs |
 | #374 | `6673bb149a2ffa58177c35b9f68c76423dfb2a0b` | Safe hygiene candidate; reconcile package/lockfile with #372 |
 | #373 | `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca` | Ruqyah fix; Preview READY; CI BLOCKED |
 | #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun CI workflow; runner issue unresolved |
@@ -38,12 +38,12 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell; device verification required |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype; no publishable content |
 | #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor history-boundary fix; Preview READY; CI BLOCKED |
-| #363 | `self-reference; re-fetch current PR head` | Documentation consolidation; original Work Log restored |
+| #363 | `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57` | Documentation consolidation; original Work Log restored |
 | #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest; do not merge beside #368 |
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store; do not merge beside #368 |
 | #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX baseline; do not merge as a unit |
 
-Re-fetch the head before any merge because these values can move after this checkpoint.
+Latest refresh 2026-11-14 09:00 local: PR #375 head is now `495b9ccada1bb327abeee469af16faa52ddc9707` (it advanced after the earlier checkpoint); #363 remains `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57`. All other listed heads were re-fetched and remain unchanged. All 16 PRs are OPEN / DRAFT. #2 is not mergeable. Re-fetch the head before any merge because values can move.
 
 
 ## 2. Current feature-branch checkpoints
@@ -147,3 +147,12 @@ Do not merge a PR or enable/alter Production sync based on this document alone. 
 ### Documentation Preview note — 2026-11-14
 
 The current PR #363 exact-head Vercel status is **FAIL** with `build-rate-limit` (upgrade prompt). This is a deployment quota/service limit, not an observed application build error. GitHub Actions run `43570490266` also failed before job steps/logs were recorded. Do not classify either as a code-test failure or a pass.
+
+
+## 2026-11-14 CI and Production re-check (09:00 local)
+
+- PR #375 exact head: `495b9ccada1bb327abeee469af16faa52ddc9707`. Its Quality Gate run `43570354110` was retried using GitHub's failed-job rerun operation. Latest attempt job `132373650377` again completed `failure` with `steps=null` and `logs_url=null`. This remains **BLOCKED** at runner/job initialization; it is not evidence of an application test failure or a pass.
+- Other exact-head Quality Gate runs checked: #373 run `43568676649`, #363 run `43570268180`, #372 run `43391729769`. Each returned one failed job with `steps=null` and `logs_url=null`.
+- Production deployment history re-fetched from Vercel: latest Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. This confirms deployment identity/readiness only; it does not certify the current feature PRs or live Ruqyah behavior.
+- Vercel Production variables were listed without decrypting secrets. `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` remain present in Production. This violates the disabled-until-release-gates policy. No values or project settings were changed; explicit owner approval is required before any change.
+- `ISLAMICAPI_API_KEY` exists as a sensitive Production variable; its value was not read or exposed.
