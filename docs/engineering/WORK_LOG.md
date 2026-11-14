@@ -630,3 +630,12 @@ The full matrix and safe integration order are in `MASTER_PROJECT_STATE.md`.
 ## 2026-11-14 09:20 local — Engine Plan archive codec resource review
 
 Reviewed full PR #371 codec source and tests. Confirmed canonical JSON validation, SHA-256 integrity, per-record fragmentation, missing/extra/corrupt chunk rejection, and stable reconstruction. Identified release blockers: no maximum total archive bytes/record count/chunk count/fragment count; full in-memory chunk retention plus duplicate archive fingerprint allocation; no manifest byte-size ceiling; descriptor preflight is not bounded before materialization; no IndexedDB/Firestore persistence integration, atomic manifest/CAS, rollback, or orphan-GC protocol. The six codec tests do not cover these resource-exhaustion and migration/integration cases. Details and required gates recorded in `MASTER_PROJECT_STATE.md`. No code changed because no safe end-to-end integration can be validated while exact-head CI telemetry is unavailable.
+
+
+## 2026-11-14 09:25 local — PR #369 exact-head re-review
+
+- Re-fetched PR #369 after its head advanced to `3478ae22a200a817a240d8b28e532b01674427bf`.
+- Inspected commit `fix(plans): include final ayah in Juz 30 range`. It explicitly uses canonical terminal coordinate `114:6` for Juz 30, addressing the previously observed terminal-boundary defect.
+- Exact-head Quality Gate run `43570929405`, job `132374935104`, failed with no recorded steps/logs. Vercel combined status reports Free-plan `build-rate-limit`.
+- The PR branch documentation reports seven isolated range tests PASS, but these were not independently executed in this session; the claim is therefore not independently verified here.
+- Updated PR #369 description with the finding. Remaining gate: table-driven coverage for all 30 Juz boundaries and browser interaction tests.
