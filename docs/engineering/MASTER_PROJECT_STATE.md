@@ -187,3 +187,10 @@ Additional notes:
 - #374 also changes one temporary AI Studio media artifact under `.aistudio/artifacts/brain/.../.tempmediaStorage/`; verify it is truly generated/unreferenced before accepting its deletion. Do not delete any user-authored project content based only on the filename.
 - #365 has no publishable source text, so its reader shell remains a content-governance blocker rather than a release-ready feature.
 - The current path list is not a semantic proof of independence. Re-review diffs after any branch advances.
+
+
+### #374 hygiene PR integration detail
+
+#374's new `docs/engineering/README.md` currently points readers to `progress/WORK_LOG.md` as the active history, while #363 establishes `docs/engineering/WORK_LOG.md` as canonical and retains the old path only as a pointer. Reconcile the README before either docs PR is merged; do not merge contradictory source-of-truth instructions.
+
+#374's `package.json` and `bun.lock` changes only rename the scaffold package to `wird-app`, but the same files are also changed by #372's Bun dependency-graph migration. Integrate the name correction into the final #372 graph or rebase/reconcile both exact diffs together. Do not merge stale lockfile snapshots independently.
