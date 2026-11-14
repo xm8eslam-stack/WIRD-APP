@@ -57,7 +57,7 @@ function parseQuranIndexTitle(value: unknown): QuranIndexCoordinates | null {
   // Some verified provider entries refer to an entire Surah by its canonical
   // name and number (e.g. "الأعلى ٨٧"). Expand only an exact local metadata
   // match; never infer ranges from provider-authored Quran text.
-  const wholeSurahMatch = normalizedTitle.match(/^(.+?)\\s+([0-9]{1,3})$/);
+  const wholeSurahMatch = normalizedTitle.match(/^(.+?)\s+([0-9]{1,3})$/);
   if (!wholeSurahMatch) return null;
   const surahNumber = Number(wholeSurahMatch[2]);
   const surah = ALL_SURAHS.find(item => item.number === surahNumber);
