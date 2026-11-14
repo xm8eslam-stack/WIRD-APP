@@ -1,3 +1,8 @@
+> **Verified update 2026-11-14:** Current main is `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Production is READY on the same SHA. The current release is BLOCKED: GitHub Actions runner failures provide no steps/logs; PR #373's Ruqyah fix is Preview-only; Plans chunk persistence is not integrated; Offline cross-tab/recovery work is incomplete; Seerah content is not verified. Both Vercel Production sync flags are currently `true`, contrary to the disabled-until-gates policy; do not change them without explicit owner authorization. Use [MASTER_PROJECT_STATE.md](./engineering/MASTER_PROJECT_STATE.md) and [RELEASE_CHECKLIST.md](./engineering/RELEASE_CHECKLIST.md) for current evidence. The older status tables below are historical and must be revalidated before action.
+
+
+---
+
 > **تحديث مباشر 2026-11-11 15:52 +02:00:** آخر `main` هو `8dd21522430cc014db4eb5da8437f89c42f190f9`. الحالة التنفيذية الدقيقة والـ PRs والاختبارات في [CONTINUE_HERE.md](./CONTINUE_HERE.md). لا تستخدم حالات PR القديمة أدناه دون إعادة جلبها. #362 و#361 اجتازا Quality Gate على رأسيهما الحاليين؛ #360/#358/#359/#356 بها فشل Desktop/Mobile Playwright smoke على الرؤوس التي تمت مراجعتها، بينما بقية خطوات CI الرئيسية نجحت. لا دمج أو نشر تلقائي من هذه المعلومة.
 
 # خارطة تطوير وِرد — الخطة الرئيسية الموحدة
