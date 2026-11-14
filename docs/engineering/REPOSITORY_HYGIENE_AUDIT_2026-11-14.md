@@ -48,3 +48,12 @@
 ## Safety rule for the remaining cleanup
 
 Delete only after proving the candidate is not imported, dynamically loaded, referenced by a workflow/configuration, generated as a required artifact, or needed for recovery/audit. Never use broad filename-only deletion. Work in small commits and re-run the affected gates on the exact resulting SHA.
+
+
+## CI follow-up — 2026-11-14
+
+- GitHub Quality Gate run `43563485355` completed with conclusion `failure` on the branch head.
+- Its only job, `Tests, TypeScript, and production build` (job `132352113280`), reports no step summaries; fetching job logs returned a missing-blob response. This is insufficient evidence to attribute the failure to a source/test assertion.
+- A retry request for failed jobs was accepted by the GitHub API, but the available run listing still reports the original run as failed and exposes no new successful attempt.
+- The Vercel status context on the same head reports `success` and points to a Vercel deployment record. The deployment's exact ready state, alias, and live HTTP behavior were not independently verified in this pass.
+- Therefore the Quality Gate remains **BLOCKED / NOT VERIFIED**, not PASS. Do not merge on the basis of the Vercel status alone.
