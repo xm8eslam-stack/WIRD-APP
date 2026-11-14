@@ -376,7 +376,7 @@ Do not merge #358/#359 as competing stores alongside #368. Review #366's service
 
 ### 20.7 Documentation and history
 
-- The current #363 documentation branch `docs/wird-docs-roadmap-reconciled-20261111` initially contained only 52 new lines at the old work-log path. The 537-line original main history was restored ahead of those entries; the resulting canonical `docs/engineering/WORK_LOG.md` contains 589 lines and preserves the complete original log as an exact substring. The former `progress/WORK_LOG.md` path is now a compatibility pointer.
+- The current #363 documentation branch is `docs/wird-docs-roadmap-reconciled-20261111`, latest verified commit `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57`. It initially contained only 52 new lines at the old work-log path; the 537-line original main history was restored ahead of those entries. Canonical `docs/engineering/WORK_LOG.md` now contains 589 lines and preserves the complete original log as an exact substring; the former `progress/WORK_LOG.md` path is a compatibility pointer. Canonical `MASTER_PROJECT_STATE.md`, `ARCHITECTURE.md`, `RELEASE_CHECKLIST.md`, and an engineering index were added. The exact-head CI run `43570268180` still fails before steps/logs (`steps=null`, `logs_url=null`).
 - The requested canonical files `docs/engineering/MASTER_PROJECT_STATE.md`, `docs/engineering/ARCHITECTURE.md`, and `docs/engineering/RELEASE_CHECKLIST.md` are not yet present in the inspected documentation branch.
 - `docs/sync/REMOTE_REPLICATION_PLAN.md`, referenced by current `AGENTS.md`, was not found. Related sync architecture/state/release-gate documents exist in the documentation consolidation branch.
 - A root `README.md` was not found on inspected `main`.
