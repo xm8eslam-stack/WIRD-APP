@@ -495,3 +495,17 @@ This conflicts with the project rule that remote sync remain disabled until all 
 - Continue Plans/Offline source review and integration work on branches, with no competing audio stores and no payload-limit-only workaround.
 - Keep Seerah as a sourced-content blocker, not a launch-ready feature.
 - Keep documentation history append-only. Canonical Work Log is `docs/engineering/WORK_LOG.md`; the old `docs/engineering/progress/WORK_LOG.md` path is a compatibility pointer.
+
+
+### 20.10 Vercel Preview inventory — 2026-11-14
+
+The latest deployment inventory shows:
+- Production: READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- PR #373: READY on exact feature SHA `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`, deployment `dpl_5PDvHdHztx9Tf6yLR2ojQww2nhs1`.
+- PR #364: READY on exact feature SHA `ad33875b0304020f930c7b606ef8782d36148707`, deployment `dpl_13RYRdPik7XUUEHk856JMfbn6j99`.
+- PR #374: READY on exact feature SHA `6673bb149a2ffa58177c35b9f68c76423dfb2a0b`, deployment `dpl_GFt7aRTuzAzPMoDKnbjD6Szunqaq`.
+- PR #363 current head `b33218c3b337e3a6271046e66e0abc8330bbd61e`: Vercel status FAIL with `build-rate-limit`. Its latest successful Preview in the deployment inventory is older SHA `7675d7ece7fda857d5a22f3e2eb0c0fdccdbc8db`, deployment `dpl_AFh8BR8VtmBB6XtQNTX3nCCQseks`; this is not the current head.
+- PR #375 current head is this handoff branch; its latest successful Preview in the deployment inventory is older SHA `988a511317`, deployment `dpl_F97xFiW2trAiqXajM7JcwDYpKe7D`. No Preview for the current handoff head was verified.
+- Multiple recent documentation deployments were CANCELED or failed due to deployment-rate limits. This is a platform quota issue, not evidence of application build failure.
+
+Do not treat an older READY Preview as verification of a newer branch head. No Deployment Protection, Vercel project setting, or Production environment value was changed.
