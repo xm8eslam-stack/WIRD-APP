@@ -65,7 +65,8 @@ Use only these statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT VERIFIED**. Reco
 ## F. Security and Advisor
 
 - [x] PASS — client-controlled history sender labels are no longer rendered as authenticated assistant messages on PR #364.
-- [x] PASS — five targeted source assertions in isolated Node 26.
+- [x] PASS — six targeted source assertions, including UTF-8 byte-based request-size enforcement.
+- [x] PASS — two stubbed Advisor API route smoke assertions: oversized Arabic payload rejected; forged assistant history downgraded to untrusted user context.
 - [ ] NOT VERIFIED — full advisor security suite and exact-head CI.
 - [ ] BLOCKED — evaluate a distributed/global rate-limit strategy; current in-memory limit is best-effort per serverless instance.
 - [ ] NOT VERIFIED — production request/abuse monitoring after release.
