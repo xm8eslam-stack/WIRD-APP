@@ -1,3 +1,13 @@
+
+## Immediate owner action — 2026-11-14
+
+Vercel Production currently has both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` set to `true`. This conflicts with the required policy that remote sync remain disabled until release gates pass.
+
+No setting has been changed. Explicitly authorize disabling these two flags before any change is made. Until authorization, do not perform sync-related Production actions.
+
+
+---
+
 # WIRD — إجراءات المالك المؤجلة
 
 تُجمع هنا الخطوات التي تتطلب جهازًا حقيقيًا أو صلاحية مالك. لا توقف الأعمال الآلية المستقلة بسببها.
