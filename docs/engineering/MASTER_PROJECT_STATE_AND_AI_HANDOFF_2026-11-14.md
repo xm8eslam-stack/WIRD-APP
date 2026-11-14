@@ -376,7 +376,7 @@ Do not merge #358/#359 as competing stores alongside #368. Review #366's service
 
 ### 20.7 Documentation and history
 
-- The final #363 documentation branch's `docs/engineering/progress/WORK_LOG.md` contains the complete previous `main` work log as an exact substring; the original nonblank history was preserved. The branch version has 1,208 lines versus 537 on the inspected `main` snapshot.
+- The current #363 documentation branch `docs/wird-docs-roadmap-reconciled-20261111` initially contained only 52 new lines at the old work-log path. The 537-line original main history was restored ahead of those entries; the resulting canonical `docs/engineering/WORK_LOG.md` contains 589 lines and preserves the complete original log as an exact substring. The former `progress/WORK_LOG.md` path is now a compatibility pointer.
 - The requested canonical files `docs/engineering/MASTER_PROJECT_STATE.md`, `docs/engineering/ARCHITECTURE.md`, and `docs/engineering/RELEASE_CHECKLIST.md` are not yet present in the inspected documentation branch.
 - `docs/sync/REMOTE_REPLICATION_PLAN.md`, referenced by current `AGENTS.md`, was not found. Related sync architecture/state/release-gate documents exist in the documentation consolidation branch.
 - A root `README.md` was not found on inspected `main`.
