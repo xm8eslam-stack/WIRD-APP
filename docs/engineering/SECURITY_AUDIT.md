@@ -218,7 +218,7 @@ The Advisor API accepted client-supplied history entries with `sender: "advisor"
 - Keep the system instruction that user content/history is untrusted.
 - Do not expose provider keys or raw request payloads.
 
-Five targeted source assertions passed in an isolated Node 26 check. Vercel Preview for the exact commit is READY (`13RYRdPik7XUUEHk856JMfbn6j99`). GitHub Actions still fails before steps/logs; the full security suite and browser verification are NOT VERIFIED.
+Six targeted source assertions passed, including UTF-8 byte-based request sizing. Vercel Preview for the exact commit is READY (`13RYRdPik7XUUEHk856JMfbn6j99`). GitHub Actions still fails before steps/logs; the full security suite and browser verification are NOT VERIFIED.
 
 ### Remaining security limitation
 
