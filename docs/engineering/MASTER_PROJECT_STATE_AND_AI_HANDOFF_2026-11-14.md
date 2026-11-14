@@ -312,6 +312,29 @@ This section supersedes earlier historical statements only where it records newe
 - Production Vercel deployment: **READY**, deployment `DKfbfqsBHqzS95CoTdYZCtPPPZwu`, associated with the same `main` SHA.
 - No PR has been merged during this follow-up.
 - 16 PRs are currently open: #375, #374, #373, #372, #371, #370, #369, #368, #367, #366, #365, #364, #363, #359, #358, and #2.
+
+Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
+
+| PR | Head SHA | Disposition |
+|---:|---|---|
+| #375 | `310f480266e0001b4eab9b8c79152917e2bd2d1e` | Handoff evidence updated |
+| #374 | `6673bb149a2ffa58177c35b9f68c76423dfb2a0b` | Package/lockfile overlap with #372 |
+| #373 | `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca` | Ruqyah fix; Preview READY; CI BLOCKED |
+| #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun workflow; runner issue unresolved |
+| #371 | `260df95c620cd534337e39d6707b044eb404139a` | Codec not integrated |
+| #370 | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | Session UX |
+| #369 | `814bb8788449ebe3d07d46f00a596a1a7b398a5a` | Multi-range selection; CI BLOCKED |
+| #368 | `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710` | Offline store/downloader; lifecycle gaps |
+| #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB cap; not chunking |
+| #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell |
+| #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype only |
+| #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor history fix; Preview READY |
+| #363 | `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57` | Docs consolidation; Work Log preserved |
+| #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest |
+| #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store |
+| #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX; do not merge as a unit |
+
+
 - A local Git working tree/branch is **NOT VERIFIED**. The available workflow used remote GitHub file operations and isolated Vercel sandboxes; no claim of a local full-suite run is made.
 
 ### 20.2 Ruqyah — implementation and evidence
