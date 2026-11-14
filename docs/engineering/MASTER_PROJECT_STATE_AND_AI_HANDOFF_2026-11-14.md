@@ -288,3 +288,8 @@ J. Verify Preview and Production SHA mapping and read-only user flows. If Vercel
 **Completion definition:** the task is not complete until all safe work is implemented, exact-SHA gates pass, duplicate/superseded PRs are resolved, documentation is reconciled, and Preview/live status is either verified or explicitly blocked with evidence. Produce a final report with: merged/retained PRs, exact final SHA, tests and runs, deployment SHA/status, user-facing changes, data migrations/rollback, remaining blockers, and one concise next action. If a gate is blocked by infrastructure or permissions, do as much independent work as possible and leave a precise executable handoff rather than fabricating completion.
 
 Proceed now. Do not stop after writing this prompt. Execute the work.
+
+
+### Follow-up log retrieval (2026-11-14)
+
+The GitHub Actions job-log download endpoint was attempted for all four job IDs listed above (132360373984, 132094643958, 132059785133, 130727161970). Each returned HTTP 404 from GitHub's temporary log-blob storage (`BlobNotFound`). This confirms that the raw job logs are no longer retrievable through that endpoint at the time of this audit; it does not explain why the jobs failed. Keep the root cause **BLOCKED / unknown**. Inspect workflow/run metadata and trigger a new controlled run only after reviewing workflow configuration and runner availability.
