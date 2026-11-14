@@ -32,7 +32,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 | #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun CI workflow; runner issue unresolved |
 | #371 | `260df95c620cd534337e39d6707b044eb404139a` | Standalone archive codec; integration/resource bounds required |
 | #370 | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | Memorization session UX; independent review |
-| #369 | `814bb8788449ebe3d07d46f00a596a1a7b398a5a` | Multi-range selection; exact-head CI required |
+| #369 | `3478ae22a200a817a240d8b28e532b01674427bf` | Multi-range selection; Juz 30 endpoint fixed; 7 isolated tests PASS; CI BLOCKED |
 | #368 | `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710` | Unified offline store/downloader; cross-tab and lifecycle gaps |
 | #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB payload budget; not a chunking solution |
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell; device verification required |
@@ -69,7 +69,7 @@ Client-supplied history sender labels are discarded before prompt construction. 
 
 ### Plans and memorization — PRs #367, #369, #371
 
-- #369: multi-Surah/Juz/custom-range selection and overlap normalization reviewed; merge remains blocked pending exact-head CI and regression gates.
+- #369: multi-Surah/Juz/custom-range selection and overlap normalization; fixed the Juz 30 114:5 off-by-one. Seven isolated range tests PASS with a canonical boundary fixture; exact-head CI and generated-index E2E remain NOT VERIFIED.
 - #371: lossless archive codec and SHA-256 integrity tests; six isolated codec tests PASS. The codec is not integrated into actual Outbox/Inbox/Firestore persistence.
 - #367: aligns a single-payload limit at 800 KB. This is interim sizing, not chunked archive transport. Do not merge as a complete archive solution.
 - Before integration: add bounded manifest/resource validation, chunk persistence and retrieval, atomic manifest publication, backward-compatible reads, corruption recovery, migration/rollback evidence, and multi-client emulator tests.
