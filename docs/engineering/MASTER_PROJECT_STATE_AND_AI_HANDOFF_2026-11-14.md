@@ -371,6 +371,8 @@ The long-program fix is on PR #373 only. Production remains **NOT VERIFIED FIXED
 
 The latest PR #373 run `43568676649` and its retry both failed before any job steps were recorded. The retry job has `steps: null` and `logs_url: null`; job-log retrieval returned no stored logs. This does not establish an application test failure.
 
+Important exception: historical PR #358 run `43030195498` and PR #359 run `43029617572` did execute their earlier checks successfully (install, automated tests, Rules Emulator, TypeScript, build, server smoke) and then failed the Desktop/mobile browser smoke step. Their log URLs are unavailable, so the exact Playwright assertion is NOT VERIFIED. These are observed browser-test failures, not pre-step runner failures. Both PRs are superseded by #368.
+
 PR #364 run `43569132395` shows the same pattern: failed job, `steps: null`, `logs_url: null`.
 
 No CI pass is claimed. Do not disable tests or infer that the Bun workflow change fixes runner-start failures.
