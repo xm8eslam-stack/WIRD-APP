@@ -433,3 +433,63 @@ Do not merge #358/#359 as competing stores alongside #368. Review #366's service
 | Full repository test suite and production post-fix smoke | NOT VERIFIED |
 
 Continue from these exact findings. Do not merge a PR or change Production/Firebase settings based solely on this checkpoint.
+
+
+---
+
+## Latest re-verification — 2026-11-14 09:00 local
+
+This section supersedes stale exact-head and Vercel statements above where they conflict.
+
+### Current main and production
+
+- Current main SHA verified from the latest Vercel Production deployment metadata: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Latest Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, state READY, source branch `main`, same SHA.
+- This is deployment metadata/readiness only. It is not proof that the live application routes or feature APIs have passed post-deploy smoke.
+
+### Current PR inventory
+
+All 16 listed PRs were re-fetched from GitHub and remain OPEN / DRAFT. Current exact heads:
+
+| PR | Head SHA | Status / disposition |
+|---:|---|---|
+| #375 | `638e71aa844c69072f6d721669af93a6103cfcea` before this handoff update | Documentation handoff; keep Draft until CI telemetry is inspectable |
+| #374 | `6673bb149a2ffa58177c35b9f68c76423dfb2a0b` | Hygiene; reconcile dependency files with #372 |
+| #373 | `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca` | Ruqyah feature; Preview READY, CI BLOCKED, Production fix NOT VERIFIED |
+| #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun CI candidate; exact-head run fails before steps/logs |
+| #371 | `260df95c620cd534337e39d6707b044eb404139a` | Codec tests pass in isolation; persistence integration incomplete |
+| #370 | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | Session display settings; exact-head CI required |
+| #369 | `814bb8788449ebe3d07d46f00a596a1a7b398a5a` | Multi-range memorization; exact-head CI required |
+| #368 | `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710` | Unified offline store/downloader; lifecycle gaps remain |
+| #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB payload cap is not chunked transport |
+| #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | Offline/PWA; device and recovery verification incomplete |
+| #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah reader prototype; content not publishable |
+| #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor prompt-boundary fix; Preview READY, CI BLOCKED |
+| #363 | `fa944cfcb09f724cbc3ea51f5e3f2229365d7f71` | Documentation consolidation; canonical docs and original Work Log preserved |
+| #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded manifest implementation; do not merge alongside #368 |
+| #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded manifest implementation; do not merge alongside #368 |
+| #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX; non-mergeable as a unit |
+
+PR #375's head advances when this addendum is committed; re-fetch the exact head before any future gate or merge decision.
+
+### GitHub Actions — repeated pre-step failure
+
+- #375 Quality Gate run `43570354110` was retried with the failed-job rerun operation. The latest attempt job `132373650377` again completed as failure with `steps=null` and `logs_url=null`.
+- Other exact-head runs checked: #373 `43568676649`, #363 `43570268180`, and #372 `43391729769`; each exposes one failed job but no steps/log URL.
+- This is BLOCKED runner/job initialization or telemetry. It is not evidence that tests failed, and it is not a pass. Do not disable tests or relax required gates.
+
+### Vercel Production configuration — owner action required
+
+A read-only environment listing (without decrypting secrets) confirms both Production flags are currently `true`:
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED`
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED`
+
+This conflicts with the project rule that remote sync remain disabled until all release gates pass. No values were changed. Do not alter these Production flags or perform sync-related Production actions until the owner explicitly authorizes the change. Sensitive environment values were not read or disclosed.
+
+### Immediate engineering decision
+
+- Do not merge any PR while exact-head Quality Gate runs remain uninspectable.
+- Keep #373 Preview-only; require successful exact-head CI, safe merge, matching Production deployment, and live short/medium/long Ruqyah smoke.
+- Continue Plans/Offline source review and integration work on branches, with no competing audio stores and no payload-limit-only workaround.
+- Keep Seerah as a sourced-content blocker, not a launch-ready feature.
+- Keep documentation history append-only. Canonical Work Log is `docs/engineering/WORK_LOG.md`; the old `docs/engineering/progress/WORK_LOG.md` path is a compatibility pointer.
