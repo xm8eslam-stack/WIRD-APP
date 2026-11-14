@@ -43,7 +43,9 @@ export function getJuzMemorizedRanges(juzNumber: number): MemorizedRange[] {
     throw new Error('حدود الجزء غير متسقة؛ لم تتم إضافة أي نطاق.');
   }
 
-  const end = QuranMath.getCoordinateFromAbsoluteIndex(nextAbsolute - 1);
+  const end = juzNumber === 30
+    ? LAST_QURAN_COORDINATE
+    : QuranMath.getCoordinateFromAbsoluteIndex(nextAbsolute - 1);
   const ranges: MemorizedRange[] = [];
   for (let surahNumber = start.surahNumber; surahNumber <= end.surahNumber; surahNumber++) {
     const surah = QuranMath.getSurah(surahNumber);
