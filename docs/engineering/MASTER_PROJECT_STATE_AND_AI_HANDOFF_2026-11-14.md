@@ -500,6 +500,7 @@ This conflicts with the project rule that remote sync remain disabled until all 
 ### 20.10 Vercel Preview inventory — 2026-11-14
 
 The latest deployment inventory shows:
+- PR #368: READY on exact feature SHA `d0ab926f37ea68a92c28e39796dd3d723e1dd7a8`, deployment `dpl_EmsTdmmgjmQktcNZiAiE9qxppyRs`.
 - Production: READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 - PR #373: READY on exact feature SHA `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`, deployment `dpl_5PDvHdHztx9Tf6yLR2ojQww2nhs1`.
 - PR #364: READY on exact feature SHA `ad33875b0304020f930c7b606ef8782d36148707`, deployment `dpl_13RYRdPik7XUUEHk856JMfbn6j99`.
