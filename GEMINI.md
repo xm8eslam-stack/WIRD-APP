@@ -24,3 +24,12 @@ For synchronization architecture, read `docs/sync/ARCHITECTURE.md`, `docs/sync/R
 
 ## Mandatory change reconciliation
 For every modification, follow `AGENTS.md` and `docs/CHANGE_CONTROL.md`: refresh exact GitHub/Vercel/Firebase evidence; map every open PR's changed paths before parallel work; serialize overlapping files; use the committed Bun lock as the single dependency graph; run and inspect exact-head checks; distinguish missing logs from code failures; update the live queue, specialist notes, work log, checkpoint and owner actions; then search for stale SHAs, contradictory status, wrong environment-variable names and broken links. Never change Production settings, secrets, Firebase Rules/data, sync flags, public-access protection, merge or deploy without the required specific approval.
+
+
+## Current verified-state workflow (2026-11-14)
+
+Before every Google AI Studio task, read `docs/engineering/MASTER_PROJECT_STATE.md`, `RELEASE_CHECKLIST.md`, `ARCHITECTURE.md`, `WORK_LOG.md`, and `docs/CONTINUE_HERE.md`. Use `docs/engineering/README.md` as the index. Append new history only to `docs/engineering/WORK_LOG.md`; the former progress path is a compatibility pointer.
+
+Do not assume Production sync is disabled. Both Vercel Production sync flags were verified as `true` on 2026-11-14. Do not change them, Firebase settings, secrets, rules, or user data without explicit owner approval. Do not perform sync-related Production actions while this discrepancy is unresolved.
+
+Always distinguish isolated tests, GitHub Actions, Vercel Preview, Production deployment, live smoke, and Google AI Studio synchronization. Never claim a test or deployment passed without exact SHA evidence.
