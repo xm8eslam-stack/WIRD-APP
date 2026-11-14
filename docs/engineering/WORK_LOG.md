@@ -596,3 +596,10 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Re-fetched Vercel Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` READY on `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
 - Re-listed Vercel env metadata without decrypting secrets. Production sync flags remain `true`, a release-policy discrepancy. No Vercel/Firebase settings were modified and no secret values were read.
 - No PR merged. Ruqyah remains Preview-only; production post-fix smoke is NOT VERIFIED.
+
+
+## 2026-11-14 09:05 local — GitHub Actions log endpoint verification
+
+- Queried job steps and downloaded logs for PR #375 retry job `132373650377` and previous attempt `132368486361`.
+- Both step endpoints returned empty arrays. Both log downloads returned Azure `BlobNotFound` HTTP 404.
+- No shell command, checkout, install, test, lint, or build output is available. Root cause remains BLOCKED/unknown at GitHub Actions job initialization or log artifact storage. No workflow tests were disabled or weakened.
