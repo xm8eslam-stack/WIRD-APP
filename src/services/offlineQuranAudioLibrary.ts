@@ -367,7 +367,7 @@ export class OfflineQuranAudioLibrary {
     }
     const allowed: Record<OfflineAudioJobStatus, OfflineAudioJobStatus[]> = {
       queued: ['queued', 'downloading', 'partial', 'completed', 'failed', 'cancelled'],
-      downloading: ['downloading', 'partial', 'completed', 'failed', 'cancelled'],
+      downloading: ['queued', 'downloading', 'partial', 'completed', 'failed', 'cancelled'],
       partial: ['partial', 'downloading', 'completed', 'failed', 'cancelled'],
       completed: ['completed'],
       failed: ['failed'],
