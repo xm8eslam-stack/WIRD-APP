@@ -164,3 +164,20 @@ Always distinguish what was implemented, what was actually tested, what remains 
 ## Current continuation context
 
 The live continuation queue is maintained only in `docs/CONTINUE_HERE.md`; the product roadmap is `docs/DEVELOPMENT_ROADMAP.md`; the documentation map is `docs/README.md`. Do not hard-code PR numbers or old SHAs here. Before each task, fetch current main, relevant open PRs, exact-head CI, and deployment evidence. Keep production settings and owner-only actions unchanged without explicit authorization.
+
+
+## 2026-11-14 canonical engineering documentation
+
+Before modifying code, read:
+1. `docs/engineering/MASTER_PROJECT_STATE.md`
+2. `docs/engineering/RELEASE_CHECKLIST.md`
+3. `docs/engineering/ARCHITECTURE.md`
+4. `docs/engineering/WORK_LOG.md`
+
+Use `docs/engineering/README.md` as the index. The canonical append-only work log is `docs/engineering/WORK_LOG.md`; the previous `docs/engineering/progress/WORK_LOG.md` path is a compatibility pointer only.
+
+For sync, use `docs/sync/ARCHITECTURE.md`, `STATE-MACHINE.md`, `RELEASE-GATES.md`, and `TEST-MATRIX.md`. The older `docs/sync/REMOTE_REPLICATION_PLAN.md` path is not present and must not be treated as an active specification.
+
+Production sync safety: both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` were read as `true` in Vercel Production on 2026-11-14. This conflicts with the disabled-until-gates policy. Do not change either value or perform sync-related Production actions without explicit owner authorization.
+
+When the owner explicitly authorizes safe PR merges in the active handoff, merge only the exact reviewed head SHA after all required checks pass and the diff is re-reviewed. Missing logs, skipped checks, or a green status on a different SHA are not a gate pass.
