@@ -125,3 +125,9 @@ No PR is merge-eligible while the required exact-head Quality Gate is not inspec
 The general pre-step runner failure above does not apply to every historical PR:
 - #358 run `43030195498` and #359 run `43029617572` executed dependency installation, automated tests, Firestore Rules Emulator, TypeScript, production build, and server-startup smoke successfully, then failed the Desktop/mobile browser smoke step. The job log URL is unavailable, so the exact Playwright assertion is NOT VERIFIED.
 - The newer exact-head runs for #373, #374, #363, #364, #365, #366, #367, #368, #369, #370, #371, #372, and #375 failed before steps/logs (`steps=null`, `logs_url=null`). PR #373 retry repeated the pre-step failure.
+
+
+### CI log endpoint re-check — 2026-11-14
+
+- #375 retry job `132373650377` and previous attempt `132368486361`: step endpoint returned an empty list; job log endpoint returned Azure `BlobNotFound` HTTP 404.
+- No command-level output is available. CI remains BLOCKED; do not classify as code-test failure or success.
