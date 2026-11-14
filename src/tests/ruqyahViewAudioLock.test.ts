@@ -23,7 +23,7 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   );
   test(
     'Quran playback uses the canonical local ayah queue and fixed approved CDN builder',
-    viewSource.includes('getRuqyahAudioQueue(target)') &&
+    viewSource.includes('getRuqyahAudioQueueForItems(targetItems)') &&
       viewSource.includes('buildQuranAyahAudioUrl(selectedReciterIdRef.current, entry.globalAyahNumber)')
   );
   const audioStart = viewSource.indexOf('const startRuqyahAudio');
@@ -55,6 +55,53 @@ export function runRuqyahViewAudioLockTests(): { passed: number; failed: number 
   test(
     'Playback errors never silently switch to another source',
     viewSource.includes('لم يتم استبداله بتسجيل من مصدر آخر')
+  );
+
+  test(
+    'Ruqyah Quran cards resolve asynchronously with explicit loading and fail-closed error states',
+    viewSource.includes('getRuqyahAyahs(candidate)') &&
+      viewSource.includes('quranLoadingItems[item.id]') &&
+      viewSource.includes('quranErrors[item.id]') &&
+      viewSource.includes('quranAyahsByItem[item.id]') &&
+      !viewSource.includes('getRuqyahAyahs(item).map')
+  );
+  test(
+    'Failed local Quran chunks expose an online-aware retry without external text fallback',
+    viewSource.includes('quranRetryNonce') &&
+      viewSource.includes('[activeCategory, quranRetryNonce]') &&
+      viewSource.includes('setQuranRetryNonce(value => value + 1)') &&
+      viewSource.includes("addEventListener('offline'") &&
+      viewSource.includes("addEventListener('online'") &&
+      viewSource.includes('disabled={!isOnline}') &&
+      viewSource.includes('إعادة المحاولة') &&
+      !viewSource.includes('verifiedAyahs')
+  );
+  test(
+    'Category changes and unmount invalidate pending Quran/audio requests',
+    viewSource.includes('let active = true') &&
+      viewSource.includes('if (active) setQuranAyahsByItem') &&
+      viewSource.includes('audioBuildRequestIdRef.current += 1') &&
+      viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
+  );
+  test(
+    'Changing Ruqyah category stops the current audio source and clears its playlist',
+    viewSource.includes('setAudioQueueLength(0)') &&
+      viewSource.includes('audio.pause()') &&
+      viewSource.includes("audio.removeAttribute('src')") &&
+      viewSource.includes('audioQueueIndexRef.current = 0')
+  );
+  test(
+    'Audio queue is awaited before replacing the active queue and preserves async request ordering',
+    viewSource.includes('await getRuqyahAudioQueueForItems(targetItems)') &&
+      viewSource.includes('getRuqyahAudioQueueForItems') &&
+      viewSource.includes('if (buildRequestId !== audioBuildRequestIdRef.current) return')
+  );
+  test(
+    'Starting a new queue cancels prior audio before asynchronous Quran resolution',
+    viewSource.includes('audioRequestIdRef.current += 1;') &&
+      viewSource.includes('previousAudio.pause()') &&
+      viewSource.includes('previousAudio.removeAttribute(\'src\')') &&
+      viewSource.includes('await getRuqyahAudioQueueForItems(targetItems)')
   );
 
   test(

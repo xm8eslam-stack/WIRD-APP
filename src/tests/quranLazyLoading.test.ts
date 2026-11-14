@@ -87,6 +87,19 @@ export function runQuranLazyLoadingTests(): { passed: number; failed: number } {
     assert(revision.includes('loadAyahByCoordinate') && revision.includes('loadSimpleAyahText') && revision.includes('weakSimpleTexts') && !revision.includes('VERIFIED_AYAHS'), 'Revision center must use coordinate-based Simple text for weak-ayah display and search');
   });
 
+  test('Ruqyah content service cannot statically reach the full Quran corpus', () => {
+    const service = read('src/services/ruqyahContentService.ts');
+    assert(!service.includes('verifiedAyahs'), 'Ruqyah service must not import verifiedAyahs directly');
+    assert(!service.includes('completeQuranData.json'), 'Ruqyah service must not import completeQuranData.json directly');
+    assert(!service.includes("from '../data'") && !service.includes("from '../data/index"), 'Ruqyah service must not route Quran data through a static barrel');
+    assert(service.includes("from '../data/quranDataLoader'") && service.includes('loadSurahVerses'), 'Ruqyah service must use the existing per-Surah loader');
+    assert(service.includes('await loadSurahVerses'), 'Ruqyah service must resolve local Surah chunks asynchronously');
+    const runtimeImports = service.split(String.fromCharCode(10)).filter(line => line.startsWith('import ') && !line.startsWith('import type '));
+    assert(runtimeImports.length === 2 && runtimeImports.some(line => line.includes("from '../data/quranDataLoader'")) &&
+      runtimeImports.some(line => line.includes("from '../data/quranMeta'")), 'Only the lazy loader and lightweight Quran metadata may be runtime imports');
+    assert(!service.includes('new Map('), 'Ruqyah service must reuse the loader cache instead of creating a second global Quran cache');
+  });
+
   test('Quran source attribution metadata is independent from the full text payload', () => {
     const info = read('src/data/quranDataInfo.ts');
     assert(info.includes('Tanzil Project') && info.includes('CC BY 3.0'), 'Source and license attribution must remain available');

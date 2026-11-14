@@ -42,15 +42,28 @@ function parseQuranIndexTitle(value: unknown): QuranIndexCoordinates | null {
     const index = digitMap.indexOf(digit);
     return String(index % 10);
   });
-  const match = normalized.trim().match(/^[^0-9+−﹣－＋-]*?([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))?[^0-9+−﹣－＋-]*$/);
-  if (!match) return null;
-  const surahNumber = Number(match[1]);
-  const startAyah = Number(match[2]);
-  const endAyah = match[3] === undefined ? startAyah : Number(match[3]);
+  const normalizedTitle = normalized.trim();
+  const match = normalizedTitle.match(/^[^0-9+−﹣－＋-]*?([0-9]{1,3}) *: *([0-9]{1,3})(?: *[-–—] *([0-9]{1,3}))?[^0-9+−﹣－＋-]*$/);
+  if (match) {
+    const surahNumber = Number(match[1]);
+    const startAyah = Number(match[2]);
+    const endAyah = match[3] === undefined ? startAyah : Number(match[3]);
+    const surah = ALL_SURAHS.find(item => item.number === surahNumber);
+    if (!surah || !Number.isSafeInteger(startAyah) || !Number.isSafeInteger(endAyah) ||
+        startAyah < 1 || endAyah < startAyah || endAyah > surah.versesCount) return null;
+    return { surahNumber, startAyah, endAyah };
+  }
+
+  // Some verified provider entries refer to an entire Surah by its canonical
+  // name and number (e.g. "الأعلى ٨٧"). Expand only an exact local metadata
+  // match; never infer ranges from provider-authored Quran text.
+  const wholeSurahMatch = normalizedTitle.match(/^(.+?)\s+([0-9]{1,3})$/);
+  if (!wholeSurahMatch) return null;
+  const surahNumber = Number(wholeSurahMatch[2]);
   const surah = ALL_SURAHS.find(item => item.number === surahNumber);
-  if (!surah || !Number.isSafeInteger(startAyah) || !Number.isSafeInteger(endAyah) ||
-      startAyah < 1 || endAyah < startAyah || endAyah > surah.versesCount) return null;
-  return { surahNumber, startAyah, endAyah };
+  const suppliedName = wholeSurahMatch[1].trim();
+  if (!surah || (suppliedName !== surah.name && suppliedName !== surah.englishName)) return null;
+  return { surahNumber, startAyah: 1, endAyah: surah.versesCount };
 }
 
 function sanitizeQuranIndexData(data: unknown): unknown {
