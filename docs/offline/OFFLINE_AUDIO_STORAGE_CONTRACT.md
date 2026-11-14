@@ -182,3 +182,26 @@ A crash-consistency gap remains in #368: Cache Storage bytes are written before 
 PR #366's generic Service Worker storage trimming currently does not own #368's separate offline-audio cache namespace. Define a single eviction owner and metadata reconciliation contract before integration. An eviction must not leave IndexedDB claiming a file is available, and a delayed cleanup must not delete a replacement generation.
 
 PR #368 remains service-layer foundation only: no aggregate job/range quota preflight, real browser Cache Storage integration tests, UI, Service Worker download lifecycle, or real-device offline playback has been verified. Keep user-facing downloads unexposed until those gates pass.
+
+
+---
+
+## Verified implementation review — 2026-11-14
+
+The earlier implementation checkpoint above is historical and its description of PR #368 as metadata-only is no longer accurate.
+
+The current #368 feature branch contains:
+- IndexedDB `jobs`, canonical `files`, and `jobItems` stores.
+- A downloader that fetches approved audio, validates response metadata/size, and writes verified bytes to Cache Storage.
+- Cache Storage adapter and reconciliation/deletion primitives.
+- Unit tests for job lifecycle, cache writes, and metadata integrity.
+
+The implementation is more complete than the older checkpoint described, but it is **not release-complete**:
+
+1. **Cross-tab ownership is missing.** The downloader's active-job map is instance-local; no IndexedDB lease/claim, Web Lock, or cross-tab ownership protocol prevents two tabs from processing the same job simultaneously.
+2. **Orphan cleanup is not end-to-end.** The library exposes pending-deletion/orphan metadata and the cache adapter exposes generation deletion, but the complete orchestration that deletes bytes and only then finalizes metadata is not wired through every lifecycle path.
+3. **Quota handling is inconsistent.** IndexedDB quota failures are handled/tested, but Cache Storage quota errors are not consistently normalized into a recoverable, user-visible storage state.
+4. **No user-facing download manager or reader playback integration is complete.** A service can download files without the app exposing reliable user controls or selecting local files for offline playback.
+5. **No real-device restart/airplane-mode evidence is available.** Unit tests do not prove browser eviction, OS process termination, PWA restart, or physical-device offline behavior.
+
+Keep #358 and #359 superseded; do not merge them as competing stores. Review #366's service-worker cache namespace and version migration with #368 before integration. Preserve the existing two-store invariant: IndexedDB owns metadata and Cache Storage owns bytes. A file is not offline-ready until the bytes are present and verified.
