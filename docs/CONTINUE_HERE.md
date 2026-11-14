@@ -1,3 +1,19 @@
+# LATEST EXECUTION UPDATE — 2026-11-14 09:00 local
+
+**Current main / Production source SHA:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`  
+**Production deployment:** `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` — READY  
+**PR count:** 16 OPEN / DRAFT; exact heads in [MASTER_PROJECT_STATE.md](./engineering/MASTER_PROJECT_STATE.md).
+
+## New evidence
+
+- PR #375 advanced to `495b9ccada1bb327abeee469af16faa52ddc9707`. Its failed Quality Gate run `43570354110` was retried; latest job `132373650377` again has `steps=null`, `logs_url=null`. Runner initialization/telemetry remains BLOCKED, not an application-test diagnosis.
+- #373 run `43568676649`, #363 run `43570268180`, and #372 run `43391729769` show the same failure before any steps/logs.
+- Production sync flags remain `true`. No Production settings changed; owner approval is required before disabling them. No sync-related Production actions.
+- Ruqyah fix remains Preview-only until exact-head CI passes, PR is safely merged, and post-deploy live smoke verifies short/medium/long.
+- The canonical Work Log is append-only; the previous `progress/WORK_LOG.md` path remains a pointer.
+
+**Next execution:** diagnose GitHub Actions runner provisioning/telemetry outside application code; do not weaken tests or workflow gates. In parallel, continue reviewing #373 and plans/offline PR diffs, but do not merge any PR without inspectable exact-head gates.
+---
 # CURRENT VERIFIED UPDATE — 2026-11-14
 
 **Main SHA:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`  
