@@ -324,7 +324,7 @@ Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
 | #371 | `260df95c620cd534337e39d6707b044eb404139a` | Codec not integrated |
 | #370 | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | Session UX |
 | #369 | `3478ae22a200a817a240d8b28e532b01674427bf` | Juz 30 endpoint fixed; 7 isolated tests PASS; CI BLOCKED |
-| #368 | `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710` | Offline store/downloader; lifecycle gaps |
+| #368 | `d0ab926f37ea68a92c28e39796dd3d723e1dd7a8` | 29 isolated offline tests PASS; cross-tab/lifecycle gaps |
 | #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB cap; not chunking |
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype only |
