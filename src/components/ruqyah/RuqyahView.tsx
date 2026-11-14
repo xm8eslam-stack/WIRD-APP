@@ -73,6 +73,8 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const [quranAyahsByItem, setQuranAyahsByItem] = useState<Record<string, Ayah[]>>({});
   const [quranLoadingItems, setQuranLoadingItems] = useState<Record<string, boolean>>({});
   const [quranErrors, setQuranErrors] = useState<Record<string, string>>({});
+  const [quranRetryNonce, setQuranRetryNonce] = useState(0);
+  const [isOnline, setIsOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const selectedReciterIdRef = useRef(selectedReciterId);
   const audioQueueRef = useRef<Array<{ globalAyahNumber: number; itemId: string; title: string }>>([]);
@@ -81,6 +83,16 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
   const audioBuildRequestIdRef = useRef(0);
 
   const currentItems = getRuqyahItemsByCategory(activeCategory);
+
+  useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -108,7 +120,7 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
       audioBuildRequestIdRef.current += 1;
       audioRequestIdRef.current += 1;
     };
-  }, [activeCategory]);
+  }, [activeCategory, quranRetryNonce]);
 
   const formatAudioTime = (seconds: number) => {
     if (!Number.isFinite(seconds) || seconds <= 0) return '00:00';
@@ -826,7 +838,15 @@ export const RuqyahView: React.FC<RuqyahViewProps> = ({ onToast }) => {
                         ? quranLoadingItems[item.id]
                           ? <span role="status" className="text-sm font-sans text-stone-500">جارٍ تحميل الآيات من المصحف المحلي المعتمد…</span>
                           : quranErrors[item.id]
-                            ? <span role="alert" className="text-sm font-sans text-red-700 dark:text-red-300">{quranErrors[item.id]}</span>
+                            ? <span role="alert" className="text-sm font-sans text-red-700 dark:text-red-300">
+                              {quranErrors[item.id]}
+                              {!isOnline && <span className="block mt-1">أنت غير متصل بالإنترنت. أعد المحاولة بعد استعادة الاتصال.</span>}
+                              <button type="button" onClick={() => setQuranRetryNonce(value => value + 1)} disabled={!isOnline}
+                                aria-label={`إعادة تحميل آيات ${item.title}`}
+                                className="mt-2 inline-flex min-h-9 items-center rounded-lg border border-current/30 px-3 py-1 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed">
+                                إعادة المحاولة
+                              </button>
+                            </span>
                             : quranAyahsByItem[item.id]
                               ? quranAyahsByItem[item.id].map(ayah => <React.Fragment key={ayah.number}><QuranText surahNumber={ayah.surahNumber} ayahNumber={ayah.numberInSurah}>{ayah.text}</QuranText>{' ۞ '}</React.Fragment>)
                               : <span role="status" className="text-sm font-sans text-stone-500">لم يتم تحميل نص الآيات بعد.</span>
