@@ -1,3 +1,14 @@
+## 2026-11-12 — Live main / Production sync guard review
+
+- Current main SHA: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the same SHA; no live A↔B sync smoke was performed.
+- Read-only Vercel inventory confirms `VITE_WIRD_REVISIONED_SYNC_ENABLED=true` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true` for Production. No settings or values were changed; owner decision is required before any toggle.
+- Main Quality Gate run `43079260528` failed before steps/logs were recorded (`BlobNotFound`); this is not a diagnosed test failure.
+- PR #363 was reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. Last checked head `d79805b44b26f4ea73e77ffac21503255983b9c1` run `43117295374` failed before steps/logs (`BlobNotFound`); two relative links were fixed and the follow-up scan found zero broken links. The next docs checkpoint changes the head, so re-fetch the final exact-head gate. No PR merge or sync cutover was performed.
+- PR #364 adds only Advisor request/history validation and prompt boundaries; no sync code or configuration changed.
+- Existing safe boundary remains: local-first behavior, fail-closed conflict handling, no activation of new remote projection behavior without complete evidence and owner approval.
+
+---
 ## Daily engineering review — 2026-11-11 (current main / Production)
 
 This entry supersedes earlier operational statements in this worklog where they conflict. Review was performed against GitHub main and the Vercel Production deployment. No application code, Firestore Rules, production data, environment variables, secrets, or Vercel settings were changed by this review.

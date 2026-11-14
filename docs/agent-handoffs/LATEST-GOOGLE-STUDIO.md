@@ -1,3 +1,146 @@
+# GOOGLE AI STUDIO — Current handoff overlay — 2026-11-13
+
+> This dated overlay supersedes all older SHA/deployment status in this handoff. Do not treat GitHub updates as proof of AI Studio synchronization.
+
+- Repository: `xm8eslam-stack/WIRD-APP`.
+- Current GitHub main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu`, READY on the exact main SHA, alias `wird-app.vercel.app`.
+- Vercel SSO protection is enabled for non-custom domains; anonymous public access is not established.
+- Production sync flags are both true; this is configuration state, not complete sync release approval.
+- `ISLAMICAPI_API_KEY` exists in Preview and Production; never expose its value.
+- GitHub main branch protection is off. Recent PR Quality Gate runs lack steps/logs and are BLOCKED for observability.
+- Actual Google AI Studio sync/build status remains NOT TESTED. Confirm from AI Studio directly after the owner-approved documentation PR is merged.
+- No merge, production deployment, environment/secret/protection change, Firebase Rules change, or sync-flag change was performed in this audit.
+
+Read `AGENTS.md`, `docs/CHANGE_CONTROL.md`, and `docs/CONTINUE_HERE.md` before further work.
+
+---
+
+# أولوية تسليم جديدة — Offline-first / app readiness (2026-11-12)
+
+- اجعل Offline-first مسارًا رئيسيًا متوازيًا مع القرآن والعبادات والسيرة وUX والمزامنة.
+- اقرأ docs/offline/OFFLINE_FIRST_ARCHITECTURE.md وAPP_READINESS_ROADMAP_AR.md وOFFLINE_CAPABILITY_MATRIX_AR.md.
+- PWA الحالي هو الأساس؛ حافظ على service worker وحزمة التحضير والتخزين المحلي. لا تعِد كتابة هذه الطبقات دون سبب مقاس.
+- راجع public asset manifest، lazy route coverage، navigation timeout، StorageManager مقابل persist support، cache namespaces، وAuthGate offline restoration.
+- اختبر local-first behavior بعد restart وفي airplane mode، مع quota/eviction/update. لا تدّعِ اكتمالًا دون browser/device evidence.
+- الشبكات الخارجية وFirebase/Auth والـ API الحي والمحتوى غير المحفوظ تحتاج اتصالًا. لا تخزن tokens أو بيانات مستخدم في shared caches.
+- الصوت المثبت ليس cache انتهازيًا؛ راجع الحقوق قبل التنزيل. EveryAyah stream-only حاليًا.
+- Capacitor/TWA/native مؤجل حتى نجاح PWA offline gates.
+- PR #366 للكود وPR #363 للوثائق؛ لا تعدّل نفس الملفات بين الفرعين. افحص exact SHA/checks/deployment قبل الدمج.
+
+---
+
+# WIRD — Google AI Studio handoff (live checkpoint 2026-11-12 01:31 +02:00)
+
+- GitHub `main` remains `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`; Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA. This is deployment evidence only.
+- Main Quality Gate run `43079260528` failed before steps/logs (`BlobNotFound`); no test-level diagnosis or pass.
+- PR #363 last checked head `acdfeef4e4baf99251e4768bbbc808fabab4f130`, base `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`, OPEN / DRAFT / HOLD. Exact-head run `43120106137` / job `130858118105` failed before steps (`steps=null`); logs `BlobNotFound`; one annotation could not be retrieved. No test-level diagnosis.
+- Vercel Preview deployment `dpl_CcBtjR4TRcqJd9pNwSZTvkgS2LHA` is READY on that exact PR head. The current documentation update creates a new head; re-fetch its checks. Preview does not replace CI or Production.
+- PR #361/#362/#354 are merged. #358/#359 remain overlapping unmerged Drafts; #362 fixes their guest-entry test helper, but unified storage implementation is still not built. #364 remains Draft with unresolved no-steps CI; PR #2 is 115 ahead / 469 behind and must not merge wholesale.
+- Production sync flags were observed true; do not change them without explicit owner approval.
+- Google AI Studio synchronization itself is NOT VERIFIED.
+- Seerah remains a planned continuous book (parts → chapters → narrative scenes), with claim-level sources and optional contextual aids. See Seerah §§16–17 and UX §§6–7.
+
+
+---
+## Seerah API research — follow-up 2026-11-11
+
+- Read the actual Islamic Network People/Events OpenAPI JSON. People records support language-keyed biographies, dates, person type, linked event/quote/story aggregates and related people; Arabic may be absent per record. Events is calendar-oriented and uses Hijri month/day anniversaries distinct from the optional historical year; do not treat it as a complete chronological Seerah source.
+- SeerahBook is a read-only graph with per-IP limits and provenance, but its content is based on a specific lecture series; its own About page labels approximate/disputed/weak reports and possible dramatized wording. Never present reconstructed wording as verbatim quotation.
+- Dorar's official API terms prohibit bulk download/republication, require attribution + clickable source URL and server-side token, limit cache to 24–48h, 60 req/min, and require approval/preview review. It cannot be used as a permanent offline corpus.
+- WIRD should publish from its own reviewed/versioned Seerah Content Registry; APIs are discovery/verification adapters only until rights for offline/republication are confirmed.
+- Read `docs/SEERAH_LEARNING_PLAN_AR.md` section 14 and `docs/DEVELOPMENT_ROADMAP.md` before implementing.
+- CI retry evidence for previous PR #363 head: run `43051925917` failed with no recorded steps/logs; rerun job `130632989788` failed the same way. Do not treat as test-level failure or pass. Re-fetch the new PR head and exact-head gate.
+- No runtime integration, API content ingestion, secrets, Firebase changes, production changes or deployment was performed.
+
+---
+
+# Follow-up handoff — 2026-11-11 (Seerah learning roadmap)
+
+> This section supersedes earlier status snapshots only for the new Seerah feature direction. Re-fetch live repository/PR/CI/deployment state before acting.
+
+- New specialist plan: `docs/SEERAH_LEARNING_PLAN_AR.md`.
+- Product priority: Quran memorization/revision remains first; Seerah of the Prophet ﷺ and Companions is the second core learning feature.
+- The planned experience is a connected historical book (parts → linked chapters → narrative scenes). Optional people/place cards, sourced maps and timeline, reflection prompts, and chapter/part comprehension checks support the story without interrupting continuous reading. Save reading position and content version locally; offline access applies only to approved content.
+- API research is preliminary: SeerahBook (read-only people/events/place graph, based on a specific lecture series), Dorar Historical Encyclopedia API (manual approval and bearer token), and Islamic Network People/Events (Early Access). No provider is approved or integrated.
+- Do not ingest/publish API data automatically. Every claim and quiz item needs source references and editorial review; no AI-authored historical/religious content, no unlicensed book reproduction, and no depictions of the Prophet ﷺ or Companions.
+- Read `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/SEERAH_LEARNING_PLAN_AR.md` before planning this feature.
+- Documentation-only changes are on PR #363 branch `docs/wird-docs-roadmap-reconciled-20261111`; exact current head and CI must be fetched before any merge decision. Production and Google AI Studio sync are not proven by these commits.
+- No runtime code, Firebase/Firestore, production data/settings, secrets, sync flags, or deployment configuration changed.
+
+---
+
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11 16:30 +02:00)
+
+Repository: `xm8eslam-stack/WIRD-APP`; source branch expected: `main`.
+Latest main SHA: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+PR #362 merged (`cfe9458e55bd4e66a51e57ce5a5c16e83b65becd`): guest-entry hydration test helper.
+PR #361 merged (`2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`): EveryAyah stays stream-only; legacy cached entries pruned.
+PR #360 closed as superseded; replacement docs PR #363 remains Draft. Its first Quality Gate run and rerun failed before job steps/logs appeared; do not treat as passed.
+PR #356 closed as superseded; pure range planner is already in main from #355; unique activity cutover protocol was preserved in the sync design document.
+PR #358/#359 remain unmerged and overlap in manifest responsibilities. Follow `docs/offline/OFFLINE_AUDIO_STORAGE_CONTRACT.md`; do not merge either unchanged.
+Production source SHA/live smoke and Google AI Studio sync remain NOT VERIFIED.
+
+> Read `AGENTS.md`, then `docs/CONTINUE_HERE.md`, `docs/DEVELOPMENT_ROADMAP.md`, and `docs/DOCUMENTATION_CATALOG.md` before making changes.
+
+---
+## PR #363 — الحالة الحية
+
+- PR #363 مفتوح كـ Draft على الفرع `docs/wird-docs-roadmap-reconciled-20261111`، مبني على main الحالي `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+- أول Quality Gate run `43039009676` فشل على job واحد؛ إعادة التشغيل attempt 2 انتهت بالفشل خلال ثوانٍ دون أي job steps أو logs متاحة. هذا ليس نجاحًا ولا فشل اختبار موثقًا؛ CI غير محسوم.
+- لا تدمج حتى يعمل Quality Gate على الرأس النهائي وتظهر كل خطوات الاختبار.
+
+---
+# WIRD — أحدث حالة موثقة
+
+آخر تحقق من GitHub: 2026-11-11 16:15 +02:00
+آخر main: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe`.
+PR #362 مدمج: `cfe9458e55bd4e66a51e57ce5a5c16e83b65becd` — إصلاح انتظار guest-entry hydration، Quality Gate PASS.
+PR #361 مدمج: `2c9aa9722592ae7f9f0f317cc15cf9fe6ffd6cfe` — EveryAyah stream-only مع تنظيف cache قديم، Quality Gate PASS.
+PR #360 القديم فشل في check واحد، وإعادة التشغيل فشلت دون تسجيل خطوات. أُعيد بناء فرع الوثائق فوق main الحالي مع الاحتفاظ بتعديل حقوق EveryAyah؛ هذه النسخة الجديدة تحتاج Quality Gate على رأسها النهائي.
+PR #358 و#359 ما زالا متداخلين في ملكية manifest لتخزين الصوت؛ لا تدمجهما قبل عقد تخزين موحد.
+PR #356 يحتاج مراجعة diff مقابل مركز الوثائق الحالي.
+Production source SHA وlive smoke ومزامنة Google AI Studio: NOT VERIFIED.
+
+هذه الحالة تتقدم على أي لقطة تاريخية أدناه. المصدر الحي للمهام هو هذا الملف؛ لا تعتمد حالات PR قديمة دون إعادة جلب GitHub.
+
+---
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11 15:52 +02:00)
+
+> Read `AGENTS.md`, then [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md), and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). This is a documentation handoff, not proof that Google AI Studio has synchronized.
+
+- Repository: `xm8eslam-stack/WIRD-APP`; expected source branch: `main`.
+- Latest main SHA observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`.
+- #362 exact-head Quality Gate PASS (`e2079734a0d150c1046307611a2b28346fdcdb1d)); #361 PASS (`3008c4788caba61930be008e3cb40dcf52cfd78f`).
+- #360 exact-head run `43030878508` failed only at Desktop/Mobile Playwright smoke; #358/#359/#356 also have Playwright smoke failures and remain Draft. Check [CONTINUE_HERE](../CONTINUE_HERE.md) before action.
+- #358/#359 are competing/overlapping offline audio manifest designs; do not combine blindly.
+- Vercel status on main is not Production proof. Production source SHA, live smoke, and AI Studio synchronization are NOT VERIFIED.
+- Do not alter secrets, Production settings, Firebase rules/data, or sync flags.
+
+---
+
+# GOOGLE AI STUDIO — Latest handoff (2026-11-11)
+
+> Start with [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md), then [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md) and [`docs/DOCUMENTATION_CATALOG.md`](../DOCUMENTATION_CATALOG.md). Older notes below are historical snapshots.
+
+- Repository: `xm8eslam-stack/WIRD-APP`; Google AI Studio is expected to use branch `main`.
+- Latest main SHA directly observed: `8dd21522430cc014db4eb5da8437f89c42f190f9`; PR #353 merged.
+- PR #353 exact-head Quality Gate run `43028294037` passed; a separate post-merge main-only run was not observed in this review.
+- GitHub Vercel status on main SHA reports success; Production source SHA and live smoke remain unverified.
+- Active PRs at review: #360 documentation consolidation (latest run `43030765045` pending), #359 offline audio manifest (run `43029617572` in progress), #358 offline download job/item store (run `43028986222` passed), and #356 sync documentation update (run `43029328133` passed). Re-fetch exact checks before continuing.
+- #358 models persistent download jobs and verified ayah items; #359 models verified-file metadata alongside Cache Storage. Do not merge both implementations without a unified storage contract.
+- No secrets, production variables, Firestore data/rules, sync flags, or deployment settings were changed.
+
+## Instructions for the next session
+1. Read root `AGENTS.md`, then `docs/CONTINUE_HERE.md`.
+2. Fetch the latest main SHA, PRs, exact-head Quality Gates, and deployment evidence.
+3. Continue the highest-priority unblocked work; do not repeat merged work.
+4. Keep implementation on feature branches and record exact test evidence.
+5. Leave owner-only production/device steps until the end.
+
+---
+
+
 ### GOOGLE AI STUDIO HANDOFF
 
 
@@ -117,3 +260,10 @@ Next: implement the pure activity-event reducer and its migration/replay tests o
 - Offline package currently downloads same-origin app JS/CSS and related approved static assets only after explicit user action. Audio caching is opportunistic and bounded (20 URLs per message; 40 entries retained); no full-Quran audio download manager or complete offline tafsir/API/Firebase availability is claimed.
 - Ruqyah proxy `api/ruqyah.ts` uses `process.env.ISLAMICAPI_API_KEY`, accepts only the allowlisted `instant` + `from-quran` programs, and returns sanitized numeric Quran coordinates. Quran text must continue to come from WIRD's verified local corpus. Full Brief/Medium/Long recordings remain disabled pending exact-content and redistribution-rights verification.
 - Release and live-verification status remains bounded: GitHub CI, Vercel READY, owner-reported sync experience, and live smoke are separate evidence categories. Do not change production sync flags, Vercel protection, secrets, Firebase rules/schema, or user data without explicit owner approval.
+
+
+## Seerah narrative direction — 2026-11-11
+The owner clarified that Seerah must feel like one compelling, complete story, not a sequence of standalone lessons. Treat the experience as an interactive historical book: major parts → connected chapters → narrative scenes. Reading continuity is primary; optional maps, timelines, people/place context, reflection prompts and chapter/part quizzes support the story without interrupting it. Preserve source-level provenance and editorial review. Never invent dialogue, inner thoughts, scenes, or direct quotations; distinguish disputed/weak reports and approximate dates. See docs/SEERAH_LEARNING_PLAN_AR.md §16. Acceptance requires a real multi-scene chapter in a continuous reader with saved reading position; a lesson list or quiz grid is not sufficient. No runtime implementation or production changes are authorized by this documentation update.
+
+## Seerah chapter production contract — 2026-11-11
+The Seerah feature is an immersive historical book, not standalone lessons. See `docs/SEERAH_LEARNING_PLAN_AR.md` §§16–17 for the product contract, reader experience, detailed entities, claim-to-body-block mapping, editorial workflow and opening chapter research outline. Each narrative body block must map to atomic claims and traceable source references. Required review gates: scientific/source review, Arabic language review, narrative continuity review, and UX/accessibility review. The proposed opening chapter outline is a research scaffold only, not approved historical content. No API ingestion, AI-generated published history, runtime implementation, Firebase or production changes are authorized by this documentation direction. Acceptance requires a connected multi-scene chapter in a continuous reader with saved progress; a lesson list or quiz grid is insufficient.

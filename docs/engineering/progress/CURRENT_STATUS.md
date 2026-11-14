@@ -1,3 +1,11 @@
+> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [CONTINUE_HERE.md](../../CONTINUE_HERE.md); mandatory reconciliation rules are in [CHANGE_CONTROL.md](../../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
+
+> **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
+
+> **Historical status file — updated 2026-11-11:** This document preserves earlier engineering snapshots; its old status tables and SHAs are not current. Current operational state: [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md). Unified roadmap: [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md). Detailed history: [`WORK_LOG.md`](./WORK_LOG.md). Re-fetch GitHub before using any old “next action”.
+
+---
+
 # WIRD — Current Engineering Status
 
 **Updated:** 2026-11-07 after PR #129 and PR #130 merges  

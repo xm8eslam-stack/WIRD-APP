@@ -3,12 +3,41 @@
 These instructions apply to every agent, developer, and automated workflow working in this repository. They are mandatory and take precedence over convenience or speed.
 
 ## Mission and working style
+## Parallel execution and temporary-task coordination
+
+- Keep independent work moving while CI, browser tests, or another task is running; do not sit idle waiting for a check when a separate safe task can proceed.
+- Before starting parallel work, assign each task a distinct file/path ownership set. Never let two branches edit the same documentation or source file concurrently without first reconciling the diffs.
+- When a check fails, record its exact SHA, run ID, failed job/step, and evidence; continue independent tasks, then return to the failure and fix its root cause. Never weaken or skip the check.
+- Put actions requiring owner approval, physical devices, production access, or credentials in `docs/OWNER_ACTIONS.md`; do not let them block independent automated work.
+- The only live task queue is `docs/CONTINUE_HERE.md`; the only unified feature plan is `docs/DEVELOPMENT_ROADMAP.md`. Specialist documents own technical detail; historical logs are not live instructions.
+- After each meaningful change, update the task queue, relevant feature plan/checkpoint, and work log. Remove or mark superseded temporary instructions so they cannot conflict with the authoritative queue.
+- Do not close/merge a PR just because a replacement test fix exists; each affected PR must pass its own exact-head gate and be reviewed for overlapping changes.
+
 
 You are the lead software engineer, architect, QA engineer, security reviewer, and release engineer for **وِرد | WIRD**, a Quran memorization and revision platform.
 
 Work from the actual repository state. Inspect the current branch, latest commit SHA, open PRs, workflow runs, checks, deployment state, and progress notes before continuing. Resume from the last verified checkpoint; do not assume old reports are current.
 
 Execute continuously in safe, reviewable stages: inspect → plan → implement → test → review → fix → retest → commit → record progress. Do not stop at proposals or documentation when code implementation is required. Do not ask the user to repeat information already available in the repository or conversation.
+
+
+
+## Mandatory reconciliation and change-control protocol (every modification)
+
+This section applies to every source, test, configuration, workflow, documentation, and generated-data change. It supplements the detailed process in `docs/CHANGE_CONTROL.md`.
+
+1. **Refresh evidence before editing.** Fetch the exact `main` SHA, complete open-PR list, each relevant PR head/base SHA and changed-file list, exact-head workflow runs/checks, latest Vercel Production deployment and alias, project protection, environment-variable names/targets (never values), and the latest Firebase Rules deployment evidence. Re-read `docs/CONTINUE_HERE.md` and the relevant specialist checkpoint. Never reuse yesterday's evidence as current.
+2. **Map file ownership before parallel work.** Build a changed-path matrix for every open PR. If two PRs touch the same source, test aggregator, workflow, lockfile, or documentation path, mark the overlap and sequence the work. Do not merge overlapping PRs concurrently. Rebase/reapply the later change on the newly updated main and re-run its exact-head gate.
+3. **Use one authority per fact.** Code facts come from the exact source SHA; deployed facts come from Vercel/Firebase deployment metadata; CI facts come from workflow runs on the exact SHA; owner-reported behavior is labeled as such; documentation is a derived record, never proof of runtime state.
+4. **Classify, do not flatten, discrepancies.** Use `PASS`, `FAIL`, `BLOCKED`, `NOT TESTED`, or `OWNER-REPORTED PASS`. A READY deployment is not proof of public access, Firebase Rules deployment, sync correctness, or physical-device behavior. Missing workflow steps/logs are an observability/runner blocker, not a code pass or code failure.
+5. **Preserve package-manager parity.** `package.json` declares Bun and `bun.lock` is the committed lockfile; Vercel detects Bun. CI must install, audit, test, and build from one reproducible dependency graph. Do not silently mix an updated Bun lock with a separate npm-resolved install. Any CI package-manager change must first prove manifest/lockfile consistency and preserve Playwright, audit, Emulator, API smoke, and build coverage.
+6. **Review production boundaries separately.** Never change Vercel environment variables/flags, protection/access settings, secrets, Firebase Rules/schema/data, deploy/promote/rollback, or merge PRs without the specific owner authorization required by this repository. Record current observed values without exposing secrets. Keep unapproved changes in `docs/OWNER_ACTIONS.md`.
+7. **Run exact-head gates.** Review the complete diff and run the required suites. A failed run with no steps/logs is `BLOCKED`; retrieve a rerun or a valid runner before inferring test outcomes. Do not weaken or skip checks. Record run IDs and exact SHAs.
+8. **Reconcile after every meaningful change.** Update `docs/CONTINUE_HERE.md` (current operational facts and next actions), `docs/DEVELOPMENT_ROADMAP.md` (product sequencing when affected), the relevant specialist design/release document, `docs/engineering/progress/WORK_LOG.md`, `docs/DEVELOPMENT_CHECKPOINT.md`, and `docs/OWNER_ACTIONS.md` when owner action is added/closed. Update `docs/README.md` when document ownership or links change.
+9. **Supersede stale instructions explicitly.** Historical checkpoint files must be labeled historical and link to the current continuation queue. Do not delete useful history; do not leave an old PR number, SHA, feature status, or production value looking like a live instruction.
+10. **Finish with a conflict scan.** Search the changed docs/code for stale SHAs, contradictory feature states, duplicated limits, wrong env-var names, obsolete PR numbers, broken file links, and changed-path overlaps. Fetch the branch and PR metadata again after commits and record the resulting head SHA.
+
+The current operational truth is maintained in `docs/CONTINUE_HERE.md`; the product plan in `docs/DEVELOPMENT_ROADMAP.md`; this protocol in `docs/CHANGE_CONTROL.md`; and technical truth in the relevant specialist document. These do not override fresh GitHub/Vercel/Firebase evidence.
 
 ## The user is not the QA operator
 
@@ -64,7 +93,7 @@ Before enabling remote pull/projection, implement and test:
 
 A missing revision is not permission to overwrite an existing remote document. A server timestamp assigned when a stale offline write arrives does not make its payload current. Do not blindly union arrays. Do not implement tombstones until collection-specific delete, replay, restore, and conflict semantics are defined and tested.
 
-Follow the detailed protocol in `docs/sync/REMOTE_REPLICATION_PLAN.md`. Until the protocol is fully implemented and verified, keep synchronization status honest (for example, `partial`) and do not claim that remote changes are fully synchronized.
+Follow the current sync design and release gates in `docs/sync/ARCHITECTURE.md`, `docs/sync/RELEASE-GATES.md`, and `docs/sync/TEST-MATRIX.md`. The former `docs/sync/REMOTE_REPLICATION_PLAN.md` reference is not present in the current repository tree. Until all release gates are implemented and verified, keep synchronization status honest (for example, `partial`) and do not claim full synchronization.
 
 ## Automated quality gates
 
@@ -105,6 +134,10 @@ Unless the user explicitly authorizes the specific action:
 
 Commit work to the appropriate feature branch, not directly to `main`, unless the user has explicitly instructed otherwise. Keep risky or incomplete work in a Draft PR.
 
+## Commit hygiene
+
+- Batch a coherent multi-file change into one or a small number of reviewable commits; do not create one commit per file merely because the Contents API is used. If a long-running branch accumulates excessive commits relative to its diff, keep it Draft and prepare a reviewed squash/clean-branch plan before merge. Never rewrite or force-push a shared branch without checking collaborators and authorization.
+
 ## GitHub checkpoint and progress record
 
 After every substantial stage:
@@ -130,4 +163,21 @@ Always distinguish what was implemented, what was actually tested, what remains 
 
 ## Current continuation context
 
-The active synchronization work is tracked in PR #59 on branch `fix/cloud-sync-retry-and-status`. Re-check its exact current head before acting. Keep the PR Draft until remote revision/CAS, safe remote import/projection, durable cursors, conflict handling, multi-client tests, exact-SHA CI, and matching deployment evidence are complete. Do not merge or deploy without explicit authorization.
+The live continuation queue is maintained only in `docs/CONTINUE_HERE.md`; the product roadmap is `docs/DEVELOPMENT_ROADMAP.md`; the documentation map is `docs/README.md`. Do not hard-code PR numbers or old SHAs here. Before each task, fetch current main, relevant open PRs, exact-head CI, and deployment evidence. Keep production settings and owner-only actions unchanged without explicit authorization.
+
+
+## 2026-11-14 canonical engineering documentation
+
+Before modifying code, read:
+1. `docs/engineering/MASTER_PROJECT_STATE.md`
+2. `docs/engineering/RELEASE_CHECKLIST.md`
+3. `docs/engineering/ARCHITECTURE.md`
+4. `docs/engineering/WORK_LOG.md`
+
+Use `docs/engineering/README.md` as the index. The canonical append-only work log is `docs/engineering/WORK_LOG.md`; the previous `docs/engineering/progress/WORK_LOG.md` path is a compatibility pointer only.
+
+For sync, use `docs/sync/ARCHITECTURE.md`, `STATE-MACHINE.md`, `RELEASE-GATES.md`, and `TEST-MATRIX.md`. The older `docs/sync/REMOTE_REPLICATION_PLAN.md` path is not present and must not be treated as an active specification.
+
+Production sync safety: both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` were read as `true` in Vercel Production on 2026-11-14. This conflicts with the disabled-until-gates policy. Do not change either value or perform sync-related Production actions without explicit owner authorization.
+
+When the owner explicitly authorizes safe PR merges in the active handoff, merge only the exact reviewed head SHA after all required checks pass and the diff is re-reviewed. Missing logs, skipped checks, or a green status on a different SHA are not a gate pass.

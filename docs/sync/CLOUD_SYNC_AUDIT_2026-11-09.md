@@ -1,3 +1,19 @@
+> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [CONTINUE_HERE.md](../CONTINUE_HERE.md); mandatory reconciliation rules are in [CHANGE_CONTROL.md](../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
+
+# Latest live sync / release checkpoint — 2026-11-12
+
+- Current main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY and built from the exact current main SHA. This is not a live sync or browser smoke test.
+- Main Quality Gate run `43079260528` and PR #363 exact-head run `43057118522` both ended before any job steps were recorded; job log downloads returned `BlobNotFound`. Neither is evidence of an actual test failure or a successful Quality Gate.
+- PR #363 has been reconciled with current main in merge commit `bd383b2733af8dd95ce519d8867a256ef1cf8628`; GitHub reports mergeable=true. Last checked head `d79805b44b26f4ea73e77ffac21503255983b9c1` received run `43117295374`, which failed before steps/logs (`BlobNotFound`); Vercel was pending. Two broken relative links were corrected and a second scan found zero broken links; this follow-up changes the head, so the final gate must be re-fetched.
+- Read-only Vercel environment inventory confirms Production values `true` for `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED`. No setting was changed. Owner decision is required before disabling/enabling either flag.
+- PR #361/#362/#354 are merged and included in main. No new sync runtime code was merged in this checkpoint; event-ledger/cutover remains design-only.
+- PR #364 is an Advisor-only security extraction from old PR #2; it does not change sync behavior. Its run `43117641418` also failed before steps/logs (`BlobNotFound`), while its Vercel Preview deployment succeeded.
+- Google AI Studio sync, authenticated two-device sync, conflict/cutover production smoke, and live browser smoke are NOT VERIFIED.
+
+> This live checkpoint supersedes all older main SHA and deployment references in the historical audit below.
+
+---
 ## Current operational checkpoint — 2026-11-11 (daily engineering review)
 
 This checkpoint supersedes the 2026-11-10 checkpoint and older statements below wherever they conflict. The older audit remains as historical evidence. Review performed against the current `main` pointer, current source blobs, PR metadata, GitHub checks, and the Vercel Production deployment/environment inventory. No application code, production data, secrets, environment settings, or Firestore Rules were changed.

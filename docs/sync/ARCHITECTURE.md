@@ -1,3 +1,17 @@
+# Current architecture evidence overlay — 2026-11-13
+
+> The architecture/design below remains technical reference. Its dated operational claims are historical; current runtime and release state is maintained in `docs/CONTINUE_HERE.md` and `docs/sync/RELEASE-GATES.md`.
+
+- Current main SHA: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production deployment `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is READY on the exact same SHA.
+- Both Production sync flags are currently true; full certification remains HOLD. Do not toggle without owner approval.
+- Production Rules deployment and direct Google AI Studio sync were not verified in the 2026-11-13 audit.
+- CI runs without steps/logs are BLOCKED observability, not code failure/pass.
+
+---
+
+> **تنبيه حالة الوثيقة — 2026-11-11:** هذا الملف مرجع تخصصي/تاريخي لتصميم المجال وسجل أدلته، وليس قائمة المهام الحية. المصدر الوحيد للحالة والخطوة التالية هو [`docs/CONTINUE_HERE.md`](../CONTINUE_HERE.md) (اضبط مسار الرابط النسبي حسب مكان الملف)، والخطة الموحدة في [`docs/DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md). أعد التحقق من SHA وPR وCI وProduction قبل استخدام أي وصف قديم بأنه "حالي". لا تحذف التاريخ أو الأدلة السابقة.
+
 # CURRENT ARCHITECTURE STATUS — 2026-11-07 (main at PR #158)
 
 This section supersedes older status statements below; the detailed historical entries remain as implementation history.
@@ -198,3 +212,147 @@ This addendum supersedes older release-state statements above where they conflic
 - This is identity normalization only. It does not merge concurrent `weakVerses/snapshot` full-snapshot writes, does not make `mistakeCount` additive across devices, and does not prevent a stale active snapshot from resurrecting a resolved verse.
 - Weak-verse remote projection and conflict resolution must therefore remain fail-closed until a durable event/tombstone model exists. Do not union arrays blindly or sum counters.
 - Activity remains a per-day `DailyLog` aggregate snapshot. Session completion already has a stable mutation ID and `session.completed` domain event, but the local activity projection still adds into one date bucket. A safe multi-device design needs immutable per-session event identity, deduplicated materialization, legacy baseline migration, and rollback/recovery coverage before changing the projection.
+
+
+---
+
+## Engine plan archive scaling and chunked Firestore publication — design review 2026-11-12
+
+**Status:** architecture decision proposal only. No chunked runtime implementation or Firestore schema/rule deployment is included in this documentation update.
+
+### 1. Verified current constraints
+
+- `StorageService.saveEnginePlans` rejects arrays longer than 100 and stores the full JSON archive through the synchronous `localStorage` adapter. Removing the count check alone would expose the browser's localStorage quota and would not make storage adaptive.
+- `persistEnginePlansSnapshot` journals the complete `{ records: plans }` payload. The current main journal has a 450,000-byte engine-plan mutation budget; PR #367 proposes a shared 800,000-byte per-mutation budget across journal/outbox/writer. That PR does not implement chunking.
+- `localSyncOutbox` stores its complete serialized state through StorageService and currently has a 1,500,000-byte aggregate cap. A larger individual payload can still exhaust the aggregate outbox budget when other pending mutations exist.
+- `revisionedRemoteMutation` writes one state document and one immutable event containing the payload. The event ledger and state document therefore both carry the current full snapshot.
+- Firestore documents have a hard size ceiling; raising client-side byte limits cannot bypass it. The existing Firestore rules only allow the current top-level user collection/document shape and do not yet authorize a versioned chunk subcollection.
+- `remoteInboxProjector` expects the existing collection payload shape and has no manifest materialization step. An old client cannot safely project a new manifest-shaped enginePlans payload.
+
+### 2. Required end-to-end target
+
+#### Local archive
+
+1. Add a versioned `enginePlanSnapshots` object store to the durable IndexedDB journal database (or prove a separate database can preserve the required atomicity; same-database transaction is preferred).
+2. Store large plan snapshots as immutable local versions with:
+   - `snapshotId` / `versionId`
+   - schema version and plan identity
+   - UTF-8 serialized byte length
+   - chunk count and per-chunk byte length
+   - per-chunk SHA-256 and full-snapshot digest
+   - creation time and storage-scope UID
+3. Keep small plans on the existing path when safe; large plans use local chunks. Do not retain the full large snapshot a second time in the Outbox.
+4. Extend the journal API so the snapshot version and its small outbox manifest/reference are committed atomically. A failed transaction must leave the previous active snapshot and outbox untouched.
+5. Migrate the existing localStorage archive losslessly: copy to IndexedDB, read back and verify the full digest, then switch the active pointer. Keep the old value until verification passes.
+6. Because `StorageService.getEnginePlans()` is synchronous today, do not simply change its backing store and leave callers unaware. Either hydrate a verified in-memory read cache before the app exposes plan-dependent screens, or migrate consumers to an explicitly asynchronous repository. The first render must not mistake “IndexedDB not loaded yet” for “the user has no plans”.
+
+#### Remote Firestore chunks
+
+1. Use a dedicated per-user immutable version path, e.g. `users/{uid}/enginePlanVersions/{versionId}/chunks/{chunkId}`. Final collection/path names must be confirmed against the current rules and migration policy before coding.
+2. Keep each chunk comfortably below the Firestore per-document ceiling; an initial target around 256 KiB of serialized UTF-8 content is proposed, not a final measured guarantee.
+3. Split only at UTF-8 code-point boundaries. Never slice JavaScript strings by UTF-16 index and assume the byte budget is preserved.
+4. Use stable version/chunk identities so retrying the same mutation is idempotent. A new content version must never overwrite chunks belonging to the previous version.
+5. Each chunk record must bind UID, plan identity, version, index/count, byte length, schema version, and SHA-256. Reject a duplicate chunk ID if any immutable field or digest differs.
+6. Upload all chunks first. Read them back and verify count, ordering, UTF-8 byte lengths, each digest, and the full reconstructed snapshot digest.
+7. Only after complete verification, publish a small manifest pointer through the existing revisioned `enginePlans` event/state transaction. The manifest pointer is the atomic visibility boundary.
+8. Never delete the prior valid version as part of publication. Garbage collection is deferred until a separately verified device-acknowledgement/retention policy exists; do not infer that all devices have received a version merely because one device uploaded it.
+
+#### Remote import and projection
+
+1. A receiving client reads the manifest event and downloads the exact referenced immutable chunks.
+2. Verify the entire set before writing a materialized event into the durable local inbox.
+3. If any chunk is missing, malformed, out of order, too large, or fails its digest, preserve the event and both cursors; do not partially update the local plan archive.
+4. Materialize the verified snapshot into the local IndexedDB archive, then atomically advance the local active-version pointer and projection cursor.
+5. Keep pending local mutations and conflict archives intact. A remote manifest must never overwrite unsynced local work.
+6. An old client that does not advertise manifest support must not receive or project a manifest payload. Add explicit capability/version negotiation before rollout; do not rely on “everyone updates quickly”.
+
+### 3. Quota and entitlement model
+
+- “Unlimited” cannot mean unlimited physical bytes. Browser IndexedDB quota, device eviction, Firestore document/write/storage limits, account usage, and billing remain real constraints.
+- Remove arbitrary hard-coded plan-count limits only after the IndexedDB archive and migration path are ready.
+- Keep three limits separate: per-chunk Firestore document budget, per-mutation/outbox metadata budget, and aggregate per-user storage entitlement.
+- No verified subscription/entitlement source or plan tiers are established in this repository review. Do not invent quotas or label any user as unlimited. Define a server-trusted `getStorageEntitlement(uid)` policy only after the product's actual plans and billing rules are specified.
+- Show the user an honest usage estimate and a clear “storage unavailable/quota reached” state. Never delete the last valid snapshot to make room.
+
+### 4. Firestore rules and rollout boundary
+
+- A nested chunk path requires explicit owner-only read/create rules and immutable-update/delete denial or a separately reviewed retention rule. The existing broad top-level user match does not automatically authorize this nested path.
+- Add emulator tests for cross-UID reads/writes, unverified users, invalid chunk fields, duplicate IDs, updates, deletes, manifest publication before all chunks, and old-client compatibility.
+- Production Firestore Rules deployment, schema changes, and sync feature-flag changes remain owner-approved actions. This design does not authorize them.
+- The manifest protocol must remain feature-gated until all clients that can receive the event understand it and the production rollout/rollback plan is approved.
+
+### 5. Required test matrix
+
+- Small inline snapshot remains backward compatible.
+- Multi-chunk snapshots at boundary sizes (one byte below/at/above chunk target and multiple chunks).
+- Arabic text, emoji, combining marks, and mixed scripts split/reassemble byte-for-byte.
+- Duplicate upload, interrupted upload, missing chunk, reordered chunk, altered byte length, altered digest, and full digest mismatch.
+- Manifest pointer never publishes before all chunks verify.
+- Failed local migration leaves the original localStorage value intact.
+- Crash between local chunk writes and outbox commit; crash after chunk upload but before manifest publication; crash after publication but before local acknowledgement.
+- Two devices with concurrent edits, stale revision, pending local mutation, account switch, and old client without manifest capability.
+- IndexedDB quota exhaustion, Firestore permission/quota errors, outbox near aggregate cap, and retry after connectivity returns.
+- No chunk garbage collection while any supported device may still need the previous version.
+
+### 6. Implementation sequence
+
+1. Complete PR #367's interim limit alignment only after exact-head CI becomes inspectable and passes.
+2. Build and test the local IndexedDB archive/migration layer independently of Firestore.
+3. Integrate atomic snapshot-reference journaling and local projection.
+4. Add the immutable Firestore chunk writer and Emulator rules in a separate reviewed change.
+5. Add manifest materialization to the remote inbox/projector with old-client capability gating.
+6. Run multi-device and offline recovery gates before any production rollout.
+
+**Do not start by deleting the 100-plan guard or increasing byte constants again.** The safe next coding slice is the local archive repository plus a lossless migration/hydration strategy, after the existing read/write call sites and test fixtures are mapped.
+
+
+## Engine Plans archive migration — call-site audit addendum (2026-11-12)
+
+The current main-branch inventory confirms that the migration boundary is wider than `StorageService.getEnginePlans/saveEnginePlans`:
+
+- UI state initialization and refresh are in `src/App.tsx`; the planning wizard receives the array through props and emits `onUpdateEnginePlans` rather than owning persistence.
+- Normal writes go through `persistEnginePlansSnapshot` in `journaledSnapshotService`; session completion can include an optional enginePlans snapshot through `sessionPersistence`.
+- Backup validation caps enginePlans at 100; journal-first import creates one `enginePlans/snapshot` operation. Legacy `StorageService.exportBackup/importBackup` still directly serializes/writes the localStorage key and must remain covered until all callers and compatibility paths are accounted for.
+- Reset emits an empty enginePlans snapshot. Projection writes through `saveEnginePlans`, while `matchesJournalProjection` reads the legacy key directly. Clear/reset/recovery key lists also include ENGINE_PLANS.
+- `cloudSyncCoordinator`, `revisionedRemoteMutation`, `remoteInboxProjector`, `indexedDbSyncJournal`, and `localSyncOutbox` all recognize the enginePlans collection. Receiver materialization and cursor ordering therefore form part of the archive migration, not an optional later integration.
+- Existing test coverage spans `storageReliability`, `backupValidation`, `journaledSnapshotService`, `backupPersistence`, `sessionPersistence`, `indexedDbSyncJournal`, and `localSyncOutbox` suites. Inventory is still incomplete for every indirect UI/legacy backup caller and all test fixtures.
+
+### Required migration API and invariants
+
+1. IndexedDB is the canonical durable archive; use a versioned envelope with schema version, monotonically increasing revision/generation, record count, stable content digest, and validated records. Avoid one unbounded localStorage JSON string as the canonical copy.
+2. Because IndexedDB is asynchronous, startup must expose a hydration barrier before App state, backup export, planning, or sync projection can read the archive. No consumer may silently fall back to an empty array while hydration is pending or failed.
+3. Migration is copy-verify-mark, not move: validate legacy records, write the new archive transactionally, read it back, verify IDs/count/digest, then persist a migration marker. Preserve the old localStorage value read-only through at least one successful close/reopen cycle and a tested rollback window.
+4. Journal writes must reference the exact archive revision and expected base revision. If the archive transaction or journal/outbox commit fails, surface failure and do not advance remote cursors or claim success. Idempotent retries must not duplicate records.
+5. Backup export serializes a verified archive snapshot. Import validates the complete payload first, stages the new archive, commits atomically, and can restore the previous revision after quota/transaction failure. Reset must use the same transaction boundary.
+6. Remote snapshots larger than the safe inline mutation budget require immutable chunks plus a manifest. Upload and verify all chunks before publishing the manifest pointer. Receiver materializes and verifies the full archive before projection/cursor advancement.
+7. Capability negotiation is mandatory before sending manifest/chunk events to older clients. Firestore Rules, schema rollout, and feature flags remain separately owner-approved.
+8. Keep three independent budgets: chunk/document bytes, mutation/outbox metadata bytes, and real aggregate storage entitlement. No subscription tier or unlimited quota may be invented.
+
+### Gate before implementation
+Complete the remaining repository-wide scan for legacy backup/import/export callers and test fixtures; add a call-site inventory test or static guard where practical; then implement the local archive/hydration layer in isolation. Do not remove the 100-record guard or change remote byte budgets as a substitute for migration.
+
+
+## 2026-11-12 — Auth scope + backup UI audit addendum
+- `AuthGate` is the actual startup barrier: it sets a storage scope, replays journal projection for verified users, runs legacy portion migration, and only then mounts `App` after `readyScope` matches. Guest mode also passes through scoped-storage setup/migration. This is the safest integration point for awaiting Engine Plans archive hydration, but the order must be explicit: resolve scope → initialize per-scope IndexedDB archive → copy/verify legacy enginePlans → replay journal using archive-aware projection → migrate portions → mount App.
+- `StorageService.setStorageScope` is synchronous today. It resolves legacy unscoped localStorage keys, copies each key to a UID-prefixed destination, verifies copies, removes legacy source keys, and writes ownership marker with rollback. A future IndexedDB archive is not copied by this routine automatically; account/guest ownership choice and first-account migration must be extended to include the archive without making the existing synchronous scope switch falsely report success.
+- Per-account archive identity must use the resolved storage scope (e.g. `guest` or `user:<uid>`), never a global singleton store without UID partitioning. Account switching must invalidate stale in-memory hydrated snapshots and abort old-scope writes before mounting the new account.
+- Settings backup export is `SettingsView.handleExportBackup → StorageService.exportFullBackup()`; it is currently synchronous and reads `ENGINE_PLANS` directly from localStorage. After IndexedDB becomes canonical, export must become async or use an explicit verified archive snapshot API, and the UI must await it and show failure rather than exporting a stale compatibility copy.
+- Settings backup import already uses `importBackupFile → importBackupJournaled`; it validates and commits through the journal. Keep this as the primary UI import path. `StorageService.importBackup` remains a legacy direct-write API with rollback and is not the Settings UI path; search for all non-test callers before deprecating it.
+- Reset in Settings delegates to App's journaled reset path; preserve one logical transaction across Engine Plans archive and the other collections. The low-level `StorageService.resetAllData` is a legacy direct key deletion path and must not become the new canonical reset path.
+- Updated migration sequence: scope/ownership resolution → per-scope archive hydration/migration → journal replay/materialization → legacy portions migration → App mount. Backup export must read the canonical archive; backup import and reset must commit a new archive revision with journal/outbox consistency and rollback.
+
+
+## 2026-11-12 — UI consumer scan correction
+- Expanded the UI scan beyond `App.tsx`: `src/components/dashboard/DashboardView.tsx` calls `StorageService.getEnginePlans()` directly inside daily-session selection (line 73). This must be replaced by a hydrated `enginePlans` prop/state from App (or a shared async-ready store); otherwise the Dashboard could read a stale/empty compatibility key after IndexedDB cutover.
+- There are **two** UI backup-export entrypoints: `SettingsView.handleExportBackup` (line 165) and `ProgressAnalyticsView.handleExportBackup` (line 166). Both call synchronous `StorageService.exportFullBackup()`; both must switch to one async verified export API and handle errors/loading. This correction supersedes any earlier implication that Settings was the only export surface.
+- Both Settings and Progress Analytics import through `importBackupFile` (journal-first); Settings export is not journal-aware today. `StorageService.importBackup` remains the legacy direct localStorage writer and is covered by tests, but its full production caller scan is still required before deprecation.
+- App state is initialized from `getEnginePlans()`; Dashboard independently reads it; Planning UI consumes props and sends updates. These three paths need one hydrated source of truth and no synchronous fallback-to-empty during archive startup.
+- This is still a targeted source audit, not a claim that every one of the 159 TS/TSX files was exhaustively scanned. Continue checking the remaining UI/services for direct backup API calls and legacy archive access before implementation.
+
+
+## 2026-11-12 — PR #367 remote payload patch review
+- Reviewed the actual #367 patch (not just its title): it introduces `syncPayloadLimits.ts` and routes IndexedDB journal validation, local outbox validation, and `writeRevisionedRemoteMutation` through the same `getSyncMutationPayloadLimit` helper. Engine Plans and grouped transactions containing Engine Plans receive an 800,000-byte payload ceiling; ordinary collections retain 128,000 bytes.
+- The same patch updates conflict resolution payload checks and conflict snapshot retention sizing (`MAX_CONFLICT_SNAPSHOT_BYTES=1,700,000`, conflict count 29) to keep the aggregate conflict archive near the previous ceiling. It adds tests that exercise 700 KB local journal/outbox/conflict paths and pre-network Firestore writer rejection above the shared cap.
+- This is a fixed interim per-mutation cap, not adaptive storage entitlement, not archive chunking, and not a solution for the 100-plan guard or localStorage archive. Current main still has its older 128,000-byte remote writer validation; only the unmerged #367 branch contains the shared 800 KB implementation.
+- Do not raise the 800 KB value further. The long-term path remains local IndexedDB archive + verified manifest/chunks + receiver materialization/capability negotiation. Per-document envelope headroom and Firestore limits must be tested with actual serialized records, not only synthetic filler.
+- CI for #367's exact head remains unverified/failing without inspectable job steps from the prior audit; do not merge based on source review alone.

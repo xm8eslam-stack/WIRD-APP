@@ -173,3 +173,46 @@ Each run's complete job finished with conclusion `success`. The Quality Gate cov
 - `activityEvents` is still a daily aggregate snapshot. PR #325's base fingerprint blocks stale replacement but does not merge independent activity histories.
 - New design: `docs/sync/ACTIVITY_EVENT_PROJECTION_DESIGN.md`. No runtime sync code or Firestore Rules changed. Required before implementation: exact legacy baseline/cutover semantics, local calendar date/time-zone capture, idempotent event IDs, offline-device conflict preservation, and backup/restore compatibility.
 - Keep tombstones and whole-snapshot conflict choices fail-closed until collection-specific semantics and anti-resurrection tests pass.
+
+
+---
+
+## Verification addendum — 2026-11-14
+
+This addendum records observed execution only; it does not replace any required release gate.
+
+| Test group | Observed evidence | Status |
+|---|---|---|
+| Ruqyah API proxy/security | 20 isolated Node 26 tests | PASS |
+| Ruqyah view/audio-lock | 14 isolated Node 26 tests | PASS |
+| Long Ruqyah source fixture | Actual API handler processed all 171 public dataset entries; normalized all locators and stripped provider text | PASS |
+| Engine Plan archive codec | 6 isolated Node 26 tests | PASS |
+| Advisor history spoofing guard | 5 targeted source assertions | PASS |
+| GitHub Actions on PR #373 | Job failed before steps; `steps=null`, `logs_url=null`; retry repeated same state | BLOCKED |
+| GitHub Actions on PR #364 | Job failed before steps/logs | BLOCKED |
+| Full repository test suite | No complete local checkout/full-suite execution | NOT VERIFIED |
+| Firestore multi-client emulator suite | No current exact-head successful run observed | NOT VERIFIED |
+| Browser Playwright | Preview deployments protected by Vercel Deployment Protection | BLOCKED |
+| Physical-device restart/airplane-mode | Not executed | NOT VERIFIED |
+
+### Required sync scenarios still needing executable evidence
+
+- Two and three clients, same UID, simultaneous online edits to the same plan and different plans.
+- Offline edits on multiple clients followed by reconnect in both orders.
+- Duplicate event delivery and duplicate acknowledgement.
+- Server commit succeeds but client acknowledgement is lost; retry must not duplicate or lose the mutation.
+- Client restarts during upload, after server commit, during bootstrap, and during import.
+- Account switch during an in-flight read/write; no previous-UID data may be applied to the next UID.
+- Cursor pagination across a page boundary while new events arrive.
+- Equal client timestamps with different server-owned revisions.
+- Conflict deferral and later resolution without overwriting pending local data.
+- Corrupted remote chunk/manifest, missing chunk, stale manifest, and interrupted garbage collection.
+- Migration rollback preserving the original raw archive and recovery evidence.
+
+No Production sync flag may be enabled or altered as part of these tests. Both Production sync flags were read as `true`; explicit owner authorization is required before changing them.
+
+
+### Historical browser-smoke failure clarification — 2026-11-14
+
+PR #358 run `43030195498` and PR #359 run `43029617572` completed install, automated tests, Rules Emulator, TypeScript, production build, and server-startup smoke successfully, then failed the Desktop and mobile browser smoke step. The job log URL is unavailable, so the failing Playwright assertion cannot be recovered. These are actual observed browser-step failures; do not describe them as pre-step runner failures. Both PRs are superseded by #368.
+

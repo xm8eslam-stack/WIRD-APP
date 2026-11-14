@@ -1,3 +1,16 @@
+# Current operational clarification — 2026-11-13
+
+> This overlay resolves the historical contradiction between “flags enabled” and “activation gated”: current Production configuration is ON, while full release certification remains HOLD. These are different facts. Do not rewrite either as the other.
+
+- Current main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Production flags `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` are both `true` in Vercel.
+- Owner previously reported a successful authenticated two-device test; retain it as bounded OWNER-REPORTED PASS, not complete lifecycle certification.
+- Tombstone semantics, long-offline replay, crash recovery, account lifecycle/cross-tab stress, full conflict coverage and exact-main CI remain unresolved or unverified.
+- No flag changes were made. Any enable/disable decision requires specific owner approval.
+- See `docs/sync/RELEASE-GATES.md` for release status and `docs/CHANGE_CONTROL.md` for evidence rules.
+
+---
+
 # CURRENT CONFLICT AND PROJECTION STATE — 2026-11-10
 
 This current section supersedes older blanket statements about production activation and device verification below.

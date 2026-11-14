@@ -1,3 +1,36 @@
+# Current implementation status — 2026-11-13
+
+> This is the current branch-aware status. The original PR #355-only status below is historical and must not be read as the latest work.
+
+- Main does not yet contain a complete persistent Offline Audio download feature.
+- PR #368 is OPEN/DRAFT at head `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710`. Its branch includes a unified metadata library, Cache Storage adapter, bounded HTTP downloader, and job lifecycle/retry/pause/resume/cancel work with tests. It is not merged or in Production.
+- PR #366 is a separate Offline/PWA shell/readiness change; it does not by itself complete the audio-download worker protocol or local playback integration.
+- Remaining #368 work: Service Worker message protocol/integration, download UI/library, playback from verified local files, real browser/device airplane-mode/restart/quota tests, and proof that audio stays excluded from Firebase and backups.
+- PRs #358/#359 are superseded by #368 and must not be merged independently.
+- See [CONTINUE_HERE.md](../CONTINUE_HERE.md) for current PR heads and [CHANGE_CONTROL.md](../CHANGE_CONTROL.md) for shared-file sequencing.
+
+---
+
+# WIRD — Offline Quran audio download plan
+
+## Live implementation checkpoint — 2026-11-12 14:35 +02:00
+
+- PR #355 pure range planner remains merged.
+- PR #368 is the current unified metadata foundation replacing the overlapping #358/#359 proposals. It implements jobs/files/jobItems, shared canonical file relations, pinned retention, cache-eviction state, recoverable deletion markers, and tests.
+- PR #358 and #359 remain Draft/unmerged and are superseded by #368.
+- Not implemented yet: HTTP downloader, Cache Storage adapter, service-worker message protocol, download UI, playback local-first lookup, and real-device offline playback.
+- Exact-head #368 Quality Gate run `43210985755` / job `131158220859` ended failure with no steps/logs; do not claim test success or code failure. Vercel Preview is blocked by Free build-rate.
+
+
+**Live checkpoint:** 2026-11-12 01:23 +02:00  
+**Current main:** `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b` — Vercel Production `READY` on the same SHA.
+- PR #355's pure range planner is merged; PR #361 keeps EveryAyah network-stream-only and cleans legacy cache entries; PR #362's guest-entry Playwright wait fix is merged.
+- PR #358 and #359 remain OPEN / DRAFT / unmerged. Their exact-head runs failed only at the desktop/mobile revision Playwright flow because the helper never navigated from guest entry; logs show it waited for the add-portion button. Other test suites, TypeScript, Firestore emulator, and production build passed on the observed heads.
+- Do not merge either manifest implementation as-is. Both are based on old main `4b299042...` and overlap in IndexedDB ownership. Build one implementation on current main using `OFFLINE_AUDIO_STORAGE_CONTRACT.md`.
+- No downloader, persistent manifest, Cache Storage coordination, download UI, or real-device offline playback is claimed as implemented. No runtime code changed in this documentation checkpoint.
+- Re-test interruption/recovery, shared files across jobs, deletion reference safety, quota, orphan/missing entries, sync conflicts, browser eviction, and multi-tab behavior before release.
+
+---
 # WIRD — Optional Offline Quran Audio Downloads
 
 ## Status
@@ -62,3 +95,12 @@ Let a user explicitly download a chosen Quran reciter's surah or ayah range to t
 - No automatic downloads over mobile data.
 - No change to current reciter defaults or existing continuous playback semantics.
 - No claim that tafsir, Firebase/Auth, IslamicAPI, or all remote resources work offline.
+
+
+## Cache Storage + downloader implementation checkpoint — 2026-11-12
+- PR #368 adds a generation-scoped Cache Storage adapter and bounded downloader orchestration. See OFFLINE_AUDIO_STORAGE_CONTRACT.md for validation and recovery boundaries.
+- Downloader supports 1–2 concurrent requests (default 2), approved CDN host validation, redirect rejection, retryable failed items, pause/abort, cancel, and resume of queued/partial jobs.
+- Cache data is only committed to IndexedDB metadata after Cache Storage write and exact read-back verification. Audio remains device-local and excluded from sync/backup.
+- New service tests cover cache key generations, invalid responses, byte-length mismatch, downloader success, retry, pause, cancel and bounded concurrency.
+- Exact-head #368 run 43275108775 / job 131381335018 ended failure with no steps/logs; no code-level diagnosis or test pass is available.
+- Still missing: Service Worker protocol, download UI, local-first playback, orphan-cache cleanup policy, actual browser integration, and real-device offline test. This is not a released feature.

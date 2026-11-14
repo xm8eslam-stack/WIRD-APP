@@ -1,3 +1,17 @@
+> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [CONTINUE_HERE.md](../../CONTINUE_HERE.md); mandatory reconciliation rules are in [CHANGE_CONTROL.md](../../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
+
+# 2026-11-12 — Offline-first and future app readiness
+
+Offline-first completeness is now a product-wide engineering track alongside Quran, worship, Seerah, UX, and sync. Existing PWA/service-worker and local-first foundations must be extended rather than rewritten. See docs/offline/OFFLINE_FIRST_ARCHITECTURE.md, APP_READINESS_ROADMAP_AR.md, and OFFLINE_CAPABILITY_MATRIX_AR.md.
+
+Milestones: OF0 inventory; OF1 PWA lifecycle; OF2 complete package; OF3 local data/UID isolation; OF4 verified Quran and worship content; OF5 licensed pinned audio; OF6 offline UX; OF7 PWA/platform evaluation; OF8 real-browser/device certification. Capacitor/TWA/native packaging remains deferred until the PWA gates pass. Do not claim offline readiness based only on CI or a READY preview.
+
+---
+
+> **Historical roadmap — updated 2026-11-11:** The active product roadmap is now [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md); current execution queue: [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md). This file remains as historical engineering planning (M0–M7); its dates, SHAs, and statuses are not authoritative today.
+
+---
+
 # WIRD — Master Engineering Roadmap
 
 **Updated:** 2026-11-06 after PR #57 merge and PR #58 scope-isolation hardening  

@@ -4,6 +4,8 @@
 **Status:** Discovery/design only — no runtime code or production configuration changed.  
 **Priority:** P1 for reliable multi-device activity history; implementation is blocked on a safe legacy/offline-device cutover contract.
 
+**Latest main review:** 2026-11-12 against `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. The latest changes since the prior reviewed code baseline are documentation-only; the event ledger/reducer and safe cutover described below remain design-only and are not implemented.
+**Production guard:** both revisioned-sync and remote-projection Production flags were observed as `true` via read-only Vercel inventory. Do not toggle them in this workstream; owner approval and real-device A↔B/cutover evidence are required first.
 ## Problem
 
 WIRD currently stores daily activity as one aggregate record per local date. That is efficient for display, but two devices can independently update the same daily record. A compare-and-set fingerprint prevents an older full snapshot from overwriting a newer divergent snapshot; it does not merge two valid sessions completed independently on different devices. The current safety policy correctly blocks whole-snapshot `keep-local` / `use-remote` decisions for `activityEvents`.
@@ -115,3 +117,43 @@ Proceed first with the pure reducer and deterministic tests after the cutover co
 - Decision unchanged: no phase-2 runtime projection, Firestore Rules/schema change, tombstone/delete behavior, production flag change, or legacy log rewrite until an approved server-visible UID-scoped device cutover protocol is designed and Emulator-tested.
 - Main also now contains the offline-package implementation from the earlier PR #318 work. The current `public/sw.js` adds a bounded timeout for audio pre-cache requests compared with the old branch; `pwaIntegration.test.ts` includes the corresponding timeout assertion. PR #318 is therefore superseded by current main rather than a candidate for merging.
 - Latest Production deployment is READY and its Git source SHA matches main `ff8665a67fee2252e91d94dc2cba9e6a11937b5c`; see deployment record `dpl_dow5x6vXqdxHEp92pyyv9kRBkagh`. This is deployment evidence, not a completed live interactive smoke test.
+
+
+> **ملاحظة توثيقية:** الفقرة التالية نُقلت من مراجعة PR #356 لأنها تحتوي على عقد cutover تقني فريد؛ أرقام main وProduction التاريخية داخلها لا تمثل الحالة الحالية.
+
+## 2026-11-11 — Server-visible cutover protocol audit
+
+Reviewed the current IndexedDB journal and deployed Firestore Rules to turn the migration blocker into a concrete contract. This is design evidence only; no Rules or runtime changes are included.
+
+### What exists today
+
+- IndexedDB DeviceMetadata is local to each browser installation and UID. It carries deviceId, nextSequence, lastProjectedSequence, remote cursor/revision metadata, and legacy-outbox migration fingerprints. It is not a server-visible device registry.
+- Firestore stores immutable UID-scoped domain events at users/{uid}/events/{eventId}. Schema-v2 event records contain deviceId, collection/document identity, base/revision, and serverSequence. They do not carry the originating IndexedDB local sequence watermark needed to prove a particular device drained its pre-cutover outbox.
+- users/{uid}/syncSystem/remoteReplication stores one global server event sequence and last event identity. It is not a per-device acknowledgement record.
+- Current Firestore Rules allow only the existing data collections, immutable event creation, and the global remoteReplication sequence document. The default-deny rule rejects an unlisted syncDevices/device-registry path. The existing activityEvents state envelope still accepts the legacy snapshot shape.
+
+### Required protocol before enabling event-ledger writes
+
+1. Add a UID-scoped device registry with one immutable device identity per installation and monotonic server-validated acknowledgements. A record must bind the authenticated UID, deviceId, client sync schema, legacy outbox watermark, last acknowledged mutation identity, canonical baseline ID/fingerprint, and acknowledgement time.
+2. Extend the remote event envelope with the originating device-local sequence (or an equally strong immutable mutation-watermark proof). A registry acknowledgement must be verifiable against the exact last legacy mutation accepted by the server; a client-reported pendingCount=0 alone is not proof.
+3. Register a device before it can write activity data. Re-registration with the same deviceId but a different UID, baseline, or sequence history must fail closed. Device-ID reset/reinstall must not silently inherit an old device's acknowledgement.
+4. Before acknowledging cutover, require the device to drain every legacy activity mutation through its declared watermark, fetch the canonical legacy baseline, verify its fingerprint, and record that baseline identity in the registry.
+5. Keep the account in legacy mode until every registered, non-retired device has acknowledged the same baseline and all pre-cutover writes are accounted for. A missing/offline device blocks automatic cutover; retirement must be an explicit owner action with a clear warning that unsynced local-only data may remain on that device.
+6. Add a server-side per-user activity schema gate in Firestore Rules. After cutover, reject legacy activityEvents/snapshot writes from old clients and accept only the new immutable event-document shape. A client-only feature flag is not a gate because an old/offline client can reconnect later.
+7. Make cutover state monotonic and auditable: legacy -> preparing -> ready -> v2-only. Never automatically move back to legacy after the first accepted v2 event; rollback must preserve both archives and use a reviewed forward-compatible recovery path.
+
+### Required Emulator and recovery cases
+
+- Two registered devices, one offline with pending legacy writes: cutover must remain blocked until its exact watermark is drained or the owner explicitly retires it.
+- A device reports zero pending writes but the referenced last mutation is absent/mismatched on the server: reject acknowledgement.
+- Same deviceId attempts to acknowledge another UID or a different baseline: reject.
+- Old client attempts a legacy snapshot write after v2-only cutover: Rules reject it.
+- New v2 event arrives twice with identical ID/content: one projection only; same ID with different content: hard conflict and no cursor advance.
+- Crash between local enqueue, server event creation, device acknowledgement, baseline activation, and remote projection: recovery must resume without losing the legacy baseline or double-counting a session.
+- A device is reinstalled or loses IndexedDB after registration: require explicit new-device recovery; never infer that the previous installation drained its data.
+
+### Decision
+
+The current system has enough local journal identity to build the client side, but not enough server-visible per-device evidence to safely cut over. The missing pieces are a new Rules-governed registry, local-sequence proof in remote events, and an old-client write gate. These require a separate schema/Rules review and explicit production approval. Keep the reducer isolated and the current legacy snapshot path protected by CAS until those gates are met.
+
+

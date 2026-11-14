@@ -198,3 +198,37 @@ Conflict archival validates the stored inbox event and fingerprint, checks exist
 - Vercel continues to report `api-deployments-free-per-day` / `build-rate-limit` on reviewed main updates. No live deployed SHA, live two-device verification, Firebase production-rules deployment, secret/environment-variable change, or production sync activation is claimed.
 - PR #2 remains a draft, 115 commits ahead / 276 behind current main. Do not merge it wholesale.
 - Next: implement the conflict decision state machine with atomic archival/revalidation and crash recovery; then tombstones, additive Ruqyah counters, broader Playwright workflows, backup/restore stress, and account lifecycle tests.
+
+
+---
+
+## Advisor prompt-boundary follow-up — 2026-11-14
+
+PR #364 was updated at feature commit `ad33875b0304020f930c7b606ef8782d36148707`.
+
+### Finding
+
+The Advisor API accepted client-supplied history entries with `sender: "advisor"` and rendered them as trusted-looking `المستشار:` messages in the prompt. Because the client controls the request body, a caller could forge prior assistant messages and attempt to smuggle instructions into the model context.
+
+### Fix
+
+- Normalize retained history to text only; discard client-controlled sender roles.
+- Render every prior message as `رسالة سابقة غير موثوقة من المستخدم`.
+- Preserve the existing message-count and per-message length limits.
+- Keep the system instruction that user content/history is untrusted.
+- Do not expose provider keys or raw request payloads.
+
+Six targeted source assertions passed, including UTF-8 byte-based request sizing. Vercel Preview for the exact commit is READY (`13RYRdPik7XUUEHk856JMfbn6j99`). GitHub Actions still fails before steps/logs; the full security suite and browser verification are NOT VERIFIED.
+
+### Remaining security limitation
+
+The current in-memory rate limiter is per serverless instance and is best-effort, not a durable global quota. Reassess distributed abuse protection before treating the Advisor endpoint as production abuse-resistant. Do not log secrets or sensitive user context.
+
+
+### Targeted API route smoke — 2026-11-14
+
+Using a stubbed `@google/genai` client (no real provider request or secret), the updated route passed two integration assertions:
+- A 2,100-character Arabic payload whose UTF-8 byte size exceeds 4 KB returns `400 PAYLOAD_TOO_LARGE`.
+- A client history item labeled `sender: "advisor"` reaches the model only as `رسالة سابقة غير موثوقة من المستخدم`, never as an authenticated `المستشار:` message.
+
+This is a local route smoke with a stubbed provider, not Production verification.

@@ -1,3 +1,25 @@
+# Current sync release-gate reconciliation — 2026-11-13
+
+> This section supersedes any older operational status below. Historical test/design notes remain useful, but do not treat their SHA, flag values, or deployment claims as current.
+
+- Current GitHub main: `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`.
+- Vercel Production: `dpl_DKfbfqsBHqzS95CoTdYZCtPPPZwu` is `READY`, target `production`, and its source SHA exactly matches main. Alias: `wird-app.vercel.app`.
+- Production flags are both currently `true`. This is an observed configuration fact, not approval that all sync release gates have passed. No toggle is authorized by this audit.
+- Owner-reported authenticated A↔B testing is a bounded `OWNER-REPORTED PASS`; it does not prove long-offline replay, crash recovery, all conflict types, account switching, tombstones, or every collection.
+- Recent GitHub Quality Gate runs on PRs fail before recording any steps; log retrieval returns `BlobNotFound`. Current main has no recent Quality Gate run returned. CI evidence is `BLOCKED`, not code `FAIL` or `PASS`.
+- GitHub main protection is disabled; required status enforcement is off. This is an enforcement gap, not a reason to bypass tests.
+- Vercel SSO protection is enabled for all non-custom domains; only `wird-app.vercel.app` is listed. Public anonymous access is not established.
+- `ISLAMICAPI_API_KEY` exists for Preview and Production as a sensitive variable. Old `ISLAMICAPI_API_KEY1` mismatch notes are stale.
+- Production Firebase Rules deployment was not independently confirmed in this audit; Emulator success is not production deployment evidence.
+
+## Release decision
+
+**HOLD for full release certification.** The production deployment/source parity is verified, but current main Quality Gate evidence, public-access behavior, Firebase Production Rules evidence, and complete sync lifecycle/offline/conflict certification remain separate and unresolved. Preserve current production settings until the owner gives a specific decision.
+
+See [CHANGE_CONTROL.md](../CHANGE_CONTROL.md), [CONTINUE_HERE.md](../CONTINUE_HERE.md), and [OWNER_ACTIONS.md](../OWNER_ACTIONS.md) for the live evidence and pending decisions.
+
+---
+
 ## Current operational checkpoint — 2026-11-10 (verified follow-up)
 
 This checkpoint supersedes any older statement below that contradicts the current Production inventory or the owner's direct device test. It is a documentation update only; no runtime code, Firebase rules, production secrets, Vercel settings, or user data were changed.
@@ -328,3 +350,18 @@ This section is the current status and supersedes older historical statements wh
 - Current offline behavior: opt-in same-origin application asset package; audio remains opportunistic and bounded, not a user-managed full-Quran offline library. Tafsir/API/Firebase/auth are not certified offline.
 - Ruqyah integration remains numeric Quran locators only; render Quran text from the verified local corpus. Full-program recordings remain disabled pending content and redistribution-rights verification.
 - Distinguish CI success, deployment READY, owner-reported device tests, and live interactive smoke in release decisions. No live interactive smoke is claimed here.
+
+
+---
+
+## Production configuration re-check — 2026-11-14
+
+A read-only Vercel Production environment query reconfirmed:
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true`
+
+This remains a **FAIL / BLOCKED** release discrepancy against the requirement that remote sync stay disabled until all gates pass. No values were changed. Explicit owner approval is required before disabling either flag; do not perform sync-related Production actions while unresolved.
+
+The exact Production deployment is READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. This deployment identity does not certify sync correctness. GitHub Actions jobs on inspected PR heads failed before recording steps/logs; this is an observability/runner BLOCKED state, not a test pass.
+
+Do not enable, disable, or otherwise alter Production flags from an automated workflow without explicit owner authorization. Keep all sync validation on isolated/local/emulator/Preview environments until the owner resolves the Production configuration discrepancy.

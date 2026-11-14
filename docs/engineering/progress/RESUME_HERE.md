@@ -1,3 +1,19 @@
+> **Historical checkpoint / design snapshot.** Do not use the SHA, PR numbers, Production settings, or live-status statements in this file as current. The authoritative operational state is [CONTINUE_HERE.md](../../CONTINUE_HERE.md); mandatory reconciliation rules are in [CHANGE_CONTROL.md](../../CHANGE_CONTROL.md). Preserve the dated material below as history and re-fetch GitHub/Vercel/Firebase before acting.
+
+# Resume Here — authoritative pointer
+
+> Updated 2026-11-11. The current continuation queue is [`docs/CONTINUE_HERE.md`](../../CONTINUE_HERE.md); the unified roadmap is [`docs/DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md); documentation map: [`docs/README.md`](../../README.md).
+> The older entries below are historical snapshots only. Their SHAs, PR states, deployment states, and next actions are stale unless re-verified against GitHub.
+
+## Resume protocol
+1. Read root `AGENTS.md`.
+2. Read `docs/CONTINUE_HERE.md` and `docs/DEVELOPMENT_ROADMAP.md`.
+3. Fetch current main, open PRs, exact PR heads, CI, Firestore Rules deployment evidence, and Vercel Production source SHA.
+4. Continue the highest-priority independent task; do not repeat merged work.
+5. Update the unified continuation file and specialist checkpoint after each substantial stage.
+
+---
+
 # WIRD — Resume Here
 
 **Authoritative checkpoint: 2026-11-07 after PR #129 and PR #130 merges. Re-fetch GitHub before any new edit.**
