@@ -95,7 +95,7 @@ Use only these statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT VERIFIED**. Reco
 
 ## J. Documentation and handoff
 
-- [x] PASS — the documentation branch preserves the complete previous main work log as an exact substring (597 lines on the inspected documentation branch versus 537 on main).
+- [x] PASS — the documentation branch preserves the complete previous main work log as an exact substring (589 lines on the current PR #363 documentation branch versus 537 on main).
 - [ ] BLOCKED — canonical state, architecture, release checklist, and work-log files are being consolidated; keep historical paths as compatibility pointers.
 - [ ] NOT VERIFIED — all relative links and all docs references after final consolidation.
 - [ ] NOT VERIFIED — final Google AI Studio handoff/sync.
