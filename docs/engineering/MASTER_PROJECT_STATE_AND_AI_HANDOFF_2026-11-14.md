@@ -323,7 +323,7 @@ Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
 | #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun workflow; runner issue unresolved |
 | #371 | `260df95c620cd534337e39d6707b044eb404139a` | Codec not integrated |
 | #370 | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | Session UX |
-| #369 | `814bb8788449ebe3d07d46f00a596a1a7b398a5a` | Multi-range selection; CI BLOCKED |
+| #369 | `3478ae22a200a817a240d8b28e532b01674427bf` | Juz 30 endpoint fixed; 7 isolated tests PASS; CI BLOCKED |
 | #368 | `ffa55b1f9c378a5f50fa4eb3656c1aadf4a27710` | Offline store/downloader; lifecycle gaps |
 | #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB cap; not chunking |
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell |
@@ -389,7 +389,7 @@ Vercel Preview for this commit: **READY**, deployment `13RYRdPik7XUUEHk856JMfbn6
 
 ### 20.5 Engine Plans and memorization
 
-- #369 multi-range selection logic reviewed; no merge pending CI and exact-head regression evidence.
+- #369 multi-range selection now fixes a Juz 30 off-by-one that previously ended at 114:5; all 7 isolated range-selection tests PASS with a canonical boundary fixture. Generated-index E2E and GitHub CI remain NOT VERIFIED.
 - #371 archive codec tests: 6 PASS in isolation. The codec is not wired into the actual Outbox/Inbox/Firestore persistence path.
 - #367 still raises the single-payload budget to 800 KB. Do not merge it as a complete solution to archive payload growth. Chunk transport integration, bounded manifest/resource validation, backward-compatible reads, corruption recovery, and rollback evidence remain required.
 
