@@ -340,3 +340,32 @@ Phase 8 requires exact-head CI before merge.
 6. PR #150 is merged. The next audio task is production smoke verification once Vercel deployment quota permits; do not re-open source implementation unless production tests reveal a defect. Full-program recordings remain disabled pending separate content and rights verification.
 7. Only after explicit approval and all global release gates pass, configure deployment credentials and dispatch the manual rules workflow. It now runs the Firestore Emulator suite before writing credentials or deploying. Then redeploy `main` and run every live verification item above.
 7. If a task is blocked by unavailable credentials or provider quota, document the exact blocker and continue with independent code review/tests; never claim the blocked production action succeeded.
+
+
+---
+
+## Verified execution update — 2026-11-14
+
+PR #373 latest verified feature commit: `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`.
+
+### Root cause and fix
+
+The long IslamicAPI Quran index contains 171 entries. One entry, `الأعلى ٨٧`, identifies a whole Surah without an explicit ayah range. The prior server parser accepted only `Surah:Ayah` / range syntax and rejected that valid locator, causing `INVALID_RUQYAH_SOURCE_RESPONSE`.
+
+The proxy now accepts a bare Surah locator only when the exact supplied Arabic/English Surah name and number match WIRD's local `ALL_SURAHS` metadata. It expands the range locally (`87:1-19`) and returns only the normalized coordinate. Provider-authored Arabic text and translation remain stripped.
+
+### Evidence
+
+- Production smoke before the feature fix: short HTTP 200 / 9 entries; medium HTTP 200 / 63 entries; long HTTP 502 / `INVALID_RUQYAH_SOURCE_RESPONSE`.
+- Isolated API proxy/security tests: 20 PASS.
+- Isolated Ruqyah view/audio-lock tests: 14 PASS.
+- Actual API handler with the full 171-entry public long-program dataset mocked as upstream input: HTTP 200, 171 normalized coordinates, `الأعلى ٨٧` → `87:1-19`, provider text stripped.
+- Vercel Preview for exact feature commit: READY, deployment `5PDvHdHztx9Tf6yLR2ojQww2nhs1`.
+- Build generated 114 Surah chunks and validated 6,236 ayah coordinates. Ruqyah route chunk observed at 68.25 KB (18.77 KB gzip).
+
+### Remaining release gates
+
+- GitHub Actions on PR #373 failed before recording job steps/logs; safe retry repeated the same pre-step failure. CI is BLOCKED, not a proven test failure or pass.
+- Vercel Preview is protected; browser-level verification was not performed and protection settings were not changed.
+- Production has not received this feature commit. Post-fix Production short/medium/long smoke remains NOT VERIFIED.
+- Do not claim the live Long index is fixed until exact-head gates pass, the PR is safely merged, Vercel Production deploys the merged SHA, and the live endpoint is rechecked.
