@@ -328,8 +328,8 @@ Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
 | #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB cap; not chunking |
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype only |
-| #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor history fix; Preview READY |
-| #363 | `74fca7bba8eb64f1676f78d2b413590012365561` | Docs consolidation; Work Log preserved; Preview blocked by build-rate-limit |
+| #364 | `2a98c6da77bd849811326696ab7075fe6c9c85b8` | Advisor history + UTF-8 byte limit; 6 assertions + 2 route smoke PASS; current Preview blocked |
+| #363 | `5ec38bbcde6ba711c91bf788b322b55694654294` | Docs consolidation; Work Log preserved; Preview blocked by build-rate-limit |
 | #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest |
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store |
 | #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX; do not merge as a unit |
@@ -379,13 +379,13 @@ No CI pass is claimed. Do not disable tests or infer that the Bun workflow chang
 
 ### 20.4 Advisor security
 
-PR #364 was updated at commit:
+PR #364 latest feature head:
 
-`ad33875b0304020f930c7b606ef8782d36148707`
+`2a98c6da77bd849811326696ab7075fe6c9c85b8`
 
-Client-supplied history sender labels are no longer rendered as authenticated assistant messages. All prior messages are framed as untrusted user-provided context. Five targeted source assertions passed in an isolated Node 26 check.
+Client-supplied history sender labels are discarded; prior messages are framed as untrusted user-provided context. The request body limit now measures UTF-8 bytes with `TextEncoder`, not JavaScript character count. Six targeted source assertions PASS. A stubbed route smoke PASS confirms a 2,100-character Arabic payload over 4 KB UTF-8 is rejected and a forged `sender: advisor` history entry is downgraded to untrusted user context.
 
-Vercel Preview for this commit: **READY**, deployment `13RYRdPik7XUUEHk856JMfbn6j99`. GitHub Actions remains failed before steps; no full security test suite or browser verification is claimed.
+The last READY Preview is for the older commit `ad33875b0304020f930c7b606ef8782d36148707`, deployment `13RYRdPik7XUUEHk856JMfbn6j99`. The current head is blocked by Vercel `build-rate-limit`; GitHub Actions run `43571818491` failed before steps/logs. Full security suite and browser verification are NOT VERIFIED.
 
 ### 20.5 Engine Plans and memorization
 
@@ -395,7 +395,9 @@ Vercel Preview for this commit: **READY**, deployment `13RYRdPik7XUUEHk856JMfbn6
 
 ### 20.6 Offline/PWA
 
-PR #368 contains an IndexedDB job library, downloader, and Cache Storage adapter despite its older PR description. Review found missing cross-tab job ownership/locking, incomplete end-to-end orphan cleanup, and inconsistent Cache Storage quota handling. No real-device, restart-recovery, or airplane-mode verification is claimed.
+PR #368 latest feature head: `d0ab926f37ea68a92c28e39796dd3d723e1dd7a8`. Fixed downloader coordinate metadata (the job relation does not store Surah/ayah fields) and the pause-to-queued transition. Corrected concurrency test fixtures to use distinct retry jobs. Isolated tests: library 18/18, downloader 6/6, cache adapter 5/5 (29/29 PASS). Exact-head Vercel Preview is READY, deployment `dpl_EmsTdmmgjmQktcNZiAiE9qxppyRs`; GitHub Actions run `43571432459` failed before steps/logs.
+
+Still BLOCKED: cross-tab job ownership/locking, complete orphan-deletion orchestration, consistent Cache Storage quota handling, user-facing download manager and reader playback integration, and real-device restart/airplane-mode verification.
 
 Do not merge #358/#359 as competing stores alongside #368. Review #366's service-worker caches together with the unified audio store.
 
