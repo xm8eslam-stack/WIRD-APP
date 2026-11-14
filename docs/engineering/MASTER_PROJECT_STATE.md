@@ -194,3 +194,17 @@ Additional notes:
 #374's new `docs/engineering/README.md` currently points readers to `progress/WORK_LOG.md` as the active history, while #363 establishes `docs/engineering/WORK_LOG.md` as canonical and retains the old path only as a pointer. Reconcile the README before either docs PR is merged; do not merge contradictory source-of-truth instructions.
 
 #374's `package.json` and `bun.lock` changes only rename the scaffold package to `wird-app`, but the same files are also changed by #372's Bun dependency-graph migration. Integrate the name correction into the final #372 graph or rebase/reconcile both exact diffs together. Do not merge stale lockfile snapshots independently.
+
+
+### #371 archive codec — deeper resource-bound review
+
+The pure codec correctly canonicalizes JSON, uses SHA-256, splits individual records into bounded byte chunks, rejects missing/extra/corrupted fragments, and reconstructs in stable record order. Its six isolated tests are useful, but the current implementation is not yet safe as a persistence protocol for arbitrarily large archives:
+
+1. No hard maximum for total archive bytes, record count, total chunk count, or maximum fragments per record. A caller can supply enough records or a huge record to allocate an unbounded `chunks` array.
+2. The builder retains every fragment in memory and separately builds a full archive fingerprint payload; the decoder allocates all record fragments plus a concatenated record buffer. This multiplies peak memory for large archives.
+3. The manifest contains every chunk descriptor and every record ID in one object, with no encoded manifest byte ceiling. Even if each data chunk is 192 KB, the manifest itself can exceed Firestore's document limit.
+4. `validateManifest` verifies descriptor field shapes, but the complete fragment sequence/aggregate size checks occur later during materialization. A bounded preflight validator should reject excessive descriptor counts and aggregate declared bytes before reading chunk data.
+5. `manifest.orderedRecordIds.includes()` is repeated for each descriptor; use a bounded ID set after enforcing a maximum record count.
+6. No storage adapter, IndexedDB migration, remote chunk writer/reader, atomic manifest publication, garbage-collection protocol, or rollback/recovery path is integrated. A codec-only merge would not fix the 800 KB single-document sync bottleneck.
+
+Required before merge: define product-independent protocol maxima and negotiated server-enforced entitlement separately; validate total archive bytes/records/chunks/manifest bytes before allocation; avoid whole-archive duplicate buffers or use streaming digest/materialization; integrate immutable chunk records with atomic revisioned manifest publication and CAS; retain old archive until new manifest is verified; implement rollback and orphan collection; add adversarial resource-exhaustion and old/new archive compatibility tests. Do not silently discard an archive when any limit is reached.
