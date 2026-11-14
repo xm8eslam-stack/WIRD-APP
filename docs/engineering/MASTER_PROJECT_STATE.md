@@ -26,7 +26,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 
 | PR | Head SHA | Review disposition |
 |---:|---|---|
-| #375 | `495b9ccada1bb327abeee469af16faa52ddc9707` | Handoff; latest exact-head CI retry failed before steps/logs |
+| #375 | `self-updating handoff branch; re-fetch before action` | Handoff; latest exact-head CI retry failed before steps/logs |
 | #374 | `6673bb149a2ffa58177c35b9f68c76423dfb2a0b` | Safe hygiene candidate; reconcile package/lockfile with #372 |
 | #373 | `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca` | Ruqyah fix; Preview READY; CI BLOCKED |
 | #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun CI workflow; runner issue unresolved |
@@ -163,3 +163,8 @@ The current PR #363 exact-head Vercel status is **FAIL** with `build-rate-limit`
 The last recorded runs for #358 (`43030195498`) and #359 (`43029617572`) did execute. Dependency installation, automated test suites, Firestore Rules Emulator, TypeScript validation, production build, and server-startup smoke all passed. The Desktop and mobile browser smoke step failed on both runs. GitHub returned no stored job log URL, so the underlying Playwright assertion/error is unavailable. This is an observed browser-test failure, not merely a pre-step runner failure. Both PRs are superseded by #368 and must not be merged as competing stores.
 
 The newer exact-head PR runs #373, #374, #363, #364, #365, #366, #367, #368, #369, #370, #371, #372, and #375 failed before steps/logs were recorded (`steps=null`, `logs_url=null`). PR #373's safe retry repeated that pre-step failure. These runs do not establish application test outcomes.
+
+
+### CI log retrieval follow-up
+
+For #375's latest retry job `132373650377` and its prior attempt job `132368486361`, the dedicated step endpoint returned an empty list and the log endpoint returned Azure `BlobNotFound` 404. This corroborates the missing step/log telemetry; it does not reveal a failing command. The exact current heads of #363 and #375 are intentionally marked self-updating above because documentation commits advance those PRs; always fetch them live before acting.
