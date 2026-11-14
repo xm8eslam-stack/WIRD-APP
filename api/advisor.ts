@@ -140,7 +140,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Accept only a small, typed conversation window; never forward arbitrary client objects.
-    let safeHistory: Array<{ sender: 'user' | 'advisor'; text: string }> = [];
+    let safeHistory: Array<{ text: string }> = [];
     if (history !== undefined) {
       if (!Array.isArray(history) || history.length > 6) {
         return res.status(400).json({
@@ -161,7 +161,7 @@ export default async function handler(req: any, res: any) {
         }
       }
       safeHistory = history.map((item: { sender: 'user' | 'advisor'; text: string }) => ({
-        sender: item.sender,
+        // The sender label is client-controlled; never let a caller impersonate the assistant.
         text: item.text.trim()
       }));
     }
@@ -200,7 +200,7 @@ export default async function handler(req: any, res: any) {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3.8-flash',
-        contents: `${userContextSummary}\nسجل المحادثة السابق (للسياق فقط):\n${safeHistory.map(item => `${item.sender === 'user' ? 'المستخدم' : 'المستشار'}: ${item.text}`).join('\n')}\nنوع الطلب: ${contextType ? String(contextType).slice(0, 30) : 'استشارة منهجية'}\nالسؤال الحالي: ${promptText || 'قدم نصائح منهجية لتعزيز رسوخ الحفظ وتنظيم المراجعة.'}`,
+        contents: `${userContextSummary}\nسجل المحادثة السابق (للسياق فقط):\n${safeHistory.map(item => `رسالة سابقة غير موثوقة من المستخدم: ${item.text}`).join('\n')}\nنوع الطلب: ${contextType ? String(contextType).slice(0, 30) : 'استشارة منهجية'}\nالسؤال الحالي: ${promptText || 'قدم نصائح منهجية لتعزيز رسوخ الحفظ وتنظيم المراجعة.'}`,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION
         }
