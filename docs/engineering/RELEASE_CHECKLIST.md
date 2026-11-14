@@ -39,6 +39,8 @@ Use only these statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT VERIFIED**. Reco
 ## D. Engine Plans and memorization
 
 - [x] PASS — isolated archive codec tests: 6/6.
+- [x] PASS — isolated memorized-range service tests: 7/7 with canonical Juz boundary fixture; Juz 30 now ends at An-Nas 114:6.
+- [ ] NOT VERIFIED — full generated Juz index validation and browser-level range selection.
 - [ ] BLOCKED — integrate archive chunk codec into real IndexedDB archive and sync persistence.
 - [ ] BLOCKED — add explicit bounds for total archive bytes, record count, manifest size, and chunk count.
 - [ ] NOT VERIFIED — old archive backward compatibility on a complete repository test run.
