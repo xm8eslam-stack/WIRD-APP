@@ -54,3 +54,10 @@
 1. **اعتماد نظام الخطط والسعات:** لم يظهر في main حتى الآن مصدر entitlement/billing موثوق أو تعريف tiers. قبل فرض quota حسب الخطة، حدّد أسماء الخطط الفعلية وما الذي تسمح به كل خطة (عدد الخطط/إجمالي bytes/مزايا sync) أو اعتمد مصدر entitlement خادمي موجودًا. لا نحتاج قرارًا الآن لمواصلة أرشيف IndexedDB والـ chunks؛ لكن لا يجوز لنا اختراع خطط أو أرقام أو الاعتماد على claim يرسله العميل.
 2. **طلب API الدرر السنية (اختياري لاحقًا):** لم يُرسل طلب. إذا رغبت باستخدام الموسوعة التاريخية كمرجع بحثي، راجع شروط API الحالية أولًا؛ تتطلب طلب وصول ومراجعة يدوية، إظهار نسبة المصدر ورابطه، تمنع bulk scraping/republication، وتقيّد cache بـ24–48 ساعة. لم يثبت أن الخدمة مجانية أو مناسبة تجاريًا؛ لا تضع أي token في العميل.
 3. **مراجعة علمية للسيرة:** اختيار طبعة أساس معتمدة ومراجعة claims/المراجع قبل نشر المحتوى. لا يلزم تدخل المالك في تحسينات القارئ والاختبارات الآلية.
+
+
+## Immediate owner action — 2026-11-14
+
+Vercel Production currently has both `VITE_WIRD_REVISIONED_SYNC_ENABLED` and `VITE_WIRD_REMOTE_PROJECTION_ENABLED` set to `true`. This conflicts with the required policy that remote sync remain disabled until release gates pass.
+
+No setting has been changed. Explicitly authorize disabling these two flags before any change is made. Until authorization, do not perform sync-related Production actions.
