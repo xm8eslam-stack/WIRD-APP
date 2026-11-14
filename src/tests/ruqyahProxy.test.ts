@@ -120,6 +120,49 @@ export async function runRuqyahProxyTests(): Promise<{ passed: number; failed: n
       assert(res.headers['Cache-Control'].includes('s-maxage=3600'), 'Successful content must be CDN-cacheable');
     });
 
+    await test('Ruqyah proxy expands a whole-Surah locator from canonical local metadata only', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      globalThis.fetch = (async () => new Response(JSON.stringify({
+        status: 'success',
+        data: [{
+          id: 61,
+          title: 'الأعلى ٨٧',
+          arabic: 'نص قرآني خارجي غير موثوق',
+          translation: 'محتوى خارجي غير موثوق'
+        }]
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+      const res = new MockResponse();
+      await ruqyahHandler({
+        method: 'GET',
+        query: { type: 'instant', program: 'a-long-ruqya', source: 'from-quran' },
+        headers: { 'x-real-ip': '198.51.100.213' }
+      }, res);
+      assert(res.statusCode === 200 && res.body?.status === 'success',
+        'A canonical whole-Surah reference must be accepted');
+      assert(JSON.stringify(res.body?.data) === JSON.stringify([{ id: 61, title: '87:1-19' }]),
+        'Whole-Surah references must expand using local Surah number and ayah-count metadata');
+      assert(!JSON.stringify(res.body).includes('نص قرآني خارجي') &&
+        !JSON.stringify(res.body).includes('محتوى خارجي'),
+        'Provider-authored Quran text and translations must remain stripped');
+    });
+
+    await test('Ruqyah proxy rejects unknown or mismatched whole-Surah titles', async () => {
+      process.env.ISLAMICAPI_API_KEY = 'test-secret';
+      for (const title of ['سورة غير موجودة ٨٧', 'الأعلى ١١٥', 'الأعلى']) {
+        globalThis.fetch = (async () => new Response(JSON.stringify({
+          status: 'success', data: [{ id: 61, title }]
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } })) as typeof fetch;
+        const res = new MockResponse();
+        await ruqyahHandler({
+          method: 'GET',
+          query: { type: 'instant', program: 'a-long-ruqya', source: 'from-quran' },
+          headers: { 'x-real-ip': title === 'الأعلى' ? '198.51.100.216' : title.includes('غير') ? '198.51.100.214' : '198.51.100.215' }
+        }, res);
+        assert(res.statusCode === 502 && res.body?.error === 'INVALID_RUQYAH_SOURCE_RESPONSE',
+          'Unknown or mismatched whole-Surah title must fail closed: ' + title);
+      }
+    });
+
     await test('Ruqyah proxy accepts a valid empty Quran locator index as an empty result', async () => {
       process.env.ISLAMICAPI_API_KEY = 'test-secret';
       globalThis.fetch = (async () => new Response(JSON.stringify({
