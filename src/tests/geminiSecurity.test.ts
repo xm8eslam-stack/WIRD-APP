@@ -71,7 +71,7 @@ export function runGeminiSecurityTests(): { passed: number; failed: number } {
   test('api/advisor.ts has rate limiting and input size controls', () => {
     const handlerContent = fs.readFileSync(path.resolve('./api/advisor.ts'), 'utf8');
     assert(handlerContent.includes('checkRateLimit'), 'api/advisor.ts must enforce rate limiting');
-    assert(handlerContent.includes('4096'), 'api/advisor.ts must enforce 4KB body limit');
+    assert(handlerContent.includes('4096') && handlerContent.includes('new TextEncoder().encode(bodyStr).byteLength'), 'api/advisor.ts must enforce a 4KB UTF-8 byte limit');
     assert(handlerContent.includes('500'), 'api/advisor.ts must enforce 500 char prompt limit');
   });
 
