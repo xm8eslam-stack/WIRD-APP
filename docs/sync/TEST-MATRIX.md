@@ -210,3 +210,9 @@ This addendum records observed execution only; it does not replace any required 
 - Migration rollback preserving the original raw archive and recovery evidence.
 
 No Production sync flag may be enabled or altered as part of these tests. Both Production sync flags were read as `true`; explicit owner authorization is required before changing them.
+
+
+### Historical browser-smoke failure clarification — 2026-11-14
+
+PR #358 run `43030195498` and PR #359 run `43029617572` completed install, automated tests, Rules Emulator, TypeScript, production build, and server-startup smoke successfully, then failed the Desktop and mobile browser smoke step. The job log URL is unavailable, so the failing Playwright assertion cannot be recovered. These are actual observed browser-step failures; do not describe them as pre-step runner failures. Both PRs are superseded by #368.
+
