@@ -507,7 +507,7 @@ The latest deployment inventory shows:
 - PR #373: READY on exact feature SHA `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca`, deployment `dpl_5PDvHdHztx9Tf6yLR2ojQww2nhs1`.
 - PR #364 latest head `2a98c6da77bd849811326696ab7075fe6c9c85b8`: current Vercel status FAIL with `build-rate-limit`. Its last READY Preview is for older SHA `ad33875b0304020f930c7b606ef8782d36148707`, deployment `dpl_13RYRdPik7XUUEHk856JMfbn6j99`.
 - PR #374: READY on exact feature SHA `6673bb149a2ffa58177c35b9f68c76423dfb2a0b`, deployment `dpl_GFt7aRTuzAzPMoDKnbjD6Szunqaq`.
-- PR #363 current head `b33218c3b337e3a6271046e66e0abc8330bbd61e`: Vercel status FAIL with `build-rate-limit`. Its latest successful Preview in the deployment inventory is older SHA `7675d7ece7fda857d5a22f3e2eb0c0fdccdbc8db`, deployment `dpl_AFh8BR8VtmBB6XtQNTX3nCCQseks`; this is not the current head.
+- PR #363 current head `5ec38bbcde6ba711c91bf788b322b55694654294`: Vercel status FAIL with `build-rate-limit`. Its latest successful Preview in the deployment inventory is older SHA `7675d7ece7fda857d5a22f3e2eb0c0fdccdbc8db`, deployment `dpl_AFh8BR8VtmBB6XtQNTX3nCCQseks`; this is not the current head.
 - PR #375 current head is this handoff branch; its latest successful Preview in the deployment inventory is older SHA `988a511317`, deployment `dpl_F97xFiW2trAiqXajM7JcwDYpKe7D`. No Preview for the current handoff head was verified.
 - Multiple recent documentation deployments were CANCELED or failed due to deployment-rate limits. This is a platform quota issue, not evidence of application build failure.
 
