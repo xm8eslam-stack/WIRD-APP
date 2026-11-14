@@ -51,6 +51,7 @@ Use only these statuses: **PASS**, **FAIL**, **BLOCKED**, **NOT VERIFIED**. Reco
 
 ## E. Offline and PWA
 
+- [x] PASS — isolated offline audio tests: library 18/18, downloader 6/6, cache adapter 5/5 (29/29 total).
 - [ ] BLOCKED — cross-tab job ownership/locking for concurrent downloads.
 - [ ] BLOCKED — complete Cache Storage orphan cleanup lifecycle.
 - [ ] BLOCKED — consistent Cache Storage quota detection and user-facing recovery.
