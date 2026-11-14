@@ -118,3 +118,10 @@ A release is **BLOCKED** while any critical section above remains BLOCKED or FAI
 | Full repository tests/build on exact PR heads | No complete local checkout or inspectable CI steps | NOT VERIFIED |
 
 No PR is merge-eligible while the required exact-head Quality Gate is not inspectable and passing. Production sync settings remain untouched pending explicit owner approval.
+
+
+## CI evidence clarification — 2026-11-14
+
+The general pre-step runner failure above does not apply to every historical PR:
+- #358 run `43030195498` and #359 run `43029617572` executed dependency installation, automated tests, Firestore Rules Emulator, TypeScript, production build, and server-startup smoke successfully, then failed the Desktop/mobile browser smoke step. The job log URL is unavailable, so the exact Playwright assertion is NOT VERIFIED.
+- The newer exact-head runs for #373, #374, #363, #364, #365, #366, #367, #368, #369, #370, #371, #372, and #375 failed before steps/logs (`steps=null`, `logs_url=null`). PR #373 retry repeated the pre-step failure.
