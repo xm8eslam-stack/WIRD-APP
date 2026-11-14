@@ -350,3 +350,18 @@ This section is the current status and supersedes older historical statements wh
 - Current offline behavior: opt-in same-origin application asset package; audio remains opportunistic and bounded, not a user-managed full-Quran offline library. Tafsir/API/Firebase/auth are not certified offline.
 - Ruqyah integration remains numeric Quran locators only; render Quran text from the verified local corpus. Full-program recordings remain disabled pending content and redistribution-rights verification.
 - Distinguish CI success, deployment READY, owner-reported device tests, and live interactive smoke in release decisions. No live interactive smoke is claimed here.
+
+
+---
+
+## Production configuration re-check — 2026-11-14
+
+A read-only Vercel Production environment query reconfirmed:
+- `VITE_WIRD_REVISIONED_SYNC_ENABLED=true`
+- `VITE_WIRD_REMOTE_PROJECTION_ENABLED=true`
+
+This remains a **FAIL / BLOCKED** release discrepancy against the requirement that remote sync stay disabled until all gates pass. No values were changed. Explicit owner approval is required before disabling either flag; do not perform sync-related Production actions while unresolved.
+
+The exact Production deployment is READY on main SHA `8e98aa350c999b2252cc8e3b5d2a8c6d0264b86b`. This deployment identity does not certify sync correctness. GitHub Actions jobs on inspected PR heads failed before recording steps/logs; this is an observability/runner BLOCKED state, not a test pass.
+
+Do not enable, disable, or otherwise alter Production flags from an automated workflow without explicit owner authorization. Keep all sync validation on isolated/local/emulator/Preview environments until the owner resolves the Production configuration discrepancy.
