@@ -57,3 +57,12 @@ Delete only after proving the candidate is not imported, dynamically loaded, ref
 - A retry request for failed jobs was accepted by the GitHub API, but the available run listing still reports the original run as failed and exposes no new successful attempt.
 - The Vercel status context on the same head reports `success` and points to a Vercel deployment record. The deployment's exact ready state, alias, and live HTTP behavior were not independently verified in this pass.
 - Therefore the Quality Gate remains **BLOCKED / NOT VERIFIED**, not PASS. Do not merge on the basis of the Vercel status alone.
+
+
+### Latest-head follow-up — 2026-11-14
+
+- Current PR head `2fea7fc43c4313b103148900b53891fb500ab233` triggered Quality Gate run `43566109060`, which also completed with `failure`.
+- Its only job `132360207477` again reports `steps=null` and no logs URL. This repeated pre-step failure is an Actions/runner observability blocker; it does not establish that tests or source code failed.
+- A second failed-job retry request was accepted. Its outcome must be re-fetched before changing this classification.
+- Vercel posted a **Ready Preview** for this exact SHA: `https://wird-app-git-chore-repository-hy-7963e7-xm8eslam-9174s-projects.vercel.app`. The GitHub Vercel bot marks the deployment Ready. Direct browser/live smoke was not completed; Production was not changed.
+- Current classification: Preview deployment **READY (provider-reported)**; Quality Gate **BLOCKED / FAILED BEFORE VISIBLE STEPS**; Production **UNCHANGED / NOT VERIFIED**.
