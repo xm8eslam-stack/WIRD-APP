@@ -329,7 +329,7 @@ Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype only |
 | #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor history fix; Preview READY |
-| #363 | `b33218c3b337e3a6271046e66e0abc8330bbd61e` | Docs consolidation; Work Log preserved; Preview blocked by build-rate-limit |
+| #363 | `74fca7bba8eb64f1676f78d2b413590012365561` | Docs consolidation; Work Log preserved; Preview blocked by build-rate-limit |
 | #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest |
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store |
 | #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX; do not merge as a unit |
