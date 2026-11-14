@@ -33,7 +33,7 @@ All entries below were re-fetched from GitHub's PR update response; all remain *
 | #371 | `260df95c620cd534337e39d6707b044eb404139a` | Standalone archive codec; integration/resource bounds required |
 | #370 | `32bad0846b9f9a64b8ac1b78c292ea1f1c603e0c` | Memorization session UX; independent review |
 | #369 | `3478ae22a200a817a240d8b28e532b01674427bf` | Multi-range selection; Juz 30 endpoint fixed; 7 isolated tests PASS; CI BLOCKED |
-| #368 | `d0ab926f37ea68a92c28e39796dd3d723e1dd7a8` | Unified offline store; 29 isolated tests PASS; cross-tab and lifecycle gaps |
+| #368 | `d0ab926f37ea68a92c28e39796dd3d723e1dd7a8` | Unified offline store; 29 isolated tests PASS; exact-head Preview READY; CI BLOCKED; cross-tab/lifecycle gaps |
 | #367 | `fd417faaa96a11920ef3a8e4f1038f567c36a731` | 800 KB payload budget; not a chunking solution |
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell; device verification required |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype; no publishable content |
