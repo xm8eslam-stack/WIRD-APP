@@ -223,3 +223,12 @@ Six targeted source assertions passed, including UTF-8 byte-based request sizing
 ### Remaining security limitation
 
 The current in-memory rate limiter is per serverless instance and is best-effort, not a durable global quota. Reassess distributed abuse protection before treating the Advisor endpoint as production abuse-resistant. Do not log secrets or sensitive user context.
+
+
+### Targeted API route smoke — 2026-11-14
+
+Using a stubbed `@google/genai` client (no real provider request or secret), the updated route passed two integration assertions:
+- A 2,100-character Arabic payload whose UTF-8 byte size exceeds 4 KB returns `400 PAYLOAD_TOO_LARGE`.
+- A client history item labeled `sender: "advisor"` reaches the model only as `رسالة سابقة غير موثوقة من المستخدم`, never as an authenticated `المستشار:` message.
+
+This is a local route smoke with a stubbed provider, not Production verification.
