@@ -603,3 +603,16 @@ Create a draft PR to `main`, inspect the full diff, wait for GitHub Actions, fix
 - Queried job steps and downloaded logs for PR #375 retry job `132373650377` and previous attempt `132368486361`.
 - Both step endpoints returned empty arrays. Both log downloads returned Azure `BlobNotFound` HTTP 404.
 - No shell command, checkout, install, test, lint, or build output is available. Root cause remains BLOCKED/unknown at GitHub Actions job initialization or log artifact storage. No workflow tests were disabled or weakened.
+
+
+## 2026-11-14 09:10 local — PR changed-path conflict map
+
+Re-fetched changed filenames for #367, #369, #371, #368, #358, #359, #366, #374, #372, #373, #364, and #363. Confirmed:
+- #367/#369 overlap in `PlanningEngineWizard.tsx` and `runAllTests.ts`.
+- #367/#369/#371/#368 share `runAllTests.ts`.
+- #368/#358/#359 share `runAllTests.ts`; retain #368 as the unified store candidate and keep #358/#359 superseded.
+- #372/#374 both modify `package.json` and `bun.lock`.
+- #363/#374 both modify `docs/engineering/README.md`.
+- #366/#368 have no changed-path overlap but still require semantic integration of service-worker versioning and Cache Storage ownership.
+- #374 includes a temporary media artifact path under `.aistudio/artifacts/brain/.../.tempmediaStorage/`; verify generated/unreferenced before deletion.
+The full matrix and safe integration order are in `MASTER_PROJECT_STATE.md`.
