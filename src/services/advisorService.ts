@@ -169,7 +169,7 @@ ${deterministicReport.revisionPriorities.map(p => `• ${p}`).join('\n')}`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ message, history })
+        body: JSON.stringify({ message: message.slice(0, 500), history: history.slice(-6).map(item => ({ sender: item.sender, text: item.text.slice(0, 400) })) })
       });
       clearTimeout(timeoutId);
 
