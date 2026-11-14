@@ -168,3 +168,22 @@ The newer exact-head PR runs #373, #374, #363, #364, #365, #366, #367, #368, #36
 ### CI log retrieval follow-up
 
 For #375's latest retry job `132373650377` and its prior attempt job `132368486361`, the dedicated step endpoint returned an empty list and the log endpoint returned Azure `BlobNotFound` 404. This corroborates the missing step/log telemetry; it does not reveal a failing command. The exact current heads of #363 and #375 are intentionally marked self-updating above because documentation commits advance those PRs; always fetch them live before acting.
+
+
+## 4. Shared-file conflict map — re-fetched 2026-11-14
+
+These are path-level overlaps from the current PR changed-file lists, not assumptions based on PR titles.
+
+| PR group | Shared paths | Safe integration order |
+|---|---|---|
+| #367 + #369 | `src/components/plans/PlanningEngineWizard.tsx`, `src/tests/runAllTests.ts` | Serialize UI changes; merge only after combined range/sync tests are run on one integrated head |
+| #367 + #371 + #369 + #368 | `src/tests/runAllTests.ts` | Reconcile test registration once; preserve every suite, avoid duplicate imports/runner entries |
+| #368 + #358 + #359 | `src/tests/runAllTests.ts` | Keep #368 as the unified store candidate; #358/#359 remain superseded and must not introduce competing stores |
+| #372 + #374 | `package.json`, `bun.lock` | Resolve lockfile/package graph together; never merge one stale lockfile over the other |
+| #363 + #374 | `docs/engineering/README.md` | Reconcile the hygiene audit/index changes with the canonical docs index; preserve canonical links |
+| #366 + #368 | No changed-path overlap in the current PR file lists | Still requires semantic integration review: service-worker cache versioning must agree with Cache Storage ownership and lifecycle |
+
+Additional notes:
+- #374 also changes one temporary AI Studio media artifact under `.aistudio/artifacts/brain/.../.tempmediaStorage/`; verify it is truly generated/unreferenced before accepting its deletion. Do not delete any user-authored project content based only on the filename.
+- #365 has no publishable source text, so its reader shell remains a content-governance blocker rather than a release-ready feature.
+- The current path list is not a semantic proof of independence. Re-review diffs after any branch advances.
