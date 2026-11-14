@@ -85,6 +85,35 @@ test.describe('WIRD memorization plans UX', () => {
     await expect(trigger).toBeFocused();
   });
 
+  test('previously memorized selection supports multiple Surahs, a complete Juz, and custom ayah ranges', async ({ page }) => {
+    await page.getByRole('button', { name: /إنشاء خطة ذكية جديدة/ }).click();
+
+    const modes = page.getByRole('group', { name: 'طريقة تحديد المحفوظ' });
+    const surahSearch = page.getByRole('searchbox', { name: 'ابحث وحدد عدة سور بالضغط عليها' });
+    const surahList = page.getByRole('group', { name: 'السور المحفوظة المحددة' });
+
+    await surahSearch.fill('الفاتحة');
+    await surahList.locator('label').filter({ hasText: '1. سورة الفاتحة' }).locator('input[type="checkbox"]').check();
+    await surahSearch.fill('البقرة');
+    await surahList.locator('label').filter({ hasText: '2. سورة البقرة' }).locator('input[type="checkbox"]').check();
+    await page.getByRole('button', { name: /إضافة 2 سورة محددة/ }).click();
+    await expect(page.getByRole('button', { name: /إزالة سورة الفاتحة من الآية 1 إلى 7/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /إزالة سورة البقرة من الآية 1 إلى 286/ })).toBeVisible();
+
+    await modes.getByRole('button', { name: 'جزء كامل' }).click();
+    await page.locator('#memorized-juz-select').selectOption('4');
+    await page.getByRole('button', { name: 'إضافة الجزء كاملاً' }).click();
+    await expect(page.getByRole('button', { name: /إزالة سورة آل عمران من الآية 93 إلى 200/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /إزالة سورة النساء من الآية 1 إلى 23/ })).toBeVisible();
+
+    await modes.getByRole('button', { name: 'نطاق آيات' }).click();
+    await page.locator('#memorized-range-surah-select').selectOption('67');
+    await page.getByLabel('من آية').fill('1');
+    await page.getByLabel('إلى آية').fill('10');
+    await page.getByRole('button', { name: 'إضافة نطاق الآيات' }).click();
+    await expect(page.getByRole('button', { name: /إزالة سورة الملك من الآية 1 إلى 10/ })).toBeVisible();
+  });
+
   test('planning wizard pacing and rest-day controls are keyboard and touch accessible', async ({ page }) => {
     await page.getByRole('button', { name: /إنشاء خطة ذكية جديدة/ }).click();
 
