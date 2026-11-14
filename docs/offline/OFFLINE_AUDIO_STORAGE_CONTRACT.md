@@ -205,3 +205,22 @@ The implementation is more complete than the older checkpoint described, but it 
 5. **No real-device restart/airplane-mode evidence is available.** Unit tests do not prove browser eviction, OS process termination, PWA restart, or physical-device offline behavior.
 
 Keep #358 and #359 superseded; do not merge them as competing stores. Review #366's service-worker cache namespace and version migration with #368 before integration. Preserve the existing two-store invariant: IndexedDB owns metadata and Cache Storage owns bytes. A file is not offline-ready until the bytes are present and verified.
+
+
+## Downloader regression follow-up — 2026-11-14
+
+PR #368 was updated at feature commit `d0ab926f37ea68a92c28e39796dd3d723e1dd7a8`.
+
+Two real defects were found by executing the isolated service tests:
+1. `OfflineAudioJobItem` stores the global ayah number and file key, not Surah/ayah fields. The downloader incorrectly read nonexistent coordinate properties from the job relation when recording the verified file. It now uses the canonical planned item (`planned.surahNumber`, `planned.ayahNumber`).
+2. Pausing before any ayah completed attempted the valid `downloading → queued` transition, but the state-transition table rejected it. The transition is now allowed; terminal jobs remain immutable.
+
+Three concurrency tests also had invalid fixtures: they tried to replace a generation using an already-completed job, contrary to the intended immutable-job rule. The tests now create a distinct retry job and a new cache generation, while still verifying that stale scans and delayed jobs cannot overwrite newer files.
+
+Targeted isolated Node/tsx sandbox tests now pass:
+- IndexedDB library: 18/18.
+- Downloader: 6/6.
+- Cache adapter: 5/5.
+- Total: 29/29 PASS.
+
+These are targeted isolated tests, not GitHub Actions or the full repository suite. The exact PR #368 GitHub Actions run still fails before steps/logs. Cross-tab ownership, complete orphan-deletion orchestration, Cache Storage quota UX, reader playback integration, and physical-device recovery remain outstanding.
