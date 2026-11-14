@@ -317,7 +317,7 @@ Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
 
 | PR | Head SHA | Disposition |
 |---:|---|---|
-| #375 | `310f480266e0001b4eab9b8c79152917e2bd2d1e` | Handoff evidence updated |
+| #375 | `self-reference; re-fetch current PR head` | Handoff evidence updated |
 | #374 | `6673bb149a2ffa58177c35b9f68c76423dfb2a0b` | Package/lockfile overlap with #372 |
 | #373 | `d93ede79b9f8ca093bd5a8a702a00b31d415c9ca` | Ruqyah fix; Preview READY; CI BLOCKED |
 | #372 | `950640ea78d29e87d426a89d8887c15e4de2abac` | Bun workflow; runner issue unresolved |
@@ -329,7 +329,7 @@ Exact open PR heads re-fetched on 2026-11-14 (all OPEN / DRAFT):
 | #366 | `cade1b630bb429d6a4106de5bf12713df18f3491` | PWA/offline shell |
 | #365 | `adc1ef01b7a0c5eb7e280395520108c94788af5d` | Seerah prototype only |
 | #364 | `ad33875b0304020f930c7b606ef8782d36148707` | Advisor history fix; Preview READY |
-| #363 | `3f6f2bd53ad906af05a65ef7fa76adf31a49fd57` | Docs consolidation; Work Log preserved |
+| #363 | `b33218c3b337e3a6271046e66e0abc8330bbd61e` | Docs consolidation; Work Log preserved; Preview blocked by build-rate-limit |
 | #359 | `7d31af20fe9cdc69aee4855acaf02e278fbf8b70` | Superseded standalone manifest |
 | #358 | `4970b87d6ba712d3899093f4e8dd297bef17985e` | Superseded standalone job store |
 | #2 | `9e6d7a119c26ca7f37e69c21dbf7b934b016ad0d` | Legacy broad UI/UX; do not merge as a unit |
